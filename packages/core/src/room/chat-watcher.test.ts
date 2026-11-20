@@ -194,7 +194,10 @@ describe("ChatWatcher connection", () => {
     const [socket] = connector.sockets
 
     socket?.receive(keepalive)
-    socket?.receive({ metadata: { message_type: "revocation" }, payload: {} })
+    socket?.receive({
+      metadata: { message_type: "revocation", subscription_type: "channel.follow" },
+      payload: {},
+    })
     socket?.receive({
       metadata: { message_type: "notification", subscription_type: "channel.follow" },
       payload: {},
@@ -355,6 +358,98 @@ describe("ChatWatcher connection age", () => {
     expect(subscriptions.sessions).toEqual(["session-1", "session-2"])
     expect(messages).toEqual([{ chatterUserId: "42", text: "!claim" }])
     expect(watcher.wakeAt()).toBe(840_000 + 15_000)
+  })
+})
+
+const revocation = {
+  metadata: { message_type: "revocation", subscription_type: "channel.chat.message" },
+  payload: {},
+}
+
+/** Moves a live watcher to the moment its replacement is due, with the old socket still alive. */
+async function dueForReplacement(overrides: Readonly<Record<string, string>> = {}) {
+  const context = await liveWatcher(overrides)
+  context.clock.advance(839_999)
+  context.connector.sockets[0]?.receive(keepalive)
+  context.clock.advance(1)
+  context.connector.sockets[0]?.receive(keepalive)
+  context.watcher.onAlarm()
+  return context
+}
+
+describe("ChatWatcher failed replacement", () => {
+  it("keeps the old socket when the replacement cannot subscribe and retries on the next wake", async () => {
+    const { watcher, connector, clock, subscriptions, unavailable } = await dueForReplacement()
+    const [old, failed] = connector.sockets
+    subscriptions.refusal = new Error("helix 500")
+    failed?.receive(welcome("session-2"))
+    await flush()
+
+    expect(unavailable).toEqual([])
+    expect(old?.closed).toBe(false)
+    expect(failed?.closed).toBe(true)
+    expect(watcher.wakeAt()).toBe(840_000 + 2000)
+
+    clock.advance(2000)
+    old?.receive(keepalive)
+    subscriptions.refusal = null
+    watcher.onAlarm()
+    connector.sockets[2]?.receive(welcome("session-3"))
+    await flush()
+
+    expect(old?.closed).toBe(true)
+    expect(connector.sockets).toHaveLength(3)
+    expect(subscriptions.sessions).toEqual(["session-1", "session-2", "session-3"])
+    expect(unavailable).toEqual([])
+  })
+
+  it("stops replacing after the cap but serves until the old socket reaches its maximum age, then gives up", async () => {
+    const { watcher, connector, clock, subscriptions, unavailable } = await dueForReplacement({
+      EVENTSUB_RECONNECT_MAX_ATTEMPTS: "1",
+    })
+    subscriptions.refusal = new Error("helix 500")
+    for (let failure = 0; failure < 2; failure++) {
+      connector.sockets.at(-1)?.receive(welcome(`session-${failure + 2}`))
+      await flush()
+      clock.advance(2000)
+      connector.sockets[0]?.receive(keepalive)
+      watcher.onAlarm()
+    }
+    expect(connector.sockets).toHaveLength(3)
+    expect(connector.sockets[0]?.closed).toBe(false)
+    expect(unavailable).toEqual([])
+
+    clock.advance(900_000 - clock.now())
+    connector.sockets[0]?.receive(keepalive)
+    watcher.onAlarm()
+
+    expect(connector.sockets[0]?.closed).toBe(true)
+    expect(unavailable).toHaveLength(1)
+    expect(unavailable[0]).toMatchObject({ reason: "max-age" })
+  })
+
+  it("gives up at once when the very first subscription is refused", async () => {
+    const { watcher, connector, subscriptions, unavailable } = watcherUnderTest()
+    subscriptions.refusal = new Error("403")
+    watcher.open()
+
+    connector.sockets[0]?.receive(welcome("session-1"))
+    await flush()
+
+    expect(unavailable).toHaveLength(1)
+  })
+})
+
+describe("ChatWatcher revocation", () => {
+  it("gives up as unavailable when Twitch revokes the chat subscription", async () => {
+    const { watcher, connector, unavailable } = await liveWatcher()
+
+    connector.sockets[0]?.receive(revocation)
+
+    expect(connector.sockets[0]?.closed).toBe(true)
+    expect(unavailable).toHaveLength(1)
+    expect(unavailable[0]).toMatchObject({ reason: "revoked" })
+    expect(watcher.wakeAt()).toBeNull()
   })
 })
 
@@ -719,16 +814,48 @@ describe("chat claim unavailable", () => {
     expect(room.liveSnapshot()).toMatchObject({ chatClaimUnavailable: true, eventSubFailures: 1 })
   })
 
-  it("does not open again for a reroll once it is unavailable", async () => {
-    const { room, subscriptions, connector } = await drawnRoom()
+  it("a reroll clears it and opens a fresh watch with a fresh attempt budget", async () => {
+    const { room, clock, connector } = await drawnRoom({
+      env: { EVENTSUB_RECONNECT_MAX_ATTEMPTS: "1" },
+    })
+    spyOn(console, "warn").mockImplementation(() => {})
+    connector.sockets[0]?.fail(new Error("refused"))
+    clock.advance(2000)
+    room.onAlarm()
+    connector.sockets[1]?.fail(new Error("refused"))
+    expect(room.liveSnapshot().chatClaimUnavailable).toBe(true)
+
+    await room.reroll(0)
+    connector.sockets[2]?.fail(new Error("refused"))
+
+    expect(connector.sockets).toHaveLength(3)
+    expect(room.liveSnapshot()).toMatchObject({ chatClaimUnavailable: false, eventSubFailures: 1 })
+  })
+
+  it("claims through the fresh watch after a reroll", async () => {
+    const { room, connector, subscriptions } = await drawnRoom()
     spyOn(console, "warn").mockImplementation(() => {})
     subscriptions.refusal = new Error("refused")
     connector.sockets[0]?.receive(welcome("session-1"))
     await flush()
+    subscriptions.refusal = null
 
     await room.reroll(0)
+    connector.sockets[1]?.receive(welcome("session-2"))
+    await flush()
+    const next = room.picks()[1]?.platformUserId ?? ""
+    connector.sockets[1]?.receive(chat(next, "here"))
 
-    expect(connector.sockets).toHaveLength(1)
+    expect(room.liveSnapshot().winners[1]?.claim).toEqual({ state: "claimed", via: "chat" })
+  })
+
+  it("counts a revoked subscription as an EventSub failure", async () => {
+    const { room, socket } = await connectedRoom()
+    spyOn(console, "warn").mockImplementation(() => {})
+
+    socket?.receive(revocation)
+
+    expect(room.liveSnapshot()).toMatchObject({ chatClaimUnavailable: true, eventSubFailures: 1 })
   })
 })
 

@@ -12,6 +12,8 @@ export type EventSubMessage =
   | { readonly kind: "keepalive" }
   | { readonly kind: "reconnect"; readonly url: string }
   | { readonly kind: "notification"; readonly chat: ChatMessage }
+  /** Twitch removed the chat subscription, for example after the streamer revoked the app. */
+  | { readonly kind: "revoked" }
   | { readonly kind: "ignored" }
 
 const malformed: Parsed<never, "malformed"> = { ok: false, issue: "malformed" }
@@ -37,6 +39,11 @@ export function parseEventSubMessage(text: string): Parsed<EventSubMessage, "mal
       return metadata.subscription_type === CHAT_MESSAGE
         ? parseChatNotification(payload)
         : { ok: true, value: { kind: "ignored" } }
+    case "revocation":
+      return {
+        ok: true,
+        value: { kind: metadata.subscription_type === CHAT_MESSAGE ? "revoked" : "ignored" },
+      }
     default:
       return { ok: true, value: { kind: "ignored" } }
   }

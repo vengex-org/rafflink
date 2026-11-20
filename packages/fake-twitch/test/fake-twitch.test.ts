@@ -461,6 +461,23 @@ describe("eventsub websocket", () => {
     expect(response.status).toBe(503)
   })
 
+  test("revoking sends a revocation per chat subscription and drops it", async () => {
+    const socket = await openSocket()
+    const sessionId = await welcomedSessionId(socket)
+    const tokens = await signIn("user:read:chat")
+    await subscribe(tokens.access_token, sessionId, "100", "100")
+
+    fake.control.revokeChatSubscriptions()
+    const revocation = await socket.nextOfType("revocation")
+
+    expect(revocation).toMatchObject({
+      metadata: { subscription_type: "channel.chat.message" },
+      payload: { subscription: { status: "authorization_revoked" } },
+    })
+    expect(fake.control.eventSubSubscriptions()).toBe(0)
+    expect(socket.ws.readyState).toBe(WebSocket.OPEN)
+  })
+
   test("counts the open sockets and the chat subscriptions on them", async () => {
     const socket = await openSocket()
     const sessionId = await welcomedSessionId(socket)

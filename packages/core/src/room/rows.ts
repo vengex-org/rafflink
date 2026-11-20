@@ -30,7 +30,7 @@ export type RoomState = {
   readonly ticketTotal: number
   readonly roleRefreshFailures: number
   readonly eventSubFailures: number
-  /** The chat watch gave up; no later draw or reroll opens it again. */
+  /** The chat watch gave up; a reroll clears it. */
   readonly chatUnavailable: boolean
   readonly rolesRefreshAt: Instant | null
   readonly mirrorPending: boolean

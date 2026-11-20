@@ -10,6 +10,7 @@ export interface EventSub {
   subscriptionRoutes: Hono<HelixEnv>
   sendChatMessage(broadcasterId: string, chatterUserId: string, text: string): void
   reconnect(): void
+  revokeSubscriptions(): void
   /** EventSub sockets that are open now. */
   connectionCount(): number
   /** Chat subscriptions on the open sockets. */
@@ -138,6 +139,25 @@ export function createEventSub(state: FakeState): EventSub {
                 cheer: null,
                 reply: null,
                 channel_points_custom_reward_id: null,
+              },
+            },
+          })
+        }
+      }
+    },
+    revokeSubscriptions() {
+      for (const session of open) {
+        for (const subscription of session.subscriptions.splice(0)) {
+          send(session.ws, {
+            metadata: {
+              ...metadata("revocation"),
+              subscription_type: CHAT_MESSAGE,
+              subscription_version: "1",
+            },
+            payload: {
+              subscription: {
+                ...subscriptionJson(subscription, session.id),
+                status: "authorization_revoked",
               },
             },
           })

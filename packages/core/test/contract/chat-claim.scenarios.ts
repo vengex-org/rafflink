@@ -98,6 +98,60 @@ export function chatClaimScenarios(context: ContractContext): void {
       expect(world.twitch.fake.control.eventSubConnections()).toBe(0)
     },
   )
+
+  scenario(context, "a revoked chat subscription shows Chat claim unavailable", async (world) => {
+    const { giveaway } = await drawnWithOneWinner(world, await world.start())
+    await waitForSubscription(world)
+
+    world.twitch.fake.control.revokeChatSubscriptions()
+    await world.waitFor(
+      async () => (await world.live(giveaway)).chatClaimUnavailable,
+      "the revocation to make the chat claim unavailable",
+    )
+
+    expect(await world.live(giveaway)).toMatchObject({ eventSubFailures: 1 })
+    expect(world.twitch.fake.control.eventSubConnections()).toBe(0)
+  })
+
+  scenario(
+    context,
+    "a reroll after an EventSub failure opens the chat watch again",
+    async (world) => {
+      world.twitch.fake.control.failNext("eventsub", 500, 1)
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+      for (const viewer of [users.viewer, users.viewer2]) {
+        await world.enter(target, giveaway.code, viewer.id)
+      }
+      await world.closeGiveaway(giveaway)
+      await world.drawWinners(giveaway, 1)
+      await world.waitFor(
+        async () => (await world.live(giveaway)).chatClaimUnavailable,
+        "the chat claim to become unavailable",
+      )
+
+      const rerolled = await giveaway.streamer.postJson(
+        `/api/dash/giveaways/${giveaway.id}/reroll`,
+        {
+          n: 0,
+        },
+      )
+      await waitForSubscription(world)
+      world.twitch.fake.control.sendChatMessage(users.streamer.id, users.viewer.id, "claiming!")
+      world.twitch.fake.control.sendChatMessage(users.streamer.id, users.viewer2.id, "claiming!")
+      await world.waitFor(
+        async () => (await world.live(giveaway)).winners[1]?.claim.state === "claimed",
+        "the new winner to claim in chat",
+      )
+
+      expect(rerolled.status).toBe(200)
+      expect(await world.live(giveaway)).toMatchObject({
+        chatClaimUnavailable: false,
+        eventSubFailures: 1,
+        winners: [{ claim: { state: "rerolled" } }, { claim: { state: "claimed", via: "chat" } }],
+      })
+    },
+  )
 }
 
 /** One viewer enters, entries close and the viewer is the only possible winner. */

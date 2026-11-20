@@ -339,6 +339,8 @@ export class GiveawayRoom {
       )
       if (marked.length === 0) return rerollRefusal(this.readDraw(n)) ?? { kind: "unknown-pick" }
       this.insertPick(winner, now, state.claimSeconds)
+      // A new waiting winner gets a fresh chat watch even when the last one gave up.
+      this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
       return { kind: "rerolled", replaced: n, winner }
     })
     if (outcome.kind === "rerolled") this.afterWrite()
@@ -548,7 +550,7 @@ export class GiveawayRoom {
     )
   }
 
-  // The watcher has already closed; the flag keeps the room from opening it again.
+  // The watcher has already closed; the flag keeps the room from opening it again until a reroll.
   private chatUnavailable(cause: unknown): void {
     this.sql.exec("UPDATE room_state SET chat_unavailable = 1 WHERE id = 1", [])
     this.recordFailure("eventsub", cause)

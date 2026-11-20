@@ -37,6 +37,8 @@ export type ChatConnectionLostReason =
   | "keepalive-missed"
   | "handshake-timeout"
   | "malformed-message"
+  | "max-age"
+  | "revoked"
 
 /** A connection that ended or went silent; the cause of a retry and of giving up. */
 export class ChatConnectionLost extends Error {
@@ -72,6 +74,8 @@ export class ChatWatcher {
   private live: Live | null = null
   private attempts = 0
   private retryAt: Instant | null = null
+  /** Replacing the live connection kept failing; it serves until it drops or reaches its maximum age. */
+  private replacementGivenUp = false
 
   constructor(private readonly deps: ChatWatcherDeps) {}
 
@@ -80,6 +84,7 @@ export class ChatWatcher {
     if (this.running) return
     this.running = true
     this.attempts = 0
+    this.replacementGivenUp = false
     this.connect(this.deps.config.eventSubUrl, false)
   }
 
@@ -88,6 +93,7 @@ export class ChatWatcher {
     if (!this.running) return
     this.running = false
     this.retryAt = null
+    this.replacementGivenUp = false
     this.handshake?.socket.close()
     this.live?.socket.close()
     this.handshake = null
@@ -99,9 +105,12 @@ export class ChatWatcher {
     if (!this.running) return null
     const wakes: Instant[] = []
     if (this.handshake !== null) wakes.push(this.handshake.deadline)
-    if (this.live !== null) wakes.push(this.keepaliveDeadline(this.live))
+    if (this.live !== null) {
+      wakes.push(this.keepaliveDeadline(this.live), this.maxAgeAt(this.live))
+    }
+    const replaceable = this.replaceableLive()
     if (this.retryAt !== null) wakes.push(this.retryAt)
-    else if (this.live !== null && this.handshake === null) wakes.push(this.replaceAt(this.live))
+    else if (replaceable !== null) wakes.push(this.replaceAt(replaceable))
     return wakes.length === 0 ? null : Math.min(...wakes)
   }
 
@@ -109,19 +118,22 @@ export class ChatWatcher {
     if (!this.running) return
     const now = this.deps.clock.now()
     if (this.handshake !== null && now >= this.handshake.deadline) {
-      this.handshake.socket.close()
-      this.handshake = null
+      this.dropHandshake()
       this.retry(new ChatConnectionLost("handshake-timeout"))
     }
     if (this.live !== null && now >= this.keepaliveDeadline(this.live)) {
-      this.live.socket.close()
-      this.live = null
+      this.dropLive()
       this.retry(new ChatConnectionLost("keepalive-missed"))
     }
+    if (this.live !== null && now >= this.maxAgeAt(this.live)) {
+      this.dropLive()
+      this.retry(new ChatConnectionLost("max-age"))
+    }
     if (!this.running || this.handshake !== null) return
+    const replaceable = this.replaceableLive()
     const due =
       this.retryAt === null
-        ? this.live !== null && now >= this.replaceAt(this.live)
+        ? replaceable !== null && now >= this.replaceAt(replaceable)
         : now >= this.retryAt
     if (!due) return
     this.retryAt = null
@@ -129,7 +141,7 @@ export class ChatWatcher {
   }
 
   private connect(url: string, resumed: boolean): void {
-    this.handshake?.socket.close()
+    this.dropHandshake()
     const socket: TextSocket = this.deps.connector.open(url, {
       onText: (text) => this.onText(socket, text),
       onClose: (cause) => this.onClose(socket, cause),
@@ -164,6 +176,9 @@ export class ChatWatcher {
       case "reconnect":
         if (live !== null) this.connect(message.url, true)
         return
+      case "revoked":
+        if (live !== null) this.giveUp(new ChatConnectionLost("revoked"))
+        return
       case "ignored":
         return
     }
@@ -194,7 +209,14 @@ export class ChatWatcher {
         if (this.handshake === handshake) this.promote(handshake, keepaliveMs)
       },
       (cause: unknown) => {
-        if (this.handshake === handshake) this.giveUp(cause)
+        if (this.handshake !== handshake) return
+        // A refused replacement must not end a connection that still works.
+        if (this.live === null) {
+          this.giveUp(cause)
+          return
+        }
+        this.dropHandshake()
+        this.retry(cause)
       },
     )
   }
@@ -206,15 +228,34 @@ export class ChatWatcher {
     this.handshake = null
     this.attempts = 0
     this.retryAt = null
+    this.replacementGivenUp = false
     previous?.socket.close()
     this.deps.onSchedule()
+  }
+
+  // The slot is cleared before the socket closes, so the close event of a dropped socket is not a second failure.
+  private dropHandshake(): void {
+    const { handshake } = this
+    this.handshake = null
+    handshake?.socket.close()
+  }
+
+  private dropLive(): void {
+    const { live } = this
+    this.live = null
+    live?.socket.close()
   }
 
   private retry(cause: unknown): void {
     if (!this.running) return
     this.attempts += 1
     if (this.attempts > this.deps.config.eventSubReconnectMaxAttempts) {
-      this.giveUp(cause)
+      if (this.live === null) {
+        this.giveUp(cause)
+        return
+      }
+      this.replacementGivenUp = true
+      this.retryAt = null
       return
     }
     this.retryAt = this.deps.clock.now() + this.deps.config.eventSubReconnectDelaySeconds * 1000
@@ -234,6 +275,15 @@ export class ChatWatcher {
     return (
       live.lastSeenAt + live.keepaliveMs + this.deps.config.eventSubKeepaliveGraceSeconds * 1000
     )
+  }
+
+  /** The live connection when it is due a planned replacement, `null` while one is underway or given up. */
+  private replaceableLive(): Live | null {
+    return this.handshake === null && !this.replacementGivenUp ? this.live : null
+  }
+
+  private maxAgeAt(live: Live): Instant {
+    return live.since + this.deps.config.eventSubConnectionMaxSeconds * 1000
   }
 
   private replaceAt(live: Live): Instant {
