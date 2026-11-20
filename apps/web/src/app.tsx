@@ -14,12 +14,10 @@ export function AppRoutes() {
     <I18nProvider>
       <Routes>
         <Route path="/overlay/:id/:token" element={<OverlayPage />} />
-        <Route element={<Layout width="wide" />}>
+        <Route element={<Layout />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="live/:id" element={<LivePage />} />
           <Route path="admin" element={<AdminPage />} />
-        </Route>
-        <Route element={<Layout width="narrow" />}>
           <Route index element={<HomePage />} />
           <Route path="g/:code" element={<GiveawayPage />} />
           <Route path=":code" element={<GiveawayPage />} />

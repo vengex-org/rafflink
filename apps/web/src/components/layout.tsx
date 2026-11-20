@@ -3,11 +3,11 @@ import { useI18n } from "../i18n/i18n.tsx"
 import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
 import { GiftIcon, ListIcon } from "./icons.tsx"
 
-/** The app bar and the page column; both share one width, so their edges line up. Viewer pages use the narrow column, streamer pages the wide one. */
-export function Layout({ width }: { readonly width: "narrow" | "wide" }) {
+/** The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages. */
+export function Layout() {
   const { t } = useI18n()
   return (
-    <div className="layout" data-width={width}>
+    <div className="layout">
       <header className="app-bar">
         <div className="container app-bar-inner">
           <Link to="/" className="brand">

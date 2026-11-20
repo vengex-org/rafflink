@@ -129,12 +129,8 @@ body {
 
 /* Page container: the app bar and the page content share one width and gutter, so their left edges line up. */
 
-.layout[data-width="narrow"] {
-  --column: 45rem;
-}
-
-.layout[data-width="wide"] {
-  --column: 70rem;
+.layout {
+  --column: 64rem;
 }
 
 .container {
@@ -406,8 +402,9 @@ button:disabled {
 }
 
 @media (min-width: 40rem) {
+  /* A flex box fills its line even with width auto; fit-content keeps the button as wide as its label. */
   .button.block {
-    width: auto;
+    width: fit-content;
     min-width: 16rem;
   }
 
@@ -440,31 +437,11 @@ button:disabled {
   border-color: var(--primary);
 }
 
-/* A short outcome is centered as a whole; a card with fields or lists stays left-aligned. */
-
-.state-card {
-  max-width: 40rem;
-}
-
-.layout[data-width="wide"] .state-card {
-  margin-inline: auto;
-}
-
-.column {
-  max-width: 45rem;
-  margin-inline: auto;
-}
-
-.column .state-card {
-  max-width: none;
-}
+/* Cards fill the page column so their edges line up with the page heading; a short outcome centers its
+   content inside the card, a card with fields or lists stays left-aligned. */
 
 .state-card[data-align="center"] {
   text-align: center;
-}
-
-.layout[data-width="narrow"] .state-card {
-  max-width: none;
 }
 
 .state-card[data-align="center"] p {

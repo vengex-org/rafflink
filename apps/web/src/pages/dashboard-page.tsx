@@ -77,7 +77,7 @@ function CreatedScreen({
   const { t, rich, plural } = useI18n()
   const { giveaway } = created
   return (
-    <div className="column">
+    <div>
       <StateCard tone="success" align="start" icon={<CheckIcon />} title={t("dash.created.title")}>
         {created.usageLow === null ? null : (
           <p role="alert">{plural("usageLow", created.usageLow.remaining)}</p>
