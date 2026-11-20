@@ -45,6 +45,7 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
     let timer: ReturnType<typeof setTimeout> | null = null
 
     let givenUpAt: number | null = null
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
 
     // `failures` counts the connections in a row that closed before a valid message; `streakStart` is
     // the time of the first of them.
@@ -86,9 +87,20 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
       })
     }
 
+    const canRetry = () => givenUpAt !== null && current && document.visibilityState === "visible"
+    // A tab shown too soon after giving up waits out the rest instead of dropping the retry.
     const retryAfterGivingUp = (minWaitMs: number) => {
-      if (givenUpAt === null || !current || document.visibilityState !== "visible") return
-      if (Date.now() - givenUpAt >= minWaitMs) connect(0, null)
+      if (givenUpAt === null || !canRetry()) return
+      const waitMs = minWaitMs - (Date.now() - givenUpAt)
+      if (waitMs <= 0) {
+        connect(0, null)
+        return
+      }
+      if (retryTimer !== null) return
+      retryTimer = setTimeout(() => {
+        retryTimer = null
+        if (canRetry()) connect(0, null)
+      }, waitMs)
     }
     const retryOnline = () => retryAfterGivingUp(0)
     const retryVisible = () => retryAfterGivingUp(minViewerSocketGiveUpMs)
@@ -101,6 +113,7 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
       window.removeEventListener("online", retryOnline)
       document.removeEventListener("visibilitychange", retryVisible)
       if (timer !== null) clearTimeout(timer)
+      if (retryTimer !== null) clearTimeout(retryTimer)
       socket?.close()
     }
   }, [code, enabled])
