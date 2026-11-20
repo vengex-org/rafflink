@@ -152,6 +152,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rerollResult.unknown-pick": "Taký víťaz neexistuje.",
   "rerollResult.not-drawn": "Najprv vyžrebuj víťazov.",
   "rerollResult.no-entrants-left": "Nezostal nikto, koho by sa dalo vybrať.",
+  "rerollResult.reroll-window-over":
+    "Čas na výber iného víťaza uplynul. Kontaktuj víťaza sám alebo spusti nový giveaway.",
   "rerollResult.try-again": "Nepodarilo sa. Skús to znova.",
   "rerollResult.rejected": "Iného víťaza sa nepodarilo vybrať.",
   "markResult.claimed": "Označené ako prevzaté.",
@@ -360,6 +362,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.winnerFallback": "víťaz {n}",
   "live.mark.label": "Označiť ako prevzaté",
   "live.mark.aria": "Označiť ako prevzaté: {name}",
+  "live.reroll.over":
+    "Čas na výber iného víťaza uplynul. Kontaktuj víťazov, ktorí výhru neprevzali, alebo spusti nový giveaway.",
   "live.reroll.label": "Vybrať iného víťaza",
   "live.reroll.question": "Vybrať iného víťaza namiesto {name}?",
   "live.reroll.detail": "{name} o výhru príde. Nedá sa to vrátiť späť.",

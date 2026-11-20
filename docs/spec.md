@@ -102,7 +102,7 @@ claimed or their claim time ended:
     message in that gap is missed, and the winner has to claim with the button or the streamer marks it by
     hand.
 
-After the claim time the streamer may reroll; Rafflink does not reroll by itself.
+After the claim time the streamer may reroll for `REROLL_WINDOW_SECONDS` (default one hour) while an entrant is left to pick; Rafflink does not reroll by itself.
 
 **Viewer**
 

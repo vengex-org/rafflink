@@ -319,6 +319,7 @@ const rerollKinds = [
   "unknown-pick",
   "not-drawn",
   "no-entrants-left",
+  "reroll-window-over",
   "try-again",
 ] as const satisfies readonly RerollKind[]
 const claimKinds = [
@@ -508,6 +509,7 @@ export function parseLiveSnapshot(source: Json): LiveSnapshot {
     entriesPerSecond: num(source, "entriesPerSecond"),
     lastNames: textList(source, "lastNames"),
     winners: list(source, "winners", parseWinner),
+    rerollOpen: bool(source, "rerollOpen"),
     roleRefreshFailures: num(source, "roleRefreshFailures"),
     eventSubFailures: num(source, "eventSubFailures"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),

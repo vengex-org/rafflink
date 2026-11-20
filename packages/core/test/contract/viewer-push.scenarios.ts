@@ -129,6 +129,64 @@ export function viewerPushScenarios(context: ContractContext): void {
 
   scenario(
     context,
+    "the giveaway is pushed as finished when the last claim time ran out and nobody is left to reroll to",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
+      await world.enter(target, giveaway.code, users.viewer.id)
+      await world.closeGiveaway(giveaway)
+      await world.drawWinners(giveaway, 1)
+      const { messages } = openViewerSocket(world, target.url, giveaway)
+
+      await world.waitFor(
+        () => messages.some((message) => message.finished),
+        "the finished outcome",
+      )
+
+      expect(messages.at(-1)).toMatchObject({
+        status: "drawn",
+        finished: true,
+        winners: [{ claim: { state: "expired" } }],
+      })
+    },
+  )
+
+  scenario(
+    context,
+    "the giveaway is pushed as finished once the reroll window ended, and a reroll after it is refused",
+    async (world) => {
+      const target = await world.start({ REROLL_WINDOW_SECONDS: "1" })
+      const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
+      await world.enter(target, giveaway.code, users.viewer.id)
+      await world.enter(target, giveaway.code, users.viewer2.id)
+      await world.closeGiveaway(giveaway)
+      await world.drawWinners(giveaway, 1)
+      const { messages } = openViewerSocket(world, target.url, giveaway)
+
+      await world.waitFor(
+        () => messages.some((message) => message.finished),
+        "the finished outcome",
+      )
+      const reroll = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/reroll`, {
+        n: 0,
+      })
+
+      expect(messages.at(-1)).toMatchObject({
+        status: "drawn",
+        finished: true,
+        winners: [{ claim: { state: "expired" } }],
+      })
+      expect(
+        messages.some(
+          (message) => message.winners[0]?.claim.state === "expired" && !message.finished,
+        ),
+      ).toBe(true)
+      expect(reroll.status).toBe(409)
+    },
+  )
+
+  scenario(
+    context,
     "a viewer's socket carries public data only and the streamer's socket never receives it",
     async (world) => {
       const target = await world.start()

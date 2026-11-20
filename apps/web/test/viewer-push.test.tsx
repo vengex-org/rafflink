@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import type { ViewerPush } from "@rafflink/core/room/giveaway-room"
-import { jitteredReconnectDelayMs, maxViewerSocketFailures } from "../src/lib/use-viewer-push.ts"
+import {
+  jitteredReconnectDelayMs,
+  maxViewerSocketFailures,
+  minViewerSocketGiveUpMs,
+} from "../src/lib/use-viewer-push.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
@@ -48,6 +52,38 @@ function connected(): Promise<FakeSocket> {
     if (socket === undefined) throw new Error("the page has not opened its socket")
     return socket
   })
+}
+
+function freezeClock(): { now: number } {
+  const clock = { now: 1_000_000 }
+  spyOn(Date, "now").mockImplementation(() => clock.now)
+  return clock
+}
+
+async function pageWithSocket(): Promise<void> {
+  spyOn(Math, "random").mockReturnValue(0)
+  spyOn(console, "warn").mockImplementation(() => {})
+  mockFetch(pageRoute())
+  const view = renderApp("/ABCDE")
+  await view.findByRole("heading", { name: "You are in" })
+}
+
+/** Drops the socket the page opened as number `attempt` (from 1) before any message arrived. */
+async function dropAttempt(attempt: number): Promise<void> {
+  await waitFor(() => expect(FakeSocket.opened).toHaveLength(attempt))
+  act(() => FakeSocket.opened[attempt - 1]?.drop())
+}
+
+function showAs(state: DocumentVisibilityState): void {
+  Object.defineProperty(document, "visibilityState", { value: state, configurable: true })
+}
+
+async function giveUp(clock: { now: number }): Promise<void> {
+  await pageWithSocket()
+  for (let attempt = 1; attempt < maxViewerSocketFailures; attempt++) await dropAttempt(attempt)
+  clock.now += minViewerSocketGiveUpMs
+  await dropAttempt(maxViewerSocketFailures)
+  await new Promise((resolve) => setTimeout(resolve, 50))
 }
 
 const pageLoads = (requests: readonly { readonly route: string }[]) =>
@@ -263,15 +299,40 @@ describe("viewer page: reconnect", () => {
     ])
   })
 
-  it("stops after connections in a row that never opened, because a refused socket never recovers", async () => {
-    spyOn(Math, "random").mockReturnValue(0)
-    spyOn(console, "warn").mockImplementation(() => {})
-    mockFetch(pageRoute())
-    const view = renderApp("/ABCDE")
-    await view.findByRole("heading", { name: "You are in" })
+  it("stops after the failure cap and the minimum time in a row, because a refused socket never recovers", async () => {
+    const clock = freezeClock()
+    await pageWithSocket()
+
+    for (let attempt = 1; attempt < maxViewerSocketFailures; attempt++) {
+      await dropAttempt(attempt)
+    }
+    clock.now += minViewerSocketGiveUpMs
+    await dropAttempt(maxViewerSocketFailures)
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures)
+  })
+
+  it("keeps trying past the failure cap while the minimum time has not passed, so a network switch does not end the push", async () => {
+    const clock = freezeClock()
+    await pageWithSocket()
+
+    for (let attempt = 1; attempt <= maxViewerSocketFailures + 1; attempt++) {
+      await dropAttempt(attempt)
+      clock.now += minViewerSocketGiveUpMs / (maxViewerSocketFailures + 2)
+    }
+
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures + 2))
+  })
+
+  it("does not count a connection that opened but sent nothing as healthy, so an accept-then-close server ends the loop", async () => {
+    const clock = freezeClock()
+    await pageWithSocket()
 
     for (let attempt = 1; attempt <= maxViewerSocketFailures; attempt++) {
       await waitFor(() => expect(FakeSocket.opened).toHaveLength(attempt))
+      act(() => FakeSocket.opened[attempt - 1]?.open())
+      clock.now += minViewerSocketGiveUpMs
       act(() => FakeSocket.opened[attempt - 1]?.drop())
     }
     await new Promise((resolve) => setTimeout(resolve, 100))
@@ -279,7 +340,7 @@ describe("viewer page: reconnect", () => {
     expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures)
   })
 
-  it("keeps reconnecting while the connections open before they drop", async () => {
+  it("keeps reconnecting while the connections deliver a message before they drop", async () => {
     spyOn(Math, "random").mockReturnValue(0)
     mockFetch(pageRoute())
     const view = renderApp("/ABCDE")
@@ -288,30 +349,75 @@ describe("viewer page: reconnect", () => {
 
     for (let attempt = 1; attempt <= drops; attempt++) {
       await waitFor(() => expect(FakeSocket.opened).toHaveLength(attempt))
-      act(() => FakeSocket.opened[attempt - 1]?.open())
+      act(() => FakeSocket.opened[attempt - 1]?.push(push()))
       act(() => FakeSocket.opened[attempt - 1]?.drop())
     }
 
     await waitFor(() => expect(FakeSocket.opened).toHaveLength(drops + 1))
   })
 
-  it("counts only the failures in a row: a connection that opened starts the count again", async () => {
-    spyOn(Math, "random").mockReturnValue(0)
-    spyOn(console, "warn").mockImplementation(() => {})
+  it("counts only the failures in a row: a connection that delivered a message starts the count again", async () => {
+    const clock = freezeClock()
+    await pageWithSocket()
+
+    for (let attempt = 1; attempt < maxViewerSocketFailures; attempt++) {
+      await dropAttempt(attempt)
+    }
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures))
+    act(() => FakeSocket.opened[maxViewerSocketFailures - 1]?.push(push()))
+    clock.now += minViewerSocketGiveUpMs
+    act(() => FakeSocket.opened[maxViewerSocketFailures - 1]?.drop())
+    for (
+      let attempt = maxViewerSocketFailures + 1;
+      attempt < 2 * maxViewerSocketFailures;
+      attempt++
+    ) {
+      await dropAttempt(attempt)
+    }
+    clock.now += minViewerSocketGiveUpMs
+    await dropAttempt(2 * maxViewerSocketFailures)
+
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(2 * maxViewerSocketFailures))
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(FakeSocket.opened).toHaveLength(2 * maxViewerSocketFailures)
+  })
+
+  it("tries again once when the browser comes back online after giving up, with a fresh streak", async () => {
+    const clock = freezeClock()
+    await giveUp(clock)
+
+    act(() => {
+      window.dispatchEvent(new Event("online"))
+      window.dispatchEvent(new Event("online"))
+    })
+    expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures + 1)
+
+    await dropAttempt(maxViewerSocketFailures + 1)
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures + 2))
+  })
+
+  it("tries again when the tab becomes visible after giving up, and not while it is hidden", async () => {
+    const clock = freezeClock()
+    await giveUp(clock)
+
+    showAs("hidden")
+    act(() => document.dispatchEvent(new Event("visibilitychange")))
+    expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures)
+
+    showAs("visible")
+    act(() => document.dispatchEvent(new Event("visibilitychange")))
+    expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures + 1)
+  })
+
+  it("does not open a socket on online while it is still connected", async () => {
     mockFetch(pageRoute())
     const view = renderApp("/ABCDE")
     await view.findByRole("heading", { name: "You are in" })
+    await connected()
 
-    const outcomes = [...Array(maxViewerSocketFailures - 1).fill("refused"), "opened"]
-    for (const [index, outcome] of outcomes.entries()) {
-      await waitFor(() => expect(FakeSocket.opened).toHaveLength(index + 1))
-      if (outcome === "opened") act(() => FakeSocket.opened[index]?.open())
-      act(() => FakeSocket.opened[index]?.drop())
-    }
-    await waitFor(() => expect(FakeSocket.opened).toHaveLength(outcomes.length + 1))
-    act(() => FakeSocket.opened[outcomes.length]?.drop())
+    act(() => window.dispatchEvent(new Event("online")))
 
-    await waitFor(() => expect(FakeSocket.opened).toHaveLength(outcomes.length + 2))
+    expect(FakeSocket.opened).toHaveLength(1)
   })
 })
 

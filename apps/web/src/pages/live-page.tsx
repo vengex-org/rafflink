@@ -61,6 +61,9 @@ function Loaded({ id }: { readonly id: string }) {
   }
 }
 
+const isUnclaimed = (winner: LiveWinner) =>
+  winner.claim.state === "waiting" || winner.claim.state === "expired"
+
 function Controls({
   id,
   snapshot,
@@ -101,7 +104,7 @@ function Controls({
             {t("live.mark.label")}
           </button>
         ) : null}
-        {open || expired ? (
+        {(open || expired) && snapshot.rerollOpen ? (
           <ConfirmAction
             icon={<RefreshIcon />}
             label={t("live.reroll.label")}
@@ -143,6 +146,16 @@ function Controls({
               </span>
               <h2>{t("live.chatOff.title")}</h2>
               <p>{t("live.chatOff.text")}</p>
+            </section>
+          ) : null}
+          {snapshot.status === "drawn"
+          && !snapshot.rerollOpen
+          && snapshot.winners.some(isUnclaimed) ? (
+            <section className="card banner" data-tone="warning">
+              <span className="state-icon">
+                <AlertIcon />
+              </span>
+              <p>{t("live.reroll.over")}</p>
             </section>
           ) : null}
           {snapshot.status === "open" ? (

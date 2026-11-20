@@ -19,7 +19,8 @@ import {
   headSeqSql,
   lastNamesSql,
   nextClaimDeadlineSql,
-  rerollablePickSql,
+  lastClaimDeadlineSql,
+  undrawnEntrantSql,
   recentEntriesCountSql,
   waitingPickOfChatterSql,
 } from "./queries.ts"
@@ -47,6 +48,7 @@ export type RoomConfig = Pick<
   | "liveEntrantsPerPush"
   | "liveRateWindowSeconds"
   | "mirrorRetrySeconds"
+  | "rerollWindowSeconds"
 >
   & ChatWatcherConfig
 
@@ -102,6 +104,7 @@ export type RerollOutcome =
   | { readonly kind: "unknown-pick" }
   | { readonly kind: "not-drawn" }
   | { readonly kind: "no-entrants-left" }
+  | { readonly kind: "reroll-window-over" }
   | { readonly kind: "try-again" }
 
 export type ClaimOutcome =
@@ -132,7 +135,7 @@ export interface RoomSummary {
 
 /** The room as a viewer's page loads it. */
 export interface PublicSummary extends RoomSummary {
-  /** The draw is done and no pick is left that a reroll could replace, so nothing on a viewer's page can change any more. */
+  /** The draw is done and nothing on a viewer's page can change any more: no pick is waiting, and none can be rerolled. */
   readonly finished: boolean
 }
 
@@ -155,6 +158,8 @@ export interface LiveWinner {
 export interface WinnerPick extends LiveWinner, Identity {}
 
 export interface LiveSnapshot extends RoomSummary {
+  /** A streamer can still reroll an unclaimed pick; false once the reroll window after the last claim deadline is over. */
+  readonly rerollOpen: boolean
   readonly title: string | null
   readonly code: string
   readonly entriesPerSecond: number
@@ -218,6 +223,8 @@ export class GiveawayRoom {
   // Lost with the object; the first outcome after that is pushed again.
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
+  // Lost with the object; the first reroll window end after that is not pushed to the live pages.
+  private lastLiveRerollOpen: boolean | null = null
 
   constructor(deps: RoomDeps) {
     this.sql = deps.sql
@@ -341,6 +348,7 @@ export class GiveawayRoom {
       pushNow = this.closeOpenRoom() || pushNow
       state = this.readState()
     }
+    pushNow = (this.lastLiveRerollOpen === true && !this.liveSnapshot().rerollOpen) || pushNow
     if (pushNow) this.guarded("live-push", () => this.pushLive())
     this.guarded("viewer-push", () => this.pushViewers())
     const refreshRoles =
@@ -398,6 +406,7 @@ export class GiveawayRoom {
     const draws = this.readDraws()
     const refusal = rerollRefusal(draws.find((draw) => draw.n === n) ?? null)
     if (refusal !== null) return refusal
+    if (this.rerollWindowOver()) return { kind: "reroll-window-over" }
 
     const next = draws.reduce((highest, draw) => Math.max(highest, draw.n), -1) + 1
     const picked = await pickWinner(state.seed, next, this.readDrawEntries(), draws)
@@ -509,6 +518,8 @@ export class GiveawayRoom {
         recent === undefined ? 0 : new RowReader("entries", recent).int("c") / windowSeconds,
       lastNames,
       winners,
+      rerollOpen:
+        state.status === "drawn" && this.rerollWindowEnd() !== null && !this.rerollWindowOver(),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
     }
@@ -650,6 +661,7 @@ export class GiveawayRoom {
     this.lastPushAt = now
     this.pushDueAt = null
     const push: LivePush = { ...this.liveSnapshot(), entrantsAfter: this.entrantsDelta() }
+    this.lastLiveRerollOpen = push.rerollOpen
     this.live.broadcast(JSON.stringify(push))
     this.lastPushedSeq = this.headSeq()
   }
@@ -679,8 +691,34 @@ export class GiveawayRoom {
     }
   }
 
+  // A pick that is waiting can still claim; an expired one can still be rerolled while an undrawn
+  // entrant exists and the reroll window after the last claim deadline is open.
   private isFinished(state: RoomState): boolean {
-    return state.status === "drawn" && this.sql.exec(rerollablePickSql, []).length === 0
+    if (state.status !== "drawn") return false
+    const last = this.lastClaimDeadline()
+    if (last === null) return true
+    if (this.clock.now() <= last) return false
+    return this.rerollWindowOver() || !this.hasUndrawnEntrant()
+  }
+
+  /** The latest claim deadline among picks that are neither claimed nor rerolled, `null` when none is left. */
+  private lastClaimDeadline(): Instant | null {
+    const row = this.sql.exec(lastClaimDeadlineSql, [])[0]
+    return row === undefined ? null : new RowReader("draws", row).nullableInt("deadline")
+  }
+
+  private hasUndrawnEntrant(): boolean {
+    return this.sql.exec(undrawnEntrantSql, []).length > 0
+  }
+
+  private rerollWindowEnd(): Instant | null {
+    const last = this.lastClaimDeadline()
+    return last === null ? null : last + this.config.rerollWindowSeconds * 1000
+  }
+
+  private rerollWindowOver(): boolean {
+    const end = this.rerollWindowEnd()
+    return end !== null && this.clock.now() > end
   }
 
   private entrantsDelta(): EntrantsDelta {
@@ -707,10 +745,19 @@ export class GiveawayRoom {
       state.mirrorPending ? (this.mirrorRetryAt ?? this.clock.now()) : null,
       // One past the inclusive deadline, so the alarm finds the claim time over and closes the chat watch.
       claimDeadline === null ? null : claimDeadline + 1,
+      this.rerollWindowWake(state),
       this.chat.wakeAt(),
     ].filter((at): at is Instant => at !== null)
     if (wakeups.length === 0) this.alarm.clear()
     else this.alarm.set(Math.min(...wakeups))
+  }
+
+  // One past the end of the reroll window, so the alarm finds the giveaway finished and pushes it.
+  private rerollWindowWake(state: RoomState): Instant | null {
+    if (state.status !== "drawn") return null
+    const end = this.rerollWindowEnd()
+    if (end === null || end < this.clock.now() || !this.hasUndrawnEntrant()) return null
+    return end + 1
   }
 
   private guarded(effect: string, run: () => void): void {

@@ -268,7 +268,7 @@ describe("TokenQueue claims", () => {
     warn.mockRestore()
   })
 
-  it("counts a deferred pass that lost its claim and leaves the rate alone", async () => {
+  it("counts a deferred pass that lost its claim and still starts the cooldown for its rate limit", async () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     const finish: ((attempt: EntryAttempt) => void)[] = []
     let first = true
@@ -278,16 +278,21 @@ describe("TokenQueue claims", () => {
       return new Promise<EntryAttempt>((resolve) => finish.push(resolve))
     })
     queue.enqueue(item("c1", "g7"), "unavailable")
+    const staleStart = clock.now()
     const stale = queue.onAlarm()
     clock.advance(config.queueProcessingTimeoutSeconds * 1000 + 1)
     await queue.onAlarm()
-    const rate = queue.stats().ratePerSecond
+    expect(queue.stats()).toMatchObject({ ratePerSecond: 8, cooldownUntil: 0 })
 
     finish[0]?.({ kind: "deferred", cause: "rate-limited" })
     await stale
 
     expect(warn).toHaveBeenCalledWith("queue claim lost", { giveawayId: "g7", step: "requeue" })
-    expect(queue.stats()).toMatchObject({ lostClaims: 1, ratePerSecond: rate, cooldownUntil: 0 })
+    expect(queue.stats()).toMatchObject({
+      lostClaims: 1,
+      ratePerSecond: 2,
+      cooldownUntil: staleStart + config.queueCooldownSeconds * 1000,
+    })
     warn.mockRestore()
   })
 

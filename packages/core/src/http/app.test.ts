@@ -998,6 +998,18 @@ describe("winners", () => {
     expect(await response.json()).toEqual({ kind: "no-entrants-left" })
   })
 
+  it("answers 409 for a reroll after the reroll window", async () => {
+    const { browser, id } = await drawnGiveaway()
+    harness.clock.advance(
+      (harness.config.claimSecondsMax + harness.config.rerollWindowSeconds + 1) * 1000,
+    )
+
+    const response = await browser.postJson(`/api/dash/giveaways/${id}/reroll`, { n: 0 })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ kind: "reroll-window-over" })
+  })
+
   it("answers 404 for a reroll of a pick that does not exist", async () => {
     const { browser, id } = await drawnGiveaway()
 
@@ -1159,7 +1171,7 @@ describe("viewer state", () => {
     })
   })
 
-  it("says the giveaway is finished once the draw is done and no winner can still claim", async () => {
+  it("says the giveaway is finished once the draw is done and every pick is claimed", async () => {
     const { code, winnerBrowser } = await drawnGiveaway()
 
     const waiting = await pageOf(undefined, code)

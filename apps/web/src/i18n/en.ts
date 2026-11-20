@@ -151,6 +151,8 @@ export const en = {
   "rerollResult.unknown-pick": "There is no such winner.",
   "rerollResult.not-drawn": "Draw winners first.",
   "rerollResult.no-entrants-left": "No entrants are left to pick.",
+  "rerollResult.reroll-window-over":
+    "The time to pick another winner is over. Contact the winner yourself or start a new giveaway.",
   "rerollResult.try-again": "That did not work. Try again.",
   "rerollResult.rejected": "Could not pick another winner.",
   "markResult.claimed": "Marked as claimed.",
@@ -359,6 +361,8 @@ export const en = {
   "live.winnerFallback": "winner {n}",
   "live.mark.label": "Mark as claimed",
   "live.mark.aria": "Mark as claimed for {name}",
+  "live.reroll.over":
+    "The time to pick another winner is over. Contact the winners who have not claimed, or start a new giveaway.",
   "live.reroll.label": "Pick another winner",
   "live.reroll.question": "Pick another winner instead of {name}?",
   "live.reroll.detail": "{name} loses the prize. This cannot be undone.",

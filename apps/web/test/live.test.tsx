@@ -29,6 +29,7 @@ function mockLive(routes: Readonly<Record<string, () => Reply>>) {
 const drawn: LiveSnapshot = {
   ...liveSnapshot,
   status: "drawn",
+  rerollOpen: true,
   winners: [
     {
       n: 0,
@@ -318,6 +319,52 @@ describe("live page: winners", () => {
       within(winnerRow(view, "Eve")).getByRole("button", { name: "Pick another winner" }),
     ).toBeTruthy()
     expect(within(winnerRow(view, "Bob")).queryByRole("button")).toBeNull()
+  })
+
+  it("hides Pick another winner and says why once the reroll window is over", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, rerollOpen: false }) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("Claimed in chat")
+
+    expect(view.queryByRole("button", { name: "Pick another winner" })).toBeNull()
+    expect(
+      view.getByText(
+        "The time to pick another winner is over. Contact the winners who have not claimed, or start a new giveaway.",
+      ),
+    ).toBeTruthy()
+  })
+
+  it("keeps the reroll buttons and shows no explanation while the reroll window is open", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("Claimed in chat")
+
+    expect(view.queryByText(/The time to pick another winner is over/)).toBeNull()
+  })
+
+  it("says when the server refuses because the reroll window is over", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok(drawn),
+      "POST /api/dash/giveaways/gid-1/reroll": () => ({
+        status: 409,
+        body: { kind: "reroll-window-over" },
+      }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("Claimed in chat")
+    fireEvent.click(
+      within(winnerRow(view, "Wanda")).getByRole("button", { name: "Pick another winner" }),
+    )
+    fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
+
+    expect(
+      await view.findByText(
+        "The time to pick another winner is over. Contact the winner yourself or start a new giveaway.",
+      ),
+    ).toBeTruthy()
   })
 
   it("says when the server refuses to pick another winner", async () => {

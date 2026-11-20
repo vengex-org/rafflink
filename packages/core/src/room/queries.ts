@@ -13,9 +13,14 @@ export const lastNamesSql =
 export const nextClaimDeadlineSql =
   "SELECT MIN(claim_until) AS deadline FROM draws WHERE claimed_at IS NULL AND rerolled = 0 AND claim_until >= ?"
 
-/** One pick that is neither claimed nor rerolled, waiting or expired: the streamer can still reroll it. */
-export const rerollablePickSql =
-  "SELECT n FROM draws WHERE claimed_at IS NULL AND rerolled = 0 LIMIT 1"
+/** The latest claim deadline among picks that are neither claimed nor rerolled; `deadline` is NULL when none is left. */
+export const lastClaimDeadlineSql =
+  "SELECT MAX(claim_until) AS deadline FROM draws WHERE claimed_at IS NULL AND rerolled = 0"
+
+/** One entrant who was never picked, so a reroll has someone to pick; no row when every entrant was drawn. */
+export const undrawnEntrantSql = `SELECT 1 FROM entries e WHERE NOT EXISTS (
+  SELECT 1 FROM draws d WHERE d.platform = e.platform AND d.platform_user_id = e.platform_user_id
+) LIMIT 1`
 
 /** The pick of a chatter (parameter 1) that may still claim (parameter 2 is now). */
 export const waitingPickOfChatterSql = `SELECT n FROM draws

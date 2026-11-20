@@ -1,5 +1,5 @@
 import type { Parsed } from "./lib/parsed.ts"
-import { queuedEntryTwitchRequests } from "./viewer/enter-giveaway.ts"
+import { queuedEntryTwitchRequests } from "./twitch/queued-entry-requests.ts"
 
 export type ConfigReason =
   | "missing"
@@ -328,6 +328,12 @@ export const configSchema = {
     "30",
     "Wait before the room alarm retries a status mirror to the account store; starting guess",
   ),
+  rerollWindowSeconds: withDefault(
+    "REROLL_WINDOW_SECONDS",
+    int(0),
+    "3600",
+    "How long after the last claim time a streamer can still reroll an unclaimed pick; after it the giveaway is finished and viewers stop listening; starting guess, one hour",
+  ),
   titleMaxLength: withDefault(
     "TITLE_MAX_LENGTH",
     int(1),
@@ -439,6 +445,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
     liveRateWindowSeconds: read(env, configSchema.liveRateWindowSeconds),
     mirrorRetrySeconds: read(env, configSchema.mirrorRetrySeconds),
+    rerollWindowSeconds: read(env, configSchema.rerollWindowSeconds),
     titleMaxLength: read(env, configSchema.titleMaxLength),
     prizeMaxLength: read(env, configSchema.prizeMaxLength),
     dataDir: read(env, configSchema.dataDir),

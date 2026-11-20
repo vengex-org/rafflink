@@ -231,7 +231,9 @@ export class TokenQueue {
       return "failed"
     }
     if (attempt.kind === "deferred") {
-      return this.requeue(item, claimedAt) ? attempt.cause : "failed"
+      // A lost claim is logged and counted by `requeue`; the Twitch answer still counts for the rate.
+      this.requeue(item, claimedAt)
+      return attempt.cause
     }
     const finished = this.sql.exec(finishClaimedSql, [
       JSON.stringify(attempt.outcome),

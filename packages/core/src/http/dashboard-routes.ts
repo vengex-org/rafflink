@@ -174,6 +174,7 @@ const rerollStatus: Readonly<Record<RerollOutcome["kind"], ContentfulStatusCode>
   "already-claimed": 409,
   "not-drawn": 409,
   "no-entrants-left": 409,
+  "reroll-window-over": 409,
   "try-again": 409,
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { ConfigError, configSchema, resolveConfig } from "./config.ts"
-import { queuedEntryTwitchRequests } from "./viewer/enter-giveaway.ts"
+import { queuedEntryTwitchRequests } from "./twitch/queued-entry-requests.ts"
 
 const required = {
   TWITCH_CLIENT_ID: "client",
