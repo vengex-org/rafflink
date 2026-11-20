@@ -216,7 +216,19 @@ validated.
 
 ## Architecture
 
-All on Cloudflare, one vendor, free tier for the expected load.
+Two deployment targets from one TypeScript core (decided 2026-11-20 after a Hetzner VPS analysis):
+
+- **Cloudflare:** Workers, Durable Objects and D1 as described below. No servers to run, global, free tier
+  for a few large giveaways a day.
+- **VPS** (for example Hetzner): one Bun process with SQLite in Docker, Caddy for TLS, optionally behind the
+  free Cloudflare proxy. No daily request limit, about 6 EUR per month, but a single server is a single point
+  of failure and updates, backups and monitoring are ours.
+
+The core holds the domain, the Twitch client, the HTTP app (Hono) and the giveaway room logic, written against
+small ports (SQL, room directory, alarms, live broadcast, usage meter). Each target implements the ports. A
+shared contract test suite runs against both. The rest of this section describes the Cloudflare target; on the
+VPS a per-giveaway SQLite file and an in-process room replace the Durable Object, and timers replace alarms and
+cron.
 
 - **Workers static assets** serve the frontend from the CDN. Static asset requests are free and do not count
   toward the Worker request limit.
@@ -379,6 +391,7 @@ of the id could be brute-forced into a list of who entered.
 - Winner form comes as M3, after hardening.
 - Short 5-character codes, link `rafflink.app/<code>`.
 - Domain: only `rafflink.app`.
-- Frontend: Vite + React single-page app, served as Workers static assets; the API lives in the same Worker
-  through `@cloudflare/vite-plugin`.
+- Frontend: React single-page app bundled by `bun build` (no Vite); the same static build is served by Workers
+  static assets or by the VPS server.
+- Hosting targets: Cloudflare and a VPS from one core with ports and a shared contract test suite.
 - Code: public repo `vengex-org/rafflink` on GitHub, license AGPL-3.0.
