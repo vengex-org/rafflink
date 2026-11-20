@@ -33,8 +33,8 @@ beforeEach(() => {
   directories = []
 })
 
-afterEach(() => {
-  for (const directory of directories) directory.close()
+afterEach(async () => {
+  for (const directory of directories) await directory.close()
   dir.remove()
 })
 
@@ -70,7 +70,7 @@ describe("LocalRoomDirectory", () => {
     const first = directoryWith()
     await first.get(id).init(giveawayInit(id))
     await first.get(id).enter(viewer)
-    first.close()
+    await first.close()
 
     const second = directoryWith()
 
@@ -164,7 +164,7 @@ describe("LocalRoomDirectory", () => {
     const first = directoryWith()
     await first.get(id).init(giveawayInit(id, Date.now() + 40))
     await first.get(otherId).init(giveawayInit(otherId))
-    first.close()
+    await first.close()
     await sleep(80)
     await Bun.write(join(dir.path, "rooms", "notes.txt"), "not a room")
     await Bun.write(join(dir.path, "rooms", "not-an-id.sqlite"), "not a room")
@@ -200,8 +200,33 @@ describe("LocalRoomDirectory", () => {
     await room.draw(1)
     expect({ opened, closed }).toEqual({ opened: 1, closed: 0 })
 
-    directory.close()
+    await directory.close()
 
     expect({ opened, closed }).toEqual({ opened: 1, closed: 1 })
+  })
+
+  it("waits for a running alarm before it closes the room database", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const started = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    const finished: string[] = []
+    const directory = directoryWith({
+      onAlarm: async (giveawayId, room: GiveawayRoom) => {
+        started.resolve()
+        await release.promise
+        room.summary()
+        finished.push(giveawayId)
+      },
+    })
+    await directory.get(id).init(giveawayInit(id, Date.now() + 20))
+    await started.promise
+
+    const closing = directory.close()
+    release.resolve()
+    await closing
+
+    expect(finished).toEqual([id])
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
   })
 })

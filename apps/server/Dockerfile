@@ -11,6 +11,7 @@ COPY apps/web/package.json apps/web/
 RUN bun install --frozen-lockfile
 
 FROM install AS build-web
+COPY packages/core packages/core
 COPY apps/web apps/web
 RUN bun run --filter @rafflink/web build
 

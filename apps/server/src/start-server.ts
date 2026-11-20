@@ -109,7 +109,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       clearInterval(validateTimer)
       queueAlarm.clear()
       await server.stop(true)
-      rooms.close()
+      await rooms.close()
       queueDb.close()
       accountsDb.close()
     },

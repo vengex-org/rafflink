@@ -10,6 +10,7 @@ export function queueScenarios(context: ContractContext): void {
     async (world) => {
       const target = await world.start({ QUEUE_COOLDOWN_SECONDS: "1" })
       const giveaway = await world.createGiveaway(target)
+      await world.waitForFirstRoleRefresh()
       world.twitch.fake.control.failNext("token", 429, 1)
 
       const queued = await world.enter(target, giveaway.code, users.viewer.id)

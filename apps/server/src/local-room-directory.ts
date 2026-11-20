@@ -46,6 +46,8 @@ const giveawayIdPattern = /^[0-9a-f]{32}$/
 /** Rooms in this process, each over its own SQLite file; a file is opened on first use and kept open. */
 export class LocalRoomDirectory implements RoomDirectory {
   private readonly open = new Map<string, OpenRoom>()
+  private readonly inFlight = new Set<Promise<void>>()
+  private closing = false
 
   constructor(private readonly deps: LocalRoomDirectoryDeps) {
     mkdirSync(deps.roomsDir, { recursive: true })
@@ -64,13 +66,20 @@ export class LocalRoomDirectory implements RoomDirectory {
     }
   }
 
-  close(): void {
-    for (const { room, alarm, db } of this.open.values()) {
+  /** Stops the timers, lets alarm work that already runs finish, then closes the room databases. */
+  async close(): Promise<void> {
+    this.closing = true
+    for (const { room, alarm } of this.open.values()) {
       room.closeChat()
       alarm.clear()
+    }
+    await Promise.allSettled(this.inFlight)
+    for (const { alarm, db } of this.open.values()) {
+      alarm.clear() // finished alarm work may have armed the next one
       db.close()
     }
     this.open.clear()
+    this.closing = false
   }
 
   private roomFor(giveawayId: string): GiveawayRoom {
@@ -101,6 +110,14 @@ export class LocalRoomDirectory implements RoomDirectory {
   }
 
   private async fire(giveawayId: string, room: GiveawayRoom): Promise<void> {
+    if (this.closing) return
+    const run = this.runAlarm(giveawayId, room)
+    this.inFlight.add(run)
+    await run
+    this.inFlight.delete(run)
+  }
+
+  private async runAlarm(giveawayId: string, room: GiveawayRoom): Promise<void> {
     try {
       await this.deps.onAlarm(giveawayId, room)
     } catch (error) {

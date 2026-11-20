@@ -6,6 +6,10 @@ services:
       context: ../..
       dockerfile: apps/server/Dockerfile
     env_file: .env
+    # The volume path and the port Caddy proxies to; .env.example's local DATA_DIR and PORT must not win.
+    environment:
+      DATA_DIR: /data
+      PORT: "3000"
     volumes:
       - rafflink-data:/data
     restart: unless-stopped
