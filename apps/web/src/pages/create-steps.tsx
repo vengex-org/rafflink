@@ -8,7 +8,6 @@ import {
   claimPresets,
   oddsOf,
   type Audience,
-  type ClaimPreset,
   type Ending,
   type Issue,
   type Odds,
@@ -111,7 +110,11 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
       description: t("wizard.audience.subscribers.help"),
     },
   ]
-  const claimOptions: readonly SegmentOption<ClaimPreset>[] = claimPresets.map((seconds) => ({
+  const presets: readonly number[] = claimPresets
+  const offered = presets.includes(values.claimSeconds)
+    ? presets
+    : [...presets, values.claimSeconds]
+  const claimOptions: readonly SegmentOption<number>[] = offered.map((seconds) => ({
     value: seconds,
     label: claimTimeText(i18n, seconds),
     icon: null,

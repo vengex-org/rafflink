@@ -36,3 +36,49 @@
   color: var(--ink);
   font-weight: 700;
 }
+
+.giveaways.pinned {
+  margin-bottom: var(--space-3);
+}
+
+.giveaways.rows {
+  grid-template-columns: 1fr;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.giveaways .row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.giveaways .row > .giveaway-head {
+  justify-content: flex-start;
+}
+
+.giveaways .row > .giveaway-head h2 {
+  font-size: var(--fs-lg);
+}
+
+.giveaways .row > p,
+.giveaways .row > details {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.giveaways .row > .actions {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .giveaways .row > .actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}

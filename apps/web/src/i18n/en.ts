@@ -322,6 +322,8 @@ export const en = {
   "dash.prize": "Prize: {prize}",
   "dash.codeCreated": "Code {code}, created {date}",
   "dash.linkObs": "Link and OBS overlay",
+  "dash.duplicate": "Duplicate",
+  "dash.duplicate.label": "Duplicate {name}",
 
   "share.link": "Your link",
   "share.copyLink": "Copy link",

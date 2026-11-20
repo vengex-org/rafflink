@@ -14,12 +14,12 @@ import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
-  initialValues,
   stepIssue,
   stepOfField,
   toBody,
   type Issue,
   type Step,
+  type Values,
 } from "./create-values.ts"
 
 type Created = Extract<CreateResult, { kind: "created" }>
@@ -28,16 +28,19 @@ const stepNames = ["wizard.step.basics", "wizard.step.rules", "wizard.step.revie
 
 /** Creates a giveaway in three steps; each step is checked before the next, and the server's complaint sends the streamer back to its step. */
 export function CreateForm({
+  seed,
   onCreated,
   onUnauthorized,
   onCancel,
 }: {
+  /** The answers the form starts with. */
+  readonly seed: Values
   readonly onCreated: (created: Created) => void
   readonly onUnauthorized: () => void
   readonly onCancel: () => void
 }) {
   const { t } = useI18n()
-  const [values, setValues] = useState(initialValues)
+  const [values, setValues] = useState(seed)
   const [step, setStep] = useState<Step>(1)
   const [issue, setIssue] = useState<Issue | null>(null)
   const [busy, setBusy] = useState(false)

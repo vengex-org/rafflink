@@ -1,4 +1,5 @@
 import { bestGroup, groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
+import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { CreateGiveawayBody } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 
@@ -6,9 +7,8 @@ export type Step = 1 | 2 | 3
 export type Audience = "everyone" | "followers" | "subscribers"
 export type Ending = "never" | "at-time"
 
-/** The seconds a winner gets to claim, as the streamer picks them. */
+/** The claim times offered as buttons, in seconds. */
 export const claimPresets = [120, 300, 600] as const
-export type ClaimPreset = (typeof claimPresets)[number]
 
 export interface Values {
   title: string
@@ -18,7 +18,7 @@ export interface Values {
   minAccountAgeDays: string
   ending: Ending
   closesAt: string
-  claimSeconds: ClaimPreset
+  claimSeconds: number
   claimKeyword: string
 }
 
@@ -45,6 +45,29 @@ export const initialValues: Values = {
   closesAt: "",
   claimSeconds: 300,
   claimKeyword: "",
+}
+
+/** The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. */
+export function valuesFrom(giveaway: DashboardGiveaway): Values {
+  const { rules } = giveaway
+  return {
+    ...initialValues,
+    title: giveaway.title ?? "",
+    prize: giveaway.prize ?? "",
+    audience: rules.subsOnly ? "subscribers" : rules.followersOnly ? "followers" : "everyone",
+    tickets: {
+      viewer: String(rules.tickets.viewer),
+      follower: String(rules.tickets.follower),
+      sub_t1: String(rules.tickets.sub_t1),
+      sub_t2: String(rules.tickets.sub_t2),
+      sub_t3: String(rules.tickets.sub_t3),
+      vip: String(rules.tickets.vip),
+      moderator: String(rules.tickets.moderator),
+    },
+    minAccountAgeDays: rules.minAccountAgeDays === null ? "" : String(rules.minAccountAgeDays),
+    claimSeconds: giveaway.claimSeconds,
+    claimKeyword: rules.claimKeyword ?? "",
+  }
 }
 
 /** The first thing wrong with the answers of one step, or null; the server checks everything again. */

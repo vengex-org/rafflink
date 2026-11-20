@@ -323,6 +323,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "dash.prize": "Cena: {prize}",
   "dash.codeCreated": "Kód {code}, vytvorená {date}",
   "dash.linkObs": "Odkaz a prekrytie pre OBS",
+  "dash.duplicate": "Duplikovať",
+  "dash.duplicate.label": "Duplikovať {name}",
 
   "share.link": "Tvoj odkaz",
   "share.copyLink": "Kopírovať odkaz",

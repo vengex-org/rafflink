@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent } from "@testing-library/react"
 import { stubClipboard } from "./clipboard.ts"
-import { dashboardGiveaway } from "./fixtures.ts"
+import { dashboardGiveaway, rules } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
+import { inputOf } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
 
 afterEach(() => {
@@ -96,5 +97,91 @@ describe("dashboard", () => {
     fireEvent.click(view.getByRole("button", { name: "Copy link" }))
 
     expect(await view.findByText(/Could not copy/)).toBeTruthy()
+  })
+
+  it("shows each status as a chip with its words", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () =>
+        ok({
+          giveaways: [
+            { ...dashboardGiveaway, id: "a", code: "AAAAA", status: "open" },
+            { ...dashboardGiveaway, id: "b", code: "BBBBB", status: "closed" },
+            { ...dashboardGiveaway, id: "c", code: "CCCCC", status: "drawn" },
+          ],
+        }),
+    })
+
+    const view = renderApp("/dashboard")
+    await view.findByText("Entries open")
+
+    expect(
+      view.getByText("Entries closed").closest(".status-chip")?.getAttribute("data-tone"),
+    ).toBe("warning")
+    expect(view.getByText("Winners drawn").closest(".status-chip")).toBeTruthy()
+    expect(view.getByText("Entries open").closest(".status-chip")?.getAttribute("data-tone")).toBe(
+      "success",
+    )
+  })
+
+  it("pins the open giveaway above the others", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () =>
+        ok({
+          giveaways: [
+            { ...dashboardGiveaway, id: "c", code: "CCCCC", title: "Old one", status: "drawn" },
+            { ...dashboardGiveaway, id: "a", code: "AAAAA", title: "Current one", status: "open" },
+          ],
+        }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    const names = (await view.findAllByRole("heading", { level: 2 })).map((h) => h.textContent)
+    expect(names).toEqual(["Current one", "Old one"])
+  })
+
+  it("opens the create form prefilled from a giveaway with entries ending left open", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () =>
+        ok({
+          giveaways: [
+            {
+              ...dashboardGiveaway,
+              closesAt: 4_102_444_800_000,
+              rules: { ...rules, claimKeyword: "mine", minAccountAgeDays: 7 },
+            },
+          ],
+        }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Duplicate Summer giveaway" }))
+
+    expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+    expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Summer giveaway")
+    expect(inputOf(view.getByLabelText("What does the winner get? (optional)")).value).toBe(
+      "A gaming chair",
+    )
+    expect(inputOf(view.getByLabelText(/^When I close them/)).checked).toBe(true)
+    expect(view.queryByLabelText("Entries end at")).toBeNull()
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    expect(inputOf(view.getByLabelText("Subscribers, tier 3")).value).toBe("5")
+    expect(inputOf(view.getByLabelText("Moderators")).value).toBe("7")
+    expect(inputOf(view.getByLabelText("Minimum account age in days (optional)")).value).toBe("7")
+    expect(inputOf(view.getByLabelText("Chat word (optional)")).value).toBe("mine")
+  })
+
+  it("keeps a claim time outside the presets as a selected extra option", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () =>
+        ok({ giveaways: [{ ...dashboardGiveaway, claimSeconds: 90 }] }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Duplicate Summer giveaway" }))
+    fireEvent.click(await view.findByRole("button", { name: "Next" }))
+
+    expect(inputOf(view.getByLabelText("1:30 minutes")).checked).toBe(true)
+    expect(inputOf(view.getByLabelText("5 minutes")).checked).toBe(false)
   })
 })
