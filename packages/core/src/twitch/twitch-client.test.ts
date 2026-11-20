@@ -198,7 +198,11 @@ describe("exchangeCode and verifyIdToken", () => {
     const error = await rejection(client.exchangeCode("never-issued", REDIRECT_URI))
 
     expect(error).toBeInstanceOf(TwitchInvalid)
-    expect(error).toMatchObject({ endpoint: "token", status: 400 })
+    expect(error).toMatchObject({
+      endpoint: "token",
+      status: 400,
+      reason: "Invalid authorization code",
+    })
   })
 
   it("classifies a token endpoint that outlasts the timeout as unavailable", async () => {
@@ -223,6 +227,36 @@ describe("exchangeCode and verifyIdToken", () => {
     } finally {
       await stalled.stop(true)
     }
+  })
+})
+
+describe("refreshTokens", () => {
+  it("returns a working access token and the refresh token that replaces the old one", async () => {
+    const first = await signIn("200", STREAMER_SCOPES)
+
+    const refreshed = await client.refreshTokens(first.refreshToken)
+
+    expect(refreshed.refreshToken).not.toBe(first.refreshToken)
+    expect(await client.validate(refreshed.accessToken)).toEqual({ status: "valid", userId: "200" })
+  })
+
+  it("classifies a refresh token Twitch no longer knows as invalid with status 400 and its reason", async () => {
+    const first = await signIn("200", STREAMER_SCOPES)
+    fake.control.revokeUserTokens("200")
+
+    const error = await rejection(client.refreshTokens(first.refreshToken))
+
+    expect(error).toBeInstanceOf(TwitchInvalid)
+    expect(error).toMatchObject({ endpoint: "token", status: 400, reason: "Invalid refresh token" })
+  })
+
+  it("classifies a token endpoint 503 as unavailable", async () => {
+    const first = await signIn("200", STREAMER_SCOPES)
+    fake.control.failNext("token", 503, 1)
+
+    expect(await rejection(client.refreshTokens(first.refreshToken))).toBeInstanceOf(
+      TwitchUnavailable,
+    )
   })
 })
 

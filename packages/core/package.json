@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./sqlite-bun": "./src/sqlite-bun.ts"
+    "./package.json": "./package.json",
+    "./schema/*": "./schema/*",
+    "./*": "./src/*.ts"
   },
   "dependencies": {
     "hono": "4.13.19",

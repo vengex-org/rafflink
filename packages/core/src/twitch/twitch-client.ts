@@ -83,21 +83,16 @@ export class TwitchClient {
 
   /** Not retried: a code is single use, so the caller queues the code instead. */
   async exchangeCode(code: string, redirectUri: string): Promise<ExchangedCode> {
-    const response = await this.send(
-      "token",
-      new URL("/oauth2/token", this.config.twitchIdBaseUrl),
-      {
-        method: "POST",
-        body: new URLSearchParams({
-          client_id: this.config.twitchClientId,
-          client_secret: this.config.twitchClientSecret,
-          code,
-          grant_type: "authorization_code",
-          redirect_uri: redirectUri,
-        }),
-      },
-    )
-    return this.read("token", response, parseTokenResponse)
+    return this.tokenRequest({
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    })
+  }
+
+  /** The answer's refresh token may differ from the one sent: the caller stores it in its place. */
+  async refreshTokens(refreshToken: string): Promise<ExchangedCode> {
+    return this.tokenRequest({ grant_type: "refresh_token", refresh_token: refreshToken })
   }
 
   async verifyIdToken(idToken: string, expectedNonce: string): Promise<VerifiedIdToken> {
@@ -181,6 +176,22 @@ export class TwitchClient {
       : { status: "unavailable" }
   }
 
+  private async tokenRequest(params: Record<string, string>): Promise<ExchangedCode> {
+    const response = await this.send(
+      "token",
+      new URL("/oauth2/token", this.config.twitchIdBaseUrl),
+      {
+        method: "POST",
+        body: new URLSearchParams({
+          client_id: this.config.twitchClientId,
+          client_secret: this.config.twitchClientSecret,
+          ...params,
+        }),
+      },
+    )
+    return this.read("token", response, parseTokenResponse)
+  }
+
   private async verifiedPayload(idToken: string): Promise<JWTPayload> {
     try {
       const { payload } = await jwtVerify(idToken, this.jwks, {
@@ -259,7 +270,9 @@ export class TwitchClient {
   ): Promise<T> {
     if (response.status === 429) throw new TwitchRateLimited(endpoint)
     if (response.status >= 500) throw new TwitchUnavailable(endpoint, response.status)
-    if (!response.ok) throw new TwitchInvalid(endpoint, response.status)
+    if (!response.ok) {
+      throw new TwitchInvalid(endpoint, response.status, { reason: await errorReason(response) })
+    }
     let body: unknown
     try {
       body = await response.json()
@@ -307,4 +320,17 @@ function translateJoseError(error: unknown): TwitchInvalid | TwitchUnavailable {
     return new TwitchUnavailable("id-token", null, { cause: error })
   }
   return new TwitchInvalid("id-token", null, { cause: error })
+}
+
+/** Twitch error bodies are `{status, message}`; anything else gives no reason. */
+async function errorReason(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json()
+    if (typeof body === "object" && body !== null && "message" in body) {
+      return typeof body.message === "string" ? body.message : null
+    }
+  } catch {
+    // An empty or non-JSON error body has no reason to report.
+  }
+  return null
 }

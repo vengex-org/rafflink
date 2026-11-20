@@ -40,3 +40,19 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
 /** Parameters: platform, platform user id. */
 export const streamerByPlatformUserSql =
   "SELECT id, platform, platform_user_id, login FROM streamers WHERE platform = ? AND platform_user_id = ?"
+
+const streamerTokenSelect = `SELECT t.streamer_id, s.platform, s.platform_user_id, t.refresh_token_enc
+  FROM streamer_tokens t JOIN streamers s ON s.id = t.streamer_id`
+
+/** Every stored streamer token, in streamer id order. */
+export const streamerTokensSql = `${streamerTokenSelect} ORDER BY t.streamer_id`
+
+/** The stored token of a streamer (parameter 1). */
+export const streamerTokenSql = `${streamerTokenSelect} WHERE t.streamer_id = ?`
+
+/** Parameters: sealed token, validated at, streamer id. */
+export const replaceStreamerTokenSql =
+  "UPDATE streamer_tokens SET refresh_token_enc = ?, validated_at = ? WHERE streamer_id = ?"
+
+/** The token of a streamer (parameter 1). */
+export const deleteStreamerTokenSql = "DELETE FROM streamer_tokens WHERE streamer_id = ?"

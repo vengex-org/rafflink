@@ -1,0 +1,101 @@
+import { Database } from "bun:sqlite"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { systemClock } from "@rafflink/core/lib/system-ports"
+import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
+
+let dir: string
+let db: Database
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "rafflink-migrate-"))
+  db = new Database(":memory:")
+})
+
+afterEach(() => {
+  db.close()
+  rmSync(dir, { recursive: true, force: true })
+})
+
+function write(name: string, sql: string): void {
+  writeFileSync(join(dir, name), sql)
+}
+
+function tables(): string[] {
+  return db
+    .query<{ name: string }, []>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+    )
+    .all()
+    .map((row) => row.name)
+}
+
+describe("applyAccountsMigrations", () => {
+  it("applying the accounts migrations twice is a no-op and a new file is applied once", () => {
+    write("0001_first.sql", "CREATE TABLE first (id INTEGER PRIMARY KEY);")
+
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual(["0001_first.sql"])
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual([])
+
+    write("0002_second.sql", "CREATE TABLE second (id INTEGER PRIMARY KEY);")
+
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual(["0002_second.sql"])
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual([])
+    expect(tables()).toEqual(["first", "schema_migrations", "second"])
+  })
+
+  it("applies files in name order whatever order the directory lists them", () => {
+    write("0002_second.sql", "INSERT INTO first VALUES (2);")
+    write(
+      "0001_first.sql",
+      "CREATE TABLE first (id INTEGER PRIMARY KEY); INSERT INTO first VALUES (1);",
+    )
+
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual([
+      "0001_first.sql",
+      "0002_second.sql",
+    ])
+  })
+
+  it("ignores files that are not .sql", () => {
+    write("README.md", "not sql")
+    write("0001_first.sql.bak", "not sql")
+
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual([])
+  })
+
+  it("records the time each file was applied", () => {
+    write("0001_first.sql", "CREATE TABLE first (id INTEGER PRIMARY KEY);")
+
+    applyAccountsMigrations(db, dir, { now: () => 1234 })
+
+    expect(db.query("SELECT name, applied_at FROM schema_migrations").all()).toEqual([
+      { name: "0001_first.sql", applied_at: 1234 },
+    ])
+  })
+
+  it("rolls back a failing file, keeps the files before it and retries it next time", () => {
+    write("0001_first.sql", "CREATE TABLE first (id INTEGER PRIMARY KEY);")
+    write("0002_broken.sql", "CREATE TABLE second (id INTEGER PRIMARY KEY); NOT SQL;")
+
+    expect(() => applyAccountsMigrations(db, dir, systemClock)).toThrow()
+
+    expect(tables()).toEqual(["first", "schema_migrations"])
+    write("0002_broken.sql", "CREATE TABLE second (id INTEGER PRIMARY KEY);")
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual(["0002_broken.sql"])
+  })
+
+  it("applies the accounts schema files of core", () => {
+    expect(applyAccountsMigrations(db, coreAccountsSchemaDir(), systemClock)).toEqual([
+      "0001_init.sql",
+    ])
+    expect(tables()).toEqual(["giveaways", "schema_migrations", "streamer_tokens", "streamers"])
+  })
+
+  it("applies nothing for an empty directory", () => {
+    expect(applyAccountsMigrations(db, dir, systemClock)).toEqual([])
+    expect(tables()).toEqual(["schema_migrations"])
+  })
+})

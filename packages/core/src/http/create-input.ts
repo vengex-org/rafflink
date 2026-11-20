@@ -8,7 +8,10 @@ import {
 import type { Parsed } from "../lib/parsed.ts"
 import type { Instant } from "../ports.ts"
 
-export type CreateConfig = Pick<ResolvedConfig, "claimKeywordMaxLength" | "defaultClaimSeconds">
+export type CreateConfig = Pick<
+  ResolvedConfig,
+  "claimKeywordMaxLength" | "defaultClaimSeconds" | "titleMaxLength" | "prizeMaxLength"
+>
 
 /** A create request that passed the boundary. */
 export interface CreateGiveawayInput {
@@ -31,9 +34,9 @@ export function parseCreateGiveaway(
   config: CreateConfig,
 ): Parsed<CreateGiveawayInput, CreateIssue> {
   if (!isRecord(body)) return fail("body", "not-an-object")
-  const title = parseText(body, "title")
+  const title = parseText(body, "title", config.titleMaxLength)
   if (!title.ok) return title
-  const prize = parseText(body, "prize")
+  const prize = parseText(body, "prize", config.prizeMaxLength)
   if (!prize.ok) return prize
   const rules = parseRules(withKeywordNull(ownValue(body, "rules")), config)
   if (!rules.ok) return rules
@@ -59,12 +62,17 @@ function withKeywordNull(rules: unknown): unknown {
   return { ...rules, claimKeyword: null }
 }
 
-function parseText(body: Record<string, unknown>, field: string): Parsed<string, CreateIssue> {
+function parseText(
+  body: Record<string, unknown>,
+  field: string,
+  maxLength: number,
+): Parsed<string, CreateIssue> {
   const value = ownValue(body, field)
   if (value === undefined) return fail(field, "missing")
   if (typeof value !== "string") return fail(field, "not-a-string")
   const text = value.trim()
-  return text === "" ? fail(field, "blank") : { ok: true, value: text }
+  if (text === "") return fail(field, "blank")
+  return text.length > maxLength ? fail(field, "too-long") : { ok: true, value: text }
 }
 
 // A time needs an explicit zone: `2026-12-01` or `2026-12-01T10:00` would be read in the server's zone.

@@ -231,6 +231,30 @@ export const configSchema = {
     "30",
     "Wait before the room alarm retries a status mirror to the account store; starting guess",
   ),
+  titleMaxLength: withDefault(
+    "TITLE_MAX_LENGTH",
+    int(1),
+    "100",
+    "Longest giveaway title in characters; starting guess, one line on the giveaway page and the overlay",
+  ),
+  prizeMaxLength: withDefault(
+    "PRIZE_MAX_LENGTH",
+    int(1),
+    "200",
+    "Longest giveaway prize in characters; starting guess, a sentence",
+  ),
+  dataDir: withDefault(
+    "DATA_DIR",
+    text,
+    "./data",
+    "Folder of the Bun server's SQLite files (accounts, token queue, one per room); the Cloudflare target ignores it",
+  ),
+  port: withDefault(
+    "PORT",
+    int(0, 65_535),
+    "3000",
+    "Port the Bun server listens on, 0 picks a free one; the Cloudflare target ignores it",
+  ),
 }
 
 export function resolveConfig(env: Env): ResolvedConfig {
@@ -270,6 +294,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
     liveRateWindowSeconds: read(env, configSchema.liveRateWindowSeconds),
     mirrorRetrySeconds: read(env, configSchema.mirrorRetrySeconds),
+    titleMaxLength: read(env, configSchema.titleMaxLength),
+    prizeMaxLength: read(env, configSchema.prizeMaxLength),
+    dataDir: read(env, configSchema.dataDir),
+    port: read(env, configSchema.port),
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {

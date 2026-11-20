@@ -36,6 +36,10 @@ describe("resolveConfig", () => {
     expect(config.queueCooldownSeconds).toBe(30)
     expect(config.entryWriteRetryDelaysMs).toEqual([200, 500, 1000])
     expect(config.usageWarningThreshold).toBe(25_000)
+    expect(config.titleMaxLength).toBe(100)
+    expect(config.prizeMaxLength).toBe(200)
+    expect(config.dataDir).toBe("./data")
+    expect(config.port).toBe(3000)
   })
 
   it("takes an override over the default", () => {
@@ -116,6 +120,15 @@ describe("resolveConfig", () => {
     })
     expect(failure({ ...required, ENTRY_WRITE_JITTER_PERCENT: "101" })).toMatchObject({
       env: "ENTRY_WRITE_JITTER_PERCENT",
+      reason: "out-of-range",
+    })
+  })
+
+  it("accepts port 0 and 65535 and rejects 65536", () => {
+    expect(resolveConfig({ ...required, PORT: "0" }).port).toBe(0)
+    expect(resolveConfig({ ...required, PORT: "65535" }).port).toBe(65_535)
+    expect(failure({ ...required, PORT: "65536" })).toMatchObject({
+      env: "PORT",
       reason: "out-of-range",
     })
   })

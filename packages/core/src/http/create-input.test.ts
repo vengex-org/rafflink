@@ -11,6 +11,8 @@ const config = resolveConfig({
   ADMIN_TWITCH_IDS: "1",
   PUBLIC_URL: "https://rafflink.app",
   CLAIM_KEYWORD_MAX_LENGTH: "8",
+  TITLE_MAX_LENGTH: "10",
+  PRIZE_MAX_LENGTH: "12",
   DEFAULT_CLAIM_SECONDS: "300",
 })
 
@@ -38,6 +40,25 @@ describe("parseCreateGiveaway", () => {
     })
   })
 
+  it("accepts a title and a prize of exactly the maximum length", () => {
+    const parsed = parseCreateGiveaway(
+      { ...valid, title: "1234567890", prize: "123456789012" },
+      now,
+      config,
+    )
+
+    expect(parsed).toMatchObject({
+      ok: true,
+      value: { title: "1234567890", prize: "123456789012" },
+    })
+  })
+
+  it("measures the length after trimming", () => {
+    const parsed = parseCreateGiveaway({ ...valid, title: "  1234567890  " }, now, config)
+
+    expect(parsed).toMatchObject({ ok: true, value: { title: "1234567890" } })
+  })
+
   it("trims the title and the prize", () => {
     const parsed = parseCreateGiveaway({ ...valid, title: "  A  ", prize: " B " }, now, config)
 
@@ -62,6 +83,16 @@ describe("parseCreateGiveaway", () => {
     ["an empty title", { ...valid, title: "" }, { field: "title", code: "blank" }],
     ["a title of spaces", { ...valid, title: "   " }, { field: "title", code: "blank" }],
     ["a numeric title", { ...valid, title: 5 }, { field: "title", code: "not-a-string" }],
+    [
+      "a title one over the maximum length",
+      { ...valid, title: "12345678901" },
+      { field: "title", code: "too-long" },
+    ],
+    [
+      "a prize one over the maximum length",
+      { ...valid, prize: "1234567890123" },
+      { field: "prize", code: "too-long" },
+    ],
     ["an empty prize", { ...valid, prize: "" }, { field: "prize", code: "blank" }],
     ["a prize of whitespace", { ...valid, prize: " \t" }, { field: "prize", code: "blank" }],
     ["a null prize", { ...valid, prize: null }, { field: "prize", code: "not-a-string" }],

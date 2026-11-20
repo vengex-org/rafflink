@@ -110,6 +110,70 @@ describe("AccountStore streamers", () => {
   })
 })
 
+describe("AccountStore streamer tokens", () => {
+  it("lists every token with the identity it is sealed to, in streamer id order", async () => {
+    const { store } = await withStreamers()
+    await store.signInStreamer(signIn({ id: "s0", platformUserId: "199", login: "first" }))
+
+    expect(await store.listStreamerTokens()).toEqual([
+      {
+        streamerId: "s0",
+        platform: "twitch",
+        platformUserId: "199",
+        sealedRefreshToken: "sealed-1",
+      },
+      {
+        streamerId: "s1",
+        platform: "twitch",
+        platformUserId: "200",
+        sealedRefreshToken: "sealed-1",
+      },
+      {
+        streamerId: "s2",
+        platform: "twitch",
+        platformUserId: "201",
+        sealedRefreshToken: "sealed-1",
+      },
+    ])
+  })
+
+  it("lists nothing when no streamer signed in", async () => {
+    expect(await setup().store.listStreamerTokens()).toEqual([])
+  })
+
+  it("finds the token of one streamer and nothing for an unknown id", async () => {
+    const { store } = await withStreamers()
+
+    expect(await store.findStreamerToken("s2")).toMatchObject({ platformUserId: "201" })
+    expect(await store.findStreamerToken("missing")).toBeNull()
+  })
+
+  it("replaces the sealed token and the validation time of one streamer only", async () => {
+    const { db, store } = await withStreamers()
+
+    await store.replaceStreamerToken("s1", "sealed-new", 9000)
+
+    expect(
+      sqlRows(
+        db,
+        "SELECT streamer_id, refresh_token_enc, validated_at FROM streamer_tokens ORDER BY streamer_id",
+      ),
+    ).toEqual([
+      { streamer_id: "s1", refresh_token_enc: "sealed-new", validated_at: 9000 },
+      { streamer_id: "s2", refresh_token_enc: "sealed-1", validated_at: 1000 },
+    ])
+  })
+
+  it("deletes the token of one streamer and keeps the streamer and the other token", async () => {
+    const { db, store } = await withStreamers()
+
+    await store.deleteStreamerToken("s1")
+
+    expect(sqlRows(db, "SELECT streamer_id FROM streamer_tokens")).toEqual([{ streamer_id: "s2" }])
+    expect(sqlRows(db, "SELECT id FROM streamers ORDER BY id")).toHaveLength(2)
+  })
+})
+
 describe("AccountStore giveaways", () => {
   it("reads back what was inserted with the broadcaster id and an open status", async () => {
     const { store } = await withStreamers()

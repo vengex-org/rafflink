@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import { streamerTokenAad } from "../accounts/streamer-token.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import { randomId } from "../lib/random-id.ts"
 import { sealSecret } from "../lib/seal.ts"
@@ -68,7 +69,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
       sealedRefreshToken: await sealSecret(
         deps.keyRing,
         signIn.refreshToken,
-        sealAad(signIn.userId),
+        streamerTokenAad(platform, signIn.userId),
         deps.random,
       ),
       scopes: streamerScopes.join(" "),
@@ -129,11 +130,6 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
   })
 
   return app
-}
-
-/** The sealed refresh token belongs to one Twitch user: a copy in another streamer's row fails to open. */
-function sealAad(twitchUserId: string): string {
-  return `${platform}:${twitchUserId}`
 }
 
 interface StreamerGrant {

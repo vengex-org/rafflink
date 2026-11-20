@@ -3,13 +3,17 @@ import { parseRules, type GiveawayRules } from "../domain/rules.ts"
 import type { AsyncSql, Instant, SqlRow } from "../ports.ts"
 import { RoomRowError, roomStatuses, RowReader, type RoomStatus } from "../room/rows.ts"
 import {
+  deleteStreamerTokenSql,
   giveawayByCodeSql,
   giveawayByIdSql,
   giveawaysOfStreamerSql,
   insertGiveawaySql,
   ownedGiveawaySql,
+  replaceStreamerTokenSql,
   setStatusSql,
   streamerByPlatformUserSql,
+  streamerTokenSql,
+  streamerTokensSql,
   upsertStreamerSql,
   upsertStreamerTokenSql,
 } from "./queries.ts"
@@ -31,6 +35,14 @@ export interface StreamerSignIn {
   readonly sealedRefreshToken: string
   readonly scopes: string
   readonly now: Instant
+}
+
+/** A streamer's sealed refresh token with the identity it is sealed to. */
+export interface StoredStreamerToken {
+  readonly streamerId: string
+  readonly platform: string
+  readonly platformUserId: string
+  readonly sealedRefreshToken: string
 }
 
 /** A giveaway as the account store holds it. `status` mirrors the room, which owns it. */
@@ -86,6 +98,30 @@ export class AccountStore {
     ])
     if (row === undefined) throw new RoomRowError("streamers", "id")
     return parseStreamer(row)
+  }
+
+  /** Every stored token, for the hourly validation. */
+  async listStreamerTokens(): Promise<StoredStreamerToken[]> {
+    return (await this.sql.all(streamerTokensSql, [])).map(parseStoredToken)
+  }
+
+  async findStreamerToken(streamerId: string): Promise<StoredStreamerToken | null> {
+    const [row] = await this.sql.all(streamerTokenSql, [streamerId])
+    return row === undefined ? null : parseStoredToken(row)
+  }
+
+  /** Stores the refresh token Twitch returned in place of the one that was sent. */
+  async replaceStreamerToken(
+    streamerId: string,
+    sealedRefreshToken: string,
+    now: Instant,
+  ): Promise<void> {
+    await this.sql.run(replaceStreamerTokenSql, [sealedRefreshToken, now, streamerId])
+  }
+
+  /** Removes the token only: the streamer and their giveaways stay, and signing in again stores a new one. */
+  async deleteStreamerToken(streamerId: string): Promise<void> {
+    await this.sql.run(deleteStreamerTokenSql, [streamerId])
   }
 
   /** `code-taken` when another giveaway holds the code; nothing is written then. */
@@ -164,6 +200,16 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     platform: reader.text("platform"),
     platformUserId: reader.text("platform_user_id"),
     login: reader.text("login"),
+  }
+}
+
+function parseStoredToken(row: SqlRow): StoredStreamerToken {
+  const reader = new RowReader("streamer_tokens", row)
+  return {
+    streamerId: reader.text("streamer_id"),
+    platform: reader.text("platform"),
+    platformUserId: reader.text("platform_user_id"),
+    sealedRefreshToken: reader.text("refresh_token_enc"),
   }
 }
 
