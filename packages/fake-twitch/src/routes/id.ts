@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { bearerToken } from "../lib/auth.ts"
 import { ACCESS_TOKEN_TTL_SECONDS, issueTokens, signIdToken } from "../lib/tokens.ts"
+import { userPickerPage } from "../lib/user-picker.ts"
 import { requireUser, takeFailure, type FakeState } from "../state.ts"
 
 export function idRoutes(state: FakeState): Hono {
@@ -22,6 +23,9 @@ export function idRoutes(state: FakeState): Hono {
     const hint = query.login_hint
     if (hint !== undefined && !state.users.has(hint)) {
       return c.json({ status: 400, message: "login_hint names no known user" }, 400)
+    }
+    if (hint === undefined && state.options.userPicker === true) {
+      return c.html(userPickerPage(state.users.values(), new URL(c.req.url)))
     }
     const code = crypto.randomUUID()
     state.codes.set(code, {

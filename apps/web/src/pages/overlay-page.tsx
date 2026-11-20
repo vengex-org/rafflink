@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useParams } from "react-router"
 import { overlaySnapshotPath } from "../api/client.ts"
-import { LiveSummary } from "../components/live-summary.tsx"
+import { EntrantNames, Stat, WinnerList } from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { useLive } from "../lib/use-live.ts"
 
@@ -31,11 +31,26 @@ function Loaded({ id, token }: { readonly id: string; readonly token: string }) 
     case "unauthorized":
     case "not-found":
       return <NotFound title="Not found" />
-    case "ready":
+    case "ready": {
+      const { snapshot } = live
       return (
         <main className="overlay">
-          <LiveSummary snapshot={live.snapshot} winnerActions={null} />
+          <h1>{snapshot.title}</h1>
+          <p className="overlay-code">Code {snapshot.code}</p>
+          <dl className="stats">
+            <Stat value={snapshot.entrantCount.toLocaleString("en-US")} label="people entered" />
+            <Stat value={snapshot.entriesPerSecond.toFixed(1)} label="entries per second" />
+          </dl>
+          <h2>Latest entrants</h2>
+          <EntrantNames names={snapshot.lastNames} />
+          {snapshot.winners.length === 0 ? null : (
+            <>
+              <h2>Winners</h2>
+              <WinnerList winners={snapshot.winners} actions={null} />
+            </>
+          )}
         </main>
       )
+    }
   }
 }

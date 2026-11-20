@@ -12,6 +12,7 @@ export const devFakeTwitchOptions: FakeTwitchOptions = {
     displayName: "Fake_Viewer",
     createdAt: "2020-01-01T00:00:00Z",
   },
+  userPicker: true,
   // Twitch closes an EventSub socket that sends no subscription within 10 s, and allows keepalive timeouts from 10 s.
   subscribeWindowMs: 10_000,
   keepaliveTimeoutSeconds: 10,

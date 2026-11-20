@@ -1,6 +1,9 @@
 import type { Usage } from "@rafflink/core/ports"
 import { getAdminUsage, type AdminUsage } from "../api/client.ts"
+import { LockIcon } from "../components/icons.tsx"
+import { Stat } from "../components/live-parts.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
+import { StateCard } from "../components/state-card.tsx"
 import { useLoad } from "../lib/use-load.ts"
 
 export function AdminPage() {
@@ -15,10 +18,9 @@ export function AdminPage() {
         return <SignIn why="Sign in with Twitch to open the admin page." />
       if (result.value === "forbidden") {
         return (
-          <section>
-            <h1>Admin</h1>
+          <StateCard tone="warning" icon={<LockIcon />} title="Admins only" level={1}>
             <p>This Twitch account is not an admin.</p>
-          </section>
+          </StateCard>
         )
       }
       return <Report report={result.value} />
@@ -30,60 +32,68 @@ function Report({ report }: { readonly report: AdminUsage }) {
   return (
     <>
       <h1>Admin</h1>
-      <section aria-labelledby="usage">
+      <section className="card" aria-labelledby="usage">
         <h2 id="usage">Today's usage</h2>
-        <UsageTable usage={report.usage} />
+        <UsageBars usage={report.usage} />
       </section>
-      <section aria-labelledby="queue">
-        <h2 id="queue">Entry queue</h2>
+      <section className="card" aria-labelledby="queue">
+        <h2 id="queue">Entry line</h2>
+        <p className="muted">Entries wait here when many viewers sign in at once.</p>
         <dl className="stats">
-          <div>
-            <dt>Waiting</dt>
-            <dd>{queue.queued}</dd>
-          </div>
-          <div>
-            <dt>Rate per second</dt>
-            <dd>{queue.ratePerSecond}</dd>
-          </div>
-          <div>
-            <dt>Dropped</dt>
-            <dd>{queue.dropped}</dd>
-          </div>
-          <div>
-            <dt>Results nobody polled</dt>
-            <dd>{queue.abandonedResults}</dd>
-          </div>
-          <div>
-            <dt>Cooldown until</dt>
-            <dd>
-              {queue.cooldownUntil === 0
+          <Stat value={String(queue.queued)} label="entries waiting" />
+          <Stat value={String(queue.ratePerSecond)} label="entries let in per second" />
+          <Stat value={String(queue.dropped)} label="entries dropped" />
+          <Stat value={String(queue.abandonedResults)} label="results nobody picked up" />
+          <Stat
+            value={
+              queue.cooldownUntil === 0
                 ? "none"
-                : new Date(queue.cooldownUntil).toLocaleTimeString()}
-            </dd>
-          </div>
+                : new Date(queue.cooldownUntil).toLocaleTimeString()
+            }
+            label="Twitch cooldown until"
+          />
         </dl>
       </section>
     </>
   )
 }
 
-function UsageTable({ usage }: { readonly usage: Usage | null | "unavailable" }) {
-  if (usage === null) return <p>no daily limit</p>
-  if (usage === "unavailable") return <p>unavailable</p>
+function UsageBars({ usage }: { readonly usage: Usage | null | "unavailable" }) {
+  if (usage === null) return <p>This server has no daily request limit.</p>
+  if (usage === "unavailable") return <p>Today's usage is unavailable right now.</p>
   return (
-    <dl className="stats">
-      <div>
-        <dt>Worker requests</dt>
-        <dd>
-          {usage.workerRequests.used} of {usage.workerRequests.limit}
-        </dd>
-      </div>
-      <div>
-        <dt>Durable Object requests</dt>
-        <dd>
-          {usage.doRequests.used} of {usage.doRequests.limit}
-        </dd>
-      </div>
-    </dl>
+    <>
+      <Bar
+        label="Worker requests"
+        used={usage.workerRequests.used}
+        limit={usage.workerRequests.limit}
+      />
+      <Bar
+        label="Durable Object requests"
+        used={usage.doRequests.used}
+        limit={usage.doRequests.limit}
+      />
+    </>
+  )
+}
+
+function Bar({
+  label,
+  used,
+  limit,
+}: {
+  readonly label: string
+  readonly used: number
+  readonly limit: number
+}) {
+  const text = `${used.toLocaleString("en-US")} of ${limit.toLocaleString("en-US")} requests used today`
+  return (
+    <div className="usage">
+      <p>
+        <strong>{label}</strong>
+      </p>
+      <progress value={used} max={limit} aria-label={label} />
+      <p>{text}</p>
+    </div>
   )
 }

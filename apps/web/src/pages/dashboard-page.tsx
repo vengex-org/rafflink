@@ -2,20 +2,27 @@ import { useState } from "react"
 import { Link } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import { listGiveaways, type CreateResult } from "../api/client.ts"
-import { CopyField } from "../components/copy-field.tsx"
+import { GiftIcon, PlusIcon, SparkleIcon, TvIcon } from "../components/icons.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
+import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
+import { StateCard } from "../components/state-card.tsx"
 import { statusLabel } from "../lib/messages.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { CreateForm } from "./create-form.tsx"
 
 type Created = Extract<CreateResult, { kind: "created" }>
 
+type View =
+  | { readonly kind: "list" }
+  | { readonly kind: "create" }
+  | { readonly kind: "created"; readonly created: Created }
+
 export function DashboardPage() {
   const { result, reload } = useLoad(listGiveaways)
-  const [created, setCreated] = useState<Created | null>(null)
+  const [view, setView] = useState<View>({ kind: "list" })
   const [signedOut, setSignedOut] = useState(false)
 
-  if (signedOut) return <SignIn why="Your session ended." />
+  if (signedOut) return <SignIn why="Your session ended. Sign in with Twitch to go on." />
   switch (result.state) {
     case "loading":
       return <Loading />
@@ -25,75 +32,142 @@ export function DashboardPage() {
       if (result.value === "unauthorized") {
         return <SignIn why="Sign in with Twitch to create and run giveaways." />
       }
-      return (
-        <>
-          <h1>Your giveaways</h1>
-          <CreateForm
-            onCreated={(next) => {
-              setCreated(next)
-              reload()
-            }}
-            onUnauthorized={() => setSignedOut(true)}
-          />
-          {created === null ? null : <CreatedCard created={created} />}
-          <GiveawayList giveaways={result.value} />
-        </>
-      )
+      switch (view.kind) {
+        case "create":
+          return (
+            <>
+              <h1>New giveaway</h1>
+              <CreateForm
+                onCreated={(created) => {
+                  setView({ kind: "created", created })
+                  reload()
+                }}
+                onUnauthorized={() => setSignedOut(true)}
+                onCancel={() => setView({ kind: "list" })}
+              />
+            </>
+          )
+        case "created":
+          return <CreatedScreen created={view.created} onDone={() => setView({ kind: "list" })} />
+        case "list":
+          return (
+            <GiveawayList giveaways={result.value} onCreate={() => setView({ kind: "create" })} />
+          )
+      }
   }
 }
 
-function CreatedCard({ created }: { readonly created: Created }) {
+function CreatedScreen({
+  created,
+  onDone,
+}: {
+  readonly created: Created
+  readonly onDone: () => void
+}) {
   const { giveaway } = created
   return (
-    <section aria-labelledby="created" className="card">
-      <h2 id="created">Giveaway created</h2>
-      {created.usageLow === null ? null : (
-        <p role="alert">
-          Warning: only {created.usageLow.remaining} Worker requests are left today. Entries may
-          fail once the free limit is used up.
+    <>
+      <StateCard tone="success" icon={<SparkleIcon />} title="Your giveaway is live!" confetti>
+        {created.usageLow === null ? null : (
+          <p role="alert">
+            Heads up: the server has only {created.usageLow.remaining} requests left for today.
+            Entries may stop working once they run out.
+          </p>
+        )}
+        {created.roomReady ? null : (
+          <p role="alert">
+            The giveaway is not fully ready yet. Open the live page to finish setting it up.
+          </p>
+        )}
+        <p>
+          Next, tell your chat. Paste the message below into your Twitch chat. The giveaway code is{" "}
+          <strong>{giveaway.code}</strong>.
         </p>
-      )}
-      {created.roomReady ? null : (
-        <p role="alert">
-          The giveaway room is not ready yet. Open the live page to finish setting it up.
-        </p>
-      )}
-      <p>
-        Code: <strong>{giveaway.code}</strong>
-      </p>
-      <CopyField label="Share link" value={shareUrl(giveaway)} />
-      <CopyField label="Overlay URL for OBS" value={overlayUrl(giveaway)} />
-      <Link className="button" to={`/live/${giveaway.id}`}>
-        Open live page
-      </Link>
-    </section>
+        <ShareLinks code={giveaway.code} />
+        <Link className="button big" to={`/live/${giveaway.id}`}>
+          Open live page
+        </Link>
+      </StateCard>
+      <section className="card" aria-labelledby="obs-title">
+        <span className="state-icon">
+          <TvIcon />
+        </span>
+        <h2 id="obs-title">Add to OBS (optional)</h2>
+        <p>Show the entries on your stream while people join.</p>
+        <ObsSteps giveaway={giveaway} />
+      </section>
+      <button type="button" className="button secondary" onClick={onDone}>
+        Back to my giveaways
+      </button>
+    </>
   )
 }
 
-function GiveawayList({ giveaways }: { readonly giveaways: readonly DashboardGiveaway[] }) {
-  if (giveaways.length === 0) return <p>No giveaways yet.</p>
+function GiveawayList({
+  giveaways,
+  onCreate,
+}: {
+  readonly giveaways: readonly DashboardGiveaway[]
+  readonly onCreate: () => void
+}) {
+  if (giveaways.length === 0) {
+    return (
+      <>
+        <h1>My giveaways</h1>
+        <StateCard tone="info" icon={<GiftIcon />} title="Create your first giveaway">
+          <p>It takes about a minute. Here is how it works.</p>
+          <ol className="explainer">
+            <li>
+              <strong>Create it.</strong> Say what you give away and who can enter.
+            </li>
+            <li>
+              <strong>Share the link.</strong> Paste it in your chat. Viewers sign in with Twitch to
+              enter.
+            </li>
+            <li>
+              <strong>Draw live.</strong> Close entries and pick the winner on your stream.
+            </li>
+          </ol>
+          <button type="button" className="button big" onClick={onCreate}>
+            Create giveaway
+          </button>
+        </StateCard>
+      </>
+    )
+  }
   return (
-    <ul className="giveaways">
-      {giveaways.map((giveaway) => (
-        <li key={giveaway.id}>
-          <strong>{giveaway.title}</strong>
-          <span>
-            {giveaway.code} · {statusLabel[giveaway.status]}
-          </span>
-          <Link to={`/live/${giveaway.id}`}>Live page</Link>
-        </li>
-      ))}
-    </ul>
+    <>
+      <div className="page-head">
+        <h1>My giveaways</h1>
+        <button type="button" className="button" onClick={onCreate}>
+          <PlusIcon />
+          New giveaway
+        </button>
+      </div>
+      <ul className="giveaways">
+        {giveaways.map((giveaway) => (
+          <li key={giveaway.id} className="card" data-status={giveaway.status}>
+            <div className="giveaway-head">
+              <h2>{giveaway.title}</h2>
+              <span className="pill" data-status={giveaway.status}>
+                {statusLabel[giveaway.status]}
+              </span>
+            </div>
+            <p>Prize: {giveaway.prize}</p>
+            <p className="muted">
+              Code {giveaway.code}, created {new Date(giveaway.createdAt).toLocaleDateString()}
+            </p>
+            <Link className="button" to={`/live/${giveaway.id}`}>
+              Open live page
+            </Link>
+            <details className="extra">
+              <summary>Link and OBS overlay</summary>
+              <ShareLinks code={giveaway.code} />
+              <ObsSteps giveaway={giveaway} />
+            </details>
+          </li>
+        ))}
+      </ul>
+    </>
   )
-}
-
-function shareUrl(giveaway: DashboardGiveaway): string {
-  return new URL(`/${giveaway.code}`, window.location.origin).href
-}
-
-function overlayUrl(giveaway: DashboardGiveaway): string {
-  return new URL(
-    `/overlay/${encodeURIComponent(giveaway.id)}/${encodeURIComponent(giveaway.overlayToken)}`,
-    window.location.origin,
-  ).href
 }

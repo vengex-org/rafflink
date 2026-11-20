@@ -1,20 +1,27 @@
 import { Link, useSearchParams } from "react-router"
+import { AlertIcon, GiftIcon } from "../components/icons.tsx"
+import { StateCard } from "../components/state-card.tsx"
 
 export function HomePage() {
   const [query] = useSearchParams()
   const problem = signInProblem(query.get("signin"))
   return (
-    <section>
-      <h1>Rafflink</h1>
-      <p>
-        Chat giveaways for big Twitch channels. Viewers enter with one Twitch sign-in instead of
-        typing fast.
-      </p>
-      {problem === null ? null : <p role="alert">{problem}</p>}
-      <Link className="button" to="/dashboard">
-        Streamer dashboard
-      </Link>
-    </section>
+    <>
+      {problem === null ? null : (
+        <StateCard tone="danger" icon={<AlertIcon />} title="Sign-in did not work">
+          <p role="alert">{problem}</p>
+        </StateCard>
+      )}
+      <StateCard tone="info" icon={<GiftIcon />} title="Giveaways for your Twitch chat" level={1}>
+        <p>
+          Viewers enter with one Twitch sign-in instead of typing fast in chat. You share a link,
+          close entries and draw the winner live.
+        </p>
+        <Link className="button big" to="/dashboard">
+          Create a giveaway
+        </Link>
+      </StateCard>
+    </>
   )
 }
 

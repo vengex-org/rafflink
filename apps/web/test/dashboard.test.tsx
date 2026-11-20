@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent } from "@testing-library/react"
+import { stubClipboard } from "./clipboard.ts"
 import { dashboardGiveaway } from "./fixtures.ts"
-import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
+import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 afterEach(() => {
@@ -10,10 +11,7 @@ afterEach(() => {
 })
 
 const listed = { "GET /api/dash/giveaways": () => ok({ giveaways: [dashboardGiveaway] }) }
-
-function createReply(reply: Reply) {
-  return { ...listed, "POST /api/dash/giveaways": () => reply }
-}
+const empty = { "GET /api/dash/giveaways": () => ok({ giveaways: [] }) }
 
 describe("dashboard", () => {
   it("offers Sign in with Twitch to a signed-out streamer", async () => {
@@ -23,116 +21,68 @@ describe("dashboard", () => {
 
     const view = renderApp("/dashboard")
 
-    expect((await view.findByText("Sign in with Twitch")).getAttribute("href")).toBe(
-      "/auth/twitch/streamer/start",
-    )
+    expect(
+      (await view.findByRole("link", { name: "Sign in with Twitch" })).getAttribute("href"),
+    ).toBe("/auth/twitch/streamer/start")
   })
 
-  it("lists the giveaways of the signed-in streamer", async () => {
+  it("teaches an empty dashboard in three steps with one button to start", async () => {
+    mockFetch(empty)
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("heading", { name: "Create your first giveaway" })).toBeTruthy()
+    const steps = view.getAllByRole("listitem").map((item) => item.textContent)
+    expect(steps).toEqual([
+      "Create it. Say what you give away and who can enter.",
+      "Share the link. Paste it in your chat. Viewers sign in with Twitch to enter.",
+      "Draw live. Close entries and pick the winner on your stream.",
+    ])
+    fireEvent.click(view.getByRole("button", { name: "Create giveaway" }))
+    expect(await view.findByText("Step 1 of 4: What you give away")).toBeTruthy()
+  })
+
+  it("lists each giveaway as a card with its prize, status and a link to its live page", async () => {
     mockFetch(listed)
 
     const view = renderApp("/dashboard")
 
-    expect(await view.findByText("Summer giveaway")).toBeTruthy()
-    expect(view.getByText("ABCDE · Entries open")).toBeTruthy()
+    expect(await view.findByRole("heading", { name: "Summer giveaway" })).toBeTruthy()
+    expect(view.getByText("Prize: A gaming chair")).toBeTruthy()
+    expect(view.getByText("Entries open")).toBeTruthy()
+    expect(view.getByText(/Code ABCDE/)).toBeTruthy()
+    expect(view.getByRole("link", { name: "Open live page" }).getAttribute("href")).toBe(
+      "/live/gid-1",
+    )
   })
 
-  it("shows the API field error next to the field", async () => {
-    mockFetch(
-      createReply({
-        status: 400,
-        body: { error: "invalid-input", field: "tickets.vip", code: "not-a-non-negative-integer" },
-      }),
-    )
+  it("keeps the link, chat message and overlay link of a listed giveaway at hand", async () => {
+    const copied = stubClipboard(false)
+    mockFetch(listed)
+
     const view = renderApp("/dashboard")
-    await view.findByText("New giveaway")
+    await view.findByText("Link and OBS overlay")
 
-    fireEvent.change(view.getByLabelText("Title"), { target: { value: "Cup" } })
-    fireEvent.click(view.getByText("Create giveaway"))
-
-    expect(await view.findByText("Enter a whole number, 0 or more.")).toBeTruthy()
-    expect(view.getByLabelText("VIPs").getAttribute("aria-invalid")).toBe("true")
-    expect(view.getByLabelText("Title").getAttribute("aria-invalid")).toBe("false")
-  })
-
-  it("sends the form as the API expects", async () => {
-    const requests = mockFetch(
-      createReply({
-        status: 400,
-        body: { error: "invalid-input", field: "prize", code: "missing" },
-      }),
-    )
-    const view = renderApp("/dashboard")
-    await view.findByText("New giveaway")
-
-    fireEvent.change(view.getByLabelText("Title"), { target: { value: "Cup" } })
-    fireEvent.change(view.getByLabelText("VIPs"), { target: { value: "5" } })
-    fireEvent.click(view.getByLabelText("Subscribers only"))
-    fireEvent.change(view.getByLabelText("Minimum account age in days"), { target: { value: "7" } })
-    fireEvent.click(view.getByText("Create giveaway"))
-    await view.findByText("This field is required.")
-
-    expect(requests.find((request) => request.route === "POST /api/dash/giveaways")?.body).toEqual({
-      title: "Cup",
-      prize: "",
-      rules: {
-        tickets: { viewer: 1, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 5, moderator: 1 },
-        subsOnly: true,
-        followersOnly: false,
-        minAccountAgeDays: 7,
-        claimKeyword: "",
-      },
-    })
-  })
-
-  it("shows the code, the share link and the overlay URL after create", async () => {
-    mockFetch(
-      createReply({
-        status: 201,
-        body: { giveaway: dashboardGiveaway, roomReady: true, warnings: [] },
-      }),
-    )
-    const view = renderApp("/dashboard")
-    await view.findByText("New giveaway")
-
-    fireEvent.click(view.getByText("Create giveaway"))
-
-    expect(await view.findByText("ABCDE", { selector: "strong" })).toBeTruthy()
-    expect(view.getByLabelText("Share link").getAttribute("value")).toBe(
+    expect(view.getByLabelText("Your link").getAttribute("value")).toBe(
       "http://rafflink.test/ABCDE",
     )
-    expect(view.getByLabelText("Overlay URL for OBS").getAttribute("value")).toBe(
+    expect(view.getByLabelText("Overlay link").getAttribute("value")).toBe(
       "http://rafflink.test/overlay/gid-1/tok-1",
     )
-    expect(view.queryByText(/Worker requests are left/)).toBeNull()
+    fireEvent.click(view.getByRole("button", { name: "Copy chat message" }))
+    expect(await view.findByText("Copied!")).toBeTruthy()
+    expect(copied).toEqual(["Enter the giveaway: http://rafflink.test/ABCDE"])
   })
 
-  it("warns when the day's requests are nearly used up", async () => {
-    mockFetch(
-      createReply({
-        status: 201,
-        body: {
-          giveaway: dashboardGiveaway,
-          roomReady: true,
-          warnings: [{ kind: "worker-requests-low", remaining: 1200 }],
-        },
-      }),
-    )
+  it("says how to copy by hand when the clipboard is refused", async () => {
+    stubClipboard(true)
+    spyOn(console, "error").mockImplementation(() => {})
+    mockFetch(listed)
+
     const view = renderApp("/dashboard")
-    await view.findByText("New giveaway")
+    await view.findByText("Link and OBS overlay")
+    fireEvent.click(view.getByRole("button", { name: "Copy link" }))
 
-    fireEvent.click(view.getByText("Create giveaway"))
-
-    expect(await view.findByText(/only 1200 Worker requests are left today/)).toBeTruthy()
-  })
-
-  it("asks for a new sign-in when the session ended during create", async () => {
-    mockFetch(createReply({ status: 401, body: { error: "unauthorized" } }))
-    const view = renderApp("/dashboard")
-    await view.findByText("New giveaway")
-
-    fireEvent.click(view.getByText("Create giveaway"))
-
-    expect(await view.findByText("Sign in with Twitch")).toBeTruthy()
+    expect(await view.findByText(/Could not copy/)).toBeTruthy()
   })
 })

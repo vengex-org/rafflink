@@ -12,38 +12,42 @@ const queue = { queued: 7, ratePerSecond: 10, cooldownUntil: 0, dropped: 2, aban
 const quota = (used: number, limit: number) => ({ used, limit })
 
 describe("admin page", () => {
-  it("shows the usage against the limits and the queue counters", async () => {
+  it("shows the usage as bars with a sentence and the queue counters with labels", async () => {
     mockFetch({
       "GET /api/admin/usage": () =>
         ok({
-          usage: { workerRequests: quota(40_000, 100_000), doRequests: quota(5, 100_000) },
+          usage: { workerRequests: quota(62_000, 100_000), doRequests: quota(5, 100_000) },
           queue,
         }),
     })
 
     const view = renderApp("/admin")
 
-    expect(await view.findByText("40000 of 100000")).toBeTruthy()
-    expect(view.getByText("5 of 100000")).toBeTruthy()
+    expect(await view.findByText("62,000 of 100,000 requests used today")).toBeTruthy()
+    expect(view.getByText("5 of 100,000 requests used today")).toBeTruthy()
+    const bar = view.getByRole("progressbar", { name: "Worker requests" })
+    expect(bar.getAttribute("value")).toBe("62000")
+    expect(bar.getAttribute("max")).toBe("100000")
     expect(view.getByText("7")).toBeTruthy()
+    expect(view.getByText("entries waiting")).toBeTruthy()
     expect(view.getByText("none")).toBeTruthy()
   })
 
-  it("says unavailable when the usage source did not answer", async () => {
+  it("says the usage is unavailable when the usage source did not answer", async () => {
     mockFetch({ "GET /api/admin/usage": () => ok({ usage: "unavailable", queue }) })
 
     const view = renderApp("/admin")
 
-    expect(await view.findByText("unavailable")).toBeTruthy()
+    expect(await view.findByText("Today's usage is unavailable right now.")).toBeTruthy()
     expect(view.getByText("7")).toBeTruthy()
   })
 
-  it("says no daily limit when the target has none", async () => {
+  it("says there is no daily limit when the target has none", async () => {
     mockFetch({ "GET /api/admin/usage": () => ok({ usage: null, queue }) })
 
     const view = renderApp("/admin")
 
-    expect(await view.findByText("no daily limit")).toBeTruthy()
+    expect(await view.findByText("This server has no daily request limit.")).toBeTruthy()
   })
 
   it("refuses a signed-in streamer who is not an admin", async () => {
@@ -59,6 +63,6 @@ describe("admin page", () => {
 
     const view = renderApp("/admin")
 
-    expect(await view.findByText("Sign in with Twitch")).toBeTruthy()
+    expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
   })
 })

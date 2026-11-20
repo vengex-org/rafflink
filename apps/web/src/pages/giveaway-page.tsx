@@ -1,13 +1,34 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState, type ReactNode } from "react"
 import { useParams, useSearchParams } from "react-router"
 import { groups } from "@rafflink/core/domain/groups"
 import { claimPrize, entryFromQuery, getGiveaway, type GiveawayView } from "../api/client.ts"
+import {
+  AlertIcon,
+  CheckIcon,
+  ClockIcon,
+  GiftIcon,
+  LockIcon,
+  TrophyIcon,
+  UsersIcon,
+} from "../components/icons.tsx"
 import { Failed, Loading, NotFound, Status } from "../components/notice.tsx"
-import { groupLabel, reasonText, statusLabel, viewerClaimText } from "../lib/messages.ts"
+import { StateCard, type Tone } from "../components/state-card.tsx"
+import { StepIndicator } from "../components/step-indicator.tsx"
+import { groupLabel, reasonHelp, reasonText, viewerClaimText } from "../lib/messages.ts"
+import {
+  claimTimeText,
+  extraTicketsText,
+  peopleText,
+  ticketText,
+  waitText,
+  whoCanEnterText,
+} from "../lib/rules-text.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useEntryResult, type EntryView } from "../lib/use-entry-result.ts"
 import { useLoad } from "../lib/use-load.ts"
-import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
+import { formatClock, formatLeft, useRemainingMs } from "../lib/use-remaining.ts"
+
+const stepNames = ["Sign in", "Get your ticket"] as const
 
 export function GiveawayPage() {
   const { code } = useParams()
@@ -42,106 +63,246 @@ function GiveawayDetails({
   const initial = useMemo(() => entryFromQuery(query), [query])
   const entry = useEntryResult(code, initial, giveaway.poll)
   const signInHref = `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`
+  const extraTickets = extraTicketsText(giveaway.rules.tickets)
 
   return (
     <article>
-      <h1>{giveaway.title}</h1>
-      <p className="prize">{giveaway.prize}</p>
-      <p>{statusLabel[giveaway.status]}</p>
-      <p>{giveaway.entrantCount} entered so far</p>
-      <section aria-live="polite" className="outcome">
+      <header className="card hero">
+        <p className="giveaway-name">{giveaway.title}</p>
+        <h1>{giveaway.prize}</h1>
+        <ul className="facts">
+          <li>
+            <UsersIcon />
+            {peopleText(giveaway.entrantCount)}
+          </li>
+          <li>
+            <ClockIcon />
+            <EntriesEnd status={giveaway.status} closesAt={giveaway.closesAt} />
+          </li>
+          <li>
+            <GiftIcon />
+            <span>
+              {whoCanEnterText(giveaway.rules.subsOnly, giveaway.rules.followersOnly)}
+              {extraTickets === null ? null : ` ${extraTickets}`}
+            </span>
+          </li>
+        </ul>
+      </header>
+      <div aria-live="polite" className="outcome">
         {giveaway.win === null ? (
-          <EntryPanel entry={entry} status={giveaway.status} signInHref={signInHref} />
+          <EntryPanel entry={entry} giveaway={giveaway} signInHref={signInHref} />
         ) : (
-          <ClaimPanel code={code} win={giveaway.win} />
+          <ClaimPanel code={code} win={giveaway.win} keyword={giveaway.rules.claimKeyword} />
         )}
-      </section>
+      </div>
       <Rules giveaway={giveaway} />
     </article>
   )
 }
 
+function EntriesEnd({
+  status,
+  closesAt,
+}: {
+  readonly status: GiveawayView["status"]
+  readonly closesAt: number | null
+}) {
+  if (status !== "open") return <span>Entries are closed.</span>
+  if (closesAt === null) return <span>Entries stay open until the streamer closes them.</span>
+  return <CountdownToClose closesAt={closesAt} />
+}
+
+function CountdownToClose({ closesAt }: { readonly closesAt: number }) {
+  const [initial] = useState(() => Math.max(0, closesAt - Date.now()))
+  const remaining = useRemainingMs(initial)
+  return (
+    <span>
+      {remaining === 0
+        ? "Entries are about to close."
+        : `Entries close in ${formatLeft(remaining)}.`}
+    </span>
+  )
+}
+
 function EntryPanel({
   entry,
-  status,
+  giveaway,
   signInHref,
 }: {
   readonly entry: EntryView | null
-  readonly status: GiveawayView["status"]
+  readonly giveaway: GiveawayView
   readonly signInHref: string
 }) {
-  const message = entry === null ? null : entryMessage(entry)
-  const canEnter = status === "open" && (message === null || message.retry)
-  return (
-    <>
-      {message === null ? (
-        <StatusNote status={status} />
-      ) : (
-        <>
-          <h2>{message.title}</h2>
-          <p>{message.detail}</p>
-        </>
-      )}
-      {canEnter ? (
-        <a className="button" href={signInHref}>
-          Enter with Twitch
-        </a>
-      ) : null}
-      {message === null && status === "drawn" ? (
-        <a className="button" href={signInHref}>
+  const { status } = giveaway
+  const card = entry === null ? null : entryCard(entry, giveaway)
+  const canEnter = status === "open" && (card === null || card.retry)
+
+  if (card === null && status === "closed") return <ClosedCard />
+  if (card === null && status === "drawn") {
+    return (
+      <StateCard tone="info" icon={<LockIcon />} title="The winners are drawn">
+        <p>Sign in with Twitch to see whether you won.</p>
+        <a className="button big" href={signInHref}>
           Sign in with Twitch
         </a>
-      ) : null}
+      </StateCard>
+    )
+  }
+  if (card !== null && status === "drawn" && card.entered) {
+    return (
+      <StateCard tone="info" icon={<GiftIcon />} title="Not this time">
+        <p>The winner was drawn. It was not you this time.</p>
+      </StateCard>
+    )
+  }
+  return (
+    <>
+      <StepIndicator steps={stepNames} current={card === null ? 1 : card.step} />
+      <StateCard
+        tone={card === null ? "info" : card.tone}
+        icon={card === null ? <GiftIcon /> : card.icon}
+        title={card === null ? "Ready to enter?" : card.title}
+        confetti={card?.entered === true}
+      >
+        <p>
+          {card === null
+            ? "Sign in with your Twitch account to get your ticket. It takes a few seconds."
+            : card.detail}
+        </p>
+        {card !== null && card.help !== null ? <p>{card.help}</p> : null}
+        {canEnter ? (
+          <a className="button big" href={signInHref}>
+            Enter with Twitch
+          </a>
+        ) : null}
+      </StateCard>
     </>
   )
 }
 
-function StatusNote({ status }: { readonly status: GiveawayView["status"] }) {
-  switch (status) {
-    case "open":
-      return null
-    case "closed":
-      return <p>Sorry, giveaway closed.</p>
-    case "drawn":
-      return <p>The winners are drawn. Sign in to see whether you won.</p>
-  }
+function ClosedCard() {
+  return (
+    <StateCard tone="warning" icon={<LockIcon />} title="Sorry, giveaway closed.">
+      <p>The streamer stopped taking entries. Follow the channel to catch the next one.</p>
+    </StateCard>
+  )
 }
 
-interface EntryMessage {
+interface EntryCard {
+  readonly tone: Tone
+  readonly icon: ReactNode
   readonly title: string
   readonly detail: string
+  readonly help: string | null
+  /** Where the viewer is in the two steps; past the last step means done. */
+  readonly step: number
   /** Whether another sign-in can still change the outcome. */
   readonly retry: boolean
+  /** The viewer holds a ticket. */
+  readonly entered: boolean
 }
 
-function entryMessage(entry: EntryView): EntryMessage {
+function entryCard(entry: EntryView, giveaway: GiveawayView): EntryCard {
   switch (entry.kind) {
     case "entered":
-      return { title: "You are in", detail: "Good luck.", retry: false }
+      return {
+        tone: "success",
+        icon: <CheckIcon />,
+        title: "You are in",
+        detail: "The streamer draws the winner live. Keep this page open or come back later.",
+        help: "Good luck!",
+        step: 3,
+        retry: false,
+        entered: true,
+      }
     case "already-in":
-      return { title: "You are in", detail: "Your first entry is kept.", retry: false }
+      return {
+        tone: "success",
+        icon: <CheckIcon />,
+        title: "You are in",
+        detail: "Your first entry is kept. You do not need to enter again.",
+        help: "The streamer draws the winner live. Keep this page open or come back later.",
+        step: 3,
+        retry: false,
+        entered: true,
+      }
     case "pending":
       return {
+        tone: "info",
+        icon: <span className="spinner" aria-hidden="true" />,
         title: "You are being entered",
-        detail: "Twitch is busy. This page updates by itself.",
+        detail: `This takes up to ${waitText(giveaway.poll.maxMs)}. Do not close this page.`,
+        help: "Twitch is busy. This page updates by itself.",
+        step: 2,
         retry: false,
+        entered: false,
       }
     case "not-eligible":
-      return { title: "You cannot enter", detail: reasonText[entry.reason], retry: false }
+      return {
+        tone: "warning",
+        icon: <LockIcon />,
+        title: "You cannot enter",
+        detail: reasonText[entry.reason],
+        help: reasonHelp[entry.reason],
+        step: 1,
+        retry: false,
+        entered: false,
+      }
     case "closed":
       return {
+        tone: "warning",
+        icon: <LockIcon />,
         title: "Sorry, giveaway closed.",
-        detail: "No more entries are accepted.",
+        detail: "The streamer stopped taking entries. Follow the channel to catch the next one.",
+        help: null,
+        step: 1,
         retry: false,
+        entered: false,
       }
     case "dropped":
-      return { title: "Your entry took too long", detail: "Please try again.", retry: true }
+      return {
+        tone: "danger",
+        icon: <AlertIcon />,
+        title: "Your entry took too long",
+        detail: "Too many people entered at once and your entry was dropped.",
+        help: "Press the button to enter again.",
+        step: 1,
+        retry: true,
+        entered: false,
+      }
     case "timed-out":
-      return { title: "This is taking too long", detail: "Please try again.", retry: true }
+      return {
+        tone: "danger",
+        icon: <AlertIcon />,
+        title: "This is taking too long",
+        detail: "We did not hear back in time.",
+        help: "Press the button to enter again.",
+        step: 1,
+        retry: true,
+        entered: false,
+      }
     case "try-again":
-      return { title: "Try again", detail: "Twitch did not answer in time.", retry: true }
+      return {
+        tone: "danger",
+        icon: <AlertIcon />,
+        title: "Try again",
+        detail: "Twitch did not answer in time.",
+        help: "Press the button to give it another go.",
+        step: 1,
+        retry: true,
+        entered: false,
+      }
     case "invalid-state":
-      return { title: "Sign-in expired", detail: "Please try again.", retry: true }
+      return {
+        tone: "danger",
+        icon: <AlertIcon />,
+        title: "Sign-in expired",
+        detail: "Your sign-in took too long.",
+        help: "Press the button to start again.",
+        step: 1,
+        retry: true,
+        entered: false,
+      }
   }
 }
 
@@ -149,46 +310,72 @@ function entryMessage(entry: EntryView): EntryMessage {
 function ClaimPanel({
   code,
   win,
+  keyword,
 }: {
   readonly code: string
   readonly win: NonNullable<GiveawayView["win"]>
+  readonly keyword: string | null
 }) {
   const remaining = useRemainingMs(win.claimRemainingMs)
   const { message, busy, run } = useAction()
 
-  if (win.claim.state === "rerolled") return <p>{viewerClaimText.rerolled}</p>
+  if (win.claim.state === "rerolled") {
+    return (
+      <StateCard tone="warning" icon={<AlertIcon />} title="Another winner was picked">
+        <p>{viewerClaimText.rerolled}</p>
+      </StateCard>
+    )
+  }
   const claimed = win.claim.state === "claimed" || message === viewerClaimText.claimed
-  return (
-    <>
-      <h2>You won</h2>
-      {claimed ? (
+  if (claimed) {
+    return (
+      <StateCard tone="win" icon={<TrophyIcon />} title="You won" confetti>
         <p>{viewerClaimText.claimed}</p>
-      ) : win.claim.state === "expired" || remaining === 0 ? (
+      </StateCard>
+    )
+  }
+  if (win.claim.state === "expired" || remaining === 0) {
+    return (
+      <StateCard tone="danger" icon={<ClockIcon />} title="Time is up">
         <p>{viewerClaimText.expired}</p>
-      ) : (
-        <>
-          <p>
-            Time left to claim: <span role="timer">{formatClock(remaining)}</span>
-          </p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void run(() => claimPrize(code), viewerClaimText)}
-          >
-            Claim
-          </button>
-          {message === null ? null : <Status>{message}</Status>}
-        </>
-      )}
-    </>
+        <p>The streamer may pick another winner.</p>
+      </StateCard>
+    )
+  }
+  return (
+    <StateCard tone="win" icon={<TrophyIcon />} title="You won" confetti>
+      <p className="big-clock">
+        <span role="timer">{formatClock(remaining)}</span> min left to claim
+      </p>
+      <p>Press the button before the time runs out.</p>
+      <button
+        type="button"
+        className="button big"
+        disabled={busy}
+        onClick={() => void run(() => claimPrize(code), viewerClaimText)}
+      >
+        Claim my prize
+      </button>
+      <p className="muted">
+        {keyword === null ? (
+          "Or write any message in the stream chat."
+        ) : (
+          <>
+            Or type <strong>{keyword}</strong> in the stream chat.
+          </>
+        )}
+      </p>
+      {message === null ? null : <Status>{message}</Status>}
+    </StateCard>
   )
 }
 
 function Rules({ giveaway }: { readonly giveaway: GiveawayView }) {
   const { rules } = giveaway
   return (
-    <section aria-labelledby="rules">
-      <h2 id="rules">Rules</h2>
+    <details className="extra">
+      <summary>Rules and tickets</summary>
+      <p className="help">The more tickets a group gets, the better its chance of winning.</p>
       <ul>
         {groups.map((group) => (
           <li key={group}>
@@ -197,26 +384,15 @@ function Rules({ giveaway }: { readonly giveaway: GiveawayView }) {
         ))}
       </ul>
       <ul>
-        {rules.subsOnly ? <li>Subscribers only</li> : null}
-        {rules.followersOnly ? <li>Followers only</li> : null}
         {rules.minAccountAgeDays === null ? null : (
           <li>Account at least {rules.minAccountAgeDays} days old</li>
         )}
         {giveaway.closesAt === null ? null : (
           <li>Entries end {new Date(giveaway.closesAt).toLocaleString()}</li>
         )}
-        <li>Winners have {formatClock(giveaway.claimSeconds * 1000)} to claim</li>
-        <li>
-          {rules.claimKeyword === null
-            ? "Any chat message from a winner claims the prize, or use the Claim button here"
-            : `Claim by typing "${rules.claimKeyword}" in chat, or use the Claim button here`}
-        </li>
+        <li>Winners have {claimTimeText(giveaway.claimSeconds)} to claim</li>
+        <li>A winner claims on this page or in the stream chat.</li>
       </ul>
-    </section>
+    </details>
   )
-}
-
-function ticketText(count: number): string {
-  if (count === 0) return "cannot enter"
-  return `${count} ${count === 1 ? "ticket" : "tickets"}`
 }

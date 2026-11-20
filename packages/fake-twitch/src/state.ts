@@ -13,6 +13,8 @@ export interface FakeTwitchOptions {
   clientSecret: string
   /** Signed in by `/oauth2/authorize` until `control.signInAs` or a `login_hint` query picks another user. */
   defaultUser: FakeUser
+  /** When true, `/oauth2/authorize` without `login_hint` shows a page to pick the user instead of signing in the default. */
+  userPicker?: boolean
   /** How long a fresh EventSub socket may stay without a subscription before it is closed. */
   subscribeWindowMs: number
   /** Announced in the welcome message; keepalive messages go out at half of it. */

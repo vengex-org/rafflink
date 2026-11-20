@@ -125,6 +125,41 @@ describe("id service", () => {
     expect(response.status).toBe(400)
   })
 
+  test("shows a page with a button per user when the picker is on and there is no login_hint", async () => {
+    const picker = serveFakeTwitch(0, { ...options, userPicker: true })
+    picker.control.addUser({ ...streamer, displayName: "<b>Streamer</b>" })
+    try {
+      const query = hintQuery("")
+      query.delete("login_hint")
+      const page = await fetch(new URL(`/oauth2/authorize?${query}`, picker.server.url), {
+        redirect: "manual",
+      })
+      const html = await page.text()
+
+      expect(page.status).toBe(200)
+      expect(page.headers.get("content-type")).toContain("text/html")
+      expect(html).toContain("login_hint=100")
+      expect(html).toContain("login_hint=200")
+      expect(html).toContain("&lt;b&gt;Streamer&lt;/b&gt;")
+      expect(html).not.toContain("<b>Streamer</b>")
+
+      const href = html.match(/href="([^"]*login_hint=200[^"]*)"/)?.[1]
+      const chosen = await fetch(new URL(href?.replaceAll("&amp;", "&") ?? "", picker.server.url), {
+        redirect: "manual",
+      })
+      expect(chosen.status).toBe(302)
+      expect(new URL(chosen.headers.get("location") ?? "").searchParams.get("code")).toBeString()
+    } finally {
+      await picker.server.stop(true)
+    }
+  })
+
+  test("signs in the default user without a page when the picker is off", async () => {
+    const response = await authorize("openid")
+
+    expect(response.status).toBe(302)
+  })
+
   test("rejects authorize for an unknown client", async () => {
     const response = await fetch(
       url("/oauth2/authorize?client_id=other&response_type=code&redirect_uri=" + REDIRECT_URI),
