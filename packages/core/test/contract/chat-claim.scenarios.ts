@@ -2,7 +2,15 @@ import { expect } from "bun:test"
 import type { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
-import { eventSubPath, scenario, type CreatedGiveaway, type World } from "./world.ts"
+import type { OverlayMessage } from "./socket.ts"
+import {
+  eventSubPath,
+  publicOrigin,
+  scenario,
+  type CreatedGiveaway,
+  type GiveawayOptions,
+  type World,
+} from "./world.ts"
 
 export function chatClaimScenarios(context: ContractContext): void {
   scenario(context, "a chat message from the winner claims via chat", async (world) => {
@@ -60,20 +68,100 @@ export function chatClaimScenarios(context: ContractContext): void {
     })
   })
 
-  scenario(context, "the chat watch closes when no winner waits", async (world) => {
-    const { giveaway } = await drawnWithOneWinner(world, await world.start())
-    await waitForSubscription(world)
+  scenario(
+    context,
+    "the chat watch stays open for a claimed winner and closes when the reroll window ends",
+    async (world) => {
+      const { giveaway } = await drawnWithOneWinner(
+        world,
+        await world.start({ REROLL_WINDOW_SECONDS: "1" }),
+        { claimSeconds: 1 },
+      )
+      await waitForSubscription(world)
 
-    const claimed = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/claim`, {
-      n: 0,
-    })
-    await world.waitFor(
-      () => world.twitch.fake.control.eventSubConnections() === 0,
-      "the chat connection to close",
-    )
+      const claimed = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/claim`, {
+        n: 0,
+      })
 
-    expect(claimed.status).toBe(200)
-  })
+      expect(claimed.status).toBe(200)
+      expect(world.twitch.fake.control.eventSubConnections()).toBe(1)
+      await world.waitFor(
+        () => world.twitch.fake.control.eventSubConnections() === 0,
+        "the chat connection to close",
+      )
+    },
+  )
+
+  scenario(
+    context,
+    "the live page gets the winner's chat and the overlay never does",
+    async (world) => {
+      const target = await world.start()
+      const { giveaway } = await drawnWithOneWinner(world, target)
+      await waitForSubscription(world)
+      const live = world.openSocket(new URL(`/api/live/${giveaway.id}`, target.url), {
+        cookie: giveaway.streamer.cookieHeader(),
+        origin: publicOrigin,
+      })
+      const overlayUrl = new URL(`/api/overlay/${giveaway.id}/${giveaway.overlayToken}`, target.url)
+      const overlay = world.openSocket<OverlayMessage>(overlayUrl)
+      await world.waitFor(
+        () => live.messages.length >= 1 && overlay.messages.length >= 1,
+        "the first snapshots",
+      )
+
+      world.twitch.fake.control.sendChatMessage(users.streamer.id, users.viewer2.id, "not mine")
+      world.twitch.fake.control.sendChatMessage(users.streamer.id, users.viewer.id, "hello chat")
+      await world.waitFor(
+        () => live.messages.some((message) => message.winnerChat.length > 0),
+        "the winner's message on the live socket",
+      )
+      await world.waitFor(
+        () => overlay.messages.some((message) => message.winners[0]?.claim.state === "claimed"),
+        "the overlay push after the chat claim",
+      )
+
+      expect(live.messages.at(-1)?.winnerChat).toMatchObject([
+        { name: users.viewer.displayName, text: "hello chat" },
+      ])
+      expect((await world.live(giveaway)).winnerChat.map((line) => line.text)).toEqual([
+        "hello chat",
+      ])
+      const overlayTexts = [
+        JSON.stringify(overlay.messages),
+        await (await fetch(overlayUrl)).text(),
+      ]
+      for (const text of overlayTexts) {
+        expect(text).not.toContain("winnerChat")
+        expect(text).not.toContain("hello chat")
+      }
+    },
+  )
+
+  scenario(
+    context,
+    "a winner's chat after the claim time shows but claims nothing",
+    async (world) => {
+      const target = await world.start({ REROLL_WINDOW_SECONDS: "60" })
+      const { giveaway } = await drawnWithOneWinner(world, target, { claimSeconds: 1 })
+      await waitForSubscription(world)
+      await world.waitFor(
+        async () => (await world.live(giveaway)).winners[0]?.claim.state === "expired",
+        "the claim time to end",
+      )
+
+      world.twitch.fake.control.sendChatMessage(users.streamer.id, users.viewer.id, "too late")
+      await world.waitFor(
+        async () => (await world.live(giveaway)).winnerChat.length > 0,
+        "the late message to show",
+      )
+
+      expect(await world.live(giveaway)).toMatchObject({
+        winners: [{ claim: { state: "expired" } }],
+        winnerChat: [{ text: "too late" }],
+      })
+    },
+  )
 
   scenario(
     context,
@@ -162,8 +250,9 @@ export function chatClaimScenarios(context: ContractContext): void {
 async function drawnWithOneWinner(
   world: World,
   target: ContractTarget,
+  options: GiveawayOptions = {},
 ): Promise<{ giveaway: CreatedGiveaway; viewer: Browser }> {
-  const giveaway = await world.createGiveaway(target)
+  const giveaway = await world.createGiveaway(target, options)
   const { viewer } = await world.enter(target, giveaway.code, users.viewer.id)
   await world.closeGiveaway(giveaway)
   const drawn = await world.drawWinners(giveaway, 1)

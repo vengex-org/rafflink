@@ -28,9 +28,10 @@ export interface Alarm {
   clear(): void
 }
 
-/** Pushes one JSON text to the pages connected to one room: the streamer's live and overlay pages, and the viewers' giveaway pages. */
+/** Pushes one JSON text to the pages connected to one room: the streamer's live page, the OBS overlay, and the viewers' giveaway pages. */
 export interface LiveHub {
   broadcast(json: string): void
+  broadcastOverlay(json: string): void
   broadcastViewers(json: string): void
 }
 

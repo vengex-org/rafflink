@@ -3,7 +3,12 @@ import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
 import { staticCacheControl } from "@rafflink/core/http/static-headers"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type Context, type MiddlewareHandler } from "hono"
-import { liveTopic, viewerTopic, type LocalRoomDirectory } from "./local-room-directory.ts"
+import {
+  liveTopic,
+  overlayTopic,
+  viewerTopic,
+  type LocalRoomDirectory,
+} from "./local-room-directory.ts"
 
 export interface ServerAppOptions {
   /** The HTTP app of core. */
@@ -25,7 +30,7 @@ export function createServerApp(options: ServerAppOptions): Hono {
   const app = new Hono()
 
   app.get("/api/live/:id", socketRoute(api, liveSubscription))
-  app.get("/api/overlay/:id/:token", socketRoute(api, liveSubscription))
+  app.get("/api/overlay/:id/:token", socketRoute(api, overlaySubscription))
   app.get(
     "/api/g/:code/live",
     socketRoute(api, async (_c, checked) => {
@@ -70,6 +75,11 @@ interface Subscription {
 async function liveSubscription(c: Context, checked: Response): Promise<Subscription> {
   const first = await checked.text()
   return { topic: liveTopic(c.req.param("id") ?? ""), first: () => first }
+}
+
+async function overlaySubscription(c: Context, checked: Response): Promise<Subscription> {
+  const first = await checked.text()
+  return { topic: overlayTopic(c.req.param("id") ?? ""), first: () => first }
 }
 
 /**

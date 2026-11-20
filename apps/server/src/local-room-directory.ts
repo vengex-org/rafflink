@@ -35,6 +35,11 @@ export function liveTopic(giveawayId: string): string {
   return `live:${giveawayId}`
 }
 
+/** The pub/sub topic of a room's OBS overlay, which gets no winner chat. */
+export function overlayTopic(giveawayId: string): string {
+  return `overlay:${giveawayId}`
+}
+
 /** The pub/sub topic of a room's viewer pages. */
 export function viewerTopic(giveawayId: string): string {
   return `viewers:${giveawayId}`
@@ -109,6 +114,7 @@ export class LocalRoomDirectory implements RoomDirectory {
       alarm,
       live: {
         broadcast: (json) => this.deps.publish(liveTopic(giveawayId), json),
+        broadcastOverlay: (json) => this.deps.publish(overlayTopic(giveawayId), json),
         broadcastViewers: (json) => this.deps.publish(viewerTopic(giveawayId), json),
       },
       clock: this.deps.clock,

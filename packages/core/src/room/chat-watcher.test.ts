@@ -22,7 +22,7 @@ import {
 import { GiveawayRoom, type GiveawayInit, type RoomViewer } from "./giveaway-room.ts"
 import { applyMigrations } from "./migrate.ts"
 import { roomMigrations } from "./migrations.ts"
-import { nextClaimDeadlineSql, waitingPickOfChatterSql } from "./queries.ts"
+import { nextClaimDeadlineSql, waitingPickOfChatterSql, winnerChatNameSql } from "./queries.ts"
 
 const eventSubEnv = {
   EVENTSUB_URL: "wss://twitch.test/ws",
@@ -570,17 +570,36 @@ function roomUnderTest(
   const config = configWith(options.env)
   const chatLink = { connector, subscribe: subscriptions.subscribe }
   const viewerMessages: string[] = []
+  const liveMessages: string[] = []
+  const overlayMessages: string[] = []
   const room = new GiveawayRoom({
     sql,
     alarm,
-    live: { broadcast: () => {}, broadcastViewers: (json) => void viewerMessages.push(json) },
+    live: {
+      broadcast: (json) => void liveMessages.push(json),
+      broadcastOverlay: (json) => void overlayMessages.push(json),
+      broadcastViewers: (json) => void viewerMessages.push(json),
+    },
     clock,
     random,
     config,
     chat: chatLink,
   })
   room.init(roomInit(options.claimKeyword ?? null))
-  return { db, sql, room, clock, alarm, connector, subscriptions, config, chatLink, viewerMessages }
+  return {
+    db,
+    sql,
+    room,
+    clock,
+    alarm,
+    connector,
+    subscriptions,
+    config,
+    chatLink,
+    viewerMessages,
+    liveMessages,
+    overlayMessages,
+  }
 }
 
 /**
@@ -681,13 +700,28 @@ describe("chat claim", () => {
 })
 
 describe("chat watch lifetime", () => {
-  it("opens when the draw leaves a winner waiting and closes once the winner claimed", async () => {
+  it("opens when the draw leaves a winner waiting and stays open after the winner claimed", async () => {
     const { room, connector, winner } = await drawnRoom()
     expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
 
     room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
 
-    expect(connector.sockets.map((socket) => socket.closed)).toEqual([true])
+    expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
+  })
+
+  it("closes at the end of the reroll window after the last claim time, not before", async () => {
+    const { room, clock, connector, drawnAt, winner } = await drawnRoom({
+      env: { EVENTSUB_SUBSCRIBE_SECONDS: "100000", REROLL_WINDOW_SECONDS: "10" },
+    })
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+
+    clock.advance(drawnAt + 310_000 - clock.now())
+    room.onAlarm()
+    expect(connector.sockets[0]?.closed).toBe(false)
+
+    clock.advance(1)
+    room.onAlarm()
+    expect(connector.sockets[0]?.closed).toBe(true)
   })
 
   it("does not open for a room that is not drawn", () => {
@@ -706,32 +740,45 @@ describe("chat watch lifetime", () => {
     expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
   })
 
-  it("opens again when a reroll gives a new winner after the claim time of the old one ended", async () => {
+  it("keeps its socket for the new winner a reroll gives after the claim time of the old one ended", async () => {
     const { room, clock, connector } = await drawnRoom({
       env: { EVENTSUB_SUBSCRIBE_SECONDS: "1000" },
     })
     clock.advance(300_001)
     room.onAlarm()
-    expect(connector.sockets.map((socket) => socket.closed)).toEqual([true])
+    expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
 
     await room.reroll(0)
 
-    expect(connector.sockets.map((socket) => socket.closed)).toEqual([true, false])
+    expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
   })
 
-  it("closes when the claim time is over", async () => {
+  it("keeps watching when the claim time is over and closes when the reroll window ends", async () => {
     const { room, clock, connector, drawnAt } = await drawnRoom({
-      env: { EVENTSUB_SUBSCRIBE_SECONDS: "1000" },
+      env: { EVENTSUB_SUBSCRIBE_SECONDS: "100000", REROLL_WINDOW_SECONDS: "10" },
     })
 
-    clock.advance(300_000)
+    clock.advance(drawnAt + 310_000 - clock.now())
     room.onAlarm()
-    expect(clock.now()).toBe(drawnAt + 300_000)
     expect(connector.sockets[0]?.closed).toBe(false)
 
     clock.advance(1)
     room.onAlarm()
     expect(connector.sockets[0]?.closed).toBe(true)
+  })
+
+  it("wakes the room one past the end of the reroll window when nothing else is due", async () => {
+    const { room, clock, alarm, drawnAt } = await drawnRoom({
+      env: {
+        EVENTSUB_SUBSCRIBE_SECONDS: "100000",
+        MIRROR_RETRY_SECONDS: "100000",
+        REROLL_WINDOW_SECONDS: "10",
+      },
+    })
+    clock.advance(drawnAt + 300_001 - clock.now())
+    room.onAlarm()
+
+    expect(alarm.at).toBe(drawnAt + 310_001)
   })
 
   it("wakes the room one past the claim time when nothing else is due", async () => {
@@ -759,7 +806,7 @@ describe("chat watch lifetime", () => {
     const revived = new GiveawayRoom({
       sql,
       alarm,
-      live: { broadcast: () => {}, broadcastViewers: () => {} },
+      live: { broadcast: () => {}, broadcastOverlay: () => {}, broadcastViewers: () => {} },
       clock,
       random,
       config,
@@ -875,7 +922,147 @@ describe("chat claim unavailable", () => {
   })
 })
 
+describe("winner chat", () => {
+  const longLived = {
+    EVENTSUB_KEEPALIVE_GRACE_SECONDS: "100000",
+    EVENTSUB_CONNECTION_MAX_SECONDS: "100000",
+  }
+
+  it("shows the waiting winner's message under the name of their entry", async () => {
+    const { room, socket, winner, clock } = await connectedRoom({ claimKeyword: "!claim" })
+
+    socket?.receive(chat(winner, "hello chat"))
+
+    expect(room.liveSnapshot().winnerChat).toEqual([
+      { name: `Name${winner}`, text: "hello chat", at: clock.now() },
+    ])
+  })
+
+  it("shows a message of a winner who already claimed", async () => {
+    const { room, socket, winner } = await connectedRoom()
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+
+    socket?.receive(chat(winner, "thanks"))
+
+    expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["thanks"])
+  })
+
+  it("drops the message of a chatter who holds no pick", async () => {
+    const { room, socket, loser } = await connectedRoom()
+
+    socket?.receive(chat(loser, "hi"))
+    socket?.receive(chat("999", "hi"))
+
+    expect(room.liveSnapshot().winnerChat).toEqual([])
+  })
+
+  it("keeps the newest max messages when max + 1 arrive, newest last", async () => {
+    const { room, socket, winner } = await connectedRoom({
+      claimKeyword: "!claim",
+      env: { LIVE_WINNER_CHAT_MAX: "2" },
+    })
+
+    for (const text of ["one", "two", "three"]) socket?.receive(chat(winner, text))
+
+    expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["two", "three"])
+  })
+
+  it("stops the rerolled chatter and shows the new winner", async () => {
+    const { room, socket, winner } = await connectedRoom({ claimKeyword: "!claim" })
+    await room.reroll(0)
+    const next = room.picks()[1]?.platformUserId ?? ""
+
+    socket?.receive(chat(winner, "still here"))
+    socket?.receive(chat(next, "my turn"))
+
+    expect(next).not.toBe(winner)
+    expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["my turn"])
+  })
+
+  it("keeps the messages after the claim time ended and still claims nothing", async () => {
+    const { room, socket, winner, clock } = await connectedRoom({ env: longLived })
+    clock.advance(300_001)
+
+    socket?.receive(chat(winner, "too late"))
+
+    expect(room.liveSnapshot()).toMatchObject({
+      winners: [{ claim: { state: "expired" } }],
+      winnerChat: [{ text: "too late" }],
+    })
+  })
+
+  it("forgets the messages when the watch closes at the end of the reroll window", async () => {
+    const { room, socket, winner, clock, drawnAt, connector } = await connectedRoom({
+      env: { ...longLived, REROLL_WINDOW_SECONDS: "10" },
+    })
+    socket?.receive(chat(winner, "gone soon"))
+    expect(room.liveSnapshot().winnerChat).toHaveLength(1)
+
+    clock.advance(drawnAt + 310_001 - clock.now())
+    room.onAlarm()
+
+    expect(connector.sockets[0]?.closed).toBe(true)
+    expect(room.liveSnapshot().winnerChat).toEqual([])
+  })
+
+  it("pushes the live page when a winner writes, and the overlay push has no chat", async () => {
+    const { socket, winner, liveMessages, overlayMessages, clock } = await connectedRoom({
+      claimKeyword: "!claim",
+    })
+    clock.advance(1_000)
+    const pushed = liveMessages.length
+
+    socket?.receive(chat(winner, "push me"))
+
+    expect(liveMessages).toHaveLength(pushed + 1)
+    expect(liveMessages.at(-1)).toContain("push me")
+    expect(overlayMessages.at(-1)).toContain("entrantsAfter")
+    expect(overlayMessages.at(-1)).not.toContain("push me")
+    expect(overlayMessages.at(-1)).not.toContain("winnerChat")
+  })
+
+  it("writes nothing to the room database for a message of a waiting winner", async () => {
+    const { db, socket, winner } = await connectedRoom({ claimKeyword: "!claim" })
+    const before = dump(db)
+
+    socket?.receive(chat(winner, "hello"))
+
+    expect(dump(db)).toBe(before)
+  })
+
+  it("writes nothing to the room database for a message of a claimed winner", async () => {
+    const { db, room, socket, winner } = await connectedRoom()
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    const before = dump(db)
+
+    socket?.receive(chat(winner, "hello"))
+
+    expect(dump(db)).toBe(before)
+  })
+
+  it("logs no message text", async () => {
+    const { socket, winner, loser } = await connectedRoom({ claimKeyword: "!claim" })
+    const logged = (["warn", "info", "log", "error"] as const).map((method) =>
+      spyOn(console, method).mockImplementation(() => {}),
+    )
+    const secret = "SECRET-WINNER-LINE-31337"
+
+    socket?.receive(chat(winner, secret))
+    socket?.receive(chat(loser, secret))
+
+    expect(JSON.stringify(logged.map((spy) => spy.mock.calls))).not.toContain(secret)
+  })
+})
+
 describe("chat claim queries", () => {
+  it("finds the name of a picked chatter through the unique entrant index", async () => {
+    const { db, winner } = await drawnRoom()
+
+    const details = plan(db, winnerChatNameSql, [winner])
+
+    expect(details.some((detail) => detail.includes("USING INDEX draws_by_entrant"))).toBe(true)
+  })
+
   it("finds the pick of a chatter through the unique entrant index", async () => {
     const { db, winner } = await drawnRoom()
 

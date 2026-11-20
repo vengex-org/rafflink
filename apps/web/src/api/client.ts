@@ -20,6 +20,7 @@ import type {
   RerollState,
   ViewerPush,
   ViewerWinner,
+  WinnerChatLine,
   WinnerClaim,
 } from "@rafflink/core/room/giveaway-room"
 import {
@@ -510,6 +511,10 @@ export function parseLiveSnapshot(source: Json): LiveSnapshot {
     entriesPerSecond: num(source, "entriesPerSecond"),
     lastNames: textList(source, "lastNames"),
     winners: list(source, "winners", parseWinner),
+    // The overlay route sends no winner chat; a present field is still checked in full.
+    winnerChat: Object.hasOwn(source, "winnerChat")
+      ? list(source, "winnerChat", parseChatLine)
+      : [],
     ...parseRerollState(source),
     roleRefreshFailures: num(source, "roleRefreshFailures"),
     eventSubFailures: num(source, "eventSubFailures"),
@@ -528,6 +533,10 @@ function parseRerollState(source: Json): RerollState {
     return { rerollOpen: true, rerollBlocked: null }
   }
   return { rerollOpen: false, rerollBlocked: blocked }
+}
+
+function parseChatLine(source: Json): WinnerChatLine {
+  return { name: text(source, "name"), text: text(source, "text"), at: num(source, "at") }
 }
 
 function parseWinner(source: Json): LiveWinner {

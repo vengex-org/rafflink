@@ -24,6 +24,7 @@ import {
   undrawnEntrantSql,
   recentEntriesCountSql,
   waitingPickOfChatterSql,
+  winnerChatNameSql,
 } from "./queries.ts"
 import {
   parseDraw,
@@ -47,6 +48,7 @@ export type RoomConfig = Pick<
   | "liveIntervalMs"
   | "liveLastNames"
   | "liveEntrantsPerPush"
+  | "liveWinnerChatMax"
   | "liveRateWindowSeconds"
   | "mirrorRetrySeconds"
   | "rerollWindowSeconds"
@@ -60,7 +62,7 @@ export interface RoomDeps {
   readonly clock: Clock
   readonly random: Random
   readonly config: RoomConfig
-  /** How this target reaches Twitch chat while a winner waits to claim. */
+  /** How this target reaches Twitch chat while the room watches its winners. */
   readonly chat: ChatLink
 }
 
@@ -168,6 +170,13 @@ export type RerollState =
   | { readonly rerollOpen: true; readonly rerollBlocked: null }
   | { readonly rerollOpen: false; readonly rerollBlocked: "window-over" | "nobody-left" | null }
 
+/** One chat message of a winner as the live page shows it; `name` is the display name of the winner's entry. */
+export interface WinnerChatLine {
+  readonly name: string
+  readonly text: string
+  readonly at: Instant
+}
+
 export type LiveSnapshot = RoomSummary
   & RerollState & {
     readonly title: string | null
@@ -175,6 +184,8 @@ export type LiveSnapshot = RoomSummary
     readonly entriesPerSecond: number
     readonly lastNames: readonly string[]
     readonly winners: readonly LiveWinner[]
+    /** The newest chat messages of winners, newest last; kept in room memory only. */
+    readonly winnerChat: readonly WinnerChatLine[]
     readonly roleRefreshFailures: number
     readonly eventSubFailures: number
   }
@@ -212,6 +223,12 @@ export interface EntrantsDelta {
 /** What every live page receives after a write: the snapshot and the new entrants. */
 export type LivePush = LiveSnapshot & { readonly entrantsAfter: EntrantsDelta }
 
+/** The snapshot as the OBS overlay sees it: viewers' chat text never reaches a shared screen. */
+export type OverlaySnapshot = Omit<LiveSnapshot, "winnerChat">
+
+/** {@link LivePush} for the overlay. */
+export type OverlayPush = OverlaySnapshot & { readonly entrantsAfter: EntrantsDelta }
+
 /**
  * The state and rules of one giveaway over its own SQLite database. The room owns the giveaway's
  * status: the caller mirrors it to the account store through {@link GiveawayRoom.onAlarm}.
@@ -231,7 +248,8 @@ export class GiveawayRoom {
   // Lost with the object; the first outcome after that is pushed again.
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
-  // Lost with the object; the first reroll window end after that is not pushed to the live pages.
+  // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
+  private winnerChat: readonly WinnerChatLine[] = []
 
   constructor(deps: RoomDeps) {
     this.sql = deps.sql
@@ -526,6 +544,7 @@ export class GiveawayRoom {
         recent === undefined ? 0 : new RowReader("entries", recent).int("c") / windowSeconds,
       lastNames,
       winners,
+      winnerChat: this.winnerChat,
       ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
@@ -618,12 +637,28 @@ export class GiveawayRoom {
     this.guarded("alarm", () => this.rearm())
   }
 
-  // The watcher runs while a winner waits to claim, until it gave up for this giveaway.
+  // The watcher runs from the draw until the reroll window after the last pick's claim time ends, as
+  // long as a pick is not rerolled and it did not give up for this giveaway. Closing forgets the messages.
   private syncChat(): void {
     const state = this.readState()
-    const waiting = state.status === "drawn" && this.nextClaimDeadline() !== null
-    if (waiting && !state.chatUnavailable) this.chat.open()
-    else this.chat.close()
+    const watching = state.status === "drawn" && !state.chatUnavailable && !this.chatWatchOver()
+    if (watching) {
+      this.chat.open()
+      return
+    }
+    this.chat.close()
+    this.forgetWinnerChat()
+  }
+
+  private chatWatchOver(): boolean {
+    const end = this.standingWindowEnd()
+    return end === null || this.clock.now() > end
+  }
+
+  private forgetWinnerChat(): void {
+    if (this.winnerChat.length === 0) return
+    this.winnerChat = []
+    this.pushLive()
   }
 
   /** The end of the soonest claim time among winners who may still claim, `null` when none waits. */
@@ -632,24 +667,46 @@ export class GiveawayRoom {
     return row === undefined ? null : new RowReader("draws", row).nullableInt("deadline")
   }
 
-  // A message from the waiting winner claims; every other message is dropped here, unread and unlogged.
+  // A message from a winner whose pick is not rerolled goes to the live page from memory only; one from
+  // the winner who may still claim also claims. Every other message is dropped here, unread and unlogged.
   private onChatMessage(message: ChatMessage): void {
-    const now = this.clock.now()
-    const pick = this.sql.exec(waitingPickOfChatterSql, [message.chatterUserId, now])[0]
-    if (pick === undefined) return
+    const shown = this.showWinnerChat(message)
+    const claimed = this.claimFromChat(message)
+    if (shown && !claimed) this.pushLive()
+  }
+
+  private showWinnerChat(message: ChatMessage): boolean {
+    const row = this.sql.exec(winnerChatNameSql, [message.chatterUserId])[0]
+    if (row === undefined) return false
+    const line: WinnerChatLine = {
+      name: new RowReader("entries", row).text("display_name"),
+      text: message.text,
+      at: this.clock.now(),
+    }
+    this.winnerChat = [...this.winnerChat, line].slice(-this.config.liveWinnerChatMax)
+    return true
+  }
+
+  private claimFromChat(message: ChatMessage): boolean {
+    const pick = this.sql.exec(waitingPickOfChatterSql, [
+      message.chatterUserId,
+      this.clock.now(),
+    ])[0]
+    if (pick === undefined) return false
     const state = this.readState()
     const { claimKeyword } = state.rules
     if (
       claimKeyword !== null
       && !message.text.toLowerCase().includes(claimKeyword.trim().toLowerCase())
     ) {
-      return
+      return false
     }
-    this.claim(
+    const outcome = this.claim(
       new RowReader("draws", pick).int("n"),
       { platform: state.platform, platformUserId: message.chatterUserId },
       "chat",
     )
+    return outcome.kind === "claimed"
   }
 
   // The watcher has already closed; the flag keeps the room from opening it again until a reroll.
@@ -667,8 +724,12 @@ export class GiveawayRoom {
     }
     this.lastPushAt = now
     this.pushDueAt = null
-    const push: LivePush = { ...this.liveSnapshot(), entrantsAfter: this.entrantsDelta() }
+    const snapshot = this.liveSnapshot()
+    const entrantsAfter = this.entrantsDelta()
+    const push: LivePush = { ...snapshot, entrantsAfter }
+    const overlayPush: OverlayPush = { ...overlaySnapshot(snapshot), entrantsAfter }
     this.live.broadcast(JSON.stringify(push))
+    this.live.broadcastOverlay(JSON.stringify(overlayPush))
     this.lastPushedSeq = this.headSeq()
   }
 
@@ -720,7 +781,11 @@ export class GiveawayRoom {
   // Counted from the latest deadline of every pick still standing, claimed ones too, so a claim never
   // pulls the end of the window back; `null` while no unclaimed pick is left to reroll.
   private rerollWindowEnd(): Instant | null {
-    if (this.lastClaimDeadline() === null) return null
+    return this.lastClaimDeadline() === null ? null : this.standingWindowEnd()
+  }
+
+  // The reroll window after the latest deadline of any pick that is not rerolled; `null` without one.
+  private standingWindowEnd(): Instant | null {
     const row = this.sql.exec(lastStandingDeadlineSql, [])[0]
     const last = row === undefined ? null : new RowReader("draws", row).nullableInt("deadline")
     return last === null ? null : last + this.config.rerollWindowSeconds * 1000
@@ -761,9 +826,10 @@ export class GiveawayRoom {
       open ? state.rolesRefreshAt : null,
       this.pushDueAt,
       state.mirrorPending ? (this.mirrorRetryAt ?? this.clock.now()) : null,
-      // One past the inclusive deadline, so the alarm finds the claim time over and closes the chat watch.
+      // One past the inclusive deadline, so the alarm finds the claim time over and pushes the viewers.
       claimDeadline === null ? null : claimDeadline + 1,
       this.rerollWindowWake(state),
+      this.chatWatchWake(state),
       this.chat.wakeAt(),
     ].filter((at): at is Instant => at !== null)
     if (wakeups.length === 0) this.alarm.clear()
@@ -776,6 +842,13 @@ export class GiveawayRoom {
     const end = this.rerollWindowEnd()
     if (end === null || end < this.clock.now() || !this.hasUndrawnEntrant()) return null
     return end + 1
+  }
+
+  // One past the end of the watch, so the alarm finds it over and closes the chat watch.
+  private chatWatchWake(state: RoomState): Instant | null {
+    if (state.status !== "drawn") return null
+    const end = this.standingWindowEnd()
+    return end === null || end < this.clock.now() ? null : end + 1
   }
 
   private guarded(effect: string, run: () => void): void {
@@ -804,6 +877,14 @@ const failureColumns = {
   "role-refresh": "role_refresh_failures",
   eventsub: "eventsub_failures",
 } as const satisfies Record<FailureKind, string>
+
+/** Drops the winner chat from a snapshot, for audiences that must not see viewers' messages. */
+export function overlaySnapshot({
+  winnerChat: _winnerChat,
+  ...rest
+}: LiveSnapshot): OverlaySnapshot {
+  return rest
+}
 
 function summarize(state: RoomState): RoomSummary {
   return {

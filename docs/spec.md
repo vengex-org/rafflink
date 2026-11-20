@@ -32,7 +32,7 @@ paid extra chances. This keeps it out of gambling law and inside Twitch's giveaw
 - YouTube and Kick sign-in (planned, see Platforms).
 - Paid plans, ads, sponsored giveaways.
 - "Chatted in the last N minutes" rule. The chat watch for claims (see Claim) could later feed it, but it
-  would have to run during the whole giveaway, not only the claim window.
+  would have to run during the whole giveaway, not only from the draw until the reroll window ends.
 - Winner form (for example a shipping address). Planned as M3, see Milestones.
 - Messages to chat. Rafflink never posts to chat; the streamer announces the winner.
 - A mobile app.
@@ -79,25 +79,30 @@ This applies to the Cloudflare target only. The VPS target has no daily request 
   any message from the winner's account counts; the streamer can require a keyword instead (for example
   `!claim`). The match is on the Twitch user id, not the display name, so a look-alike name cannot claim.
 
-**Chat watch.** Rafflink reads chat only during a claim window, from the draw until every current winner has
-claimed or their claim time ended:
+**Chat watch.** Rafflink reads chat from the draw until the giveaway is finished: the reroll window
+(`REROLL_WINDOW_SECONDS`, default one hour) after the latest claim time of a pick that is not rerolled. Claims
+happen only in the claim window; the rest of the watch shows the winners' newest messages on the live page:
 
 - The giveaway's Durable Object opens a Twitch EventSub WebSocket (`wss://eventsub.wss.twitch.tv/ws`) and
   subscribes to `channel.chat.message` for the streamer's channel, with the streamer's token (scope
   `user:read:chat`, the streamer is both broadcaster and reading user).
 - Each message from a current winner's user id within `claim_until` sets `claimed_at` and
-  `claimed_via = chat`. All other messages are dropped and not stored.
-- When no winner is waiting, the object closes the WebSocket. A reroll opens it again.
+  `claimed_via = chat`. The live page shows the newest messages (up to `LIVE_WINNER_CHAT_MAX`) of every winner
+  whose pick is not rerolled, claimed or not; they live in the room's memory only, never in SQL, D1 or logs,
+  and the overlay never receives them. All other messages are dropped and not stored.
+- A reroll stops the replaced winner's messages. The object closes the WebSocket, and forgets the messages,
+  when the reroll window ends or no pick is left to watch.
 - EventSub WebSocket rules: subscribe within 10 seconds of the welcome message, reconnect on
   `session_reconnect`, treat a missed keepalive as a dropped connection and reconnect.
 - Cost: messages arrive on an outgoing WebSocket, so they are not Worker or DO requests. The object stays awake
-  while the socket is open (no hibernation for outgoing sockets), about 40 GB-s per 5-minute claim window,
-  well inside the free 13,000 GB-s per day. To confirm in M1 against Cloudflare's billing docs.
+  while the socket is open (no hibernation for outgoing sockets), about 500 GB-s for the longest watch
+  (the 5-minute claim time plus up to 3600 s of reroll window, at 128 MB), so the free 13,000 GB-s per day cover
+  about 25 such giveaways. To confirm against Cloudflare's billing docs.
 - If the WebSocket cannot connect (token revoked, Twitch down), the live page says "Chat claim unavailable"
   and the streamer can mark a chat claim by hand as a fallback.
 - Known limits of EventSub over WebSocket:
   - Twitch allows at most 3 WebSocket connections per user token. A streamer with more than 3 giveaways that
-    have waiting winners at the same time gets "Chat claim unavailable" on the extra ones.
+    are being watched at the same time gets "Chat claim unavailable" on the extra ones.
   - Events sent while a connection is being replaced, or after it dropped, are not replayed. A winner's chat
     message in that gap is missed, and the winner has to claim with the button or the streamer marks it by
     hand.
@@ -403,7 +408,7 @@ of the id could be brute-forced into a list of who entered.
 - Entries are deleted 30 days after the giveaway closes (the deletion job comes in M2); the winner list, Merkle
   root and leaf list stay with the giveaway.
 - Rafflink asks only for read scopes and never posts to chat.
-- Chat is read only during claim windows. Messages are matched in memory and never stored.
+- Chat is read from the draw until the giveaway is finished. Messages are matched in memory and never stored or logged.
 
 ## Milestones
 
@@ -434,7 +439,7 @@ of the id could be brute-forced into a list of who entered.
 - Viewers sign in with the code flow plus a queue for the token endpoint.
 - Hosting: hosted service plus self-host; hosted starts on the free plan, moves to Paid by the rule in Hosting.
 - Winner: the streamer announces; the winner claims with the Claim button or by writing in chat, which
-  Rafflink detects over EventSub during the claim window. Rafflink never posts to chat.
+  Rafflink detects over EventSub during the claim window (the winner's later messages only show on the live page). Rafflink never posts to chat.
 - Winner form comes as M3, after hardening.
 - Short 5-character codes, link `rafflink.app/<code>`.
 - Domain: only `rafflink.app`.

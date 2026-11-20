@@ -70,7 +70,7 @@ beforeEach(async () => {
   room = new GiveawayRoom({
     sql: roomSql,
     alarm: { set: () => {}, clear: () => {} },
-    live: { broadcast: () => {}, broadcastViewers: () => {} },
+    live: { broadcast: () => {}, broadcastOverlay: () => {}, broadcastViewers: () => {} },
     clock,
     random: systemRandom,
     config,

@@ -93,7 +93,7 @@ register it once and copy two values into the config.
 You do not pick scopes in the console. Rafflink asks for them at sign-in:
 
 - streamers: `openid`, `channel:read:vips`, `moderation:read` (to know VIPs and moderators) and
-  `user:read:chat` (to watch the chat for claims);
+  `user:read:chat` (to watch the chat for claims and show the winners' messages);
 - viewers: `openid`, `user:read:subscriptions` and `user:read:follows` (to check who may enter and how many
   tickets they get).
 

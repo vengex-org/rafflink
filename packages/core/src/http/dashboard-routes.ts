@@ -6,7 +6,7 @@ import { generateCode } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
 import type { Usage } from "../ports.ts"
-import type { RerollOutcome, ClaimOutcome } from "../room/giveaway-room.ts"
+import { overlaySnapshot, type RerollOutcome, type ClaimOutcome } from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
 import { parseCreateGiveaway } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
@@ -161,7 +161,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     ) {
       return c.json({ error: "not-found" }, 404)
     }
-    return c.json(await deps.rooms.get(giveaway.id).liveSnapshot())
+    return c.json(overlaySnapshot(await deps.rooms.get(giveaway.id).liveSnapshot()))
   })
 
   return app

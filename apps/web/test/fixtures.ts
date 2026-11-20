@@ -50,6 +50,7 @@ export const liveSnapshot: LiveSnapshot = {
   entriesPerSecond: 1.5,
   lastNames: ["Ada", "Bob"],
   winners: [],
+  winnerChat: [],
   rerollOpen: false,
   rerollBlocked: null,
   roleRefreshFailures: 0,

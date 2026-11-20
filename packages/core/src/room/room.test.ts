@@ -39,6 +39,8 @@ const config = resolveConfig({
   ROLE_REFRESH_SECONDS: "300",
   MIRROR_RETRY_SECONDS: "30",
   REROLL_WINDOW_SECONDS: "600",
+  // The chat sockets of these tests never answer; the subscribe window must not wake the alarm.
+  EVENTSUB_SUBSCRIBE_SECONDS: "100000",
 })
 
 const rules: GiveawayRules = {
@@ -82,9 +84,13 @@ class TestAlarm implements Alarm {
 
 class TestHub implements LiveHub {
   readonly messages: string[] = []
+  readonly overlayMessages: string[] = []
   readonly viewerMessages: string[] = []
   broadcast(json: string): void {
     this.messages.push(json)
+  }
+  broadcastOverlay(json: string): void {
+    this.overlayMessages.push(json)
   }
   broadcastViewers(json: string): void {
     this.viewerMessages.push(json)
@@ -1086,6 +1092,10 @@ describe("public summary", () => {
 
     expect(room.summary().finished).toBe(true)
     expect(lastViewerPush(hub).finished).toBe(true)
+    // The chat watch of the claimed winner runs to the end of the reroll window.
+    expect(alarm.at).toBe(900_001)
+    clock.advance(600_000)
+    room.onAlarm()
     expect(alarm.at).toBeNull()
   })
 
