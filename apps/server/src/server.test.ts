@@ -181,6 +181,19 @@ describe("routes", () => {
     expect(await page.text()).toBe("<!doctype html><title>Rafflink</title>")
   })
 
+  it("caches a hashed bundle for a year and makes the page and other files revalidate", async () => {
+    const server = await launch({}, distWithIndex())
+
+    const bundle = await fetch(new URL("/index-abc123.js", server.url))
+    const file = await fetch(new URL("/app.js", server.url))
+    const home = await fetch(new URL("/", server.url))
+
+    expect(bundle.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
+    expect(file.headers.get("cache-control")).toBe("no-cache")
+    expect(home.headers.get("cache-control")).toBe("no-cache")
+    expect(await home.text()).toContain("<title>Rafflink</title>")
+  })
+
   it("keeps an unknown API path a JSON 404 even when the SPA is served", async () => {
     const server = await launch({}, distWithIndex())
 
@@ -286,6 +299,7 @@ function distWithIndex(): string {
   mkdirSync(dist)
   writeFileSync(join(dist, "index.html"), "<!doctype html><title>Rafflink</title>")
   writeFileSync(join(dist, "app.js"), "console.info('app')")
+  writeFileSync(join(dist, "index-abc123.js"), "console.info('bundle')")
   return dist
 }
 

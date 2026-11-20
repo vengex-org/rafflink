@@ -6,8 +6,11 @@ export interface ContractTarget {
   runValidateJob(): Promise<void>
 }
 
-/** Starts a fresh target with its own empty storage. `env` is the complete environment of the deployment. */
-export type StartTarget = (env: Record<string, string>) => Promise<ContractTarget>
+/**
+ * Starts a fresh target with its own empty storage. `env` is the complete environment of the deployment;
+ * `webDir` is the folder of the built web app it serves.
+ */
+export type StartTarget = (env: Record<string, string>, webDir: string) => Promise<ContractTarget>
 
 export interface ContractContext {
   readonly targetName: string

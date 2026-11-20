@@ -15,6 +15,22 @@ const required = {
 }
 
 describe("wrangler.jsonc", () => {
+  // A built file that reaches the Worker first is a billed request and, for a missing one, an HTML answer.
+  it("leaves every file type of the web app's public folder to the assets and sends every page to the Worker", async () => {
+    const { runWorkerFirst } = await readWranglerConfig()
+    const publicDir = fileURLToPath(new URL("../../web/public", import.meta.url))
+    const extensions = new Set(readdirSync(publicDir).map((name) => name.split(".").pop()))
+
+    expect(runWorkerFirst[0]).toBe("/*")
+    for (const extension of extensions) {
+      expect(runWorkerFirst).toContain(`!/*.${extension}`)
+    }
+    expect(runWorkerFirst).toContain("!/*.js")
+    expect(runWorkerFirst).toContain("!/*.css")
+    expect(runWorkerFirst).not.toContain("!/*.txt")
+    expect(runWorkerFirst).not.toContain("!/*.xml")
+  })
+
   it("cron string matches config validate period", async () => {
     const { crons } = await readWranglerConfig()
     const { validatePeriodSeconds } = resolveConfig(required)

@@ -4,6 +4,7 @@ import { entryScenarios } from "./entry.scenarios.ts"
 import { giveawayScenarios } from "./giveaway.scenarios.ts"
 import { liveScenarios } from "./live.scenarios.ts"
 import { operationsScenarios } from "./operations.scenarios.ts"
+import { pageScenarios } from "./page.scenarios.ts"
 import { queueScenarios } from "./queue.scenarios.ts"
 import type { StartTarget } from "./target.ts"
 
@@ -20,5 +21,6 @@ export function defineContract(targetName: string, startTarget: StartTarget): vo
     liveScenarios(context)
     chatClaimScenarios(context)
     operationsScenarios(context)
+    pageScenarios(context)
   })
 }

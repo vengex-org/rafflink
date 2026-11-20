@@ -1,25 +1,21 @@
 import { serveStatic, upgradeWebSocket } from "@hono/bun"
+import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
+import { staticCacheControl } from "@rafflink/core/http/static-headers"
 import { Hono, type MiddlewareHandler } from "hono"
 import { liveTopic } from "./local-room-directory.ts"
-
-/** Paths the HTTP app of core answers. */
-export const apiPrefixes = ["/api/", "/auth/"] as const
-
-/** Paths of the fake Twitch; without it they answer like any other unknown API path. */
-export const fakeTwitchPrefixes = ["/oauth2/", "/helix/", "/eventsub/"] as const
 
 export interface ServerAppOptions {
   /** The HTTP app of core. */
   readonly api: Hono
   /** Mounted under {@link fakeTwitchPrefixes} in dev only. */
   readonly fakeTwitch: Hono | null
-  /** The built SPA; null serves no files. */
+  /** The built SPA files except `index.html`, which the HTTP app of core answers as a page; null serves no files. */
   readonly staticDir: string | null
 }
 
 /**
  * Everything the Bun server answers except the dev SPA bundle: the API, WebSocket upgrades of the
- * live and overlay routes, the fake Twitch in dev, and the SPA files with an `index.html` fallback.
+ * live and overlay routes, the fake Twitch in dev, the SPA files, and the pages of core for every other path.
  */
 export function createServerApp(options: ServerAppOptions): Hono {
   const { api, fakeTwitch, staticDir } = options
@@ -34,12 +30,20 @@ export function createServerApp(options: ServerAppOptions): Hono {
     )
   }
   if (staticDir !== null) {
-    app.use("*", serveStatic({ root: staticDir }))
-    app.get("*", serveStatic({ root: staticDir, path: "index.html" }))
+    const files = serveStatic({
+      root: staticDir,
+      onFound: (_path, c) => c.header("Cache-Control", staticCacheControl(c.req.path)),
+    })
+    app.use("*", (c, next) => (isPagePath(c.req.path) ? next() : files(c, next)))
   }
   app.notFound((c) => api.fetch(c.req.raw))
 
   return app
+}
+
+/** The paths `serveStatic` would answer with `index.html` itself, bypassing the page of core. */
+function isPagePath(pathname: string): boolean {
+  return pathname.endsWith("/") || pathname === "/index.html"
 }
 
 interface Subscribable {

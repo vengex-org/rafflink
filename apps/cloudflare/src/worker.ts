@@ -1,6 +1,6 @@
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
-import { createApp, type AppDeps } from "@rafflink/core/http/create-app"
+import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import type { Hono } from "hono"
 import { createUsageMeter } from "./adapters/cloudflare-usage-meter.ts"
 import { DurableObjectRoomDirectory } from "./adapters/durable-object-room-directory.ts"
@@ -42,7 +42,15 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     usage: createUsageMeter(runtime.config, runtime.clock, (input, init) => fetch(input, init)),
     admins: new AdminDirectory(runtime.config, runtime.twitch),
   }
-  return createWorkerApp({ api: createApp(deps), rooms: env.ROOMS })
+  return createWorkerApp({ api: createApp(deps, indexTemplateOf(env.ASSETS)), rooms: env.ROOMS })
+}
+
+/** The asset binding serves `index.html` for `/`; its host is never contacted. */
+function indexTemplateOf(assets: Fetcher): SpaTemplateLoader {
+  return async () => {
+    const response = await assets.fetch("https://assets.invalid/")
+    return response.ok ? response.text() : null
+  }
 }
 
 async function validateTokens(env: WorkerEnv): Promise<void> {

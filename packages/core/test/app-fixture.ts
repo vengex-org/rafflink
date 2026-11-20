@@ -288,7 +288,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     admins: new AdminDirectory(config, twitch),
   }
   return {
-    app: createApp(deps),
+    app: createApp(deps, null),
     deps,
     config,
     fake,

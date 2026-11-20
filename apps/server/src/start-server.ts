@@ -4,7 +4,8 @@ import type { StreamerTokenDeps } from "@rafflink/core/accounts/streamer-token"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import type { ResolvedConfig } from "@rafflink/core/config"
-import { createApp, type AppDeps } from "@rafflink/core/http/create-app"
+import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
+import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { applyMigrations } from "@rafflink/core/room/migrate"
@@ -22,7 +23,7 @@ import { BunSocketConnector } from "./bun-socket-connector.ts"
 import { openDatabase } from "./database.ts"
 import { LocalRoomDirectory } from "./local-room-directory.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
-import { apiPrefixes, createServerApp, fakeTwitchPrefixes } from "./server-app.ts"
+import { createServerApp } from "./server-app.ts"
 import { TimerAlarm } from "./timer-alarm.ts"
 
 export interface ServerOptions {
@@ -90,7 +91,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null
-  const app = createServerApp({ api: createApp(deps), fakeTwitch, staticDir })
+  const app = createServerApp({
+    api: createApp(deps, staticDir === null ? null : indexTemplateOf(staticDir)),
+    fakeTwitch,
+    staticDir,
+  })
   const server = Bun.serve({
     port: config.port,
     fetch: (request, bunServer) => app.fetch(request, bunServer),
@@ -140,6 +145,11 @@ function remoteQueue(queue: TokenQueue): TokenQueueStub {
     poll: async (ticket) => queue.poll(ticket),
     stats: async () => queue.stats(),
   }
+}
+
+function indexTemplateOf(staticDir: string): SpaTemplateLoader {
+  const index = Bun.file(join(staticDir, "index.html"))
+  return async () => ((await index.exists()) ? index.text() : null)
 }
 
 // Loaded here, not at the top of the module, so a production server never reads the fake.

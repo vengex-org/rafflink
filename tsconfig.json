@@ -15,6 +15,14 @@
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
-  "include": ["packages/*/src", "packages/*/test", "apps/*/src", "apps/*/test", "test", "scripts"],
+  "include": [
+    "packages/*/src",
+    "packages/*/test",
+    "apps/*/src",
+    "apps/*/test",
+    "apps/*/scripts",
+    "test",
+    "scripts"
+  ],
   "exclude": ["apps/cloudflare/src"]
 }

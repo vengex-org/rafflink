@@ -211,9 +211,30 @@ Optional usage meter: the Cloudflare free plan allows 100,000 Worker requests a 
 the admin page and warn streamers when fewer than 25,000 are left, add `CLOUDFLARE_ACCOUNT_ID` as a var and
 set `CLOUDFLARE_API_TOKEN` (a token with the Account Analytics read permission) as a secret. Without them the
 meter reports no limit. On a paid plan raise `WORKER_REQUEST_LIMIT` and `DURABLE_OBJECT_REQUEST_LIMIT`.
+Every page load is a Worker request (the Worker adds the link preview of a giveaway to the page); the built
+scripts, styles and icons are served by Cloudflare without it.
 
 To upgrade, pull the new code, run `bun run build`, apply new migrations with
 `bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`.
+
+## Security headers, link previews and OBS
+
+Every API response and every page carries a Content-Security-Policy (`default-src 'self'`, no inline styles,
+`frame-ancestors 'none'`), `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and
+`Cross-Origin-Opener-Policy`; `Strict-Transport-Security` is added when `PUBLIC_URL` is https. The one
+inline script of `index.html` (the theme) is allowed by its hash. The hash is computed from the page that is
+served and from the built `apps/web/dist/index.html` when it writes `_headers`, so editing the script needs
+no manual step; a test fails if the built page has a second inline script.
+
+The page of a giveaway link (`/<code>` and `/g/<code>`) gets its title, prize and streamer name in the title,
+Open Graph and Twitter tags, so a pasted link previews well. Every page except the home page answers
+`X-Robots-Tag: noindex, nofollow`. `/robots.txt` and `/sitemap.xml` are built from `PUBLIC_URL`.
+
+The OBS overlay is a browser source that opens `/overlay/...` as a top-level page, so
+`frame-ancestors 'none'` does not affect it. Do not embed the overlay in an iframe on another site.
+
+After changing the gift icon or the colors, run `bun run icons` in `apps/web` and commit the files in
+`apps/web/public`.
 
 ## License
 

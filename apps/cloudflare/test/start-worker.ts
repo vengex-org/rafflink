@@ -10,10 +10,10 @@ const d1Binding = "DB"
 
 /**
  * Starts the bundled Worker in Miniflare with its own in-memory D1 database and Durable Object
- * storage. `env` becomes the Worker's variables; the Worker reaches the fake Twitch on the host through
+ * storage. `env` becomes the Worker's variables, `webDir` its static assets; the Worker reaches the fake Twitch on the host through
  * the network service, which allows loopback addresses.
  */
-export const startWorker: StartTarget = async (env) => {
+export const startWorker: StartTarget = async (env, webDir) => {
   const [bundle, wrangler] = await Promise.all([bundleWorker(), readWranglerConfig()])
   const miniflare = new Miniflare({
     modules: [{ type: "ESModule", path: "worker.js", contents: bundle }],
@@ -23,6 +23,13 @@ export const startWorker: StartTarget = async (env) => {
     durableObjects: {
       ROOMS: { className: "GiveawayRoomDO", useSQLite: true },
       QUEUE: { className: "TokenQueueDO", useSQLite: true },
+    },
+    // The asset router of Miniflare makes draws fail with ECONNRESET, so the binding serves the page itself.
+    serviceBindings: {
+      [wrangler.assetsBinding]: async () =>
+        new Response(readFileSync(join(webDir, "index.html"), "utf8"), {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
     },
     bindings: env,
     outboundService: { network: { allow: ["public", "private", "local"], deny: [] } },

@@ -1,7 +1,21 @@
 import { describe, expect, it } from "bun:test"
+import { createHash } from "node:crypto"
+import { existsSync } from "node:fs"
 import { fileURLToPath } from "node:url"
+import { renderSpaHtml } from "../packages/core/src/lib/spa-html.ts"
 
 const root = new URL("../", import.meta.url)
+const web = new URL("apps/web/", root)
+const dist = new URL("dist/", web)
+
+let built = false
+
+function buildWeb(): void {
+  if (built) return
+  const build = Bun.spawnSync(["bun", "run", "build"], { cwd: fileURLToPath(web) })
+  expect(build.exitCode).toBe(0)
+  built = true
+}
 
 describe("repository", () => {
   it("is licensed under AGPL-3.0", async () => {
@@ -18,12 +32,62 @@ describe("repository", () => {
 
   // A relative asset URL resolves against /g/<code> and the SPA fallback answers it with HTML: a blank page.
   it("builds the web app with root-relative asset URLs so nested routes load", async () => {
-    const web = new URL("apps/web/", root)
-    const build = Bun.spawnSync(["bun", "run", "build"], { cwd: fileURLToPath(web) })
-    expect(build.exitCode).toBe(0)
-    const html = await Bun.file(new URL("dist/index.html", web)).text()
+    buildWeb()
+    const html = await Bun.file(new URL("index.html", dist)).text()
     const assets = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((match) => match[1])
     expect(assets.length).toBeGreaterThan(0)
     for (const asset of assets) expect(asset).toStartWith("/")
+  }, 60_000)
+
+  it("builds the favicons, the manifest and the headers file under stable names", async () => {
+    buildWeb()
+    const manifest: { icons: { src: string }[] } = await Bun.file(
+      new URL("site.webmanifest", dist),
+    ).json()
+
+    expect(manifest.icons.length).toBeGreaterThan(0)
+    for (const { src } of manifest.icons) expect(existsSync(new URL(src.slice(1), dist))).toBe(true)
+    for (const name of [
+      "favicon.svg",
+      "favicon-32.png",
+      "apple-touch-icon.png",
+      "icon-192.png",
+      "icon-512.png",
+      "icon-maskable-512.png",
+      "_headers",
+    ]) {
+      expect(existsSync(new URL(name, dist))).toBe(true)
+    }
+  }, 60_000)
+
+  // The CSP allows the inline theme script by hash, so a script edit without a new hash is a blank page.
+  it("allows the one inline script of the built page by its hash in the headers file", async () => {
+    buildWeb()
+    const html = await Bun.file(new URL("index.html", dist)).text()
+    const inline = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    const headers = await Bun.file(new URL("_headers", dist)).text()
+
+    expect(inline).toHaveLength(1)
+    const hash = createHash("sha256")
+      .update(inline[0]?.[1] ?? "")
+      .digest("base64")
+    expect(headers).toContain(`script-src 'self' 'sha256-${hash}';`)
+  }, 60_000)
+
+  // The rewriter finds its tags by name, so a tag the build drops or reorders would silently keep the home text.
+  it("keeps every tag the page rewriter writes in the built page", async () => {
+    buildWeb()
+    const html = await Bun.file(new URL("index.html", dist)).text()
+
+    const rendered = renderSpaHtml(html, {
+      url: "https://example.test/ABCDE",
+      image: "https://example.test/icon-512.png",
+      text: { title: 'T<&>"1', description: 'D<&>"2' },
+    })
+
+    expect(rendered.match(/T&lt;&amp;&gt;&quot;1/g)).toHaveLength(3)
+    expect(rendered.match(/D&lt;&amp;&gt;&quot;2/g)).toHaveLength(3)
+    expect(rendered.match(/https:\/\/example\.test\/ABCDE/g)).toHaveLength(2)
+    expect(rendered.match(/https:\/\/example\.test\/icon-512\.png/g)).toHaveLength(2)
   }, 60_000)
 })

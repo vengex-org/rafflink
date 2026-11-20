@@ -6,6 +6,7 @@ import type { LiveSnapshot } from "../../src/room/giveaway-room.ts"
 import { Browser } from "./browser.ts"
 import { clientCredentials, startFakeTwitch, users, type RunningFakeTwitch } from "./fake-twitch.ts"
 import { openSocket } from "./socket.ts"
+import { webFixture } from "./spa-fixture.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { waitFor } from "./wait.ts"
 
@@ -79,12 +80,16 @@ export class World {
   readonly twitch: RunningFakeTwitch = startFakeTwitch()
   private readonly targets: ContractTarget[] = []
   private readonly sockets: WebSocket[] = []
+  private readonly web = webFixture()
 
   constructor(private readonly context: ContractContext) {}
 
   /** Starts a target; `overrides` set the timing keys a scenario needs short. */
   async start(overrides: Readonly<Record<string, string>> = {}): Promise<ContractTarget> {
-    const target = await this.context.startTarget({ ...this.baseEnv(), ...overrides })
+    const target = await this.context.startTarget(
+      { ...this.baseEnv(), ...overrides },
+      this.web.path,
+    )
     this.targets.push(target)
     return target
   }
@@ -93,6 +98,7 @@ export class World {
     for (const socket of this.sockets) socket.close()
     for (const target of this.targets) await target.stop()
     await this.twitch.stop()
+    this.web.remove()
   }
 
   waitFor(check: () => boolean | Promise<boolean>, what: string): Promise<void> {
