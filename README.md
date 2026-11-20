@@ -95,8 +95,11 @@ The rest of the required config:
 
 - `PUBLIC_URL`: the origin people open, for example `https://rafflink.example.com`, with no trailing slash.
   It must match the redirect URLs above.
-- `ADMIN_TWITCH_IDS`: your numeric Twitch user id (not the login name). Any "Twitch user id lookup" tool
-  shows it.
+- `ADMIN_TWITCH_IDS`: who may open the admin page, comma separated. Each entry is a numeric Twitch user
+  id, a Twitch login, or a channel link such as `https://twitch.tv/<login>`. Logins and links are looked up
+  at Twitch on the first admin check, using the app's own credentials; while Twitch does not answer, the
+  admin page stays closed. The first lookup logs the resolved ids: copy them into this setting, because an
+  id never changes and needs no lookup.
 - `SESSION_SECRET`: a long random string, for example the output of `openssl rand -base64 32`.
 - `TOKEN_SEAL_KEYS`: the key that encrypts stored streamer tokens, written as `<key id>:<32 random bytes in
   base64>`, for example `k1:` followed by the output of `openssl rand -base64 32`. To rotate, put the new key
@@ -173,7 +176,7 @@ You need a Cloudflare account with Workers and D1. Run the `wrangler` commands i
    "vars": {
      "PUBLIC_URL": "https://rafflink.example.com",
      "TWITCH_CLIENT_ID": "<client id>",
-     "ADMIN_TWITCH_IDS": "<your numeric Twitch user id>",
+     "ADMIN_TWITCH_IDS": "<your Twitch user id, login or channel link>",
    },
    ```
 

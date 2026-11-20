@@ -4,6 +4,8 @@ import type { FakeState, FakeUser } from "../state.ts"
 export const ISSUER = "https://id.twitch.tv/oauth2"
 /** Twitch user access tokens last about four hours. */
 export const ACCESS_TOKEN_TTL_SECONDS = 14_400
+/** Twitch app access tokens last about two months. */
+const APP_TOKEN_TTL_SECONDS = 5_184_000
 
 export function issueTokens(state: FakeState, userId: string, scopes: string[]) {
   const accessToken = crypto.randomUUID()
@@ -17,6 +19,13 @@ export function issueTokens(state: FakeState, userId: string, scopes: string[]) 
     scope: scopes,
     token_type: "bearer",
   }
+}
+
+/** An app access token (client credentials grant): no user, no refresh token. */
+export function issueAppToken(state: FakeState) {
+  const accessToken = crypto.randomUUID()
+  state.accessTokens.set(accessToken, { userId: null, scopes: [], revoked: false })
+  return { access_token: accessToken, expires_in: APP_TOKEN_TTL_SECONDS, token_type: "bearer" }
 }
 
 export async function signIdToken(state: FakeState, user: FakeUser, nonce: string | undefined) {

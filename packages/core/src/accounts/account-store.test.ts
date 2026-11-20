@@ -40,6 +40,7 @@ function signIn(overrides: Partial<StreamerSignIn> = {}): StreamerSignIn {
     platform: "twitch",
     platformUserId: "200",
     login: "streamer",
+    displayName: "Streamer",
     sealedRefreshToken: "sealed-1",
     scopes: "openid",
     now: 1000,
@@ -81,21 +82,28 @@ describe("AccountStore streamers", () => {
       platform: "twitch",
       platformUserId: "200",
       login: "streamer",
+      displayName: "Streamer",
     })
     expect(
       sqlRows(db, "SELECT streamer_id, refresh_token_enc, scopes FROM streamer_tokens"),
     ).toEqual([{ streamer_id: "s1", refresh_token_enc: "sealed-1", scopes: "openid" }])
   })
 
-  it("keeps the id, updates the login and replaces the token on a second sign-in", async () => {
+  it("keeps the id, updates the login and display name and replaces the token on a second sign-in", async () => {
     const { db, store } = setup()
     await store.signInStreamer(signIn())
 
     const again = await store.signInStreamer(
-      signIn({ id: "other", login: "renamed", sealedRefreshToken: "sealed-2", now: 2000 }),
+      signIn({
+        id: "other",
+        login: "renamed",
+        displayName: "Renamed",
+        sealedRefreshToken: "sealed-2",
+        now: 2000,
+      }),
     )
 
-    expect(again).toMatchObject({ id: "s1", login: "renamed" })
+    expect(again).toMatchObject({ id: "s1", login: "renamed", displayName: "Renamed" })
     expect(sqlRows(db, "SELECT refresh_token_enc, validated_at FROM streamer_tokens")).toEqual([
       { refresh_token_enc: "sealed-2", validated_at: 2000 },
     ])
@@ -175,7 +183,7 @@ describe("AccountStore streamer tokens", () => {
 })
 
 describe("AccountStore giveaways", () => {
-  it("reads back what was inserted with the broadcaster id and an open status", async () => {
+  it("reads back what was inserted with the broadcaster id, the streamer's name and an open status", async () => {
     const { store } = await withStreamers()
 
     expect(await store.insertGiveaway(giveaway())).toBe("inserted")
@@ -184,6 +192,7 @@ describe("AccountStore giveaways", () => {
       ...giveaway(),
       platform: "twitch",
       broadcasterId: "200",
+      streamerName: "Streamer",
       status: "open",
     })
   })

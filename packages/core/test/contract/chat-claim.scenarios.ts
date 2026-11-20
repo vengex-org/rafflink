@@ -1,4 +1,5 @@
 import { expect } from "bun:test"
+import type { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { eventSubPath, scenario, type CreatedGiveaway, type World } from "./world.ts"
@@ -100,8 +101,10 @@ export function chatClaimScenarios(context: ContractContext): void {
   )
 
   scenario(context, "a revoked chat subscription shows Chat claim unavailable", async (world) => {
-    const { giveaway } = await drawnWithOneWinner(world, await world.start())
+    const { giveaway, viewer } = await drawnWithOneWinner(world, await world.start())
     await waitForSubscription(world)
+    const meOf = async () => (await viewer.request(`/api/g/${giveaway.code}/me`)).json()
+    expect(await meOf()).toMatchObject({ kind: "won", chatClaimAvailable: true })
 
     world.twitch.fake.control.revokeChatSubscriptions()
     await world.waitFor(
@@ -110,6 +113,7 @@ export function chatClaimScenarios(context: ContractContext): void {
     )
 
     expect(await world.live(giveaway)).toMatchObject({ eventSubFailures: 1 })
+    expect(await meOf()).toMatchObject({ kind: "won", chatClaimAvailable: false })
     expect(world.twitch.fake.control.eventSubConnections()).toBe(0)
   })
 
@@ -158,13 +162,13 @@ export function chatClaimScenarios(context: ContractContext): void {
 async function drawnWithOneWinner(
   world: World,
   target: ContractTarget,
-): Promise<{ giveaway: CreatedGiveaway }> {
+): Promise<{ giveaway: CreatedGiveaway; viewer: Browser }> {
   const giveaway = await world.createGiveaway(target)
-  await world.enter(target, giveaway.code, users.viewer.id)
+  const { viewer } = await world.enter(target, giveaway.code, users.viewer.id)
   await world.closeGiveaway(giveaway)
   const drawn = await world.drawWinners(giveaway, 1)
   expect(drawn.status).toBe(200)
-  return { giveaway }
+  return { giveaway, viewer }
 }
 
 function waitForSubscription(world: World): Promise<void> {

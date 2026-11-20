@@ -387,3 +387,43 @@ describe("reconnect delay", () => {
     ])
   })
 })
+
+describe("live page: overlay link", () => {
+  it("shows the overlay link with the OBS steps when the live answer carries the token", async () => {
+    const copied = stubClipboard(false)
+    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(
+      await view.findByText("In OBS, find the Sources box and press the + button."),
+    ).toBeTruthy()
+    const field = view.getByLabelText("Overlay link")
+    expect(field instanceof HTMLInputElement && field.value).toBe(
+      "http://rafflink.test/overlay/gid-1/tok-1",
+    )
+    fireEvent.click(view.getByRole("button", { name: "Copy overlay link" }))
+    await view.findByText("Copied!")
+    expect(copied).toEqual(["http://rafflink.test/overlay/gid-1/tok-1"])
+  })
+
+  it("keeps the overlay link when a socket push arrives", async () => {
+    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("Ada")
+    act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, lastNames: ["Cy"] }))
+
+    expect(await view.findByText("Cy")).toBeTruthy()
+    expect(view.getByLabelText("Overlay link")).toBeTruthy()
+  })
+
+  it("shows no overlay link when the answer carries no token", async () => {
+    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+
+    await view.findByText("Ada")
+    expect(view.queryByLabelText("Overlay link")).toBeNull()
+  })
+})

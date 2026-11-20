@@ -1,4 +1,5 @@
 import { expect } from "bun:test"
+import { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { scenario, type CreatedGiveaway } from "./world.ts"
@@ -16,6 +17,15 @@ export function giveawayScenarios(context: ContractContext): void {
       expect(page.poll).toEqual({ intervalMs: 2000, maxMs: 60_000 })
     },
   )
+
+  scenario(context, "the giveaway page names the streamer by display name", async (world) => {
+    const target = await world.start()
+    const giveaway = await world.createGiveaway(target)
+
+    const page = await (await fetch(new URL(`/api/g/${giveaway.code}`, target.url))).json()
+
+    expect(page).toMatchObject({ streamerName: users.streamer.displayName })
+  })
 
   scenario(context, "a giveaway without a title and a prize shows neither", async (world) => {
     const target = await world.start()
@@ -119,14 +129,14 @@ export function giveawayScenarios(context: ContractContext): void {
     await world.closeGiveaway(giveaway)
     await world.drawWinners(giveaway, 1)
 
-    const page: { win: { n: number; claimRemainingMs: number; claim: { state: string } } } = await (
-      await entered.viewer.request(`/api/g/${giveaway.code}`)
+    const me: { claimRemainingMs: number } = await (
+      await entered.viewer.request(`/api/g/${giveaway.code}/me`)
     ).json()
     const claimed = await entered.viewer.postJson(`/api/g/${giveaway.code}/claim`, {})
 
-    expect(page.win).toMatchObject({ n: 0, claim: { state: "waiting" } })
-    expect(page.win.claimRemainingMs).toBeGreaterThan(0)
-    expect(page.win.claimRemainingMs).toBeLessThanOrEqual(120_000)
+    expect(me).toMatchObject({ kind: "won", n: 0, claim: { state: "waiting" } })
+    expect(me.claimRemainingMs).toBeGreaterThan(0)
+    expect(me.claimRemainingMs).toBeLessThanOrEqual(120_000)
     expect(claimed.status).toBe(200)
     expect(await claimed.json()).toEqual({ kind: "claimed" })
     expect((await world.live(giveaway)).winners[0]?.claim).toEqual({
@@ -134,6 +144,30 @@ export function giveawayScenarios(context: ContractContext): void {
       via: "rafflink",
     })
   })
+
+  scenario(
+    context,
+    "a returning viewer sees the entry and then the result from the cookie alone",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+      const winner = await world.enter(target, giveaway.code, users.viewer.id)
+      const loser = await world.enter(target, giveaway.code, users.viewer2.id)
+      const stranger = new Browser(target.url)
+      const meOf = async (browser: Browser) =>
+        (await browser.request(`/api/g/${giveaway.code}/me`)).json()
+
+      const entered = await meOf(winner.viewer)
+      const signedOut = await meOf(stranger)
+      await world.closeGiveaway(giveaway)
+      await world.drawWinners(giveaway, 1)
+      const results = [await meOf(winner.viewer), await meOf(loser.viewer)]
+
+      expect(entered).toMatchObject({ kind: "entered", entry: { group: "viewer", tickets: 1 } })
+      expect(signedOut).toEqual({ kind: "signed-out" })
+      expect(results.map((result) => result.kind).toSorted()).toEqual(["not-won", "won"])
+    },
+  )
 
   scenario(context, "a claim after the claim time is refused", async (world) => {
     const target = await world.start()

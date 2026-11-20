@@ -73,6 +73,23 @@ export function liveScenarios(context: ContractContext): void {
     },
   )
 
+  scenario(
+    context,
+    "the owner's live JSON carries the overlay token and the overlay's does not",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+
+      const owner = await (await giveaway.streamer.request(`/api/live/${giveaway.id}`)).json()
+      const overlay = await (
+        await fetch(new URL(`/api/overlay/${giveaway.id}/${giveaway.overlayToken}`, target.url))
+      ).json()
+
+      expect(owner.overlayToken).toBe(giveaway.overlayToken)
+      expect(overlay.overlayToken).toBeUndefined()
+    },
+  )
+
   scenario(context, "the overlay with a wrong token answers 404", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)

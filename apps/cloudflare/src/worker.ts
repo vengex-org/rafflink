@@ -1,3 +1,4 @@
+import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
 import { createApp, type AppDeps } from "@rafflink/core/http/create-app"
 import type { Hono } from "hono"
@@ -39,6 +40,7 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     rooms: new DurableObjectRoomDirectory(env.ROOMS),
     queue: durableObjectTokenQueue(env.QUEUE),
     usage: createUsageMeter(runtime.config, runtime.clock, (input, init) => fetch(input, init)),
+    admins: new AdminDirectory(runtime.config, runtime.twitch),
   }
   return createWorkerApp({ api: createApp(deps), rooms: env.ROOMS })
 }

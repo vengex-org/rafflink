@@ -116,7 +116,10 @@ describe("language", () => {
       [1204, "Zapísalo sa 1 204 ľudí"],
     ] as const
     for (const [entrantCount, text] of counts) {
-      mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, entrantCount }) })
+      mockFetch({
+        "GET /api/g/ABCDE": () => ok({ ...giveaway, entrantCount }),
+        "GET /api/g/ABCDE/me": () => ok({ kind: "signed-out" }),
+      })
       const view = renderApp("/ABCDE")
       const found = await view.findByText(
         (_, element) => element?.textContent?.replace(/\s/g, " ") === text,

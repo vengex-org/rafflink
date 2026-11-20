@@ -8,3 +8,6 @@ export function overlayUrl(id: string, overlayToken: string): string {
     window.location.origin,
   ).href
 }
+
+/** The README section that lists the Twitch app settings, including the redirect URLs. */
+export const setupGuideUrl = "https://github.com/vengex-org/rafflink#twitch-app-registration"

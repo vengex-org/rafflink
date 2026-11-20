@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite"
 import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
 import type { Hono } from "hono"
+import { AdminDirectory } from "../src/admin/admin-directory.ts"
 import { AccountStore } from "../src/accounts/account-store.ts"
 import { resolveConfig, type ResolvedConfig } from "../src/config.ts"
 import type { AppDeps } from "../src/http/deps.ts"
@@ -141,6 +142,9 @@ class InProcessRoomStub implements RoomStub {
   async summary() {
     return this.room.summary()
   }
+  async entryOf(...args: Parameters<GiveawayRoom["entryOf"]>) {
+    return this.room.entryOf(...args)
+  }
   async close() {
     return this.room.close()
   }
@@ -278,6 +282,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     queue: asRemote(queue),
     usage,
     keyRing: await openKeyRing([sealKey]),
+    admins: new AdminDirectory(config, twitch),
   }
   return {
     app: createApp(deps),

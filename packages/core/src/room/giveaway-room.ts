@@ -14,6 +14,7 @@ import {
   type ChatWatcherConfig,
 } from "./chat-watcher.ts"
 import {
+  entryOfSql,
   lastNamesSql,
   nextClaimDeadlineSql,
   recentEntriesCountSql,
@@ -118,6 +119,8 @@ export interface RoomSummary {
   readonly closesAt: Instant | null
   readonly entrantCount: number
   readonly ticketTotal: number
+  /** No chat claim is possible: the chat watch gave up, so a winner can only claim on the page or by the streamer's hand. */
+  readonly chatClaimUnavailable: boolean
 }
 
 /** A winner's claim as the live page shows it. */
@@ -144,8 +147,6 @@ export interface LiveSnapshot extends RoomSummary {
   readonly winners: readonly LiveWinner[]
   readonly roleRefreshFailures: number
   readonly eventSubFailures: number
-  /** The live page shows "Chat claim unavailable"; the streamer marks claims by hand. */
-  readonly chatClaimUnavailable: boolean
 }
 
 /**
@@ -211,10 +212,7 @@ export class GiveawayRoom {
       if (state.status !== "open" || (state.closesAt !== null && now >= state.closesAt)) {
         return { kind: "closed" }
       }
-      const existing = this.sql.exec(
-        "SELECT group_name, tickets, entered_at FROM entries WHERE platform = ? AND platform_user_id = ?",
-        [state.platform, viewer.platformUserId],
-      )[0]
+      const existing = this.sql.exec(entryOfSql, [state.platform, viewer.platformUserId])[0]
       if (existing !== undefined) return { kind: "already-in", entry: parseEntry(existing) }
 
       const eligibility = evaluateEligibility(
@@ -252,6 +250,12 @@ export class GiveawayRoom {
 
   summary(): RoomSummary {
     return summarize(this.readState())
+  }
+
+  /** The viewer's entry, `null` when they did not enter. */
+  entryOf(viewer: Identity): EntrySummary | null {
+    const row = this.sql.exec(entryOfSql, [viewer.platform, viewer.platformUserId])[0]
+    return row === undefined ? null : parseEntry(row)
   }
 
   /** Stops entries. Idempotent: closing a room that is not open reports its status. */
@@ -440,7 +444,6 @@ export class GiveawayRoom {
       winners,
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
-      chatClaimUnavailable: state.chatUnavailable,
     }
   }
 
@@ -625,6 +628,7 @@ function summarize(state: RoomState): RoomSummary {
     closesAt: state.closesAt,
     entrantCount: state.entrantCount,
     ticketTotal: state.ticketTotal,
+    chatClaimUnavailable: state.chatUnavailable,
   }
 }
 

@@ -38,6 +38,16 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "home.problem.invalidState": "Prihlásenie vypršalo. Skús to prosím znova.",
   "home.problem.tryAgain": "Twitch neodpovedal. Skús to prosím znova.",
 
+  "oauthError.title": "Prihlásenie cez Twitch zlyhalo",
+  "oauthError.access_denied": "Prihlásenie cez Twitch si zrušil.",
+  "oauthError.redirect_mismatch":
+    "Táto inštalácia Rafflinku nie je v konzole pre vývojárov Twitchu nastavená správne. Prevádzkovateľ musí doplniť adresy presmerovania.",
+  "oauthError.setupLink": "Pozri kroky nastavenia aplikácie na Twitchi",
+  "oauthError.generic": "Twitch ťa nedokázal prihlásiť.",
+  "oauthError.code": "Kód chyby: {code}",
+  "oauthError.tryAgain": "Skúsiť znova",
+  "oauthError.dismiss": "Zavrieť",
+
   "admin.title": "Administrácia",
   "admin.only.title": "Len pre administrátorov",
   "admin.only.text": "Tento účet na Twitchi nie je administrátor.",
@@ -64,6 +74,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "overlay.code": "Kód {code}",
   "overlay.winners": "Víťazi",
   "giveaway.fallbackName": "Súťaž {code}",
+  "giveaway.by": "od {name}",
 
   "status.open": "Zápis je otvorený",
   "status.closed": "Zápis je uzavretý",
@@ -83,6 +94,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "reason.account-too-young": "Tvoj účet na Twitchi je pre túto súťaž príliš nový.",
   "reason.no-tickets": "Tvoja skupina v tejto súťaži nemá žiadne lístky.",
   "reasonHelp.broadcaster": "Na zapojenie sa prihlás iným účtom na Twitchi.",
+  "entry.otherAccount": "Použiť iný účet na Twitchi",
   "reasonHelp.subs-only": "Predplať si kanál na Twitchi a potom tento odkaz otvor znova.",
   "reasonHelp.followers-only": "Začni kanál sledovať na Twitchi a potom tento odkaz otvor znova.",
   "reasonHelp.account-too-young":
@@ -213,6 +225,14 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "entry.already.detail": "Tvoj prvý zápis zostáva v platnosti. Nemusíš sa zapisovať znova.",
   "entry.already.help":
     "Streamer žrebuje víťaza naživo. Nechaj túto stránku otvorenú alebo sa vráť neskôr.",
+  "entry.in.tickets": "Tvoj zápis: {tickets} {role}.",
+  "entry.role.viewer": "ako divák",
+  "entry.role.follower": "ako sledovateľ",
+  "entry.role.sub_t1": "ako predplatiteľ úrovne 1",
+  "entry.role.sub_t2": "ako predplatiteľ úrovne 2",
+  "entry.role.sub_t3": "ako predplatiteľ úrovne 3",
+  "entry.role.vip": "ako VIP",
+  "entry.role.moderator": "ako moderátor",
   "entry.pending.title": "Zapisujeme ťa",
   "entry.pending.detail": "Trvá to najviac {wait}. Túto stránku nezatváraj.",
   "entry.pending.help": "Twitch je vyťažený. Stránka sa obnoví sama.",
@@ -299,6 +319,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.close.detail": "Potom sa už nikto nový nezapíše. Nedá sa to vrátiť späť.",
   "live.close.confirm": "Áno, uzavrieť zápis",
   "live.share.title": "Zdieľaj s chatom",
+  "live.overlay.title": "Zobraz to vo svojom streame",
   "live.draw.title": "Zápis je uzavretý",
   "live.draw.text": "{people}. Teraz vyber, koľko víťazov chceš, a vyžrebuj ich.",
   "live.draw.count": "Koľko víťazov?",

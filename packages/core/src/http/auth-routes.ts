@@ -47,6 +47,8 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
 
   app.get(streamerCallbackPath, async (c) => {
     const saved = await takeOAuthState(c, deps, "streamer")
+    const refused = refusalCode(c.req.query("error"))
+    if (refused !== null) return c.redirect(`/?error=${refused}`)
     const code = c.req.query("code")
     if (
       saved === null
@@ -66,6 +68,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
       platform,
       platformUserId: signIn.userId,
       login: signIn.login,
+      displayName: signIn.displayName,
       sealedRefreshToken: await sealSecret(
         deps.keyRing,
         signIn.refreshToken,
@@ -95,12 +98,16 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
         nonce,
         scopes: viewerScopes,
         redirectUri: redirectUri(deps.config, viewerCallbackPath),
+        forceVerify: c.req.query("force_verify") === "true",
       }),
     )
   })
 
   app.get(viewerCallbackPath, async (c) => {
     const saved = await takeOAuthState(c, deps, "viewer")
+    const refused = refusalCode(c.req.query("error"))
+    if (refused !== null)
+      return c.redirect(`${pagePath(saved?.giveawayCode ?? null)}?error=${refused}`)
     const code = c.req.query("code")
     if (
       saved === null
@@ -125,7 +132,8 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
 
     const attempt = await enterGiveaway(deps, giveaway, item)
     if (attempt.kind === "deferred") return queued(attempt.cause)
-    if (attempt.userId !== null) await startViewerSession(c, deps, { userId: attempt.userId })
+    if (attempt.userId !== null)
+      await startViewerSession(c, deps, { platform: giveaway.platform, userId: attempt.userId })
     return c.redirect(returnTo(giveaway.code, attempt.outcome))
   })
 
@@ -135,6 +143,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
 interface StreamerGrant {
   readonly userId: string
   readonly login: string
+  readonly displayName: string
   readonly refreshToken: string
 }
 
@@ -150,7 +159,12 @@ async function exchangeStreamer(
   if (tokens.idToken === null) throw new TwitchInvalid("id-token", null)
   const { userId } = await deps.twitch.verifyIdToken(tokens.idToken, nonce)
   const profile = await deps.twitch.userProfile(tokens.accessToken)
-  return { userId, login: profile.login, refreshToken: tokens.refreshToken }
+  return {
+    userId,
+    login: profile.login,
+    displayName: profile.displayName,
+    refreshToken: tokens.refreshToken,
+  }
 }
 
 function signInFailure(error: unknown): "invalid-state" | "try-again" {
@@ -161,8 +175,17 @@ function signInFailure(error: unknown): "invalid-state" | "try-again" {
 }
 
 function returnTo(giveawayCode: string | null, outcome: CallbackOutcome): string {
-  const path = giveawayCode === null ? "/" : `/g/${giveawayCode}`
-  return `${path}?${outcomeQuery(outcome)}`
+  return `${pagePath(giveawayCode)}?${outcomeQuery(outcome)}`
+}
+
+function pagePath(giveawayCode: string | null): string {
+  return giveawayCode === null ? "/" : `/g/${giveawayCode}`
+}
+
+// Twitch's `error` is an OAuth code such as `access_denied`; anything of another shape is passed on as a plain `error`. `error_description` is free text and is not forwarded.
+function refusalCode(error: string | undefined): string | null {
+  if (error === undefined) return null
+  return /^[a-z_]{1,50}$/.test(error) ? error : "error"
 }
 
 async function sameText(received: string | undefined, expected: string): Promise<boolean> {

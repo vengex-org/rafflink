@@ -1,5 +1,6 @@
 import { Link, Outlet } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
+import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
 import { GiftIcon, ListIcon } from "./icons.tsx"
 
@@ -27,6 +28,7 @@ export function Layout() {
         </div>
       </header>
       <main className="container">
+        <OAuthErrorCard />
         <Outlet />
       </main>
     </div>

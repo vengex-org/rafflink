@@ -21,7 +21,7 @@ import {
 } from "../components/icons.tsx"
 import { EntrantNames, Stat, StatusPill, WinnerList } from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
-import { ShareLinks } from "../components/share-panel.tsx"
+import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { giveawayName } from "../lib/messages.ts"
@@ -48,7 +48,14 @@ function Loaded({ id }: { readonly id: string }) {
     case "not-found":
       return <NotFound title="notFound.giveaway" />
     case "ready":
-      return <Controls id={id} snapshot={live.snapshot} connected={live.connected} />
+      return (
+        <Controls
+          id={id}
+          snapshot={live.snapshot}
+          connected={live.connected}
+          overlayToken={live.overlayToken}
+        />
+      )
   }
 }
 
@@ -56,10 +63,12 @@ function Controls({
   id,
   snapshot,
   connected,
+  overlayToken,
 }: {
   readonly id: string
   readonly snapshot: LiveSnapshot
   readonly connected: boolean
+  readonly overlayToken: string | null
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -180,6 +189,12 @@ function Controls({
               <ShareLinks code={snapshot.code} />
             </section>
           ) : null}
+          {overlayToken === null ? null : (
+            <section className="card" aria-labelledby="overlay-title">
+              <h2 id="overlay-title">{t("live.overlay.title")}</h2>
+              <ObsSteps giveaway={{ id, overlayToken }} />
+            </section>
+          )}
         </aside>
       </div>
     </>

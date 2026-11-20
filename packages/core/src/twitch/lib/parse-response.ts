@@ -20,6 +20,12 @@ export interface UserProfile {
   readonly createdAt: Instant
 }
 
+/** A Helix user found by login. */
+export interface UserLogin {
+  readonly id: string
+  readonly login: string
+}
+
 export interface RolePage {
   readonly userIds: readonly string[]
   /** `null` on the last page. */
@@ -34,6 +40,27 @@ export function parseTokenResponse(body: unknown): Parsed<ExchangedCode, "malfor
   if (typeof accessToken !== "string" || typeof refreshToken !== "string") return malformed
   if (idToken !== undefined && typeof idToken !== "string") return malformed
   return { ok: true, value: { accessToken, refreshToken, idToken: idToken ?? null } }
+}
+
+/** The app access token of a client credentials grant. */
+export function parseAppToken(body: unknown): Parsed<string, "malformed"> {
+  return isRecord(body) && typeof body.access_token === "string"
+    ? { ok: true, value: body.access_token }
+    : malformed
+}
+
+/** Users of a lookup by login; a login Twitch does not know is absent. */
+export function parseUserLogins(body: unknown): Parsed<readonly UserLogin[], "malformed"> {
+  const data = dataOf(body)
+  if (!data.ok) return data
+  const users: UserLogin[] = []
+  for (const item of data.value) {
+    if (!isRecord(item) || typeof item.id !== "string" || typeof item.login !== "string") {
+      return malformed
+    }
+    users.push({ id: item.id, login: item.login })
+  }
+  return { ok: true, value: users }
 }
 
 export function parseTier(body: unknown): Parsed<Tier, "malformed"> {

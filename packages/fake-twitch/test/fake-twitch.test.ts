@@ -109,6 +109,37 @@ describe("id service", () => {
     expect(nextPayload.sub).toBe("100")
   })
 
+  test("issues an app access token for a client credentials grant, without a refresh token", async () => {
+    const response = await postToken({ grant_type: "client_credentials" })
+
+    expect(response.status).toBe(200)
+    const body: Record<string, unknown> = await response.json()
+    expect(body.access_token).toBeString()
+    expect(body.token_type).toBe("bearer")
+    expect(body.refresh_token).toBeUndefined()
+  })
+
+  test("refuses a client credentials grant with a wrong client secret", async () => {
+    const response = await postToken({ grant_type: "client_credentials", client_secret: "wrong" })
+
+    expect(response.status).toBe(403)
+  })
+
+  test("validates an app access token without a user", async () => {
+    const appToken = await clientCredentials()
+
+    const response = await fetch(url("/oauth2/validate"), {
+      headers: { Authorization: `OAuth ${appToken}` },
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      client_id: options.clientId,
+      scopes: [],
+      expires_in: 14_400,
+    })
+  })
+
   test("knows the dev users by login_hint", async () => {
     const response = await fetch(url(`/oauth2/authorize?${hintQuery("1001")}`), {
       redirect: "manual",
@@ -302,6 +333,25 @@ describe("helix", () => {
     expect(await self.json()).toMatchObject({
       data: [{ id: "100", created_at: options.defaultUser.createdAt }],
     })
+  })
+
+  test("looks users up by login case-insensitively with an app access token", async () => {
+    const appToken = await clientCredentials()
+
+    const response = await helix("/helix/users?login=Streamer&login=nobody", appToken)
+
+    expect(await response.json()).toMatchObject({ data: [{ id: "200", login: "streamer" }] })
+  })
+
+  test("refuses an app access token a lookup without id or login, and more than 100 of them", async () => {
+    const appToken = await clientCredentials()
+    const many = Array.from({ length: 101 }, (_, n) => `login=user${n}`).join("&")
+
+    const none = await helix("/helix/users", appToken)
+    const tooMany = await helix(`/helix/users?${many}`, appToken)
+
+    expect(none.status).toBe(400)
+    expect(tooMany.status).toBe(400)
   })
 
   test("rejects a missing token, a revoked token, a wrong Client-Id and a missing scope", async () => {
@@ -655,6 +705,13 @@ async function signIn(scope: string, nonce?: string): Promise<TokenResponse> {
 
 async function validate(accessToken: string): Promise<Response> {
   return fetch(url("/oauth2/validate"), { headers: { Authorization: `OAuth ${accessToken}` } })
+}
+
+async function clientCredentials(): Promise<string> {
+  const body: { access_token: string } = await (
+    await postToken({ grant_type: "client_credentials" })
+  ).json()
+  return body.access_token
 }
 
 async function helix(path: string, accessToken: string): Promise<Response> {

@@ -9,7 +9,7 @@ import type { RerollOutcome, ClaimOutcome } from "../room/giveaway-room.ts"
 import type { RoomStatus } from "../room/rows.ts"
 import { parseCreateGiveaway } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
-import { dashboardGiveaway, readJson } from "./json.ts"
+import { dashboardGiveaway, readJson, type OwnerLiveSnapshot } from "./json.ts"
 import { readStreamerSession, type StreamerSession } from "./session.ts"
 
 type Env = { Variables: { streamer: StreamerSession } }
@@ -115,13 +115,17 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   )
 
   app.get("/api/live/:id", (c) =>
-    withOwnedRoom(c, deps, async (giveaway) =>
-      c.json(await deps.rooms.get(giveaway.id).liveSnapshot()),
-    ),
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const body: OwnerLiveSnapshot = {
+        ...(await deps.rooms.get(giveaway.id).liveSnapshot()),
+        overlayToken: giveaway.overlayToken,
+      }
+      return c.json(body)
+    }),
   )
 
   app.get("/api/admin/usage", async (c) => {
-    if (!deps.config.adminTwitchIds.includes(c.get("streamer").twitchUserId)) {
+    if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
       return c.json({ error: "forbidden" }, 403)
     }
     return c.json({ usage: await adminUsage(deps), queue: await deps.queue.stats() })

@@ -2,6 +2,7 @@ import { websocket } from "@hono/bun"
 import { AccountStore } from "@rafflink/core/accounts/account-store"
 import type { StreamerTokenDeps } from "@rafflink/core/accounts/streamer-token"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
+import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import type { ResolvedConfig } from "@rafflink/core/config"
 import { createApp, type AppDeps } from "@rafflink/core/http/create-app"
 import { openKeyRing } from "@rafflink/core/lib/seal"
@@ -85,6 +86,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     queue: remoteQueue(queue),
     usage: { today: async () => null },
     keyRing,
+    admins: new AdminDirectory(config, twitch),
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null

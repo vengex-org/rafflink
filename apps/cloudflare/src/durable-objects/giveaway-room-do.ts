@@ -36,6 +36,9 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
   async summary() {
     return (await this.opened).room.summary()
   }
+  async entryOf(...args: Parameters<GiveawayRoom["entryOf"]>) {
+    return (await this.opened).room.entryOf(...args)
+  }
   async close() {
     return (await this.opened).room.close()
   }

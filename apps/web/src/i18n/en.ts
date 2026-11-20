@@ -37,6 +37,16 @@ export const en = {
   "home.problem.invalidState": "The sign-in expired. Please try again.",
   "home.problem.tryAgain": "Twitch did not answer. Please try again.",
 
+  "oauthError.title": "Sign-in with Twitch failed",
+  "oauthError.access_denied": "You cancelled the Twitch sign-in.",
+  "oauthError.redirect_mismatch":
+    "This Rafflink installation is not set up correctly in the Twitch developer console. The operator must add the redirect URLs.",
+  "oauthError.setupLink": "See the Twitch app setup steps",
+  "oauthError.generic": "Twitch could not sign you in.",
+  "oauthError.code": "Error code: {code}",
+  "oauthError.tryAgain": "Try again",
+  "oauthError.dismiss": "Dismiss",
+
   "admin.title": "Admin",
   "admin.only.title": "Admins only",
   "admin.only.text": "This Twitch account is not an admin.",
@@ -63,6 +73,7 @@ export const en = {
   "overlay.code": "Code {code}",
   "overlay.winners": "Winners",
   "giveaway.fallbackName": "Giveaway {code}",
+  "giveaway.by": "by {name}",
 
   "status.open": "Entries open",
   "status.closed": "Entries closed",
@@ -82,6 +93,7 @@ export const en = {
   "reason.account-too-young": "Your Twitch account is too new for this giveaway.",
   "reason.no-tickets": "Your group gets no tickets in this giveaway.",
   "reasonHelp.broadcaster": "Sign in with a different Twitch account to enter.",
+  "entry.otherAccount": "Use another Twitch account",
   "reasonHelp.subs-only": "Subscribe to the channel on Twitch, then open this link again.",
   "reasonHelp.followers-only": "Follow the channel on Twitch, then open this link again.",
   "reasonHelp.account-too-young":
@@ -211,6 +223,14 @@ export const en = {
   "entry.already.detail": "Your first entry is kept. You do not need to enter again.",
   "entry.already.help":
     "The streamer draws the winner live. Keep this page open or come back later.",
+  "entry.in.tickets": "Your entry: {tickets} {role}.",
+  "entry.role.viewer": "as a viewer",
+  "entry.role.follower": "as a follower",
+  "entry.role.sub_t1": "as a tier 1 subscriber",
+  "entry.role.sub_t2": "as a tier 2 subscriber",
+  "entry.role.sub_t3": "as a tier 3 subscriber",
+  "entry.role.vip": "as a VIP",
+  "entry.role.moderator": "as a moderator",
   "entry.pending.title": "You are being entered",
   "entry.pending.detail": "This takes up to {wait}. Do not close this page.",
   "entry.pending.help": "Twitch is busy. This page updates by itself.",
@@ -297,6 +317,7 @@ export const en = {
   "live.close.detail": "Nobody new can enter after this. You cannot undo it.",
   "live.close.confirm": "Yes, close entries",
   "live.share.title": "Share with your chat",
+  "live.overlay.title": "Show it on your stream",
   "live.draw.title": "Entries are closed",
   "live.draw.text": "{people}. Now choose how many winners you want and draw them.",
   "live.draw.count": "How many winners?",

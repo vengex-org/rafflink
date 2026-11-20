@@ -5,6 +5,7 @@ CREATE TABLE streamers (
   platform TEXT NOT NULL,
   platform_user_id TEXT NOT NULL,
   login TEXT NOT NULL,
+  display_name TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   UNIQUE (platform, platform_user_id)
 );

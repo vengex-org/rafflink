@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { bearerToken } from "../lib/auth.ts"
-import { ACCESS_TOKEN_TTL_SECONDS, issueTokens, signIdToken } from "../lib/tokens.ts"
+import { ACCESS_TOKEN_TTL_SECONDS, issueAppToken, issueTokens, signIdToken } from "../lib/tokens.ts"
 import { userPickerPage } from "../lib/user-picker.ts"
 import { requireUser, takeFailure, type FakeState } from "../state.ts"
 
@@ -81,6 +81,8 @@ export function idRoutes(state: FakeState): Hono {
       return c.json(issueTokens(state, grant.userId, grant.scopes))
     }
 
+    if (grantType === "client_credentials") return c.json(issueAppToken(state))
+
     return c.json({ status: 400, message: "missing or unsupported grant_type" }, 400)
   })
 
@@ -91,6 +93,13 @@ export function idRoutes(state: FakeState): Hono {
     const token = accessToken === undefined ? undefined : state.accessTokens.get(accessToken)
     if (token === undefined || token.revoked)
       return c.json({ status: 401, message: "invalid access token" }, 401)
+    if (token.userId === null) {
+      return c.json({
+        client_id: state.options.clientId,
+        scopes: token.scopes,
+        expires_in: ACCESS_TOKEN_TTL_SECONDS,
+      })
+    }
     return c.json({
       client_id: state.options.clientId,
       login: requireUser(state, token.userId).login,

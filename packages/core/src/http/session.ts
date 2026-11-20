@@ -5,7 +5,11 @@ import type { Clock, Instant } from "../ports.ts"
 
 export type SessionConfig = Pick<
   ResolvedConfig,
-  "sessionSecret" | "sessionTtlSeconds" | "stateCookieTtlSeconds" | "publicUrl"
+  | "sessionSecret"
+  | "sessionTtlSeconds"
+  | "viewerSessionTtlSeconds"
+  | "stateCookieTtlSeconds"
+  | "publicUrl"
 >
 
 export interface SessionDeps {
@@ -19,8 +23,9 @@ export interface StreamerSession {
   readonly twitchUserId: string
 }
 
-/** A viewer who signed in with Twitch, so a winner can claim. */
+/** A viewer who signed in: the cookie holds who they are on which platform and no token. */
 export interface ViewerSession {
+  readonly platform: string
   readonly userId: string
 }
 
@@ -63,7 +68,8 @@ export async function readViewerSession(
   deps: SessionDeps,
 ): Promise<ViewerSession | null> {
   return readCookie(c, deps, cookieNames.viewer, (value) => {
-    return typeof value.userId === "string" ? { userId: value.userId } : null
+    const { platform, userId } = value
+    return typeof platform === "string" && typeof userId === "string" ? { platform, userId } : null
   })
 }
 
@@ -72,7 +78,7 @@ export async function startViewerSession(
   deps: SessionDeps,
   session: ViewerSession,
 ): Promise<void> {
-  await writeCookie(c, deps, cookieNames.viewer, session, deps.config.sessionTtlSeconds)
+  await writeCookie(c, deps, cookieNames.viewer, session, deps.config.viewerSessionTtlSeconds)
 }
 
 export async function startOAuthState(

@@ -8,6 +8,7 @@ export type RoomStub = Remote<
     | "init"
     | "enter"
     | "summary"
+    | "entryOf"
     | "close"
     | "draw"
     | "reroll"

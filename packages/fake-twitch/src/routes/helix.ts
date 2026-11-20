@@ -90,13 +90,24 @@ export function helixRoutes(state: FakeState, eventSubRoutes: Hono<HelixEnv>): H
     if (failure) return failure
 
     const ids = c.req.queries("id") ?? []
-    const logins = c.req.queries("login") ?? []
+    const logins = (c.req.queries("login") ?? []).map((login) => login.toLowerCase())
+    if (ids.length + logins.length > MAX_PAGE_SIZE) {
+      return helixError(
+        c,
+        400,
+        `The combined number of id and login parameters may not exceed ${MAX_PAGE_SIZE}`,
+      )
+    }
+    const { userId } = c.get("token")
+    if (ids.length + logins.length === 0) {
+      return userId === null
+        ? helixError(c, 400, "Missing required parameter id or login")
+        : c.json({ data: [userJson(requireUser(state, userId))] })
+    }
     const requested = [...state.users.values()].filter(
-      (user) => ids.includes(user.id) || logins.includes(user.login),
+      (user) => ids.includes(user.id) || logins.includes(user.login.toLowerCase()),
     )
-    const users =
-      ids.length + logins.length === 0 ? [requireUser(state, c.get("token").userId)] : requested
-    return c.json({ data: users.map(userJson) })
+    return c.json({ data: requested.map(userJson) })
   })
 
   app.get("/channels/vips", (c) => listRole(c, state, "vip"))

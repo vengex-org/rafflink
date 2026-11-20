@@ -23,6 +23,7 @@ export interface StreamerRecord {
   readonly platform: string
   readonly platformUserId: string
   readonly login: string
+  readonly displayName: string
 }
 
 /** What a streamer sign-in stores: the streamer and their sealed refresh token, written together. */
@@ -32,6 +33,7 @@ export interface StreamerSignIn {
   readonly platform: string
   readonly platformUserId: string
   readonly login: string
+  readonly displayName: string
   readonly sealedRefreshToken: string
   readonly scopes: string
   readonly now: Instant
@@ -53,6 +55,8 @@ export interface Giveaway {
   readonly platform: string
   /** The streamer's user id on the platform. */
   readonly broadcasterId: string
+  /** How the streamer's name is shown to viewers. */
+  readonly streamerName: string
   readonly title: string | null
   readonly prize: string | null
   readonly rules: GiveawayRules
@@ -63,7 +67,7 @@ export interface Giveaway {
   readonly createdAt: Instant
 }
 
-export type NewGiveaway = Omit<Giveaway, "platform" | "broadcasterId" | "status">
+export type NewGiveaway = Omit<Giveaway, "platform" | "broadcasterId" | "streamerName" | "status">
 
 export type InsertOutcome = "inserted" | "code-taken"
 
@@ -79,7 +83,14 @@ export class AccountStore {
     await this.sql.batch([
       {
         sql: upsertStreamerSql,
-        params: [input.id, input.platform, input.platformUserId, input.login, input.now],
+        params: [
+          input.id,
+          input.platform,
+          input.platformUserId,
+          input.login,
+          input.displayName,
+          input.now,
+        ],
       },
       {
         sql: upsertStreamerTokenSql,
@@ -181,6 +192,7 @@ export class AccountStore {
       streamerId: reader.text("streamer_id"),
       platform: reader.text("platform"),
       broadcasterId: reader.text("broadcaster_id"),
+      streamerName: reader.text("streamer_name"),
       title: reader.nullableText("title"),
       prize: reader.nullableText("prize"),
       rules: rules.value,
@@ -200,6 +212,7 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     platform: reader.text("platform"),
     platformUserId: reader.text("platform_user_id"),
     login: reader.text("login"),
+    displayName: reader.text("display_name"),
   }
 }
 

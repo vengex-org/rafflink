@@ -271,6 +271,54 @@ describe("refreshTokens", () => {
   })
 })
 
+describe("appAccessToken and userIdsByLogin", () => {
+  it("gets an app token that resolves logins to ids, case-insensitively, and leaves unknown logins out", async () => {
+    const token = await client.appAccessToken()
+
+    const ids = await client.userIdsByLogin(token, ["streamer", "VIEWER", "nobody"])
+
+    expect(ids).toEqual(
+      new Map([
+        ["streamer", "200"],
+        ["viewer", "100"],
+      ]),
+    )
+  })
+
+  it("sends at most 100 logins per call", async () => {
+    for (let n = 0; n < 150; n++) {
+      fake.control.addUser({
+        id: `${1000 + n}`,
+        login: `user${n}`,
+        displayName: `U${n}`,
+        createdAt: "2020-01-01T00:00:00Z",
+      })
+    }
+    const token = await client.appAccessToken()
+
+    const ids = await client.userIdsByLogin(
+      token,
+      Array.from({ length: 150 }, (_, n) => `user${n}`),
+    )
+
+    expect(ids.size).toBe(150)
+    expect(ids.get("user149")).toBe("1149")
+    expect(callsTo("/helix/users")).toBe(2)
+  })
+
+  it("classifies a token endpoint 429 on the app token as rate limited", async () => {
+    fake.control.failNext("token", 429, 1)
+
+    expect(await rejection(client.appAccessToken())).toBeInstanceOf(TwitchRateLimited)
+  })
+
+  it("rejects a login lookup with a token Twitch does not know as invalid", async () => {
+    expect(await rejection(client.userIdsByLogin("unknown", ["streamer"]))).toBeInstanceOf(
+      TwitchInvalid,
+    )
+  })
+})
+
 describe("Helix", () => {
   it("retries a Helix 503 once and then fails", async () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
@@ -539,3 +587,23 @@ async function openSession(): Promise<Session> {
     },
   }
 }
+
+describe("authorizeUrl force_verify", () => {
+  const params = { state: "s", nonce: "n", scopes: ["openid"], redirectUri: REDIRECT_URI } as const
+
+  it("leaves force_verify out by default and sets it when asked", () => {
+    const plain = new URL(client.authorizeUrl(params))
+    const forced = new URL(client.authorizeUrl({ ...params, forceVerify: true }))
+
+    expect(plain.searchParams.has("force_verify")).toBe(false)
+    expect(forced.searchParams.get("force_verify")).toBe("true")
+  })
+
+  it("signs in as usual through a fake Twitch that gets force_verify", async () => {
+    const response = await fetch(client.authorizeUrl({ ...params, forceVerify: true }), {
+      redirect: "manual",
+    })
+
+    expect(new URL(response.headers.get("location") ?? "").searchParams.get("code")).toBeString()
+  })
+})

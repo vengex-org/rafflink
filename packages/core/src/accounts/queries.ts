@@ -1,4 +1,4 @@
-const giveawayColumns = `g.id, g.code, g.streamer_id, s.platform, s.platform_user_id AS broadcaster_id,
+const giveawayColumns = `g.id, g.code, g.streamer_id, s.platform, s.platform_user_id AS broadcaster_id, s.display_name AS streamer_name,
   g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.overlay_token, g.created_at`
 const giveawayFrom = "FROM giveaways g JOIN streamers s ON s.id = g.streamer_id"
 
@@ -24,10 +24,10 @@ export const insertGiveawaySql = `INSERT INTO giveaways
 /** Parameters: status, giveaway id. */
 export const setStatusSql = "UPDATE giveaways SET status = ? WHERE id = ?"
 
-/** Parameters: id, platform, platform user id, login, created at. */
-export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, created_at)
-  VALUES (?, ?, ?, ?, ?)
-  ON CONFLICT (platform, platform_user_id) DO UPDATE SET login = excluded.login`
+/** Parameters: id, platform, platform user id, login, display name, created at. */
+export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT (platform, platform_user_id) DO UPDATE SET login = excluded.login, display_name = excluded.display_name`
 
 /** Parameters: sealed token, scopes, validated at, platform, platform user id. */
 export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id, refresh_token_enc, scopes, validated_at)
@@ -39,7 +39,7 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
 
 /** Parameters: platform, platform user id. */
 export const streamerByPlatformUserSql =
-  "SELECT id, platform, platform_user_id, login FROM streamers WHERE platform = ? AND platform_user_id = ?"
+  "SELECT id, platform, platform_user_id, login, display_name FROM streamers WHERE platform = ? AND platform_user_id = ?"
 
 const streamerTokenSelect = `SELECT t.streamer_id, s.platform, s.platform_user_id, t.refresh_token_enc
   FROM streamer_tokens t JOIN streamers s ON s.id = t.streamer_id`

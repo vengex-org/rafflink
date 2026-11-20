@@ -32,6 +32,7 @@ export async function seedStreamer(
     platform: "twitch",
     platformUserId: userId,
     login: `user_${userId}`,
+    displayName: `User_${userId}`,
     sealedRefreshToken: await sealSecret(
       keyRing,
       tokens.refreshToken,

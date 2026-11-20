@@ -7,18 +7,39 @@ export type ConfigReason =
   | "not-an-integer"
   | "out-of-range"
   | "not-a-url"
+  | "not-an-admin-entry"
   | "not-below-queue-code-max-age"
   | "not-below-eventsub-connection-max"
 
-/** An invalid or missing setting. Carries the env key and a reason, never the value (it may be a secret). */
+/** Why a setting failed; a list entry that is not a secret also names itself. */
+export type ConfigIssue =
+  | ConfigReason
+  | { readonly reason: "not-an-admin-entry"; readonly entry: string }
+
+/** An invalid or missing setting. Carries the env key and a reason, never the value (it may be a secret); only a named list entry is quoted. */
 export class ConfigError extends Error {
+  readonly reason: ConfigReason
+  readonly entry: string | null
+
   constructor(
     readonly env: string,
-    readonly reason: ConfigReason,
+    issue: ConfigIssue,
   ) {
-    super(`${env}: ${reason}`)
+    const named = typeof issue === "string" ? { reason: issue, entry: null } : issue
+    super(
+      named.entry === null
+        ? `${env}: ${named.reason}`
+        : `${env}: ${named.reason} (${JSON.stringify(named.entry)})`,
+    )
+    this.reason = named.reason
+    this.entry = named.entry
   }
 }
+
+/** One `ADMIN_TWITCH_IDS` entry: a Twitch user id, or a login that is resolved to an id on first use. */
+export type AdminEntry =
+  | { readonly kind: "id"; readonly id: string }
+  | { readonly kind: "login"; readonly login: string }
 
 /**
  * One setting: its env key, how to parse the raw string, its default as the raw string a deployment
@@ -26,7 +47,7 @@ export class ConfigError extends Error {
  */
 export interface ConfigField<T> {
   readonly env: string
-  readonly parse: (raw: string) => Parsed<T, ConfigReason>
+  readonly parse: (raw: string) => Parsed<T, ConfigIssue>
   readonly default: string | null
   readonly origin: string
 }
@@ -52,10 +73,10 @@ export const configSchema = {
     "Key ring, comma separated, that seals stored streamer refresh tokens (spec AC-1)",
   ),
   sessionSecret: required("SESSION_SECRET", text, "Signs the session cookie (spec AC-1)"),
-  adminTwitchIds: required(
+  admins: required(
     "ADMIN_TWITCH_IDS",
-    list(text),
-    "Twitch user ids, comma separated, allowed on the admin page (spec AC-23)",
+    adminList,
+    "Who may open the admin page (spec AC-23), comma separated: numeric Twitch user ids, logins, or channel links such as https://twitch.tv/<login>; pin the ids, because logins are looked up at Twitch on first use",
   ),
   publicUrl: required("PUBLIC_URL", url, "Public origin of the service, used for OAuth redirects"),
   devFakeTwitch: withDefault(
@@ -220,6 +241,12 @@ export const configSchema = {
     "604800",
     "Lifetime of the streamer session cookie; starting guess, 7 days",
   ),
+  viewerSessionTtlSeconds: withDefault(
+    "VIEWER_SESSION_TTL_SECONDS",
+    int(1),
+    "2592000",
+    "Lifetime of the viewer cookie that lets a returning viewer see their result without signing in again; starting guess, 30 days",
+  ),
   stateCookieTtlSeconds: withDefault(
     "STATE_COOKIE_TTL_SECONDS",
     int(1),
@@ -324,7 +351,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     twitchClientSecret: read(env, configSchema.twitchClientSecret),
     tokenSealKeys: read(env, configSchema.tokenSealKeys),
     sessionSecret: read(env, configSchema.sessionSecret),
-    adminTwitchIds: read(env, configSchema.adminTwitchIds),
+    admins: read(env, configSchema.admins),
     publicUrl: read(env, configSchema.publicUrl),
     devFakeTwitch: read(env, configSchema.devFakeTwitch),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
@@ -353,6 +380,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     eventSubReconnectMaxAttempts: read(env, configSchema.eventSubReconnectMaxAttempts),
     validatePeriodSeconds: read(env, configSchema.validatePeriodSeconds),
     sessionTtlSeconds: read(env, configSchema.sessionTtlSeconds),
+    viewerSessionTtlSeconds: read(env, configSchema.viewerSessionTtlSeconds),
     stateCookieTtlSeconds: read(env, configSchema.stateCookieTtlSeconds),
     claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
     codeInsertRetries: read(env, configSchema.codeInsertRetries),
@@ -463,6 +491,44 @@ function socketUrl(raw: string): Parsed<string, ConfigReason> {
   if (parsed.protocol !== "ws:" && parsed.protocol !== "wss:") return fail("not-a-url")
   return ok(parsed.href)
 }
+
+/** Entries are told apart by shape: digits are an id, `twitch.tv/<login>` links and bare names are logins. */
+function adminList(raw: string): Parsed<[AdminEntry, ...AdminEntry[]], ConfigIssue> {
+  const [head = "", ...tail] = raw.split(",")
+  const first = adminEntry(head)
+  if (!first.ok) return first
+  const entries: [AdminEntry, ...AdminEntry[]] = [first.value]
+  for (const part of tail) {
+    const parsed = adminEntry(part)
+    if (!parsed.ok) return parsed
+    entries.push(parsed.value)
+  }
+  return ok(entries)
+}
+
+function adminEntry(raw: string): Parsed<AdminEntry, ConfigIssue> {
+  const value = raw.trim()
+  if (value === "") return fail("blank")
+  if (/^\d+$/.test(value)) return ok({ kind: "id", id: value })
+  const login = loginOf(value)
+  return login === null
+    ? { ok: false, issue: { reason: "not-an-admin-entry", entry: value } }
+    : ok({ kind: "login", login })
+}
+
+// Twitch logins are case-insensitive and stored in lower case; a link carries exactly one path segment.
+function loginOf(value: string): string | null {
+  if (twitchLogin.test(value)) return value.toLowerCase()
+  if (!URL.canParse(value)) return null
+  const { protocol, hostname, pathname } = new URL(value)
+  if (protocol !== "https:" || (hostname !== "twitch.tv" && hostname !== "www.twitch.tv")) {
+    return null
+  }
+  const segment = pathname.replace(/^\//, "").replace(/\/$/, "")
+  return twitchLogin.test(segment) ? segment.toLowerCase() : null
+}
+
+const twitchLogin = /^[A-Za-z0-9_]{1,25}$/
 
 function list<T>(item: (raw: string) => Parsed<T, ConfigReason>) {
   return (raw: string): Parsed<[T, ...T[]], ConfigReason> => {

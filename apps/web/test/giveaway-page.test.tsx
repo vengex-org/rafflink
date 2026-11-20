@@ -9,19 +9,22 @@ afterEach(() => {
   mock.restore()
 })
 
-const giveawayRoute = { "GET /api/g/ABCDE": () => ok(giveaway) }
-const wonRoute = (claimRemainingMs: number, claimState: "waiting" | "expired" | "rerolled") => ({
-  "GET /api/g/ABCDE": () =>
-    ok({
-      ...giveaway,
-      status: "drawn",
-      win: { n: 0, claimRemainingMs, claim: { state: claimState } },
-    }),
+const signedOut = { "GET /api/g/ABCDE/me": () => ok({ kind: "signed-out" }) }
+const giveawayRoute = { "GET /api/g/ABCDE": () => ok(giveaway), ...signedOut }
+const wonRoute = (
+  claimRemainingMs: number,
+  claim: { state: string; via?: string },
+  chatClaimAvailable = true,
+) => ({
+  "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "drawn" }),
+  "GET /api/g/ABCDE/me": () =>
+    ok({ kind: "won", n: 0, claimRemainingMs, claim, chatClaimAvailable }),
 })
 
 describe("giveaway landing", () => {
   it("shows the prize as the headline with the people count and who can enter", async () => {
     mockFetch({
+      ...signedOut,
       "GET /api/g/ABCDE": () =>
         ok({
           ...giveaway,
@@ -40,7 +43,10 @@ describe("giveaway landing", () => {
   })
 
   it("names the giveaway by its code when it has no title and no prize", async () => {
-    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, title: null, prize: null }) })
+    mockFetch({
+      ...signedOut,
+      "GET /api/g/ABCDE": () => ok({ ...giveaway, title: null, prize: null }),
+    })
 
     const view = renderApp("/ABCDE")
 
@@ -49,7 +55,7 @@ describe("giveaway landing", () => {
   })
 
   it("keeps the prize as the headline when the title is missing", async () => {
-    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, title: null }) })
+    mockFetch({ ...signedOut, "GET /api/g/ABCDE": () => ok({ ...giveaway, title: null }) })
 
     const view = renderApp("/ABCDE")
 
@@ -58,7 +64,7 @@ describe("giveaway landing", () => {
   })
 
   it("says one person entered in the singular", async () => {
-    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, entrantCount: 1 }) })
+    mockFetch({ ...signedOut, "GET /api/g/ABCDE": () => ok({ ...giveaway, entrantCount: 1 }) })
 
     const view = renderApp("/ABCDE")
 
@@ -67,6 +73,7 @@ describe("giveaway landing", () => {
 
   it("counts down to the end time when entries end by themselves", async () => {
     mockFetch({
+      ...signedOut,
       "GET /api/g/ABCDE": () => ok({ ...giveaway, closesAt: Date.now() + 2 * 3_600_000 + 60_000 }),
     })
 
@@ -77,6 +84,7 @@ describe("giveaway landing", () => {
 
   it("names the extra tickets of subscribers in one sentence", async () => {
     mockFetch({
+      ...signedOut,
       "GET /api/g/ABCDE": () =>
         ok({
           ...giveaway,
@@ -102,6 +110,7 @@ describe("giveaway landing", () => {
 
   it("lists the tickets of every group and the claim time under the rules", async () => {
     mockFetch({
+      ...signedOut,
       "GET /api/g/ABCDE": () =>
         ok({ ...giveaway, rules: { ...giveaway.rules, minAccountAgeDays: 30 } }),
     })
@@ -136,7 +145,7 @@ describe("giveaway landing", () => {
   })
 
   it("shows an error when the answer has an unknown status", async () => {
-    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "paused" }) })
+    mockFetch({ ...signedOut, "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "paused" }) })
 
     const view = renderApp("/ABCDE")
 
@@ -144,7 +153,7 @@ describe("giveaway landing", () => {
   })
 
   it("says the giveaway is closed and offers no sign-in", async () => {
-    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "closed" }) })
+    mockFetch({ ...signedOut, "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "closed" }) })
 
     const view = renderApp("/ABCDE")
 
@@ -154,11 +163,58 @@ describe("giveaway landing", () => {
   })
 
   it("asks a viewer of a drawn giveaway to sign in to see whether they won", async () => {
-    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "drawn" }) })
+    mockFetch({ ...signedOut, "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "drawn" }) })
 
     const view = renderApp("/ABCDE")
 
     expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
+  })
+})
+
+const meRoute = (state: unknown, status = "open") => ({
+  "GET /api/g/ABCDE": () => ok({ ...giveaway, status }),
+  "GET /api/g/ABCDE/me": () => ok(state),
+})
+
+describe("returning viewer", () => {
+  it("names the streamer under the headline", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("by Streamy")).toBeTruthy()
+  })
+
+  it("shows You are in with the tickets and the group without a new sign-in", async () => {
+    mockFetch(
+      meRoute({
+        kind: "entered",
+        entry: { group: "sub_t1", tickets: 3, enteredAt: 1 },
+      }),
+    )
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { name: "You are in" })).toBeTruthy()
+    expect(view.getByText("Your entry: 3 tickets as a tier 1 subscriber.")).toBeTruthy()
+    expect(view.queryByRole("link", { name: "Enter with Twitch" })).toBeNull()
+  })
+
+  it("shows the tickets in the singular for a viewer", async () => {
+    mockFetch(meRoute({ kind: "entered", entry: { group: "viewer", tickets: 1, enteredAt: 1 } }))
+
+    const view = renderApp("/ABCDE?entry=entered")
+
+    expect(await view.findByText("Your entry: 1 ticket as a viewer.")).toBeTruthy()
+  })
+
+  it("tells an entrant who was not drawn, without a sign-in", async () => {
+    mockFetch(meRoute({ kind: "not-won" }, "drawn"))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("The winner was drawn. It was not you this time.")).toBeTruthy()
+    expect(view.queryByRole("link", { name: "Sign in with Twitch" })).toBeNull()
   })
 })
 
@@ -198,11 +254,43 @@ describe("entry outcomes", () => {
   })
 
   it("tells an entered viewer of a drawn giveaway that it was not them", async () => {
-    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "drawn" }) })
+    mockFetch({ ...signedOut, "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "drawn" }) })
 
     const view = renderApp("/ABCDE?entry=entered")
 
     expect(await view.findByText("The winner was drawn. It was not you this time.")).toBeTruthy()
+  })
+
+  it.each(["entry=not-eligible&reason=subs-only", "entry=closed", "entry=dropped"])(
+    "hides the step count when the outcome ends the flow (%s)",
+    async (query) => {
+      mockFetch(giveawayRoute)
+
+      const view = renderApp(`/ABCDE?${query}`)
+
+      expect(await view.findByRole("heading", { level: 2 })).toBeTruthy()
+      expect(view.queryByRole("list", { name: "Steps" })).toBeNull()
+    },
+  )
+
+  it("offers the broadcaster another Twitch account through the account picker", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE?entry=not-eligible&reason=broadcaster")
+
+    const link = await view.findByRole("link", { name: "Use another Twitch account" })
+    expect(link.getAttribute("href")).toBe(
+      "/auth/twitch/viewer/start?giveaway=ABCDE&force_verify=true",
+    )
+  })
+
+  it("offers no other-account button for a reason another account would not fix", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE?entry=not-eligible&reason=subs-only")
+
+    expect(await view.findByText("This giveaway is for subscribers only.")).toBeTruthy()
+    expect(view.queryByRole("link", { name: "Use another Twitch account" })).toBeNull()
   })
 
   it("says Try again with a way to enter again", async () => {
@@ -281,7 +369,7 @@ describe("entry outcomes", () => {
 describe("winner claim", () => {
   it("shows the You won card with the time left and claims with one button", async () => {
     const requests = mockFetch({
-      ...wonRoute(90_000, "waiting"),
+      ...wonRoute(90_000, { state: "waiting" }),
       "POST /api/g/ABCDE/claim": () => ok({ kind: "claimed" }),
     })
 
@@ -298,12 +386,12 @@ describe("winner claim", () => {
 
   it("offers the chat word as the alternative to the button", async () => {
     mockFetch({
+      ...wonRoute(90_000, { state: "waiting" }),
       "GET /api/g/ABCDE": () =>
         ok({
           ...giveaway,
           status: "drawn",
           rules: { ...giveaway.rules, claimKeyword: "mine" },
-          win: { n: 0, claimRemainingMs: 90_000, claim: { state: "waiting" } },
         }),
     })
 
@@ -314,16 +402,25 @@ describe("winner claim", () => {
   })
 
   it("offers any chat message as the alternative when there is no chat word", async () => {
-    mockFetch(wonRoute(90_000, "waiting"))
+    mockFetch(wonRoute(90_000, { state: "waiting" }))
 
     const view = renderApp("/ABCDE")
 
     expect(await view.findByText("Or write any message in the stream chat.")).toBeTruthy()
   })
 
+  it("hides the chat hint when the chat claim is not available", async () => {
+    mockFetch(wonRoute(90_000, { state: "waiting" }, false))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("button", { name: "Claim my prize" })).toBeTruthy()
+    expect(view.queryByText(/^Or write any message/)).toBeNull()
+  })
+
   it("says what went wrong when the claim is refused", async () => {
     mockFetch({
-      ...wonRoute(90_000, "waiting"),
+      ...wonRoute(90_000, { state: "waiting" }),
       "POST /api/g/ABCDE/claim": () => ({ status: 401, body: { error: "unauthorized" } }),
     })
 
@@ -335,7 +432,7 @@ describe("winner claim", () => {
   })
 
   it("tells a winner whose claim time ran out", async () => {
-    mockFetch(wonRoute(0, "waiting"))
+    mockFetch(wonRoute(0, { state: "waiting" }))
 
     const view = renderApp("/ABCDE")
 
@@ -345,7 +442,7 @@ describe("winner claim", () => {
   })
 
   it("tells a winner who was replaced", async () => {
-    mockFetch(wonRoute(90_000, "rerolled"))
+    mockFetch(wonRoute(90_000, { state: "rerolled" }))
 
     const view = renderApp("/ABCDE")
 
@@ -354,14 +451,7 @@ describe("winner claim", () => {
   })
 
   it("shows a claimed winner the contact message without a button", async () => {
-    mockFetch({
-      "GET /api/g/ABCDE": () =>
-        ok({
-          ...giveaway,
-          status: "drawn",
-          win: { n: 0, claimRemainingMs: 5000, claim: { state: "claimed", via: "chat" } },
-        }),
-    })
+    mockFetch(wonRoute(5000, { state: "claimed", via: "chat" }))
 
     const view = renderApp("/ABCDE")
 

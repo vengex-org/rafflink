@@ -1,7 +1,7 @@
-import type { Group, Tickets } from "@rafflink/core/domain/groups"
+import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
-import type { DashboardGiveaway, PublicGiveaway } from "@rafflink/core/http/json"
+import type { DashboardGiveaway, PublicGiveaway, ViewerState } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
 import type { Usage } from "@rafflink/core/ports"
 import type {
@@ -13,7 +13,7 @@ import type {
   RerollOutcome,
   WinnerClaim,
 } from "@rafflink/core/room/giveaway-room"
-import { claimedVias, roomStatuses } from "@rafflink/core/room/rows"
+import { claimedVias, roomStatuses, type EntrySummary } from "@rafflink/core/room/rows"
 import type { CallbackOutcome } from "@rafflink/core/viewer/outcome"
 import {
   ApiShapeError,
@@ -37,13 +37,13 @@ export class ApiError extends Error {
   }
 }
 
-/** The giveaway page's answer: the public giveaway and, for a signed-in winner, their pick. */
-export type GiveawayView = PublicGiveaway & {
-  readonly win: {
-    readonly n: number
-    readonly claimRemainingMs: number
-    readonly claim: WinnerClaim
-  } | null
+/** The giveaway page's answer: what anyone may see. */
+export type GiveawayView = PublicGiveaway
+
+/** The live page's first answer: the snapshot and, on the streamer's own route, the overlay token. */
+export interface LiveLoad {
+  readonly snapshot: LiveSnapshot
+  readonly overlayToken: string | null
 }
 
 /** What the viewer's sign-in came to, without the entry details the redirect query does not carry. */
@@ -101,11 +101,11 @@ export async function getGiveaway(code: string): Promise<GiveawayView | null> {
   if (status === 404) return null
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "giveaway")
-  const win = source.win === null ? null : child(source, "win")
   return {
     code: text(source, "code"),
     title: nullableText(source, "title"),
     prize: nullableText(source, "prize"),
+    streamerName: text(source, "streamerName"),
     rules: parseRules(child(source, "rules")),
     status: oneOf(source, "status", roomStatuses),
     closesAt: nullableNum(source, "closesAt"),
@@ -115,14 +115,30 @@ export async function getGiveaway(code: string): Promise<GiveawayView | null> {
       intervalMs: num(child(source, "poll"), "intervalMs"),
       maxMs: num(child(source, "poll"), "maxMs"),
     },
-    win:
-      win === null
-        ? null
-        : {
-            n: num(win, "n"),
-            claimRemainingMs: num(win, "claimRemainingMs"),
-            claim: parseClaim(child(win, "claim")),
-          },
+  }
+}
+
+/** Where the viewer behind the cookie stands in this giveaway; the giveaway must exist. */
+export async function getViewerState(code: string): Promise<ViewerState> {
+  const { status, body } = await send(`/api/g/${encodeURIComponent(code)}/me`)
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "viewer")
+  const kind = oneOf(source, "kind", viewerKinds)
+  switch (kind) {
+    case "entered":
+      return { kind, entry: parseEntry(child(source, "entry")) }
+    case "won":
+      return {
+        kind,
+        n: num(source, "n"),
+        claimRemainingMs: num(source, "claimRemainingMs"),
+        claim: parseClaim(child(source, "claim")),
+        chatClaimAvailable: bool(source, "chatClaimAvailable"),
+      }
+    case "signed-out":
+    case "not-entered":
+    case "not-won":
+      return { kind }
   }
 }
 
@@ -190,12 +206,16 @@ export async function createGiveaway(input: CreateGiveawayBody): Promise<CreateR
   }
 }
 
-export async function getLive(path: string): Promise<LiveSnapshot | "unauthorized" | "not-found"> {
+export async function getLive(path: string): Promise<LiveLoad | "unauthorized" | "not-found"> {
   const { status, body } = await send(path)
   if (status === 401) return "unauthorized"
   if (status === 404) return "not-found"
   if (status !== 200) throw new ApiError(status)
-  return parseLiveSnapshot(record(body, "live"))
+  const source = record(body, "live")
+  return {
+    snapshot: parseLiveSnapshot(source),
+    overlayToken: source.overlayToken === undefined ? null : text(source, "overlayToken"),
+  }
 }
 
 export function closeEntries(id: string): Promise<CloseKind | Rejected> {
@@ -253,6 +273,13 @@ const issueCodes = [
   "not-a-timestamp",
   "in-the-past",
 ] as const satisfies readonly CreateIssue["code"][]
+const viewerKinds = [
+  "signed-out",
+  "not-entered",
+  "entered",
+  "won",
+  "not-won",
+] as const satisfies readonly ViewerState["kind"][]
 const entryKinds = [
   "entered",
   "already-in",
@@ -308,6 +335,14 @@ function parseEntryResult(source: Json): EntryResult {
     case "try-again":
     case "invalid-state":
       return { kind }
+  }
+}
+
+function parseEntry(source: Json): EntrySummary {
+  return {
+    group: oneOf(source, "group", groups),
+    tickets: num(source, "tickets"),
+    enteredAt: num(source, "enteredAt"),
   }
 }
 

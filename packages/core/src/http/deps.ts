@@ -1,3 +1,4 @@
+import type { AdminDirectory } from "../admin/admin-directory.ts"
 import type { AccountStore } from "../accounts/account-store.ts"
 import type { ResolvedConfig } from "../config.ts"
 import type { KeyRing } from "../lib/seal.ts"
@@ -16,4 +17,5 @@ export interface AppDeps {
   readonly queue: TokenQueueStub
   readonly usage: UsageMeter
   readonly keyRing: KeyRing
+  readonly admins: AdminDirectory
 }

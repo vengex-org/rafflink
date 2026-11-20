@@ -38,6 +38,16 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "home.problem.invalidState": "Přihlášení vypršelo. Zkus to prosím znovu.",
   "home.problem.tryAgain": "Twitch neodpověděl. Zkus to prosím znovu.",
 
+  "oauthError.title": "Přihlášení přes Twitch selhalo",
+  "oauthError.access_denied": "Přihlášení přes Twitch jsi zrušil.",
+  "oauthError.redirect_mismatch":
+    "Tato instalace Rafflinku není v konzoli pro vývojáře Twitche nastavená správně. Provozovatel musí doplnit adresy přesměrování.",
+  "oauthError.setupLink": "Podívej se na kroky nastavení aplikace na Twitchi",
+  "oauthError.generic": "Twitch tě nedokázal přihlásit.",
+  "oauthError.code": "Kód chyby: {code}",
+  "oauthError.tryAgain": "Zkusit znovu",
+  "oauthError.dismiss": "Zavřít",
+
   "admin.title": "Administrace",
   "admin.only.title": "Jen pro administrátory",
   "admin.only.text": "Tento účet na Twitchi není administrátor.",
@@ -64,6 +74,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "overlay.code": "Kód {code}",
   "overlay.winners": "Vítězové",
   "giveaway.fallbackName": "Soutěž {code}",
+  "giveaway.by": "od {name}",
 
   "status.open": "Přihlašování je otevřené",
   "status.closed": "Přihlašování je uzavřené",
@@ -83,6 +94,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "reason.account-too-young": "Tvůj účet na Twitchi je pro tuto soutěž příliš nový.",
   "reason.no-tickets": "Tvoje skupina v této soutěži nemá žádné losy.",
   "reasonHelp.broadcaster": "Pro zapojení se přihlas jiným účtem na Twitchi.",
+  "entry.otherAccount": "Použít jiný účet na Twitchi",
   "reasonHelp.subs-only": "Předplať si kanál na Twitchi a pak tento odkaz otevři znovu.",
   "reasonHelp.followers-only": "Začni kanál sledovat na Twitchi a pak tento odkaz otevři znovu.",
   "reasonHelp.account-too-young":
@@ -214,6 +226,14 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Tvoje první přihláška zůstává v platnosti. Nemusíš se přihlašovat znovu.",
   "entry.already.help":
     "Streamer losuje vítěze živě. Nech tuto stránku otevřenou, nebo se vrať později.",
+  "entry.in.tickets": "Tvůj zápis: {tickets} {role}.",
+  "entry.role.viewer": "jako divák",
+  "entry.role.follower": "jako sledující",
+  "entry.role.sub_t1": "jako předplatitel úrovně 1",
+  "entry.role.sub_t2": "jako předplatitel úrovně 2",
+  "entry.role.sub_t3": "jako předplatitel úrovně 3",
+  "entry.role.vip": "jako VIP",
+  "entry.role.moderator": "jako moderátor",
   "entry.pending.title": "Přihlašujeme tě",
   "entry.pending.detail": "Trvá to nejvýš {wait}. Tuto stránku nezavírej.",
   "entry.pending.help": "Twitch je vytížený. Stránka se obnoví sama.",
@@ -300,6 +320,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.close.detail": "Potom se už nikdo nový nepřihlásí. Nejde to vrátit zpět.",
   "live.close.confirm": "Ano, uzavřít přihlašování",
   "live.share.title": "Sdílej s chatem",
+  "live.overlay.title": "Zobraz to na svém streamu",
   "live.draw.title": "Přihlašování je uzavřené",
   "live.draw.text": "{people}. Teď vyber, kolik vítězů chceš, a vylosuj je.",
   "live.draw.count": "Kolik vítězů?",

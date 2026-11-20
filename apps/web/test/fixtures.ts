@@ -15,13 +15,13 @@ export const giveaway: GiveawayView = {
   code: "ABCDE",
   title: "Summer giveaway",
   prize: "A gaming chair",
+  streamerName: "Streamy",
   rules,
   status: "open",
   closesAt: null,
   claimSeconds: 300,
   entrantCount: 42,
   poll: { intervalMs: 10, maxMs: 80 },
-  win: null,
 }
 
 export const dashboardGiveaway: DashboardGiveaway = {

@@ -6,7 +6,13 @@ import { errorClass } from "./use-load.ts"
 
 export type LiveState =
   | { readonly state: "loading" }
-  | { readonly state: "ready"; readonly snapshot: LiveSnapshot; readonly connected: boolean }
+  | {
+      readonly state: "ready"
+      readonly snapshot: LiveSnapshot
+      readonly connected: boolean
+      /** Known from the first answer of the streamer's own route; the overlay route has none. */
+      readonly overlayToken: string | null
+    }
   | { readonly state: "unauthorized" | "not-found" | "failed" }
 
 // Start and ceiling of the reconnect delay; starting guesses, a streamer's page may stay open for hours.
@@ -25,6 +31,7 @@ export function useLive(path: string): LiveState {
   useEffect(() => {
     let current = true
     let socket: WebSocket | null = null
+    let overlayToken: string | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
 
     const connect = (attempt: number) => {
@@ -35,7 +42,7 @@ export function useLive(path: string): LiveState {
         try {
           const snapshot = parseLiveSnapshot(record(JSON.parse(String(event.data)), "live"))
           healthy = true
-          setLive({ state: "ready", snapshot, connected: true })
+          setLive({ state: "ready", snapshot, connected: true, overlayToken })
         } catch (error) {
           if (!(error instanceof ApiShapeError || error instanceof SyntaxError)) throw error
           console.error("live message ignored", { errorClass: errorClass(error) })
@@ -58,7 +65,8 @@ export function useLive(path: string): LiveState {
           setLive({ state: first })
           return
         }
-        setLive({ state: "ready", snapshot: first, connected: false })
+        overlayToken = first.overlayToken
+        setLive({ state: "ready", snapshot: first.snapshot, connected: false, overlayToken })
         connect(0)
       },
       (error: unknown) => {

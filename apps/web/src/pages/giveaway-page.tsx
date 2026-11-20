@@ -1,7 +1,15 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react"
 import { useParams, useSearchParams } from "react-router"
 import { groups } from "@rafflink/core/domain/groups"
-import { claimPrize, entryFromQuery, getGiveaway, type GiveawayView } from "../api/client.ts"
+import type { EntrySummary } from "@rafflink/core/room/rows"
+import type { ViewerState } from "@rafflink/core/http/json"
+import {
+  claimPrize,
+  entryFromQuery,
+  getGiveaway,
+  getViewerState,
+  type GiveawayView,
+} from "../api/client.ts"
 import { Disclosure } from "../components/disclosure.tsx"
 import {
   AlertIcon,
@@ -40,7 +48,10 @@ export function GiveawayPage() {
 }
 
 function Loaded({ code }: { readonly code: string }) {
-  const load = useCallback(() => getGiveaway(code), [code])
+  const load = useCallback(async () => {
+    const giveaway = await getGiveaway(code)
+    return giveaway === null ? null : { giveaway, me: await getViewerState(code) }
+  }, [code])
   const { result } = useLoad(load)
   switch (result.state) {
     case "loading":
@@ -51,7 +62,7 @@ function Loaded({ code }: { readonly code: string }) {
       return result.value === null ? (
         <NotFound title="notFound.giveaway" />
       ) : (
-        <GiveawayDetails code={code} giveaway={result.value} />
+        <GiveawayDetails code={code} giveaway={result.value.giveaway} me={result.value.me} />
       )
   }
 }
@@ -59,14 +70,18 @@ function Loaded({ code }: { readonly code: string }) {
 function GiveawayDetails({
   code,
   giveaway,
+  me,
 }: {
   readonly code: string
   readonly giveaway: GiveawayView
+  readonly me: ViewerState
 }) {
   const i18n = useI18n()
   const [query] = useSearchParams()
   const initial = useMemo(() => entryFromQuery(query), [query])
-  const entry = useEntryResult(code, initial, giveaway.poll)
+  const fromSignIn = useEntryResult(code, initial, giveaway.poll)
+  // A returning viewer has no sign-in outcome in the URL; the viewer state says they are in.
+  const entry = fromSignIn ?? (me.kind === "entered" ? { kind: "entered" as const } : null)
   const signInHref = `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`
   const extraTickets = extraTicketsText(i18n, giveaway.rules.tickets)
 
@@ -77,6 +92,7 @@ function GiveawayDetails({
           <p className="eyebrow">{giveawayName(i18n, giveaway.title, code)}</p>
         )}
         <h1>{giveaway.prize ?? giveawayName(i18n, giveaway.title, code)}</h1>
+        <p className="muted">{i18n.t("giveaway.by", { name: giveaway.streamerName })}</p>
         <ul className="facts">
           <li>
             <UsersIcon />
@@ -96,10 +112,16 @@ function GiveawayDetails({
         </ul>
       </header>
       <div aria-live="polite" className="outcome">
-        {giveaway.win === null ? (
-          <EntryPanel entry={entry} giveaway={giveaway} signInHref={signInHref} />
+        {me.kind === "won" ? (
+          <ClaimPanel code={code} win={me} keyword={giveaway.rules.claimKeyword} />
         ) : (
-          <ClaimPanel code={code} win={giveaway.win} keyword={giveaway.rules.claimKeyword} />
+          <EntryPanel
+            entry={entry}
+            tickets={me.kind === "entered" ? me.entry : null}
+            notDrawn={me.kind === "not-won"}
+            giveaway={giveaway}
+            signInHref={signInHref}
+          />
         )}
       </div>
       <Rules giveaway={giveaway} />
@@ -135,10 +157,16 @@ function CountdownToClose({ closesAt }: { readonly closesAt: number }) {
 
 function EntryPanel({
   entry,
+  tickets,
+  notDrawn,
   giveaway,
   signInHref,
 }: {
   readonly entry: EntryView | null
+  /** The viewer's entry as the server holds it; null when the page does not know it. */
+  readonly tickets: EntrySummary | null
+  /** The viewer entered and was not drawn. */
+  readonly notDrawn: boolean
   readonly giveaway: GiveawayView
   readonly signInHref: string
 }) {
@@ -146,8 +174,30 @@ function EntryPanel({
   const { t } = i18n
   const { status } = giveaway
   const card = entry === null ? null : entryCard(entry, giveaway, i18n)
+  const ticketsText =
+    tickets === null
+      ? null
+      : t("entry.in.tickets", {
+          tickets: i18n.plural("ticket", tickets.tickets),
+          role: t(`entry.role.${tickets.group}`),
+        })
   const canEnter = status === "open" && (card === null || card.retry)
+  // These outcomes end the flow, so a step count would suggest it goes on.
+  const endsFlow =
+    entry?.kind === "not-eligible" || entry?.kind === "closed" || entry?.kind === "dropped"
 
+  if (notDrawn) {
+    return (
+      <StateCard
+        tone="info"
+        align="center"
+        icon={<GiftIcon />}
+        title={t("giveaway.notThisTime.title")}
+      >
+        <p>{t("giveaway.notThisTime.text")}</p>
+      </StateCard>
+    )
+  }
   if (card === null && status === "closed") return <ClosedCard />
   if (card === null && status === "drawn") {
     return (
@@ -174,7 +224,9 @@ function EntryPanel({
   }
   return (
     <>
-      <StepIndicator steps={stepNames} current={card === null ? 1 : card.step} />
+      {endsFlow ? null : (
+        <StepIndicator steps={stepNames} current={card === null ? 1 : card.step} />
+      )}
       <StateCard
         tone={card === null ? "info" : card.tone}
         align="center"
@@ -182,11 +234,18 @@ function EntryPanel({
         title={card === null ? t("giveaway.ready.title") : card.title}
       >
         <p>{card === null ? t("giveaway.ready.text") : card.detail}</p>
+        {card !== null && card.entered && ticketsText !== null ? <p>{ticketsText}</p> : null}
         {card !== null && card.help !== null ? <p>{card.help}</p> : null}
         {canEnter ? (
           <a className="button block" href={signInHref}>
             <LogInIcon />
             {t("giveaway.enter")}
+          </a>
+        ) : null}
+        {entry?.kind === "not-eligible" && entry.reason === "broadcaster" ? (
+          <a className="button tonal block" href={`${signInHref}&force_verify=true`}>
+            <LogInIcon />
+            {t("entry.otherAccount")}
           </a>
         ) : null}
       </StateCard>
@@ -329,7 +388,7 @@ function ClaimPanel({
   keyword,
 }: {
   readonly code: string
-  readonly win: NonNullable<GiveawayView["win"]>
+  readonly win: Extract<ViewerState, { kind: "won" }>
   readonly keyword: string | null
 }) {
   const { t, rich } = useI18n()
@@ -379,11 +438,13 @@ function ClaimPanel({
         <TrophyIcon />
         {t("win.claim")}
       </button>
-      <p className="muted">
-        {keyword === null
-          ? t("win.orAny")
-          : rich("win.orType", { keyword: <strong>{keyword}</strong> })}
-      </p>
+      {win.chatClaimAvailable ? (
+        <p className="muted">
+          {keyword === null
+            ? t("win.orAny")
+            : rich("win.orType", { keyword: <strong>{keyword}</strong> })}
+        </p>
+      ) : null}
       {message === null ? null : <Status>{t(message)}</Status>}
     </StateCard>
   )

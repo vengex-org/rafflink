@@ -11,10 +11,12 @@ import {
 } from "./errors.ts"
 import {
   parseFollowed,
+  parseAppToken,
   parseRolePage,
   parseSubscriptionCreated,
   parseTier,
   parseTokenResponse,
+  parseUserLogins,
   parseUserProfile,
   parseValidated,
   type ExchangedCode,
@@ -36,6 +38,8 @@ export interface AuthorizeParams {
   readonly nonce: string
   readonly scopes: readonly [string, ...string[]]
   readonly redirectUri: string
+  /** Makes Twitch show its account picker even when the browser is signed in; off when absent. */
+  readonly forceVerify?: boolean
 }
 
 /** The user an `id_token` was issued for, as Twitch's `sub` claim. */
@@ -79,21 +83,29 @@ export class TwitchClient {
     url.searchParams.set("scope", params.scopes.join(" "))
     url.searchParams.set("state", params.state)
     url.searchParams.set("nonce", params.nonce)
+    if (params.forceVerify === true) url.searchParams.set("force_verify", "true")
     return url.toString()
   }
 
   /** Not retried: a code is single use, so the caller queues the code instead. */
   async exchangeCode(code: string, redirectUri: string): Promise<ExchangedCode> {
-    return this.tokenRequest({
-      code,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri,
-    })
+    return this.tokenRequest(
+      { code, grant_type: "authorization_code", redirect_uri: redirectUri },
+      parseTokenResponse,
+    )
   }
 
   /** The answer's refresh token may differ from the one sent: the caller stores it in its place. */
   async refreshTokens(refreshToken: string): Promise<ExchangedCode> {
-    return this.tokenRequest({ grant_type: "refresh_token", refresh_token: refreshToken })
+    return this.tokenRequest(
+      { grant_type: "refresh_token", refresh_token: refreshToken },
+      parseTokenResponse,
+    )
+  }
+
+  /** An app access token (client credentials grant); needs no user, so it serves lookups the app makes on its own. */
+  async appAccessToken(): Promise<string> {
+    return this.tokenRequest({ grant_type: "client_credentials" }, parseAppToken)
   }
 
   async verifyIdToken(idToken: string, expectedNonce: string): Promise<VerifiedIdToken> {
@@ -139,6 +151,25 @@ export class TwitchClient {
   /** Login, display name and creation time of the account the token belongs to. */
   async userProfile(accessToken: string): Promise<UserProfile> {
     return this.helix("users", "/helix/users", {}, accessToken, parseUserProfile)
+  }
+
+  /** Login to user id of the accounts that exist; Twitch answers 100 logins per call, so a longer list is sent in chunks. A login without an account is absent from the result. */
+  async userIdsByLogin(
+    appToken: string,
+    logins: readonly string[],
+  ): Promise<ReadonlyMap<string, string>> {
+    const ids = new Map<string, string>()
+    for (let from = 0; from < logins.length; from += HELIX_MAX_PAGE_SIZE) {
+      const users = await this.helix(
+        "users",
+        "/helix/users",
+        { login: logins.slice(from, from + HELIX_MAX_PAGE_SIZE) },
+        appToken,
+        parseUserLogins,
+      )
+      for (const user of users) ids.set(user.login.toLowerCase(), user.id)
+    }
+    return ids
   }
 
   /** Needs the streamer's token with `channel:read:vips` and `moderation:read`. */
@@ -205,7 +236,10 @@ export class TwitchClient {
       : { status: "unavailable" }
   }
 
-  private async tokenRequest(params: Record<string, string>): Promise<ExchangedCode> {
+  private async tokenRequest<T>(
+    params: Record<string, string>,
+    parse: (body: unknown) => Parsed<T, "malformed">,
+  ): Promise<T> {
     const response = await this.send(
       "token",
       new URL("/oauth2/token", this.config.twitchIdBaseUrl),
@@ -218,7 +252,7 @@ export class TwitchClient {
         }),
       },
     )
-    return this.read("token", response, parseTokenResponse)
+    return this.read("token", response, parse)
   }
 
   private async verifiedPayload(idToken: string): Promise<JWTPayload> {
@@ -263,13 +297,17 @@ export class TwitchClient {
   private async helix<T>(
     endpoint: TwitchEndpoint,
     path: string,
-    query: Readonly<Record<string, string>>,
+    query: Readonly<Record<string, string | readonly string[]>>,
     accessToken: string,
     parse: (body: unknown) => Parsed<T, "malformed">,
     request: RequestInit = {},
   ): Promise<T> {
     const url = new URL(path, this.config.twitchHelixBaseUrl)
-    for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value)
+    for (const [name, value] of Object.entries(query)) {
+      for (const item of typeof value === "string" ? [value] : value) {
+        url.searchParams.append(name, item)
+      }
+    }
     const init: RequestInit = {
       ...request,
       headers: {

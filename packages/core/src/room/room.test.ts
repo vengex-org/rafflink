@@ -9,7 +9,7 @@ import { idleChat } from "../../test/idle-chat.ts"
 import { GiveawayRoom, type GiveawayInit, type RoomViewer } from "./giveaway-room.ts"
 import { applyMigrations } from "./migrate.ts"
 import { roomMigrations } from "./migrations.ts"
-import { lastNamesSql, recentEntriesCountSql } from "./queries.ts"
+import { entryOfSql, lastNamesSql, recentEntriesCountSql } from "./queries.ts"
 
 const config = resolveConfig({
   TWITCH_CLIENT_ID: "client",
@@ -627,7 +627,25 @@ describe("GiveawayRoom failures", () => {
   })
 })
 
+describe("GiveawayRoom entryOf", () => {
+  it("returns the entry of an entrant and null for anyone else or another platform", () => {
+    const { room, clock } = setup()
+    clock.advance(1000)
+    room.enter(viewer("1", { subTier: 2 }))
+
+    expect(room.entryOf(twitch("1"))).toEqual({ group: "sub_t2", tickets: 4, enteredAt: 1000 })
+    expect(room.entryOf(twitch("2"))).toBeNull()
+    expect(room.entryOf({ platform: "kick", platformUserId: "1" })).toBeNull()
+  })
+})
+
 describe("room queries", () => {
+  it("finds an entry by its primary key", () => {
+    const { sql } = setup()
+    const details = plan(sql, entryOfSql, ["twitch", "1"])
+    expect(details.some((detail) => detail.startsWith("SEARCH entries USING"))).toBe(true)
+  })
+
   it("reads the newest names through the entries index without sorting", () => {
     const { sql } = setup()
     const details = plan(sql, lastNamesSql, [20])

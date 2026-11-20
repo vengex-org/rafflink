@@ -25,7 +25,11 @@ describe("resolveConfig", () => {
     const config = resolveConfig(required)
     expect(config.twitchClientId).toBe("client")
     expect(config.tokenSealKeys).toEqual(["k1", "k2"])
-    expect(config.adminTwitchIds).toEqual(["1", "2"])
+    expect(config.admins).toEqual([
+      { kind: "id", id: "1" },
+      { kind: "id", id: "2" },
+    ])
+    expect(config.viewerSessionTtlSeconds).toBe(2_592_000)
     expect(config.publicUrl).toBe("https://rafflink.app")
     expect(config.devFakeTwitch).toBe(false)
     expect(config.twitchIdBaseUrl).toBe("https://id.twitch.tv")
@@ -76,6 +80,47 @@ describe("resolveConfig", () => {
       env: "ADMIN_TWITCH_IDS",
       reason: "blank",
     })
+  })
+
+  it("reads admins as ids, logins and channel links", () => {
+    const config = resolveConfig({
+      ...required,
+      ADMIN_TWITCH_IDS: [
+        " 12345 ",
+        "Some_Login",
+        "https://twitch.tv/Linked",
+        "https://www.twitch.tv/slashed/",
+        "https://www.twitch.tv/queried?sr=a#top",
+        "a",
+      ].join(","),
+    })
+    expect(config.admins).toEqual([
+      { kind: "id", id: "12345" },
+      { kind: "login", login: "some_login" },
+      { kind: "login", login: "linked" },
+      { kind: "login", login: "slashed" },
+      { kind: "login", login: "queried" },
+      { kind: "login", login: "a" },
+    ])
+  })
+
+  it("names the admin entry that is neither an id, a login nor a channel link", () => {
+    const bad = [
+      "two words",
+      "https://twitch.tv/",
+      "https://twitch.tv/one/two",
+      "http://twitch.tv/login",
+      "https://example.com/login",
+      "https://twitch.tv.evil.com/login",
+      "twitch.tv/login",
+      "has-dash",
+      "x".repeat(26),
+    ]
+    for (const entry of bad) {
+      const error = failure({ ...required, ADMIN_TWITCH_IDS: `1,${entry}` })
+      expect(error).toMatchObject({ env: "ADMIN_TWITCH_IDS", reason: "not-an-admin-entry", entry })
+      expect(error.message).toContain(JSON.stringify(entry))
+    }
   })
 
   it("rejects a public url that is not http or https", () => {
@@ -193,6 +238,16 @@ describe("resolveConfig", () => {
       resolveConfig({ ...required, EVENTSUB_RECONNECT_MARGIN_SECONDS: "899" })
         .eventSubReconnectMarginSeconds,
     ).toBe(899)
+  })
+
+  it("accepts a viewer cookie lifetime of 1 and rejects 0", () => {
+    expect(
+      resolveConfig({ ...required, VIEWER_SESSION_TTL_SECONDS: "1" }).viewerSessionTtlSeconds,
+    ).toBe(1)
+    expect(failure({ ...required, VIEWER_SESSION_TTL_SECONDS: "0" })).toMatchObject({
+      env: "VIEWER_SESSION_TTL_SECONDS",
+      reason: "out-of-range",
+    })
   })
 
   it("keeps the secret value out of the error", () => {

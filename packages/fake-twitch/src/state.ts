@@ -47,7 +47,8 @@ export interface AuthorizationCode {
 }
 
 export interface AccessToken {
-  userId: string
+  /** `null` for an app access token, which belongs to no user. */
+  userId: string | null
   scopes: string[]
   revoked: boolean
 }

@@ -1,20 +1,12 @@
 import { Hono, type Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway } from "../accounts/account-store.ts"
-import type { ClaimOutcome, WinnerClaim, WinnerPick } from "../room/giveaway-room.ts"
+import type { ClaimOutcome, WinnerPick } from "../room/giveaway-room.ts"
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
-import type { PublicGiveaway } from "./json.ts"
-import { readViewerSession } from "./session.ts"
-
-/** Where a signed-in viewer stands in a drawn giveaway. */
-interface ViewerWin {
-  readonly n: number
-  /** Computed by the server, so a wrong clock on the viewer's device does not change it. */
-  readonly claimRemainingMs: number
-  readonly claim: WinnerClaim
-}
+import type { PublicGiveaway, ViewerState } from "./json.ts"
+import { readViewerSession, type ViewerSession } from "./session.ts"
 
 export function giveawayRoutes(deps: AppDeps): Hono {
   const app = new Hono()
@@ -23,10 +15,11 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const summary = await deps.rooms.get(giveaway.id).summary()
-    const body: PublicGiveaway & { readonly win: ViewerWin | null } = {
+    const body: PublicGiveaway = {
       code: giveaway.code,
       title: giveaway.title,
       prize: giveaway.prize,
+      streamerName: giveaway.streamerName,
       rules: giveaway.rules,
       status: summary.status,
       closesAt: summary.closesAt,
@@ -36,9 +29,15 @@ export function giveawayRoutes(deps: AppDeps): Hono {
         intervalMs: deps.config.queuePollSeconds * 1000,
         maxMs: deps.config.queuePollMaxSeconds * 1000,
       },
-      win: summary.status === "drawn" ? await viewerWin(c, deps, giveaway) : null,
     }
     return c.json(body)
+  })
+
+  app.get("/api/g/:code/me", async (c) => {
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    c.header("Cache-Control", "no-store")
+    return c.json(await viewerState(c, deps, giveaway))
   })
 
   app.get("/api/g/:code/pending/:ticket", async (c) => {
@@ -51,7 +50,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     if (session === null) return c.json({ error: "unauthorized" }, 401)
     const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
-    const pick = await pickOf(deps, giveaway, session.userId)
+    const pick = await pickOf(deps, giveaway, session)
     if (pick === undefined) return c.json({ kind: "not-a-winner" }, claimStatus["not-a-winner"])
     const outcome = await deps.rooms
       .get(giveaway.id)
@@ -81,24 +80,36 @@ function pendingOutcome(polled: PollOutcome, ticket: string): CallbackOutcome {
   }
 }
 
+// The pick is matched on the cookie's platform too, so only the winner's own platform account claims.
 async function pickOf(
   deps: AppDeps,
   giveaway: Giveaway,
-  userId: string,
+  session: ViewerSession,
 ): Promise<WinnerPick | undefined> {
   const picks = await deps.rooms.get(giveaway.id).picks()
-  return picks.find((pick) => pick.platform === giveaway.platform && pick.platformUserId === userId)
+  return picks.find(
+    (pick) => pick.platform === session.platform && pick.platformUserId === session.userId,
+  )
 }
 
-async function viewerWin(c: Context, deps: AppDeps, giveaway: Giveaway): Promise<ViewerWin | null> {
+async function viewerState(c: Context, deps: AppDeps, giveaway: Giveaway): Promise<ViewerState> {
   const session = await readViewerSession(c, deps)
-  if (session === null) return null
-  const pick = await pickOf(deps, giveaway, session.userId)
-  return pick === undefined
-    ? null
-    : {
+  if (session === null) return { kind: "signed-out" }
+  const room = deps.rooms.get(giveaway.id)
+  const summary = await room.summary()
+  if (summary.status === "drawn") {
+    const pick = await pickOf(deps, giveaway, session)
+    if (pick !== undefined) {
+      return {
+        kind: "won",
         n: pick.n,
         claimRemainingMs: Math.max(0, pick.claimUntil - deps.clock.now()),
         claim: pick.claim,
+        chatClaimAvailable: !summary.chatClaimUnavailable,
       }
+    }
+  }
+  const entry = await room.entryOf({ platform: session.platform, platformUserId: session.userId })
+  if (entry === null) return { kind: "not-entered" }
+  return summary.status === "drawn" ? { kind: "not-won" } : { kind: "entered", entry }
 }
