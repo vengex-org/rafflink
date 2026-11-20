@@ -133,6 +133,30 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("leaves the Cloudflare credentials null when unset or blank and keeps the endpoint path", () => {
+    for (const env of [
+      required,
+      { ...required, CLOUDFLARE_ACCOUNT_ID: "  ", CLOUDFLARE_API_TOKEN: "" },
+    ]) {
+      const config = resolveConfig(env)
+      expect(config.cloudflareAccountId).toBeNull()
+      expect(config.cloudflareApiToken).toBeNull()
+    }
+    const config = resolveConfig({
+      ...required,
+      CLOUDFLARE_ACCOUNT_ID: "acc",
+      CLOUDFLARE_API_TOKEN: "tok",
+      CLOUDFLARE_USAGE_URL: "http://localhost:9/graphql",
+    })
+    expect(config.cloudflareAccountId).toBe("acc")
+    expect(config.cloudflareApiToken).toBe("tok")
+    expect(config.cloudflareUsageUrl).toBe("http://localhost:9/graphql")
+    expect(failure({ ...required, CLOUDFLARE_USAGE_URL: "graphql" })).toMatchObject({
+      env: "CLOUDFLARE_USAGE_URL",
+      reason: "not-a-url",
+    })
+  })
+
   it("rejects a poll maximum equal to or above the code maximum age", () => {
     for (const poll of ["300", "301"]) {
       expect(failure({ ...required, QUEUE_POLL_MAX_SECONDS: poll })).toMatchObject({

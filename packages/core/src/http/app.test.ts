@@ -726,6 +726,18 @@ describe("overlay and admin", () => {
     })
   })
 
+  it("shows usage as unavailable to an admin when the usage source fails", async () => {
+    spyOn(console, "warn").mockImplementation(() => {})
+    harness.usage.failure = new Error("Analytics answered 500")
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const response = await browser.request("/api/admin/usage")
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ usage: "unavailable", queue: { dropped: 0 } })
+  })
+
   it("refuses the admin page to a streamer who is not listed", async () => {
     const browser = new Browser(harness)
     await browser.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")

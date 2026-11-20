@@ -1,7 +1,7 @@
-import type { Giveaway } from "@rafflink/core/accounts/account-store"
-import { openStreamerAccess, type StreamerTokenDeps } from "@rafflink/core/accounts/streamer-token"
-import type { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
-import type { RoomStatus } from "@rafflink/core/room/rows"
+import type { Giveaway } from "../accounts/account-store.ts"
+import { openStreamerAccess, type StreamerTokenDeps } from "../accounts/streamer-token.ts"
+import type { GiveawayRoom } from "./giveaway-room.ts"
+import type { RoomStatus } from "./rows.ts"
 
 /** What the room's alarm asks of the adapter: the role lists need Twitch, the status mirror needs the account store. */
 export async function runRoomAlarm(

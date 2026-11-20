@@ -4,6 +4,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway, NewGiveaway } from "../accounts/account-store.ts"
 import { generateCode } from "../lib/codes.ts"
 import { randomId } from "../lib/random-id.ts"
+import type { Usage } from "../ports.ts"
 import type { RerollOutcome, ClaimOutcome } from "../room/giveaway-room.ts"
 import type { RoomStatus } from "../room/rows.ts"
 import { parseCreateGiveaway } from "./create-input.ts"
@@ -123,7 +124,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     if (!deps.config.adminTwitchIds.includes(c.get("streamer").twitchUserId)) {
       return c.json({ error: "forbidden" }, 403)
     }
-    return c.json({ usage: await deps.usage.today(), queue: await deps.queue.stats() })
+    return c.json({ usage: await adminUsage(deps), queue: await deps.queue.stats() })
   })
 
   // OBS has no session: the token in the URL is the whole credential.
@@ -236,6 +237,16 @@ async function mirrorStatus(deps: AppDeps, giveaway: Giveaway, status: RoomStatu
 }
 
 type UsageWarning = { readonly kind: "worker-requests-low"; readonly remaining: number }
+
+/** The admin page shows "unavailable" instead of failing when the usage source does not answer. */
+async function adminUsage(deps: AppDeps): Promise<Usage | null | "unavailable"> {
+  try {
+    return await deps.usage.today()
+  } catch (error) {
+    console.warn("usage unavailable", { errorClass: errorClass(error) })
+    return "unavailable"
+  }
+}
 
 async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
   try {

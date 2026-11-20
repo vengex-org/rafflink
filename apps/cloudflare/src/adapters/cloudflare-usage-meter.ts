@@ -1,0 +1,126 @@
+import type { ResolvedConfig } from "@rafflink/core/config"
+import type { Clock, UsageMeter } from "@rafflink/core/ports"
+
+export type UsageMeterConfig = Pick<
+  ResolvedConfig,
+  | "cloudflareAccountId"
+  | "cloudflareApiToken"
+  | "cloudflareUsageUrl"
+  | "cloudflareUsageTimeoutMs"
+  | "workerRequestLimit"
+  | "durableObjectRequestLimit"
+>
+
+/** The `fetch` the meter sends its call through; the global `fetch` fits. */
+export type UsageFetch = (input: string, init?: RequestInit) => Promise<Response>
+
+/** The Analytics API did not answer with the day's numbers: it failed, timed out or answered an error. */
+export class UsageUnavailable extends Error {}
+
+const usageQuery = `query Usage($accountTag: String!, $since: Time!, $until: Time!) {
+  viewer {
+    accounts(filter: { accountTag: $accountTag }) {
+      workers: workersInvocationsAdaptive(limit: 1, filter: { datetime_geq: $since, datetime_leq: $until }) {
+        sum { requests }
+      }
+      durableObjects: durableObjectsInvocationsAdaptiveGroups(limit: 1, filter: { datetime_geq: $since, datetime_leq: $until }) {
+        sum { requests }
+      }
+    }
+  }
+}`
+
+/**
+ * Reads the requests of the current UTC day from the Cloudflare GraphQL Analytics API on every call.
+ * Without an account id and API token there is nothing to read, and the meter reports no limit.
+ */
+export function createUsageMeter(
+  config: UsageMeterConfig,
+  clock: Clock,
+  fetchImpl: UsageFetch,
+): UsageMeter {
+  const { cloudflareAccountId: accountId, cloudflareApiToken: apiToken } = config
+  if (accountId === null || apiToken === null) return { today: async () => null }
+
+  return {
+    today: async () => {
+      const now = clock.now()
+      const response = await send(now)
+      const counts = parseCounts(await readBody(response))
+      if (counts === null) throw new UsageUnavailable("Analytics answer has no usage numbers")
+      return {
+        workerRequests: { used: counts.workerRequests, limit: config.workerRequestLimit },
+        doRequests: { used: counts.durableObjectRequests, limit: config.durableObjectRequestLimit },
+      }
+    },
+  }
+
+  async function send(now: number): Promise<Response> {
+    const since = new Date(now)
+    since.setUTCHours(0, 0, 0, 0)
+    try {
+      return await fetchImpl(config.cloudflareUsageUrl, {
+        method: "POST",
+        headers: { authorization: `Bearer ${apiToken}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          query: usageQuery,
+          variables: {
+            accountTag: accountId,
+            since: since.toISOString(),
+            until: new Date(now).toISOString(),
+          },
+        }),
+        signal: AbortSignal.timeout(config.cloudflareUsageTimeoutMs),
+      })
+    } catch (error) {
+      throw new UsageUnavailable("Analytics request failed", { cause: error })
+    }
+  }
+}
+
+async function readBody(response: Response): Promise<unknown> {
+  if (!response.ok) throw new UsageUnavailable(`Analytics answered ${response.status}`)
+  try {
+    return await response.json()
+  } catch (error) {
+    throw new UsageUnavailable("Analytics answer is not JSON", { cause: error })
+  }
+}
+
+interface Counts {
+  readonly workerRequests: number
+  readonly durableObjectRequests: number
+}
+
+// GraphQL reports an error with status 200: `errors` is a non-empty list, and `data` is then null or partial.
+function parseCounts(body: unknown): Counts | null {
+  if (!isRecord(body)) return null
+  if (Array.isArray(body.errors) && body.errors.length > 0) return null
+  const account = firstOf(isRecord(body.data) ? body.data.viewer : null, "accounts")
+  if (!isRecord(account)) return null
+  const workers = requestsOf(account.workers)
+  const durableObjects = requestsOf(account.durableObjects)
+  return workers === null || durableObjects === null
+    ? null
+    : { workerRequests: workers, durableObjectRequests: durableObjects }
+}
+
+function firstOf(parent: unknown, key: string): unknown {
+  const list = isRecord(parent) ? parent[key] : null
+  return Array.isArray(list) ? list[0] : null
+}
+
+// No row means no request was counted yet today.
+function requestsOf(rows: unknown): number | null {
+  if (!Array.isArray(rows)) return null
+  if (rows.length === 0) return 0
+  const sum = isRecord(rows[0]) ? rows[0].sum : null
+  const requests = isRecord(sum) ? sum.requests : null
+  return typeof requests === "number" && Number.isSafeInteger(requests) && requests >= 0
+    ? requests
+    : null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}

@@ -30,4 +30,4 @@ CREATE TABLE giveaways (
   created_at INTEGER NOT NULL
 );
 
-CREATE INDEX giveaways_by_streamer ON giveaways (streamer_id, created_at, id)
+CREATE INDEX giveaways_by_streamer ON giveaways (streamer_id, created_at, id);

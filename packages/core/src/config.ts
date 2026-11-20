@@ -255,6 +255,42 @@ export const configSchema = {
     "3000",
     "Port the Bun server listens on, 0 picks a free one; the Cloudflare target ignores it",
   ),
+  cloudflareAccountId: withDefault(
+    "CLOUDFLARE_ACCOUNT_ID",
+    optional(text),
+    "",
+    "Cloudflare account whose Worker and Durable Object requests the usage meter reads; with the API token unset the meter reports no limit; only the Cloudflare target reads it",
+  ),
+  cloudflareApiToken: withDefault(
+    "CLOUDFLARE_API_TOKEN",
+    optional(text),
+    "",
+    "Cloudflare API token with Account Analytics read permission; with the account id unset the meter reports no limit; only the Cloudflare target reads it",
+  ),
+  cloudflareUsageUrl: withDefault(
+    "CLOUDFLARE_USAGE_URL",
+    endpoint,
+    "https://api.cloudflare.com/client/v4/graphql",
+    "Cloudflare GraphQL Analytics endpoint; only tests change it",
+  ),
+  cloudflareUsageTimeoutMs: withDefault(
+    "CLOUDFLARE_USAGE_TIMEOUT_MS",
+    int(1),
+    "5000",
+    "Timeout of the Analytics call behind the admin page and the creation warning; starting guess",
+  ),
+  workerRequestLimit: withDefault(
+    "WORKER_REQUEST_LIMIT",
+    int(1),
+    "100000",
+    "Worker requests per UTC day the usage meter compares against; Cloudflare Workers Free plan limit, raise it on a paid plan",
+  ),
+  durableObjectRequestLimit: withDefault(
+    "DURABLE_OBJECT_REQUEST_LIMIT",
+    int(1),
+    "100000",
+    "Durable Object requests per UTC day the usage meter compares against; Cloudflare Free plan limit, raise it on a paid plan",
+  ),
 }
 
 export function resolveConfig(env: Env): ResolvedConfig {
@@ -298,6 +334,12 @@ export function resolveConfig(env: Env): ResolvedConfig {
     prizeMaxLength: read(env, configSchema.prizeMaxLength),
     dataDir: read(env, configSchema.dataDir),
     port: read(env, configSchema.port),
+    cloudflareAccountId: read(env, configSchema.cloudflareAccountId),
+    cloudflareApiToken: read(env, configSchema.cloudflareApiToken),
+    cloudflareUsageUrl: read(env, configSchema.cloudflareUsageUrl),
+    cloudflareUsageTimeoutMs: read(env, configSchema.cloudflareUsageTimeoutMs),
+    workerRequestLimit: read(env, configSchema.workerRequestLimit),
+    durableObjectRequestLimit: read(env, configSchema.durableObjectRequestLimit),
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
@@ -340,6 +382,12 @@ function text(raw: string): Parsed<string, ConfigReason> {
   return value === "" ? fail("blank") : ok(value)
 }
 
+/** A blank value means the setting is not used. */
+function optional(item: (raw: string) => Parsed<string, ConfigReason>) {
+  return (raw: string): Parsed<string | null, ConfigReason> =>
+    raw.trim() === "" ? ok(null) : item(raw)
+}
+
 function bool(raw: string): Parsed<boolean, ConfigReason> {
   if (raw === "true") return ok(true)
   return raw === "false" ? ok(false) : fail("not-a-boolean")
@@ -362,6 +410,14 @@ function url(raw: string): Parsed<string, ConfigReason> {
   const parsed = new URL(value)
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fail("not-a-url")
   return ok(parsed.origin)
+}
+
+function endpoint(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  if (!URL.canParse(value)) return fail("not-a-url")
+  const parsed = new URL(value)
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fail("not-a-url")
+  return ok(parsed.href)
 }
 
 function list<T>(item: (raw: string) => Parsed<T, ConfigReason>) {

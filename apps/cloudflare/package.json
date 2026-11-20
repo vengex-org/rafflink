@@ -2,5 +2,20 @@
   "name": "@rafflink/cloudflare",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "build": "bun src/build/bundle-worker.ts",
+    "dev": "wrangler dev --env-file dev.env",
+    "dev:twitch": "bun --filter @rafflink/fake-twitch start",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@rafflink/core": "workspace:*",
+    "hono": "4.13.19"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261120.1",
+    "miniflare": "4.20260730.0",
+    "wrangler": "4.165.0"
+  }
 }
