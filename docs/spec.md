@@ -123,11 +123,16 @@ A provider is one sign-in plus one eligibility check:
 
 ```ts
 interface Provider {
-  id: "twitch" | "youtube" | "kick";
-  authorizeUrl(state: string, nonce: string, scopes: string[]): string;
-  verifySignIn(params: SignInParams): Promise<{ userId: string; login: string; displayName: string; accessToken: string }>;
-  eligibility(viewerToken: string, viewerId: string, channelId: string): Promise<Eligibility>;
-  channelRoles(streamerToken: string, channelId: string): Promise<{ vips: string[]; moderators: string[] }>;
+  id: "twitch" | "youtube" | "kick"
+  authorizeUrl(state: string, nonce: string, scopes: string[]): string
+  verifySignIn(
+    params: SignInParams,
+  ): Promise<{ userId: string; login: string; displayName: string; accessToken: string }>
+  eligibility(viewerToken: string, viewerId: string, channelId: string): Promise<Eligibility>
+  channelRoles(
+    streamerToken: string,
+    channelId: string,
+  ): Promise<{ vips: string[]; moderators: string[] }>
 }
 ```
 
@@ -142,14 +147,14 @@ Identity everywhere is the pair `(platform, platformUserId)`. A giveaway lists t
 
 ### What the viewer sign-in calls
 
-| Step | Endpoint | Whose limit |
-|---|---|---|
-| Sign-in | `id.twitch.tv/oauth2/authorize` (browser redirect) | none on our side |
-| Token | `POST id.twitch.tv/oauth2/token` | app's `client_id`, limit **not documented** |
-| Identity | `id_token` verified locally against `id.twitch.tv/oauth2/keys` (RS256) | none |
-| Sub check | `GET /helix/subscriptions/user` (`user:read:subscriptions`, 404 = not subscribed) | per client per user |
-| Follow check | `GET /helix/channels/followed?broadcaster_id=` (`user:read:follows`, empty = not following) | per client per user |
-| Account age | `GET /helix/users` (`created_at`), only when the giveaway sets a minimum age | per client per user |
+| Step         | Endpoint                                                                                    | Whose limit                                 |
+| ------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Sign-in      | `id.twitch.tv/oauth2/authorize` (browser redirect)                                          | none on our side                            |
+| Token        | `POST id.twitch.tv/oauth2/token`                                                            | app's `client_id`, limit **not documented** |
+| Identity     | `id_token` verified locally against `id.twitch.tv/oauth2/keys` (RS256)                      | none                                        |
+| Sub check    | `GET /helix/subscriptions/user` (`user:read:subscriptions`, 404 = not subscribed)           | per client per user                         |
+| Follow check | `GET /helix/channels/followed?broadcaster_id=` (`user:read:follows`, empty = not following) | per client per user                         |
+| Account age  | `GET /helix/users` (`created_at`), only when the giveaway sets a minimum age                | per client per user                         |
 
 Helix limits apply "per client ID per user per minute" for user tokens, so 12,000 viewers do not share one
 bucket. The `id_token` has no account creation claim (only `email`, `picture`, `preferred_username`,
@@ -263,17 +268,17 @@ Why not Vercel + Firebase: three vendors instead of one, Firebase's free tier al
 Free-plan limits (Cloudflare docs, read 2026-11-20). All daily limits reset at 00:00 UTC. Over a limit,
 further requests of that type fail, which loses entries.
 
-| Limit | Free | One 12,000-entry giveaway | Free giveaways per day |
-|---|---|---|---|
-| Worker requests | 100,000 / day | ~25,000 (12,000 page-data loads + 12,000 callbacks + ~5% retries); each queued viewer adds up to 40 status polls | **4** without queue |
-| Worker CPU | 10 ms / request | `id_token` check plus JSON, network wait not counted; to measure | n/a |
-| Worker subrequests | 50 / request | 2 to 4 (Helix calls + DO) | n/a |
-| DO requests | 100,000 / day | ~12,600 (entries + retries + WebSocket connects; incoming WebSocket messages count 20:1, outgoing free) | 7 |
-| DO duration | 13,000 GB-s / day | ~80 GB-s (10 min open at 128 MB; hibernating WebSockets are not billed) | 160 |
-| DO SQLite rows written | 100,000 / day | ~12,000 entries + draws | 8 |
-| DO SQLite rows read | 5,000,000 / day | ~40,000 (duplicate checks, hash, draw) | 125 |
-| DO storage | 5 GB / account | ~2 MB | n/a |
-| D1 | 5 M reads, 100k writes / day | a few hundred | n/a |
+| Limit                  | Free                         | One 12,000-entry giveaway                                                                                        | Free giveaways per day |
+| ---------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Worker requests        | 100,000 / day                | ~25,000 (12,000 page-data loads + 12,000 callbacks + ~5% retries); each queued viewer adds up to 40 status polls | **4** without queue    |
+| Worker CPU             | 10 ms / request              | `id_token` check plus JSON, network wait not counted; to measure                                                 | n/a                    |
+| Worker subrequests     | 50 / request                 | 2 to 4 (Helix calls + DO)                                                                                        | n/a                    |
+| DO requests            | 100,000 / day                | ~12,600 (entries + retries + WebSocket connects; incoming WebSocket messages count 20:1, outgoing free)          | 7                      |
+| DO duration            | 13,000 GB-s / day            | ~80 GB-s (10 min open at 128 MB; hibernating WebSockets are not billed)                                          | 160                    |
+| DO SQLite rows written | 100,000 / day                | ~12,000 entries + draws                                                                                          | 8                      |
+| DO SQLite rows read    | 5,000,000 / day              | ~40,000 (duplicate checks, hash, draw)                                                                           | 125                    |
+| DO storage             | 5 GB / account               | ~2 MB                                                                                                            | n/a                    |
+| D1                     | 5 M reads, 100k writes / day | a few hundred                                                                                                    | n/a                    |
 
 Worker requests are the bottleneck: **about 4 giveaways of 12,000 entries per day on the free plan, for the
 whole Rafflink deployment**, not per streamer. Smaller giveaways scale linearly (about 2 Worker requests per
