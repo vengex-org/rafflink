@@ -8,15 +8,16 @@ import type { ResolvedConfig } from "@rafflink/core/config"
 import { openKeyRing, type KeyRing } from "@rafflink/core/lib/seal"
 import { BunSqliteAsyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
-import { Browser } from "../test/browser.ts"
 import {
-  seedStreamer,
+  Browser,
+  openSocket,
   startFakeTwitch,
   users,
+  waitFor,
   type RunningFakeTwitch,
-} from "../test/fake-twitch.ts"
+} from "@rafflink/core/test/contract"
+import { seedStreamer } from "../test/fake-twitch.ts"
 import { sealKey, tempDir, testConfig, validRules } from "../test/fixtures.ts"
-import { waitFor } from "../test/wait.ts"
 import { openDatabase } from "./database.ts"
 import { accountsFileName, startServer, type RunningServer } from "./start-server.ts"
 
@@ -189,7 +190,11 @@ describe("live pages", () => {
     await waitFor(() => messages.length === 1, 5000, "the first snapshot")
 
     const viewer = new Browser(server.url)
-    await viewer.signInAs(users.viewer.id, `/auth/twitch/viewer/start?giveaway=${code}`, twitch)
+    await viewer.signInAs(
+      users.viewer.id,
+      `/auth/twitch/viewer/start?giveaway=${code}`,
+      twitch.fake.control,
+    )
     await waitFor(() => messages.length >= 2, 5000, "the snapshot after the entry")
     socket.close()
 
@@ -267,7 +272,7 @@ function distWithIndex(): string {
 
 async function createGiveaway(server: RunningServer, extra: Record<string, unknown> = {}) {
   const streamer = new Browser(server.url)
-  await streamer.signInAs(users.streamer.id, "/auth/twitch/streamer/start", twitch)
+  await streamer.signInAs(users.streamer.id, "/auth/twitch/streamer/start", twitch.fake.control)
   const response = await streamer.postJson("/api/dash/giveaways", {
     title: "Giveaway",
     prize: "Prize",
@@ -279,21 +284,6 @@ async function createGiveaway(server: RunningServer, extra: Record<string, unkno
   return { streamer, ...body.giveaway }
 }
 
-function openSocket(url: URL, headers: Record<string, string> = {}) {
-  const messages: unknown[] = []
-  // Bun accepts a `headers` option that lib.dom's constructor type lacks.
-  const socket: WebSocket = Reflect.construct(WebSocket, [
-    url.href.replace(/^http/, "ws"),
-    { headers },
-  ])
-  socket.addEventListener("message", (event) => messages.push(JSON.parse(String(event.data))))
-  return { socket, messages }
-}
-
-function entrantCounts(messages: readonly unknown[]): unknown[] {
-  return messages.map((message) =>
-    typeof message === "object" && message !== null && "entrantCount" in message
-      ? message.entrantCount
-      : null,
-  )
+function entrantCounts(messages: readonly { entrantCount: number }[]): number[] {
+  return messages.map((message) => message.entrantCount)
 }

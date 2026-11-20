@@ -2,46 +2,10 @@ import type { AccountStore } from "@rafflink/core/accounts/account-store"
 import { streamerTokenAad } from "@rafflink/core/accounts/streamer-token"
 import { sealSecret, type KeyRing } from "@rafflink/core/lib/seal"
 import { systemRandom } from "@rafflink/core/lib/system-ports"
+import type { RunningFakeTwitch } from "@rafflink/core/test/contract"
 import type { TwitchClient } from "@rafflink/core/twitch/twitch-client"
-import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
-
-export const users = {
-  streamer: user("200"),
-  otherStreamer: user("201"),
-  viewer: user("100"),
-} as const
-
-function user(id: string): FakeUser {
-  return { id, login: `user_${id}`, displayName: `User_${id}`, createdAt: "2019-01-01T00:00:00Z" }
-}
 
 const streamerScopes = ["openid", "channel:read:vips", "moderation:read"] as const
-
-export interface RunningFakeTwitch {
-  readonly fake: FakeTwitch
-  readonly origin: string
-  stop(): Promise<void>
-}
-
-/** The fake Twitch on its own port, with a client id and secret that match `testConfig`. */
-export function startFakeTwitch(): RunningFakeTwitch {
-  const fake = createFakeTwitch({
-    clientId: "client-1",
-    clientSecret: "secret-1",
-    defaultUser: users.viewer,
-    subscribeWindowMs: 300,
-    keepaliveTimeoutSeconds: 10,
-  })
-  for (const fakeUser of Object.values(users)) fake.control.addUser(fakeUser)
-  const server = Bun.serve({ port: 0, fetch: fake.app.fetch })
-  return {
-    fake,
-    origin: server.url.origin,
-    stop: async () => {
-      await server.stop(true)
-    },
-  }
-}
 
 /**
  * Signs `userId` in at the fake and stores their sealed refresh token as streamer `streamerId`, as the

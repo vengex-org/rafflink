@@ -11,12 +11,8 @@ import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
-import {
-  seedStreamer,
-  startFakeTwitch,
-  users,
-  type RunningFakeTwitch,
-} from "../test/fake-twitch.ts"
+import { startFakeTwitch, users, type RunningFakeTwitch } from "@rafflink/core/test/contract"
+import { seedStreamer } from "../test/fake-twitch.ts"
 import { giveawayInit, sealKey, testConfig, validRules } from "../test/fixtures.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
 import { runRoomAlarm } from "./room-alarm.ts"

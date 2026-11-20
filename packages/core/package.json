@@ -6,6 +6,7 @@
   "exports": {
     "./package.json": "./package.json",
     "./schema/*": "./schema/*",
+    "./test/contract": "./test/contract/index.ts",
     "./*": "./src/*.ts"
   },
   "dependencies": {

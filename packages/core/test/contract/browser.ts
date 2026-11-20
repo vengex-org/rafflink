@@ -1,6 +1,8 @@
-import type { RunningFakeTwitch } from "./fake-twitch.ts"
+import type { FakeTwitchControl } from "@rafflink/fake-twitch"
 
-/** A cookie jar over `fetch` that follows the sign-in redirects between the server and the fake Twitch by hand. */
+type SignInControl = Pick<FakeTwitchControl, "signInAs">
+
+/** A cookie jar over `fetch` that follows the sign-in redirects between the target and the fake Twitch by hand. */
 export class Browser {
   private readonly cookies = new Map<string, string>()
 
@@ -31,13 +33,27 @@ export class Browser {
     return [...this.cookies].map(([name, value]) => `${name}=${value}`).join("; ")
   }
 
-  /** Starts a sign-in at `startPath`, consents as `userId` at the fake, and finishes at the server's callback. */
-  async signInAs(userId: string, startPath: string, twitch: RunningFakeTwitch): Promise<Response> {
-    twitch.fake.control.signInAs(userId)
+  /** Starts a sign-in at `startPath`; returns the authorize URL the target redirected to. */
+  async beginSignIn(startPath: string): Promise<URL> {
     const start = await this.request(startPath)
-    const authorize = await fetch(start.headers.get("location") ?? "", { redirect: "manual" })
-    const callback = new URL(authorize.headers.get("location") ?? "")
+    return new URL(start.headers.get("location") ?? "")
+  }
+
+  /** Consents at the fake as `userId`; returns the callback URL the fake answers with. A test may edit `authorizeUrl` first. */
+  async consent(authorizeUrl: URL, userId: string, twitch: SignInControl): Promise<URL> {
+    twitch.signInAs(userId)
+    const authorize = await fetch(authorizeUrl, { redirect: "manual" })
+    return new URL(authorize.headers.get("location") ?? "")
+  }
+
+  finishSignIn(callback: URL): Promise<Response> {
     return this.request(callback.pathname + callback.search)
+  }
+
+  /** A whole sign-in: start, consent as `userId`, callback. Returns the callback response. */
+  async signInAs(userId: string, startPath: string, twitch: SignInControl): Promise<Response> {
+    const authorizeUrl = await this.beginSignIn(startPath)
+    return this.finishSignIn(await this.consent(authorizeUrl, userId, twitch))
   }
 
   private store(setCookie: string): void {
