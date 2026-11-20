@@ -39,6 +39,24 @@ describe("giveaway landing", () => {
     expect(view.getByText("Entries stay open until the streamer closes them.")).toBeTruthy()
   })
 
+  it("names the giveaway by its code when it has no title and no prize", async () => {
+    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, title: null, prize: null }) })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { level: 1, name: "Giveaway ABCDE" })).toBeTruthy()
+    expect(view.queryByText(/null/)).toBeNull()
+  })
+
+  it("keeps the prize as the headline when the title is missing", async () => {
+    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, title: null }) })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { level: 1, name: "A gaming chair" })).toBeTruthy()
+    expect(view.getByText("Giveaway ABCDE")).toBeTruthy()
+  })
+
   it("says one person entered in the singular", async () => {
     mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, entrantCount: 1 }) })
 

@@ -17,6 +17,16 @@ export function giveawayScenarios(context: ContractContext): void {
     },
   )
 
+  scenario(context, "a giveaway without a title and a prize shows neither", async (world) => {
+    const target = await world.start()
+    const giveaway = await world.createGiveaway(target, { unnamed: true })
+
+    const page = await (await fetch(new URL(`/api/g/${giveaway.code}`, target.url))).json()
+
+    expect(page).toMatchObject({ title: null, prize: null })
+    expect(await world.live(giveaway)).toMatchObject({ title: null })
+  })
+
   scenario(context, "entries are refused after the streamer closes the giveaway", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)

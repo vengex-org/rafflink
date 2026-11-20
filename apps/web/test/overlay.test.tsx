@@ -37,6 +37,14 @@ it("shows the live view read-only on the overlay socket without a session", asyn
   expect(document.documentElement.dataset.surface).toBe("overlay")
 })
 
+it("names the giveaway by its code when the title is missing", async () => {
+  mockFetch({ "GET /api/overlay/gid-1/tok-1": () => ok({ ...liveSnapshot, title: null }) })
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByRole("heading", { level: 1, name: "Giveaway ABCDE" })).toBeTruthy()
+})
+
 it("shows the winners with how their claim stands", async () => {
   mockFetch({
     "GET /api/overlay/gid-1/tok-1": () =>

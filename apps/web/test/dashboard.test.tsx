@@ -56,6 +56,18 @@ describe("dashboard", () => {
     )
   })
 
+  it("names a giveaway without a title by its code and leaves out a missing prize", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () =>
+        ok({ giveaways: [{ ...dashboardGiveaway, title: null, prize: null }] }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("heading", { name: "Giveaway ABCDE" })).toBeTruthy()
+    expect(view.queryByText(/Prize:/)).toBeNull()
+  })
+
   it("keeps the link, chat message and overlay link of a listed giveaway at hand", async () => {
     const copied = stubClipboard(false)
     mockFetch(listed)

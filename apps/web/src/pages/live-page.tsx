@@ -14,7 +14,14 @@ import { EntrantNames, Stat, WinnerList } from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
 import { ShareLinks } from "../components/share-panel.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
-import { closeText, drawText, markClaimedText, rerollText, statusLabel } from "../lib/messages.ts"
+import {
+  closeText,
+  drawText,
+  giveawayName,
+  markClaimedText,
+  rerollText,
+  statusLabel,
+} from "../lib/messages.ts"
 import { peopleText } from "../lib/rules-text.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLive } from "../lib/use-live.ts"
@@ -62,7 +69,7 @@ function Controls({
         {snapshot.chatClaimUnavailable && open ? (
           <button
             type="button"
-            className="button small"
+            className="button tonal small"
             disabled={busy}
             aria-label={`Mark as claimed for ${name}`}
             onClick={() => void run(() => markClaimed(id, winner.n), markClaimedText)}
@@ -91,7 +98,7 @@ function Controls({
       {connected ? null : <output className="status">Reconnecting to the live feed…</output>}
       <header className="page-head">
         <div>
-          <h1>{snapshot.title}</h1>
+          <h1>{giveawayName(snapshot.title, snapshot.code)}</h1>
           <p className="muted">Code {snapshot.code}</p>
         </div>
         <span className="pill" data-status={snapshot.status}>

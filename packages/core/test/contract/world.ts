@@ -30,6 +30,8 @@ export interface GiveawayOptions {
   readonly closesAt?: Date
   readonly claimSeconds?: number
   readonly streamer?: Browser
+  /** Creates the giveaway without a title and a prize. */
+  readonly unnamed?: boolean
 }
 
 export interface CreatedGiveaway {
@@ -118,8 +120,8 @@ export class World {
   ): Promise<CreatedGiveaway> {
     const streamer = options.streamer ?? (await this.signInStreamer(target))
     const response = await streamer.postJson("/api/dash/giveaways", {
-      title: "Giveaway",
-      prize: "Prize",
+      title: options.unnamed === true ? undefined : "Giveaway",
+      prize: options.unnamed === true ? undefined : "Prize",
       rules: { ...defaultRules, ...options.rules },
       closesAt: options.closesAt?.toISOString(),
       claimSeconds: options.claimSeconds,

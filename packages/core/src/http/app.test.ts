@@ -139,6 +139,24 @@ describe("creating a giveaway", () => {
     })
   })
 
+  it("saves a giveaway without a title and a prize as not set", async () => {
+    const { browser, code } = await createGiveaway(harness, users.streamerA.id, {
+      title: "  ",
+      prize: undefined,
+    })
+
+    const page = await (await harness.app.request(`/api/g/${code}`)).json()
+    const list: { giveaways: { title: string | null; prize: string | null }[] } = await (
+      await browser.request("/api/dash/giveaways")
+    ).json()
+
+    expect(page).toMatchObject({ title: null, prize: null })
+    expect(list.giveaways).toMatchObject([{ title: null, prize: null }])
+    expect(sqlRows(harness.accountsDb, "SELECT title, prize FROM giveaways")).toEqual([
+      { title: null, prize: null },
+    ])
+  })
+
   it("answers 404 for a code that does not exist", async () => {
     expect((await harness.app.request("/api/g/ZZZZZ")).status).toBe(404)
   })
@@ -223,15 +241,16 @@ describe("creating a giveaway", () => {
     await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
 
     const response = await browser.postJson("/api/dash/giveaways", {
+      title: "T",
       prize: "P",
-      rules: validRules,
+      rules: { ...validRules, claimKeyword: "   " },
     })
 
     expect(response.status).toBe(400)
     expect(await response.json()).toEqual({
       error: "invalid-input",
-      field: "title",
-      code: "missing",
+      field: "claimKeyword",
+      code: "blank",
     })
   })
 

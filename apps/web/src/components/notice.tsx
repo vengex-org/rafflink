@@ -39,7 +39,7 @@ export function SignIn({ why }: { readonly why: string }) {
   return (
     <StateCard tone="info" icon={<LockIcon />} title="Sign in" level={1}>
       <p>{why}</p>
-      <a className="button big" href="/auth/twitch/streamer/start">
+      <a className="button block" href="/auth/twitch/streamer/start">
         Sign in with Twitch
       </a>
     </StateCard>

@@ -2,11 +2,11 @@ import { useState } from "react"
 import { Link } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import { listGiveaways, type CreateResult } from "../api/client.ts"
-import { GiftIcon, PlusIcon, SparkleIcon, TvIcon } from "../components/icons.tsx"
+import { CheckIcon, GiftIcon, PlusIcon, TvIcon } from "../components/icons.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StateCard } from "../components/state-card.tsx"
-import { statusLabel } from "../lib/messages.ts"
+import { giveawayName, statusLabel } from "../lib/messages.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { CreateForm } from "./create-form.tsx"
 
@@ -35,7 +35,7 @@ export function DashboardPage() {
       switch (view.kind) {
         case "create":
           return (
-            <>
+            <div className="column">
               <h1>New giveaway</h1>
               <CreateForm
                 onCreated={(created) => {
@@ -45,7 +45,7 @@ export function DashboardPage() {
                 onUnauthorized={() => setSignedOut(true)}
                 onCancel={() => setView({ kind: "list" })}
               />
-            </>
+            </div>
           )
         case "created":
           return <CreatedScreen created={view.created} onDone={() => setView({ kind: "list" })} />
@@ -66,8 +66,8 @@ function CreatedScreen({
 }) {
   const { giveaway } = created
   return (
-    <>
-      <StateCard tone="success" icon={<SparkleIcon />} title="Your giveaway is live!" confetti>
+    <div className="column">
+      <StateCard tone="success" icon={<CheckIcon />} title="Your giveaway is live!">
         {created.usageLow === null ? null : (
           <p role="alert">
             Heads up: the server has only {created.usageLow.remaining} requests left for today.
@@ -84,7 +84,7 @@ function CreatedScreen({
           <strong>{giveaway.code}</strong>.
         </p>
         <ShareLinks code={giveaway.code} />
-        <Link className="button big" to={`/live/${giveaway.id}`}>
+        <Link className="button block" to={`/live/${giveaway.id}`}>
           Open live page
         </Link>
       </StateCard>
@@ -96,10 +96,10 @@ function CreatedScreen({
         <p>Show the entries on your stream while people join.</p>
         <ObsSteps giveaway={giveaway} />
       </section>
-      <button type="button" className="button secondary" onClick={onDone}>
+      <button type="button" className="button outlined" onClick={onDone}>
         Back to my giveaways
       </button>
-    </>
+    </div>
   )
 }
 
@@ -128,7 +128,7 @@ function GiveawayList({
               <strong>Draw live.</strong> Close entries and pick the winner on your stream.
             </li>
           </ol>
-          <button type="button" className="button big" onClick={onCreate}>
+          <button type="button" className="button block" onClick={onCreate}>
             Create giveaway
           </button>
         </StateCard>
@@ -148,16 +148,16 @@ function GiveawayList({
         {giveaways.map((giveaway) => (
           <li key={giveaway.id} className="card" data-status={giveaway.status}>
             <div className="giveaway-head">
-              <h2>{giveaway.title}</h2>
+              <h2>{giveawayName(giveaway.title, giveaway.code)}</h2>
               <span className="pill" data-status={giveaway.status}>
                 {statusLabel[giveaway.status]}
               </span>
             </div>
-            <p>Prize: {giveaway.prize}</p>
+            {giveaway.prize === null ? null : <p>Prize: {giveaway.prize}</p>}
             <p className="muted">
               Code {giveaway.code}, created {new Date(giveaway.createdAt).toLocaleDateString()}
             </p>
-            <Link className="button" to={`/live/${giveaway.id}`}>
+            <Link className="button tonal" to={`/live/${giveaway.id}`}>
               Open live page
             </Link>
             <details className="extra">

@@ -5,7 +5,7 @@ CREATE TABLE room_state (
   platform TEXT NOT NULL,
   giveaway_id TEXT NOT NULL,
   broadcaster_id TEXT NOT NULL,
-  title TEXT NOT NULL,
+  title TEXT,
   code TEXT NOT NULL,
   rules_json TEXT NOT NULL,
   claim_seconds INTEGER NOT NULL CHECK (claim_seconds > 0),

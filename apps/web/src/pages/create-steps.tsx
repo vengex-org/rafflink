@@ -1,9 +1,16 @@
 import type { Dispatch, SetStateAction } from "react"
 import { groups } from "@rafflink/core/domain/groups"
-import { Choice, ChoiceGroup, TextField } from "../components/form-fields.tsx"
+import { Segmented, TextField, type SegmentOption } from "../components/form-fields.tsx"
 import { groupLabel } from "../lib/messages.ts"
 import { claimTimeText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
-import { claimPresets, type Audience, type Issue, type Values } from "./create-values.ts"
+import {
+  claimPresets,
+  type Audience,
+  type ClaimPreset,
+  type Ending,
+  type Issue,
+  type Values,
+} from "./create-values.ts"
 
 interface StepProps {
   readonly values: Values
@@ -20,8 +27,8 @@ export function GiveawayStep({ values, setValues, issue }: StepProps) {
     <>
       <TextField
         name="title"
-        label="Giveaway name"
-        help="Viewers see this at the top of the page. Example: Friday gaming chair giveaway"
+        label="Giveaway name (optional)"
+        help="Viewers see this at the top of the page. Example: Friday gaming chair giveaway. Leave it empty and they see the giveaway code instead."
         type="text"
         min={null}
         value={values.title}
@@ -30,7 +37,7 @@ export function GiveawayStep({ values, setValues, issue }: StepProps) {
       />
       <TextField
         name="prize"
-        label="What does the winner get?"
+        label="What does the winner get? (optional)"
         help="Example: A gaming chair, or a 25 euro Steam card"
         type="text"
         min={null}
@@ -42,39 +49,54 @@ export function GiveawayStep({ values, setValues, issue }: StepProps) {
   )
 }
 
-const audiences: readonly { value: Audience; title: string; description: string }[] = [
+const audiences: readonly SegmentOption<Audience>[] = [
   {
     value: "everyone",
-    title: "Everyone",
+    label: "Everyone",
     description: "Any viewer with a Twitch account can enter.",
   },
   {
     value: "followers",
-    title: "Followers only",
+    label: "Followers only",
     description: "Only people who follow your channel can enter.",
   },
   {
     value: "subscribers",
-    title: "Subscribers only",
+    label: "Subscribers only",
     description: "Only your paying subscribers can enter.",
   },
 ]
 
+const endings: readonly SegmentOption<Ending>[] = [
+  {
+    value: "never",
+    label: "When I close them",
+    description: "Entries stay open until you press Close entries.",
+  },
+  {
+    value: "at-time",
+    label: "At a set time",
+    description: "Entries close by themselves at the time you pick.",
+  },
+]
+
+const claimOptions: readonly SegmentOption<ClaimPreset>[] = claimPresets.map((seconds) => ({
+  value: seconds,
+  label: claimTimeText(seconds),
+  description: "",
+}))
+
 export function AudienceStep({ values, setValues, issue }: StepProps) {
   return (
     <>
-      <ChoiceGroup legend="Who can enter?">
-        {audiences.map((audience) => (
-          <Choice
-            key={audience.value}
-            name="audience"
-            title={audience.title}
-            description={audience.description}
-            checked={values.audience === audience.value}
-            onSelect={() => setValues((current) => ({ ...current, audience: audience.value }))}
-          />
-        ))}
-      </ChoiceGroup>
+      <Segmented
+        name="audience"
+        legend="Who can enter?"
+        help={null}
+        options={audiences}
+        value={values.audience}
+        onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
+      />
       <TextField
         name="minAccountAgeDays"
         label="Minimum account age in days (optional)"
@@ -119,22 +141,14 @@ export function AudienceStep({ values, setValues, issue }: StepProps) {
 export function TimingStep({ values, setValues, issue }: StepProps) {
   return (
     <>
-      <ChoiceGroup legend="When do entries end?">
-        <Choice
-          name="ending"
-          title="When I close them"
-          description="Entries stay open until you press Close entries."
-          checked={values.ending === "never"}
-          onSelect={() => setValues((current) => ({ ...current, ending: "never" }))}
-        />
-        <Choice
-          name="ending"
-          title="At a set time"
-          description="Entries close by themselves at the time you pick."
-          checked={values.ending === "at-time"}
-          onSelect={() => setValues((current) => ({ ...current, ending: "at-time" }))}
-        />
-      </ChoiceGroup>
+      <Segmented
+        name="ending"
+        legend="When do entries end?"
+        help={null}
+        options={endings}
+        value={values.ending}
+        onSelect={(ending) => setValues((current) => ({ ...current, ending }))}
+      />
       {values.ending === "at-time" ? (
         <TextField
           name="closesAt"
@@ -147,18 +161,14 @@ export function TimingStep({ values, setValues, issue }: StepProps) {
           onChange={(closesAt) => setValues((current) => ({ ...current, closesAt }))}
         />
       ) : null}
-      <ChoiceGroup legend="How long does a winner have to claim the prize?">
-        {claimPresets.map((seconds) => (
-          <Choice
-            key={seconds}
-            name="claimSeconds"
-            title={claimTimeText(seconds)}
-            description={seconds === 300 ? "A good choice for most streams." : ""}
-            checked={values.claimSeconds === seconds}
-            onSelect={() => setValues((current) => ({ ...current, claimSeconds: seconds }))}
-          />
-        ))}
-      </ChoiceGroup>
+      <Segmented
+        name="claimSeconds"
+        legend="How long does a winner have to claim the prize?"
+        help="Most streams use 5 minutes."
+        options={claimOptions}
+        value={values.claimSeconds}
+        onSelect={(claimSeconds) => setValues((current) => ({ ...current, claimSeconds }))}
+      />
       <TextField
         name="claimKeyword"
         label="Chat word (optional)"
@@ -178,8 +188,8 @@ export function ReviewStep({ values }: { readonly values: Values }) {
   const keyword = values.claimKeyword.trim()
   return (
     <dl className="review">
-      <ReviewRow label="Name" value={values.title} />
-      <ReviewRow label="Prize" value={values.prize} />
+      <ReviewRow label="Name" value={textOrNotSet(values.title)} />
+      <ReviewRow label="Prize" value={textOrNotSet(values.prize)} />
       <ReviewRow
         label="Who can enter"
         value={whoCanEnterText(values.audience === "subscribers", values.audience === "followers")}
@@ -220,6 +230,10 @@ export function ReviewStep({ values }: { readonly values: Values }) {
       />
     </dl>
   )
+}
+
+function textOrNotSet(text: string): string {
+  return text.trim() === "" ? "Not set" : text
 }
 
 function ReviewRow({ label, value }: { readonly label: string; readonly value: string }) {

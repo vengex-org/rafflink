@@ -33,8 +33,8 @@ function next(view: RenderResult) {
 }
 
 function fillGiveaway(view: RenderResult) {
-  fireEvent.change(view.getByLabelText("Giveaway name"), { target: { value: "Cup" } })
-  fireEvent.change(view.getByLabelText("What does the winner get?"), {
+  fireEvent.change(view.getByLabelText("Giveaway name (optional)"), { target: { value: "Cup" } })
+  fireEvent.change(view.getByLabelText("What does the winner get? (optional)"), {
     target: { value: "A chair" },
   })
 }
@@ -60,29 +60,14 @@ describe("create wizard", () => {
     expect(await view.findByRole("heading", { name: "My giveaways" })).toBeTruthy()
   })
 
-  it("asks for the name and then the prize before it moves on", async () => {
+  it("lets the streamer go on without a name and a prize", async () => {
     mockFetch(listed)
     const view = await openWizard()
 
     next(view)
-    expect(view.getByRole("alert").textContent).toBe("Please fix this to continue.")
-    expect(view.getByText("Enter a name for your giveaway.")).toBeTruthy()
-    expect(view.getByLabelText("Giveaway name").getAttribute("aria-invalid")).toBe("true")
-    expect(view.getByText("Step 1 of 4: What you give away")).toBeTruthy()
 
-    fireEvent.change(view.getByLabelText("Giveaway name"), { target: { value: "  " } })
-    next(view)
-    expect(view.getByText("Enter a name for your giveaway.")).toBeTruthy()
-
-    fireEvent.change(view.getByLabelText("Giveaway name"), { target: { value: "Cup" } })
-    next(view)
-    expect(view.getByText("Enter what the winner gets.")).toBeTruthy()
-
-    fireEvent.change(view.getByLabelText("What does the winner get?"), {
-      target: { value: "A chair" },
-    })
-    next(view)
     expect(await view.findByText("Step 2 of 4: Who can enter")).toBeTruthy()
+    expect(view.queryByRole("alert")).toBeNull()
   })
 
   it("offers Everyone, Followers only and Subscribers only with Everyone chosen", async () => {
@@ -161,7 +146,7 @@ describe("create wizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
     expect(await view.findByText("Step 1 of 4: What you give away")).toBeTruthy()
-    expect(inputOf(view.getByLabelText("Giveaway name")).value).toBe("Cup")
+    expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Cup")
     expect(view.queryByRole("button", { name: "Back" })).toBeNull()
   })
 
@@ -175,6 +160,21 @@ describe("create wizard", () => {
     expect(
       (await view.findByRole("heading", { name: "Who can enter?" })) === document.activeElement,
     ).toBe(true)
+  })
+
+  it("keeps the focus in a field while the streamer types into it", async () => {
+    mockFetch(listed)
+    const view = await openWizard()
+    const title = inputOf(view.getByLabelText("Giveaway name (optional)"))
+    title.focus()
+
+    for (const typed of ["C", "Cu", "Cup", "Cup "]) {
+      fireEvent.change(title, { target: { value: typed } })
+
+      expect(inputOf(view.getByLabelText("Giveaway name (optional)")) === title).toBe(true)
+      expect(title.value).toBe(typed)
+      expect(document.activeElement === title).toBe(true)
+    }
   })
 
   it("reviews the answers in plain sentences", async () => {
@@ -235,6 +235,24 @@ describe("create wizard", () => {
       },
       claimSeconds: 300,
     })
+  })
+
+  it("sends a blank name and prize and reviews them as not set", async () => {
+    const requests = mockFetch(withCreate(createdReply))
+    const view = await openWizard()
+    next(view)
+    await view.findByText("Step 2 of 4: Who can enter")
+    next(view)
+    await view.findByText("Step 3 of 4: When it ends")
+    next(view)
+    await view.findByText("Step 4 of 4: Review")
+
+    expect(view.getAllByText("Not set")).toHaveLength(2)
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    const sent = requests.find((request) => request.route === "POST /api/dash/giveaways")
+    expect(sent?.body).toMatchObject({ title: "", prize: "" })
   })
 
   it("sends the end time as an instant", async () => {
@@ -314,7 +332,7 @@ describe("create wizard", () => {
   it.each([
     ["tickets.vip", "not-a-non-negative-integer", "Step 2 of 4: Who can enter", "VIPs"],
     ["claimKeyword", "too-long", "Step 3 of 4: When it ends", "Chat word (optional)"],
-    ["title", "blank", "Step 1 of 4: What you give away", "Giveaway name"],
+    ["title", "blank", "Step 1 of 4: What you give away", "Giveaway name (optional)"],
   ])(
     "sends the streamer back to the step of the field the server refused (%s)",
     async (field, code, step, label) => {

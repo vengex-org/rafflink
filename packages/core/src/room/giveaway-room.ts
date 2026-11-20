@@ -58,7 +58,7 @@ export interface GiveawayInit {
   readonly id: string
   readonly platform: string
   readonly broadcasterId: string
-  readonly title: string
+  readonly title: string | null
   readonly code: string
   readonly rules: GiveawayRules
   readonly claimSeconds: number
@@ -137,7 +137,7 @@ export interface LiveWinner {
 export interface WinnerPick extends LiveWinner, Identity {}
 
 export interface LiveSnapshot extends RoomSummary {
-  readonly title: string
+  readonly title: string | null
   readonly code: string
   readonly entriesPerSecond: number
   readonly lastNames: readonly string[]

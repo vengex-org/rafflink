@@ -65,6 +65,17 @@ describe("parseCreateGiveaway", () => {
     expect(parsed).toMatchObject({ ok: true, value: { title: "A", prize: "B" } })
   })
 
+  it.each([
+    ["absent", undefined],
+    ["null", null],
+    ["empty", ""],
+    ["only spaces", " \t"],
+  ])("treats a title and a prize that are %s as not set", (_name, blank) => {
+    const parsed = parseCreateGiveaway({ ...valid, title: blank, prize: blank }, now, config)
+
+    expect(parsed).toMatchObject({ ok: true, value: { title: null, prize: null } })
+  })
+
   it("reads an end time with a zone offset", () => {
     const parsed = parseCreateGiveaway(
       { ...valid, closesAt: "2026-12-01T12:00:01+02:00" },
@@ -79,9 +90,6 @@ describe("parseCreateGiveaway", () => {
     ["a body that is not an object", "text", { field: "body", code: "not-an-object" }],
     ["a null body", null, { field: "body", code: "not-an-object" }],
     ["an array body", [], { field: "body", code: "not-an-object" }],
-    ["a missing title", { ...valid, title: undefined }, { field: "title", code: "missing" }],
-    ["an empty title", { ...valid, title: "" }, { field: "title", code: "blank" }],
-    ["a title of spaces", { ...valid, title: "   " }, { field: "title", code: "blank" }],
     ["a numeric title", { ...valid, title: 5 }, { field: "title", code: "not-a-string" }],
     [
       "a title one over the maximum length",
@@ -93,9 +101,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, prize: "1234567890123" },
       { field: "prize", code: "too-long" },
     ],
-    ["an empty prize", { ...valid, prize: "" }, { field: "prize", code: "blank" }],
-    ["a prize of whitespace", { ...valid, prize: " \t" }, { field: "prize", code: "blank" }],
-    ["a null prize", { ...valid, prize: null }, { field: "prize", code: "not-a-string" }],
+    ["a numeric prize", { ...valid, prize: 5 }, { field: "prize", code: "not-a-string" }],
     ["missing rules", { title: "T", prize: "P" }, { field: "rules", code: "not-an-object" }],
     [
       "rules that are a string",
@@ -192,8 +198,13 @@ describe("parseCreateGiveaway", () => {
   })
 
   it("does not read a title from the prototype", () => {
-    const body = Object.create({ title: "Inherited", prize: "Inherited", rules: validRules })
+    const body = Object.assign(Object.create({ title: "Inherited", prize: "Inherited" }), {
+      rules: validRules,
+    })
 
-    expect(issue(body)).toEqual({ field: "title", code: "missing" })
+    expect(parseCreateGiveaway(body, now, config)).toMatchObject({
+      ok: true,
+      value: { title: null, prize: null },
+    })
   })
 })

@@ -53,8 +53,8 @@ export interface Giveaway {
   readonly platform: string
   /** The streamer's user id on the platform. */
   readonly broadcasterId: string
-  readonly title: string
-  readonly prize: string
+  readonly title: string | null
+  readonly prize: string | null
   readonly rules: GiveawayRules
   readonly status: RoomStatus
   readonly closesAt: Instant | null
@@ -181,8 +181,8 @@ export class AccountStore {
       streamerId: reader.text("streamer_id"),
       platform: reader.text("platform"),
       broadcasterId: reader.text("broadcaster_id"),
-      title: reader.text("title"),
-      prize: reader.text("prize"),
+      title: reader.nullableText("title"),
+      prize: reader.nullableText("prize"),
       rules: rules.value,
       status: reader.oneOf("status", roomStatuses),
       closesAt: reader.nullableInt("closes_at"),

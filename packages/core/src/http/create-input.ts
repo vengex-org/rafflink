@@ -15,8 +15,10 @@ export type CreateConfig = Pick<
 
 /** A create request that passed the boundary. */
 export interface CreateGiveawayInput {
-  readonly title: string
-  readonly prize: string
+  /** Null when the streamer left it blank. */
+  readonly title: string | null
+  /** Null when the streamer left it blank. */
+  readonly prize: string | null
   readonly rules: GiveawayRules
   readonly claimSeconds: number
   readonly closesAt: Instant | null
@@ -34,9 +36,9 @@ export function parseCreateGiveaway(
   config: CreateConfig,
 ): Parsed<CreateGiveawayInput, CreateIssue> {
   if (!isRecord(body)) return fail("body", "not-an-object")
-  const title = parseText(body, "title", config.titleMaxLength)
+  const title = parseOptionalText(body, "title", config.titleMaxLength)
   if (!title.ok) return title
-  const prize = parseText(body, "prize", config.prizeMaxLength)
+  const prize = parseOptionalText(body, "prize", config.prizeMaxLength)
   if (!prize.ok) return prize
   const rules = parseRules(withKeywordNull(ownValue(body, "rules")), config)
   if (!rules.ok) return rules
@@ -62,16 +64,17 @@ function withKeywordNull(rules: unknown): unknown {
   return { ...rules, claimKeyword: null }
 }
 
-function parseText(
+// Absent, null and blank all mean "not set".
+function parseOptionalText(
   body: Record<string, unknown>,
   field: string,
   maxLength: number,
-): Parsed<string, CreateIssue> {
+): Parsed<string | null, CreateIssue> {
   const value = ownValue(body, field)
-  if (value === undefined) return fail(field, "missing")
+  if (value === undefined || value === null) return { ok: true, value: null }
   if (typeof value !== "string") return fail(field, "not-a-string")
   const text = value.trim()
-  if (text === "") return fail(field, "blank")
+  if (text === "") return { ok: true, value: null }
   return text.length > maxLength ? fail(field, "too-long") : { ok: true, value: text }
 }
 

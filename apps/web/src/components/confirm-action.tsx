@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
-/** A button for something that cannot be undone: it first asks in plain words what will happen. */
+/** A button for something that cannot be undone: it first asks in a dialog, in plain words, what will happen. */
 export function ConfirmAction({
   label,
   question,
@@ -17,58 +17,70 @@ export function ConfirmAction({
   readonly confirmLabel: string
   readonly busy: boolean
   readonly disabled: boolean
-  /** A smaller button for an action that is not the screen's main step. */
+  /** A smaller, outlined button for an action that is not the screen's main step. */
   readonly quiet: boolean
   readonly onConfirm: () => void
 }) {
+  const questionId = useId()
   const [asking, setAsking] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
+  const dialog = useRef<HTMLDialogElement>(null)
   const cancel = useRef<HTMLButtonElement>(null)
   const wasAsking = useRef(false)
 
   useEffect(() => {
-    if (asking) cancel.current?.focus()
-    else if (wasAsking.current) trigger.current?.focus()
+    if (asking) {
+      dialog.current?.showModal()
+      cancel.current?.focus()
+    } else if (wasAsking.current) trigger.current?.focus()
     wasAsking.current = asking
   }, [asking])
 
-  if (!asking) {
-    return (
+  return (
+    <>
       <button
         ref={trigger}
         type="button"
-        className={quiet ? "button secondary small" : "button"}
+        className={quiet ? "button outlined small" : "button"}
         disabled={busy || disabled}
         onClick={() => setAsking(true)}
       >
         {label}
       </button>
-    )
-  }
-  return (
-    <fieldset className="confirm">
-      <legend className="confirm-question">{question}</legend>
-      <p>{detail}</p>
-      <div className="actions">
-        <button
-          type="button"
-          className="button"
-          onClick={() => {
+      {asking ? (
+        <dialog
+          ref={dialog}
+          className="dialog"
+          aria-labelledby={questionId}
+          onCancel={(event) => {
+            event.preventDefault()
             setAsking(false)
-            onConfirm()
           }}
         >
-          {confirmLabel}
-        </button>
-        <button
-          type="button"
-          ref={cancel}
-          className="button secondary"
-          onClick={() => setAsking(false)}
-        >
-          Cancel
-        </button>
-      </div>
-    </fieldset>
+          <h2 id={questionId}>{question}</h2>
+          <p>{detail}</p>
+          <div className="actions dialog-actions">
+            <button
+              type="button"
+              ref={cancel}
+              className="button text"
+              onClick={() => setAsking(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                setAsking(false)
+                onConfirm()
+              }}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </dialog>
+      ) : null}
+    </>
   )
 }

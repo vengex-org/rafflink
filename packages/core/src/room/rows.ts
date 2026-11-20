@@ -23,7 +23,7 @@ export type RoomState = {
   readonly platform: string
   readonly giveawayId: string
   readonly broadcasterId: string
-  readonly title: string
+  readonly title: string | null
   readonly code: string
   readonly rules: GiveawayRules
   readonly claimSeconds: number
@@ -73,7 +73,7 @@ export function parseState(
     platform: reader.text("platform"),
     giveawayId: reader.text("giveaway_id"),
     broadcasterId: reader.text("broadcaster_id"),
-    title: reader.text("title"),
+    title: reader.nullableText("title"),
     code: reader.text("code"),
     rules: rules.value,
     claimSeconds: reader.int("claim_seconds"),

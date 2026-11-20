@@ -32,6 +32,11 @@ export const groupLabel: Readonly<Record<Group, string>> = {
   moderator: "Moderators",
 }
 
+/** What a giveaway is called on screen; the streamer may leave the title empty. */
+export function giveawayName(title: string | null, code: string): string {
+  return title ?? `Giveaway ${code}`
+}
+
 export const statusLabel: Readonly<Record<RoomStatus, string>> = {
   open: "Entries open",
   closed: "Entries closed",

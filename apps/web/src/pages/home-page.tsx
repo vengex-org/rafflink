@@ -17,7 +17,7 @@ export function HomePage() {
           Viewers enter with one Twitch sign-in instead of typing fast in chat. You share a link,
           close entries and draw the winner live.
         </p>
-        <Link className="button big" to="/dashboard">
+        <Link className="button block" to="/dashboard">
           Create a giveaway
         </Link>
       </StateCard>

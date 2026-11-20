@@ -23,7 +23,6 @@ export function StepIndicator({
               data-state={state}
               aria-current={state === "current" ? "step" : undefined}
             >
-              <span className="step-number">{number < current ? "✓" : number}</span>
               <span className="step-name">{step}</span>
             </li>
           )

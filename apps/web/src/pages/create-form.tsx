@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { createGiveaway, type CreateResult } from "../api/client.ts"
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { issueText } from "../lib/messages.ts"
@@ -81,16 +81,7 @@ export function CreateForm({
       aria-labelledby="wizard-title"
     >
       <StepIndicator steps={stepNames} current={step} />
-      <h2
-        key={step}
-        id="wizard-title"
-        tabIndex={-1}
-        ref={(node) => {
-          node?.focus()
-        }}
-      >
-        {stepQuestions[step]}
-      </h2>
+      <StepHeading key={step} text={stepQuestions[step]} />
       {issue === null ? null : (
         <p role="alert" className="form-alert">
           Please fix this to continue.
@@ -108,14 +99,14 @@ export function CreateForm({
       ) : null}
       <div className="actions wizard-actions">
         {step === 1 ? (
-          <button type="button" className="button secondary" onClick={onCancel}>
+          <button type="button" className="button text" onClick={onCancel}>
             Cancel
           </button>
         ) : (
           <button
             key="back"
             type="button"
-            className="button secondary"
+            className="button text"
             onClick={() => {
               setIssue(null)
               setStep(previous(step))
@@ -125,16 +116,29 @@ export function CreateForm({
           </button>
         )}
         {step === 4 ? (
-          <button key="start" type="submit" className="button big" disabled={busy}>
+          <button key="start" type="submit" className="button" disabled={busy}>
             {busy ? "Starting…" : "Start giveaway"}
           </button>
         ) : (
-          <button key="next" type="submit" className="button big">
+          <button key="next" type="submit" className="button">
             Next
           </button>
         )}
       </div>
     </form>
+  )
+}
+
+// Focus moves when the step changes (a new `key` mounts a new heading), never on a render caused by typing.
+function StepHeading({ text }: { readonly text: string }) {
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    heading.current?.focus()
+  }, [])
+  return (
+    <h2 id="wizard-title" tabIndex={-1} ref={heading}>
+      {text}
+    </h2>
   )
 }
 

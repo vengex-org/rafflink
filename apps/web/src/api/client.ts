@@ -104,8 +104,8 @@ export async function getGiveaway(code: string): Promise<GiveawayView | null> {
   const win = source.win === null ? null : child(source, "win")
   return {
     code: text(source, "code"),
-    title: text(source, "title"),
-    prize: text(source, "prize"),
+    title: nullableText(source, "title"),
+    prize: nullableText(source, "prize"),
     rules: parseRules(child(source, "rules")),
     status: oneOf(source, "status", roomStatuses),
     closesAt: nullableNum(source, "closesAt"),
@@ -347,8 +347,8 @@ function parseDashboardGiveaway(source: Json): DashboardGiveaway {
   return {
     id: text(source, "id"),
     code: text(source, "code"),
-    title: text(source, "title"),
-    prize: text(source, "prize"),
+    title: nullableText(source, "title"),
+    prize: nullableText(source, "prize"),
     rules: parseRules(child(source, "rules")),
     status: oneOf(source, "status", roomStatuses),
     closesAt: nullableNum(source, "closesAt"),
@@ -361,7 +361,7 @@ function parseDashboardGiveaway(source: Json): DashboardGiveaway {
 /** A live message from the socket; the same shape as the snapshot a GET returns. */
 export function parseLiveSnapshot(source: Json): LiveSnapshot {
   return {
-    title: text(source, "title"),
+    title: nullableText(source, "title"),
     code: text(source, "code"),
     status: oneOf(source, "status", roomStatuses),
     closesAt: nullableNum(source, "closesAt"),

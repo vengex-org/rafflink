@@ -47,11 +47,11 @@ export function CopyField({
           value={value}
           onFocus={(event) => event.currentTarget.select()}
         />
-        <button type="button" className="button secondary" onClick={() => void copy()}>
+        <button type="button" className="button tonal" onClick={() => void copy()}>
           {buttonLabel}
         </button>
       </div>
-      <output className="copy-note">
+      <output className="snackbar">
         {state === "copied" ? "Copied!" : null}
         {state === "failed" ? "Could not copy. The text is selected: press Ctrl+C." : null}
       </output>

@@ -8,8 +8,8 @@ import type { CallbackOutcome } from "../viewer/outcome.ts"
 /** What the giveaway page needs; the overlay token and the streamer's ids stay out. */
 export interface PublicGiveaway {
   readonly code: string
-  readonly title: string
-  readonly prize: string
+  readonly title: string | null
+  readonly prize: string | null
   readonly rules: GiveawayRules
   readonly status: RoomStatus
   readonly closesAt: Instant | null
@@ -23,8 +23,8 @@ export interface PublicGiveaway {
 export interface DashboardGiveaway {
   readonly id: string
   readonly code: string
-  readonly title: string
-  readonly prize: string
+  readonly title: string | null
+  readonly prize: string | null
   readonly rules: GiveawayRules
   readonly status: RoomStatus
   readonly closesAt: Instant | null

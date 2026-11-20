@@ -14,7 +14,13 @@ import {
 import { Failed, Loading, NotFound, Status } from "../components/notice.tsx"
 import { StateCard, type Tone } from "../components/state-card.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
-import { groupLabel, reasonHelp, reasonText, viewerClaimText } from "../lib/messages.ts"
+import {
+  giveawayName,
+  groupLabel,
+  reasonHelp,
+  reasonText,
+  viewerClaimText,
+} from "../lib/messages.ts"
 import {
   claimTimeText,
   extraTicketsText,
@@ -68,8 +74,10 @@ function GiveawayDetails({
   return (
     <article>
       <header className="card hero">
-        <p className="giveaway-name">{giveaway.title}</p>
-        <h1>{giveaway.prize}</h1>
+        {giveaway.prize === null ? null : (
+          <p className="eyebrow">{giveawayName(giveaway.title, code)}</p>
+        )}
+        <h1>{giveaway.prize ?? giveawayName(giveaway.title, code)}</h1>
         <ul className="facts">
           <li>
             <UsersIcon />
@@ -142,7 +150,7 @@ function EntryPanel({
     return (
       <StateCard tone="info" icon={<LockIcon />} title="The winners are drawn">
         <p>Sign in with Twitch to see whether you won.</p>
-        <a className="button big" href={signInHref}>
+        <a className="button block" href={signInHref}>
           Sign in with Twitch
         </a>
       </StateCard>
@@ -162,7 +170,6 @@ function EntryPanel({
         tone={card === null ? "info" : card.tone}
         icon={card === null ? <GiftIcon /> : card.icon}
         title={card === null ? "Ready to enter?" : card.title}
-        confetti={card?.entered === true}
       >
         <p>
           {card === null
@@ -171,7 +178,7 @@ function EntryPanel({
         </p>
         {card !== null && card.help !== null ? <p>{card.help}</p> : null}
         {canEnter ? (
-          <a className="button big" href={signInHref}>
+          <a className="button block" href={signInHref}>
             Enter with Twitch
           </a>
         ) : null}
@@ -329,7 +336,7 @@ function ClaimPanel({
   const claimed = win.claim.state === "claimed" || message === viewerClaimText.claimed
   if (claimed) {
     return (
-      <StateCard tone="win" icon={<TrophyIcon />} title="You won" confetti>
+      <StateCard tone="win" icon={<TrophyIcon />} title="You won">
         <p>{viewerClaimText.claimed}</p>
       </StateCard>
     )
@@ -343,14 +350,14 @@ function ClaimPanel({
     )
   }
   return (
-    <StateCard tone="win" icon={<TrophyIcon />} title="You won" confetti>
+    <StateCard tone="win" icon={<TrophyIcon />} title="You won">
       <p className="big-clock">
         <span role="timer">{formatClock(remaining)}</span> min left to claim
       </p>
       <p>Press the button before the time runs out.</p>
       <button
         type="button"
-        className="button big"
+        className="button block"
         disabled={busy}
         onClick={() => void run(() => claimPrize(code), viewerClaimText)}
       >

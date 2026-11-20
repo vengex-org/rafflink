@@ -54,6 +54,14 @@ describe("live page: collecting entries", () => {
     expect(view.getByText("9")).toBeTruthy()
   })
 
+  it("names the giveaway by its code when the title is missing", async () => {
+    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, title: null }) })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByRole("heading", { level: 1, name: "Giveaway ABCDE" })).toBeTruthy()
+  })
+
   it("says nobody has entered yet when the list is empty", async () => {
     mockFetch({
       "GET /api/live/gid-1": () => ok({ ...liveSnapshot, entrantCount: 0, lastNames: [] }),
@@ -100,6 +108,18 @@ describe("live page: collecting entries", () => {
     expect(view.getByText("Nobody new can enter after this. You cannot undo it.")).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Cancel" }))
     expect(view.getByRole("button", { name: "Close entries" })).toBeTruthy()
+    expect(requests.map((request) => request.route)).toEqual(["GET /api/live/gid-1"])
+  })
+
+  it("closes the question without sending anything when the dialog is dismissed", async () => {
+    const requests = mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.click(await view.findByRole("button", { name: "Close entries" }))
+    const dialog = view.getByRole("dialog", { name: "Close entries now?" })
+    fireEvent(dialog, new Event("cancel", { cancelable: true }))
+
+    expect(view.queryByRole("dialog")).toBeNull()
     expect(requests.map((request) => request.route)).toEqual(["GET /api/live/gid-1"])
   })
 

@@ -50,12 +50,7 @@ export const initialValues: Values = {
 export function stepIssue(step: Step, values: Values, now: number): Issue | null {
   switch (step) {
     case 1:
-      if (values.title.trim() === "") {
-        return { field: "title", message: "Enter a name for your giveaway." }
-      }
-      if (values.prize.trim() === "") {
-        return { field: "prize", message: "Enter what the winner gets." }
-      }
+    case 4:
       return null
     case 2: {
       for (const group of groups) {
@@ -79,8 +74,6 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
       }
       return end > now ? null : { field: "closesAt", message: "Pick a time in the future." }
     }
-    case 4:
-      return null
   }
 }
 

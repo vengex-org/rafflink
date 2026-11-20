@@ -3,6 +3,7 @@ import { useParams } from "react-router"
 import { overlaySnapshotPath } from "../api/client.ts"
 import { EntrantNames, Stat, WinnerList } from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
+import { giveawayName } from "../lib/messages.ts"
 import { useLive } from "../lib/use-live.ts"
 
 /** The read-only live view for an OBS browser source: no session, a transparent background. */
@@ -35,7 +36,7 @@ function Loaded({ id, token }: { readonly id: string; readonly token: string }) 
       const { snapshot } = live
       return (
         <main className="overlay">
-          <h1>{snapshot.title}</h1>
+          <h1>{giveawayName(snapshot.title, snapshot.code)}</h1>
           <p className="overlay-code">Code {snapshot.code}</p>
           <dl className="stats">
             <Stat value={snapshot.entrantCount.toLocaleString("en-US")} label="people entered" />

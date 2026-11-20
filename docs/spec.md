@@ -55,7 +55,7 @@ budget), and over a limit entries fail. So the hosted service:
 **Streamer**
 
 1. Signs in with Twitch.
-2. Creates a giveaway: title, prize text, rules (who may enter, tickets per group), optional end time.
+2. Creates a giveaway: optional title and prize text, rules (who may enter, tickets per group), optional end time.
 3. Gets a link `rafflink.app/<code>` and posts it in chat. The code is 5 characters from an alphabet without
    look-alike characters (no `0 O 1 l I`), short enough to say out loud. `rafflink.app/g/<code>` redirects
    to the same page. 31 characters give 28 million codes; a code is reused only after its giveaway is
