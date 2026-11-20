@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { parseLiveSnapshot } from "../src/api/client.ts"
+import { parseLiveSnapshot, parseOverlaySnapshot } from "../src/api/client.ts"
 import { ApiShapeError } from "../src/api/decode.ts"
 import { liveSnapshot } from "./fixtures.ts"
 
@@ -39,15 +39,41 @@ describe("parseLiveSnapshot winner chat", () => {
     expect(parseLiveSnapshot({ ...liveSnapshot, winnerChat }).winnerChat).toEqual(winnerChat)
   })
 
-  it("reads a snapshot without winnerChat, which the overlay route sends, as no lines", () => {
+  it("rejects a live snapshot without winnerChat", () => {
     const { winnerChat: _omitted, ...overlay } = liveSnapshot
 
-    expect(parseLiveSnapshot(overlay).winnerChat).toEqual([])
+    expect(() => parseLiveSnapshot(overlay)).toThrow(ApiShapeError)
   })
 
   it("rejects a malformed chat line", () => {
     const bad = { ...liveSnapshot, winnerChat: [{ name: "Ada", text: 5, at: 1 }] }
 
     expect(() => parseLiveSnapshot(bad)).toThrow(ApiShapeError)
+  })
+})
+
+describe("parseOverlaySnapshot", () => {
+  it("reads a snapshot without winnerChat and returns none", () => {
+    const { winnerChat: _omitted, ...overlay } = liveSnapshot
+
+    const parsed = parseOverlaySnapshot(overlay)
+
+    expect(parsed).toEqual(overlay)
+    expect(Object.hasOwn(parsed, "winnerChat")).toBe(false)
+  })
+
+  it("drops a winnerChat the sender added", () => {
+    const parsed = parseOverlaySnapshot({
+      ...liveSnapshot,
+      winnerChat: [{ name: "Ada", text: "secret", at: 1 }],
+    })
+
+    expect(Object.hasOwn(parsed, "winnerChat")).toBe(false)
+  })
+
+  it("rejects a snapshot with a malformed common field", () => {
+    expect(() => parseOverlaySnapshot({ ...liveSnapshot, entrantCount: "many" })).toThrow(
+      ApiShapeError,
+    )
   })
 })

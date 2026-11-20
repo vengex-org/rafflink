@@ -5,6 +5,7 @@ import {
   closeEntries,
   drawWinners,
   liveSnapshotPath,
+  parseLiveSnapshot,
   markClaimed,
   rerollWinner,
 } from "../api/client.ts"
@@ -38,7 +39,7 @@ export function LivePage() {
 }
 
 function Loaded({ id }: { readonly id: string }) {
-  const live = useLive(liveSnapshotPath(id))
+  const live = useLive(liveSnapshotPath(id), parseLiveSnapshot)
   switch (live.state) {
     case "loading":
       return <Loading />

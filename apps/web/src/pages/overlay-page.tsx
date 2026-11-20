@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import { useParams } from "react-router"
-import { overlaySnapshotPath } from "../api/client.ts"
+import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
 import { ActivityIcon, UsersIcon } from "../components/icons.tsx"
 import { EntrantNames, Stat, WinnerList } from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
@@ -27,7 +27,7 @@ export function OverlayPage() {
 function Loaded({ id, token }: { readonly id: string; readonly token: string }) {
   const i18n = useI18n()
   const { t } = i18n
-  const live = useLive(overlaySnapshotPath(id, token))
+  const live = useLive(overlaySnapshotPath(id, token), parseOverlaySnapshot)
   switch (live.state) {
     case "loading":
       return <Loading />

@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react"
-import type { EntrantsDelta, LiveSnapshot } from "@rafflink/core/room/giveaway-room"
-import { ApiShapeError, record } from "../api/decode.ts"
+import type { EntrantsDelta } from "@rafflink/core/room/giveaway-room"
+import { ApiShapeError, record, type Json } from "../api/decode.ts"
 import { getLive, parseLivePush } from "../api/client.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 
-export type LiveState =
+export type LiveState<Snapshot> =
   | { readonly state: "loading" }
   | {
       readonly state: "ready"
-      readonly snapshot: LiveSnapshot
+      readonly snapshot: Snapshot
       readonly connected: boolean
       /** The entrants the last push added; null for a snapshot, which carries none. */
       readonly entrantsAfter: EntrantsDelta | null
@@ -26,9 +26,15 @@ export function reconnectDelayMs(attempt: number): number {
   return Math.min(reconnectCapMs, reconnectBaseMs * 2 ** attempt)
 }
 
-/** The first snapshot by GET, then every push of the WebSocket on the same path; reconnects with backoff. */
-export function useLive(path: string): LiveState {
-  const [live, setLive] = useState<LiveState>({ state: "loading" })
+/**
+ * The first snapshot by GET, then every push of the WebSocket on the same path; reconnects with backoff.
+ * `parseSnapshot` is the decoder of the caller's audience and must keep its identity across renders.
+ */
+export function useLive<Snapshot>(
+  path: string,
+  parseSnapshot: (source: Json) => Snapshot,
+): LiveState<Snapshot> {
+  const [live, setLive] = useState<LiveState<Snapshot>>({ state: "loading" })
 
   useEffect(() => {
     let current = true
@@ -44,6 +50,7 @@ export function useLive(path: string): LiveState {
         try {
           const { snapshot, entrantsAfter } = parseLivePush(
             record(JSON.parse(String(event.data)), "live"),
+            parseSnapshot,
           )
           healthy = true
           setLive({ state: "ready", snapshot, connected: true, entrantsAfter, overlayToken })
@@ -62,7 +69,7 @@ export function useLive(path: string): LiveState {
       })
     }
 
-    getLive(path).then(
+    getLive(path, parseSnapshot).then(
       (first) => {
         if (!current) return
         if (typeof first === "string") {
@@ -90,7 +97,7 @@ export function useLive(path: string): LiveState {
       if (timer !== null) clearTimeout(timer)
       socket?.close()
     }
-  }, [path])
+  }, [path, parseSnapshot])
 
   return live
 }

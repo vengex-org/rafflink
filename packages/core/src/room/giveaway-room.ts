@@ -177,18 +177,23 @@ export interface WinnerChatLine {
   readonly at: Instant
 }
 
-export type LiveSnapshot = RoomSummary
+/** The snapshot as the OBS overlay sees it: viewers' chat text never reaches a shared screen. */
+export type OverlaySnapshot = RoomSummary
   & RerollState & {
     readonly title: string | null
     readonly code: string
     readonly entriesPerSecond: number
     readonly lastNames: readonly string[]
     readonly winners: readonly LiveWinner[]
-    /** The newest chat messages of winners, newest last; kept in room memory only. */
-    readonly winnerChat: readonly WinnerChatLine[]
     readonly roleRefreshFailures: number
     readonly eventSubFailures: number
   }
+
+/** The streamer's live page snapshot: the overlay's plus the winners' chat. */
+export type LiveSnapshot = OverlaySnapshot & {
+  /** The newest chat messages of winners, newest last; kept in room memory only. */
+  readonly winnerChat: readonly WinnerChatLine[]
+}
 
 /** A winner as every viewer's page sees them: the platform user id lets the page compare it with its own viewer, and nothing else identifies the person. */
 export interface ViewerWinner {
@@ -222,9 +227,6 @@ export interface EntrantsDelta {
 
 /** What every live page receives after a write: the snapshot and the new entrants. */
 export type LivePush = LiveSnapshot & { readonly entrantsAfter: EntrantsDelta }
-
-/** The snapshot as the OBS overlay sees it: viewers' chat text never reaches a shared screen. */
-export type OverlaySnapshot = Omit<LiveSnapshot, "winnerChat">
 
 /** {@link LivePush} for the overlay. */
 export type OverlayPush = OverlaySnapshot & { readonly entrantsAfter: EntrantsDelta }
