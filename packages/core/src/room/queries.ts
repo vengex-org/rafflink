@@ -17,3 +17,10 @@ export const nextClaimDeadlineSql =
 export const waitingPickOfChatterSql = `SELECT n FROM draws
   WHERE platform = (SELECT platform FROM room_state WHERE id = 1)
     AND platform_user_id = ? AND claimed_at IS NULL AND rerolled = 0 AND claim_until >= ?`
+
+/** Entrants after a sequence number (parameter 1), oldest first (parameter 2 is how many). */
+export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, tickets FROM entries
+  WHERE seq > ? ORDER BY seq LIMIT ?`
+
+/** The sequence number of the newest entry; `head` is NULL when nobody entered. */
+export const headSeqSql = "SELECT MAX(seq) AS head FROM entries"

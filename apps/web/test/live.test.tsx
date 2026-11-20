@@ -5,7 +5,7 @@ import { reconnectDelayMs } from "../src/lib/use-live.ts"
 import { stubClipboard } from "./clipboard.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { liveSnapshot } from "./fixtures.ts"
-import { mockFetch, ok } from "./mock-fetch.ts"
+import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 let restoreSocket = () => {}
@@ -18,13 +18,33 @@ afterEach(() => {
   restoreSocket()
 })
 
+/** `mockFetch` plus an empty entrants list, which every streamer live page asks for. */
+function mockLive(routes: Readonly<Record<string, () => Reply>>) {
+  return mockFetch({
+    "GET /api/live/gid-1/entrants?after=0": () => ok({ rows: [], more: false }),
+    ...routes,
+  })
+}
+
 const drawn: LiveSnapshot = {
   ...liveSnapshot,
   status: "drawn",
   winners: [
-    { n: 0, displayName: "Wanda", claimUntil: Date.now() + 120_000, claim: { state: "waiting" } },
-    { n: 1, displayName: "Bob", claimUntil: 1, claim: { state: "claimed", via: "chat" } },
-    { n: 2, displayName: "Eve", claimUntil: 1, claim: { state: "expired" } },
+    {
+      n: 0,
+      entrySeq: 1,
+      displayName: "Wanda",
+      claimUntil: Date.now() + 120_000,
+      claim: { state: "waiting" },
+    },
+    {
+      n: 1,
+      entrySeq: 2,
+      displayName: "Bob",
+      claimUntil: 1,
+      claim: { state: "claimed", via: "chat" },
+    },
+    { n: 2, entrySeq: 3, displayName: "Eve", claimUntil: 1, claim: { state: "expired" } },
   ],
 }
 
@@ -36,7 +56,7 @@ function winnerRow(view: ReturnType<typeof renderApp>, name: string): HTMLElemen
 
 describe("live page: collecting entries", () => {
   it("renders the snapshot with labelled numbers and then every push of the socket", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
 
@@ -55,7 +75,7 @@ describe("live page: collecting entries", () => {
   })
 
   it("names the giveaway by its code when the title is missing", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, title: null }) })
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, title: null }) })
 
     const view = renderApp("/live/gid-1")
 
@@ -63,7 +83,7 @@ describe("live page: collecting entries", () => {
   })
 
   it("says nobody has entered yet when the list is empty", async () => {
-    mockFetch({
+    mockLive({
       "GET /api/live/gid-1": () => ok({ ...liveSnapshot, entrantCount: 0, lastNames: [] }),
     })
 
@@ -73,7 +93,7 @@ describe("live page: collecting entries", () => {
   })
 
   it("shows where the streamer is in three steps", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
 
@@ -83,7 +103,7 @@ describe("live page: collecting entries", () => {
 
   it("offers the link and a chat message to copy while entries are open", async () => {
     const copied = stubClipboard(false)
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     fireEvent.click(await view.findByRole("button", { name: "Copy chat message" }))
@@ -96,7 +116,7 @@ describe("live page: collecting entries", () => {
   })
 
   it("asks before it closes entries, and sends nothing when the streamer cancels", async () => {
-    const requests = mockFetch({
+    const requests = mockLive({
       "GET /api/live/gid-1": () => ok(liveSnapshot),
       "POST /api/dash/giveaways/gid-1/close": () => ok({ kind: "closed" }),
     })
@@ -108,11 +128,14 @@ describe("live page: collecting entries", () => {
     expect(view.getByText("Nobody new can enter after this. You cannot undo it.")).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Cancel" }))
     expect(view.getByRole("button", { name: "Close entries" })).toBeTruthy()
-    expect(requests.map((request) => request.route)).toEqual(["GET /api/live/gid-1"])
+    expect(requests.map((request) => request.route)).toEqual([
+      "GET /api/live/gid-1",
+      "GET /api/live/gid-1/entrants?after=0",
+    ])
   })
 
   it("closes the question without sending anything when the dialog is dismissed", async () => {
-    const requests = mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    const requests = mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     fireEvent.click(await view.findByRole("button", { name: "Close entries" }))
@@ -120,11 +143,14 @@ describe("live page: collecting entries", () => {
     fireEvent(dialog, new Event("cancel", { cancelable: true }))
 
     expect(view.queryByRole("dialog")).toBeNull()
-    expect(requests.map((request) => request.route)).toEqual(["GET /api/live/gid-1"])
+    expect(requests.map((request) => request.route)).toEqual([
+      "GET /api/live/gid-1",
+      "GET /api/live/gid-1/entrants?after=0",
+    ])
   })
 
   it("closes entries once the streamer confirms", async () => {
-    const requests = mockFetch({
+    const requests = mockLive({
       "GET /api/live/gid-1": () => ok(liveSnapshot),
       "POST /api/dash/giveaways/gid-1/close": () => ok({ kind: "closed" }),
     })
@@ -138,7 +164,7 @@ describe("live page: collecting entries", () => {
   })
 
   it("moves the keyboard focus between the question and the button", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     fireEvent.click(await view.findByRole("button", { name: "Close entries" }))
@@ -151,7 +177,7 @@ describe("live page: collecting entries", () => {
   })
 
   it("shows the failure counters as plain sentences under Problems", async () => {
-    mockFetch({
+    mockLive({
       "GET /api/live/gid-1": () =>
         ok({ ...liveSnapshot, roleRefreshFailures: 4, eventSubFailures: 2 }),
     })
@@ -166,7 +192,7 @@ describe("live page: collecting entries", () => {
   })
 
   it("hides Problems while both counters are zero", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     await view.findByText("Ada")
@@ -177,7 +203,7 @@ describe("live page: collecting entries", () => {
 
 describe("live page: drawing", () => {
   it("draws the chosen number of winners after a confirmation that names the number", async () => {
-    const requests = mockFetch({
+    const requests = mockLive({
       "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
       "POST /api/dash/giveaways/gid-1/draw": () => ok({ kind: "drawn", winners: [0, 1] }),
     })
@@ -197,7 +223,7 @@ describe("live page: drawing", () => {
   })
 
   it("asks about one winner in the singular", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
 
     const view = renderApp("/live/gid-1")
     fireEvent.click(await view.findByRole("button", { name: "Draw winners" }))
@@ -206,7 +232,7 @@ describe("live page: drawing", () => {
   })
 
   it.each(["0", "-1", "1.5", ""])("disables Draw winners for %p and says why", async (count) => {
-    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
 
     const view = renderApp("/live/gid-1")
     fireEvent.change(await view.findByLabelText("How many winners?"), { target: { value: count } })
@@ -216,7 +242,7 @@ describe("live page: drawing", () => {
   })
 
   it("disables Draw winners when nobody entered and says why", async () => {
-    mockFetch({
+    mockLive({
       "GET /api/live/gid-1": () =>
         ok({ ...liveSnapshot, status: "closed", entrantCount: 0, lastNames: [] }),
     })
@@ -228,7 +254,7 @@ describe("live page: drawing", () => {
   })
 
   it("warns, without blocking, when more winners are asked for than entered", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
 
     const view = renderApp("/live/gid-1")
     fireEvent.change(await view.findByLabelText("How many winners?"), { target: { value: "9" } })
@@ -240,7 +266,7 @@ describe("live page: drawing", () => {
 
 describe("live page: winners", () => {
   it("shows winners with how they claimed and a countdown for the one still waiting", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(drawn) })
+    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
 
@@ -253,7 +279,7 @@ describe("live page: winners", () => {
   })
 
   it("asks before it picks another winner and names who loses the prize", async () => {
-    const requests = mockFetch({
+    const requests = mockLive({
       "GET /api/live/gid-1": () => ok(drawn),
       "POST /api/dash/giveaways/gid-1/reroll": () => ok({ kind: "rerolled", pick: 3 }),
     })
@@ -266,7 +292,10 @@ describe("live page: winners", () => {
 
     expect(view.getByText("Pick another winner instead of Eve?")).toBeTruthy()
     expect(view.getByText("Eve loses the prize. This cannot be undone.")).toBeTruthy()
-    expect(requests.map((request) => request.route)).toEqual(["GET /api/live/gid-1"])
+    expect(requests.map((request) => request.route)).toEqual([
+      "GET /api/live/gid-1",
+      "GET /api/live/gid-1/entrants?after=0",
+    ])
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
 
     expect(await view.findByText("Another winner was picked.")).toBeTruthy()
@@ -277,7 +306,7 @@ describe("live page: winners", () => {
   })
 
   it("offers Pick another winner only where it makes sense", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(drawn) })
+    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
     await view.findByText("Claimed in chat")
@@ -292,7 +321,7 @@ describe("live page: winners", () => {
   })
 
   it("says when the server refuses to pick another winner", async () => {
-    mockFetch({
+    mockLive({
       "GET /api/live/gid-1": () => ok(drawn),
       "POST /api/dash/giveaways/gid-1/reroll": () => ({
         status: 409,
@@ -311,7 +340,7 @@ describe("live page: winners", () => {
   })
 
   it("explains that chat watch is off and marks a claim by hand", async () => {
-    const requests = mockFetch({
+    const requests = mockLive({
       "GET /api/live/gid-1": () => ok({ ...drawn, chatClaimUnavailable: true }),
       "POST /api/dash/giveaways/gid-1/claim": () => ok({ kind: "claimed" }),
     })
@@ -330,7 +359,7 @@ describe("live page: winners", () => {
   })
 
   it("offers no manual claim and no banner while chat watch works", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(drawn) })
+    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
     await view.findByText("Waiting to claim")
@@ -342,7 +371,7 @@ describe("live page: winners", () => {
 
 describe("live page: access and connection", () => {
   it("asks for a sign-in without a session", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ({ status: 401, body: { error: "unauthorized" } }) })
+    mockLive({ "GET /api/live/gid-1": () => ({ status: 401, body: { error: "unauthorized" } }) })
 
     const view = renderApp("/live/gid-1")
 
@@ -350,7 +379,7 @@ describe("live page: access and connection", () => {
   })
 
   it("answers not found for the giveaway of another streamer", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ({ status: 404, body: { error: "not-found" } }) })
+    mockLive({ "GET /api/live/gid-1": () => ({ status: 404, body: { error: "not-found" } }) })
 
     const view = renderApp("/live/gid-1")
 
@@ -358,7 +387,7 @@ describe("live page: access and connection", () => {
   })
 
   it("reconnects after the socket drops and says so meanwhile", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
     const view = renderApp("/live/gid-1")
     await view.findByText("Ada")
 
@@ -370,7 +399,7 @@ describe("live page: access and connection", () => {
   })
 
   it("ignores a push that is not a snapshot", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
     const view = renderApp("/live/gid-1")
     await view.findByText("Ada")
 
@@ -391,7 +420,7 @@ describe("reconnect delay", () => {
 describe("live page: overlay link", () => {
   it("shows the overlay link with the OBS steps when the live answer carries the token", async () => {
     const copied = stubClipboard(false)
-    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
 
@@ -408,7 +437,7 @@ describe("live page: overlay link", () => {
   })
 
   it("keeps the overlay link when a socket push arrives", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
     await view.findByText("Ada")
@@ -419,7 +448,7 @@ describe("live page: overlay link", () => {
   })
 
   it("shows no overlay link when the answer carries no token", async () => {
-    mockFetch({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
 

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useParams } from "react-router"
-import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
+import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import {
   closeEntries,
   drawWinners,
@@ -9,6 +9,7 @@ import {
   rerollWinner,
 } from "../api/client.ts"
 import { ConfirmAction } from "../components/confirm-action.tsx"
+import { EntrantsSection } from "../components/entrants-table.tsx"
 import {
   ActivityIcon,
   AlertIcon,
@@ -53,6 +54,7 @@ function Loaded({ id }: { readonly id: string }) {
           id={id}
           snapshot={live.snapshot}
           connected={live.connected}
+          entrantsAfter={live.entrantsAfter}
           overlayToken={live.overlayToken}
         />
       )
@@ -63,11 +65,13 @@ function Controls({
   id,
   snapshot,
   connected,
+  entrantsAfter,
   overlayToken,
 }: {
   readonly id: string
   readonly snapshot: LiveSnapshot
   readonly connected: boolean
+  readonly entrantsAfter: EntrantsDelta | null
   readonly overlayToken: string | null
 }) {
   const i18n = useI18n()
@@ -197,6 +201,12 @@ function Controls({
           )}
         </aside>
       </div>
+      <EntrantsSection
+        key={id}
+        id={id}
+        feed={{ connected, entrantsAfter }}
+        winners={snapshot.winners}
+      />
     </>
   )
 }

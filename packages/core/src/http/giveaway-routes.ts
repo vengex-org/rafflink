@@ -6,7 +6,7 @@ import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
 import type { PublicGiveaway, ViewerState } from "./json.ts"
-import { readViewerSession, type ViewerSession } from "./session.ts"
+import { readViewerSession, startViewerSession, type ViewerSession } from "./session.ts"
 
 export function giveawayRoutes(deps: AppDeps): Hono {
   const app = new Hono()
@@ -41,8 +41,14 @@ export function giveawayRoutes(deps: AppDeps): Hono {
   })
 
   app.get("/api/g/:code/pending/:ticket", async (c) => {
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const ticket = c.req.param("ticket")
-    return c.json(pendingOutcome(await deps.queue.poll(ticket), ticket))
+    const polled = await deps.queue.poll(ticket)
+    if (polled.kind === "done" && polled.userId !== null) {
+      await startViewerSession(c, deps, { platform: giveaway.platform, userId: polled.userId })
+    }
+    return c.json(pendingOutcome(polled, ticket))
   })
 
   app.post("/api/g/:code/claim", async (c) => {

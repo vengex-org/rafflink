@@ -109,6 +109,18 @@ export const configSchema = {
     "20",
     "Latest entrant names on the live page; spec AC-4",
   ),
+  liveEntrantsPerPush: withDefault(
+    "LIVE_ENTRANTS_PER_PUSH",
+    int(1),
+    "200",
+    "Most new entrants one live push carries; a bigger backlog makes the page fetch the gap over HTTP; starting guess, about 20 KB of JSON per push at 100 bytes per entrant",
+  ),
+  entrantsPageMax: withDefault(
+    "ENTRANTS_PAGE_MAX",
+    int(1),
+    "5000",
+    "Most entrants one entrants request returns, so 12,000 entrants load in three requests; starting guess, about 500 KB of JSON per page",
+  ),
   queuePollSeconds: withDefault(
     "QUEUE_POLL_SECONDS",
     int(1),
@@ -358,6 +370,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
     liveIntervalMs: read(env, configSchema.liveIntervalMs),
     liveLastNames: read(env, configSchema.liveLastNames),
+    liveEntrantsPerPush: read(env, configSchema.liveEntrantsPerPush),
+    entrantsPageMax: read(env, configSchema.entrantsPageMax),
     queuePollSeconds: read(env, configSchema.queuePollSeconds),
     queuePollMaxSeconds: read(env, configSchema.queuePollMaxSeconds),
     queueCodeMaxAgeSeconds: read(env, configSchema.queueCodeMaxAgeSeconds),

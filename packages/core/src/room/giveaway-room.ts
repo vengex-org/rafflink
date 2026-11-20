@@ -14,7 +14,9 @@ import {
   type ChatWatcherConfig,
 } from "./chat-watcher.ts"
 import {
+  entrantsAfterSql,
   entryOfSql,
+  headSeqSql,
   lastNamesSql,
   nextClaimDeadlineSql,
   recentEntriesCountSql,
@@ -22,11 +24,13 @@ import {
 } from "./queries.ts"
 import {
   parseDraw,
+  parseEntrant,
   parseEntry,
   parseState,
   RowReader,
   type ClaimedVia,
   type DrawRow,
+  type Entrant,
   type EntrySummary,
   type RoomState,
   type RoomStatus,
@@ -38,6 +42,7 @@ export type RoomConfig = Pick<
   | "roleRefreshSeconds"
   | "liveIntervalMs"
   | "liveLastNames"
+  | "liveEntrantsPerPush"
   | "liveRateWindowSeconds"
   | "mirrorRetrySeconds"
 >
@@ -130,6 +135,8 @@ export type WinnerClaim =
 
 export interface LiveWinner {
   readonly n: number
+  /** The `seq` of the winner's entrant row; null when the entry is gone. */
+  readonly entrySeq: number | null
   /** Null when the entry is gone. */
   readonly displayName: string | null
   readonly claimUntil: Instant
@@ -149,6 +156,18 @@ export interface LiveSnapshot extends RoomSummary {
   readonly eventSubFailures: number
 }
 
+/** The entrants written since the previous push: `rows` continue after `fromSeq`; `truncated` means more arrived than fit. */
+export interface EntrantsDelta {
+  readonly fromSeq: number
+  readonly rows: readonly Entrant[]
+  readonly truncated: boolean
+}
+
+/** What every live page receives after a write: the snapshot and the new entrants. */
+export interface LivePush extends LiveSnapshot {
+  readonly entrantsAfter: EntrantsDelta
+}
+
 /**
  * The state and rules of one giveaway over its own SQLite database. The room owns the giveaway's
  * status: the caller mirrors it to the account store through {@link GiveawayRoom.onAlarm}.
@@ -162,6 +181,8 @@ export class GiveawayRoom {
   private readonly config: RoomConfig
   private readonly chat: ChatWatcher
   private lastPushAt: Instant | null = null
+  // Lost with the object; the first push after that carries no rows and the page fetches the gap.
+  private lastPushedSeq: number | null = null
   private pushDueAt: Instant | null = null
   private mirrorRetryAt: Instant | null = null
 
@@ -222,9 +243,10 @@ export class GiveawayRoom {
       )
       if (!eligibility.eligible) return { kind: "not-eligible", reason: eligibility.reason }
 
+      // `entrant_count` only grows and moves in the same transaction, so the next `seq` never repeats.
       this.sql.exec(
-        `INSERT INTO entries (platform, platform_user_id, login, display_name, group_name, tickets, entered_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at)
+         VALUES ((SELECT entrant_count + 1 FROM room_state WHERE id = 1), ?, ?, ?, ?, ?, ?, ?)`,
         [
           state.platform,
           viewer.platformUserId,
@@ -256,6 +278,11 @@ export class GiveawayRoom {
   entryOf(viewer: Identity): EntrySummary | null {
     const row = this.sql.exec(entryOfSql, [viewer.platform, viewer.platformUserId])[0]
     return row === undefined ? null : parseEntry(row)
+  }
+
+  /** Up to `limit` entrants with a sequence number above `afterSeq`, oldest first. */
+  entrants(query: { readonly afterSeq: number; readonly limit: number }): readonly Entrant[] {
+    return this.sql.exec(entrantsAfterSql, [query.afterSeq, query.limit]).map(parseEntrant)
   }
 
   /** Stops entries. Idempotent: closing a room that is not open reports its status. */
@@ -455,7 +482,7 @@ export class GiveawayRoom {
 
   private readPickRows(): SqlRow[] {
     return this.sql.exec(
-      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, e.display_name
+      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, e.display_name, e.seq
        FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
        ORDER BY d.n`,
       [],
@@ -575,7 +602,22 @@ export class GiveawayRoom {
     }
     this.lastPushAt = now
     this.pushDueAt = null
-    this.live.broadcast(JSON.stringify(this.liveSnapshot()))
+    const push: LivePush = { ...this.liveSnapshot(), entrantsAfter: this.entrantsDelta() }
+    this.live.broadcast(JSON.stringify(push))
+    this.lastPushedSeq = this.headSeq()
+  }
+
+  private entrantsDelta(): EntrantsDelta {
+    const head = this.headSeq()
+    const fromSeq = this.lastPushedSeq ?? head
+    const max = this.config.liveEntrantsPerPush
+    const rows = head > fromSeq ? this.entrants({ afterSeq: fromSeq, limit: max + 1 }) : []
+    return { fromSeq, rows: rows.slice(0, max), truncated: rows.length > max }
+  }
+
+  private headSeq(): number {
+    const row = this.sql.exec(headSeqSql, [])[0]
+    return row === undefined ? 0 : (new RowReader("entries", row).nullableInt("head") ?? 0)
   }
 
   private rearm(): void {
@@ -667,6 +709,7 @@ function liveWinner(row: SqlRow, now: Instant): LiveWinner {
   const draw = parseDraw(row)
   return {
     n: draw.n,
+    entrySeq: new RowReader("entries", row).nullableInt("seq"),
     displayName: new RowReader("entries", row).nullableText("display_name"),
     claimUntil: draw.claimUntil,
     claim: winnerClaim(draw, now),

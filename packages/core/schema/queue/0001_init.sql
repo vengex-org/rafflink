@@ -8,7 +8,10 @@ CREATE TABLE token_queue (
   received_at INTEGER NOT NULL,
   state TEXT NOT NULL CHECK (state IN ('queued', 'done')),
   result_json TEXT,
-  CHECK ((state = 'done') = (result_json IS NOT NULL))
+  -- The verified platform user of a finished result. NULL while queued, and when sign-in failed before that.
+  user_id TEXT,
+  CHECK ((state = 'done') = (result_json IS NOT NULL)),
+  CHECK (state = 'done' OR user_id IS NULL)
 ) WITHOUT ROWID;
 
 CREATE INDEX token_queue_by_state ON token_queue (state, received_at, ticket);

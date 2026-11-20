@@ -568,6 +568,55 @@ describe("token endpoint limits", () => {
     expect(tokenCalls()).toBe(afterFirst + 1)
   })
 
+  it("starts the viewer cookie with the poll answer that settles a queued entry", async () => {
+    const { code } = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    const { browser, query } = await viewerSignIn(users.viewer.id, code)
+    const ticket = query.get("ticket") ?? ""
+    harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
+
+    const waiting = await browser.request(`/api/g/${code}/pending/${ticket}`)
+    expect(waiting.headers.getSetCookie()).toEqual([])
+    expect(await meOf(browser, code)).toEqual({ kind: "signed-out" })
+    await harness.queue.onAlarm()
+    const done = await browser.request(`/api/g/${code}/pending/${ticket}`)
+
+    expect(done.headers.getSetCookie().some((cookie) => cookie.startsWith("rl_viewer="))).toBe(true)
+    expect(await meOf(browser, code)).toMatchObject({
+      kind: "entered",
+      entry: { group: "viewer", tickets: 1 },
+    })
+  })
+
+  it("starts no viewer cookie for a settled entry that has no verified user", async () => {
+    const { code, id } = await createGiveaway(harness)
+    harness.queueDb.exec(
+      `INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state, result_json, user_id)
+       VALUES ('T1', 'c', '${id}', 'n', ${harness.clock.now()}, 'done', '{"kind":"try-again"}', NULL)`,
+    )
+    const browser = new Browser(harness)
+
+    const response = await browser.request(`/api/g/${code}/pending/T1`)
+
+    expect(await response.json()).toEqual({ kind: "try-again" })
+    expect(response.headers.getSetCookie()).toEqual([])
+  })
+
+  it("answers 404 for the poll of a giveaway that does not exist and keeps the result", async () => {
+    const { code } = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    const { query } = await viewerSignIn(users.viewer.id, code)
+    const ticket = query.get("ticket") ?? ""
+    harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
+    await harness.queue.onAlarm()
+
+    const wrong = await harness.app.request(`/api/g/ZZZZZ/pending/${ticket}`)
+    const right = await harness.app.request(`/api/g/${code}/pending/${ticket}`)
+
+    expect(wrong.status).toBe(404)
+    expect(await right.json()).toMatchObject({ kind: "entered" })
+  })
+
   it("answers dropped for a ticket the queue no longer holds", async () => {
     const { code } = await createGiveaway(harness)
 
@@ -881,6 +930,133 @@ describe("viewer state", () => {
 
     expect(afterSessionTtl).toMatchObject({ kind: "entered" })
     expect(await meOf(viewer, code)).toEqual({ kind: "signed-out" })
+  })
+})
+
+interface EntrantsBody {
+  readonly rows: readonly {
+    seq: number
+    login: string
+    displayName: string
+    tickets: number
+    group: string
+  }[]
+  readonly more: boolean
+}
+
+async function entrantsOf(browser: Browser, id: string, query = ""): Promise<Response> {
+  return browser.request(`/api/live/${id}/entrants${query}`)
+}
+
+async function giveawayWithEntrants(count: number) {
+  const created = await createGiveaway(harness)
+  const room = harness.rooms.roomFor(created.id)
+  for (let index = 1; index <= count; index++) {
+    room.enter({
+      platformUserId: String(index),
+      login: `login${index}`,
+      displayName: `Name${index}`,
+      isFollower: index === 2,
+      subTier: null,
+      accountAgeDays: 100,
+    })
+  }
+  return created
+}
+
+describe("entrants of the live page", () => {
+  it("lists the entrants in the order they entered, with who they are and their tickets", async () => {
+    const { browser, id } = await giveawayWithEntrants(3)
+
+    const response = await entrantsOf(browser, id)
+    const body: EntrantsBody = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(body).toEqual({
+      more: false,
+      rows: [
+        { seq: 1, login: "login1", displayName: "Name1", tickets: 1, group: "viewer" },
+        { seq: 2, login: "login2", displayName: "Name2", tickets: 2, group: "follower" },
+        { seq: 3, login: "login3", displayName: "Name3", tickets: 1, group: "viewer" },
+      ],
+    })
+  })
+
+  it("pages by sequence number and says whether another page follows", async () => {
+    const { browser, id } = await giveawayWithEntrants(5)
+
+    const first: EntrantsBody = await (await entrantsOf(browser, id, "?limit=2")).json()
+    const second: EntrantsBody = await (await entrantsOf(browser, id, "?after=2&limit=2")).json()
+    const last: EntrantsBody = await (await entrantsOf(browser, id, "?after=4&limit=2")).json()
+
+    expect(first.rows.map((row) => row.seq)).toEqual([1, 2])
+    expect(first.more).toBe(true)
+    expect(second.rows.map((row) => row.seq)).toEqual([3, 4])
+    expect(second.more).toBe(true)
+    expect(last.rows.map((row) => row.seq)).toEqual([5])
+    expect(last.more).toBe(false)
+  })
+
+  it("answers an empty last page after the final entrant", async () => {
+    const { browser, id } = await giveawayWithEntrants(2)
+
+    const body: EntrantsBody = await (await entrantsOf(browser, id, "?after=2")).json()
+
+    expect(body).toEqual({ rows: [], more: false })
+  })
+
+  it("caps the page at the configured maximum whatever limit is asked for", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { ENTRANTS_PAGE_MAX: "2" } })
+    const { browser, id } = await giveawayWithEntrants(5)
+
+    const asked: EntrantsBody = await (await entrantsOf(browser, id, "?limit=1000")).json()
+    const unasked: EntrantsBody = await (await entrantsOf(browser, id)).json()
+
+    expect(asked.rows).toHaveLength(2)
+    expect(asked.more).toBe(true)
+    expect(unasked.rows).toHaveLength(2)
+  })
+
+  it("refuses a sequence number or a limit that is not a whole number in range", async () => {
+    const { browser, id } = await giveawayWithEntrants(1)
+
+    for (const [query, field] of [
+      ["?after=-1", "after"],
+      ["?after=1.5", "after"],
+      ["?after=abc", "after"],
+      ["?after=", "after"],
+      ["?after=9007199254740993", "after"],
+      ["?limit=0", "limit"],
+      ["?limit=-5", "limit"],
+      ["?limit=NaN", "limit"],
+      ["?limit=Infinity", "limit"],
+      ["?limit=", "limit"],
+      ["?limit=constructor", "limit"],
+    ] as const) {
+      const response = await entrantsOf(browser, id, query)
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({ error: "invalid-input", field })
+    }
+  })
+
+  it("answers 404 to streamer B for the entrants of A's giveaway", async () => {
+    const a = await giveawayWithEntrants(2)
+    const b = new Browser(harness)
+    await b.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+
+    const response = await entrantsOf(b, a.id)
+
+    expect(response.status).toBe(404)
+    expect(JSON.stringify(await response.json())).not.toContain("login1")
+  })
+
+  it("answers 401 without a session and 404 for a giveaway that does not exist", async () => {
+    const { browser, id } = await giveawayWithEntrants(1)
+
+    expect((await harness.app.request(`/api/live/${id}/entrants`)).status).toBe(401)
+    expect((await entrantsOf(browser, "nope")).status).toBe(404)
   })
 })
 

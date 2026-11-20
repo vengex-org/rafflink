@@ -119,6 +119,26 @@ export function parseEntry(row: SqlRow): EntrySummary {
   }
 }
 
+/** One entry as the streamer's entrants table lists it. `seq` counts entries in the order they were written, from 1. */
+export interface Entrant {
+  readonly seq: number
+  readonly login: string
+  readonly displayName: string
+  readonly tickets: number
+  readonly group: Group
+}
+
+export function parseEntrant(row: SqlRow): Entrant {
+  const reader = new RowReader("entries", row)
+  return {
+    seq: reader.int("seq"),
+    login: reader.text("login"),
+    displayName: reader.text("display_name"),
+    tickets: reader.int("tickets"),
+    group: reader.oneOf("group_name", groups),
+  }
+}
+
 /** Reads typed columns of one row; a mismatch throws {@link RoomRowError}. */
 export class RowReader {
   constructor(

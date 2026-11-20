@@ -93,7 +93,7 @@ export function WinnerList({
   )
 }
 
-function ClaimClock({ until }: { readonly until: number }) {
+export function ClaimClock({ until }: { readonly until: number }) {
   const { t } = useI18n()
   const [initial] = useState(() => Math.max(0, until - Date.now()))
   const remaining = useRemainingMs(initial)
@@ -115,7 +115,7 @@ function statusIcon(status: RoomStatus): ReactNode {
   }
 }
 
-function claimIcon(winner: LiveWinner): ReactNode {
+export function claimIcon(winner: LiveWinner): ReactNode {
   switch (winner.claim.state) {
     case "claimed":
       return <CheckIcon />
@@ -128,7 +128,7 @@ function claimIcon(winner: LiveWinner): ReactNode {
   }
 }
 
-function claimLabel(winner: LiveWinner, t: I18n["t"]): string {
+export function claimLabel(winner: LiveWinner, t: I18n["t"]): string {
   switch (winner.claim.state) {
     case "claimed":
       return t(`claim.claimed.${winner.claim.via}`)

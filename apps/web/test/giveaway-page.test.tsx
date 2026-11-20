@@ -350,6 +350,19 @@ describe("entry outcomes", () => {
     expect(polls).toBe(3)
   })
 
+  it("shows the tickets from the poll answer after a queued entry settles", async () => {
+    mockFetch({
+      ...giveawayRoute,
+      "GET /api/g/ABCDE/pending/T1": () =>
+        ok({ kind: "entered", entry: { group: "sub_t1", tickets: 3, enteredAt: 1 } }),
+    })
+
+    const view = renderApp("/ABCDE?entry=pending&ticket=T1")
+
+    expect(await view.findByRole("heading", { name: "You are in" })).toBeTruthy()
+    expect(view.getByText("Your entry: 3 tickets as a tier 1 subscriber.")).toBeTruthy()
+  })
+
   it("offers Enter with Twitch when the poll runs past its maximum", async () => {
     mockFetch({
       ...giveawayRoute,

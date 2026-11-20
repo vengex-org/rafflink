@@ -57,6 +57,119 @@ export function liveScenarios(context: ContractContext): void {
 
   scenario(
     context,
+    "the entrants list pages by sequence number and belongs to the owner",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+      for (const viewer of [users.viewer, users.viewer2, users.viewer3]) {
+        await world.enter(target, giveaway.code, viewer.id)
+      }
+      const other = await world.signInStreamer(target, users.otherStreamer.id)
+
+      const all = await (
+        await giveaway.streamer.request(`/api/live/${giveaway.id}/entrants`)
+      ).json()
+      const second = await (
+        await giveaway.streamer.request(`/api/live/${giveaway.id}/entrants?after=1&limit=1`)
+      ).json()
+      const refused = await other.request(`/api/live/${giveaway.id}/entrants`)
+      const anonymous = await fetch(new URL(`/api/live/${giveaway.id}/entrants`, target.url))
+
+      expect(all).toEqual({
+        more: false,
+        rows: [users.viewer, users.viewer2, users.viewer3].map((viewer, index) => ({
+          seq: index + 1,
+          login: viewer.login,
+          displayName: viewer.displayName,
+          tickets: 1,
+          group: "viewer",
+        })),
+      })
+      expect(second).toMatchObject({ more: true, rows: [{ seq: 2, login: users.viewer2.login }] })
+      expect(refused.status).toBe(404)
+      expect(anonymous.status).toBe(401)
+    },
+  )
+
+  scenario(
+    context,
+    "the live WebSocket pushes the entrants written since its previous push",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+      const { messages } = world.openSocket(new URL(`/api/live/${giveaway.id}`, target.url), {
+        cookie: giveaway.streamer.cookieHeader(),
+      })
+      await world.waitFor(() => messages.length >= 1, "the first snapshot")
+
+      await world.enter(target, giveaway.code, users.viewer.id)
+      await world.enter(target, giveaway.code, users.viewer2.id)
+      await world.waitFor(
+        () => messages.some((message) => message.entrantCount === 2),
+        "the push after the second entry",
+      )
+
+      expect(messages[0]?.entrantsAfter).toBeUndefined()
+      expect(messages.find((message) => message.entrantCount === 2)?.entrantsAfter).toEqual({
+        fromSeq: 1,
+        truncated: false,
+        rows: [
+          {
+            seq: 2,
+            login: users.viewer2.login,
+            displayName: users.viewer2.displayName,
+            tickets: 1,
+            group: "viewer",
+          },
+        ],
+      })
+    },
+  )
+
+  // The interval is long enough that the two entries after the first push land in one push.
+  scenario(
+    context,
+    "a push with more new entrants than it carries is truncated and the list fills the gap",
+    async (world) => {
+      const target = await world.start({
+        LIVE_INTERVAL_MS: "2000",
+        LIVE_ENTRANTS_PER_PUSH: "1",
+      })
+      const giveaway = await world.createGiveaway(target)
+      const { messages } = world.openSocket(new URL(`/api/live/${giveaway.id}`, target.url), {
+        cookie: giveaway.streamer.cookieHeader(),
+      })
+      await world.waitFor(() => messages.length >= 1, "the first snapshot")
+      await world.enter(target, giveaway.code, users.viewer.id)
+      await world.enter(target, giveaway.code, users.viewer2.id)
+      await world.enter(target, giveaway.code, users.viewer3.id)
+
+      await world.waitFor(
+        () => messages.some((message) => message.entrantCount === 3),
+        "the push with both new entrants",
+      )
+
+      const push = messages.find((message) => message.entrantCount === 3)?.entrantsAfter
+      expect(push).toMatchObject({ fromSeq: 1, truncated: true })
+      expect(push?.rows.map((row) => row.seq)).toEqual([2])
+      const gap = await (
+        await giveaway.streamer.request(`/api/live/${giveaway.id}/entrants?after=${push?.fromSeq}`)
+      ).json()
+      expect(gap.rows.map((row: { seq: number }) => row.seq)).toEqual([2, 3])
+
+      await world.enter(target, giveaway.code, users.newViewer.id)
+      await world.waitFor(
+        () => messages.some((message) => message.entrantCount === 4),
+        "the push after the truncated one",
+      )
+      const next = messages.find((message) => message.entrantCount === 4)?.entrantsAfter
+      expect(next).toMatchObject({ fromSeq: 3, truncated: false })
+      expect(next?.rows.map((row) => row.seq)).toEqual([4])
+    },
+  )
+
+  scenario(
+    context,
     "the overlay with a valid token shows the live view read-only",
     async (world) => {
       const target = await world.start()

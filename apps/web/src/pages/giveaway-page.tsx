@@ -81,7 +81,10 @@ function GiveawayDetails({
   const initial = useMemo(() => entryFromQuery(query), [query])
   const fromSignIn = useEntryResult(code, initial, giveaway.poll)
   // A returning viewer has no sign-in outcome in the URL; the viewer state says they are in.
-  const entry = fromSignIn ?? (me.kind === "entered" ? { kind: "entered" as const } : null)
+  const entry =
+    fromSignIn ?? (me.kind === "entered" ? { kind: "entered" as const, entry: me.entry } : null)
+  // The viewer state was read before a queued sign-in finished, so the poll answer is the fresher entry.
+  const entered = entry?.kind === "entered" || entry?.kind === "already-in" ? entry.entry : null
   const signInHref = `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`
   const extraTickets = extraTicketsText(i18n, giveaway.rules.tickets)
 
@@ -117,7 +120,7 @@ function GiveawayDetails({
         ) : (
           <EntryPanel
             entry={entry}
-            tickets={me.kind === "entered" ? me.entry : null}
+            tickets={entered ?? (me.kind === "entered" ? me.entry : null)}
             notDrawn={me.kind === "not-won"}
             giveaway={giveaway}
             signInHref={signInHref}

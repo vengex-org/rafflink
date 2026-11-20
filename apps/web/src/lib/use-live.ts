@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
-import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
+import type { EntrantsDelta, LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { ApiShapeError, record } from "../api/decode.ts"
-import { getLive, parseLiveSnapshot } from "../api/client.ts"
+import { getLive, parseLivePush } from "../api/client.ts"
 import { errorClass } from "./use-load.ts"
 
 export type LiveState =
@@ -10,6 +10,8 @@ export type LiveState =
       readonly state: "ready"
       readonly snapshot: LiveSnapshot
       readonly connected: boolean
+      /** The entrants the last push added; null for a snapshot, which carries none. */
+      readonly entrantsAfter: EntrantsDelta | null
       /** Known from the first answer of the streamer's own route; the overlay route has none. */
       readonly overlayToken: string | null
     }
@@ -40,9 +42,11 @@ export function useLive(path: string): LiveState {
       let healthy = false
       next.addEventListener("message", (event) => {
         try {
-          const snapshot = parseLiveSnapshot(record(JSON.parse(String(event.data)), "live"))
+          const { snapshot, entrantsAfter } = parseLivePush(
+            record(JSON.parse(String(event.data)), "live"),
+          )
           healthy = true
-          setLive({ state: "ready", snapshot, connected: true, overlayToken })
+          setLive({ state: "ready", snapshot, connected: true, entrantsAfter, overlayToken })
         } catch (error) {
           if (!(error instanceof ApiShapeError || error instanceof SyntaxError)) throw error
           console.error("live message ignored", { errorClass: errorClass(error) })
@@ -66,7 +70,13 @@ export function useLive(path: string): LiveState {
           return
         }
         overlayToken = first.overlayToken
-        setLive({ state: "ready", snapshot: first.snapshot, connected: false, overlayToken })
+        setLive({
+          state: "ready",
+          snapshot: first.snapshot,
+          connected: false,
+          entrantsAfter: null,
+          overlayToken,
+        })
         connect(0)
       },
       (error: unknown) => {

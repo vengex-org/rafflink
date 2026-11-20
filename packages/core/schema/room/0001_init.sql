@@ -23,6 +23,7 @@ CREATE TABLE room_state (
 );
 
 CREATE TABLE entries (
+  seq INTEGER NOT NULL,
   platform TEXT NOT NULL,
   platform_user_id TEXT NOT NULL,
   login TEXT NOT NULL,
@@ -34,6 +35,9 @@ CREATE TABLE entries (
 ) WITHOUT ROWID;
 
 CREATE INDEX entries_by_entered_at ON entries (entered_at, platform, platform_user_id);
+
+-- `seq` counts entries in the order they were written, from 1. The entrants table pages by it.
+CREATE UNIQUE INDEX entries_by_seq ON entries (seq);
 
 CREATE TABLE channel_roles (
   platform TEXT NOT NULL,

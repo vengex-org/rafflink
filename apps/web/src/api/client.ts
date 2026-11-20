@@ -1,19 +1,30 @@
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
-import type { DashboardGiveaway, PublicGiveaway, ViewerState } from "@rafflink/core/http/json"
+import type {
+  DashboardGiveaway,
+  EntrantsPage,
+  PublicGiveaway,
+  ViewerState,
+} from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
 import type { Usage } from "@rafflink/core/ports"
 import type {
   ClaimOutcome,
   CloseOutcome,
   DrawOutcome,
+  EntrantsDelta,
   LiveSnapshot,
   LiveWinner,
   RerollOutcome,
   WinnerClaim,
 } from "@rafflink/core/room/giveaway-room"
-import { claimedVias, roomStatuses, type EntrySummary } from "@rafflink/core/room/rows"
+import {
+  claimedVias,
+  roomStatuses,
+  type Entrant,
+  type EntrySummary,
+} from "@rafflink/core/room/rows"
 import type { CallbackOutcome } from "@rafflink/core/viewer/outcome"
 import {
   ApiShapeError,
@@ -46,10 +57,18 @@ export interface LiveLoad {
   readonly overlayToken: string | null
 }
 
-/** What the viewer's sign-in came to, without the entry details the redirect query does not carry. */
+/** What the viewer's sign-in came to. The redirect query carries no entry details; a poll answer does. */
 export type EntryResult =
   | {
-      readonly kind: Exclude<CallbackOutcome["kind"], "not-eligible" | "pending">
+      readonly kind: Exclude<
+        CallbackOutcome["kind"],
+        "not-eligible" | "pending" | "entered" | "already-in"
+      >
+    }
+  | {
+      readonly kind: "entered" | "already-in"
+      /** Null when the answer carries none. */
+      readonly entry: EntrySummary | null
     }
   | { readonly kind: "not-eligible"; readonly reason: (typeof ineligibleReasons)[number] }
   | { readonly kind: "pending"; readonly ticket: string }
@@ -206,6 +225,14 @@ export async function createGiveaway(input: CreateGiveawayBody): Promise<CreateR
   }
 }
 
+/** The entrants after `afterSeq`, oldest first, up to the server's page size. */
+export async function getEntrants(id: string, afterSeq: number): Promise<EntrantsPage> {
+  const { status, body } = await send(`${liveSnapshotPath(id)}/entrants?after=${afterSeq}`)
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "entrants")
+  return { rows: list(source, "rows", parseEntrant), more: bool(source, "more") }
+}
+
 export async function getLive(path: string): Promise<LiveLoad | "unauthorized" | "not-found"> {
   const { status, body } = await send(path)
   if (status === 401) return "unauthorized"
@@ -330,6 +357,10 @@ function parseEntryResult(source: Json): EntryResult {
       return { kind, ticket: text(source, "ticket") }
     case "entered":
     case "already-in":
+      return {
+        kind,
+        entry: Object.hasOwn(source, "entry") ? parseEntry(child(source, "entry")) : null,
+      }
     case "closed":
     case "dropped":
     case "try-again":
@@ -393,7 +424,38 @@ function parseDashboardGiveaway(source: Json): DashboardGiveaway {
   }
 }
 
-/** A live message from the socket; the same shape as the snapshot a GET returns. */
+/** A message of the live socket: the snapshot, and after a write the entrants added since the last push. */
+export function parseLivePush(source: Json): {
+  readonly snapshot: LiveSnapshot
+  readonly entrantsAfter: EntrantsDelta | null
+} {
+  return {
+    snapshot: parseLiveSnapshot(source),
+    entrantsAfter: Object.hasOwn(source, "entrantsAfter")
+      ? parseEntrantsDelta(child(source, "entrantsAfter"))
+      : null,
+  }
+}
+
+function parseEntrantsDelta(source: Json): EntrantsDelta {
+  return {
+    fromSeq: num(source, "fromSeq"),
+    rows: list(source, "rows", parseEntrant),
+    truncated: bool(source, "truncated"),
+  }
+}
+
+function parseEntrant(source: Json): Entrant {
+  return {
+    seq: num(source, "seq"),
+    login: text(source, "login"),
+    displayName: text(source, "displayName"),
+    tickets: num(source, "tickets"),
+    group: oneOf(source, "group", groups),
+  }
+}
+
+/** The snapshot a GET returns. */
 export function parseLiveSnapshot(source: Json): LiveSnapshot {
   return {
     title: nullableText(source, "title"),
@@ -414,6 +476,7 @@ export function parseLiveSnapshot(source: Json): LiveSnapshot {
 function parseWinner(source: Json): LiveWinner {
   return {
     n: num(source, "n"),
+    entrySeq: nullableNum(source, "entrySeq"),
     displayName: nullableText(source, "displayName"),
     claimUntil: num(source, "claimUntil"),
     claim: parseClaim(child(source, "claim")),

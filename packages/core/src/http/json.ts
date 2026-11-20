@@ -3,7 +3,7 @@ import type { Giveaway } from "../accounts/account-store.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import type { Instant } from "../ports.ts"
 import type { LiveSnapshot, WinnerClaim } from "../room/giveaway-room.ts"
-import type { EntrySummary, RoomStatus } from "../room/rows.ts"
+import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
 /** What the giveaway page needs; the overlay token and the streamer's ids stay out. */
@@ -54,6 +54,12 @@ export interface DashboardGiveaway {
 
 /** The live snapshot the streamer's own page loads first; the overlay token lets it show the OBS link. */
 export type OwnerLiveSnapshot = LiveSnapshot & { readonly overlayToken: string }
+
+/** One page of the entrants table; `more` is true when entrants follow the last row. */
+export interface EntrantsPage {
+  readonly rows: readonly Entrant[]
+  readonly more: boolean
+}
 
 export function dashboardGiveaway(giveaway: Giveaway): DashboardGiveaway {
   return {

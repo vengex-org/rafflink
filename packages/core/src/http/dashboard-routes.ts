@@ -9,7 +9,7 @@ import type { RerollOutcome, ClaimOutcome } from "../room/giveaway-room.ts"
 import type { RoomStatus } from "../room/rows.ts"
 import { parseCreateGiveaway } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
-import { dashboardGiveaway, readJson, type OwnerLiveSnapshot } from "./json.ts"
+import { dashboardGiveaway, readJson, type EntrantsPage, type OwnerLiveSnapshot } from "./json.ts"
 import { readStreamerSession, type StreamerSession } from "./session.ts"
 
 type Env = { Variables: { streamer: StreamerSession } }
@@ -120,6 +120,21 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
         ...(await deps.rooms.get(giveaway.id).liveSnapshot()),
         overlayToken: giveaway.overlayToken,
       }
+      return c.json(body)
+    }),
+  )
+
+  app.get("/api/live/:id/entrants", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const afterSeq = integerQuery(c.req.query("after"), 0, 0)
+      if (afterSeq === null) return c.json({ error: "invalid-input", field: "after" }, 400)
+      const requested = integerQuery(c.req.query("limit"), deps.config.entrantsPageMax, 1)
+      if (requested === null) return c.json({ error: "invalid-input", field: "limit" }, 400)
+      const limit = Math.min(requested, deps.config.entrantsPageMax)
+      // One row more than the page tells whether another page follows.
+      const rows = await deps.rooms.get(giveaway.id).entrants({ afterSeq, limit: limit + 1 })
+      const body: EntrantsPage = { rows: rows.slice(0, limit), more: rows.length > limit }
+      c.header("Cache-Control", "no-store")
       return c.json(body)
     }),
   )
@@ -272,6 +287,13 @@ function integerField(body: unknown, field: string, min: number): number | null 
   if (typeof body !== "object" || body === null) return null
   const value: unknown = Object.hasOwn(body, field) ? Reflect.get(body, field) : undefined
   return typeof value === "number" && Number.isSafeInteger(value) && value >= min ? value : null
+}
+
+// A query value that is a whole number from `min` up, or `fallback` when absent; null when it is anything else.
+function integerQuery(raw: string | undefined, fallback: number, min: number): number | null {
+  if (raw === undefined) return fallback
+  const value = Number(raw)
+  return /^\d+$/.test(raw) && Number.isSafeInteger(value) && value >= min ? value : null
 }
 
 function errorClass(error: unknown): string {

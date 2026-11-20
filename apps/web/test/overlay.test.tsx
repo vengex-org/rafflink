@@ -52,7 +52,13 @@ it("shows the winners with how their claim stands", async () => {
         ...liveSnapshot,
         status: "drawn",
         winners: [
-          { n: 0, displayName: "Bob", claimUntil: 1, claim: { state: "claimed", via: "chat" } },
+          {
+            n: 0,
+            entrySeq: 1,
+            displayName: "Bob",
+            claimUntil: 1,
+            claim: { state: "claimed", via: "chat" },
+          },
         ],
       }),
   })

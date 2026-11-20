@@ -145,6 +145,9 @@ class InProcessRoomStub implements RoomStub {
   async entryOf(...args: Parameters<GiveawayRoom["entryOf"]>) {
     return this.room.entryOf(...args)
   }
+  async entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
+    return this.room.entrants(...args)
+  }
   async close() {
     return this.room.close()
   }

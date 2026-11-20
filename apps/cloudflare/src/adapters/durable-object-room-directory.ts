@@ -32,6 +32,9 @@ class DurableObjectRoomStub implements RoomStub {
   entryOf(...args: Parameters<GiveawayRoom["entryOf"]>) {
     return inRoom(() => this.stub.entryOf(...args))
   }
+  entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
+    return inRoom(() => this.stub.entrants(...args))
+  }
   close() {
     return inRoom(() => this.stub.close())
   }

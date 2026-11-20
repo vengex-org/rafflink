@@ -9,7 +9,13 @@ import { idleChat } from "../../test/idle-chat.ts"
 import { GiveawayRoom, type GiveawayInit, type RoomViewer } from "./giveaway-room.ts"
 import { applyMigrations } from "./migrate.ts"
 import { roomMigrations } from "./migrations.ts"
-import { entryOfSql, lastNamesSql, recentEntriesCountSql } from "./queries.ts"
+import {
+  entrantsAfterSql,
+  entryOfSql,
+  headSeqSql,
+  lastNamesSql,
+  recentEntriesCountSql,
+} from "./queries.ts"
 
 const config = resolveConfig({
   TWITCH_CLIENT_ID: "client",
@@ -20,6 +26,7 @@ const config = resolveConfig({
   PUBLIC_URL: "https://rafflink.app",
   LIVE_INTERVAL_MS: "1000",
   LIVE_LAST_NAMES: "2",
+  LIVE_ENTRANTS_PER_PUSH: "2",
   LIVE_RATE_WINDOW_SECONDS: "10",
   ROLE_REFRESH_SECONDS: "300",
   MIRROR_RETRY_SECONDS: "30",
@@ -610,6 +617,163 @@ describe("GiveawayRoom live push", () => {
   })
 })
 
+function pushes(hub: TestHub) {
+  return hub.messages.map((message) => JSON.parse(message).entrantsAfter)
+}
+
+describe("GiveawayRoom entrants", () => {
+  it("numbers entries from 1 in the order they were written and lists them in that order", () => {
+    const { room } = setup()
+    room.enter(viewer("30", { subTier: 1 }))
+    room.enter(viewer("10"))
+    room.enter(viewer("20", { isFollower: true }))
+
+    expect(room.entrants({ afterSeq: 0, limit: 10 })).toEqual([
+      { seq: 1, login: "login30", displayName: "Name30", tickets: 3, group: "sub_t1" },
+      { seq: 2, login: "login10", displayName: "Name10", tickets: 1, group: "viewer" },
+      { seq: 3, login: "login20", displayName: "Name20", tickets: 2, group: "follower" },
+    ])
+  })
+
+  it("pages by the last sequence number seen", () => {
+    const { room } = setup()
+    enterMany(room, ["1", "2", "3", "4", "5"])
+
+    const seqs = (afterSeq: number, limit: number) =>
+      room.entrants({ afterSeq, limit }).map((row) => row.seq)
+
+    expect(seqs(0, 2)).toEqual([1, 2])
+    expect(seqs(2, 2)).toEqual([3, 4])
+    expect(seqs(4, 2)).toEqual([5])
+    expect(seqs(5, 2)).toEqual([])
+    expect(seqs(99, 2)).toEqual([])
+    expect(seqs(0, 1)).toEqual([1])
+  })
+
+  it("gives a repeat entry and a refused entry no sequence number", () => {
+    const { room } = setup({ ...giveaway, rules: { ...rules, followersOnly: true } })
+
+    room.enter(viewer("1", { isFollower: true }))
+    room.enter(viewer("1", { isFollower: true }))
+    room.enter(viewer("2"))
+    room.enter(viewer("3", { isFollower: true }))
+
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((row) => [row.seq, row.login])).toEqual([
+      [1, "login1"],
+      [2, "login3"],
+    ])
+  })
+
+  it("names the entry of each winner by its sequence number", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2", "3"])
+    room.close()
+    await room.draw(2)
+    const pickedIds = picks(sql).map((pick) => String(pick.platform_user_id))
+
+    const winners = room.liveSnapshot().winners.map((winner) => winner.entrySeq)
+
+    expect(winners).toEqual(pickedIds.map(Number))
+  })
+})
+
+describe("GiveawayRoom live push of entrants", () => {
+  it("carries no rows in the first push of a room object and the entrants since the last push after that", () => {
+    const { room, clock, hub } = setup()
+
+    room.enter(viewer("1"))
+    clock.advance(1000)
+    room.enter(viewer("2"))
+    room.enter(viewer("3"))
+    clock.advance(1000)
+    room.onAlarm()
+
+    const [first, second, third] = pushes(hub)
+    expect(first).toEqual({ fromSeq: 1, rows: [], truncated: false })
+    expect(second).toEqual({
+      fromSeq: 1,
+      rows: [{ seq: 2, login: "login2", displayName: "Name2", tickets: 1, group: "viewer" }],
+      truncated: false,
+    })
+    expect(third).toMatchObject({ fromSeq: 2, truncated: false })
+    expect(third.rows.map((row: { seq: number }) => row.seq)).toEqual([3])
+  })
+
+  it("sends the entrants of a held push when the alarm fires, not one per entry", () => {
+    const { room, clock, hub } = setup()
+    room.enter(viewer("1"))
+    clock.advance(100)
+    room.enter(viewer("2"))
+    clock.advance(100)
+    room.enter(viewer("3"))
+    clock.advance(800)
+
+    room.onAlarm()
+
+    expect(hub.messages).toHaveLength(2)
+    expect(pushes(hub)[1].rows.map((row: { seq: number }) => row.seq)).toEqual([2, 3])
+  })
+
+  it("marks a push truncated when more entrants arrived than one push carries and continues after them", () => {
+    const { room, clock, hub } = setup()
+    room.enter(viewer("1"))
+    clock.advance(100)
+    enterMany(room, ["2", "3", "4"])
+    clock.advance(900)
+    room.onAlarm()
+    clock.advance(1000)
+    room.enter(viewer("5"))
+
+    const [, truncated, next] = pushes(hub)
+    expect(truncated.fromSeq).toBe(1)
+    expect(truncated.truncated).toBe(true)
+    expect(truncated.rows.map((row: { seq: number }) => row.seq)).toEqual([2, 3])
+    expect(next.fromSeq).toBe(4)
+    expect(next.truncated).toBe(false)
+    expect(next.rows.map((row: { seq: number }) => row.seq)).toEqual([5])
+  })
+
+  it("sends exactly the maximum without marking it truncated", () => {
+    const { room, clock, hub } = setup()
+    room.enter(viewer("1"))
+    clock.advance(100)
+    enterMany(room, ["2", "3"])
+    clock.advance(900)
+    room.onAlarm()
+
+    expect(pushes(hub)[1]).toMatchObject({ fromSeq: 1, truncated: false })
+    expect(pushes(hub)[1].rows).toHaveLength(2)
+  })
+
+  it("keeps the same rows for the next push when a push fails", () => {
+    const { room, clock, hub } = setup()
+    room.enter(viewer("1"))
+    clock.advance(1000)
+    spyOn(console, "warn").mockImplementation(() => {})
+    const broadcast = spyOn(hub, "broadcast").mockImplementationOnce(() => {
+      throw new Error("socket gone")
+    })
+    room.enter(viewer("2"))
+    broadcast.mockRestore()
+    clock.advance(1000)
+
+    room.enter(viewer("3"))
+
+    expect(
+      pushes(hub)
+        .at(-1)
+        .rows.map((row: { seq: number }) => row.seq),
+    ).toEqual([2, 3])
+  })
+
+  it("keeps the entrants out of the snapshot a GET returns", () => {
+    const { room } = setup()
+    room.enter(viewer("1"))
+
+    expect(room.liveSnapshot()).not.toHaveProperty("entrantsAfter")
+  })
+})
+
 describe("GiveawayRoom failures", () => {
   it("logs the giveaway id and the cause and never a viewer name", () => {
     const { room } = setup()
@@ -665,5 +829,25 @@ describe("room queries", () => {
           && detail.includes("INDEX entries_by_entered_at (entered_at>?)"),
       ),
     ).toBe(true)
+  })
+
+  it("pages the entrants through the sequence index without sorting", () => {
+    const { sql } = setup()
+    const details = plan(sql, entrantsAfterSql, [0, 10])
+    expect(
+      details.some(
+        (detail) => detail.startsWith("SEARCH") && detail.includes("INDEX entries_by_seq (seq>?)"),
+      ),
+    ).toBe(true)
+    expect(details.some((detail) => detail.includes("TEMP B-TREE"))).toBe(false)
+  })
+
+  it("reads the newest sequence number from the sequence index", () => {
+    const { sql } = setup()
+    const details = plan(sql, headSeqSql, [])
+    expect(details.some((detail) => detail.includes("entries_by_seq"))).toBe(true)
+    expect(
+      details.some((detail) => detail.startsWith("SCAN entries") && !detail.includes("INDEX")),
+    ).toBe(false)
   })
 })

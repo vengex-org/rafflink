@@ -54,7 +54,12 @@ export interface Enqueued {
 
 export type PollOutcome =
   | { readonly kind: "waiting" }
-  | { readonly kind: "done"; readonly outcome: FinalOutcome }
+  | {
+      readonly kind: "done"
+      readonly outcome: FinalOutcome
+      /** The verified platform user who entered, for the viewer cookie; null when sign-in failed before that. */
+      readonly userId: string | null
+    }
   /** No row: the code was dropped, or the result was already read. */
   | { readonly kind: "gone" }
 
@@ -118,16 +123,17 @@ export class TokenQueue {
   /** A finished result is returned once and its row deleted. */
   poll(ticket: string): PollOutcome {
     return this.sql.transaction((): PollOutcome => {
-      const row = this.sql.exec("SELECT state, result_json FROM token_queue WHERE ticket = ?", [
-        ticket,
-      ])[0]
+      const row = this.sql.exec(
+        "SELECT state, result_json, user_id FROM token_queue WHERE ticket = ?",
+        [ticket],
+      )[0]
       if (row === undefined) return { kind: "gone" }
       const reader = new RowReader("token_queue", row)
       if (reader.oneOf("state", ["queued", "done"]) === "queued") return { kind: "waiting" }
       const outcome = parseFinalOutcome(reader.text("result_json"))
       if (!outcome.ok) throw new TypeError("token_queue.result_json: unexpected value")
       this.sql.exec("DELETE FROM token_queue WHERE ticket = ?", [ticket])
-      return { kind: "done", outcome: outcome.value }
+      return { kind: "done", outcome: outcome.value, userId: reader.nullableText("user_id") }
     })
   }
 
@@ -200,8 +206,8 @@ export class TokenQueue {
     }
     if (attempt.kind === "deferred") return attempt.cause
     this.sql.exec(
-      "UPDATE token_queue SET state = 'done', result_json = ? WHERE ticket = ? AND state = 'queued'",
-      [JSON.stringify(attempt.outcome), item.ticket],
+      "UPDATE token_queue SET state = 'done', result_json = ?, user_id = ? WHERE ticket = ? AND state = 'queued'",
+      [JSON.stringify(attempt.outcome), attempt.userId, item.ticket],
     )
     return "done"
   }

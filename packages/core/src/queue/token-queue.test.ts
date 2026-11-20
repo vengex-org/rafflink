@@ -74,7 +74,7 @@ describe("TokenQueue results", () => {
     await queue.onAlarm()
     expect(rowCount(db)).toBe(1)
 
-    expect(queue.poll(ticket)).toEqual({ kind: "done", outcome: entered.outcome })
+    expect(queue.poll(ticket)).toEqual({ kind: "done", outcome: entered.outcome, userId: "1" })
     expect(rowCount(db)).toBe(0)
     expect(queue.poll(ticket)).toEqual({ kind: "gone" })
   })
@@ -97,8 +97,20 @@ describe("TokenQueue results", () => {
       const { ticket } = queue.enqueue(item("c"), "unavailable")
       await queue.onAlarm()
 
-      expect(queue.poll(ticket)).toEqual({ kind: "done", outcome })
+      expect(queue.poll(ticket)).toEqual({ kind: "done", outcome, userId: null })
     }
+  })
+
+  it("keeps the verified user of a result and nothing for a queued row", async () => {
+    const { queue, db } = setup()
+    const { ticket } = queue.enqueue(item("c1"), "unavailable")
+    const userIds = () => sqlRows(db, "SELECT user_id FROM token_queue").map((row) => row.user_id)
+
+    expect(userIds()).toEqual([null])
+    await queue.onAlarm()
+
+    expect(userIds()).toEqual(["1"])
+    expect(queue.poll(ticket)).toMatchObject({ kind: "done", userId: "1" })
   })
 
   it("processes the code with its giveaway id and nonce", async () => {
