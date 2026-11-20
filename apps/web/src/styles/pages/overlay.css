@@ -1,0 +1,40 @@
+/* Overlay: transparent, large, with a soft shadow for legibility on any scene */
+
+[data-surface="overlay"] body {
+  background: transparent;
+}
+
+.overlay {
+  padding: var(--space-3);
+  color: var(--overlay-ink);
+  font-size: 1.5rem;
+  text-shadow: var(--overlay-text-shadow);
+}
+
+.overlay h1 {
+  font-size: 3rem;
+}
+
+.overlay-code {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.overlay .stat,
+.overlay .winners li {
+  border-color: transparent;
+  background: var(--overlay-plate);
+  color: var(--overlay-ink);
+}
+
+.overlay .names li {
+  border-color: var(--overlay-line);
+}
+
+.overlay .stat dt {
+  color: inherit;
+}
+
+.overlay .stat dd {
+  font-size: 3rem;
+}

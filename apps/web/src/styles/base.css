@@ -1,0 +1,170 @@
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/geist-1.9.2.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist-mono-1.9.2.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-1);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--fs-display);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  margin-top: var(--space-2);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  max-width: 65ch;
+  margin: 0 0 var(--space-1);
+}
+
+a {
+  color: var(--ink);
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+h2:focus {
+  outline: none;
+}
+
+/* Clickable things look clickable; disabled ones say so. */
+button,
+a[href],
+summary,
+label[for],
+input[readonly],
+.segment input {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.muted,
+.help {
+  color: var(--ink-2);
+}
+
+.help {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+/* Icons: one outline style; 24 px by default, 20 px inside buttons and rows of text. */
+.icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+}
+
+.button .icon,
+.segment .icon,
+.extra summary .icon,
+.pill .icon,
+.stat dt .icon,
+.winner-claim .icon,
+.empty .icon,
+.usage-label .icon,
+.toast .icon,
+.snackbar .icon,
+.wizard-heading .icon,
+.facts .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.pill .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Reduced motion removes every movement: transitions, reveals, entrances and the spinner. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

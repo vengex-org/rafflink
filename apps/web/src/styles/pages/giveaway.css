@@ -1,0 +1,15 @@
+.hero h1 {
+  margin-top: var(--space-1);
+}
+
+.big-clock {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.big-clock [role="timer"] {
+  font-size: 3rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}

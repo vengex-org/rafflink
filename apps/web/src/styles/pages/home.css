@@ -1,0 +1,5 @@
+/* The home page is a state card with one button; its look comes from the shared card and button rules. */
+.home {
+  display: grid;
+  gap: var(--space-3);
+}

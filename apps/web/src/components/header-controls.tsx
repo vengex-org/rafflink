@@ -39,7 +39,7 @@ export function ThemeSwitch() {
   }))
   return (
     <fieldset className="toggle">
-      <legend className="sr-only">{t("theme.legend")}</legend>
+      <legend>{t("theme.legend")}</legend>
       <SegmentRow
         name="theme"
         options={options}
@@ -63,7 +63,7 @@ export function LanguageSwitch() {
   }))
   return (
     <fieldset className="toggle">
-      <legend className="sr-only">{t("language.legend")}</legend>
+      <legend>{t("language.legend")}</legend>
       <GlobeIcon />
       <SegmentRow
         name="language"

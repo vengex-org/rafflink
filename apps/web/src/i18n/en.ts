@@ -7,9 +7,11 @@ export const en = {
   "theme.light": "Light",
   "theme.dark": "Dark",
   "language.legend": "Language",
+  "settings.label": "Settings",
 
   "common.loading": "Loading…",
   "common.cancel": "Cancel",
+  "common.dismiss": "Dismiss",
   "common.back": "Back",
   "common.next": "Next",
   "common.reloadPage": "Reload page",
@@ -108,6 +110,9 @@ export const en = {
   "claim.expired": "Claim time ran out",
   "claim.rerolled": "Replaced by another winner",
   "claim.minLeft": "min left to claim",
+  "claim.tone.info": "left to claim",
+  "claim.tone.warning": "left, hurry up",
+  "claim.tone.danger": "left, claim now",
 
   "reason.broadcaster": "The broadcaster cannot enter their own giveaway.",
   "reason.subs-only": "This giveaway is for subscribers only.",

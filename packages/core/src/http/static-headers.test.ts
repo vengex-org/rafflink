@@ -2,9 +2,14 @@ import { describe, expect, it } from "bun:test"
 import { headersFile, staticCacheControl } from "./static-headers.ts"
 
 describe("staticCacheControl", () => {
-  it("caches hashed bundles for a year and makes everything else revalidate", () => {
+  it("caches hashed bundles and versioned fonts for a year and makes everything else revalidate", () => {
     expect(staticCacheControl("/index-4vw5rg5n.js")).toBe("public, max-age=31536000, immutable")
     expect(staticCacheControl("/index-wpgxfmf2.css")).toBe("public, max-age=31536000, immutable")
+    expect(staticCacheControl("/fonts/geist-1.9.2.woff2")).toBe(
+      "public, max-age=31536000, immutable",
+    )
+    expect(staticCacheControl("/fonts/")).toBe("no-cache")
+    expect(staticCacheControl("/fonts/nested/geist.woff2")).toBe("no-cache")
     expect(staticCacheControl("/favicon.svg")).toBe("no-cache")
     expect(staticCacheControl("/index.html")).toBe("no-cache")
     expect(staticCacheControl("/index-.js")).toBe("no-cache")
@@ -13,7 +18,7 @@ describe("staticCacheControl", () => {
 })
 
 describe("headersFile", () => {
-  it("lists the headers for every file, sets noindex on each page below the home page and detaches no-cache from the hashed bundles", () => {
+  it("lists the headers for every file, sets noindex on each page below the home page and detaches no-cache from the hashed bundles and the fonts", () => {
     expect(headersFile({ "X-Test": "1" })).toBe(
       [
         "/*",
@@ -31,6 +36,9 @@ describe("headersFile", () => {
         "  ! Cache-Control",
         "  Cache-Control: public, max-age=31536000, immutable",
         "/index-*.css",
+        "  ! Cache-Control",
+        "  Cache-Control: public, max-age=31536000, immutable",
+        "/fonts/*",
         "  ! Cache-Control",
         "  Cache-Control: public, max-age=31536000, immutable",
         "",

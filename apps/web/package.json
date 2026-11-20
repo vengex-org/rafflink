@@ -7,7 +7,7 @@
     "./index.html": "./index.html"
   },
   "scripts": {
-    "build": "bun build ./index.html --outdir dist --production --public-path / --asset-naming \"[name].[ext]\" && bun scripts/finish-build.ts",
+    "build": "bun build ./index.html --outdir dist --production --public-path / --asset-naming \"[name].[ext]\" --external \"/fonts/*\" && bun scripts/finish-build.ts",
     "test": "bun test",
     "icons": "bun scripts/icons.ts"
   },

@@ -8,9 +8,11 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "theme.light": "Světlý",
   "theme.dark": "Tmavý",
   "language.legend": "Jazyk",
+  "settings.label": "Nastavení",
 
   "common.loading": "Načítám…",
   "common.cancel": "Zrušit",
+  "common.dismiss": "Zavřít",
   "common.back": "Zpět",
   "common.next": "Pokračovat",
   "common.reloadPage": "Načíst stránku znovu",
@@ -108,6 +110,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "claim.expired": "Čas na převzetí vypršel",
   "claim.rerolled": "Nahrazen jiným vítězem",
   "claim.minLeft": "min na převzetí",
+  "claim.tone.info": "zbývá na převzetí",
+  "claim.tone.warning": "zbývá, pospěš si",
+  "claim.tone.danger": "zbývá, převezmi hned",
 
   "reason.broadcaster": "Streamer se nemůže zapojit do vlastní soutěže.",
   "reason.subs-only": "Tato soutěž je jen pro předplatitele.",

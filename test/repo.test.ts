@@ -60,6 +60,19 @@ describe("repository", () => {
     }
   }, 60_000)
 
+  // font-src is 'self', so the fonts ship with the build; their versioned names make a year of caching safe.
+  it("builds the vendored fonts and marks /fonts/* immutable in the headers file", async () => {
+    buildWeb()
+    const headers = await Bun.file(new URL("_headers", dist)).text()
+
+    for (const name of ["geist-1.9.2.woff2", "geist-mono-1.9.2.woff2", "OFL.txt"]) {
+      expect(existsSync(new URL(`fonts/${name}`, dist))).toBe(true)
+    }
+    expect(headers).toContain(
+      "\n/fonts/*\n  ! Cache-Control\n  Cache-Control: public, max-age=31536000, immutable\n",
+    )
+  }, 60_000)
+
   // The CSP allows the inline theme script by hash, so a script edit without a new hash is a blank page.
   it("allows the one inline script of the built page by its hash in the headers file", async () => {
     buildWeb()
