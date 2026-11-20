@@ -393,11 +393,17 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.mark.aria": "Označiť ako prevzaté: {name}",
   "live.reroll.over":
     "Čas na výber iného víťaza uplynul. Kontaktuj víťazov, ktorí výhru neprevzali, alebo spusti nový giveaway.",
+  "live.reroll.nobodyLeft":
+    "Všetci, ktorí sa zapojili, už boli vyžrebovaní. Kontaktuj víťazov, ktorí výhru neprevzali, alebo spusti nový giveaway.",
   "live.reroll.label": "Vybrať iného víťaza",
   "live.reroll.question": "Vybrať iného víťaza namiesto {name}?",
   "live.reroll.detail": "{name} o výhru príde. Nedá sa to vrátiť späť.",
   "live.reroll.confirm": "Áno, vybrať iného víťaza",
   "live.problems.title": "Problémy",
+  "live.bar.label": "Ovládanie giveawayu",
+  "live.clean.hide": "Skryť ovládanie",
+  "live.clean.show": "Zobraziť ovládanie",
+  "live.chat.title": "Chat víťazov",
 
   "wizard.step.basics": "Základ",
   "wizard.step.rules": "Pravidlá zapojenia",

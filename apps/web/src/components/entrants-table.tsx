@@ -9,7 +9,7 @@ import { AlertIcon, GiftIcon, RefreshIcon, UsersIcon } from "./icons.tsx"
 import { ClaimClock, claimIcon, claimLabel } from "./live-parts.tsx"
 import { StateCard } from "./state-card.tsx"
 
-// Every row is `rowHeight` tall (two lines and padding, at least a thumb target; 72px in styles.css too) so
+// Every row is `rowHeight` tall (two lines and padding, at least a thumb target; 72px in components.css too) so
 // the visible window is computed, not measured; the table shows eight rows and renders those plus the overscan.
 const geometry: RowGeometry = { rowHeight: 72, viewportHeight: 72 * 8, overscan: 6 }
 

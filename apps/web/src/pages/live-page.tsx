@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useEffect, useId, useState } from "react"
 import { useParams } from "react-router"
 import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import {
@@ -19,15 +19,26 @@ import {
   RefreshIcon,
   ShuffleIcon,
   TagIcon,
+  TvIcon,
   UsersIcon,
 } from "../components/icons.tsx"
-import { EntrantNames, Stat, StatusPill, WinnerList } from "../components/live-parts.tsx"
+import {
+  CurrentWinner,
+  EntrantNames,
+  Stat,
+  StatusPill,
+  WinnerList,
+} from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
+import { WinnerChat } from "../components/winner-chat.tsx"
+import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
+import { shareUrl } from "../lib/links.ts"
 import { giveawayName } from "../lib/messages.ts"
 import { peopleText } from "../lib/rules-text.ts"
+import { readStored, writeStored } from "../lib/safe-storage.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLive } from "../lib/use-live.ts"
 
@@ -79,8 +90,11 @@ function Controls({
   readonly overlayToken: string | null
 }) {
   const i18n = useI18n()
-  const { t } = i18n
+  const { t, dateTime } = i18n
   const { message, busy, run } = useAction()
+  const [clean, toggleClean] = useCleanMode()
+  const rerollOver = rerollOverText(snapshot)
+  const current = currentWinner(snapshot.winners)
 
   const winnerActions = (winner: LiveWinner) => {
     const open = winner.claim.state === "waiting"
@@ -127,17 +141,40 @@ function Controls({
     )
   }
 
+  const peopleStat = (
+    <Stat
+      icon={<UsersIcon />}
+      value={i18n.number(snapshot.entrantCount)}
+      label={t("stat.people")}
+    />
+  )
+
   return (
-    <>
+    <div className="live-page" data-clean={clean}>
       {connected ? null : <output className="status">{t("live.reconnecting")}</output>}
       <header className="page-head">
         <div>
           <h1>{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
           <p className="muted">{t("live.code", { code: snapshot.code })}</p>
         </div>
-        <StatusPill status={snapshot.status} />
+        <div className="live-head-end">
+          <dl className="stats live-numbers">
+            {snapshot.status === "drawn" ? peopleStat : null}
+            <Stat
+              icon={<ActivityIcon />}
+              value={i18n.decimal(snapshot.entriesPerSecond)}
+              label={t("stat.perSecond")}
+            />
+            <Stat
+              icon={<TagIcon />}
+              value={i18n.number(snapshot.ticketTotal)}
+              label={t("stat.tickets")}
+            />
+          </dl>
+          <StatusPill status={snapshot.status} />
+        </div>
       </header>
-      <StepIndicator steps={stepNames} current={stepOf(snapshot.status)} />
+      {clean ? null : <StepIndicator steps={stepNames} current={stepOf(snapshot.status)} />}
       <div className="live-grid">
         <div className="live-main">
           {snapshot.chatClaimUnavailable ? (
@@ -149,119 +186,118 @@ function Controls({
               <p>{t("live.chatOff.text")}</p>
             </section>
           ) : null}
-          {snapshot.status === "drawn"
-          && !snapshot.rerollOpen
-          && snapshot.winners.some(isUnclaimed) ? (
+          {rerollOver !== null && snapshot.winners.some(isUnclaimed) ? (
             <section className="card banner" data-tone="warning">
               <span className="state-icon">
                 <AlertIcon />
               </span>
-              <p>{t("live.reroll.over")}</p>
+              <p>{t(rerollOver)}</p>
             </section>
           ) : null}
           {snapshot.status === "open" ? (
-            <OpenStep id={id} snapshot={snapshot} busy={busy} run={run} />
+            <section className="card live-stage" aria-labelledby="open-title">
+              <h2 id="open-title">{t("live.open.title")}</h2>
+              <p className="live-link">
+                {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
+              </p>
+              {snapshot.closesAt === null ? null : (
+                <p className="muted">{t("live.closesAt", { time: dateTime(snapshot.closesAt) })}</p>
+              )}
+              <dl className="stats live-count">{peopleStat}</dl>
+              <h3>{t("entrants.latest")}</h3>
+              <EntrantNames names={snapshot.lastNames} />
+              <ShareLinks code={snapshot.code} />
+            </section>
           ) : null}
           {snapshot.status === "closed" ? (
-            <DrawStep id={id} snapshot={snapshot} busy={busy} run={run} />
+            <section className="card live-stage" aria-labelledby="draw-title">
+              <h2 id="draw-title">{t("live.draw.title")}</h2>
+              <dl className="stats live-count">{peopleStat}</dl>
+              <p>{t("live.draw.text", { people: peopleText(i18n, snapshot.entrantCount) })}</p>
+            </section>
           ) : null}
           {snapshot.status === "drawn" ? (
-            <section className="card next" aria-labelledby="winners-title">
+            <section className="card live-stage" aria-labelledby="winners-title">
               <h2 id="winners-title">{t("live.winners.title")}</h2>
+              {current === null ? null : <CurrentWinner winner={current} />}
               <p>
                 {snapshot.chatClaimUnavailable
                   ? t("live.winners.page")
                   : t("live.winners.pageOrChat")}
               </p>
-              <WinnerList winners={snapshot.winners} actions={winnerActions} />
+              <WinnerList winners={snapshot.winners} actions={clean ? null : winnerActions} />
             </section>
           ) : null}
+          <WinnerChat lines={snapshot.winnerChat} />
           {message === null ? null : <Status>{t(message)}</Status>}
           <Problems snapshot={snapshot} />
+          {clean ? (
+            <button type="button" className="button text small live-show" onClick={toggleClean}>
+              {t("live.clean.show")}
+            </button>
+          ) : (
+            <div className="card live-bar" role="toolbar" aria-label={t("live.bar.label")}>
+              {snapshot.status === "open" ? <CloseStep id={id} busy={busy} run={run} /> : null}
+              {snapshot.status === "closed" ? (
+                <DrawStep id={id} snapshot={snapshot} busy={busy} run={run} />
+              ) : null}
+              <span className="live-bar-end">
+                {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
+                <button
+                  type="button"
+                  className="button text"
+                  aria-keyshortcuts="c"
+                  onClick={toggleClean}
+                >
+                  {t("live.clean.hide")}
+                  <kbd aria-hidden="true">C</kbd>
+                </button>
+              </span>
+            </div>
+          )}
         </div>
         <aside className="live-side">
-          <section className="card" aria-labelledby="entrants-title">
-            <dl className="stats">
-              <Stat
-                icon={<UsersIcon />}
-                value={i18n.number(snapshot.entrantCount)}
-                label={t("stat.people")}
-              />
-              <Stat
-                icon={<ActivityIcon />}
-                value={i18n.decimal(snapshot.entriesPerSecond)}
-                label={t("stat.perSecond")}
-              />
-              <Stat
-                icon={<TagIcon />}
-                value={i18n.number(snapshot.ticketTotal)}
-                label={t("stat.tickets")}
-              />
-            </dl>
-            <h2 id="entrants-title">{t("entrants.latest")}</h2>
-            <EntrantNames names={snapshot.lastNames} />
-          </section>
-          {snapshot.status === "open" ? (
-            <section className="card" aria-labelledby="share-title">
-              <h2 id="share-title">{t("live.share.title")}</h2>
-              <ShareLinks code={snapshot.code} />
-            </section>
-          ) : null}
-          {overlayToken === null ? null : (
-            <section className="card" aria-labelledby="overlay-title">
-              <h2 id="overlay-title">{t("live.overlay.title")}</h2>
-              <ObsSteps giveaway={{ id, overlayToken }} />
-            </section>
-          )}
+          <EntrantsSection
+            key={id}
+            id={id}
+            feed={{ connected, entrantsAfter }}
+            winners={snapshot.winners}
+          />
         </aside>
       </div>
-      <EntrantsSection
-        key={id}
-        id={id}
-        feed={{ connected, entrantsAfter }}
-        winners={snapshot.winners}
-      />
-    </>
+    </div>
   )
 }
 
 type Run = ReturnType<typeof useAction>["run"]
 
-function OpenStep({
+function CloseStep({
   id,
-  snapshot,
   busy,
   run,
 }: {
   readonly id: string
-  readonly snapshot: LiveSnapshot
   readonly busy: boolean
   readonly run: Run
 }) {
-  const { t, dateTime } = useI18n()
+  const { t } = useI18n()
   return (
-    <section className="card next" aria-labelledby="open-title">
-      <h2 id="open-title">{t("live.open.title")}</h2>
-      {snapshot.closesAt === null ? null : (
-        <p className="muted">{t("live.closesAt", { time: dateTime(snapshot.closesAt) })}</p>
-      )}
-      <ConfirmAction
-        icon={<LockIcon />}
-        label={t("live.close.label")}
-        question={t("live.close.question")}
-        detail={t("live.close.detail")}
-        confirmLabel={t("live.close.confirm")}
-        busy={busy}
-        disabled={false}
-        quiet={false}
-        onConfirm={() =>
-          void run(
-            () => closeEntries(id),
-            (outcome) => `closeResult.${outcome}`,
-          )
-        }
-      />
-    </section>
+    <ConfirmAction
+      icon={<LockIcon />}
+      label={t("live.close.label")}
+      question={t("live.close.question")}
+      detail={t("live.close.detail")}
+      confirmLabel={t("live.close.confirm")}
+      busy={busy}
+      disabled={false}
+      quiet={false}
+      onConfirm={() =>
+        void run(
+          () => closeEntries(id),
+          (outcome) => `closeResult.${outcome}`,
+        )
+      }
+    />
   )
 }
 
@@ -284,9 +320,7 @@ function DrawStep({
   const blocked =
     snapshot.entrantCount === 0 ? t("live.draw.nobody") : countValid ? null : t("live.draw.invalid")
   return (
-    <section className="card next" aria-labelledby="draw-title">
-      <h2 id="draw-title">{t("live.draw.title")}</h2>
-      <p>{t("live.draw.text", { people: peopleText(i18n, snapshot.entrantCount) })}</p>
+    <div className="live-draw">
       <div className="field">
         <label htmlFor="draw-count">{t("live.draw.count")}</label>
         <input
@@ -320,7 +354,25 @@ function DrawStep({
           )
         }
       />
-    </section>
+    </div>
+  )
+}
+
+/** The overlay link and the OBS steps in a popover, so they take no room on the page that is shown on stream. */
+function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overlayToken: string }) {
+  const { t } = useI18n()
+  const popoverId = useId()
+  return (
+    <>
+      <button type="button" className="button text" popoverTarget={popoverId}>
+        <TvIcon />
+        {t("live.overlay.title")}
+      </button>
+      <div id={popoverId} popover="auto" className="live-overlay">
+        <h2>{t("live.overlay.title")}</h2>
+        <ObsSteps giveaway={{ id, overlayToken }} />
+      </div>
+    </>
   )
 }
 
@@ -351,4 +403,54 @@ function stepOf(status: LiveSnapshot["status"]): number {
     case "drawn":
       return 3
   }
+}
+
+const cleanModeKey = "rafflink-live-clean"
+
+/** Clean mode hides the controls for the stream. The choice is stored; the c key flips it unless the streamer is typing or a question is open. */
+function useCleanMode(): readonly [boolean, () => void] {
+  const [clean, setClean] = useState(() => readStored(cleanModeKey) === "1")
+  const toggle = useCallback(() => {
+    writeStored(cleanModeKey, clean ? "0" : "1")
+    setClean(!clean)
+  }, [clean])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "c" || event.ctrlKey || event.metaKey || event.altKey) return
+      if (isTyping(event.target) || document.querySelector("dialog[open]") !== null) return
+      toggle()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [toggle])
+
+  return [clean, toggle]
+}
+
+function isTyping(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement
+    && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+  )
+}
+
+/** Why the streamer cannot pick another winner, or null while they can (or nothing is left to pick). */
+function rerollOverText(snapshot: LiveSnapshot): MessageKey | null {
+  if (snapshot.status !== "drawn") return null
+  switch (snapshot.rerollBlocked) {
+    case "window-over":
+      return "live.reroll.over"
+    case "nobody-left":
+      return "live.reroll.nobodyLeft"
+    case null:
+      return null
+  }
+}
+
+/** The newest pick whose claim is still open, else the newest pick that was not replaced. */
+function currentWinner(winners: readonly LiveWinner[]): LiveWinner | null {
+  const open = winners.filter((winner) => winner.claim.state === "waiting")
+  const standing = winners.filter((winner) => winner.claim.state !== "rerolled")
+  return open.at(-1) ?? standing.at(-1) ?? null
 }

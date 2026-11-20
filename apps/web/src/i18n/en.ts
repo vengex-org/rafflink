@@ -392,11 +392,17 @@ export const en = {
   "live.mark.aria": "Mark as claimed for {name}",
   "live.reroll.over":
     "The time to pick another winner is over. Contact the winners who have not claimed, or start a new giveaway.",
+  "live.reroll.nobodyLeft":
+    "Everyone who entered has been drawn. Contact the winners who have not claimed, or start a new giveaway.",
   "live.reroll.label": "Pick another winner",
   "live.reroll.question": "Pick another winner instead of {name}?",
   "live.reroll.detail": "{name} loses the prize. This cannot be undone.",
   "live.reroll.confirm": "Yes, pick another winner",
   "live.problems.title": "Problems",
+  "live.bar.label": "Giveaway controls",
+  "live.clean.hide": "Hide controls",
+  "live.clean.show": "Show controls",
+  "live.chat.title": "Winner chat",
 
   "wizard.step.basics": "Basics",
   "wizard.step.rules": "Entry rules",

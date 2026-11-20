@@ -1,4 +1,22 @@
-/* Live page: one column on a phone; status and the next step on the left and the numbers on the right from 64rem. */
+/* Live page: one column on a phone; from 64rem the stage and the controls bar on the left and the numbers and the list on the right.
+   The page is shown on stream at 1920x1080, so from 90rem the on-stream text grows to video sizes: names 28px, timer 72px or more, weights 600 to 800. */
+
+main.container:has(> .live-page) {
+  max-width: 120rem;
+}
+
+.live-page {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.live-page > * {
+  margin: 0;
+}
+
+.live-page .steps {
+  margin: 0;
+}
 
 .live-grid {
   display: grid;
@@ -19,10 +37,396 @@
   margin: 0;
 }
 
+.live-side .entrants {
+  margin-top: 0;
+}
+
+/* The warnings above the stage: the icon beside the words, so two of them leave room for the stage. */
+
+.live-main .banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0 var(--space-2);
+  padding: var(--space-2);
+}
+
+.live-main .banner .state-icon {
+  grid-row: 1 / span 2;
+  margin: 0;
+  color: var(--bg);
+}
+
+.live-main .banner > :not(.state-icon) {
+  grid-column: 2;
+  margin: 0;
+}
+
+.live-main .banner h2 {
+  font-size: var(--fs-lg);
+}
+
+/* The stage */
+
+.live-stage {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-3);
+}
+
+.live-stage > * {
+  margin: 0;
+}
+
+.live-stage h2 {
+  font-weight: 800;
+}
+
+.live-link {
+  max-width: none;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: clamp(1.125rem, 0.4rem + 4.2vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.live-link em {
+  padding: 0 0.25em;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.live-count {
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+}
+
+.live-count .stat {
+  padding: 0;
+  background: transparent;
+}
+
+.live-count .stat dt {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.live-count .stat dd {
+  font-size: clamp(3rem, 1.5rem + 5vw, 5.25rem);
+  font-weight: 800;
+}
+
+.live-winner {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.live-winner .winner-plate-name {
+  font-size: clamp(2.5rem, 1rem + 5vw, 6rem);
+}
+
+.live-winner .countdown {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.live-winner .countdown [role="timer"] {
+  font-size: clamp(3rem, 2rem + 3vw, 5.25rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.live-winner .countdown-label,
+.live-winner .status-chip {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+/* The winners' chat: compact, the newest line at the bottom. */
+
+.winner-chat {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.winner-chat h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-lg);
+}
+
+.winner-chat ol {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 8.5rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.winner-chat li {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.winner-chat strong {
+  flex: none;
+  font-weight: 700;
+}
+
+.winner-chat span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The controls bar and the way back from clean mode */
+
+.live-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2);
+}
+
+.live-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+}
+
+.live-bar kbd {
+  padding: 0.125rem 0.375rem;
+  border: 1px solid currentColor;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.live-draw {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: end;
+  gap: 0 var(--space-2);
+}
+
+.live-draw .field {
+  display: contents;
+}
+
+.live-draw label {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.live-draw input {
+  grid-column: 1;
+  grid-row: 2;
+  width: 8rem;
+}
+
+.live-draw .button {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.live-draw .help {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  margin-top: var(--space-1);
+}
+
+.live-show {
+  align-self: flex-end;
+}
+
+.live-overlay:popover-open {
+  position: fixed;
+  inset: auto var(--gutter) 8rem auto;
+  width: min(32rem, calc(100vw - 2 * var(--gutter)));
+  max-height: 80dvh;
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: inherit;
+  box-shadow: var(--shadow-pop);
+}
+
+/* The numbers in the page head */
+
+.live-head-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.live-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.live-numbers .stat {
+  padding: var(--space-1) var(--space-2);
+}
+
+.live-numbers .stat dd {
+  font-size: var(--fs-title);
+}
+
+.claim-left {
+  font-variant-numeric: tabular-nums;
+}
+
+.live-stage .winners {
+  margin: 0;
+}
+
+.live-stage .winners li {
+  padding: var(--space-1) var(--space-2);
+}
+
+.live-stage .winner-name {
+  flex: 1 1 auto;
+}
+
 @media (min-width: 64rem) {
   .live-grid {
-    grid-template-columns: minmax(0, 1fr) 24rem;
+    grid-template-columns: minmax(0, 1fr) 28rem;
     gap: var(--space-3);
     align-items: start;
+  }
+
+  .live-stage {
+    padding: var(--space-3);
+  }
+
+  .live-stage .winners {
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  }
+}
+
+/* A frame as tall as the screen (the stream): the page fills it and the stage and the list scroll inside, so nothing moves under the controls. */
+@media (min-width: 90rem) and (min-height: 60rem) {
+  main.container:has(> .live-page) {
+    padding-block: var(--space-2);
+  }
+
+  .live-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 6.25rem);
+  }
+
+  .live-grid {
+    flex: 1 1 0;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .live-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .live-main > * {
+    flex: none;
+  }
+
+  .live-main > .live-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .live-side {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+@media (min-width: 90rem) {
+  .live-grid {
+    grid-template-columns: minmax(0, 1fr) 40rem;
+  }
+
+  .live-stage h2 {
+    font-size: 2rem;
+  }
+
+  .live-winner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-4);
+  }
+
+  .live-stage .names li {
+    font-size: 1.5rem;
+    line-height: 2.5rem;
+  }
+
+  .live-stage .winner-name {
+    font-size: 1.75rem;
+  }
+
+  .live-stage .winner-claim {
+    font-size: 1.5rem;
+  }
+
+  .live-winner .countdown-label,
+  .live-winner .status-chip {
+    font-size: 1.5rem;
+  }
+
+  .winner-chat li {
+    font-size: 1.25rem;
+  }
+
+  .live-bar .button {
+    min-height: var(--target-lg);
+    font-size: 1.25rem;
+  }
+
+  .live-side .entrants-table .entrants-primary {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .live-side .entrants-table td:first-child .entrants-primary {
+    font-size: 1.75rem;
+  }
+
+  .live-side .entrants-table th,
+  .live-side .entrants-table td {
+    padding-inline: var(--space-1);
+  }
+
+  .live-side .entrants-secondary {
+    font-size: 1rem;
+  }
+
+  .live-side .entrants-table th:first-child {
+    width: 42%;
   }
 }
