@@ -12,7 +12,10 @@ export function LiveSummary({
 }) {
   return (
     <>
-      <p className="status-line">{statusLabel[snapshot.status]}</p>
+      <h1>{snapshot.title}</h1>
+      <p className="status-line">
+        Code {snapshot.code} · {statusLabel[snapshot.status]}
+      </p>
       <dl className="stats">
         <div>
           <dt>Entrants</dt>

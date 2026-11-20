@@ -58,6 +58,8 @@ export interface GiveawayInit {
   readonly id: string
   readonly platform: string
   readonly broadcasterId: string
+  readonly title: string
+  readonly code: string
   readonly rules: GiveawayRules
   readonly claimSeconds: number
   readonly closesAt: Instant | null
@@ -135,6 +137,8 @@ export interface LiveWinner {
 export interface WinnerPick extends LiveWinner, Identity {}
 
 export interface LiveSnapshot extends RoomSummary {
+  readonly title: string
+  readonly code: string
   readonly entriesPerSecond: number
   readonly lastNames: readonly string[]
   readonly winners: readonly LiveWinner[]
@@ -181,13 +185,15 @@ export class GiveawayRoom {
   init(giveaway: GiveawayInit): void {
     this.sql.exec(
       `INSERT INTO room_state
-         (id, platform, giveaway_id, broadcaster_id, rules_json, claim_seconds, status, closes_at, roles_refresh_at)
-       VALUES (1, ?, ?, ?, ?, ?, 'open', ?, ?)
+         (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, closes_at, roles_refresh_at)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
        ON CONFLICT (id) DO NOTHING`,
       [
         giveaway.platform,
         giveaway.id,
         giveaway.broadcasterId,
+        giveaway.title,
+        giveaway.code,
         JSON.stringify(giveaway.rules),
         giveaway.claimSeconds,
         giveaway.closesAt,
@@ -426,6 +432,8 @@ export class GiveawayRoom {
     const winners = this.readPickRows().map((row) => liveWinner(row, now))
     return {
       ...summarize(state),
+      title: state.title,
+      code: state.code,
       entriesPerSecond:
         recent === undefined ? 0 : new RowReader("entries", recent).int("c") / windowSeconds,
       lastNames,

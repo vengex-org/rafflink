@@ -142,12 +142,15 @@ function remoteQueue(queue: TokenQueue): TokenQueueStub {
 
 // Loaded here, not at the top of the module, so a production server never reads the fake.
 async function createFakeTwitchApp(config: ResolvedConfig): Promise<Hono> {
-  const { createFakeTwitch, devFakeTwitchOptions } = await import("@rafflink/fake-twitch")
-  return createFakeTwitch({
+  const { createFakeTwitch, devFakeTwitchOptions, devFakeTwitchUsers } =
+    await import("@rafflink/fake-twitch")
+  const fake = createFakeTwitch({
     ...devFakeTwitchOptions,
     clientId: config.twitchClientId,
     clientSecret: config.twitchClientSecret,
-  }).app
+  })
+  for (const user of devFakeTwitchUsers) fake.control.addUser(user)
+  return fake.app
 }
 
 // A wildcard route for the SPA would swallow every path, so each path the server answers is listed.

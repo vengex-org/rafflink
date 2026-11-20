@@ -11,7 +11,7 @@ export interface FakeUser {
 export interface FakeTwitchOptions {
   clientId: string
   clientSecret: string
-  /** Signed in by `/oauth2/authorize` until `control.signInAs` picks another user. */
+  /** Signed in by `/oauth2/authorize` until `control.signInAs` or a `login_hint` query picks another user. */
   defaultUser: FakeUser
   /** How long a fresh EventSub socket may stay without a subscription before it is closed. */
   subscribeWindowMs: number

@@ -1,6 +1,6 @@
 import { websocket } from "@hono/bun"
 import { createFakeTwitch } from "./fake-twitch.ts"
-import type { FakeTwitchOptions } from "./state.ts"
+import type { FakeTwitchOptions, FakeUser } from "./state.ts"
 
 /** Client id and secret a local Rafflink points at while it runs against the fake. */
 export const devFakeTwitchOptions: FakeTwitchOptions = {
@@ -17,8 +17,19 @@ export const devFakeTwitchOptions: FakeTwitchOptions = {
   keepaliveTimeoutSeconds: 10,
 }
 
+/** Known besides the default user: a sign-in picks one with `login_hint=<id>` on `/oauth2/authorize`. */
+export const devFakeTwitchUsers: readonly FakeUser[] = [
+  {
+    id: "1001",
+    login: "fake_streamer",
+    displayName: "Fake_Streamer",
+    createdAt: "2020-01-01T00:00:00Z",
+  },
+]
+
 export function serveFakeTwitch(port: number, options: FakeTwitchOptions = devFakeTwitchOptions) {
   const { app, control } = createFakeTwitch(options)
+  for (const user of devFakeTwitchUsers) control.addUser(user)
   const server = Bun.serve({ port, fetch: app.fetch, websocket })
   return { server, app, control }
 }

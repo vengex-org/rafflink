@@ -37,6 +37,8 @@ const giveaway: GiveawayInit = {
   id: "g1",
   platform: "twitch",
   broadcasterId: "broadcaster",
+  title: "Giveaway",
+  code: "ABCDE",
   rules,
   claimSeconds: 300,
   closesAt: null,
@@ -581,6 +583,8 @@ describe("GiveawayRoom live push", () => {
     expect(snapshot.lastNames).toEqual(["Name3", "Name2"])
     expect(snapshot.entriesPerSecond).toBe(0.3)
     expect(snapshot).toMatchObject({
+      title: "Giveaway",
+      code: "ABCDE",
       status: "drawn",
       entrantCount: 3,
       roleRefreshFailures: 1,

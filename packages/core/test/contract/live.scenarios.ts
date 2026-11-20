@@ -42,7 +42,12 @@ export function liveScenarios(context: ContractContext): void {
       "the snapshot after the entry",
     )
 
-    expect(messages[0]).toMatchObject({ entrantCount: 0, lastNames: [] })
+    expect(messages[0]).toMatchObject({
+      entrantCount: 0,
+      lastNames: [],
+      title: "Giveaway",
+      code: giveaway.code,
+    })
     expect(messages.at(-1)).toMatchObject({
       entrantCount: 1,
       ticketTotal: 1,

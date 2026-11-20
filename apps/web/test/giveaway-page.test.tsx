@@ -160,7 +160,7 @@ describe("giveaway page", () => {
         ok({
           ...giveaway,
           status: "drawn",
-          win: { n: 0, claimUntil: Date.now() + 90_000, claim: { state: "waiting" } },
+          win: { n: 0, claimRemainingMs: 90_000, claim: { state: "waiting" } },
         }),
       "POST /api/g/ABCDE/claim": () => ok({ kind: "claimed" }),
     })
@@ -180,7 +180,7 @@ describe("giveaway page", () => {
         ok({
           ...giveaway,
           status: "drawn",
-          win: { n: 0, claimUntil: Date.now() - 1000, claim: { state: "waiting" } },
+          win: { n: 0, claimRemainingMs: 0, claim: { state: "waiting" } },
         }),
     })
 

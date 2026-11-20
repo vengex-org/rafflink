@@ -24,6 +24,8 @@ it("shows the live view read-only on the overlay socket without a session", asyn
   const view = renderApp("/overlay/gid-1/tok-1")
 
   expect(await view.findByText("Ada")).toBeTruthy()
+  expect(view.getByText("Summer giveaway")).toBeTruthy()
+  expect(view.getByText(/Code ABCDE/)).toBeTruthy()
   expect(FakeSocket.opened[0]?.url).toBe("ws://rafflink.test/api/overlay/gid-1/tok-1")
   act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 11 }))
   expect(await view.findByText("11")).toBeTruthy()

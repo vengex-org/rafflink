@@ -134,6 +134,7 @@ describe("creating a giveaway", () => {
       closesAt: null,
       claimSeconds: 300,
       entrantCount: 1,
+      poll: { intervalMs: 3000, maxMs: 120_000 },
       win: null,
     })
   })

@@ -1,6 +1,6 @@
 export { createFakeTwitch } from "./fake-twitch.ts"
 export type { FakeTwitch, FakeTwitchControl } from "./fake-twitch.ts"
-export { devFakeTwitchOptions, serveFakeTwitch } from "./serve.ts"
+export { devFakeTwitchOptions, devFakeTwitchUsers, serveFakeTwitch } from "./serve.ts"
 export type {
   Call,
   FailableEndpoint,

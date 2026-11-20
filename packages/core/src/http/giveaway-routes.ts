@@ -1,7 +1,6 @@
 import { Hono, type Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway } from "../accounts/account-store.ts"
-import type { Instant } from "../ports.ts"
 import type { ClaimOutcome, WinnerClaim, WinnerPick } from "../room/giveaway-room.ts"
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
@@ -12,7 +11,8 @@ import { readViewerSession } from "./session.ts"
 /** Where a signed-in viewer stands in a drawn giveaway. */
 interface ViewerWin {
   readonly n: number
-  readonly claimUntil: Instant
+  /** Computed by the server, so a wrong clock on the viewer's device does not change it. */
+  readonly claimRemainingMs: number
   readonly claim: WinnerClaim
 }
 
@@ -32,6 +32,10 @@ export function giveawayRoutes(deps: AppDeps): Hono {
       closesAt: summary.closesAt,
       claimSeconds: giveaway.claimSeconds,
       entrantCount: summary.entrantCount,
+      poll: {
+        intervalMs: deps.config.queuePollSeconds * 1000,
+        maxMs: deps.config.queuePollMaxSeconds * 1000,
+      },
       win: summary.status === "drawn" ? await viewerWin(c, deps, giveaway) : null,
     }
     return c.json(body)
@@ -90,5 +94,11 @@ async function viewerWin(c: Context, deps: AppDeps, giveaway: Giveaway): Promise
   const session = await readViewerSession(c, deps)
   if (session === null) return null
   const pick = await pickOf(deps, giveaway, session.userId)
-  return pick === undefined ? null : { n: pick.n, claimUntil: pick.claimUntil, claim: pick.claim }
+  return pick === undefined
+    ? null
+    : {
+        n: pick.n,
+        claimRemainingMs: Math.max(0, pick.claimUntil - deps.clock.now()),
+        claim: pick.claim,
+      }
 }

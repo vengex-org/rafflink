@@ -4,6 +4,19 @@ import type { ContractContext, ContractTarget } from "./target.ts"
 import { scenario, type CreatedGiveaway } from "./world.ts"
 
 export function giveawayScenarios(context: ContractContext): void {
+  scenario(
+    context,
+    "the giveaway page carries the entry poll timing from the config",
+    async (world) => {
+      const target = await world.start({ QUEUE_POLL_SECONDS: "2", QUEUE_POLL_MAX_SECONDS: "60" })
+      const giveaway = await world.createGiveaway(target)
+
+      const page = await (await fetch(new URL(`/api/g/${giveaway.code}`, target.url))).json()
+
+      expect(page.poll).toEqual({ intervalMs: 2000, maxMs: 60_000 })
+    },
+  )
+
   scenario(context, "entries are refused after the streamer closes the giveaway", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)
@@ -96,14 +109,14 @@ export function giveawayScenarios(context: ContractContext): void {
     await world.closeGiveaway(giveaway)
     await world.drawWinners(giveaway, 1)
 
-    const page: { win: { n: number; claimUntil: number; claim: { state: string } } } = await (
+    const page: { win: { n: number; claimRemainingMs: number; claim: { state: string } } } = await (
       await entered.viewer.request(`/api/g/${giveaway.code}`)
     ).json()
     const claimed = await entered.viewer.postJson(`/api/g/${giveaway.code}/claim`, {})
 
     expect(page.win).toMatchObject({ n: 0, claim: { state: "waiting" } })
-    expect(page.win.claimUntil).toBeGreaterThan(Date.now())
-    expect(page.win.claimUntil).toBeLessThanOrEqual(Date.now() + 120_000)
+    expect(page.win.claimRemainingMs).toBeGreaterThan(0)
+    expect(page.win.claimRemainingMs).toBeLessThanOrEqual(120_000)
     expect(claimed.status).toBe(200)
     expect(await claimed.json()).toEqual({ kind: "claimed" })
     expect((await world.live(giveaway)).winners[0]?.claim).toEqual({

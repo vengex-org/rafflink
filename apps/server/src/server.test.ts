@@ -142,6 +142,25 @@ describe("routes", () => {
     expect(await response.json()).toHaveProperty("keys")
   })
 
+  it("lets a dev sign-in pick the second fake user with login_hint", async () => {
+    const server = await launch({ DEV_FAKE_TWITCH: "true" })
+    const known = await fetch(
+      new URL(`/oauth2/authorize?${devAuthorizeQuery("1001")}`, server.url),
+      {
+        redirect: "manual",
+      },
+    )
+    const unknown = await fetch(
+      new URL(`/oauth2/authorize?${devAuthorizeQuery("42")}`, server.url),
+      {
+        redirect: "manual",
+      },
+    )
+
+    expect(known.status).toBe(302)
+    expect(unknown.status).toBe(400)
+  })
+
   it("answers an unknown giveaway code with a 404 JSON", async () => {
     const server = await launch()
 
@@ -286,4 +305,13 @@ async function createGiveaway(server: RunningServer, extra: Record<string, unkno
 
 function entrantCounts(messages: readonly { entrantCount: number }[]): number[] {
   return messages.map((message) => message.entrantCount)
+}
+
+function devAuthorizeQuery(hint: string): URLSearchParams {
+  return new URLSearchParams({
+    client_id: "client-1",
+    redirect_uri: "http://localhost/callback",
+    response_type: "code",
+    login_hint: hint,
+  })
 }

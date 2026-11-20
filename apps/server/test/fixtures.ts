@@ -34,6 +34,8 @@ export function giveawayInit(id: string, closesAt: number | null = null): Giveaw
     id,
     platform: "twitch",
     broadcasterId: "200",
+    title: "Giveaway",
+    code: "ABCDE",
     rules: validRules,
     claimSeconds: 300,
     closesAt,

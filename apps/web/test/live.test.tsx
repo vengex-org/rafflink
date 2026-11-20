@@ -33,6 +33,8 @@ describe("live page", () => {
     const view = renderApp("/live/gid-1")
 
     expect(await view.findByText("Ada")).toBeTruthy()
+    expect(view.getByText("Summer giveaway")).toBeTruthy()
+    expect(view.getByText(/Code ABCDE/)).toBeTruthy()
     expect(view.getByText("1.5")).toBeTruthy()
     expect(FakeSocket.opened[0]?.url).toBe("ws://rafflink.test/api/live/gid-1")
     act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 9, lastNames: ["Cy"] }))

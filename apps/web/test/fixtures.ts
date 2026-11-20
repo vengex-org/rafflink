@@ -20,6 +20,7 @@ export const giveaway: GiveawayView = {
   closesAt: null,
   claimSeconds: 300,
   entrantCount: 42,
+  poll: { intervalMs: 10, maxMs: 80 },
   win: null,
 }
 
@@ -37,6 +38,8 @@ export const dashboardGiveaway: DashboardGiveaway = {
 }
 
 export const liveSnapshot: LiveSnapshot = {
+  title: "Summer giveaway",
+  code: "ABCDE",
   status: "open",
   closesAt: null,
   entrantCount: 3,

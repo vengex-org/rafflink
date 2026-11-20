@@ -4,22 +4,17 @@ import { groups } from "@rafflink/core/domain/groups"
 import { claimPrize, entryFromQuery, getGiveaway, type GiveawayView } from "../api/client.ts"
 import { Failed, Loading, NotFound, Status } from "../components/notice.tsx"
 import { groupLabel, reasonText, statusLabel, viewerClaimText } from "../lib/messages.ts"
-import type { PollTiming } from "../lib/poll-timing.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useEntryResult, type EntryView } from "../lib/use-entry-result.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
 
-export function GiveawayPage({ poll }: { readonly poll: PollTiming }) {
+export function GiveawayPage() {
   const { code } = useParams()
-  return code === undefined ? (
-    <NotFound title="Giveaway not found" />
-  ) : (
-    <Loaded code={code} poll={poll} />
-  )
+  return code === undefined ? <NotFound title="Giveaway not found" /> : <Loaded code={code} />
 }
 
-function Loaded({ code, poll }: { readonly code: string; readonly poll: PollTiming }) {
+function Loaded({ code }: { readonly code: string }) {
   const load = useCallback(() => getGiveaway(code), [code])
   const { result } = useLoad(load)
   switch (result.state) {
@@ -31,7 +26,7 @@ function Loaded({ code, poll }: { readonly code: string; readonly poll: PollTimi
       return result.value === null ? (
         <NotFound title="Giveaway not found" />
       ) : (
-        <GiveawayDetails code={code} giveaway={result.value} poll={poll} />
+        <GiveawayDetails code={code} giveaway={result.value} />
       )
   }
 }
@@ -39,15 +34,13 @@ function Loaded({ code, poll }: { readonly code: string; readonly poll: PollTimi
 function GiveawayDetails({
   code,
   giveaway,
-  poll,
 }: {
   readonly code: string
   readonly giveaway: GiveawayView
-  readonly poll: PollTiming
 }) {
   const [query] = useSearchParams()
   const initial = useMemo(() => entryFromQuery(query), [query])
-  const entry = useEntryResult(code, initial, poll)
+  const entry = useEntryResult(code, initial, giveaway.poll)
   const signInHref = `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`
 
   return (
@@ -160,7 +153,7 @@ function ClaimPanel({
   readonly code: string
   readonly win: NonNullable<GiveawayView["win"]>
 }) {
-  const remaining = useRemainingMs(win.claimUntil)
+  const remaining = useRemainingMs(win.claimRemainingMs)
   const { message, busy, run } = useAction()
 
   if (win.claim.state === "rerolled") return <p>{viewerClaimText.rerolled}</p>

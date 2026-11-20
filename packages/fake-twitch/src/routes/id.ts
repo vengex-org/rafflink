@@ -19,9 +19,13 @@ export function idRoutes(state: FakeState): Hono {
         400,
       )
     }
+    const hint = query.login_hint
+    if (hint !== undefined && !state.users.has(hint)) {
+      return c.json({ status: 400, message: "login_hint names no known user" }, 400)
+    }
     const code = crypto.randomUUID()
     state.codes.set(code, {
-      userId: state.signInUserId,
+      userId: hint ?? state.signInUserId,
       scopes: (query.scope ?? "").split(" ").filter((scope) => scope !== ""),
       nonce: query.nonce,
       redirectUri,

@@ -202,6 +202,8 @@ async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
       id: giveaway.id,
       platform: giveaway.platform,
       broadcasterId: giveaway.broadcasterId,
+      title: giveaway.title,
+      code: giveaway.code,
       rules: giveaway.rules,
       claimSeconds: giveaway.claimSeconds,
       closesAt: giveaway.closesAt,

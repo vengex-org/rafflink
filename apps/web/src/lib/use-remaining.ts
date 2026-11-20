@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react"
 
-/** Milliseconds left until `until`, recomputed every second, never below 0. */
-export function useRemainingMs(until: number): number {
-  const [now, setNow] = useState(() => Date.now())
+/** Milliseconds left, counted down from `initialMs` (what the server computed) since the first render; never below 0. */
+export function useRemainingMs(initialMs: number): number {
+  const [startedAt] = useState(() => Date.now())
+  const [now, setNow] = useState(startedAt)
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
-  return Math.max(0, until - now)
+  return Math.max(0, initialMs - (now - startedAt))
 }
 
 export function formatClock(ms: number): string {

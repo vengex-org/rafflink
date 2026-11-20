@@ -15,6 +15,8 @@ export interface PublicGiveaway {
   readonly closesAt: Instant | null
   readonly claimSeconds: number
   readonly entrantCount: number
+  /** How the page polls a queued entry: every `intervalMs`, for at most `maxMs`. */
+  readonly poll: { readonly intervalMs: number; readonly maxMs: number }
 }
 
 /** The streamer's own view of a giveaway, with the overlay token. */

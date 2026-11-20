@@ -41,7 +41,7 @@ export class ApiError extends Error {
 export type GiveawayView = PublicGiveaway & {
   readonly win: {
     readonly n: number
-    readonly claimUntil: number
+    readonly claimRemainingMs: number
     readonly claim: WinnerClaim
   } | null
 }
@@ -111,12 +111,16 @@ export async function getGiveaway(code: string): Promise<GiveawayView | null> {
     closesAt: nullableNum(source, "closesAt"),
     claimSeconds: num(source, "claimSeconds"),
     entrantCount: num(source, "entrantCount"),
+    poll: {
+      intervalMs: num(child(source, "poll"), "intervalMs"),
+      maxMs: num(child(source, "poll"), "maxMs"),
+    },
     win:
       win === null
         ? null
         : {
             n: num(win, "n"),
-            claimUntil: num(win, "claimUntil"),
+            claimRemainingMs: num(win, "claimRemainingMs"),
             claim: parseClaim(child(win, "claim")),
           },
   }
@@ -357,6 +361,8 @@ function parseDashboardGiveaway(source: Json): DashboardGiveaway {
 /** A live message from the socket; the same shape as the snapshot a GET returns. */
 export function parseLiveSnapshot(source: Json): LiveSnapshot {
   return {
+    title: text(source, "title"),
+    code: text(source, "code"),
     status: oneOf(source, "status", roomStatuses),
     closesAt: nullableNum(source, "closesAt"),
     entrantCount: num(source, "entrantCount"),

@@ -97,6 +97,34 @@ describe("id service", () => {
     expect(location.searchParams.get("code")).toBeString()
   })
 
+  test("signs in the user named by login_hint without changing the default", async () => {
+    const hinted = await authorizeWithHint("200")
+    const jwks = createRemoteJWKSet(url("/oauth2/keys"))
+    const hintedTokens: TokenResponse = await (await exchangeCode(hinted)).json()
+    const { payload } = await jwtVerify(hintedTokens.id_token ?? "", jwks)
+    const next = await signIn("openid")
+    const { payload: nextPayload } = await jwtVerify(next.id_token ?? "", jwks)
+
+    expect(payload.sub).toBe("200")
+    expect(nextPayload.sub).toBe("100")
+  })
+
+  test("knows the dev users by login_hint", async () => {
+    const response = await fetch(url(`/oauth2/authorize?${hintQuery("1001")}`), {
+      redirect: "manual",
+    })
+
+    expect(response.status).toBe(302)
+  })
+
+  test("rejects a login_hint that names no user", async () => {
+    const response = await fetch(url(`/oauth2/authorize?${hintQuery("999")}`), {
+      redirect: "manual",
+    })
+
+    expect(response.status).toBe(400)
+  })
+
   test("rejects authorize for an unknown client", async () => {
     const response = await fetch(
       url("/oauth2/authorize?client_id=other&response_type=code&redirect_uri=" + REDIRECT_URI),
@@ -533,6 +561,23 @@ async function authorize(scope: string, nonce?: string, state?: string): Promise
   if (nonce !== undefined) query.set("nonce", nonce)
   if (state !== undefined) query.set("state", state)
   return fetch(url(`/oauth2/authorize?${query}`), { redirect: "manual" })
+}
+
+function hintQuery(hint: string): URLSearchParams {
+  return new URLSearchParams({
+    client_id: options.clientId,
+    redirect_uri: REDIRECT_URI,
+    response_type: "code",
+    scope: "openid",
+    login_hint: hint,
+  })
+}
+
+async function authorizeWithHint(hint: string): Promise<string> {
+  const response = await fetch(url(`/oauth2/authorize?${hintQuery(hint)}`), { redirect: "manual" })
+  const code = new URL(response.headers.get("location") ?? "").searchParams.get("code")
+  if (code === null) throw new Error("authorize returned no code")
+  return code
 }
 
 async function authorizeCode(scope: string, nonce?: string): Promise<string> {

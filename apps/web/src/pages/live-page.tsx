@@ -78,7 +78,6 @@ function Controls({
 
   return (
     <>
-      <h1>Live giveaway</h1>
       {connected ? null : <output className="status">Reconnecting to the live feed…</output>}
       {snapshot.chatClaimUnavailable ? (
         <p role="alert" className="warning">

@@ -546,6 +546,8 @@ function roomInit(claimKeyword: string | null): GiveawayInit {
     id: "g1",
     platform: "twitch",
     broadcasterId: "broadcaster",
+    title: "Giveaway",
+    code: "ABCDE",
     rules: { ...rules, claimKeyword },
     claimSeconds: 300,
     closesAt: null,

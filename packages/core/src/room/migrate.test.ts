@@ -18,7 +18,7 @@ describe("applyMigrations", () => {
     const sql = openSql()
     applyMigrations(sql, roomMigrations)
     sql.exec(
-      "INSERT INTO room_state (id, platform, giveaway_id, broadcaster_id, rules_json, claim_seconds, status) VALUES (1, 'twitch', 'g', 'b', '{}', 300, 'open')",
+      "INSERT INTO room_state (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status) VALUES (1, 'twitch', 'g', 'b', 't', 'c', '{}', 300, 'open')",
       [],
     )
     applyMigrations(sql, roomMigrations)
