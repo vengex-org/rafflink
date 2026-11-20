@@ -25,6 +25,7 @@
       "name": "@rafflink/core",
       "version": "0.0.0",
       "dependencies": {
+        "hono": "4.13.19",
         "jose": "6.2.18",
       },
       "devDependencies": {

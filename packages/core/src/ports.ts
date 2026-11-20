@@ -52,3 +52,27 @@ export interface AsyncSql {
   run(sql: string, params: readonly SqlValue[]): Promise<void>
   batch(statements: readonly SqlStatement[]): Promise<void>
 }
+
+/** A call across an object boundary (Durable Object stub, in-process room): every method of `T` returns a Promise. */
+export type Remote<T> = {
+  readonly [K in keyof T]: T[K] extends (...args: infer Args) => infer Result
+    ? (...args: Args) => Promise<Awaited<Result>>
+    : never
+}
+
+/** Requests used against a daily limit. */
+export interface Quota {
+  readonly used: number
+  readonly limit: number
+}
+
+/** The current UTC day's use of the target's daily limits. */
+export interface Usage {
+  readonly workerRequests: Quota
+  readonly doRequests: Quota
+}
+
+/** Reads the day's usage. Any implementation returns null when the target has no daily limit. */
+export interface UsageMeter {
+  today(): Promise<Usage | null>
+}

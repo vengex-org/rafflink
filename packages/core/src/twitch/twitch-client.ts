@@ -3,7 +3,6 @@ import { createRemoteJWKSet, customFetch, errors, jwtVerify, type JWTPayload } f
 import type { ResolvedConfig } from "../config.ts"
 import type { Group } from "../domain/groups.ts"
 import type { Parsed } from "../lib/parsed.ts"
-import type { Instant } from "../ports.ts"
 import {
   TwitchInvalid,
   TwitchRateLimited,
@@ -11,19 +10,20 @@ import {
   type TwitchEndpoint,
 } from "./errors.ts"
 import {
-  parseCreatedAt,
   parseFollowed,
   parseRolePage,
   parseTier,
   parseTokenResponse,
+  parseUserProfile,
   parseValidated,
   type ExchangedCode,
   type Tier,
+  type UserProfile,
 } from "./lib/parse-response.ts"
 
 export { TwitchError, TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "./errors.ts"
 export type { TwitchEndpoint } from "./errors.ts"
-export type { ExchangedCode } from "./lib/parse-response.ts"
+export type { ExchangedCode, UserProfile } from "./lib/parse-response.ts"
 
 /** The `fetch` the client sends every call through; the global `fetch` fits. */
 export type TwitchFetch = (input: string | URL, init?: RequestInit) => Promise<Response>
@@ -140,9 +140,9 @@ export class TwitchClient {
     )
   }
 
-  /** Creation time of the account the token belongs to. */
-  async accountCreatedAt(accessToken: string): Promise<Instant> {
-    return this.helix("users", "/helix/users", {}, accessToken, parseCreatedAt)
+  /** Login, display name and creation time of the account the token belongs to. */
+  async userProfile(accessToken: string): Promise<UserProfile> {
+    return this.helix("users", "/helix/users", {}, accessToken, parseUserProfile)
   }
 
   /** Needs the streamer's token with `channel:read:vips` and `moderation:read`. */

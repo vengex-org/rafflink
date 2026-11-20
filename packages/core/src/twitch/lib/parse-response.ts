@@ -13,6 +13,13 @@ export interface ExchangedCode {
   readonly idToken: string | null
 }
 
+/** The Helix user of an access token. */
+export interface UserProfile {
+  readonly login: string
+  readonly displayName: string
+  readonly createdAt: Instant
+}
+
 export interface RolePage {
   readonly userIds: readonly string[]
   /** `null` on the last page. */
@@ -42,13 +49,15 @@ export function parseFollowed(body: unknown): Parsed<boolean, "malformed"> {
   return data.ok ? { ok: true, value: data.value.length > 0 } : data
 }
 
-export function parseCreatedAt(body: unknown): Parsed<Instant, "malformed"> {
+export function parseUserProfile(body: unknown): Parsed<UserProfile, "malformed"> {
   const entry = firstEntry(body)
   if (!entry.ok) return entry
-  const createdAt = entry.value.created_at
+  const { login, display_name: displayName, created_at: createdAt } = entry.value
+  if (typeof login !== "string" || typeof displayName !== "string") return malformed
   if (typeof createdAt !== "string") return malformed
   const instant = Date.parse(createdAt)
-  return Number.isFinite(instant) ? { ok: true, value: instant } : malformed
+  if (!Number.isFinite(instant)) return malformed
+  return { ok: true, value: { login, displayName, createdAt: instant } }
 }
 
 export function parseRolePage(body: unknown): Parsed<RolePage, "malformed"> {

@@ -25,12 +25,15 @@ export interface ViewerFacts {
   readonly accountAgeDays: number | null
 }
 
-export type IneligibleReason =
-  | "broadcaster"
-  | "subs-only"
-  | "followers-only"
-  | "account-too-young"
-  | "no-tickets"
+export const ineligibleReasons = [
+  "broadcaster",
+  "subs-only",
+  "followers-only",
+  "account-too-young",
+  "no-tickets",
+] as const
+
+export type IneligibleReason = (typeof ineligibleReasons)[number]
 
 /** Whether a viewer may enter; when they may, the group and the tickets (always above 0) they enter with. */
 export type EligibilityOutcome =

@@ -117,6 +117,9 @@ export interface LiveWinner {
   readonly claim: WinnerClaim
 }
 
+/** A pick with who it went to. */
+export interface WinnerPick extends LiveWinner, Identity {}
+
 export interface LiveSnapshot extends RoomSummary {
   readonly entriesPerSecond: number
   readonly lastNames: readonly string[]
@@ -363,6 +366,19 @@ export class GiveawayRoom {
     this.afterWrite()
   }
 
+  /** Every pick in order, rerolled ones included, with the identity the live page hides. */
+  picks(): readonly WinnerPick[] {
+    const now = this.clock.now()
+    return this.readPickRows().map((row) => {
+      const draw = parseDraw(row)
+      return {
+        ...liveWinner(row, now),
+        platform: draw.platform,
+        platformUserId: draw.platformUserId,
+      }
+    })
+  }
+
   liveSnapshot(): LiveSnapshot {
     const state = this.readState()
     const now = this.clock.now()
@@ -371,14 +387,7 @@ export class GiveawayRoom {
     const lastNames = this.sql
       .exec(lastNamesSql, [this.config.liveLastNames])
       .map((row) => new RowReader("entries", row).text("display_name"))
-    const winners = this.sql
-      .exec(
-        `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, e.display_name
-         FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
-         ORDER BY d.n`,
-        [],
-      )
-      .map((row) => liveWinner(row, now))
+    const winners = this.readPickRows().map((row) => liveWinner(row, now))
     return {
       ...summarize(state),
       entriesPerSecond:
@@ -394,6 +403,15 @@ export class GiveawayRoom {
     const row = this.sql.exec("SELECT * FROM room_state WHERE id = 1", [])[0]
     if (row === undefined) throw new Error("room is not initialised")
     return parseState(row, this.config)
+  }
+
+  private readPickRows(): SqlRow[] {
+    return this.sql.exec(
+      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, e.display_name
+       FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
+       ORDER BY d.n`,
+      [],
+    )
   }
 
   private readDraws(): DrawRow[] {

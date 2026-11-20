@@ -7,6 +7,7 @@
     "./sqlite-bun": "./src/sqlite-bun.ts"
   },
   "dependencies": {
+    "hono": "4.13.19",
     "jose": "6.2.18"
   },
   "devDependencies": {

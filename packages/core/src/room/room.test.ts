@@ -282,6 +282,19 @@ describe("GiveawayRoom draw", () => {
   })
 })
 
+describe("GiveawayRoom picks", () => {
+  it("lists every pick with its identity, rerolled ones included", async () => {
+    const { room, winner } = await drawnRoom()
+    await room.reroll(0)
+
+    const [first, second] = room.picks()
+
+    expect(room.picks()).toHaveLength(2)
+    expect(first).toMatchObject({ n: 0, ...winner, claim: { state: "rerolled" } })
+    expect(second).toMatchObject({ n: 1, claim: { state: "waiting" } })
+  })
+})
+
 describe("GiveawayRoom reroll", () => {
   it("reroll adds the next pick and marks the old one", async () => {
     const { room, sql } = await drawnRoom()

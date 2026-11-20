@@ -261,7 +261,7 @@ describe("Helix", () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
     fake.control.failNext("users", 500, 1)
 
-    expect(await rejection(client.accountCreatedAt(accessToken))).toBeInstanceOf(TwitchUnavailable)
+    expect(await rejection(client.userProfile(accessToken))).toBeInstanceOf(TwitchUnavailable)
     expect(callsTo("/helix/users")).toBe(1)
   })
 
@@ -311,7 +311,19 @@ describe("Helix", () => {
   it("reads the account creation time of the token owner", async () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
 
-    expect(await client.accountCreatedAt(accessToken)).toBe(Date.parse("2021-03-04T05:06:07Z"))
+    expect((await client.userProfile(accessToken)).createdAt).toBe(
+      Date.parse("2021-03-04T05:06:07Z"),
+    )
+  })
+
+  it("reads login, display name and creation time of the token owner", async () => {
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+
+    expect(await client.userProfile(accessToken)).toEqual({
+      login: "viewer",
+      displayName: "Viewer",
+      createdAt: Date.parse("2021-03-04T05:06:07Z"),
+    })
   })
 })
 
