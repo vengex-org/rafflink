@@ -1,3 +1,6 @@
+/** `X-Robots-Tag` of every page and file except the home page. */
+export const noindex = "noindex, nofollow"
+
 const immutable = "public, max-age=31536000, immutable"
 const revalidate = "no-cache"
 
@@ -11,15 +14,20 @@ export function staticCacheControl(pathname: string): string {
 
 /**
  * The `_headers` file of Cloudflare static assets, which are answered without the Worker: the security
- * headers and the cache rules of {@link staticCacheControl} for every file.
+ * headers, the cache rules of {@link staticCacheControl} and {@link noindex} for every file but the home page.
  */
 export function headersFile(security: Readonly<Record<string, string>>): string {
-  const everything = [...Object.entries(security), ["Cache-Control", revalidate]]
+  const everything = [
+    ...Object.entries(security),
+    ["Cache-Control", revalidate],
+    ["X-Robots-Tag", noindex],
+  ]
   const hashed = hashedAssetGlobs.map((glob) =>
     [glob, "  ! Cache-Control", `  Cache-Control: ${immutable}`].join("\n"),
   )
   return [
     ["/*", ...everything.map(([name, value]) => `  ${name}: ${value}`)].join("\n"),
+    ["/", "  ! X-Robots-Tag"].join("\n"),
     ...hashed,
     "",
   ].join("\n")

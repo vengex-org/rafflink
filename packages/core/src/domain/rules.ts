@@ -49,6 +49,7 @@ export type RulesIssueCode =
   | "not-a-positive-integer"
   | "blank"
   | "too-long"
+  | "too-large"
 
 /** The first invalid field of untrusted input, as a path like `tickets.vip`. */
 export interface RulesIssue {
@@ -80,10 +81,10 @@ export function evaluateEligibility(
 /** Parses `rules_json` or a create request body; nothing past this takes unchecked rules. */
 export function parseRules(
   input: unknown,
-  config: Pick<ResolvedConfig, "claimKeywordMaxLength">,
+  config: Pick<ResolvedConfig, "claimKeywordMaxLength" | "ticketsPerGroupMax">,
 ): Parsed<GiveawayRules, RulesIssue> {
   if (!isRecord(input)) return fail("rules", "not-an-object")
-  const tickets = parseTickets(ownValue(input, "tickets"))
+  const tickets = parseTickets(ownValue(input, "tickets"), config.ticketsPerGroupMax)
   if (!tickets.ok) return tickets
   const subsOnly = parseFlag(input, "subsOnly")
   if (!subsOnly.ok) return subsOnly
@@ -102,13 +103,14 @@ export function parseRules(
   })
 }
 
-/** An absent claim time takes the configured default; a present one must be a positive integer. */
+/** An absent claim time takes the configured default; a present one must be a positive integer up to the maximum. */
 export function parseClaimSeconds(
   input: unknown,
-  config: Pick<ResolvedConfig, "defaultClaimSeconds">,
+  config: Pick<ResolvedConfig, "defaultClaimSeconds" | "claimSecondsMax">,
 ): Parsed<number, RulesIssue> {
   if (input === undefined) return ok(config.defaultClaimSeconds)
   if (!isPositiveInteger(input)) return fail("claimSeconds", "not-a-positive-integer")
+  if (input > config.claimSecondsMax) return fail("claimSeconds", "too-large")
   return ok(input)
 }
 
@@ -121,7 +123,7 @@ function memberGroups(viewer: ViewerFacts): Group[] {
   return member
 }
 
-function parseTickets(input: unknown): Parsed<Tickets, RulesIssue> {
+function parseTickets(input: unknown, max: number): Parsed<Tickets, RulesIssue> {
   if (!isRecord(input)) return fail("tickets", "not-an-object")
   const counts: Record<Group, number> = {
     viewer: 0,
@@ -138,6 +140,7 @@ function parseTickets(input: unknown): Parsed<Tickets, RulesIssue> {
     if (!isNonNegativeInteger(count)) {
       return fail(`tickets.${group}`, "not-a-non-negative-integer")
     }
+    if (count > max) return fail(`tickets.${group}`, "too-large")
     counts[group] = count
   }
   return ok(counts)

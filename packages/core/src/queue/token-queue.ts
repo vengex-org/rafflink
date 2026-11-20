@@ -1,3 +1,4 @@
+import { errorClass } from "../lib/error-class.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { randomId } from "../lib/random-id.ts"
 import type { Alarm, Clock, Instant, Random, Remote, SqlRow, SyncSql } from "../ports.ts"
@@ -9,17 +10,22 @@ import {
   type FinalOutcome,
 } from "../viewer/outcome.ts"
 import {
+  claimQueuedSql,
   expiredQueuedSql,
+  finishClaimedSql,
+  oldestClaimSql,
   oldestDoneSql,
-  nextQueuedSql,
   oldestQueuedSql,
   purgeDoneSql,
+  releaseStaleSql,
+  requeueClaimedSql,
   statsSql,
 } from "./queries.ts"
 
 export type QueueConfig = Pick<
   ResolvedConfig,
   | "queueCodeMaxAgeSeconds"
+  | "queueProcessingTimeoutSeconds"
   | "queueCooldownSeconds"
   | "queueStartRatePerSecond"
   | "queueMinRatePerSecond"
@@ -69,7 +75,7 @@ export interface QueueStats {
   readonly cooldownUntil: Instant
   /** Codes dropped for age. */
   readonly dropped: number
-  /** Results nobody polled before they aged out. */
+  /** Results that aged out before the browser read them. */
   readonly abandonedResults: number
 }
 
@@ -120,7 +126,7 @@ export class TokenQueue {
     return { ticket, cooldownUntil: this.readStats().cooldownUntil }
   }
 
-  /** A finished result is returned once and its row deleted. */
+  /** A finished result stays readable until the sweep removes it, so a lost response can be fetched again. */
   poll(ticket: string): PollOutcome {
     return this.sql.transaction((): PollOutcome => {
       const row = this.sql.exec(
@@ -129,10 +135,12 @@ export class TokenQueue {
       )[0]
       if (row === undefined) return { kind: "gone" }
       const reader = new RowReader("token_queue", row)
-      if (reader.oneOf("state", ["queued", "done"]) === "queued") return { kind: "waiting" }
+      if (reader.oneOf("state", ["queued", "processing", "done"]) !== "done") {
+        return { kind: "waiting" }
+      }
       const outcome = parseFinalOutcome(reader.text("result_json"))
       if (!outcome.ok) throw new TypeError("token_queue.result_json: unexpected value")
-      this.sql.exec("DELETE FROM token_queue WHERE ticket = ?", [ticket])
+      this.sql.exec("UPDATE token_queue SET polled = 1 WHERE ticket = ?", [ticket])
       return { kind: "done", outcome: outcome.value, userId: reader.nullableText("user_id") }
     })
   }
@@ -140,7 +148,7 @@ export class TokenQueue {
   stats(): QueueStats {
     const stats = this.readStats()
     const queued = this.sql.exec(
-      "SELECT COUNT(*) AS c FROM token_queue WHERE state = 'queued'",
+      "SELECT COUNT(*) AS c FROM token_queue WHERE state IN ('queued', 'processing')",
       [],
     )[0]
     return {
@@ -159,6 +167,14 @@ export class TokenQueue {
   }
 
   private sweep(now: Instant): void {
+    const released = this.sql.exec(releaseStaleSql, [
+      now - this.config.queueProcessingTimeoutSeconds * 1000,
+    ])
+    for (const row of released) {
+      console.warn("queue claim released", {
+        giveawayId: new RowReader("token_queue", row).text("giveaway_id"),
+      })
+    }
     const cutoff = now - this.config.queueCodeMaxAgeSeconds * 1000
     const expired = this.sql.exec(expiredQueuedSql, [cutoff])
     for (const row of expired) {
@@ -166,7 +182,8 @@ export class TokenQueue {
         giveawayId: new RowReader("token_queue", row).text("giveaway_id"),
       })
     }
-    const abandoned = this.sql.exec(purgeDoneSql, [cutoff])
+    const purged = this.sql.exec(purgeDoneSql, [cutoff])
+    const abandoned = purged.filter((row) => new RowReader("token_queue", row).int("polled") === 0)
     if (expired.length === 0 && abandoned.length === 0) return
     this.sql.exec(
       "UPDATE queue_stats SET dropped = dropped + ?, abandoned_results = abandoned_results + ? WHERE id = 1",
@@ -175,9 +192,10 @@ export class TokenQueue {
   }
 
   private async drain(now: Instant, rate: number): Promise<void> {
-    const items = this.sql.exec(nextQueuedSql, [rate]).map(parseQueued)
+    // Claimed before the first await: a pass that starts while this one waits for Twitch finds nothing to take.
+    const items = this.sql.exec(claimQueuedSql, [now, rate]).map(parseQueued)
     if (items.length === 0) return
-    const results = await Promise.all(items.map((item) => this.processOne(item)))
+    const results = await Promise.all(items.map((item) => this.processOne(item, now)))
     const limited = results.includes("rate-limited")
     const allDone = results.every((result) => result === "done")
     if (limited) {
@@ -192,23 +210,33 @@ export class TokenQueue {
     }
   }
 
-  // One failing item must not stop the rest of the pass: its row stays queued until it ages out.
-  private async processOne(item: QueuedItem): Promise<"done" | DeferCause | "failed"> {
+  // One failing item must not stop the rest of the pass: its row goes back to the queue until it ages out.
+  // `claimedAt` identifies the claim, so a pass whose claim was released and retaken writes nothing.
+  private async processOne(
+    item: QueuedItem,
+    claimedAt: Instant,
+  ): Promise<"done" | DeferCause | "failed"> {
     let attempt: EntryAttempt
     try {
       attempt = await this.process(item)
     } catch (error) {
       console.error("queue item failed", {
         giveawayId: item.giveawayId,
-        errorClass: error instanceof Error ? error.constructor.name : typeof error,
+        errorClass: errorClass(error),
       })
+      this.sql.exec(requeueClaimedSql, [item.ticket, claimedAt])
       return "failed"
     }
-    if (attempt.kind === "deferred") return attempt.cause
-    this.sql.exec(
-      "UPDATE token_queue SET state = 'done', result_json = ?, user_id = ? WHERE ticket = ? AND state = 'queued'",
-      [JSON.stringify(attempt.outcome), attempt.userId, item.ticket],
-    )
+    if (attempt.kind === "deferred") {
+      this.sql.exec(requeueClaimedSql, [item.ticket, claimedAt])
+      return attempt.cause
+    }
+    this.sql.exec(finishClaimedSql, [
+      JSON.stringify(attempt.outcome),
+      attempt.userId,
+      item.ticket,
+      claimedAt,
+    ])
     return "done"
   }
 
@@ -219,6 +247,14 @@ export class TokenQueue {
     const wakeups: Instant[] = []
     if (this.sql.exec(oldestQueuedSql, []).length > 0) {
       wakeups.push(Math.max(now + tickMs, stats.cooldownUntil))
+    }
+    const oldestClaim = this.sql.exec(oldestClaimSql, [])[0]
+    const claimedAt =
+      oldestClaim === undefined
+        ? null
+        : new RowReader("token_queue", oldestClaim).nullableInt("claimed_at")
+    if (claimedAt !== null) {
+      wakeups.push(claimedAt + this.config.queueProcessingTimeoutSeconds * 1000 + 1)
     }
     const oldestDone = this.sql.exec(oldestDoneSql, [])[0]
     if (oldestDone !== undefined) {

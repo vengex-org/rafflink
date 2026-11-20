@@ -167,6 +167,7 @@ export const en = {
   "issue.not-a-positive-integer": "Enter a whole number, 1 or more.",
   "issue.blank": "This field cannot be empty.",
   "issue.too-long": "This is too long. Make it shorter.",
+  "issue.too-large": "This number is too large. Enter a smaller one.",
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.wholeDays": "Enter a whole number of days, or leave it empty.",

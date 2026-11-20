@@ -1,5 +1,5 @@
 import type { GiveawayRules } from "@rafflink/core/domain/rules"
-import type { DashboardGiveaway } from "@rafflink/core/http/json"
+import type { DashboardGiveaway, ViewerState } from "@rafflink/core/http/json"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import type { GiveawayView } from "../src/api/client.ts"
 
@@ -11,7 +11,8 @@ export const rules: GiveawayRules = {
   claimKeyword: null,
 }
 
-export const giveaway: GiveawayView = {
+/** The body of `GET /api/g/ABCDE` for a viewer who has not signed in. */
+export const giveaway: GiveawayView & { readonly me: ViewerState } = {
   code: "ABCDE",
   title: "Summer giveaway",
   prize: "A gaming chair",
@@ -22,6 +23,7 @@ export const giveaway: GiveawayView = {
   claimSeconds: 300,
   entrantCount: 42,
   poll: { intervalMs: 10, maxMs: 80 },
+  me: { kind: "signed-out" },
 }
 
 export const dashboardGiveaway: DashboardGiveaway = {

@@ -168,6 +168,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.not-a-positive-integer": "Zadaj celé číslo, 1 alebo viac.",
   "issue.blank": "Toto pole nesmie byť prázdne.",
   "issue.too-long": "Text je príliš dlhý. Skráť ho.",
+  "issue.too-large": "Toto číslo je príliš veľké. Zadaj menšie.",
   "issue.not-a-timestamp": "Zadaj platný dátum a čas.",
   "issue.in-the-past": "Čas ukončenia musí byť v budúcnosti.",
   "issue.wholeDays": "Zadaj celý počet dní, alebo nechaj pole prázdne.",

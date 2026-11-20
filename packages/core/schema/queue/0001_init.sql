@@ -6,11 +6,16 @@ CREATE TABLE token_queue (
   giveaway_id TEXT NOT NULL,
   nonce TEXT NOT NULL,
   received_at INTEGER NOT NULL,
-  state TEXT NOT NULL CHECK (state IN ('queued', 'done')),
+  state TEXT NOT NULL CHECK (state IN ('queued', 'processing', 'done')),
+  -- When a pass claimed the row for the token endpoint. Set exactly while `processing`.
+  claimed_at INTEGER,
   result_json TEXT,
   -- The verified platform user of a finished result. NULL while queued, and when sign-in failed before that.
   user_id TEXT,
+  -- 1 once the result was handed to the browser, so a purged result still at 0 was abandoned.
+  polled INTEGER NOT NULL DEFAULT 0 CHECK (polled IN (0, 1)),
   CHECK ((state = 'done') = (result_json IS NOT NULL)),
+  CHECK ((state = 'processing') = (claimed_at IS NOT NULL)),
   CHECK (state = 'done' OR user_id IS NULL)
 ) WITHOUT ROWID;
 

@@ -1,0 +1,29 @@
+import type { Clock, Instant, PublicCache } from "../ports.ts"
+
+/** A {@link PublicCache} in the memory of one process; an entry is dropped when it is read or another write finds it expired. */
+export class MemoryPublicCache implements PublicCache {
+  private readonly entries = new Map<
+    string,
+    { readonly text: string; readonly expiresAt: Instant }
+  >()
+
+  constructor(private readonly clock: Clock) {}
+
+  async read(key: string): Promise<string | null> {
+    const entry = this.entries.get(key)
+    if (entry === undefined) return null
+    if (this.clock.now() >= entry.expiresAt) {
+      this.entries.delete(key)
+      return null
+    }
+    return entry.text
+  }
+
+  async write(key: string, text: string, ttlSeconds: number): Promise<void> {
+    const now = this.clock.now()
+    for (const [name, entry] of this.entries) {
+      if (now >= entry.expiresAt) this.entries.delete(name)
+    }
+    this.entries.set(key, { text, expiresAt: now + ttlSeconds * 1000 })
+  }
+}

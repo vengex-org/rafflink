@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import type { EntrantsDelta, LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { ApiShapeError, record } from "../api/decode.ts"
 import { getLive, parseLivePush } from "../api/client.ts"
-import { errorClass } from "./use-load.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
 
 export type LiveState =
   | { readonly state: "loading" }

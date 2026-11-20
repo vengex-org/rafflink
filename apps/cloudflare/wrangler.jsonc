@@ -9,11 +9,11 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "../web/dist",
-    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    // The Worker answers every page, because a giveaway page carries its own link preview, and leaves
-    // the built files to the assets. Keep the extensions in step with what apps/web/public holds.
-    "run_worker_first": ["/*", "!/*.js", "!/*.css", "!/*.png", "!/*.svg", "!/*.webmanifest"],
+    // Pages and files come from the assets, which cost no Worker request; their headers are the
+    // dist/_headers of the web build. Only the API and the sign-in routes run the Worker, the paths of
+    // `apiPrefixes` in packages/core/src/http/api-paths.ts.
+    "run_worker_first": ["/api/*", "/auth/*"],
   },
   // Set PUBLIC_URL, TWITCH_CLIENT_ID and ADMIN_TWITCH_IDS under "vars" and the secrets with
   // `wrangler secret put`; every key is listed in .env.example.

@@ -20,7 +20,7 @@ const streamer: FakeUser = {
   displayName: "Streamer",
   createdAt: "2019-01-01T00:00:00Z",
 }
-const REDIRECT_URI = "http://localhost/callback"
+const redirectUri = "http://localhost/callback"
 
 type Fake = ReturnType<typeof serveFakeTwitch>
 interface TokenResponse {
@@ -92,7 +92,7 @@ describe("id service", () => {
 
     const location = new URL(response.headers.get("location") ?? "")
     expect(response.status).toBe(302)
-    expect(location.origin + location.pathname).toBe(REDIRECT_URI)
+    expect(location.origin + location.pathname).toBe(redirectUri)
     expect(location.searchParams.get("state")).toBe("state-1")
     expect(location.searchParams.get("code")).toBeString()
   })
@@ -193,7 +193,7 @@ describe("id service", () => {
 
   test("rejects authorize for an unknown client", async () => {
     const response = await fetch(
-      url("/oauth2/authorize?client_id=other&response_type=code&redirect_uri=" + REDIRECT_URI),
+      url("/oauth2/authorize?client_id=other&response_type=code&redirect_uri=" + redirectUri),
       {
         redirect: "manual",
       },
@@ -639,7 +639,7 @@ function url(path: string): URL {
 async function authorize(scope: string, nonce?: string, state?: string): Promise<Response> {
   const query = new URLSearchParams({
     client_id: options.clientId,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: "code",
     scope,
   })
@@ -651,7 +651,7 @@ async function authorize(scope: string, nonce?: string, state?: string): Promise
 function hintQuery(hint: string): URLSearchParams {
   return new URLSearchParams({
     client_id: options.clientId,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid",
     login_hint: hint,
@@ -688,7 +688,7 @@ async function exchangeCode(code: string, clientSecret = options.clientSecret): 
   return postToken({
     grant_type: "authorization_code",
     code,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     client_secret: clientSecret,
   })
 }

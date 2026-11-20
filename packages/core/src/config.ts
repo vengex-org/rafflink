@@ -10,6 +10,8 @@ export type ConfigReason =
   | "not-an-admin-entry"
   | "not-below-queue-code-max-age"
   | "not-below-eventsub-connection-max"
+  | "not-above-twitch-timeout"
+  | "fake-twitch-needs-local-public-url"
 
 /** Why a setting failed; a list entry that is not a secret also names itself. */
 export type ConfigIssue =
@@ -139,6 +141,12 @@ export const configSchema = {
     "300",
     "Queued authorization codes older than this are dropped; spec AC-14",
   ),
+  queueProcessingTimeoutSeconds: withDefault(
+    "QUEUE_PROCESSING_TIMEOUT_SECONDS",
+    int(1),
+    "60",
+    "A queued code claimed for processing returns to the queue after this long without a result, so a crashed pass does not strand it; starting guess, a few Twitch calls at TWITCH_TIMEOUT_MS each",
+  ),
   queueCooldownSeconds: withDefault(
     "QUEUE_COOLDOWN_SECONDS",
     int(0),
@@ -265,6 +273,30 @@ export const configSchema = {
     "600",
     "Lifetime of the OAuth state cookie; OAuth advises at most 10 minutes for a code",
   ),
+  ticketsPerGroupMax: withDefault(
+    "TICKETS_PER_GROUP_MAX",
+    int(1),
+    "1000",
+    "Most tickets a streamer can give one group, which keeps ticket totals far inside safe integers; starting guess; a lower value makes stored giveaways above it unreadable",
+  ),
+  claimSecondsMax: withDefault(
+    "CLAIM_SECONDS_MAX",
+    int(1),
+    "86400",
+    "Longest claim time a streamer can set; starting guess, one day",
+  ),
+  drawMaxWinners: withDefault(
+    "DRAW_MAX_WINNERS",
+    int(1),
+    "100",
+    "Most winners one draw picks; starting guess, a draw signs once per winner",
+  ),
+  publicGiveawayCacheSeconds: withDefault(
+    "PUBLIC_GIVEAWAY_CACHE_SECONDS",
+    int(0),
+    "5",
+    "How long the public part of a giveaway page response is reused, so an anonymous refresh reads neither the account store nor the room; the entrant count can be this stale, 0 turns the cache off; starting guess",
+  ),
   claimKeywordMaxLength: withDefault(
     "CLAIM_KEYWORD_MAX_LENGTH",
     int(1),
@@ -375,6 +407,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     queuePollSeconds: read(env, configSchema.queuePollSeconds),
     queuePollMaxSeconds: read(env, configSchema.queuePollMaxSeconds),
     queueCodeMaxAgeSeconds: read(env, configSchema.queueCodeMaxAgeSeconds),
+    queueProcessingTimeoutSeconds: read(env, configSchema.queueProcessingTimeoutSeconds),
     queueCooldownSeconds: read(env, configSchema.queueCooldownSeconds),
     queueStartRatePerSecond: read(env, configSchema.queueStartRatePerSecond),
     queueMinRatePerSecond: read(env, configSchema.queueMinRatePerSecond),
@@ -396,6 +429,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
     sessionTtlSeconds: read(env, configSchema.sessionTtlSeconds),
     viewerSessionTtlSeconds: read(env, configSchema.viewerSessionTtlSeconds),
     stateCookieTtlSeconds: read(env, configSchema.stateCookieTtlSeconds),
+    ticketsPerGroupMax: read(env, configSchema.ticketsPerGroupMax),
+    claimSecondsMax: read(env, configSchema.claimSecondsMax),
+    drawMaxWinners: read(env, configSchema.drawMaxWinners),
+    publicGiveawayCacheSeconds: read(env, configSchema.publicGiveawayCacheSeconds),
     claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
     codeInsertRetries: read(env, configSchema.codeInsertRetries),
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
@@ -423,7 +460,23 @@ export function resolveConfig(env: Env): ResolvedConfig {
       "not-below-eventsub-connection-max",
     )
   }
+  // A claimed code must stay claimed longer than the Twitch calls that process it can take.
+  if (config.queueProcessingTimeoutSeconds * 1000 <= config.twitchTimeoutMs) {
+    throw new ConfigError(
+      configSchema.queueProcessingTimeoutSeconds.env,
+      "not-above-twitch-timeout",
+    )
+  }
+  // The fake Twitch signs in anyone, so it must never run behind a public origin.
+  if (config.devFakeTwitch && !isLocalOrigin(config.publicUrl)) {
+    throw new ConfigError(configSchema.devFakeTwitch.env, "fake-twitch-needs-local-public-url")
+  }
   return config
+}
+
+function isLocalOrigin(origin: string): boolean {
+  const { hostname } = new URL(origin)
+  return hostname === "localhost" || hostname === "127.0.0.1"
 }
 
 function read<T>(env: Env, field: ConfigField<T>): T {

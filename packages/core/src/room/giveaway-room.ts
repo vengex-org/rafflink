@@ -39,6 +39,7 @@ import {
 export type RoomConfig = Pick<
   ResolvedConfig,
   | "claimKeywordMaxLength"
+  | "ticketsPerGroupMax"
   | "roleRefreshSeconds"
   | "liveIntervalMs"
   | "liveLastNames"
@@ -359,7 +360,7 @@ export class GiveawayRoom {
     const refusal = rerollRefusal(draws.find((draw) => draw.n === n) ?? null)
     if (refusal !== null) return refusal
 
-    const next = Math.max(...draws.map((draw) => draw.n)) + 1
+    const next = draws.reduce((highest, draw) => Math.max(highest, draw.n), -1) + 1
     const picked = await pickWinner(state.seed, next, this.readDrawEntries(), draws)
     if (picked === null) return { kind: "no-entrants-left" }
     const winner: Winner = { n: next, ...picked }

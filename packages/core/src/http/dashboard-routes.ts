@@ -3,20 +3,24 @@ import { timingSafeEqual } from "hono/utils/buffer"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway, NewGiveaway } from "../accounts/account-store.ts"
 import { generateCode } from "../lib/codes.ts"
+import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
 import type { Usage } from "../ports.ts"
 import type { RerollOutcome, ClaimOutcome } from "../room/giveaway-room.ts"
-import type { RoomStatus } from "../room/rows.ts"
+import { mirrorStatus } from "../room/mirror-status.ts"
 import { parseCreateGiveaway } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import { dashboardGiveaway, readJson, type EntrantsPage, type OwnerLiveSnapshot } from "./json.ts"
 import { readStreamerSession, type StreamerSession } from "./session.ts"
+import { webSocketOrigin } from "./websocket-origin.ts"
 
 type Env = { Variables: { streamer: StreamerSession } }
 
 export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   const app = new Hono<Env>()
 
+  app.use("/api/live/:id", webSocketOrigin(deps.config, { allowMissing: false }))
+  app.use("/api/overlay/:id/:token", webSocketOrigin(deps.config, { allowMissing: true }))
   app.use("/api/dash/*", requireStreamer(deps))
   app.use("/api/live/*", requireStreamer(deps))
   app.use("/api/admin/*", requireStreamer(deps))
@@ -59,7 +63,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       const outcome = await deps.rooms.get(giveaway.id).close()
       switch (outcome.kind) {
         case "closed":
-          await mirrorStatus(deps, giveaway, "closed")
+          await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "closed")
           return c.json({ kind: "closed" })
         case "not-open":
           return c.json({ kind: "not-open", status: outcome.status }, 409)
@@ -70,11 +74,13 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   app.post("/api/dash/giveaways/:id/draw", (c) =>
     withOwnedRoom(c, deps, async (giveaway) => {
       const count = integerField(await readJson(c), "count", 1)
-      if (count === null) return c.json({ error: "invalid-input", field: "count" }, 400)
+      if (count === null || count > deps.config.drawMaxWinners) {
+        return c.json({ error: "invalid-input", field: "count" }, 400)
+      }
       const outcome = await deps.rooms.get(giveaway.id).draw(count)
       switch (outcome.kind) {
         case "drawn":
-          await mirrorStatus(deps, giveaway, "drawn")
+          await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "drawn")
           return c.json({ kind: "drawn", winners: outcome.winners.map((winner) => winner.n) })
         case "not-closed":
         case "already-drawn":
@@ -234,29 +240,6 @@ async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
   }
 }
 
-// The room owns the status. A failed mirror stays pending in the room, whose alarm retries it.
-async function mirrorStatus(deps: AppDeps, giveaway: Giveaway, status: RoomStatus): Promise<void> {
-  try {
-    await deps.accounts.setStatus(giveaway.id, status)
-  } catch (error) {
-    console.warn("status mirror failed", {
-      giveawayId: giveaway.id,
-      status,
-      errorClass: errorClass(error),
-    })
-    return
-  }
-  try {
-    await deps.rooms.get(giveaway.id).markMirrored(status)
-  } catch (error) {
-    console.warn("mirror mark failed", {
-      giveawayId: giveaway.id,
-      status,
-      errorClass: errorClass(error),
-    })
-  }
-}
-
 type UsageWarning = { readonly kind: "worker-requests-low"; readonly remaining: number }
 
 /** The admin page shows "unavailable" instead of failing when the usage source does not answer. */
@@ -294,8 +277,4 @@ function integerQuery(raw: string | undefined, fallback: number, min: number): n
   if (raw === undefined) return fallback
   const value = Number(raw)
   return /^\d+$/.test(raw) && Number.isSafeInteger(value) && value >= min ? value : null
-}
-
-function errorClass(error: unknown): string {
-  return error instanceof Error ? error.constructor.name : typeof error
 }

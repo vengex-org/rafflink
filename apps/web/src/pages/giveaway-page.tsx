@@ -3,13 +3,7 @@ import { useParams, useSearchParams } from "react-router"
 import { groups } from "@rafflink/core/domain/groups"
 import type { EntrySummary } from "@rafflink/core/room/rows"
 import type { ViewerState } from "@rafflink/core/http/json"
-import {
-  claimPrize,
-  entryFromQuery,
-  getGiveaway,
-  getViewerState,
-  type GiveawayView,
-} from "../api/client.ts"
+import { claimPrize, entryFromQuery, getGiveaway, type GiveawayView } from "../api/client.ts"
 import { Disclosure } from "../components/disclosure.tsx"
 import {
   AlertIcon,
@@ -48,10 +42,7 @@ export function GiveawayPage() {
 }
 
 function Loaded({ code }: { readonly code: string }) {
-  const load = useCallback(async () => {
-    const giveaway = await getGiveaway(code)
-    return giveaway === null ? null : { giveaway, me: await getViewerState(code) }
-  }, [code])
+  const load = useCallback(() => getGiveaway(code), [code])
   const { result } = useLoad(load)
   switch (result.state) {
     case "loading":
@@ -80,9 +71,11 @@ function GiveawayDetails({
   const [query] = useSearchParams()
   const initial = useMemo(() => entryFromQuery(query), [query])
   const fromSignIn = useEntryResult(code, initial, giveaway.poll)
-  // A returning viewer has no sign-in outcome in the URL; the viewer state says they are in.
+  // A returning viewer has no sign-in outcome in the URL; the viewer state says they are in. It also
+  // wins over a `dropped` left in the URL, which only says the queued ticket is gone.
+  const fromServer = me.kind === "entered" ? { kind: "entered" as const, entry: me.entry } : null
   const entry =
-    fromSignIn ?? (me.kind === "entered" ? { kind: "entered" as const, entry: me.entry } : null)
+    fromSignIn?.kind === "dropped" && fromServer !== null ? fromServer : (fromSignIn ?? fromServer)
   // The viewer state was read before a queued sign-in finished, so the poll answer is the fresher entry.
   const entered = entry?.kind === "entered" || entry?.kind === "already-in" ? entry.entry : null
   const signInHref = `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`

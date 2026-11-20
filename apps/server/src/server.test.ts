@@ -238,13 +238,16 @@ describe("live pages", () => {
     const { id, streamer } = await createGiveaway(server)
     const { socket, messages } = openSocket(new URL(`/api/live/${id}`, server.url), {
       cookie: streamer.cookieHeader(),
+      origin: "http://localhost",
     })
 
     await waitFor(() => messages.length === 1, 5000, "the first snapshot")
     socket.close()
 
     expect(entrantCounts(messages)).toEqual([0])
-    const anonymous = await fetch(new URL(`/api/live/${id}`, server.url), { headers: upgrade })
+    const anonymous = await fetch(new URL(`/api/live/${id}`, server.url), {
+      headers: { ...upgrade, origin: "http://localhost" },
+    })
     expect(anonymous.status).toBe(401)
   })
 

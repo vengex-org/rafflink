@@ -11,6 +11,7 @@ import {
   type FailureStatus,
   type FakeTwitchOptions,
   type FakeUser,
+  type IdTokenFault,
   type Role,
   type Tier,
 } from "./state.ts"
@@ -25,6 +26,8 @@ export interface FakeTwitchControl {
   setRole(broadcasterId: string, userId: string, role: Role, enabled: boolean): void
   /** The next `count` requests to `endpoint` answer `status`. */
   failNext(endpoint: FailableEndpoint, status: FailureStatus, count: number): void
+  /** The next id_token the token endpoint signs is wrong in the way `fault` says. */
+  tamperNextIdToken(fault: IdTokenFault): void
   /** Access and refresh tokens of the user stop working; `/oauth2/validate` answers 401. */
   revokeUserTokens(userId: string): void
   sendChatMessage(broadcasterId: string, chatterUserId: string, text: string): void
@@ -93,6 +96,9 @@ export function createFakeTwitch(options: FakeTwitchOptions): FakeTwitch {
       const queue = state.failures.get(endpoint) ?? []
       queue.push(...Array.from({ length: count }, () => status))
       state.failures.set(endpoint, queue)
+    },
+    tamperNextIdToken(fault) {
+      state.idTokenFaults.push(fault)
     },
     revokeUserTokens(userId) {
       for (const token of state.accessTokens.values()) {

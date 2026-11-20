@@ -24,12 +24,14 @@ export const startWorker: StartTarget = async (env, webDir) => {
       ROOMS: { className: "GiveawayRoomDO", useSQLite: true },
       QUEUE: { className: "TokenQueueDO", useSQLite: true },
     },
-    // The asset router of Miniflare makes draws fail with ECONNRESET, so the binding serves the page itself.
-    serviceBindings: {
-      [wrangler.assetsBinding]: async () =>
-        new Response(readFileSync(join(webDir, "index.html"), "utf8"), {
-          headers: { "content-type": "text/html; charset=utf-8" },
-        }),
+    // The assets and the paths that run the Worker first are the ones of wrangler.jsonc; `_headers` is read from the folder.
+    assets: {
+      directory: webDir,
+      assetConfig: { not_found_handling: wrangler.notFoundHandling },
+      routerConfig: {
+        has_user_worker: true,
+        static_routing: { user_worker: [...wrangler.runWorkerFirst] },
+      },
     },
     bindings: env,
     outboundService: { network: { allow: ["public", "private", "local"], deny: [] } },

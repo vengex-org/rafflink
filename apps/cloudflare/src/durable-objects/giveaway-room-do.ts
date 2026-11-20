@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
@@ -88,7 +89,7 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
       await runRoomAlarm(runtime, giveawayId, room)
     } catch (error) {
       // Rethrown so the runtime retries the alarm: without it the room's next wake-up is not armed.
-      console.error("room alarm failed", { giveawayId, errorClass: errorClassOf(error) })
+      console.error("room alarm failed", { giveawayId, errorClass: errorClass(error) })
       throw error
     }
   }
@@ -119,7 +120,7 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
       } catch (error) {
         console.warn("live push failed", {
           giveawayId: this.giveawayId(),
-          errorClass: errorClassOf(error),
+          errorClass: errorClass(error),
         })
       }
     }
@@ -130,8 +131,4 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
     if (name === undefined) throw new TypeError("the room object was not addressed by name")
     return name
   }
-}
-
-function errorClassOf(error: unknown): string {
-  return error instanceof Error ? error.constructor.name : typeof error
 }

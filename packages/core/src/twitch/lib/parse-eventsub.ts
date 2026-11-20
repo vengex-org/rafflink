@@ -17,7 +17,7 @@ export type EventSubMessage =
   | { readonly kind: "ignored" }
 
 const malformed: Parsed<never, "malformed"> = { ok: false, issue: "malformed" }
-const CHAT_MESSAGE = "channel.chat.message"
+const chatMessageType = "channel.chat.message"
 
 export function parseEventSubMessage(text: string): Parsed<EventSubMessage, "malformed"> {
   let body: unknown
@@ -36,13 +36,13 @@ export function parseEventSubMessage(text: string): Parsed<EventSubMessage, "mal
     case "session_reconnect":
       return parseReconnect(payload)
     case "notification":
-      return metadata.subscription_type === CHAT_MESSAGE
+      return metadata.subscription_type === chatMessageType
         ? parseChatNotification(payload)
         : { ok: true, value: { kind: "ignored" } }
     case "revocation":
       return {
         ok: true,
-        value: { kind: metadata.subscription_type === CHAT_MESSAGE ? "revoked" : "ignored" },
+        value: { kind: metadata.subscription_type === chatMessageType ? "revoked" : "ignored" },
       }
     default:
       return { ok: true, value: { kind: "ignored" } }

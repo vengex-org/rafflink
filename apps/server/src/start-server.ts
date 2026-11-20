@@ -6,6 +6,8 @@ import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import type { ResolvedConfig } from "@rafflink/core/config"
 import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
+import { errorClass } from "@rafflink/core/lib/error-class"
+import { MemoryPublicCache } from "@rafflink/core/lib/memory-public-cache"
 import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { applyMigrations } from "@rafflink/core/room/migrate"
@@ -24,6 +26,7 @@ import { openDatabase } from "./database.ts"
 import { LocalRoomDirectory } from "./local-room-directory.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
 import { createServerApp } from "./server-app.ts"
+import { skipWhileRunning } from "./skip-while-running.ts"
 import { TimerAlarm } from "./timer-alarm.ts"
 
 export interface ServerOptions {
@@ -73,6 +76,14 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const queueSql = new BunSqliteSyncSql(queueDb)
   applyMigrations(queueSql, queueMigrations)
   const entryDeps = { config, clock, random, twitch, accounts, rooms }
+  // The timer can fire while a pass still waits for Twitch; the claim in the queue keeps rows apart, this keeps passes apart.
+  const runQueue = skipWhileRunning(async () => {
+    try {
+      await queue.onAlarm()
+    } catch (error) {
+      console.error("token queue alarm failed", { errorClass: errorClass(error) })
+    }
+  })
   const queueAlarm = new TimerAlarm(clock, () => void runQueue())
   const queue = new TokenQueue({
     sql: queueSql,
@@ -86,6 +97,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     ...entryDeps,
     queue: remoteQueue(queue),
     usage: { today: async () => null },
+    publicCache: new MemoryPublicCache(clock),
     keyRing,
     admins: new AdminDirectory(config, twitch),
   }
@@ -126,15 +138,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     try {
       console.info("streamer token validation", await validateStreamerTokens(tokenDeps))
     } catch (error) {
-      console.error("streamer token validation failed", { errorClass: errorClassOf(error) })
-    }
-  }
-
-  async function runQueue(): Promise<void> {
-    try {
-      await queue.onAlarm()
-    } catch (error) {
-      console.error("token queue alarm failed", { errorClass: errorClassOf(error) })
+      console.error("streamer token validation failed", { errorClass: errorClass(error) })
     }
   }
 }
@@ -177,8 +181,4 @@ function devRoutes(app: Hono, spa: Bun.HTMLBundle) {
     ),
     "/*": spa,
   }
-}
-
-function errorClassOf(error: unknown): string {
-  return error instanceof Error ? error.constructor.name : typeof error
 }

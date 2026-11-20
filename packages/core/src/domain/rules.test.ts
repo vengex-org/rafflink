@@ -24,7 +24,12 @@ const viewer: ViewerFacts = {
   accountAgeDays: 400,
 }
 
-const config = { claimKeywordMaxLength: 10, defaultClaimSeconds: 300 }
+const config = {
+  claimKeywordMaxLength: 10,
+  ticketsPerGroupMax: 100,
+  defaultClaimSeconds: 300,
+  claimSecondsMax: 3600,
+}
 
 const validInput = {
   tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
@@ -237,6 +242,17 @@ describe("parseRules", () => {
     }
   })
 
+  it("accepts the maximum tickets of a group and refuses one more", () => {
+    expect(parseRules({ tickets: { ...validInput.tickets, vip: 100 } }, config).ok).toBe(true)
+
+    for (const big of [101, Number.MAX_SAFE_INTEGER]) {
+      expect(parseRules({ tickets: { ...validInput.tickets, vip: big } }, config)).toEqual({
+        ok: false,
+        issue: { field: "tickets.vip", code: "too-large" },
+      })
+    }
+  })
+
   it("does not read a group from the prototype chain", () => {
     const inherited = Object.create(validInput.tickets)
     expect(parseRules({ tickets: inherited }, config)).toEqual({
@@ -307,6 +323,17 @@ describe("parseClaimSeconds", () => {
 
   it("accepts a positive integer", () => {
     expect(parseClaimSeconds(60, config)).toEqual({ ok: true, value: 60 })
+  })
+
+  it("accepts the maximum claim time and refuses more", () => {
+    expect(parseClaimSeconds(3600, config)).toEqual({ ok: true, value: 3600 })
+
+    for (const big of [3601, Number.MAX_SAFE_INTEGER]) {
+      expect(parseClaimSeconds(big, config)).toEqual({
+        ok: false,
+        issue: { field: "claimSeconds", code: "too-large" },
+      })
+    }
   })
 
   it("rejects 0, negative, fractional, non-finite and non-number values", () => {

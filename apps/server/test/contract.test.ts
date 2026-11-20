@@ -23,7 +23,7 @@ afterEach(() => {
   info.mockRestore()
 })
 
-defineContract("bun", async (env, webDir) => {
+defineContract("bun", "injected-previews", async (env, webDir) => {
   const dir = tempDir()
   const config = resolveConfig({ ...env, DATA_DIR: dir.path, PORT: "0" })
   const server = await startServer({ config, staticDir: webDir, devSpa: null })

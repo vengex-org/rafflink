@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { bearerToken } from "../lib/auth.ts"
-import { ACCESS_TOKEN_TTL_SECONDS, issueAppToken, issueTokens, signIdToken } from "../lib/tokens.ts"
+import { accessTokenTtlSeconds, issueAppToken, issueTokens, signIdToken } from "../lib/tokens.ts"
 import { userPickerPage } from "../lib/user-picker.ts"
 import { requireUser, takeFailure, type FakeState } from "../state.ts"
 
@@ -97,7 +97,7 @@ export function idRoutes(state: FakeState): Hono {
       return c.json({
         client_id: state.options.clientId,
         scopes: token.scopes,
-        expires_in: ACCESS_TOKEN_TTL_SECONDS,
+        expires_in: accessTokenTtlSeconds,
       })
     }
     return c.json({
@@ -105,7 +105,7 @@ export function idRoutes(state: FakeState): Hono {
       login: requireUser(state, token.userId).login,
       scopes: token.scopes,
       user_id: token.userId,
-      expires_in: ACCESS_TOKEN_TTL_SECONDS,
+      expires_in: accessTokenTtlSeconds,
     })
   })
 

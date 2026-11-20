@@ -17,6 +17,7 @@ export function testConfig(env: Readonly<Record<string, string>> = {}): Resolved
     ADMIN_TWITCH_IDS: "200",
     PUBLIC_URL: "http://localhost",
     PORT: "0",
+    PUBLIC_GIVEAWAY_CACHE_SECONDS: "0",
     ...env,
   })
 }

@@ -98,3 +98,13 @@ export interface Usage {
 export interface UsageMeter {
   today(): Promise<Usage | null>
 }
+
+/**
+ * Short-lived copies of public answers, keyed by the public URL of the answer. Any implementation
+ * returns null for a missing or expired key, and keeps `text` for at least `ttlSeconds` unless it is
+ * evicted earlier.
+ */
+export interface PublicCache {
+  read(key: string): Promise<string | null>
+  write(key: string, text: string, ttlSeconds: number): Promise<void>
+}

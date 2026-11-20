@@ -11,7 +11,6 @@ afterEach(() => {
 
 const giveawayRoutes = {
   "GET /api/g/ABCDE": () => ok(giveaway),
-  "GET /api/g/ABCDE/me": () => ok({ kind: "signed-out" }),
 }
 
 describe("sign-in error card", () => {

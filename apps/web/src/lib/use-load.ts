@@ -1,3 +1,4 @@
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { useCallback, useEffect, useState } from "react"
 
 export type Load<T> =
@@ -28,8 +29,4 @@ export function useLoad<T>(load: () => Promise<T>): { readonly result: Load<T>; 
 
   const reload = useCallback(() => setRound((value) => value + 1), [])
   return { result, reload }
-}
-
-export function errorClass(error: unknown): string {
-  return error instanceof Error ? error.constructor.name : typeof error
 }

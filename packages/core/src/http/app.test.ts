@@ -44,10 +44,21 @@ async function drawnGiveaway() {
   return { ...created, winnerBrowser, draw }
 }
 
+async function pageOf(browser: Browser | undefined, code: string): Promise<unknown> {
+  return (await (browser ?? new Browser(harness)).request(`/api/g/${code}`)).json()
+}
+
+async function callbackOf(browser: Browser, location: string | null): Promise<Response> {
+  const authorize = await fetch(new URL(location ?? ""), { redirect: "manual" })
+  const callback = new URL(authorize.headers.get("location") ?? "")
+  return browser.request(callback.pathname + callback.search)
+}
+
 async function meOf(browser: Browser, code: string): Promise<unknown> {
-  const response = await browser.request(`/api/g/${code}/me`)
+  const response = await browser.request(`/api/g/${code}`)
   expect(response.headers.get("cache-control")).toBe("no-store")
-  return response.json()
+  const page: { me: unknown } = await response.json()
+  return page.me
 }
 
 describe("streamer sign-in", () => {
@@ -131,17 +142,151 @@ describe("viewer sign-in start", () => {
   })
 })
 
+describe("public giveaway cache", () => {
+  const ttlSeconds = 5
+
+  async function withCache(): Promise<{ code: string; id: string }> {
+    await harness.stop()
+    harness = await createHarness({ env: { PUBLIC_GIVEAWAY_CACHE_SECONDS: String(ttlSeconds) } })
+    return createGiveaway(harness)
+  }
+
+  it("answers an anonymous refresh from the cache without reading the account store or the room", async () => {
+    const { code } = await withCache()
+    await pageOf(undefined, code)
+    const find = spyOn(harness.deps.accounts, "findGiveawayByCode")
+    const room = spyOn(harness.deps.rooms, "get")
+
+    const again = await pageOf(undefined, code)
+
+    expect(again).toMatchObject({ code, entrantCount: 0, me: { kind: "signed-out" } })
+    expect(find).not.toHaveBeenCalled()
+    expect(room).not.toHaveBeenCalled()
+  })
+
+  it("never lets a client or proxy cache the combined response", async () => {
+    const { code } = await withCache()
+
+    const first = await harness.app.request(`/api/g/${code}`)
+    const second = await harness.app.request(`/api/g/${code}`)
+
+    expect(first.headers.get("cache-control")).toBe("no-store")
+    expect(second.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("keeps the entrant count at most the time to live behind", async () => {
+    const { code } = await withCache()
+    await pageOf(undefined, code)
+    await viewerSignIn(users.viewer.id, code)
+
+    expect(await pageOf(undefined, code)).toMatchObject({ entrantCount: 0 })
+    harness.clock.advance(ttlSeconds * 1000 - 1)
+    expect(await pageOf(undefined, code)).toMatchObject({ entrantCount: 0 })
+    harness.clock.advance(1)
+    expect(await pageOf(undefined, code)).toMatchObject({ entrantCount: 1 })
+  })
+
+  it("reads a viewer with a cookie fresh, whatever the cache holds", async () => {
+    const { code } = await withCache()
+    await pageOf(undefined, code)
+    const { browser } = await viewerSignIn(users.viewer.id, code)
+
+    const mine = await pageOf(browser, code)
+
+    expect(mine).toMatchObject({
+      entrantCount: 1,
+      me: { kind: "entered", entry: { group: "viewer", tickets: 1 } },
+    })
+    expect(await pageOf(undefined, code)).toMatchObject({
+      entrantCount: 0,
+      me: { kind: "signed-out" },
+    })
+  })
+
+  it("never puts a viewer's state into the cached part", async () => {
+    const { code } = await withCache()
+    const { browser } = await viewerSignIn(users.viewer.id, code)
+    await pageOf(browser, code)
+
+    expect(await pageOf(undefined, code)).toMatchObject({ me: { kind: "signed-out" } })
+  })
+
+  it("is not used at all when the time to live is 0", async () => {
+    const { code } = await createGiveaway(harness)
+    await pageOf(undefined, code)
+    const find = spyOn(harness.deps.accounts, "findGiveawayByCode")
+
+    await pageOf(undefined, code)
+
+    expect(find).toHaveBeenCalledTimes(1)
+  })
+
+  it("loads the page from the account store and the room when the cache fails", async () => {
+    const { code } = await withCache()
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    spyOn(harness.deps.publicCache, "read").mockRejectedValue(new TypeError("cache down"))
+    spyOn(harness.deps.publicCache, "write").mockRejectedValue(new TypeError("cache down"))
+
+    expect(await pageOf(undefined, code)).toMatchObject({ code, me: { kind: "signed-out" } })
+
+    expect(warn).toHaveBeenCalledWith("public cache read failed", { errorClass: "TypeError" })
+    expect(warn).toHaveBeenCalledWith("public cache write failed", { errorClass: "TypeError" })
+    warn.mockRestore()
+  })
+})
+
+describe("two sign-ins started in one browser", () => {
+  it("lets both viewer sign-ins finish whichever comes back first", async () => {
+    const { code } = await createGiveaway(harness)
+    const browser = new Browser(harness)
+    harness.fake.control.signInAs(users.viewer.id)
+    const tabA = await browser.request(`/auth/twitch/viewer/start?giveaway=${code}`)
+    const tabB = await browser.request(`/auth/twitch/viewer/start?giveaway=${code}`)
+
+    const answerB = await callbackOf(browser, tabB.headers.get("location"))
+    const answerA = await callbackOf(browser, tabA.headers.get("location"))
+
+    expect(entryQuery(answerB).get("entry")).toBe("entered")
+    expect(entryQuery(answerA).get("entry")).toBe("already-in")
+    expect(browser.cookieNames().filter((name) => name.startsWith("rl_oauth_"))).toEqual([])
+  })
+
+  it("lets both streamer sign-ins finish whichever comes back first", async () => {
+    const browser = new Browser(harness)
+    harness.fake.control.signInAs(users.streamerA.id)
+    const tabA = await browser.request("/auth/twitch/streamer/start")
+    const tabB = await browser.request("/auth/twitch/streamer/start")
+
+    const answerB = await callbackOf(browser, tabB.headers.get("location"))
+    const answerA = await callbackOf(browser, tabA.headers.get("location"))
+
+    expect(answerB.headers.get("location")).toBe("/dashboard")
+    expect(answerA.headers.get("location")).toBe("/dashboard")
+  })
+
+  it("rejects a callback whose state has no cookie of its own", async () => {
+    const { code } = await createGiveaway(harness)
+    const browser = new Browser(harness)
+    await browser.request(`/auth/twitch/viewer/start?giveaway=${code}`)
+
+    const answer = await browser.request(`/auth/twitch/viewer?code=c&state=${"0".repeat(32)}`)
+
+    expect(entryQuery(answer).get("entry")).toBe("invalid-state")
+  })
+})
+
 describe("sign-in refused by Twitch", () => {
   it("sends a streamer who denied consent back to the home page with the error and clears the state cookie", async () => {
     const browser = new Browser(harness)
-    await browser.request("/auth/twitch/streamer/start")
+    const state = await browser.startSignIn("/auth/twitch/streamer/start")
+    expect(browser.cookieNames()).toEqual([`rl_oauth_streamer_${state}`])
 
     const response = await browser.request(
-      "/auth/twitch/streamer?error=access_denied&error_description=The+user+denied+you+access&state=s",
+      `/auth/twitch/streamer?error=access_denied&error_description=The+user+denied+you+access&state=${state}`,
     )
 
     expect(response.headers.get("location")).toBe("/?error=access_denied")
-    expect(browser.cookie("rl_oauth_streamer")).toBeUndefined()
+    expect(browser.cookieNames()).toEqual([])
     expect(sqlRows(harness.accountsDb, "SELECT id FROM streamers")).toHaveLength(0)
     expect(tokenCalls()).toBe(0)
   })
@@ -149,13 +294,12 @@ describe("sign-in refused by Twitch", () => {
   it("sends a viewer who denied consent back to the giveaway page with the error and writes nothing", async () => {
     const { code, id } = await createGiveaway(harness)
     const browser = new Browser(harness)
-    await browser.request(`/auth/twitch/viewer/start?giveaway=${code}`)
+    const state = await browser.startSignIn(`/auth/twitch/viewer/start?giveaway=${code}`)
 
-    const response = await browser.request("/auth/twitch/viewer?error=access_denied&state=s")
+    const response = await browser.request(`/auth/twitch/viewer?error=access_denied&state=${state}`)
 
     expect(response.headers.get("location")).toBe(`/g/${code}?error=access_denied`)
-    expect(browser.cookie("rl_oauth_viewer")).toBeUndefined()
-    expect(browser.cookie("rl_viewer")).toBeUndefined()
+    expect(browser.cookieNames()).toEqual([])
     expect(harness.rooms.roomFor(id).summary().entrantCount).toBe(0)
   })
 
@@ -197,6 +341,7 @@ describe("creating a giveaway", () => {
       claimSeconds: 300,
       entrantCount: 1,
       poll: { intervalMs: 3000, maxMs: 120_000 },
+      me: { kind: "signed-out" },
     })
   })
 
@@ -589,7 +734,7 @@ describe("token endpoint limits", () => {
   })
 
   it("starts no viewer cookie for a settled entry that has no verified user", async () => {
-    const { code } = await createGiveaway(harness)
+    const { code, id } = await createGiveaway(harness)
     harness.fake.control.failNext("token", 429, 1)
     const { browser, query } = await viewerSignIn(users.viewer.id, code)
     const ticket = query.get("ticket") ?? ""
@@ -603,7 +748,7 @@ describe("token endpoint limits", () => {
     expect(await response.json()).toEqual({ kind: "try-again" })
     const cookies = response.headers.getSetCookie()
     expect(cookies.some((cookie) => cookie.startsWith("rl_viewer="))).toBe(false)
-    expect(cookies.some((cookie) => cookie.startsWith("rl_pending=;"))).toBe(true)
+    expect(cookies.some((cookie) => cookie.startsWith(`rl_pending_${id}=;`))).toBe(true)
   })
 
   it("answers 404 for the poll of a giveaway that does not exist and keeps the result", async () => {
@@ -654,6 +799,52 @@ describe("token endpoint limits", () => {
     expect(other.headers.getSetCookie()).toEqual([])
   })
 
+  it("keeps the pending entries of two giveaways in one browser apart and scopes each cookie to its poll route", async () => {
+    const first = await createGiveaway(harness)
+    const second = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    const { browser, query: firstQuery, response } = await viewerSignIn(users.viewer.id, first.code)
+    const secondSignIn = await viewerSignIn(users.viewer.id, second.code, browser)
+    harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
+    await harness.queue.onAlarm()
+
+    const firstDone = await browser.request(
+      `/api/g/${first.code}/pending/${firstQuery.get("ticket")}`,
+    )
+    const secondDone = await browser.request(
+      `/api/g/${second.code}/pending/${secondSignIn.query.get("ticket")}`,
+    )
+
+    expect(await firstDone.json()).toMatchObject({ kind: "entered" })
+    expect(await secondDone.json()).toMatchObject({ kind: "entered" })
+    const setCookie = response.headers
+      .getSetCookie()
+      .find((cookie) => cookie.includes("rl_pending"))
+    expect(setCookie).toContain(`rl_pending_${first.id}=`)
+    expect(setCookie).toContain(`Path=/api/g/${first.code}/pending`)
+  })
+
+  it("lets the browser fetch a settled result again until it ages out", async () => {
+    const { code } = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    const { browser, query } = await viewerSignIn(users.viewer.id, code)
+    const path = `/api/g/${code}/pending/${query.get("ticket")}`
+    harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
+    await harness.queue.onAlarm()
+    const cookieBefore = browser.cookieNames().find((name) => name.startsWith("rl_pending_"))
+
+    const lost = await harness.app.request(path, {
+      headers: { cookie: `${cookieBefore}=${browser.cookie(cookieBefore ?? "")}` },
+    })
+    const retried = await browser.request(path)
+
+    expect(await lost.json()).toMatchObject({ kind: "entered" })
+    expect(await retried.json()).toMatchObject({ kind: "entered" })
+    expect(retried.headers.getSetCookie().some((cookie) => cookie.startsWith("rl_viewer="))).toBe(
+      true,
+    )
+  })
+
   it("answers dropped for a ticket the queue no longer holds", async () => {
     const { code } = await createGiveaway(harness)
 
@@ -690,6 +881,20 @@ describe("winners", () => {
       const response = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count })
       expect(response.status).toBe(400)
     }
+  })
+
+  it("refuses a draw count above the configured maximum and accepts the maximum", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { DRAW_MAX_WINNERS: "2" } })
+    const { browser, id } = await createGiveaway(harness)
+    await browser.postJson(`/api/dash/giveaways/${id}/close`, {})
+
+    const above = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 3 })
+    const atMax = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 2 })
+
+    expect(above.status).toBe(400)
+    expect(await above.json()).toEqual({ error: "invalid-input", field: "count" })
+    expect(await atMax.json()).toEqual({ kind: "drawn", winners: [] })
   })
 
   it("lets the winner claim once", async () => {
@@ -868,17 +1073,27 @@ describe("viewer state", () => {
     const { code } = await createGiveaway(harness)
     const forgedValue = `{"platform":"twitch","userId":"${users.viewer.id}","expiresAt":9999999999999}`
 
-    const plain = await harness.app.request(`/api/g/${code}/me`)
-    const forged = await harness.app.request(`/api/g/${code}/me`, {
+    const plain = await harness.app.request(`/api/g/${code}`)
+    const forged = await harness.app.request(`/api/g/${code}`, {
       headers: { cookie: `rl_viewer=${encodeURIComponent(forgedValue)}` },
     })
 
-    expect(await plain.json()).toEqual({ kind: "signed-out" })
-    expect(await forged.json()).toEqual({ kind: "signed-out" })
+    expect(await plain.json()).toMatchObject({ me: { kind: "signed-out" } })
+    expect(await forged.json()).toMatchObject({ me: { kind: "signed-out" } })
   })
 
-  it("answers 404 for a giveaway that does not exist", async () => {
-    expect((await harness.app.request("/api/g/NOPE0/me")).status).toBe(404)
+  it("answers 404 for a giveaway that does not exist, with and without a viewer cookie", async () => {
+    const viewer = new Browser(harness)
+    await viewerSignIn(users.viewer.id, (await createGiveaway(harness)).code, viewer)
+
+    expect((await harness.app.request("/api/g/NOPE0")).status).toBe(404)
+    expect((await viewer.request("/api/g/NOPE0")).status).toBe(404)
+  })
+
+  it("has no separate viewer state route any more", async () => {
+    const { code } = await createGiveaway(harness)
+
+    expect((await harness.app.request(`/api/g/${code}/me`)).status).toBe(404)
   })
 
   it("says not-entered to a signed-in viewer who did not enter this giveaway", async () => {
@@ -1129,6 +1344,49 @@ describe("overlay and admin", () => {
       expect((await harness.app.request(`/api/overlay/${id}/${token}`)).status).toBe(404)
     }
     expect((await harness.app.request(`/api/overlay/${id}/`)).status).toBe(404)
+  })
+
+  describe("WebSocket upgrades", () => {
+    const upgrade = { upgrade: "websocket" }
+
+    it("refuses a live upgrade from another origin or without one, and admits the site's own", async () => {
+      const { browser, id } = await createGiveaway(harness)
+      const status = async (origin?: string) =>
+        (
+          await browser.request(`/api/live/${id}`, {
+            headers: origin === undefined ? upgrade : { ...upgrade, origin },
+          })
+        ).status
+
+      expect(await status("https://evil.example")).toBe(403)
+      expect(await status("http://localhost.evil.example")).toBe(403)
+      expect(await status()).toBe(403)
+      expect(await status("http://localhost")).toBe(200)
+    })
+
+    it("refuses an overlay upgrade from another origin and admits the site's own and OBS without one", async () => {
+      const { id, overlayToken } = await createGiveaway(harness)
+      const status = async (origin?: string) =>
+        (
+          await harness.app.request(`/api/overlay/${id}/${overlayToken}`, {
+            headers: origin === undefined ? upgrade : { ...upgrade, origin },
+          })
+        ).status
+
+      expect(await status("https://evil.example")).toBe(403)
+      expect(await status("http://localhost")).toBe(200)
+      expect(await status()).toBe(200)
+    })
+
+    it("does not look at the origin of a plain request", async () => {
+      const { browser, id } = await createGiveaway(harness)
+
+      const response = await browser.request(`/api/live/${id}`, {
+        headers: { origin: "https://evil.example" },
+      })
+
+      expect(response.status).toBe(200)
+    })
   })
 
   it("answers 404 for the overlay of a giveaway that does not exist", async () => {

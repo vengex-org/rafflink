@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { resolveConfig } from "@rafflink/core/config"
+import { apiPrefixes } from "@rafflink/core/http/api-paths"
 import { readWranglerConfig } from "./wrangler-config.ts"
 
 const required = {
@@ -15,20 +16,12 @@ const required = {
 }
 
 describe("wrangler.jsonc", () => {
-  // A built file that reaches the Worker first is a billed request and, for a missing one, an HTML answer.
-  it("leaves every file type of the web app's public folder to the assets and sends every page to the Worker", async () => {
-    const { runWorkerFirst } = await readWranglerConfig()
-    const publicDir = fileURLToPath(new URL("../../web/public", import.meta.url))
-    const extensions = new Set(readdirSync(publicDir).map((name) => name.split(".").pop()))
+  // A page or file that reaches the Worker first is a billed request, and the Worker no longer answers pages.
+  it("runs the Worker first only for the API and sign-in paths and serves pages from the assets with the SPA fallback", async () => {
+    const { runWorkerFirst, notFoundHandling } = await readWranglerConfig()
 
-    expect(runWorkerFirst[0]).toBe("/*")
-    for (const extension of extensions) {
-      expect(runWorkerFirst).toContain(`!/*.${extension}`)
-    }
-    expect(runWorkerFirst).toContain("!/*.js")
-    expect(runWorkerFirst).toContain("!/*.css")
-    expect(runWorkerFirst).not.toContain("!/*.txt")
-    expect(runWorkerFirst).not.toContain("!/*.xml")
+    expect(runWorkerFirst).toEqual(apiPrefixes.map((prefix) => `${prefix}*`))
+    expect(notFoundHandling).toBe("single-page-application")
   })
 
   it("cron string matches config validate period", async () => {

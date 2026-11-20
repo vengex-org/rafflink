@@ -41,12 +41,14 @@ its data in `apps/server/data`. Signing in opens a page with test users: `Fake_V
 admin) and `Fake_Streamer` (id 1001). The session is a cookie, so use a private window per user.
 
 The dev server does not watch `apps/web` or `packages/core`, so restart it after editing them. The fake Twitch
-exists only when `DEV_FAKE_TWITCH=true`; a production server answers 404 on its routes.
+exists only when `DEV_FAKE_TWITCH=true`; a production server answers 404 on its routes. The fake Twitch signs
+anyone in, so `DEV_FAKE_TWITCH=true` only starts when `PUBLIC_URL` is a `localhost` or `127.0.0.1` origin;
+any other `PUBLIC_URL` stops the start with a configuration error.
 
 ### Cloudflare dev
 
 The fake Twitch cannot run inside the Worker, so it runs as its own process. Build the web app once with
-`bun run build` in the repository root, because the Worker serves it from `apps/web/dist`. Create the local
+`bun run build` in the repository root, because wrangler serves it as static assets from `apps/web/dist`. Create the local
 database tables once with `bunx wrangler d1 migrations apply rafflink --local` in `apps/cloudflare`. Then use
 two terminals there:
 
@@ -211,8 +213,12 @@ Optional usage meter: the Cloudflare free plan allows 100,000 Worker requests a 
 the admin page and warn streamers when fewer than 25,000 are left, add `CLOUDFLARE_ACCOUNT_ID` as a var and
 set `CLOUDFLARE_API_TOKEN` (a token with the Account Analytics read permission) as a secret. Without them the
 meter reports no limit. On a paid plan raise `WORKER_REQUEST_LIMIT` and `DURABLE_OBJECT_REQUEST_LIMIT`.
-Every page load is a Worker request (the Worker adds the link preview of a giveaway to the page); the built
-scripts, styles and icons are served by Cloudflare without it.
+Pages, scripts, styles and icons are static assets that Cloudflare serves without the Worker, so only
+`/api/*` and `/auth/*` count as Worker requests. A giveaway page load makes one such request, and the
+public part of its answer is kept for `PUBLIC_GIVEAWAY_CACHE_SECONDS` (5 by default) in the Cache API, so a
+refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache API stores nothing on a
+`workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
+seconds old.
 
 To upgrade, pull the new code, run `bun run build`, apply new migrations with
 `bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`.
@@ -226,9 +232,12 @@ inline script of `index.html` (the theme) is allowed by its hash. The hash is co
 served and from the built `apps/web/dist/index.html` when it writes `_headers`, so editing the script needs
 no manual step; a test fails if the built page has a second inline script.
 
-The page of a giveaway link (`/<code>` and `/g/<code>`) gets its title, prize and streamer name in the title,
-Open Graph and Twitter tags, so a pasted link previews well. Every page except the home page answers
-`X-Robots-Tag: noindex, nofollow`. `/robots.txt` and `/sitemap.xml` are built from `PUBLIC_URL`.
+On Cloudflare the pages are static: the headers above come from `apps/web/dist/_headers`, which the web build
+writes (with the hash of the inline script), and `X-Robots-Tag: noindex, nofollow` covers every path except
+the home page. A pasted giveaway link shows the generic preview of the home page there. The Bun server
+answers each page itself and gives the page of a giveaway link (`/<code>` and `/g/<code>`) its title, prize
+and streamer name in the title, Open Graph and Twitter tags, so a pasted link previews well; it sends the same
+noindex rule. `/robots.txt` is a static file in `apps/web/public` for both targets; there is no sitemap.
 
 The OBS overlay is a browser source that opens `/overlay/...` as a top-level page, so
 `frame-ancestors 'none'` does not affect it. Do not embed the overlay in an iframe on another site.

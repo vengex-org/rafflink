@@ -103,7 +103,7 @@ export function chatClaimScenarios(context: ContractContext): void {
   scenario(context, "a revoked chat subscription shows Chat claim unavailable", async (world) => {
     const { giveaway, viewer } = await drawnWithOneWinner(world, await world.start())
     await waitForSubscription(world)
-    const meOf = async () => (await viewer.request(`/api/g/${giveaway.code}/me`)).json()
+    const meOf = async () => (await (await viewer.request(`/api/g/${giveaway.code}`)).json()).me
     expect(await meOf()).toMatchObject({ kind: "won", chatClaimAvailable: true })
 
     world.twitch.fake.control.revokeChatSubscriptions()

@@ -8,6 +8,7 @@ import type { AppDeps } from "../src/http/deps.ts"
 import { createApp } from "../src/http/create-app.ts"
 import { codeAlphabet, codeLength } from "../src/lib/codes.ts"
 import { toBase64 } from "../src/lib/encoding.ts"
+import { MemoryPublicCache } from "../src/lib/memory-public-cache.ts"
 import { openKeyRing } from "../src/lib/seal.ts"
 import type {
   Alarm,
@@ -258,6 +259,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     TWITCH_TIMEOUT_MS: "2000",
     HELIX_RETRY_DELAY_MS: "0",
     ENTRY_WRITE_RETRY_DELAYS_MS: "0,0,0",
+    PUBLIC_GIVEAWAY_CACHE_SECONDS: "0",
     ...options.env,
   })
   const clock = new TestClock(Date.now())
@@ -284,6 +286,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     ...entryDeps,
     queue: asRemote(queue),
     usage,
+    publicCache: new MemoryPublicCache(clock),
     keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),
   }
@@ -339,6 +342,16 @@ export class Browser {
 
   cookie(name: string): string | undefined {
     return this.cookies.get(name)
+  }
+
+  cookieNames(): string[] {
+    return [...this.cookies.keys()]
+  }
+
+  /** Starts a sign-in and returns the `state` Twitch would send back; the consent step is not run. */
+  async startSignIn(startPath: string): Promise<string> {
+    const start = await this.request(startPath)
+    return new URL(start.headers.get("location") ?? "").searchParams.get("state") ?? ""
   }
 
   /** Sign-in start, the fake's consent, and the callback; the callback response is returned. */

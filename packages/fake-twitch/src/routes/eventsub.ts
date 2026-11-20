@@ -17,9 +17,9 @@ export interface EventSub {
   subscriptionCount(): number
 }
 
-const CHAT_MESSAGE = "channel.chat.message"
+const chatMessageType = "channel.chat.message"
 /** Twitch close code for a socket that sent no subscription in time. */
-const CLOSE_CONNECTION_UNUSED = 4003
+const closeConnectionUnused = 4003
 
 interface Subscription {
   id: string
@@ -116,7 +116,7 @@ export function createEventSub(state: FakeState): EventSub {
           send(session.ws, {
             metadata: {
               ...metadata("notification"),
-              subscription_type: CHAT_MESSAGE,
+              subscription_type: chatMessageType,
               subscription_version: "1",
             },
             payload: {
@@ -151,7 +151,7 @@ export function createEventSub(state: FakeState): EventSub {
           send(session.ws, {
             metadata: {
               ...metadata("revocation"),
-              subscription_type: CHAT_MESSAGE,
+              subscription_type: chatMessageType,
               subscription_version: "1",
             },
             payload: {
@@ -203,8 +203,7 @@ export function createEventSub(state: FakeState): EventSub {
         (keepaliveTimeoutSeconds * 1000) / 2,
       ),
       subscribeWindow: setTimeout(() => {
-        if (session.subscriptions.length === 0)
-          ws.close(CLOSE_CONNECTION_UNUSED, "connection unused")
+        if (session.subscriptions.length === 0) ws.close(closeConnectionUnused, "connection unused")
       }, subscribeWindowMs),
     }
     sessions.set(id, session)
@@ -248,7 +247,7 @@ function subscriptionJson(subscription: Subscription, sessionId: string) {
   return {
     id: subscription.id,
     status: "enabled",
-    type: CHAT_MESSAGE,
+    type: chatMessageType,
     version: "1",
     condition: { broadcaster_user_id: subscription.broadcasterId, user_id: subscription.userId },
     transport: { method: "websocket", session_id: sessionId },
@@ -262,7 +261,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseSubscribeRequest(body: unknown): SubscribeRequest | undefined {
-  if (!isRecord(body) || body.type !== CHAT_MESSAGE || body.version !== "1") return undefined
+  if (!isRecord(body) || body.type !== chatMessageType || body.version !== "1") return undefined
   const { condition, transport } = body
   if (!isRecord(condition) || !isRecord(transport) || transport.method !== "websocket")
     return undefined

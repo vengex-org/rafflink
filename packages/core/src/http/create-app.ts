@@ -1,7 +1,7 @@
+import { errorClass } from "../lib/error-class.ts"
 import { Hono } from "hono"
 import { requestId } from "hono/request-id"
 import { authRoutes, type Cooldown } from "./auth-routes.ts"
-import { crawlerRoutes } from "./crawler-routes.ts"
 import { dashboardRoutes } from "./dashboard-routes.ts"
 import type { AppDeps } from "./deps.ts"
 import { giveawayRoutes } from "./giveaway-routes.ts"
@@ -21,7 +21,6 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   app.route("/", authRoutes(deps, cooldown))
   app.route("/", giveawayRoutes(deps))
   app.route("/", dashboardRoutes(deps))
-  app.route("/", crawlerRoutes(deps))
   if (spaTemplate !== null) app.route("/", spaRoutes(deps, spaTemplate))
 
   app.notFound((c) => c.json({ error: "not-found" }, 404))
@@ -30,7 +29,7 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
     const id = c.get("requestId")
     console.error("request failed", {
       requestId: id,
-      errorClass: error instanceof Error ? error.constructor.name : typeof error,
+      errorClass: errorClass(error),
     })
     return c.json({ error: "internal", requestId: id }, 500)
   })

@@ -18,6 +18,36 @@ export function giveawayScenarios(context: ContractContext): void {
     },
   )
 
+  scenario(
+    context,
+    "the giveaway page carries the viewer state and reuses its public part for the cache time",
+    async (world) => {
+      const target = await world.start({ PUBLIC_GIVEAWAY_CACHE_SECONDS: "2" })
+      const giveaway = await world.createGiveaway(target)
+      const anonymous = async () => {
+        const response = await fetch(new URL(`/api/g/${giveaway.code}`, target.url))
+        const page: { entrantCount: number; me: { kind: string } } = await response.json()
+        return { page, cacheControl: response.headers.get("cache-control") }
+      }
+      const first = await anonymous()
+
+      const entered = await world.enter(target, giveaway.code, users.viewer.id)
+      const stale = await anonymous()
+      const own: { entrantCount: number; me: { kind: string } } = await (
+        await entered.viewer.request(`/api/g/${giveaway.code}`)
+      ).json()
+
+      expect(first.page).toMatchObject({ entrantCount: 0, me: { kind: "signed-out" } })
+      expect(first.cacheControl).toBe("no-store")
+      expect(stale.page.entrantCount).toBe(0)
+      expect(own).toMatchObject({ entrantCount: 1, me: { kind: "entered" } })
+      await world.waitFor(
+        async () => (await anonymous()).page.entrantCount === 1,
+        "the cached public part to expire",
+      )
+    },
+  )
+
   scenario(context, "the giveaway page names the streamer by display name", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)
@@ -129,8 +159,8 @@ export function giveawayScenarios(context: ContractContext): void {
     await world.closeGiveaway(giveaway)
     await world.drawWinners(giveaway, 1)
 
-    const me: { claimRemainingMs: number } = await (
-      await entered.viewer.request(`/api/g/${giveaway.code}/me`)
+    const { me }: { me: { claimRemainingMs: number } } = await (
+      await entered.viewer.request(`/api/g/${giveaway.code}`)
     ).json()
     const claimed = await entered.viewer.postJson(`/api/g/${giveaway.code}/claim`, {})
 
@@ -154,8 +184,12 @@ export function giveawayScenarios(context: ContractContext): void {
       const winner = await world.enter(target, giveaway.code, users.viewer.id)
       const loser = await world.enter(target, giveaway.code, users.viewer2.id)
       const stranger = new Browser(target.url)
-      const meOf = async (browser: Browser) =>
-        (await browser.request(`/api/g/${giveaway.code}/me`)).json()
+      const meOf = async (browser: Browser): Promise<{ kind: string }> => {
+        const page: { me: { kind: string } } = await (
+          await browser.request(`/api/g/${giveaway.code}`)
+        ).json()
+        return page.me
+      }
 
       const entered = await meOf(winner.viewer)
       const signedOut = await meOf(stranger)

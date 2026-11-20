@@ -306,6 +306,20 @@ describe("GiveawayRoom picks", () => {
 })
 
 describe("GiveawayRoom reroll", () => {
+  it("rerolls in a room that already holds 800,000 picks", async () => {
+    const { room, sql } = await drawnRoom()
+    sql.exec(
+      `WITH RECURSIVE filler (i) AS (SELECT 100 UNION ALL SELECT i + 1 FROM filler WHERE i < 800099)
+       INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until)
+       SELECT i, 'twitch', 'filler-' || i, 0, 0 FROM filler`,
+      [],
+    )
+
+    const outcome = await room.reroll(0)
+
+    expect(outcome).toMatchObject({ kind: "rerolled", replaced: 0, winner: { n: 800_100 } })
+  })
+
   it("reroll adds the next pick and marks the old one", async () => {
     const { room, sql } = await drawnRoom()
     const first = picks(sql)[0]

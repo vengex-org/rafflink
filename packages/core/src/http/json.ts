@@ -6,7 +6,10 @@ import type { LiveSnapshot, WinnerClaim } from "../room/giveaway-room.ts"
 import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
-/** What the giveaway page needs; the overlay token and the streamer's ids stay out. */
+/**
+ * What the giveaway page needs; the overlay token and the streamer's ids stay out. The page's response
+ * is this object plus `me`, the {@link ViewerState} of the caller, which is never part of what is cached.
+ */
 export interface PublicGiveaway {
   readonly code: string
   readonly title: string | null

@@ -71,13 +71,4 @@ describe("page routes", () => {
     expect(response.status).toBe(404)
     expect(await response.json()).toEqual({ error: "not-found" })
   })
-
-  it("serves robots.txt and a sitemap with the home page from the public URL", async () => {
-    const robots = await (await app.request("/robots.txt")).text()
-    const sitemap = await (await app.request("/sitemap.xml")).text()
-
-    expect(robots).toContain("Disallow: /api/\n")
-    expect(robots).toContain("Sitemap: http://localhost/sitemap.xml")
-    expect(sitemap).toContain("<loc>http://localhost/</loc>")
-  })
 })

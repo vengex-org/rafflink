@@ -75,7 +75,7 @@ export type InsertOutcome = "inserted" | "code-taken"
 export class AccountStore {
   constructor(
     private readonly sql: AsyncSql,
-    private readonly config: Pick<ResolvedConfig, "claimKeywordMaxLength">,
+    private readonly config: Pick<ResolvedConfig, "claimKeywordMaxLength" | "ticketsPerGroupMax">,
   ) {}
 
   /** Creates or updates the streamer and replaces their refresh token in one batch. */

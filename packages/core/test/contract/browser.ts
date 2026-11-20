@@ -16,6 +16,8 @@ export class Browser {
       ...init,
       headers,
       redirect: "manual",
+      // A connection that Miniflare's assets router closed is reused by `fetch` and fails with ECONNRESET.
+      keepalive: false,
     })
     for (const setCookie of response.headers.getSetCookie()) this.store(setCookie)
     return response

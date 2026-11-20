@@ -1,3 +1,4 @@
+import { errorClass } from "../lib/error-class.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { TwitchError, type TwitchClient } from "../twitch/twitch-client.ts"
 
@@ -26,7 +27,7 @@ export class AdminDirectory {
     } catch (error) {
       if (!(error instanceof TwitchError)) throw error
       console.warn("admin login lookup failed", {
-        errorClass: error.constructor.name,
+        errorClass: errorClass(error),
         endpoint: error.endpoint,
         status: error.status,
       })

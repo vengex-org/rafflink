@@ -51,6 +51,12 @@ export class ApiError extends Error {
 /** The giveaway page's answer: what anyone may see. */
 export type GiveawayView = PublicGiveaway
 
+/** The giveaway page's response: the giveaway and where the viewer behind the cookie stands in it. */
+export interface GiveawayLoad {
+  readonly giveaway: GiveawayView
+  readonly me: ViewerState
+}
+
 /** The live page's first answer: the snapshot and, on the streamer's own route, the overlay token. */
 export interface LiveLoad {
   readonly snapshot: LiveSnapshot
@@ -115,33 +121,32 @@ export const liveSnapshotPath = (id: string) => `/api/live/${encodeURIComponent(
 export const overlaySnapshotPath = (id: string, token: string) =>
   `/api/overlay/${encodeURIComponent(id)}/${encodeURIComponent(token)}`
 
-export async function getGiveaway(code: string): Promise<GiveawayView | null> {
+export async function getGiveaway(code: string): Promise<GiveawayLoad | null> {
   const { status, body } = await send(`/api/g/${encodeURIComponent(code)}`)
   if (status === 404) return null
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "giveaway")
   return {
-    code: text(source, "code"),
-    title: nullableText(source, "title"),
-    prize: nullableText(source, "prize"),
-    streamerName: text(source, "streamerName"),
-    rules: parseRules(child(source, "rules")),
-    status: oneOf(source, "status", roomStatuses),
-    closesAt: nullableNum(source, "closesAt"),
-    claimSeconds: num(source, "claimSeconds"),
-    entrantCount: num(source, "entrantCount"),
-    poll: {
-      intervalMs: num(child(source, "poll"), "intervalMs"),
-      maxMs: num(child(source, "poll"), "maxMs"),
+    giveaway: {
+      code: text(source, "code"),
+      title: nullableText(source, "title"),
+      prize: nullableText(source, "prize"),
+      streamerName: text(source, "streamerName"),
+      rules: parseRules(child(source, "rules")),
+      status: oneOf(source, "status", roomStatuses),
+      closesAt: nullableNum(source, "closesAt"),
+      claimSeconds: num(source, "claimSeconds"),
+      entrantCount: num(source, "entrantCount"),
+      poll: {
+        intervalMs: num(child(source, "poll"), "intervalMs"),
+        maxMs: num(child(source, "poll"), "maxMs"),
+      },
     },
+    me: parseViewerState(child(source, "me")),
   }
 }
 
-/** Where the viewer behind the cookie stands in this giveaway; the giveaway must exist. */
-export async function getViewerState(code: string): Promise<ViewerState> {
-  const { status, body } = await send(`/api/g/${encodeURIComponent(code)}/me`)
-  if (status !== 200) throw new ApiError(status)
-  const source = record(body, "viewer")
+function parseViewerState(source: Json): ViewerState {
   const kind = oneOf(source, "kind", viewerKinds)
   switch (kind) {
     case "entered":
@@ -297,6 +302,7 @@ const issueCodes = [
   "not-a-positive-integer",
   "blank",
   "too-long",
+  "too-large",
   "not-a-timestamp",
   "in-the-past",
 ] as const satisfies readonly CreateIssue["code"][]

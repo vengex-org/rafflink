@@ -30,6 +30,12 @@ export interface ViewerSession {
   readonly userId: string
 }
 
+/** The giveaway a queued sign-in belongs to; its code scopes the cookie to the poll route. */
+export interface PendingGiveaway {
+  readonly id: string
+  readonly code: string
+}
+
 /** A queued sign-in: only the browser that was queued may poll the ticket and receive the viewer session. */
 export interface PendingEntry {
   readonly ticket: string
@@ -48,9 +54,19 @@ export interface OAuthState {
 const cookieNames = {
   streamer: "rl_streamer",
   viewer: "rl_viewer",
-  pending: "rl_pending",
-  oauth: { streamer: "rl_oauth_streamer", viewer: "rl_oauth_viewer" },
 } as const
+
+// One cookie per queued giveaway and per sign-in in progress, so a second one in the same browser
+// does not overwrite the first. Ids and states are 32 hex characters, which are safe in a cookie name.
+const oauthCookiePrefix = { streamer: "rl_oauth_streamer_", viewer: "rl_oauth_viewer_" } as const
+const hexId = /^[0-9a-f]{32}$/
+
+function pendingCookie(giveaway: PendingGiveaway): { name: string; path: string } {
+  return {
+    name: `rl_pending_${giveaway.id}`,
+    path: `/api/g/${giveaway.code}/pending`,
+  }
+}
 
 export async function readStreamerSession(
   c: Context,
@@ -92,27 +108,29 @@ export async function startViewerSession(
 export async function startPendingEntry(
   c: Context,
   deps: SessionDeps,
-  pending: PendingEntry,
+  giveaway: PendingGiveaway,
+  ticket: string,
 ): Promise<void> {
   // Outlives the queued code: the browser must still prove the ticket when the queue reports the drop.
   const ttlSeconds = deps.config.queueCodeMaxAgeSeconds * 2
-  await writeCookie(c, deps, cookieNames.pending, pending, ttlSeconds)
+  const { name, path } = pendingCookie(giveaway)
+  await writeCookie(c, deps, name, { ticket, giveawayId: giveaway.id }, ttlSeconds, path)
 }
 
 export async function readPendingEntry(
   c: Context,
   deps: SessionDeps,
+  giveaway: PendingGiveaway,
 ): Promise<PendingEntry | null> {
-  return readCookie(c, deps, cookieNames.pending, (value) => {
+  return readCookie(c, deps, pendingCookie(giveaway).name, (value) => {
     const { ticket, giveawayId } = value
-    return typeof ticket === "string" && typeof giveawayId === "string"
-      ? { ticket, giveawayId }
-      : null
+    return typeof ticket === "string" && giveawayId === giveaway.id ? { ticket, giveawayId } : null
   })
 }
 
-export function endPendingEntry(c: Context): void {
-  deleteCookie(c, cookieNames.pending, { path: "/" })
+export function endPendingEntry(c: Context, giveaway: PendingGiveaway): void {
+  const { name, path } = pendingCookie(giveaway)
+  deleteCookie(c, name, { path })
 }
 
 export async function startOAuthState(
@@ -121,16 +139,22 @@ export async function startOAuthState(
   flow: OAuthFlow,
   state: OAuthState,
 ): Promise<void> {
-  await writeCookie(c, deps, cookieNames.oauth[flow], state, deps.config.stateCookieTtlSeconds)
+  const name = `${oauthCookiePrefix[flow]}${state.state}`
+  await writeCookie(c, deps, name, state, deps.config.stateCookieTtlSeconds)
 }
 
-/** Reads the state cookie and removes it, so a callback can be answered once per sign-in start. */
+/**
+ * Reads the state cookie of the sign-in whose `state` came back from Twitch and removes it, so a
+ * callback can be answered once per sign-in start. A state of another shape has no cookie.
+ */
 export async function takeOAuthState(
   c: Context,
   deps: SessionDeps,
   flow: OAuthFlow,
+  returnedState: string | undefined,
 ): Promise<OAuthState | null> {
-  const name = cookieNames.oauth[flow]
+  if (returnedState === undefined || !hexId.test(returnedState)) return null
+  const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
     const { state, nonce, giveawayCode } = value
     if (typeof state !== "string" || typeof nonce !== "string") return null
@@ -147,6 +171,7 @@ async function writeCookie(
   name: string,
   payload: object,
   ttlSeconds: number,
+  path = "/",
 ): Promise<void> {
   const expiresAt: Instant = deps.clock.now() + ttlSeconds * 1000
   await setSignedCookie(
@@ -155,7 +180,7 @@ async function writeCookie(
     JSON.stringify({ ...payload, expiresAt }),
     deps.config.sessionSecret,
     {
-      path: "/",
+      path,
       httpOnly: true,
       secure: deps.config.publicUrl.startsWith("https:"),
       sameSite: "Lax",

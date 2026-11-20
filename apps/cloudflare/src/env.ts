@@ -6,8 +6,6 @@ export interface WorkerEnv {
   readonly DB: D1Database
   readonly ROOMS: DurableObjectNamespace<GiveawayRoomDO>
   readonly QUEUE: DurableObjectNamespace<TokenQueueDO>
-  /** The built web app of `assets.directory`. */
-  readonly ASSETS: Fetcher
 }
 
 /** The string values of the environment: variables and secrets, without the bindings. */

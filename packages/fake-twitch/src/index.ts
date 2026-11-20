@@ -7,6 +7,7 @@ export type {
   FailureStatus,
   FakeTwitchOptions,
   FakeUser,
+  IdTokenFault,
   Role,
   Tier,
 } from "./state.ts"

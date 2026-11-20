@@ -1,7 +1,9 @@
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
-import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
+import { createApp, type AppDeps } from "@rafflink/core/http/create-app"
 import type { Hono } from "hono"
+import { CacheApiPublicCache } from "./adapters/cache-api-public-cache.ts"
 import { createUsageMeter } from "./adapters/cloudflare-usage-meter.ts"
 import { DurableObjectRoomDirectory } from "./adapters/durable-object-room-directory.ts"
 import { durableObjectTokenQueue } from "./adapters/durable-object-token-queue.ts"
@@ -40,17 +42,10 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     rooms: new DurableObjectRoomDirectory(env.ROOMS),
     queue: durableObjectTokenQueue(env.QUEUE),
     usage: createUsageMeter(runtime.config, runtime.clock, (input, init) => fetch(input, init)),
+    publicCache: new CacheApiPublicCache(caches.default),
     admins: new AdminDirectory(runtime.config, runtime.twitch),
   }
-  return createWorkerApp({ api: createApp(deps, indexTemplateOf(env.ASSETS)), rooms: env.ROOMS })
-}
-
-/** The asset binding serves `index.html` for `/`; its host is never contacted. */
-function indexTemplateOf(assets: Fetcher): SpaTemplateLoader {
-  return async () => {
-    const response = await assets.fetch("https://assets.invalid/")
-    return response.ok ? response.text() : null
-  }
+  return createWorkerApp({ api: createApp(deps, null), rooms: env.ROOMS })
 }
 
 async function validateTokens(env: WorkerEnv): Promise<void> {
@@ -58,7 +53,7 @@ async function validateTokens(env: WorkerEnv): Promise<void> {
     console.info("streamer token validation", await validateStreamerTokens(await runtimeOf(env)))
   } catch (error) {
     console.error("streamer token validation failed", {
-      errorClass: error instanceof Error ? error.constructor.name : typeof error,
+      errorClass: errorClass(error),
     })
   }
 }

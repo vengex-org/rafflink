@@ -32,6 +32,8 @@ export type FailableEndpoint =
   | "moderators"
   | "eventsub"
 export type FailureStatus = 429 | 500 | 502 | 503 | 504
+/** How the next id_token is made wrong: signed by a key `/oauth2/keys` does not serve, issued by another party, or already expired. */
+export type IdTokenFault = "bad-signature" | "wrong-issuer" | "expired"
 
 export interface Call {
   method: string
@@ -77,6 +79,7 @@ export interface FakeState {
   readonly accessTokens: Map<string, AccessToken>
   readonly refreshTokens: Map<string, RefreshToken>
   readonly failures: Map<FailableEndpoint, FailureStatus[]>
+  readonly idTokenFaults: IdTokenFault[]
   readonly calls: Call[]
   readonly signingKey: Promise<SigningKey>
   signInUserId: string
@@ -93,6 +96,7 @@ export function createState(options: FakeTwitchOptions): FakeState {
     accessTokens: new Map(),
     refreshTokens: new Map(),
     failures: new Map(),
+    idTokenFaults: [],
     calls: [],
     signingKey: createSigningKey(),
     signInUserId: options.defaultUser.id,

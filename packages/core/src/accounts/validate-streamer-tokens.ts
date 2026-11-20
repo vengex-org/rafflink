@@ -1,3 +1,4 @@
+import { errorClass } from "../lib/error-class.ts"
 import { TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "../twitch/twitch-client.ts"
 import type { StoredStreamerToken } from "./account-store.ts"
 import { openStreamerAccess, type StreamerTokenDeps } from "./streamer-token.ts"
@@ -39,7 +40,7 @@ export async function validateStreamerTokens(deps: StreamerTokenDeps): Promise<V
       failed++
       console.warn("streamer token check failed", {
         streamerId: token.streamerId,
-        errorClass: error instanceof Error ? error.constructor.name : typeof error,
+        errorClass: errorClass(error),
       })
     }
   }

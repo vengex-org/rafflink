@@ -64,7 +64,7 @@ export interface EntrySummary {
 
 export function parseState(
   row: SqlRow,
-  config: Pick<ResolvedConfig, "claimKeywordMaxLength">,
+  config: Pick<ResolvedConfig, "claimKeywordMaxLength" | "ticketsPerGroupMax">,
 ): RoomState {
   const reader = new RowReader("room_state", row)
   const rules = parseRules(parseJson(reader.text("rules_json")), config)

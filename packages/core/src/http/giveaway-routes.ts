@@ -1,10 +1,11 @@
 import { Hono, type Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway } from "../accounts/account-store.ts"
-import type { ClaimOutcome, WinnerPick } from "../room/giveaway-room.ts"
+import type { ClaimOutcome, RoomSummary, WinnerPick } from "../room/giveaway-room.ts"
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
+import { errorClass } from "../lib/error-class.ts"
 import type { PublicGiveaway, ViewerState } from "./json.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import {
@@ -18,33 +19,29 @@ import {
 export function giveawayRoutes(deps: AppDeps): Hono {
   const app = new Hono()
 
+  // One request per page load. The public part of an anonymous load comes from the cache when it can,
+  // so a refresh reads neither the account store nor the room; a load with a viewer cookie is read
+  // fresh, because it carries personal state. The response is never cached by a browser or a proxy.
   app.get("/api/g/:code", async (c) => {
-    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
-    if (giveaway === null) return c.json({ error: "not-found" }, 404)
-    const summary = await deps.rooms.get(giveaway.id).summary()
-    const body: PublicGiveaway = {
-      code: giveaway.code,
-      title: giveaway.title,
-      prize: giveaway.prize,
-      streamerName: giveaway.streamerName,
-      rules: giveaway.rules,
-      status: summary.status,
-      closesAt: summary.closesAt,
-      claimSeconds: giveaway.claimSeconds,
-      entrantCount: summary.entrantCount,
-      poll: {
-        intervalMs: deps.config.queuePollSeconds * 1000,
-        maxMs: deps.config.queuePollMaxSeconds * 1000,
-      },
-    }
-    return c.json(body)
-  })
-
-  app.get("/api/g/:code/me", async (c) => {
-    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
-    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    const code = c.req.param("code")
     c.header("Cache-Control", "no-store")
-    return c.json(await viewerState(c, deps, giveaway))
+    const session = await readViewerSession(c, deps)
+    const key = `${deps.config.publicUrl}/api/g/${encodeURIComponent(code)}`
+    if (session === null) {
+      const cached = await readPublicCache(deps, key)
+      if (cached !== null) return jsonText(c, withViewer(cached, { kind: "signed-out" }))
+    }
+    const giveaway = await deps.accounts.findGiveawayByCode(code)
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    const room = deps.rooms.get(giveaway.id)
+    const summary = await room.summary()
+    const publicText = JSON.stringify(publicGiveaway(deps, giveaway, summary))
+    if (session === null) {
+      await writePublicCache(deps, key, publicText)
+      return jsonText(c, withViewer(publicText, { kind: "signed-out" }))
+    }
+    const me = await viewerState(deps, giveaway, session, summary)
+    return jsonText(c, withViewer(publicText, me))
   })
 
   app.get("/api/g/:code/pending/:ticket", async (c) => {
@@ -54,17 +51,13 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     // The ticket travels in the page URL, which a viewer may share; only the queued browser's cookie
     // proves the ticket is theirs. Any other browser gets "dropped" (enter again) and the queued result
     // stays for its owner, so a copied URL cannot take over the entry or its viewer session.
-    const pending = await readPendingEntry(c, deps)
-    if (
-      pending === null
-      || pending.giveawayId !== giveaway.id
-      || !(await timingSafeEqual(pending.ticket, ticket))
-    ) {
+    const pending = await readPendingEntry(c, deps, giveaway)
+    if (pending === null || !(await timingSafeEqual(pending.ticket, ticket))) {
       return c.json(pendingOutcome({ kind: "gone" }, ticket))
     }
     const polled = await deps.queue.poll(ticket)
     if (polled.kind === "done") {
-      endPendingEntry(c)
+      endPendingEntry(c, giveaway)
       if (polled.userId !== null) {
         await startViewerSession(c, deps, { platform: giveaway.platform, userId: polled.userId })
       }
@@ -119,11 +112,60 @@ async function pickOf(
   )
 }
 
-async function viewerState(c: Context, deps: AppDeps, giveaway: Giveaway): Promise<ViewerState> {
-  const session = await readViewerSession(c, deps)
-  if (session === null) return { kind: "signed-out" }
+function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: RoomSummary): PublicGiveaway {
+  return {
+    code: giveaway.code,
+    title: giveaway.title,
+    prize: giveaway.prize,
+    streamerName: giveaway.streamerName,
+    rules: giveaway.rules,
+    status: summary.status,
+    closesAt: summary.closesAt,
+    claimSeconds: giveaway.claimSeconds,
+    entrantCount: summary.entrantCount,
+    poll: {
+      intervalMs: deps.config.queuePollSeconds * 1000,
+      maxMs: deps.config.queuePollMaxSeconds * 1000,
+    },
+  }
+}
+
+// A cache that fails is a cache that missed: the page still loads from the account store and the room.
+async function readPublicCache(deps: AppDeps, key: string): Promise<string | null> {
+  if (deps.config.publicGiveawayCacheSeconds === 0) return null
+  try {
+    return await deps.publicCache.read(key)
+  } catch (error) {
+    console.warn("public cache read failed", { errorClass: errorClass(error) })
+    return null
+  }
+}
+
+async function writePublicCache(deps: AppDeps, key: string, text: string): Promise<void> {
+  if (deps.config.publicGiveawayCacheSeconds === 0) return
+  try {
+    await deps.publicCache.write(key, text, deps.config.publicGiveawayCacheSeconds)
+  } catch (error) {
+    console.warn("public cache write failed", { errorClass: errorClass(error) })
+  }
+}
+
+// `publicText` is the JSON of an object this module wrote, so its last character closes that object.
+function withViewer(publicText: string, me: ViewerState): string {
+  return `${publicText.slice(0, -1)},"me":${JSON.stringify(me)}}`
+}
+
+function jsonText(c: Context, text: string): Response {
+  return c.body(text, 200, { "Content-Type": "application/json" })
+}
+
+async function viewerState(
+  deps: AppDeps,
+  giveaway: Giveaway,
+  session: ViewerSession,
+  summary: RoomSummary,
+): Promise<ViewerState> {
   const room = deps.rooms.get(giveaway.id)
-  const summary = await room.summary()
   if (summary.status === "drawn") {
     const pick = await pickOf(deps, giveaway, session)
     if (pick !== undefined) {

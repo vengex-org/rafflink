@@ -10,7 +10,12 @@ import type { Instant } from "../ports.ts"
 
 export type CreateConfig = Pick<
   ResolvedConfig,
-  "claimKeywordMaxLength" | "defaultClaimSeconds" | "titleMaxLength" | "prizeMaxLength"
+  | "claimKeywordMaxLength"
+  | "ticketsPerGroupMax"
+  | "defaultClaimSeconds"
+  | "claimSecondsMax"
+  | "titleMaxLength"
+  | "prizeMaxLength"
 >
 
 /** A create request that passed the boundary. */

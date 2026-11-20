@@ -74,6 +74,28 @@ describe("repository", () => {
     expect(headers).toContain(`script-src 'self' 'sha256-${hash}';`)
   }, 60_000)
 
+  it("builds a robots.txt that keeps crawlers off the API and the streamer pages and names no sitemap", async () => {
+    buildWeb()
+    const robots = await Bun.file(new URL("robots.txt", dist)).text()
+
+    expect(robots).toContain("Allow: /\n")
+    for (const path of ["/api/", "/auth/", "/dashboard", "/live/", "/overlay/", "/admin"]) {
+      expect(robots).toContain(`Disallow: ${path}\n`)
+    }
+    expect(robots).not.toContain("Sitemap")
+  }, 60_000)
+
+  it("writes headers for every static path: noindex everywhere but the home page, HSTS and no-cache", async () => {
+    buildWeb()
+    const headers = await Bun.file(new URL("_headers", dist)).text()
+
+    expect(headers).toStartWith("/*\n")
+    expect(headers).toContain("  X-Robots-Tag: noindex, nofollow\n")
+    expect(headers).toContain("\n/\n  ! X-Robots-Tag\n")
+    expect(headers).toContain("  Strict-Transport-Security: max-age=31536000; includeSubDomains\n")
+    expect(headers).toContain("  Cache-Control: no-cache\n")
+  }, 60_000)
+
   // The rewriter finds its tags by name, so a tag the build drops or reorders would silently keep the home text.
   it("keeps every tag the page rewriter writes in the built page", async () => {
     buildWeb()

@@ -11,7 +11,7 @@ import { AccountStore } from "./account-store.ts"
 import { streamerTokenAad, type StreamerTokenDeps } from "./streamer-token.ts"
 import { validateStreamerTokens } from "./validate-streamer-tokens.ts"
 
-const REDIRECT_URI = "http://localhost/callback"
+const redirectUri = "http://localhost/callback"
 const sealKey = `test:${toBase64(new Uint8Array(32).fill(3))}`
 
 let fake: FakeTwitch
@@ -82,11 +82,11 @@ async function storeStreamer(id: string, userId: string, sealedAs = userId): Pro
   fake.control.signInAs(userId)
   const { twitch } = deps()
   const authorize = await fetch(
-    twitch.authorizeUrl({ state: "s", nonce: "n", scopes: ["openid"], redirectUri: REDIRECT_URI }),
+    twitch.authorizeUrl({ state: "s", nonce: "n", scopes: ["openid"], redirectUri }),
     { redirect: "manual" },
   )
   const code = new URL(authorize.headers.get("location") ?? "").searchParams.get("code")
-  const tokens = await twitch.exchangeCode(code ?? "", REDIRECT_URI)
+  const tokens = await twitch.exchangeCode(code ?? "", redirectUri)
   await accounts.signInStreamer({
     id,
     platform: "twitch",

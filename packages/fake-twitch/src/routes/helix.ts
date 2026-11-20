@@ -4,8 +4,8 @@ import { helixError, scriptedHelixFailure } from "../lib/responses.ts"
 import { pairKey, requireUser, type FakeState, type FakeUser, type Role } from "../state.ts"
 
 /** Twitch caps `first` on paginated endpoints at 100. */
-const MAX_PAGE_SIZE = 100
-const DEFAULT_PAGE_SIZE = 20
+const maxPageSize = 100
+const defaultPageSize = 20
 
 const ROLE_ENDPOINTS: Record<Role, { scope: string; failure: "vips" | "moderators" }> = {
   vip: { scope: "channel:read:vips", failure: "vips" },
@@ -91,11 +91,11 @@ export function helixRoutes(state: FakeState, eventSubRoutes: Hono<HelixEnv>): H
 
     const ids = c.req.queries("id") ?? []
     const logins = (c.req.queries("login") ?? []).map((login) => login.toLowerCase())
-    if (ids.length + logins.length > MAX_PAGE_SIZE) {
+    if (ids.length + logins.length > maxPageSize) {
       return helixError(
         c,
         400,
-        `The combined number of id and login parameters may not exceed ${MAX_PAGE_SIZE}`,
+        `The combined number of id and login parameters may not exceed ${maxPageSize}`,
       )
     }
     const { userId } = c.get("token")
@@ -135,9 +135,9 @@ function listRole(c: Context<HelixEnv>, state: FakeState, role: Role) {
   }
 
   const firstParam = c.req.query("first")
-  const first = firstParam === undefined ? DEFAULT_PAGE_SIZE : Number(firstParam)
-  if (!Number.isInteger(first) || first < 1 || first > MAX_PAGE_SIZE) {
-    return helixError(c, 400, `The first query parameter must be between 1 and ${MAX_PAGE_SIZE}`)
+  const first = firstParam === undefined ? defaultPageSize : Number(firstParam)
+  if (!Number.isInteger(first) || first < 1 || first > maxPageSize) {
+    return helixError(c, 400, `The first query parameter must be between 1 and ${maxPageSize}`)
   }
   const afterParam = c.req.query("after")
   const offset = afterParam === undefined ? 0 : Number(afterParam)

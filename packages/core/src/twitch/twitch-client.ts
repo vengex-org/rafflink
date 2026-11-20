@@ -135,7 +135,7 @@ export class TwitchClient {
       if (error instanceof TwitchInvalid && error.status === 404) return null
       throw error
     }
-    return TIER_GROUPS[tier]
+    return tierGroups[tier]
   }
 
   async follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
@@ -159,11 +159,11 @@ export class TwitchClient {
     logins: readonly string[],
   ): Promise<ReadonlyMap<string, string>> {
     const ids = new Map<string, string>()
-    for (let from = 0; from < logins.length; from += HELIX_MAX_PAGE_SIZE) {
+    for (let from = 0; from < logins.length; from += helixMaxPageSize) {
       const users = await this.helix(
         "users",
         "/helix/users",
-        { login: logins.slice(from, from + HELIX_MAX_PAGE_SIZE) },
+        { login: logins.slice(from, from + helixMaxPageSize) },
         appToken,
         parseUserLogins,
       )
@@ -258,7 +258,7 @@ export class TwitchClient {
   private async verifiedPayload(idToken: string): Promise<JWTPayload> {
     try {
       const { payload } = await jwtVerify(idToken, this.jwks, {
-        issuer: ID_TOKEN_ISSUER,
+        issuer: idTokenIssuer,
         audience: this.config.twitchClientId,
         algorithms: ["RS256"],
         requiredClaims: ["exp", "sub", "nonce"],
@@ -280,7 +280,7 @@ export class TwitchClient {
     do {
       const query: Record<string, string> = {
         broadcaster_id: broadcasterId,
-        first: String(HELIX_MAX_PAGE_SIZE),
+        first: String(helixMaxPageSize),
       }
       if (cursor !== null) query.after = cursor
       const page = await this.helix(endpoint, path, query, accessToken, parseRolePage)
@@ -368,12 +368,12 @@ export class TwitchClient {
 }
 
 /** The `iss` of every Twitch `id_token`, whichever origin serves the keys. */
-const ID_TOKEN_ISSUER = "https://id.twitch.tv/oauth2"
+const idTokenIssuer = "https://id.twitch.tv/oauth2"
 
 /** Twitch caps `first` at 100 on its paginated endpoints. */
-const HELIX_MAX_PAGE_SIZE = 100
+const helixMaxPageSize = 100
 
-const TIER_GROUPS: Readonly<Record<Tier, SubscriptionGroup>> = {
+const tierGroups: Readonly<Record<Tier, SubscriptionGroup>> = {
   "1000": "sub_t1",
   "2000": "sub_t2",
   "3000": "sub_t3",

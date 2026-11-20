@@ -12,7 +12,7 @@ import {
 } from "../components/icons.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
-import { errorClass } from "../lib/use-load.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { AudienceStep, GiveawayStep, ReviewStep, TimingStep } from "./create-steps.tsx"
 import {
   initialValues,

@@ -1,4 +1,4 @@
-import { errorClass } from "./use-load.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
 
 // Storage is missing or refused in private mode and some embedded browsers; the app works without it, so a failure is logged once per call and absorbed.
 

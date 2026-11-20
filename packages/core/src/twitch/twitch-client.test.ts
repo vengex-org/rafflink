@@ -16,7 +16,7 @@ import {
   type TwitchFetch,
 } from "./twitch-client.ts"
 
-const REDIRECT_URI = "http://localhost/callback"
+const redirectUri = "http://localhost/callback"
 const viewer: FakeUser = {
   id: "100",
   login: "viewer",
@@ -79,11 +79,11 @@ function configFor(origin: string, overrides: Record<string, string> = {}): Reso
 async function signIn(userId: string, scopes: Scopes, nonce = "nonce-1") {
   fake.control.signInAs(userId)
   const authorize = await fetch(
-    client.authorizeUrl({ state: "state-1", nonce, scopes, redirectUri: REDIRECT_URI }),
+    client.authorizeUrl({ state: "state-1", nonce, scopes, redirectUri }),
     { redirect: "manual" },
   )
   const code = new URL(authorize.headers.get("location") ?? "").searchParams.get("code")
-  return client.exchangeCode(code ?? "", REDIRECT_URI)
+  return client.exchangeCode(code ?? "", redirectUri)
 }
 
 function callsTo(path: string): number {
@@ -111,14 +111,14 @@ describe("authorizeUrl", () => {
         state: "s",
         nonce: "n",
         scopes: ["openid", "user:read:follows"],
-        redirectUri: REDIRECT_URI,
+        redirectUri,
       }),
     )
     expect(url.origin).toBe(server.url.origin)
     expect(url.pathname).toBe("/oauth2/authorize")
     expect(Object.fromEntries(url.searchParams)).toEqual({
       client_id: "client-1",
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid user:read:follows",
       state: "s",
@@ -140,6 +140,27 @@ describe("exchangeCode and verifyIdToken", () => {
     const error = await rejection(client.verifyIdToken(tokens.idToken ?? "", "nonce-2"))
 
     expect(error).toBeInstanceOf(TwitchInvalid)
+  })
+
+  it("rejects an id_token with a bad signature, a wrong issuer or an expired exp", async () => {
+    for (const fault of ["bad-signature", "wrong-issuer", "expired"] as const) {
+      fake.control.tamperNextIdToken(fault)
+      const tokens = await signIn("100", VIEWER_SCOPES, "nonce-1")
+
+      const error = await rejection(client.verifyIdToken(tokens.idToken ?? "", "nonce-1"))
+
+      expect(error).toBeInstanceOf(TwitchInvalid)
+      expect(error).toMatchObject({ endpoint: "id-token" })
+    }
+  })
+
+  it("accepts an id_token again after a tampered one was used up", async () => {
+    fake.control.tamperNextIdToken("expired")
+    await signIn("100", VIEWER_SCOPES, "nonce-1")
+
+    const tokens = await signIn("100", VIEWER_SCOPES, "nonce-1")
+
+    expect(await client.verifyIdToken(tokens.idToken ?? "", "nonce-1")).toEqual({ userId: "100" })
   })
 
   it("rejects an id_token issued for another client id", async () => {
@@ -189,7 +210,7 @@ describe("exchangeCode and verifyIdToken", () => {
   it("classifies a token endpoint 429 as rate limited and does not retry it", async () => {
     fake.control.failNext("token", 429, 1)
 
-    expect(await rejection(client.exchangeCode("code", REDIRECT_URI))).toBeInstanceOf(
+    expect(await rejection(client.exchangeCode("code", redirectUri))).toBeInstanceOf(
       TwitchRateLimited,
     )
     expect(callsTo("/oauth2/token")).toBe(1)
@@ -198,7 +219,7 @@ describe("exchangeCode and verifyIdToken", () => {
   it("classifies a token endpoint 5xx as unavailable and does not retry it", async () => {
     fake.control.failNext("token", 502, 1)
 
-    const error = await rejection(client.exchangeCode("code", REDIRECT_URI))
+    const error = await rejection(client.exchangeCode("code", redirectUri))
 
     expect(error).toBeInstanceOf(TwitchUnavailable)
     expect(error).toMatchObject({ endpoint: "token", status: 502 })
@@ -206,7 +227,7 @@ describe("exchangeCode and verifyIdToken", () => {
   })
 
   it("classifies a rejected code as invalid", async () => {
-    const error = await rejection(client.exchangeCode("never-issued", REDIRECT_URI))
+    const error = await rejection(client.exchangeCode("never-issued", redirectUri))
 
     expect(error).toBeInstanceOf(TwitchInvalid)
     expect(error).toMatchObject({
@@ -230,7 +251,7 @@ describe("exchangeCode and verifyIdToken", () => {
         fetch,
       )
 
-      const error = await rejection(slow.exchangeCode("code", REDIRECT_URI))
+      const error = await rejection(slow.exchangeCode("code", redirectUri))
 
       expect(error).toBeInstanceOf(TwitchUnavailable)
       expect(error).toMatchObject({ endpoint: "token", status: null })
@@ -589,7 +610,7 @@ async function openSession(): Promise<Session> {
 }
 
 describe("authorizeUrl force_verify", () => {
-  const params = { state: "s", nonce: "n", scopes: ["openid"], redirectUri: REDIRECT_URI } as const
+  const params = { state: "s", nonce: "n", scopes: ["openid"], redirectUri } as const
 
   it("leaves force_verify out by default and sets it when asked", () => {
     const plain = new URL(client.authorizeUrl(params))

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { errorClass } from "./use-load.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
 
 /** Runs one request at a time and keeps the message for its outcome, for a polite live region; the page shows it in the current language. */
 export function useAction() {

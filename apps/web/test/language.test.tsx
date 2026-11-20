@@ -118,7 +118,6 @@ describe("language", () => {
     for (const [entrantCount, text] of counts) {
       mockFetch({
         "GET /api/g/ABCDE": () => ok({ ...giveaway, entrantCount }),
-        "GET /api/g/ABCDE/me": () => ok({ kind: "signed-out" }),
       })
       const view = renderApp("/ABCDE")
       const found = await view.findByText(

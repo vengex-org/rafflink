@@ -51,9 +51,73 @@ describe("resolveConfig", () => {
       ...required,
       DEFAULT_CLAIM_SECONDS: "60",
       DEV_FAKE_TWITCH: "true",
+      PUBLIC_URL: "http://localhost:3000",
     })
     expect(config.defaultClaimSeconds).toBe(60)
     expect(config.devFakeTwitch).toBe(true)
+  })
+
+  it("refuses the fake Twitch unless the public URL is a localhost or 127.0.0.1 origin", () => {
+    for (const local of ["http://localhost", "http://localhost:3000", "http://127.0.0.1:8787"]) {
+      expect(
+        resolveConfig({ ...required, DEV_FAKE_TWITCH: "true", PUBLIC_URL: local }).devFakeTwitch,
+      ).toBe(true)
+    }
+    for (const remote of [
+      "https://rafflink.app",
+      "http://localhost.evil.example",
+      "http://192.168.1.5:3000",
+      "http://[::1]:3000",
+    ]) {
+      expect(failure({ ...required, DEV_FAKE_TWITCH: "true", PUBLIC_URL: remote })).toMatchObject({
+        env: "DEV_FAKE_TWITCH",
+        reason: "fake-twitch-needs-local-public-url",
+      })
+    }
+    expect(resolveConfig({ ...required, PUBLIC_URL: "https://rafflink.app" }).devFakeTwitch).toBe(
+      false,
+    )
+  })
+
+  it("rejects a processing timeout that does not exceed the Twitch timeout", () => {
+    for (const seconds of ["4", "5"]) {
+      expect(
+        failure({
+          ...required,
+          TWITCH_TIMEOUT_MS: "5000",
+          QUEUE_PROCESSING_TIMEOUT_SECONDS: seconds,
+        }),
+      ).toMatchObject({
+        env: "QUEUE_PROCESSING_TIMEOUT_SECONDS",
+        reason: "not-above-twitch-timeout",
+      })
+    }
+    expect(
+      resolveConfig({
+        ...required,
+        TWITCH_TIMEOUT_MS: "5000",
+        QUEUE_PROCESSING_TIMEOUT_SECONDS: "6",
+      }).queueProcessingTimeoutSeconds,
+    ).toBe(6)
+  })
+
+  it("reads the limits of tickets, claim time, winners and the public cache", () => {
+    const config = resolveConfig(required)
+
+    expect(config).toMatchObject({
+      ticketsPerGroupMax: 1000,
+      claimSecondsMax: 86_400,
+      drawMaxWinners: 100,
+      publicGiveawayCacheSeconds: 5,
+      queueProcessingTimeoutSeconds: 60,
+    })
+    expect(resolveConfig({ ...required, PUBLIC_GIVEAWAY_CACHE_SECONDS: "0" })).toMatchObject({
+      publicGiveawayCacheSeconds: 0,
+    })
+    expect(failure({ ...required, DRAW_MAX_WINNERS: "0" })).toMatchObject({
+      env: "DRAW_MAX_WINNERS",
+      reason: "out-of-range",
+    })
   })
 
   it("names each missing required key", () => {

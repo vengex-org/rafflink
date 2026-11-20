@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { pollEntry, type EntryResult } from "../api/client.ts"
-import { errorClass } from "./use-load.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
 import type { PollTiming } from "./poll-timing.ts"
 
 /** An entry the page stopped waiting for. */
@@ -25,6 +25,7 @@ export function useEntryResult(
         if (!current) return
         if (Date.now() >= deadline) {
           setView({ kind: "timed-out" })
+          forgetEntryInUrl()
           return
         }
         try {
@@ -32,6 +33,7 @@ export function useEntryResult(
           if (!current) return
           if (result.kind !== "pending") {
             setView(result)
+            forgetEntryInUrl()
             return
           }
         } catch (error) {
@@ -45,6 +47,13 @@ export function useEntryResult(
   }, [code, ticket, poll.intervalMs, poll.maxMs])
 
   return view
+}
+
+// The ticket in the address is spent once the poll ends, so a reload must not poll it again.
+function forgetEntryInUrl(): void {
+  const url = new URL(window.location.href)
+  for (const name of ["entry", "ticket", "reason"]) url.searchParams.delete(name)
+  window.history.replaceState(window.history.state, "", url)
 }
 
 function sleep(ms: number): Promise<void> {

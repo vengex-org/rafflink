@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
-import { errorClass } from "../lib/use-load.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { CheckIcon, CopyIcon } from "./icons.tsx"
 
 type CopyState = "idle" | "copied" | "failed"

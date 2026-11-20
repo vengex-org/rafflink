@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import type { EntrantsDelta } from "@rafflink/core/room/giveaway-room"
 import type { Entrant } from "@rafflink/core/room/rows"
 import { getEntrants } from "../api/client.ts"
-import { errorClass } from "./use-load.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
 
 export interface EntrantsState {
   /** In the order they entered. */

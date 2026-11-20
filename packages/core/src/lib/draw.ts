@@ -24,14 +24,16 @@ export async function drawWinners(
     throw new RangeError("count must be a non-negative safe integer")
   }
   const key = await importSeed(seed)
-  const sorted = sortEntries(entries)
-  const picked: Identity[] = []
+  // Sorted and totalled once; each pick leaves the list and the total, so a pick costs one pass, not a rebuild.
+  const candidates = sortEntries(entries)
+  let total = ticketTotal(candidates)
   const winners: Winner[] = []
-  for (let n = 0; n < count; n++) {
-    const winner = await pick(key, n, sorted, picked)
-    if (winner === null) break
-    picked.push(winner)
-    winners.push({ n, ...winner })
+  for (let n = 0; n < count && total > 0n; n++) {
+    const index = await sampleIndex(key, n, total)
+    const [taken] = candidates.splice(candidateAt(candidates, index), 1)
+    if (taken === undefined) throw new Error("ticket index outside the ticket total")
+    total -= BigInt(taken.tickets)
+    winners.push({ n, platform: taken.platform, platformUserId: taken.platformUserId })
   }
   return winners
 }
@@ -92,18 +94,26 @@ async function pick(
 ): Promise<Identity | null> {
   const taken = new Set(excluded.map(identityKey))
   const candidates = sorted.filter((entry) => !taken.has(identityKey(entry)))
-  const total = candidates.reduce((sum, entry) => sum + BigInt(entry.tickets), 0n)
+  const total = ticketTotal(candidates)
   if (total === 0n) return null
 
-  const index = await sampleIndex(key, n, total)
+  const candidate = candidates[candidateAt(candidates, await sampleIndex(key, n, total))]
+  if (candidate === undefined) throw new Error("ticket index outside the ticket total")
+  return { platform: candidate.platform, platformUserId: candidate.platformUserId }
+}
+
+function ticketTotal(candidates: readonly DrawEntry[]): bigint {
+  return candidates.reduce((sum, entry) => sum + BigInt(entry.tickets), 0n)
+}
+
+// The position of the candidate whose run of tickets holds `index`; -1 when the index is past the total.
+function candidateAt(candidates: readonly DrawEntry[], index: bigint): number {
   let upTo = 0n
-  for (const candidate of candidates) {
+  for (const [position, candidate] of candidates.entries()) {
     upTo += BigInt(candidate.tickets)
-    if (index < upTo) {
-      return { platform: candidate.platform, platformUserId: candidate.platformUserId }
-    }
+    if (index < upTo) return position
   }
-  throw new Error("ticket index outside the ticket total")
+  return -1
 }
 
 // Round 0 signs the 8-byte `n`; a further round (all words rejected) appends the round number.

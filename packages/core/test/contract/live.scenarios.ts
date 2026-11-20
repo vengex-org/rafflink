@@ -1,7 +1,9 @@
 import { expect } from "bun:test"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
-import { moderatorsPath, scenario, vipsPath, type World } from "./world.ts"
+import { moderatorsPath, publicOrigin, scenario, vipsPath, type World } from "./world.ts"
+
+const upgrade = { upgrade: "websocket", connection: "Upgrade" }
 
 export function liveScenarios(context: ContractContext): void {
   scenario(context, "a viewer on the VIP list enters with the VIP tickets", (world) =>
@@ -33,6 +35,7 @@ export function liveScenarios(context: ContractContext): void {
     const giveaway = await world.createGiveaway(target)
     const { messages } = world.openSocket(new URL(`/api/live/${giveaway.id}`, target.url), {
       cookie: giveaway.streamer.cookieHeader(),
+      origin: publicOrigin,
     })
     await world.waitFor(() => messages.length >= 1, "the first snapshot")
 
@@ -99,6 +102,7 @@ export function liveScenarios(context: ContractContext): void {
       const giveaway = await world.createGiveaway(target)
       const { messages } = world.openSocket(new URL(`/api/live/${giveaway.id}`, target.url), {
         cookie: giveaway.streamer.cookieHeader(),
+        origin: publicOrigin,
       })
       await world.waitFor(() => messages.length >= 1, "the first snapshot")
 
@@ -138,6 +142,7 @@ export function liveScenarios(context: ContractContext): void {
       const giveaway = await world.createGiveaway(target)
       const { messages } = world.openSocket(new URL(`/api/live/${giveaway.id}`, target.url), {
         cookie: giveaway.streamer.cookieHeader(),
+        origin: publicOrigin,
       })
       await world.waitFor(() => messages.length >= 1, "the first snapshot")
       await world.enter(target, giveaway.code, users.viewer.id)
@@ -200,6 +205,32 @@ export function liveScenarios(context: ContractContext): void {
 
       expect(owner.overlayToken).toBe(giveaway.overlayToken)
       expect(overlay.overlayToken).toBeUndefined()
+    },
+  )
+
+  scenario(
+    context,
+    "a WebSocket upgrade from another origin is refused on the live and overlay routes",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+      const live = new URL(`/api/live/${giveaway.id}`, target.url)
+      const overlay = new URL(`/api/overlay/${giveaway.id}/${giveaway.overlayToken}`, target.url)
+      const cookie = giveaway.streamer.cookieHeader()
+      const evil = { ...upgrade, origin: "https://evil.example" }
+
+      const statuses = [
+        (await fetch(live, { headers: { ...evil, cookie } })).status,
+        (await fetch(live, { headers: { ...upgrade, cookie } })).status,
+        (await fetch(overlay, { headers: evil })).status,
+      ]
+      const { messages } = world.openSocket(overlay)
+
+      expect(statuses).toEqual([403, 403, 403])
+      await world.waitFor(
+        () => messages.length >= 1,
+        "the overlay snapshot without an Origin header",
+      )
     },
   )
 

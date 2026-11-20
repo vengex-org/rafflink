@@ -205,16 +205,20 @@ export class World {
       TOKEN_SEAL_KEYS: `contract:${toBase64(new Uint8Array(32).fill(3))}`,
       SESSION_SECRET: "contract-session-secret",
       ADMIN_TWITCH_IDS: users.streamer.id,
-      PUBLIC_URL: "http://localhost",
+      PUBLIC_URL: publicOrigin,
       TWITCH_ID_BASE_URL: this.twitch.origin,
       TWITCH_HELIX_BASE_URL: this.twitch.origin,
       EVENTSUB_URL: `${this.twitch.origin.replace(/^http/, "ws")}${eventSubPath}`,
       TWITCH_TIMEOUT_MS: "2000",
       HELIX_RETRY_DELAY_MS: "0",
       ENTRY_WRITE_RETRY_DELAYS_MS: "0",
+      PUBLIC_GIVEAWAY_CACHE_SECONDS: "0",
     }
   }
 }
+
+/** The origin of `PUBLIC_URL` in the contract environment, which a browser sends as `Origin`. */
+export const publicOrigin = "http://localhost"
 
 export function callbackOutcome(response: Response): Omit<EntryResult, "viewer"> {
   const query = new URL(response.headers.get("location") ?? "", "http://localhost").searchParams

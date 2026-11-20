@@ -6,8 +6,15 @@ import { BunSqliteSyncSql } from "../sqlite-bun.ts"
 import { applyMigrations } from "../room/migrate.ts"
 import type { EntryAttempt } from "../viewer/outcome.ts"
 import { queueMigrations } from "./migrations.ts"
-import { nextQueuedSql, oldestDoneSql, oldestQueuedSql, expiredQueuedSql } from "./queries.ts"
-import { TokenQueue, type QueuedCode } from "./token-queue.ts"
+import {
+  claimQueuedSql,
+  expiredQueuedSql,
+  oldestClaimSql,
+  oldestDoneSql,
+  oldestQueuedSql,
+  releaseStaleSql,
+} from "./queries.ts"
+import { TokenQueue, type PollOutcome, type QueuedCode } from "./token-queue.ts"
 
 const config = resolveConfig({
   TWITCH_CLIENT_ID: "client",
@@ -21,6 +28,7 @@ const config = resolveConfig({
   QUEUE_MAX_RATE_PER_SECOND: "8",
   QUEUE_COOLDOWN_SECONDS: "30",
   QUEUE_CODE_MAX_AGE_SECONDS: "300",
+  QUEUE_PROCESSING_TIMEOUT_SECONDS: "60",
 })
 
 const entered: EntryAttempt = {
@@ -66,17 +74,22 @@ afterEach(() => {
 })
 
 describe("TokenQueue results", () => {
-  it("keeps a result until it is polled and then deletes the row", async () => {
-    const { queue, db } = setup()
+  it("keeps a result readable until it ages out, so a lost response can be fetched again", async () => {
+    const { queue, db, clock } = setup()
     const { ticket } = queue.enqueue(item("c1"), "unavailable")
 
     expect(queue.poll(ticket)).toEqual({ kind: "waiting" })
     await queue.onAlarm()
+
+    const done: PollOutcome = { kind: "done", outcome: entered.outcome, userId: "1" }
+    expect(queue.poll(ticket)).toEqual(done)
+    expect(queue.poll(ticket)).toEqual(done)
     expect(rowCount(db)).toBe(1)
 
-    expect(queue.poll(ticket)).toEqual({ kind: "done", outcome: entered.outcome, userId: "1" })
-    expect(rowCount(db)).toBe(0)
+    clock.advance(config.queueCodeMaxAgeSeconds * 1000 + 1)
+    await queue.onAlarm()
     expect(queue.poll(ticket)).toEqual({ kind: "gone" })
+    expect(queue.stats().abandonedResults).toBe(0)
   })
 
   it("reports an unknown ticket as gone", () => {
@@ -167,8 +180,99 @@ describe("TokenQueue age limit", () => {
   })
 })
 
+describe("TokenQueue claims", () => {
+  it("takes a code once while an earlier pass still waits for Twitch", async () => {
+    const release: (() => void)[] = []
+    const { queue, calls } = setup(
+      () =>
+        new Promise((resolve) => {
+          release.push(() => resolve(entered))
+        }),
+    )
+    const { ticket } = queue.enqueue(item("c1"), "unavailable")
+
+    const first = queue.onAlarm()
+    const second = queue.onAlarm()
+    await second
+
+    expect(calls).toHaveLength(1)
+    expect(queue.poll(ticket)).toEqual({ kind: "waiting" })
+    release[0]?.()
+    await first
+    expect(queue.poll(ticket)).toMatchObject({ kind: "done" })
+  })
+
+  it("returns a claim whose pass never reported to the queue after the processing timeout", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    let hang = true
+    const { queue, clock, calls } = setup(() =>
+      hang ? new Promise<EntryAttempt>(() => {}) : Promise.resolve(entered),
+    )
+    const { ticket } = queue.enqueue(item("c1", "g5"), "unavailable")
+    void queue.onAlarm()
+    hang = false
+
+    clock.advance(config.queueProcessingTimeoutSeconds * 1000)
+    await queue.onAlarm()
+    expect(calls).toHaveLength(1)
+
+    clock.advance(1)
+    await queue.onAlarm()
+    expect(calls).toHaveLength(2)
+    expect(queue.poll(ticket)).toMatchObject({ kind: "done" })
+    expect(warn).toHaveBeenCalledWith("queue claim released", { giveawayId: "g5" })
+    warn.mockRestore()
+  })
+
+  it("lets a pass whose claim was released write nothing", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const finish: ((attempt: EntryAttempt) => void)[] = []
+    let first = true
+    const { queue, clock } = setup(() => {
+      if (!first) return Promise.resolve(entered)
+      first = false
+      return new Promise<EntryAttempt>((resolve) => finish.push(resolve))
+    })
+    const { ticket } = queue.enqueue(item("c1"), "unavailable")
+    const stale = queue.onAlarm()
+    clock.advance(config.queueProcessingTimeoutSeconds * 1000 + 1)
+    await queue.onAlarm()
+
+    finish[0]?.({ kind: "final", outcome: { kind: "closed" }, userId: "stale" })
+    await stale
+
+    expect(queue.poll(ticket)).toEqual({ kind: "done", outcome: entered.outcome, userId: "1" })
+    warn.mockRestore()
+  })
+
+  it("drops a released claim that is older than the maximum age", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const { queue, db, clock } = setup(() => new Promise<EntryAttempt>(() => {}))
+    queue.enqueue(item("c1"), "unavailable")
+    void queue.onAlarm()
+    clock.advance(config.queueCodeMaxAgeSeconds * 1000 + 1)
+
+    await queue.onAlarm()
+
+    expect(rowCount(db)).toBe(0)
+    expect(queue.stats().dropped).toBe(1)
+    warn.mockRestore()
+  })
+
+  it("wakes when the oldest claim times out", async () => {
+    const { queue, alarm, clock } = setup(() => new Promise<EntryAttempt>(() => {}))
+    queue.enqueue(item("c1"), "unavailable")
+    const claimedAt = clock.now()
+    void queue.onAlarm()
+
+    await queue.onAlarm()
+
+    expect(alarm.at).toBe(claimedAt + config.queueProcessingTimeoutSeconds * 1000 + 1)
+  })
+})
+
 describe("TokenQueue rate", () => {
-  it("processes at most the current rate of codes per pass, oldest first", async () => {
+  it("takes at most the current rate of codes per pass, the oldest ones", async () => {
     const { queue, clock, calls } = setup()
     for (const code of ["c1", "c2", "c3", "c4", "c5", "c6"]) {
       queue.enqueue(item(code), "unavailable")
@@ -177,7 +281,7 @@ describe("TokenQueue rate", () => {
 
     await queue.onAlarm()
 
-    expect(calls.map((call) => call.code)).toEqual(["c1", "c2", "c3", "c4"])
+    expect(calls.map((call) => call.code).toSorted()).toEqual(["c1", "c2", "c3", "c4"])
     expect(queue.stats().queued).toBe(2)
   })
 
@@ -349,7 +453,9 @@ describe("TokenQueue alarm", () => {
 
 describe("token queue queries", () => {
   const cases: readonly [string, string, readonly (string | number)[]][] = [
-    ["the next queued codes", nextQueuedSql, [4]],
+    ["the claim of the next queued codes", claimQueuedSql, [1, 4]],
+    ["the stale claims", releaseStaleSql, [0]],
+    ["the oldest claim", oldestClaimSql, []],
     ["the oldest queued row", oldestQueuedSql, []],
     ["the oldest finished result", oldestDoneSql, []],
     ["the expired codes", expiredQueuedSql, [0]],

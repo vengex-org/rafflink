@@ -47,7 +47,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
   })
 
   app.get(streamerCallbackPath, async (c) => {
-    const saved = await takeOAuthState(c, deps, "streamer")
+    const saved = await takeOAuthState(c, deps, "streamer", c.req.query("state"))
     const refused = refusalCode(c.req.query("error"))
     if (refused !== null) return c.redirect(`/?error=${refused}`)
     const code = c.req.query("code")
@@ -105,7 +105,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
   })
 
   app.get(viewerCallbackPath, async (c) => {
-    const saved = await takeOAuthState(c, deps, "viewer")
+    const saved = await takeOAuthState(c, deps, "viewer", c.req.query("state"))
     const refused = refusalCode(c.req.query("error"))
     if (refused !== null)
       return c.redirect(`${pagePath(saved?.giveawayCode ?? null)}?error=${refused}`)
@@ -127,7 +127,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
     const queued = async (cause: EnqueueCause) => {
       const enqueued = await deps.queue.enqueue(item, cause)
       cooldown.until = Math.max(cooldown.until, enqueued.cooldownUntil)
-      await startPendingEntry(c, deps, { ticket: enqueued.ticket, giveawayId: giveaway.id })
+      await startPendingEntry(c, deps, giveaway, enqueued.ticket)
       return c.redirect(returnTo(giveaway.code, { kind: "pending", ticket: enqueued.ticket }))
     }
     if (deps.clock.now() < cooldown.until) return queued("cooldown")

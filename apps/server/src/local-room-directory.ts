@@ -1,3 +1,4 @@
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { SQLiteError, type Database } from "bun:sqlite"
 import { mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
@@ -123,7 +124,7 @@ export class LocalRoomDirectory implements RoomDirectory {
     } catch (error) {
       console.error("room alarm failed", {
         giveawayId,
-        errorClass: error instanceof Error ? error.constructor.name : typeof error,
+        errorClass: errorClass(error),
       })
     }
   }

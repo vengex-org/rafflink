@@ -135,6 +135,22 @@ describe("parseCreateGiveaway", () => {
     ["an infinite claim time", { ...valid, claimSeconds: Infinity }, claimSecondsIssue],
     ["a text claim time", { ...valid, claimSeconds: "300" }, claimSecondsIssue],
     [
+      "a claim time over the maximum",
+      { ...valid, claimSeconds: config.claimSecondsMax + 1 },
+      { field: "claimSeconds", code: "too-large" },
+    ],
+    [
+      "a ticket count over the maximum",
+      {
+        ...valid,
+        rules: {
+          ...validRules,
+          tickets: { ...validRules.tickets, sub_t3: config.ticketsPerGroupMax + 1 },
+        },
+      },
+      { field: "tickets.sub_t3", code: "too-large" },
+    ],
+    [
       "an end time in the past",
       { ...valid, closesAt: "2026-12-01T09:59:59Z" },
       { field: "closesAt", code: "in-the-past" },

@@ -1,3 +1,4 @@
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { DurableObject } from "cloudflare:workers"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { TokenQueue } from "@rafflink/core/queue/token-queue"
@@ -34,7 +35,7 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
     } catch (error) {
       // Rethrown so the runtime retries the alarm: without it the next drain is not armed.
       console.error("token queue alarm failed", {
-        errorClass: error instanceof Error ? error.constructor.name : typeof error,
+        errorClass: errorClass(error),
       })
       throw error
     }

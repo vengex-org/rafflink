@@ -1,11 +1,17 @@
+import { createHash } from "node:crypto"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { securityHeaders } from "../../src/http/security-headers.ts"
+import { headersFile } from "../../src/http/static-headers.ts"
 
 /** The body of the inline script of {@link spaTemplate}, as the browser hashes it. */
 export const inlineScript = `
       document.documentElement.dataset.theme = "light"
     `
+
+/** The CSP source of {@link inlineScript}. */
+export const inlineScriptSource = `'sha256-${createHash("sha256").update(inlineScript).digest("base64")}'`
 
 /** The tags of the built `index.html` that core rewrites, with the title and description of the home page. */
 export const spaTemplate = `<!doctype html>
@@ -29,9 +35,11 @@ export const spaTemplate = `<!doctype html>
 </html>
 `
 
-/** A temporary folder holding {@link spaTemplate} as `index.html`; the returned function removes it. */
+/** A temporary folder holding {@link spaTemplate} as `index.html` and the `_headers` the web build writes for it; the returned function removes it. */
 export function webFixture(): { path: string; remove: () => void } {
   const path = mkdtempSync(join(tmpdir(), "rafflink-web-"))
   writeFileSync(join(path, "index.html"), spaTemplate)
+  const scriptHashes = [inlineScriptSource.slice(1, -1)]
+  writeFileSync(join(path, "_headers"), headersFile(securityHeaders({ hsts: true, scriptHashes })))
   return { path, remove: () => rmSync(path, { recursive: true, force: true }) }
 }
