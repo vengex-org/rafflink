@@ -5,5 +5,11 @@
   "type": "module",
   "exports": {
     "./sqlite-bun": "./src/sqlite-bun.ts"
+  },
+  "dependencies": {
+    "jose": "6.2.18"
+  },
+  "devDependencies": {
+    "@rafflink/fake-twitch": "workspace:*"
   }
 }

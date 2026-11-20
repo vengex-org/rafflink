@@ -24,6 +24,12 @@
     "packages/core": {
       "name": "@rafflink/core",
       "version": "0.0.0",
+      "dependencies": {
+        "jose": "6.2.18",
+      },
+      "devDependencies": {
+        "@rafflink/fake-twitch": "workspace:*",
+      },
     },
     "packages/fake-twitch": {
       "name": "@rafflink/fake-twitch",
