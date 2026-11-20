@@ -41,6 +41,10 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
 export const streamerByPlatformUserSql =
   "SELECT id, platform, platform_user_id, login, display_name FROM streamers WHERE platform = ? AND platform_user_id = ?"
 
+/** A streamer by id (parameter 1). */
+export const streamerByIdSql =
+  "SELECT id, platform, platform_user_id, login, display_name FROM streamers WHERE id = ?"
+
 const streamerTokenSelect = `SELECT t.streamer_id, s.platform, s.platform_user_id, t.refresh_token_enc
   FROM streamer_tokens t JOIN streamers s ON s.id = t.streamer_id`
 

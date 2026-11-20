@@ -94,6 +94,10 @@ export async function startStreamerSession(
   await writeCookie(c, deps, cookieNames.streamer, session, deps.config.sessionTtlSeconds)
 }
 
+export function endStreamerSession(c: Context): void {
+  deleteCookie(c, cookieNames.streamer, { path: "/" })
+}
+
 export async function readViewerSession(
   c: Context,
   deps: SessionDeps,

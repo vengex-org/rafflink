@@ -11,6 +11,7 @@ import {
   ownedGiveawaySql,
   replaceStreamerTokenSql,
   setStatusSql,
+  streamerByIdSql,
   streamerByPlatformUserSql,
   streamerTokenSql,
   streamerTokensSql,
@@ -114,6 +115,11 @@ export class AccountStore {
   /** Every stored token, for the hourly validation. */
   async listStreamerTokens(): Promise<StoredStreamerToken[]> {
     return (await this.sql.all(streamerTokensSql, [])).map(parseStoredToken)
+  }
+
+  async findStreamer(id: string): Promise<StreamerRecord | null> {
+    const [row] = await this.sql.all(streamerByIdSql, [id])
+    return row === undefined ? null : parseStreamer(row)
   }
 
   async findStreamerToken(streamerId: string): Promise<StoredStreamerToken | null> {

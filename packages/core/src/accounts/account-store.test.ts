@@ -16,6 +16,7 @@ import {
   giveawayByIdSql,
   giveawaysOfStreamerSql,
   ownedGiveawaySql,
+  streamerByIdSql,
   streamerByPlatformUserSql,
 } from "./queries.ts"
 
@@ -87,6 +88,19 @@ describe("AccountStore streamers", () => {
     expect(
       sqlRows(db, "SELECT streamer_id, refresh_token_enc, scopes FROM streamer_tokens"),
     ).toEqual([{ streamer_id: "s1", refresh_token_enc: "sealed-1", scopes: "openid" }])
+  })
+
+  it("finds a streamer by id and nothing for an unknown id", async () => {
+    const { store } = await withStreamers()
+
+    expect(await store.findStreamer("s2")).toEqual<StreamerRecord>({
+      id: "s2",
+      platform: "twitch",
+      platformUserId: "201",
+      login: "other",
+      displayName: "Streamer",
+    })
+    expect(await store.findStreamer("missing")).toBeNull()
   })
 
   it("keeps the id, updates the login and display name and replaces the token on a second sign-in", async () => {
@@ -280,6 +294,7 @@ describe("account queries", () => {
     ["an owned giveaway", ownedGiveawaySql, ["g1", "s1"]],
     ["a streamer's giveaways", giveawaysOfStreamerSql, ["s1"]],
     ["a streamer by platform user", streamerByPlatformUserSql, ["twitch", "200"]],
+    ["a streamer by id", streamerByIdSql, ["s1"]],
   ]
 
   for (const [name, statement, params] of cases) {
