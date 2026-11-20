@@ -1,0 +1,293 @@
+import type { ResolvedConfig } from "../config.ts"
+import type { Clock, Instant, SocketConnector, TextSocket } from "../ports.ts"
+import { parseEventSubMessage, type ChatMessage } from "../twitch/lib/parse-eventsub.ts"
+
+export type { ChatMessage } from "../twitch/lib/parse-eventsub.ts"
+
+export type ChatWatcherConfig = Pick<
+  ResolvedConfig,
+  | "eventSubUrl"
+  | "eventSubSubscribeSeconds"
+  | "eventSubConnectionMaxSeconds"
+  | "eventSubReconnectMarginSeconds"
+  | "eventSubKeepaliveGraceSeconds"
+  | "eventSubReconnectDelaySeconds"
+  | "eventSubReconnectMaxAttempts"
+>
+
+/** What a target supplies to watch chat: its sockets, and the call that subscribes a session to the channel. */
+export interface ChatLink {
+  readonly connector: SocketConnector
+  /** Creates the chat subscription for an EventSub session. A rejection ends the watch as unavailable. */
+  readonly subscribe: (sessionId: string) => Promise<void>
+}
+
+export interface ChatWatcherDeps extends ChatLink {
+  readonly clock: Clock
+  readonly config: ChatWatcherConfig
+  readonly onMessage: (message: ChatMessage) => void
+  /** Called once when the watcher gives up; the watcher is closed by then. */
+  readonly onUnavailable: (cause: unknown) => void
+  /** Called when a connection event moved {@link ChatWatcher.wakeAt}, so the owner can re-arm its alarm. */
+  readonly onSchedule: () => void
+}
+
+export type ChatConnectionLostReason =
+  | "closed"
+  | "keepalive-missed"
+  | "handshake-timeout"
+  | "malformed-message"
+  | "max-age"
+  | "revoked"
+
+/** A connection that ended or went silent; the cause of a retry and of giving up. */
+export class ChatConnectionLost extends Error {
+  constructor(readonly reason: ChatConnectionLostReason) {
+    super("EventSub connection lost")
+  }
+}
+
+/** A connection that has not yet subscribed; `keepaliveMs` is null until Twitch's welcome. */
+interface Handshake {
+  readonly socket: TextSocket
+  /** Connected to a `session_reconnect` URL, which keeps the old session and its subscription. */
+  readonly resumed: boolean
+  deadline: Instant
+  keepaliveMs: number | null
+}
+
+interface Live {
+  readonly socket: TextSocket
+  readonly since: Instant
+  readonly keepaliveMs: number
+  lastSeenAt: Instant
+}
+
+/**
+ * Keeps one EventSub WebSocket subscribed to a channel's chat messages. It has no timers: the owner calls
+ * {@link ChatWatcher.onAlarm} at {@link ChatWatcher.wakeAt}, which drives the keepalive check, the retry
+ * after a failure and the replacement of a connection before it reaches its maximum age.
+ */
+export class ChatWatcher {
+  private running = false
+  private handshake: Handshake | null = null
+  private live: Live | null = null
+  private attempts = 0
+  private retryAt: Instant | null = null
+  /** Replacing the live connection kept failing; it serves until it drops or reaches its maximum age. */
+  private replacementGivenUp = false
+
+  constructor(private readonly deps: ChatWatcherDeps) {}
+
+  /** Starts watching; a watcher that already runs is left alone. */
+  open(): void {
+    if (this.running) return
+    this.running = true
+    this.attempts = 0
+    this.replacementGivenUp = false
+    this.connect(this.deps.config.eventSubUrl, false)
+  }
+
+  /** Stops watching and closes every socket; a closed watcher is left alone. */
+  close(): void {
+    if (!this.running) return
+    this.running = false
+    this.retryAt = null
+    this.replacementGivenUp = false
+    this.handshake?.socket.close()
+    this.live?.socket.close()
+    this.handshake = null
+    this.live = null
+  }
+
+  /** The next instant {@link ChatWatcher.onAlarm} has work, `null` while closed. */
+  wakeAt(): Instant | null {
+    if (!this.running) return null
+    const wakes: Instant[] = []
+    if (this.handshake !== null) wakes.push(this.handshake.deadline)
+    if (this.live !== null) {
+      wakes.push(this.keepaliveDeadline(this.live), this.maxAgeAt(this.live))
+    }
+    const replaceable = this.replaceableLive()
+    if (this.retryAt !== null) wakes.push(this.retryAt)
+    else if (replaceable !== null) wakes.push(this.replaceAt(replaceable))
+    return wakes.length === 0 ? null : Math.min(...wakes)
+  }
+
+  onAlarm(): void {
+    if (!this.running) return
+    const now = this.deps.clock.now()
+    if (this.handshake !== null && now >= this.handshake.deadline) {
+      this.dropHandshake()
+      this.retry(new ChatConnectionLost("handshake-timeout"))
+    }
+    if (this.live !== null && now >= this.keepaliveDeadline(this.live)) {
+      this.dropLive()
+      this.retry(new ChatConnectionLost("keepalive-missed"))
+    }
+    if (this.live !== null && now >= this.maxAgeAt(this.live)) {
+      this.dropLive()
+      this.retry(new ChatConnectionLost("max-age"))
+    }
+    if (!this.running || this.handshake !== null) return
+    const replaceable = this.replaceableLive()
+    const due =
+      this.retryAt === null
+        ? replaceable !== null && now >= this.replaceAt(replaceable)
+        : now >= this.retryAt
+    if (!due) return
+    this.retryAt = null
+    this.connect(this.deps.config.eventSubUrl, false)
+  }
+
+  private connect(url: string, resumed: boolean): void {
+    this.dropHandshake()
+    const socket: TextSocket = this.deps.connector.open(url, {
+      onText: (text) => this.onText(socket, text),
+      onClose: (cause) => this.onClose(socket, cause),
+    })
+    this.handshake = { socket, resumed, deadline: this.handshakeDeadline(), keepaliveMs: null }
+  }
+
+  private onText(socket: TextSocket, text: string): void {
+    const handshake = this.handshake?.socket === socket ? this.handshake : null
+    const live = this.live?.socket === socket ? this.live : null
+    if (handshake === null && live === null) return
+    const parsed = parseEventSubMessage(text)
+    if (!parsed.ok) {
+      this.lose(socket, new ChatConnectionLost("malformed-message"))
+      return
+    }
+    const message = parsed.value
+    switch (message.kind) {
+      case "welcome":
+        if (handshake !== null && handshake.keepaliveMs === null) {
+          this.welcomed(handshake, message.sessionId, message.keepaliveSeconds * 1000)
+        }
+        return
+      case "keepalive":
+        if (live !== null) live.lastSeenAt = this.deps.clock.now()
+        return
+      case "notification":
+        if (live === null) return
+        live.lastSeenAt = this.deps.clock.now()
+        this.deps.onMessage(message.chat)
+        return
+      case "reconnect":
+        if (live !== null) this.connect(message.url, true)
+        return
+      case "revoked":
+        if (live !== null) this.giveUp(new ChatConnectionLost("revoked"))
+        return
+      case "ignored":
+        return
+    }
+  }
+
+  private onClose(socket: TextSocket, cause: unknown): void {
+    this.lose(socket, cause ?? new ChatConnectionLost("closed"))
+  }
+
+  /** A socket that ended or broke: forget it and retry; a socket the watcher already dropped is ignored. */
+  private lose(socket: TextSocket, cause: unknown): void {
+    if (this.live?.socket === socket) this.live = null
+    else if (this.handshake?.socket === socket) this.handshake = null
+    else return
+    socket.close()
+    this.retry(cause)
+  }
+
+  private welcomed(handshake: Handshake, sessionId: string, keepaliveMs: number): void {
+    handshake.keepaliveMs = keepaliveMs
+    if (handshake.resumed) {
+      this.promote(handshake, keepaliveMs)
+      return
+    }
+    handshake.deadline = this.handshakeDeadline()
+    void this.deps.subscribe(sessionId).then(
+      () => {
+        if (this.handshake === handshake) this.promote(handshake, keepaliveMs)
+      },
+      (cause: unknown) => {
+        if (this.handshake !== handshake) return
+        // A refused replacement must not end a connection that still works.
+        if (this.live === null) {
+          this.giveUp(cause)
+          return
+        }
+        this.dropHandshake()
+        this.retry(cause)
+      },
+    )
+  }
+
+  private promote(handshake: Handshake, keepaliveMs: number): void {
+    const previous = this.live
+    const now = this.deps.clock.now()
+    this.live = { socket: handshake.socket, since: now, keepaliveMs, lastSeenAt: now }
+    this.handshake = null
+    this.attempts = 0
+    this.retryAt = null
+    this.replacementGivenUp = false
+    previous?.socket.close()
+    this.deps.onSchedule()
+  }
+
+  // The slot is cleared before the socket closes, so the close event of a dropped socket is not a second failure.
+  private dropHandshake(): void {
+    const { handshake } = this
+    this.handshake = null
+    handshake?.socket.close()
+  }
+
+  private dropLive(): void {
+    const { live } = this
+    this.live = null
+    live?.socket.close()
+  }
+
+  private retry(cause: unknown): void {
+    if (!this.running) return
+    this.attempts += 1
+    if (this.attempts > this.deps.config.eventSubReconnectMaxAttempts) {
+      if (this.live === null) {
+        this.giveUp(cause)
+        return
+      }
+      this.replacementGivenUp = true
+      this.retryAt = null
+      return
+    }
+    this.retryAt = this.deps.clock.now() + this.deps.config.eventSubReconnectDelaySeconds * 1000
+    this.deps.onSchedule()
+  }
+
+  private giveUp(cause: unknown): void {
+    this.close()
+    this.deps.onUnavailable(cause)
+  }
+
+  private handshakeDeadline(): Instant {
+    return this.deps.clock.now() + this.deps.config.eventSubSubscribeSeconds * 1000
+  }
+
+  private keepaliveDeadline(live: Live): Instant {
+    return (
+      live.lastSeenAt + live.keepaliveMs + this.deps.config.eventSubKeepaliveGraceSeconds * 1000
+    )
+  }
+
+  /** The live connection when it is due a planned replacement, `null` while one is underway or given up. */
+  private replaceableLive(): Live | null {
+    return this.handshake === null && !this.replacementGivenUp ? this.live : null
+  }
+
+  private maxAgeAt(live: Live): Instant {
+    return live.since + this.deps.config.eventSubConnectionMaxSeconds * 1000
+  }
+
+  private replaceAt(live: Live): Instant {
+    const { eventSubConnectionMaxSeconds, eventSubReconnectMarginSeconds } = this.deps.config
+    return live.since + (eventSubConnectionMaxSeconds - eventSubReconnectMarginSeconds) * 1000
+  }
+}

@@ -1,0 +1,624 @@
+import type { Parsed } from "./lib/parsed.ts"
+import { queuedEntryTwitchRequests } from "./twitch/queued-entry-requests.ts"
+
+export type ConfigReason =
+  | "missing"
+  | "blank"
+  | "not-a-boolean"
+  | "not-an-integer"
+  | "out-of-range"
+  | "not-a-url"
+  | "not-an-admin-entry"
+  | "not-below-queue-code-max-age"
+  | "not-below-eventsub-connection-max"
+  | "not-above-queued-entry-twitch-time"
+  | "fake-twitch-needs-local-public-url"
+
+/** Why a setting failed; a list entry that is not a secret also names itself. */
+export type ConfigIssue =
+  | ConfigReason
+  | { readonly reason: "not-an-admin-entry"; readonly entry: string }
+
+/** An invalid or missing setting. Carries the env key and a reason, never the value (it may be a secret); only a named list entry is quoted. */
+export class ConfigError extends Error {
+  readonly reason: ConfigReason
+  readonly entry: string | null
+
+  constructor(
+    readonly env: string,
+    issue: ConfigIssue,
+  ) {
+    const named = typeof issue === "string" ? { reason: issue, entry: null } : issue
+    super(
+      named.entry === null
+        ? `${env}: ${named.reason}`
+        : `${env}: ${named.reason} (${JSON.stringify(named.entry)})`,
+    )
+    this.reason = named.reason
+    this.entry = named.entry
+  }
+}
+
+/** One `ADMIN_TWITCH_IDS` entry: a Twitch user id, or a login that is resolved to an id on first use. */
+export type AdminEntry =
+  | { readonly kind: "id"; readonly id: string }
+  | { readonly kind: "login"; readonly login: string }
+
+/**
+ * One setting: its env key, how to parse the raw string, its default as the raw string a deployment
+ * would write (null means required), and where the number or choice comes from.
+ */
+export interface ConfigField<T> {
+  readonly env: string
+  readonly parse: (raw: string) => Parsed<T, ConfigIssue>
+  readonly default: string | null
+  readonly origin: string
+}
+
+export type ResolvedConfig = {
+  readonly [K in keyof typeof configSchema]: (typeof configSchema)[K] extends ConfigField<infer T>
+    ? T
+    : never
+}
+
+type Env = Readonly<Record<string, string | undefined>>
+
+export const configSchema = {
+  twitchClientId: required("TWITCH_CLIENT_ID", text, "Twitch app registration, see the README"),
+  twitchClientSecret: required(
+    "TWITCH_CLIENT_SECRET",
+    text,
+    "Twitch app registration, see the README",
+  ),
+  tokenSealKeys: required(
+    "TOKEN_SEAL_KEYS",
+    list(text),
+    "Key ring, comma separated, that seals stored streamer refresh tokens (spec AC-1)",
+  ),
+  sessionSecret: required("SESSION_SECRET", text, "Signs the session cookie (spec AC-1)"),
+  admins: required(
+    "ADMIN_TWITCH_IDS",
+    adminList,
+    "Who may open the admin page (spec AC-23), comma separated: numeric Twitch user ids, logins, or channel links such as https://twitch.tv/<login>; pin the ids, because logins are looked up at Twitch on first use",
+  ),
+  publicUrl: required("PUBLIC_URL", url, "Public origin of the service, used for OAuth redirects"),
+  devFakeTwitch: withDefault(
+    "DEV_FAKE_TWITCH",
+    bool,
+    "false",
+    "Mounts the fake Twitch routes and the dev SPA; never true in production",
+  ),
+  defaultClaimSeconds: withDefault(
+    "DEFAULT_CLAIM_SECONDS",
+    int(1),
+    "300",
+    "Claim time after a draw when the giveaway sets none; spec AC-2",
+  ),
+  roleRefreshSeconds: withDefault(
+    "ROLE_REFRESH_SECONDS",
+    int(1),
+    "300",
+    "Refresh of the VIP and moderator lists while entries are open; spec AC-13",
+  ),
+  liveIntervalMs: withDefault(
+    "LIVE_INTERVAL_MS",
+    int(1),
+    "1000",
+    "Shortest time between live page pushes; spec AC-4",
+  ),
+  liveLastNames: withDefault(
+    "LIVE_LAST_NAMES",
+    int(0),
+    "20",
+    "Latest entrant names on the live page; spec AC-4",
+  ),
+  liveEntrantsPerPush: withDefault(
+    "LIVE_ENTRANTS_PER_PUSH",
+    int(1),
+    "200",
+    "Most new entrants one live push carries; a bigger backlog makes the page fetch the gap over HTTP; starting guess, about 20 KB of JSON per push at 100 bytes per entrant",
+  ),
+  entrantsPageMax: withDefault(
+    "ENTRANTS_PAGE_MAX",
+    int(1),
+    "5000",
+    "Most entrants one entrants request returns, so 12,000 entrants load in three requests; starting guess, about 500 KB of JSON per page",
+  ),
+  queuePollSeconds: withDefault(
+    "QUEUE_POLL_SECONDS",
+    int(1),
+    "3",
+    "Page poll interval for a queued entry; spec AC-14",
+  ),
+  queuePollMaxSeconds: withDefault(
+    "QUEUE_POLL_MAX_SECONDS",
+    int(1),
+    "120",
+    "Page stops polling a queued entry after this; spec AC-14",
+  ),
+  queueCodeMaxAgeSeconds: withDefault(
+    "QUEUE_CODE_MAX_AGE_SECONDS",
+    int(1),
+    "300",
+    "Queued authorization codes older than this are dropped; spec AC-14",
+  ),
+  queueProcessingTimeoutSeconds: withDefault(
+    "QUEUE_PROCESSING_TIMEOUT_SECONDS",
+    int(1),
+    "60",
+    "A queued code claimed for processing returns to the queue after this long without a result, so a crashed pass does not strand it; must exceed the sequential Twitch requests of one code times TWITCH_TIMEOUT_MS, 60 is a starting guess",
+  ),
+  queueCooldownSeconds: withDefault(
+    "QUEUE_COOLDOWN_SECONDS",
+    int(0),
+    "30",
+    "Every new code is queued this long after the first token endpoint 429; spec AC-15",
+  ),
+  queueStartRatePerSecond: withDefault(
+    "QUEUE_START_RATE_PER_SECOND",
+    int(1),
+    "10",
+    "Token endpoint calls per second the queue starts at; starting guess, the real limit is unknown",
+  ),
+  queueMinRatePerSecond: withDefault(
+    "QUEUE_MIN_RATE_PER_SECOND",
+    int(1),
+    "1",
+    "Lowest rate the queue slows down to after 429s; starting guess",
+  ),
+  queueMaxRatePerSecond: withDefault(
+    "QUEUE_MAX_RATE_PER_SECOND",
+    int(1),
+    "50",
+    "Highest rate the queue speeds up to after successes; starting guess",
+  ),
+  entryWriteRetryDelaysMs: withDefault(
+    "ENTRY_WRITE_RETRY_DELAYS_MS",
+    list(int(0)),
+    "200,500,1000",
+    "Delay before each retry of a failed room write, so also the retry count; spec AC-16",
+  ),
+  entryWriteJitterPercent: withDefault(
+    "ENTRY_WRITE_JITTER_PERCENT",
+    int(0, 100),
+    "50",
+    "Random share added to or removed from each retry delay; starting guess",
+  ),
+  helixRetryDelayMs: withDefault(
+    "HELIX_RETRY_DELAY_MS",
+    int(0),
+    "500",
+    "Wait before the single retry of a Helix 503; delay is a starting guess, one retry is spec AC-17",
+  ),
+  twitchIdBaseUrl: withDefault(
+    "TWITCH_ID_BASE_URL",
+    url,
+    "https://id.twitch.tv",
+    "Origin of Twitch OAuth (authorize, token, keys, validate); only tests and the fake Twitch change it",
+  ),
+  twitchHelixBaseUrl: withDefault(
+    "TWITCH_HELIX_BASE_URL",
+    url,
+    "https://api.twitch.tv",
+    "Origin of the Twitch Helix API; only tests and the fake Twitch change it",
+  ),
+  twitchTimeoutMs: withDefault(
+    "TWITCH_TIMEOUT_MS",
+    int(1),
+    "5000",
+    "Timeout of every outbound Twitch call; starting guess",
+  ),
+  eventSubUrl: withDefault(
+    "EVENTSUB_URL",
+    socketUrl,
+    "wss://eventsub.wss.twitch.tv/ws",
+    "Twitch EventSub WebSocket endpoint; only tests and the fake Twitch change it",
+  ),
+  eventSubSubscribeSeconds: withDefault(
+    "EVENTSUB_SUBSCRIBE_SECONDS",
+    int(1),
+    "10",
+    "Time after the connection opens to subscribe before Twitch closes it; Twitch limit",
+  ),
+  eventSubConnectionMaxSeconds: withDefault(
+    "EVENTSUB_CONNECTION_MAX_SECONDS",
+    int(1),
+    "900",
+    "Longest a connection is kept before it is replaced; a Cloudflare Durable Object keeps an outbound WebSocket about 15 minutes",
+  ),
+  eventSubReconnectMarginSeconds: withDefault(
+    "EVENTSUB_RECONNECT_MARGIN_SECONDS",
+    int(0),
+    "60",
+    "Replace a connection this long before EVENTSUB_CONNECTION_MAX_SECONDS, so 14 of the 15 minutes; starting guess",
+  ),
+  eventSubKeepaliveGraceSeconds: withDefault(
+    "EVENTSUB_KEEPALIVE_GRACE_SECONDS",
+    int(0),
+    "5",
+    "Wait beyond the keepalive timeout Twitch announces before the connection counts as lost; starting guess",
+  ),
+  eventSubReconnectDelaySeconds: withDefault(
+    "EVENTSUB_RECONNECT_DELAY_SECONDS",
+    int(0),
+    "2",
+    "Wait before reconnecting after a failed or lost connection; starting guess",
+  ),
+  eventSubReconnectMaxAttempts: withDefault(
+    "EVENTSUB_RECONNECT_MAX_ATTEMPTS",
+    int(1),
+    "5",
+    "Reconnects in a row before the live page shows Chat claim unavailable; starting guess",
+  ),
+  validatePeriodSeconds: withDefault(
+    "VALIDATE_PERIOD_SECONDS",
+    int(1),
+    "3600",
+    "Streamer token validation period; Twitch requires hourly, spec AC-22",
+  ),
+  sessionTtlSeconds: withDefault(
+    "SESSION_TTL_SECONDS",
+    int(1),
+    "604800",
+    "Lifetime of the streamer session cookie; starting guess, 7 days",
+  ),
+  viewerSessionTtlSeconds: withDefault(
+    "VIEWER_SESSION_TTL_SECONDS",
+    int(1),
+    "2592000",
+    "Lifetime of the viewer cookie that lets a returning viewer see their result without signing in again; starting guess, 30 days",
+  ),
+  stateCookieTtlSeconds: withDefault(
+    "STATE_COOKIE_TTL_SECONDS",
+    int(1),
+    "600",
+    "Lifetime of the OAuth state cookie; OAuth advises at most 10 minutes for a code",
+  ),
+  ticketsPerGroupMax: withDefault(
+    "TICKETS_PER_GROUP_MAX",
+    int(1),
+    "1000",
+    "Most tickets a streamer can give one group, which keeps ticket totals far inside safe integers; starting guess; a lower value makes stored giveaways above it unreadable",
+  ),
+  claimSecondsMax: withDefault(
+    "CLAIM_SECONDS_MAX",
+    int(1),
+    "86400",
+    "Longest claim time a streamer can set; starting guess, one day",
+  ),
+  drawMaxWinners: withDefault(
+    "DRAW_MAX_WINNERS",
+    int(1),
+    "100",
+    "Most winners one draw picks; starting guess, a draw signs once per winner",
+  ),
+  publicGiveawayCacheSeconds: withDefault(
+    "PUBLIC_GIVEAWAY_CACHE_SECONDS",
+    int(0),
+    "5",
+    "How long the public part of a giveaway page response is reused, so an anonymous refresh reads neither the account store nor the room; the entrant count can be this stale, 0 turns the cache off; starting guess",
+  ),
+  claimKeywordMaxLength: withDefault(
+    "CLAIM_KEYWORD_MAX_LENGTH",
+    int(1),
+    "32",
+    "Longest claim keyword a streamer can set; starting guess",
+  ),
+  codeInsertRetries: withDefault(
+    "CODE_INSERT_RETRIES",
+    int(1),
+    "5",
+    "New short codes tried after a UNIQUE violation; starting guess",
+  ),
+  usageWarningThreshold: withDefault(
+    "USAGE_WARNING_THRESHOLD",
+    int(0),
+    "25000",
+    "Warn at giveaway creation below this many Worker requests left; spec AC-23",
+  ),
+  liveRateWindowSeconds: withDefault(
+    "LIVE_RATE_WINDOW_SECONDS",
+    int(1),
+    "10",
+    "Entries are counted over this window for the entries per second on the live page; starting guess",
+  ),
+  mirrorRetrySeconds: withDefault(
+    "MIRROR_RETRY_SECONDS",
+    int(1),
+    "30",
+    "Wait before the room alarm retries a status mirror to the account store; starting guess",
+  ),
+  rerollWindowSeconds: withDefault(
+    "REROLL_WINDOW_SECONDS",
+    int(0),
+    "3600",
+    "How long after the last claim time a streamer can still reroll an unclaimed pick; after it the giveaway is finished and viewers stop listening; starting guess, one hour",
+  ),
+  titleMaxLength: withDefault(
+    "TITLE_MAX_LENGTH",
+    int(1),
+    "100",
+    "Longest giveaway title in characters; starting guess, one line on the giveaway page and the overlay",
+  ),
+  prizeMaxLength: withDefault(
+    "PRIZE_MAX_LENGTH",
+    int(1),
+    "200",
+    "Longest giveaway prize in characters; starting guess, a sentence",
+  ),
+  dataDir: withDefault(
+    "DATA_DIR",
+    text,
+    "./data",
+    "Folder of the Bun server's SQLite files (accounts, token queue, one per room); the Cloudflare target ignores it",
+  ),
+  port: withDefault(
+    "PORT",
+    int(0, 65_535),
+    "3000",
+    "Port the Bun server listens on, 0 picks a free one; the Cloudflare target ignores it",
+  ),
+  cloudflareAccountId: withDefault(
+    "CLOUDFLARE_ACCOUNT_ID",
+    optional(text),
+    "",
+    "Cloudflare account whose Worker and Durable Object requests the usage meter reads; with the API token unset the meter reports no limit; only the Cloudflare target reads it",
+  ),
+  cloudflareApiToken: withDefault(
+    "CLOUDFLARE_API_TOKEN",
+    optional(text),
+    "",
+    "Cloudflare API token with Account Analytics read permission; with the account id unset the meter reports no limit; only the Cloudflare target reads it",
+  ),
+  cloudflareUsageUrl: withDefault(
+    "CLOUDFLARE_USAGE_URL",
+    endpoint,
+    "https://api.cloudflare.com/client/v4/graphql",
+    "Cloudflare GraphQL Analytics endpoint; only tests change it",
+  ),
+  cloudflareUsageTimeoutMs: withDefault(
+    "CLOUDFLARE_USAGE_TIMEOUT_MS",
+    int(1),
+    "5000",
+    "Timeout of the Analytics call behind the admin page and the creation warning; starting guess",
+  ),
+  workerRequestLimit: withDefault(
+    "WORKER_REQUEST_LIMIT",
+    int(1),
+    "100000",
+    "Worker requests per UTC day the usage meter compares against; Cloudflare Workers Free plan limit, raise it on a paid plan",
+  ),
+  durableObjectRequestLimit: withDefault(
+    "DURABLE_OBJECT_REQUEST_LIMIT",
+    int(1),
+    "100000",
+    "Durable Object requests per UTC day the usage meter compares against; Cloudflare Free plan limit, raise it on a paid plan",
+  ),
+}
+
+export function resolveConfig(env: Env): ResolvedConfig {
+  const config = {
+    twitchClientId: read(env, configSchema.twitchClientId),
+    twitchClientSecret: read(env, configSchema.twitchClientSecret),
+    tokenSealKeys: read(env, configSchema.tokenSealKeys),
+    sessionSecret: read(env, configSchema.sessionSecret),
+    admins: read(env, configSchema.admins),
+    publicUrl: read(env, configSchema.publicUrl),
+    devFakeTwitch: read(env, configSchema.devFakeTwitch),
+    defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
+    roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
+    liveIntervalMs: read(env, configSchema.liveIntervalMs),
+    liveLastNames: read(env, configSchema.liveLastNames),
+    liveEntrantsPerPush: read(env, configSchema.liveEntrantsPerPush),
+    entrantsPageMax: read(env, configSchema.entrantsPageMax),
+    queuePollSeconds: read(env, configSchema.queuePollSeconds),
+    queuePollMaxSeconds: read(env, configSchema.queuePollMaxSeconds),
+    queueCodeMaxAgeSeconds: read(env, configSchema.queueCodeMaxAgeSeconds),
+    queueProcessingTimeoutSeconds: read(env, configSchema.queueProcessingTimeoutSeconds),
+    queueCooldownSeconds: read(env, configSchema.queueCooldownSeconds),
+    queueStartRatePerSecond: read(env, configSchema.queueStartRatePerSecond),
+    queueMinRatePerSecond: read(env, configSchema.queueMinRatePerSecond),
+    queueMaxRatePerSecond: read(env, configSchema.queueMaxRatePerSecond),
+    entryWriteRetryDelaysMs: read(env, configSchema.entryWriteRetryDelaysMs),
+    entryWriteJitterPercent: read(env, configSchema.entryWriteJitterPercent),
+    helixRetryDelayMs: read(env, configSchema.helixRetryDelayMs),
+    twitchIdBaseUrl: read(env, configSchema.twitchIdBaseUrl),
+    twitchHelixBaseUrl: read(env, configSchema.twitchHelixBaseUrl),
+    twitchTimeoutMs: read(env, configSchema.twitchTimeoutMs),
+    eventSubUrl: read(env, configSchema.eventSubUrl),
+    eventSubSubscribeSeconds: read(env, configSchema.eventSubSubscribeSeconds),
+    eventSubConnectionMaxSeconds: read(env, configSchema.eventSubConnectionMaxSeconds),
+    eventSubReconnectMarginSeconds: read(env, configSchema.eventSubReconnectMarginSeconds),
+    eventSubKeepaliveGraceSeconds: read(env, configSchema.eventSubKeepaliveGraceSeconds),
+    eventSubReconnectDelaySeconds: read(env, configSchema.eventSubReconnectDelaySeconds),
+    eventSubReconnectMaxAttempts: read(env, configSchema.eventSubReconnectMaxAttempts),
+    validatePeriodSeconds: read(env, configSchema.validatePeriodSeconds),
+    sessionTtlSeconds: read(env, configSchema.sessionTtlSeconds),
+    viewerSessionTtlSeconds: read(env, configSchema.viewerSessionTtlSeconds),
+    stateCookieTtlSeconds: read(env, configSchema.stateCookieTtlSeconds),
+    ticketsPerGroupMax: read(env, configSchema.ticketsPerGroupMax),
+    claimSecondsMax: read(env, configSchema.claimSecondsMax),
+    drawMaxWinners: read(env, configSchema.drawMaxWinners),
+    publicGiveawayCacheSeconds: read(env, configSchema.publicGiveawayCacheSeconds),
+    claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
+    codeInsertRetries: read(env, configSchema.codeInsertRetries),
+    usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
+    liveRateWindowSeconds: read(env, configSchema.liveRateWindowSeconds),
+    mirrorRetrySeconds: read(env, configSchema.mirrorRetrySeconds),
+    rerollWindowSeconds: read(env, configSchema.rerollWindowSeconds),
+    titleMaxLength: read(env, configSchema.titleMaxLength),
+    prizeMaxLength: read(env, configSchema.prizeMaxLength),
+    dataDir: read(env, configSchema.dataDir),
+    port: read(env, configSchema.port),
+    cloudflareAccountId: read(env, configSchema.cloudflareAccountId),
+    cloudflareApiToken: read(env, configSchema.cloudflareApiToken),
+    cloudflareUsageUrl: read(env, configSchema.cloudflareUsageUrl),
+    cloudflareUsageTimeoutMs: read(env, configSchema.cloudflareUsageTimeoutMs),
+    workerRequestLimit: read(env, configSchema.workerRequestLimit),
+    durableObjectRequestLimit: read(env, configSchema.durableObjectRequestLimit),
+  }
+  // The page gives up polling before the code could expire, so a polling page never outlives its code.
+  if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
+    throw new ConfigError(configSchema.queuePollMaxSeconds.env, "not-below-queue-code-max-age")
+  }
+  // A connection is replaced before it reaches its maximum age, so the margin leaves it a positive life.
+  if (config.eventSubReconnectMarginSeconds >= config.eventSubConnectionMaxSeconds) {
+    throw new ConfigError(
+      configSchema.eventSubReconnectMarginSeconds.env,
+      "not-below-eventsub-connection-max",
+    )
+  }
+  // A claimed code must stay claimed longer than the Twitch requests that process it can take in a row.
+  if (
+    config.queueProcessingTimeoutSeconds * 1000
+    <= queuedEntryTwitchRequests * config.twitchTimeoutMs
+  ) {
+    throw new ConfigError(
+      configSchema.queueProcessingTimeoutSeconds.env,
+      "not-above-queued-entry-twitch-time",
+    )
+  }
+  // The fake Twitch signs in anyone, so it must never run behind a public origin.
+  if (config.devFakeTwitch && !isLocalOrigin(config.publicUrl)) {
+    throw new ConfigError(configSchema.devFakeTwitch.env, "fake-twitch-needs-local-public-url")
+  }
+  return config
+}
+
+function isLocalOrigin(origin: string): boolean {
+  const { hostname } = new URL(origin)
+  return hostname === "localhost" || hostname === "127.0.0.1"
+}
+
+function read<T>(env: Env, field: ConfigField<T>): T {
+  const raw = env[field.env] ?? field.default
+  if (raw === null) throw new ConfigError(field.env, "missing")
+  const parsed = field.parse(raw)
+  if (!parsed.ok) throw new ConfigError(field.env, parsed.issue)
+  return parsed.value
+}
+
+function required<T>(env: string, parse: ConfigField<T>["parse"], origin: string): ConfigField<T> {
+  return { env, parse, default: null, origin }
+}
+
+function withDefault<T>(
+  env: string,
+  parse: ConfigField<T>["parse"],
+  defaultRaw: string,
+  origin: string,
+): ConfigField<T> {
+  return { env, parse, default: defaultRaw, origin }
+}
+
+function ok<T>(value: T): Parsed<T, ConfigReason> {
+  return { ok: true, value }
+}
+
+function fail(reason: ConfigReason): Parsed<never, ConfigReason> {
+  return { ok: false, issue: reason }
+}
+
+function text(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  return value === "" ? fail("blank") : ok(value)
+}
+
+/** A blank value means the setting is not used. */
+function optional(item: (raw: string) => Parsed<string, ConfigReason>) {
+  return (raw: string): Parsed<string | null, ConfigReason> =>
+    raw.trim() === "" ? ok(null) : item(raw)
+}
+
+function bool(raw: string): Parsed<boolean, ConfigReason> {
+  if (raw === "true") return ok(true)
+  return raw === "false" ? ok(false) : fail("not-a-boolean")
+}
+
+function int(min: number, max = Number.MAX_SAFE_INTEGER) {
+  return (raw: string): Parsed<number, ConfigReason> => {
+    const digits = raw.trim()
+    if (digits === "") return fail("blank")
+    if (!/^\d+$/.test(digits)) return fail("not-an-integer")
+    const value = Number(digits)
+    if (!Number.isSafeInteger(value) || value < min || value > max) return fail("out-of-range")
+    return ok(value)
+  }
+}
+
+function url(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  if (!URL.canParse(value)) return fail("not-a-url")
+  const parsed = new URL(value)
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fail("not-a-url")
+  return ok(parsed.origin)
+}
+
+function endpoint(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  if (!URL.canParse(value)) return fail("not-a-url")
+  const parsed = new URL(value)
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fail("not-a-url")
+  return ok(parsed.href)
+}
+
+function socketUrl(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  if (!URL.canParse(value)) return fail("not-a-url")
+  const parsed = new URL(value)
+  if (parsed.protocol !== "ws:" && parsed.protocol !== "wss:") return fail("not-a-url")
+  return ok(parsed.href)
+}
+
+/** Entries are told apart by shape: digits are an id, `twitch.tv/<login>` links and bare names are logins. */
+function adminList(raw: string): Parsed<[AdminEntry, ...AdminEntry[]], ConfigIssue> {
+  const [head = "", ...tail] = raw.split(",")
+  const first = adminEntry(head)
+  if (!first.ok) return first
+  const entries: [AdminEntry, ...AdminEntry[]] = [first.value]
+  for (const part of tail) {
+    const parsed = adminEntry(part)
+    if (!parsed.ok) return parsed
+    entries.push(parsed.value)
+  }
+  return ok(entries)
+}
+
+function adminEntry(raw: string): Parsed<AdminEntry, ConfigIssue> {
+  const value = raw.trim()
+  if (value === "") return fail("blank")
+  if (/^\d+$/.test(value)) return ok({ kind: "id", id: value })
+  const login = loginOf(value)
+  return login === null
+    ? { ok: false, issue: { reason: "not-an-admin-entry", entry: value } }
+    : ok({ kind: "login", login })
+}
+
+// Twitch logins are case-insensitive and stored in lower case; a link carries exactly one path segment.
+function loginOf(value: string): string | null {
+  if (twitchLogin.test(value)) return value.toLowerCase()
+  if (!URL.canParse(value)) return null
+  const { protocol, hostname, pathname } = new URL(value)
+  if (protocol !== "https:" || (hostname !== "twitch.tv" && hostname !== "www.twitch.tv")) {
+    return null
+  }
+  const segment = pathname.replace(/^\//, "").replace(/\/$/, "")
+  return twitchLogin.test(segment) ? segment.toLowerCase() : null
+}
+
+const twitchLogin = /^[A-Za-z0-9_]{1,25}$/
+
+function list<T>(item: (raw: string) => Parsed<T, ConfigReason>) {
+  return (raw: string): Parsed<[T, ...T[]], ConfigReason> => {
+    const [head = "", ...tail] = raw.split(",")
+    const first = item(head)
+    if (!first.ok) return first
+    const values: [T, ...T[]] = [first.value]
+    for (const part of tail) {
+      const parsed = item(part)
+      if (!parsed.ok) return parsed
+      values.push(parsed.value)
+    }
+    return ok(values)
+  }
+}

@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /dashboard
+Disallow: /live/
+Disallow: /overlay/
+Disallow: /admin
+
+# Giveaway pages stay crawlable on purpose: a crawler that may not fetch a page never sees its noindex.

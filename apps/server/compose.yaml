@@ -1,0 +1,35 @@
+# Run from this folder after copying the repository's .env.example to .env here and filling it in.
+# PUBLIC_URL must be https://<DOMAIN>; DOMAIN is the host name Caddy gets a certificate for.
+services:
+  rafflink:
+    build:
+      context: ../..
+      dockerfile: apps/server/Dockerfile
+    env_file: .env
+    # The volume path and the port Caddy proxies to; .env.example's local DATA_DIR and PORT must not win.
+    environment:
+      DATA_DIR: /data
+      PORT: "3000"
+    volumes:
+      - rafflink-data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - rafflink
+    restart: unless-stopped
+
+volumes:
+  rafflink-data:
+  caddy-data:
+  caddy-config:

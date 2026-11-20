@@ -1,0 +1,281 @@
+import { Hono, type Context, type MiddlewareHandler } from "hono"
+import { timingSafeEqual } from "hono/utils/buffer"
+import type { ContentfulStatusCode } from "hono/utils/http-status"
+import type { Giveaway, NewGiveaway } from "../accounts/account-store.ts"
+import { generateCode } from "../lib/codes.ts"
+import { errorClass } from "../lib/error-class.ts"
+import { randomId } from "../lib/random-id.ts"
+import type { Usage } from "../ports.ts"
+import type { RerollOutcome, ClaimOutcome } from "../room/giveaway-room.ts"
+import { mirrorStatus } from "../room/mirror-status.ts"
+import { parseCreateGiveaway } from "./create-input.ts"
+import type { AppDeps } from "./deps.ts"
+import { dashboardGiveaway, readJson, type EntrantsPage, type OwnerLiveSnapshot } from "./json.ts"
+import { readStreamerSession, type StreamerSession } from "./session.ts"
+import { webSocketOrigin } from "./websocket-origin.ts"
+
+type Env = { Variables: { streamer: StreamerSession } }
+
+export function dashboardRoutes(deps: AppDeps): Hono<Env> {
+  const app = new Hono<Env>()
+
+  app.use("/api/live/:id", webSocketOrigin(deps.config, { allowMissing: false }))
+  app.use("/api/overlay/:id/:token", webSocketOrigin(deps.config, { allowMissing: true }))
+  app.use("/api/dash/*", requireStreamer(deps))
+  app.use("/api/live/*", requireStreamer(deps))
+  app.use("/api/admin/*", requireStreamer(deps))
+
+  app.post("/api/dash/giveaways", async (c) => {
+    const parsed = parseCreateGiveaway(await readJson(c), deps.clock.now(), deps.config)
+    if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
+    const streamer = c.get("streamer")
+    const created = await insertWithFreshCode(deps, {
+      id: randomId(deps.random),
+      streamerId: streamer.streamerId,
+      title: parsed.value.title,
+      prize: parsed.value.prize,
+      rules: parsed.value.rules,
+      closesAt: parsed.value.closesAt,
+      claimSeconds: parsed.value.claimSeconds,
+      overlayToken: randomId(deps.random),
+      createdAt: deps.clock.now(),
+    })
+    if (created === null) {
+      console.warn("giveaway code retries exhausted", { streamerId: streamer.streamerId })
+      return c.json({ error: "code-unavailable" }, 503)
+    }
+    const giveaway = await deps.accounts.findOwnedGiveaway(streamer.streamerId, created.id)
+    if (giveaway === null) throw new Error("created giveaway not found")
+    const roomReady = await initRoom(deps, giveaway)
+    return c.json(
+      { giveaway: dashboardGiveaway(giveaway), roomReady, warnings: await usageWarnings(deps) },
+      201,
+    )
+  })
+
+  app.get("/api/dash/giveaways", async (c) => {
+    const giveaways = await deps.accounts.listGiveaways(c.get("streamer").streamerId)
+    return c.json({ giveaways: giveaways.map(dashboardGiveaway) })
+  })
+
+  app.post("/api/dash/giveaways/:id/close", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const outcome = await deps.rooms.get(giveaway.id).close()
+      switch (outcome.kind) {
+        case "closed":
+          await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "closed")
+          return c.json({ kind: "closed" })
+        case "not-open":
+          return c.json({ kind: "not-open", status: outcome.status }, 409)
+      }
+    }),
+  )
+
+  app.post("/api/dash/giveaways/:id/draw", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const count = integerField(await readJson(c), "count", 1)
+      if (count === null || count > deps.config.drawMaxWinners) {
+        return c.json({ error: "invalid-input", field: "count" }, 400)
+      }
+      const outcome = await deps.rooms.get(giveaway.id).draw(count)
+      switch (outcome.kind) {
+        case "drawn":
+          await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "drawn")
+          return c.json({ kind: "drawn", winners: outcome.winners.map((winner) => winner.n) })
+        case "not-closed":
+        case "already-drawn":
+          return c.json({ kind: outcome.kind }, 409)
+      }
+    }),
+  )
+
+  app.post("/api/dash/giveaways/:id/reroll", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const n = integerField(await readJson(c), "n", 0)
+      if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
+      const outcome = await deps.rooms.get(giveaway.id).reroll(n)
+      return c.json(
+        outcome.kind === "rerolled"
+          ? { kind: outcome.kind, replaced: outcome.replaced, n: outcome.winner.n }
+          : { kind: outcome.kind },
+        rerollStatus[outcome.kind],
+      )
+    }),
+  )
+
+  app.post("/api/dash/giveaways/:id/claim", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const n = integerField(await readJson(c), "n", 0)
+      if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
+      const room = deps.rooms.get(giveaway.id)
+      const pick = (await room.picks()).find((item) => item.n === n)
+      if (pick === undefined)
+        return c.json({ kind: "not-a-winner" }, manualClaimStatus["not-a-winner"])
+      const outcome = await room.claim(
+        n,
+        { platform: pick.platform, platformUserId: pick.platformUserId },
+        "manual",
+      )
+      return c.json({ kind: outcome.kind }, manualClaimStatus[outcome.kind])
+    }),
+  )
+
+  app.get("/api/live/:id", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const body: OwnerLiveSnapshot = {
+        ...(await deps.rooms.get(giveaway.id).liveSnapshot()),
+        overlayToken: giveaway.overlayToken,
+      }
+      return c.json(body)
+    }),
+  )
+
+  app.get("/api/live/:id/entrants", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const afterSeq = integerQuery(c.req.query("after"), 0, 0)
+      if (afterSeq === null) return c.json({ error: "invalid-input", field: "after" }, 400)
+      const requested = integerQuery(c.req.query("limit"), deps.config.entrantsPageMax, 1)
+      if (requested === null) return c.json({ error: "invalid-input", field: "limit" }, 400)
+      const limit = Math.min(requested, deps.config.entrantsPageMax)
+      // One row more than the page tells whether another page follows.
+      const rows = await deps.rooms.get(giveaway.id).entrants({ afterSeq, limit: limit + 1 })
+      const body: EntrantsPage = { rows: rows.slice(0, limit), more: rows.length > limit }
+      c.header("Cache-Control", "no-store")
+      return c.json(body)
+    }),
+  )
+
+  app.get("/api/admin/usage", async (c) => {
+    if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
+      return c.json({ error: "forbidden" }, 403)
+    }
+    return c.json({ usage: await adminUsage(deps), queue: await deps.queue.stats() })
+  })
+
+  // OBS has no session: the token in the URL is the whole credential.
+  app.get("/api/overlay/:id/:token", async (c) => {
+    const giveaway = await deps.accounts.findGiveawayById(c.req.param("id"))
+    if (
+      giveaway === null
+      || !(await timingSafeEqual(c.req.param("token"), giveaway.overlayToken))
+    ) {
+      return c.json({ error: "not-found" }, 404)
+    }
+    return c.json(await deps.rooms.get(giveaway.id).liveSnapshot())
+  })
+
+  return app
+}
+
+const rerollStatus: Readonly<Record<RerollOutcome["kind"], ContentfulStatusCode>> = {
+  rerolled: 200,
+  "unknown-pick": 404,
+  "already-rerolled": 409,
+  "already-claimed": 409,
+  "not-drawn": 409,
+  "no-entrants-left": 409,
+  "reroll-window-over": 409,
+  "try-again": 409,
+}
+
+const manualClaimStatus: Readonly<Record<ClaimOutcome["kind"], ContentfulStatusCode>> = {
+  claimed: 200,
+  "not-a-winner": 404,
+  "already-claimed": 409,
+  expired: 409,
+  rerolled: 409,
+}
+
+function requireStreamer(deps: AppDeps): MiddlewareHandler<Env> {
+  return async (c, next) => {
+    const session = await readStreamerSession(c, deps)
+    if (session === null) return c.json({ error: "unauthorized" }, 401)
+    c.set("streamer", session)
+    return next()
+  }
+}
+
+// Another streamer's giveaway looks like a missing one. The room is re-initialised first: creation
+// may have written the account row and then lost the room call.
+async function withOwnedRoom(
+  c: Context<Env>,
+  deps: AppDeps,
+  act: (giveaway: Giveaway) => Promise<Response>,
+): Promise<Response> {
+  const giveaway = await deps.accounts.findOwnedGiveaway(
+    c.get("streamer").streamerId,
+    c.req.param("id") ?? "",
+  )
+  if (giveaway === null) return c.json({ error: "not-found" }, 404)
+  if (!(await initRoom(deps, giveaway))) return c.json({ error: "room-unavailable" }, 503)
+  return act(giveaway)
+}
+
+async function insertWithFreshCode(
+  deps: AppDeps,
+  giveaway: Omit<NewGiveaway, "code">,
+): Promise<NewGiveaway | null> {
+  for (let attempt = 0; attempt <= deps.config.codeInsertRetries; attempt++) {
+    const candidate = { ...giveaway, code: generateCode(deps.random) }
+    if ((await deps.accounts.insertGiveaway(candidate)) === "inserted") return candidate
+  }
+  return null
+}
+
+async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
+  try {
+    await deps.rooms.get(giveaway.id).init({
+      id: giveaway.id,
+      platform: giveaway.platform,
+      broadcasterId: giveaway.broadcasterId,
+      title: giveaway.title,
+      code: giveaway.code,
+      rules: giveaway.rules,
+      claimSeconds: giveaway.claimSeconds,
+      closesAt: giveaway.closesAt,
+    })
+    return true
+  } catch (error) {
+    console.warn("room init failed", { giveawayId: giveaway.id, errorClass: errorClass(error) })
+    return false
+  }
+}
+
+type UsageWarning = { readonly kind: "worker-requests-low"; readonly remaining: number }
+
+/** The admin page shows "unavailable" instead of failing when the usage source does not answer. */
+async function adminUsage(deps: AppDeps): Promise<Usage | null | "unavailable"> {
+  try {
+    return await deps.usage.today()
+  } catch (error) {
+    console.warn("usage unavailable", { errorClass: errorClass(error) })
+    return "unavailable"
+  }
+}
+
+async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
+  try {
+    const usage = await deps.usage.today()
+    if (usage === null) return []
+    const remaining = usage.workerRequests.limit - usage.workerRequests.used
+    return remaining < deps.config.usageWarningThreshold
+      ? [{ kind: "worker-requests-low", remaining }]
+      : []
+  } catch (error) {
+    console.warn("usage unavailable", { errorClass: errorClass(error) })
+    return []
+  }
+}
+
+function integerField(body: unknown, field: string, min: number): number | null {
+  if (typeof body !== "object" || body === null) return null
+  const value: unknown = Object.hasOwn(body, field) ? Reflect.get(body, field) : undefined
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= min ? value : null
+}
+
+// A query value that is a whole number from `min` up, or `fallback` when absent; null when it is anything else.
+function integerQuery(raw: string | undefined, fallback: number, min: number): number | null {
+  if (raw === undefined) return fallback
+  const value = Number(raw)
+  return /^\d+$/.test(raw) && Number.isSafeInteger(value) && value >= min ? value : null
+}

@@ -1,0 +1,8 @@
+import { beforeEach } from "bun:test"
+import { GlobalRegistrator } from "@happy-dom/global-registrator"
+
+// Registered through bunfig.toml for `bun test` inside apps/web only: the other packages' tests keep Bun's own fetch and WebSocket.
+GlobalRegistrator.register({ url: "http://rafflink.test/" })
+
+// The giveaway page keeps its last answer in sessionStorage; a test must not start from the one before it.
+beforeEach(() => window.sessionStorage.clear())

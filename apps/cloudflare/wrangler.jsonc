@@ -1,0 +1,37 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rafflink",
+  // The bundle of `bun run build`, which wrangler runs before `dev` and `deploy`.
+  "main": "dist/worker.js",
+  "build": { "command": "bun run build" },
+  "compatibility_date": "2026-07-01",
+  // Core imports `node:timers/promises`.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    // Pages and files come from the assets, which cost no Worker request; their headers are the
+    // dist/_headers of the web build. Only the API and the sign-in routes run the Worker, the paths of
+    // `apiPrefixes` in packages/core/src/http/api-paths.ts.
+    "run_worker_first": ["/api/*", "/auth/*"],
+  },
+  // Set PUBLIC_URL, TWITCH_CLIENT_ID and ADMIN_TWITCH_IDS under "vars" and the secrets with
+  // `wrangler secret put`; every key is listed in .env.example.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rafflink",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/core/schema/accounts",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "GiveawayRoomDO" },
+      { "name": "QUEUE", "class_name": "TokenQueueDO" },
+    ],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GiveawayRoomDO", "TokenQueueDO"] }],
+  "triggers": { "crons": ["0 * * * *"] },
+  "observability": { "enabled": true },
+}

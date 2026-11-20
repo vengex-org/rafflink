@@ -1,0 +1,24 @@
+{
+  "name": "rafflink",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --deny-warnings",
+    "format": "bun fmt --no-script",
+    "format:check": "bun fmt --no-script --check",
+    "typecheck": "bun check --no-script && bun check --no-script -p apps/cloudflare/tsconfig.json",
+    "test": "bun test --path-ignore-patterns 'apps/web/**' && bun run --filter @rafflink/web test",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test",
+    "build": "bun run --filter '*' build",
+    "env:example": "bun scripts/env-example.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.5",
+    "oxlint": "^1.94.0"
+  },
+  "packageManager": "bun@1.4.5"
+}

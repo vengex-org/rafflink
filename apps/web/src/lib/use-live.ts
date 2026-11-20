@@ -1,0 +1,102 @@
+import { useEffect, useState } from "react"
+import type { EntrantsDelta, LiveSnapshot } from "@rafflink/core/room/giveaway-room"
+import { ApiShapeError, record } from "../api/decode.ts"
+import { getLive, parseLivePush } from "../api/client.ts"
+import { errorClass } from "@rafflink/core/lib/error-class"
+
+export type LiveState =
+  | { readonly state: "loading" }
+  | {
+      readonly state: "ready"
+      readonly snapshot: LiveSnapshot
+      readonly connected: boolean
+      /** The entrants the last push added; null for a snapshot, which carries none. */
+      readonly entrantsAfter: EntrantsDelta | null
+      /** Known from the first answer of the streamer's own route; the overlay route has none. */
+      readonly overlayToken: string | null
+    }
+  | { readonly state: "unauthorized" | "not-found" | "failed" }
+
+// Start and ceiling of the reconnect delay; starting guesses, a streamer's page may stay open for hours.
+const reconnectBaseMs = 1000
+const reconnectCapMs = 30_000
+
+/** Delay before reconnect number `attempt` (0 is the first): doubles each time, capped. */
+export function reconnectDelayMs(attempt: number): number {
+  return Math.min(reconnectCapMs, reconnectBaseMs * 2 ** attempt)
+}
+
+/** The first snapshot by GET, then every push of the WebSocket on the same path; reconnects with backoff. */
+export function useLive(path: string): LiveState {
+  const [live, setLive] = useState<LiveState>({ state: "loading" })
+
+  useEffect(() => {
+    let current = true
+    let socket: WebSocket | null = null
+    let overlayToken: string | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const connect = (attempt: number) => {
+      const next = new WebSocket(socketUrl(path))
+      socket = next
+      let healthy = false
+      next.addEventListener("message", (event) => {
+        try {
+          const { snapshot, entrantsAfter } = parseLivePush(
+            record(JSON.parse(String(event.data)), "live"),
+          )
+          healthy = true
+          setLive({ state: "ready", snapshot, connected: true, entrantsAfter, overlayToken })
+        } catch (error) {
+          if (!(error instanceof ApiShapeError || error instanceof SyntaxError)) throw error
+          console.error("live message ignored", { errorClass: errorClass(error) })
+        }
+      })
+      next.addEventListener("close", () => {
+        if (!current) return
+        setLive((previous) =>
+          previous.state === "ready" ? { ...previous, connected: false } : previous,
+        )
+        const failures = healthy ? 0 : attempt
+        timer = setTimeout(() => connect(failures + 1), reconnectDelayMs(failures))
+      })
+    }
+
+    getLive(path).then(
+      (first) => {
+        if (!current) return
+        if (typeof first === "string") {
+          setLive({ state: first })
+          return
+        }
+        overlayToken = first.overlayToken
+        setLive({
+          state: "ready",
+          snapshot: first.snapshot,
+          connected: false,
+          entrantsAfter: null,
+          overlayToken,
+        })
+        connect(0)
+      },
+      (error: unknown) => {
+        console.error("live load failed", { errorClass: errorClass(error) })
+        if (current) setLive({ state: "failed" })
+      },
+    )
+
+    return () => {
+      current = false
+      if (timer !== null) clearTimeout(timer)
+      socket?.close()
+    }
+  }, [path])
+
+  return live
+}
+
+export function socketUrl(path: string): string {
+  const url = new URL(path, window.location.href)
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
+  return url.href
+}

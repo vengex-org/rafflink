@@ -1,0 +1,17 @@
+{
+  "name": "@rafflink/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --env-file=dev.env --watch src/main.ts",
+    "start": "bun src/main.ts"
+  },
+  "dependencies": {
+    "@hono/bun": "1.0.1",
+    "@rafflink/core": "workspace:*",
+    "@rafflink/fake-twitch": "workspace:*",
+    "@rafflink/web": "workspace:*",
+    "hono": "4.13.19"
+  }
+}

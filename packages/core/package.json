@@ -1,0 +1,19 @@
+{
+  "name": "@rafflink/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    "./schema/*": "./schema/*",
+    "./test/contract": "./test/contract/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "hono": "4.13.19",
+    "jose": "6.2.18"
+  },
+  "devDependencies": {
+    "@rafflink/fake-twitch": "workspace:*"
+  }
+}
