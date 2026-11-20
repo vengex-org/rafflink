@@ -461,6 +461,27 @@ describe("eventsub websocket", () => {
     expect(response.status).toBe(503)
   })
 
+  test("counts the open sockets and the chat subscriptions on them", async () => {
+    const socket = await openSocket()
+    const sessionId = await welcomedSessionId(socket)
+    const tokens = await signIn("user:read:chat")
+    const before = [fake.control.eventSubConnections(), fake.control.eventSubSubscriptions()]
+
+    await subscribe(tokens.access_token, sessionId, "100", "100")
+    const subscribed = [fake.control.eventSubConnections(), fake.control.eventSubSubscriptions()]
+    socket.ws.close()
+    await socket.closed
+    for (let wait = 0; wait < 50 && fake.control.eventSubConnections() > 0; wait++) {
+      await Bun.sleep(20)
+    }
+
+    expect(before).toEqual([1, 0])
+    expect(subscribed).toEqual([1, 1])
+    expect([fake.control.eventSubConnections(), fake.control.eventSubSubscriptions()]).toEqual([
+      0, 0,
+    ])
+  })
+
   test("reconnect sends session_reconnect and a socket opened on its URL keeps the session and subscriptions", async () => {
     const socket = await openSocket()
     const sessionId = await welcomedSessionId(socket)

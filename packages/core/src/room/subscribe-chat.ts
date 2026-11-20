@@ -1,0 +1,12 @@
+import type { StreamerTokenDeps } from "../accounts/streamer-token.ts"
+import { openGiveawayStreamerAccess } from "./streamer-access.ts"
+
+/** Subscribes an EventSub session to the chat of the giveaway's channel, with the streamer's token. */
+export async function subscribeChat(
+  deps: StreamerTokenDeps,
+  giveawayId: string,
+  sessionId: string,
+): Promise<void> {
+  const { accessToken, broadcasterId } = await openGiveawayStreamerAccess(deps, giveawayId)
+  await deps.twitch.subscribeChatMessages(accessToken, broadcasterId, sessionId)
+}

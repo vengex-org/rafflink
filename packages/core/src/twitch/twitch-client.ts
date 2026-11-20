@@ -12,6 +12,7 @@ import {
 import {
   parseFollowed,
   parseRolePage,
+  parseSubscriptionCreated,
   parseTier,
   parseTokenResponse,
   parseUserProfile,
@@ -149,6 +150,34 @@ export class TwitchClient {
     return { vips, moderators }
   }
 
+  /**
+   * Subscribes the WebSocket session to the channel's chat messages. Needs the streamer's token with
+   * `user:read:chat`; the streamer is both the channel and the reading user.
+   */
+  async subscribeChatMessages(
+    accessToken: string,
+    broadcasterId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await this.helix(
+      "eventsub",
+      "/helix/eventsub/subscriptions",
+      {},
+      accessToken,
+      parseSubscriptionCreated,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "channel.chat.message",
+          version: "1",
+          condition: { broadcaster_user_id: broadcasterId, user_id: broadcasterId },
+          transport: { method: "websocket", session_id: sessionId },
+        }),
+      },
+    )
+  }
+
   /** Never throws for an answer: only a 401 is `invalid`. */
   async validate(accessToken: string): Promise<TokenValidation> {
     let response: Response
@@ -230,18 +259,24 @@ export class TwitchClient {
     return userIds
   }
 
-  /** One Helix GET; a 503 is retried once after `helixRetryDelayMs`, nothing else is retried. */
+  /** One Helix call, a GET unless `request` says otherwise; a 503 is retried once after `helixRetryDelayMs`, nothing else is retried. */
   private async helix<T>(
     endpoint: TwitchEndpoint,
     path: string,
     query: Readonly<Record<string, string>>,
     accessToken: string,
     parse: (body: unknown) => Parsed<T, "malformed">,
+    request: RequestInit = {},
   ): Promise<T> {
     const url = new URL(path, this.config.twitchHelixBaseUrl)
     for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value)
     const init: RequestInit = {
-      headers: { Authorization: `Bearer ${accessToken}`, "Client-Id": this.config.twitchClientId },
+      ...request,
+      headers: {
+        ...request.headers,
+        Authorization: `Bearer ${accessToken}`,
+        "Client-Id": this.config.twitchClientId,
+      },
     }
     let response = await this.send(endpoint, url, init)
     if (response.status === 503) {

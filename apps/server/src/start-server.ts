@@ -8,6 +8,7 @@ import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
+import { subscribeChat } from "@rafflink/core/room/subscribe-chat"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { TokenQueue, type TokenQueueStub } from "@rafflink/core/queue/token-queue"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
@@ -16,6 +17,7 @@ import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
 import { mkdirSync } from "node:fs"
 import { join } from "node:path"
+import { BunSocketConnector } from "./bun-socket-connector.ts"
 import { openDatabase } from "./database.ts"
 import { LocalRoomDirectory } from "./local-room-directory.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
@@ -61,6 +63,8 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     random,
     publish: (topic, message) => void server.publish(topic, message),
     onAlarm: (giveawayId, room) => runRoomAlarm(tokenDeps, giveawayId, room),
+    connector: new BunSocketConnector(),
+    subscribeChat: (giveawayId, sessionId) => subscribeChat(tokenDeps, giveawayId, sessionId),
   })
 
   const queueDb = openDatabase(join(config.dataDir, queueFileName))

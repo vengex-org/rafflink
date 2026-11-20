@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
+import { idleChat } from "@rafflink/core/test/contract"
+import type { SocketConnector } from "@rafflink/core/ports"
 import type { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
 import { RoomTransientError } from "@rafflink/core/room/room-directory"
 import { giveawayInit, tempDir, testConfig } from "../test/fixtures.ts"
@@ -44,6 +46,8 @@ function directoryWith(overrides: Partial<LocalRoomDirectoryDeps> = {}): LocalRo
     random: systemRandom,
     publish: () => {},
     onAlarm: async () => {},
+    connector: idleChat.connector,
+    subscribeChat: idleChat.subscribe,
     ...overrides,
   })
   directories.push(directory)
@@ -177,5 +181,27 @@ describe("LocalRoomDirectory", () => {
     expect(revived.toSorted()).toEqual([id, otherId].toSorted())
     expect((await second.get(id).summary()).status).toBe("closed")
     expect((await second.get(otherId).summary()).status).toBe("open")
+  })
+
+  it("closes the chat socket of a room that waits for a claim when the directory closes", async () => {
+    let opened = 0
+    let closed = 0
+    const connector: SocketConnector = {
+      open: () => {
+        opened += 1
+        return { close: () => void (closed += 1) }
+      },
+    }
+    const directory = directoryWith({ connector })
+    const room = directory.get(id)
+    await room.init(giveawayInit(id))
+    await room.enter(viewer)
+    await room.close()
+    await room.draw(1)
+    expect({ opened, closed }).toEqual({ opened: 1, closed: 0 })
+
+    directory.close()
+
+    expect({ opened, closed }).toEqual({ opened: 1, closed: 1 })
   })
 })

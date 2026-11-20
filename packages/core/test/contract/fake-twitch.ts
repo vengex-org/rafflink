@@ -1,4 +1,4 @@
-import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
+import { createFakeTwitch, websocket, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
 
 export const users = {
   streamer: user("200"),
@@ -32,7 +32,7 @@ export function startFakeTwitch(): RunningFakeTwitch {
     keepaliveTimeoutSeconds: 10,
   })
   for (const fakeUser of Object.values(users)) fake.control.addUser(fakeUser)
-  const server = Bun.serve({ port: 0, fetch: fake.app.fetch })
+  const server = Bun.serve({ port: 0, fetch: fake.app.fetch, websocket })
   return {
     fake,
     origin: server.url.origin,

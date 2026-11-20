@@ -3,7 +3,9 @@ import { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
 import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
+import { subscribeChat } from "@rafflink/core/room/subscribe-chat"
 import { DurableObjectAlarm } from "../adapters/durable-object-alarm.ts"
+import { DurableObjectSocketConnector } from "../adapters/durable-object-socket-connector.ts"
 import { DurableObjectSyncSql } from "../adapters/durable-object-sync-sql.ts"
 import type { WorkerEnv } from "../env.ts"
 import { runtimeOf, type Runtime } from "../runtime.ts"
@@ -96,6 +98,10 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
       clock: runtime.clock,
       random: runtime.random,
       config: runtime.config,
+      chat: {
+        connector: new DurableObjectSocketConnector(),
+        subscribe: (sessionId) => subscribeChat(runtime, this.giveawayId(), sessionId),
+      },
     })
     return { room, runtime }
   }

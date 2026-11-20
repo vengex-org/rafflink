@@ -80,6 +80,12 @@ export function parseValidated(body: unknown): Parsed<{ userId: string }, "malfo
   return { ok: true, value: { userId: body.user_id } }
 }
 
+/** A created subscription: Twitch answers with the subscription in `data`. */
+export function parseSubscriptionCreated(body: unknown): Parsed<null, "malformed"> {
+  const entry = firstEntry(body)
+  return entry.ok && typeof entry.value.id === "string" ? { ok: true, value: null } : malformed
+}
+
 function dataOf(body: unknown): Parsed<readonly unknown[], "malformed"> {
   return isRecord(body) && Array.isArray(body.data) ? { ok: true, value: body.data } : malformed
 }

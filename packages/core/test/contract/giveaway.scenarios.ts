@@ -8,7 +8,7 @@ export function giveawayScenarios(context: ContractContext): void {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)
 
-    const closed = await close(giveaway)
+    const closed = await world.closeGiveaway(giveaway)
     const result = await world.enter(target, giveaway.code, users.viewer.id)
 
     expect(closed.status).toBe(200)
@@ -39,7 +39,7 @@ export function giveawayScenarios(context: ContractContext): void {
     const giveaway = await world.createGiveaway(target)
     await world.enter(target, giveaway.code, users.viewer.id)
 
-    const response = await draw(giveaway, 1)
+    const response = await world.drawWinners(giveaway, 1)
 
     expect(response.status).toBe(409)
     expect(await response.json()).toEqual({ kind: "not-closed" })
@@ -53,10 +53,10 @@ export function giveawayScenarios(context: ContractContext): void {
       const giveaway = await world.createGiveaway(target)
       const entered = [users.viewer, users.viewer2, users.viewer3]
       for (const viewer of entered) await world.enter(target, giveaway.code, viewer.id)
-      await close(giveaway)
+      await world.closeGiveaway(giveaway)
 
-      const drawn = await draw(giveaway, 2)
-      const again = await draw(giveaway, 1)
+      const drawn = await world.drawWinners(giveaway, 2)
+      const again = await world.drawWinners(giveaway, 1)
 
       expect(drawn.status).toBe(200)
       expect(await drawn.json()).toEqual({ kind: "drawn", winners: [0, 1] })
@@ -74,8 +74,8 @@ export function giveawayScenarios(context: ContractContext): void {
     for (const viewer of [users.viewer, users.viewer2, users.viewer3]) {
       await world.enter(target, giveaway.code, viewer.id)
     }
-    await close(giveaway)
-    await draw(giveaway, 1)
+    await world.closeGiveaway(giveaway)
+    await world.drawWinners(giveaway, 1)
 
     const rerolled = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/reroll`, {
       n: 0,
@@ -93,8 +93,8 @@ export function giveawayScenarios(context: ContractContext): void {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target, { claimSeconds: 120 })
     const entered = await world.enter(target, giveaway.code, users.viewer.id)
-    await close(giveaway)
-    await draw(giveaway, 1)
+    await world.closeGiveaway(giveaway)
+    await world.drawWinners(giveaway, 1)
 
     const page: { win: { n: number; claimUntil: number; claim: { state: string } } } = await (
       await entered.viewer.request(`/api/g/${giveaway.code}`)
@@ -116,8 +116,8 @@ export function giveawayScenarios(context: ContractContext): void {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
     const entered = await world.enter(target, giveaway.code, users.viewer.id)
-    await close(giveaway)
-    await draw(giveaway, 1)
+    await world.closeGiveaway(giveaway)
+    await world.drawWinners(giveaway, 1)
 
     await world.waitFor(
       async () => (await world.live(giveaway)).winners[0]?.claim.state === "expired",
@@ -133,8 +133,8 @@ export function giveawayScenarios(context: ContractContext): void {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)
     await world.enter(target, giveaway.code, users.viewer.id)
-    await close(giveaway)
-    await draw(giveaway, 1)
+    await world.closeGiveaway(giveaway)
+    await world.drawWinners(giveaway, 1)
 
     const marked = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/claim`, {
       n: 0,
@@ -164,14 +164,6 @@ export function giveawayScenarios(context: ContractContext): void {
     expect(attempts.map((response) => response.status)).toEqual([404, 404, 404, 404, 404])
     expect(await publicStatus(target, giveaway)).toBe("open")
   })
-}
-
-function close(giveaway: CreatedGiveaway): Promise<Response> {
-  return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/close`, {})
-}
-
-function draw(giveaway: CreatedGiveaway, count: number): Promise<Response> {
-  return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, { count })
 }
 
 async function publicStatus(target: ContractTarget, giveaway: CreatedGiveaway): Promise<string> {

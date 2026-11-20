@@ -30,6 +30,8 @@ export type RoomState = {
   readonly ticketTotal: number
   readonly roleRefreshFailures: number
   readonly eventSubFailures: number
+  /** The chat watch gave up; no later draw or reroll opens it again. */
+  readonly chatUnavailable: boolean
   readonly rolesRefreshAt: Instant | null
   readonly mirrorPending: boolean
 } & (
@@ -76,6 +78,7 @@ export function parseState(
     ticketTotal: reader.int("ticket_total"),
     roleRefreshFailures: reader.int("role_refresh_failures"),
     eventSubFailures: reader.int("eventsub_failures"),
+    chatUnavailable: reader.int("chat_unavailable") === 1,
     rolesRefreshAt: reader.nullableInt("roles_refresh_at"),
     mirrorPending: reader.int("mirror_pending") === 1,
   }

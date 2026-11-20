@@ -12,7 +12,12 @@ import { roomMigrations } from "@rafflink/core/room/migrations"
 import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
-import { startFakeTwitch, users, type RunningFakeTwitch } from "@rafflink/core/test/contract"
+import {
+  idleChat,
+  startFakeTwitch,
+  users,
+  type RunningFakeTwitch,
+} from "@rafflink/core/test/contract"
 import { seedStreamer } from "../test/fake-twitch.ts"
 import { giveawayInit, sealKey, testConfig, validRules } from "../test/fixtures.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
@@ -69,6 +74,7 @@ beforeEach(async () => {
     clock,
     random: systemRandom,
     config,
+    chat: idleChat,
   })
   room.init(giveawayInit(giveawayId))
 })

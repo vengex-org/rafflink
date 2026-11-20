@@ -7,6 +7,7 @@ export type TwitchEndpoint =
   | "users"
   | "vips"
   | "moderators"
+  | "eventsub"
 
 /**
  * A Twitch call that did not give an answer. The subclass tells the caller what to do: queue and retry

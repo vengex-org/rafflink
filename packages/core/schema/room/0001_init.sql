@@ -14,6 +14,7 @@ CREATE TABLE room_state (
   ticket_total INTEGER NOT NULL DEFAULT 0,
   role_refresh_failures INTEGER NOT NULL DEFAULT 0,
   eventsub_failures INTEGER NOT NULL DEFAULT 0,
+  chat_unavailable INTEGER NOT NULL DEFAULT 0 CHECK (chat_unavailable IN (0, 1)),
   roles_refresh_at INTEGER,
   mirror_pending INTEGER NOT NULL DEFAULT 0 CHECK (mirror_pending IN (0, 1)),
   CHECK ((status = 'drawn') = (seed IS NOT NULL))
@@ -52,4 +53,6 @@ CREATE TABLE draws (
   CHECK ((claimed_at IS NULL) = (claimed_via IS NULL))
 );
 
-CREATE UNIQUE INDEX draws_by_entrant ON draws (platform, platform_user_id)
+CREATE UNIQUE INDEX draws_by_entrant ON draws (platform, platform_user_id);
+
+CREATE INDEX draws_waiting ON draws (claim_until) WHERE claimed_at IS NULL AND rerolled = 0

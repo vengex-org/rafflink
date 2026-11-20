@@ -8,6 +8,7 @@ export type ConfigReason =
   | "out-of-range"
   | "not-a-url"
   | "not-below-queue-code-max-age"
+  | "not-below-eventsub-connection-max"
 
 /** An invalid or missing setting. Carries the env key and a reason, never the value (it may be a secret). */
 export class ConfigError extends Error {
@@ -165,23 +166,47 @@ export const configSchema = {
     "5000",
     "Timeout of every outbound Twitch call; starting guess",
   ),
+  eventSubUrl: withDefault(
+    "EVENTSUB_URL",
+    socketUrl,
+    "wss://eventsub.wss.twitch.tv/ws",
+    "Twitch EventSub WebSocket endpoint; only tests and the fake Twitch change it",
+  ),
   eventSubSubscribeSeconds: withDefault(
     "EVENTSUB_SUBSCRIBE_SECONDS",
     int(1),
     "10",
-    "Time after the welcome message to subscribe; Twitch limit",
+    "Time after the connection opens to subscribe before Twitch closes it; Twitch limit",
+  ),
+  eventSubConnectionMaxSeconds: withDefault(
+    "EVENTSUB_CONNECTION_MAX_SECONDS",
+    int(1),
+    "900",
+    "Longest a connection is kept before it is replaced; a Cloudflare Durable Object keeps an outbound WebSocket about 15 minutes",
   ),
   eventSubReconnectMarginSeconds: withDefault(
     "EVENTSUB_RECONNECT_MARGIN_SECONDS",
     int(0),
-    "10",
-    "Reconnect this long before Twitch drops the old session; starting guess",
+    "60",
+    "Replace a connection this long before EVENTSUB_CONNECTION_MAX_SECONDS, so 14 of the 15 minutes; starting guess",
+  ),
+  eventSubKeepaliveGraceSeconds: withDefault(
+    "EVENTSUB_KEEPALIVE_GRACE_SECONDS",
+    int(0),
+    "5",
+    "Wait beyond the keepalive timeout Twitch announces before the connection counts as lost; starting guess",
+  ),
+  eventSubReconnectDelaySeconds: withDefault(
+    "EVENTSUB_RECONNECT_DELAY_SECONDS",
+    int(0),
+    "2",
+    "Wait before reconnecting after a failed or lost connection; starting guess",
   ),
   eventSubReconnectMaxAttempts: withDefault(
     "EVENTSUB_RECONNECT_MAX_ATTEMPTS",
     int(1),
     "5",
-    "Reconnects before the live page shows Chat claim unavailable; starting guess",
+    "Reconnects in a row before the live page shows Chat claim unavailable; starting guess",
   ),
   validatePeriodSeconds: withDefault(
     "VALIDATE_PERIOD_SECONDS",
@@ -319,8 +344,12 @@ export function resolveConfig(env: Env): ResolvedConfig {
     twitchIdBaseUrl: read(env, configSchema.twitchIdBaseUrl),
     twitchHelixBaseUrl: read(env, configSchema.twitchHelixBaseUrl),
     twitchTimeoutMs: read(env, configSchema.twitchTimeoutMs),
+    eventSubUrl: read(env, configSchema.eventSubUrl),
     eventSubSubscribeSeconds: read(env, configSchema.eventSubSubscribeSeconds),
+    eventSubConnectionMaxSeconds: read(env, configSchema.eventSubConnectionMaxSeconds),
     eventSubReconnectMarginSeconds: read(env, configSchema.eventSubReconnectMarginSeconds),
+    eventSubKeepaliveGraceSeconds: read(env, configSchema.eventSubKeepaliveGraceSeconds),
+    eventSubReconnectDelaySeconds: read(env, configSchema.eventSubReconnectDelaySeconds),
     eventSubReconnectMaxAttempts: read(env, configSchema.eventSubReconnectMaxAttempts),
     validatePeriodSeconds: read(env, configSchema.validatePeriodSeconds),
     sessionTtlSeconds: read(env, configSchema.sessionTtlSeconds),
@@ -344,6 +373,13 @@ export function resolveConfig(env: Env): ResolvedConfig {
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
     throw new ConfigError(configSchema.queuePollMaxSeconds.env, "not-below-queue-code-max-age")
+  }
+  // A connection is replaced before it reaches its maximum age, so the margin leaves it a positive life.
+  if (config.eventSubReconnectMarginSeconds >= config.eventSubConnectionMaxSeconds) {
+    throw new ConfigError(
+      configSchema.eventSubReconnectMarginSeconds.env,
+      "not-below-eventsub-connection-max",
+    )
   }
   return config
 }
@@ -417,6 +453,14 @@ function endpoint(raw: string): Parsed<string, ConfigReason> {
   if (!URL.canParse(value)) return fail("not-a-url")
   const parsed = new URL(value)
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fail("not-a-url")
+  return ok(parsed.href)
+}
+
+function socketUrl(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  if (!URL.canParse(value)) return fail("not-a-url")
+  const parsed = new URL(value)
+  if (parsed.protocol !== "ws:" && parsed.protocol !== "wss:") return fail("not-a-url")
   return ok(parsed.href)
 }
 

@@ -169,6 +169,32 @@ describe("resolveConfig", () => {
     )
   })
 
+  it("accepts a ws or wss EventSub URL with its path and rejects any other scheme", () => {
+    expect(resolveConfig(required).eventSubUrl).toBe("wss://eventsub.wss.twitch.tv/ws")
+    expect(
+      resolveConfig({ ...required, EVENTSUB_URL: "ws://localhost:3000/eventsub/ws" }).eventSubUrl,
+    ).toBe("ws://localhost:3000/eventsub/ws")
+    for (const bad of ["https://eventsub.wss.twitch.tv/ws", "eventsub.wss.twitch.tv", ""]) {
+      expect(failure({ ...required, EVENTSUB_URL: bad })).toMatchObject({
+        env: "EVENTSUB_URL",
+        reason: "not-a-url",
+      })
+    }
+  })
+
+  it("rejects a reconnect margin equal to or above the connection maximum age", () => {
+    for (const margin of ["900", "901"]) {
+      expect(failure({ ...required, EVENTSUB_RECONNECT_MARGIN_SECONDS: margin })).toMatchObject({
+        env: "EVENTSUB_RECONNECT_MARGIN_SECONDS",
+        reason: "not-below-eventsub-connection-max",
+      })
+    }
+    expect(
+      resolveConfig({ ...required, EVENTSUB_RECONNECT_MARGIN_SECONDS: "899" })
+        .eventSubReconnectMarginSeconds,
+    ).toBe(899)
+  })
+
   it("keeps the secret value out of the error", () => {
     const error = failure({ ...required, TOKEN_SEAL_KEYS: "topsecret,," })
     expect(error.message).not.toContain("topsecret")

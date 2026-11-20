@@ -33,6 +33,28 @@ export interface LiveHub {
   broadcast(json: string): void
 }
 
+/** What an open {@link TextSocket} reports. */
+export interface SocketHandlers {
+  onText(text: string): void
+  /** `cause` is `undefined` when the peer or the caller closed the socket cleanly. */
+  onClose(cause: unknown): void
+}
+
+/** An outbound WebSocket that carries text frames. */
+export interface TextSocket {
+  /** Idempotent. */
+  close(): void
+}
+
+/**
+ * Opens outbound WebSockets. Any implementation returns at once, delivers text frames in order, calls
+ * `onClose` exactly once when the socket ended for any reason (a failed connect and a local `close()`
+ * included), and calls no handler before `open` has returned.
+ */
+export interface SocketConnector {
+  open(url: string, handlers: SocketHandlers): TextSocket
+}
+
 /**
  * Synchronous SQL over one SQLite database (Durable Object storage, bun:sqlite). Any implementation
  * binds `params` positionally, returns the rows of a statement (empty for a write, or the `RETURNING`

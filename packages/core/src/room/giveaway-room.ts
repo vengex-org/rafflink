@@ -7,7 +7,18 @@ import {
 } from "../domain/rules.ts"
 import { drawWinners, pickWinner, type DrawEntry, type Identity, type Winner } from "../lib/draw.ts"
 import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql } from "../ports.ts"
-import { lastNamesSql, recentEntriesCountSql } from "./queries.ts"
+import {
+  ChatWatcher,
+  type ChatLink,
+  type ChatMessage,
+  type ChatWatcherConfig,
+} from "./chat-watcher.ts"
+import {
+  lastNamesSql,
+  nextClaimDeadlineSql,
+  recentEntriesCountSql,
+  waitingPickOfChatterSql,
+} from "./queries.ts"
 import {
   parseDraw,
   parseEntry,
@@ -29,6 +40,7 @@ export type RoomConfig = Pick<
   | "liveRateWindowSeconds"
   | "mirrorRetrySeconds"
 >
+  & ChatWatcherConfig
 
 export interface RoomDeps {
   readonly sql: SyncSql
@@ -37,6 +49,8 @@ export interface RoomDeps {
   readonly clock: Clock
   readonly random: Random
   readonly config: RoomConfig
+  /** How this target reaches Twitch chat while a winner waits to claim. */
+  readonly chat: ChatLink
 }
 
 /** What the room is created from: the giveaway as the account store holds it. */
@@ -126,6 +140,8 @@ export interface LiveSnapshot extends RoomSummary {
   readonly winners: readonly LiveWinner[]
   readonly roleRefreshFailures: number
   readonly eventSubFailures: number
+  /** The live page shows "Chat claim unavailable"; the streamer marks claims by hand. */
+  readonly chatClaimUnavailable: boolean
 }
 
 /**
@@ -139,6 +155,7 @@ export class GiveawayRoom {
   private readonly clock: Clock
   private readonly random: Random
   private readonly config: RoomConfig
+  private readonly chat: ChatWatcher
   private lastPushAt: Instant | null = null
   private pushDueAt: Instant | null = null
   private mirrorRetryAt: Instant | null = null
@@ -150,6 +167,14 @@ export class GiveawayRoom {
     this.clock = deps.clock
     this.random = deps.random
     this.config = deps.config
+    this.chat = new ChatWatcher({
+      ...deps.chat,
+      clock: deps.clock,
+      config: deps.config,
+      onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
+      onUnavailable: (cause) => this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
+      onSchedule: () => this.guarded("alarm", () => this.rearm()),
+    })
   }
 
   /** Creates the room once; a second call with any giveaway changes nothing. */
@@ -169,7 +194,7 @@ export class GiveawayRoom {
         this.clock.now(),
       ],
     )
-    this.guarded("alarm", () => this.rearm())
+    this.reconcile()
   }
 
   /** One entry per account: a repeat returns the first entry and changes nothing. */
@@ -250,6 +275,10 @@ export class GiveawayRoom {
     }
     const mirrorDue = state.mirrorPending && now >= (this.mirrorRetryAt ?? now)
     if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+    this.guarded("chat", () => {
+      this.syncChat()
+      this.chat.onAlarm()
+    })
     this.guarded("alarm", () => this.rearm())
     return { refreshRoles, mirrorStatus: mirrorDue ? state.status : null }
   }
@@ -358,6 +387,11 @@ export class GiveawayRoom {
     this.guarded("alarm", () => this.rearm())
   }
 
+  /** Closes the chat watch and nothing else, for the host that is shutting the room down. */
+  closeChat(): void {
+    this.chat.close()
+  }
+
   /** Counts a failure for the live page and logs it with the giveaway id; `cause` goes to the log untouched. */
   recordFailure(kind: FailureKind, cause: unknown): void {
     const column = failureColumns[kind]
@@ -396,6 +430,7 @@ export class GiveawayRoom {
       winners,
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
+      chatClaimUnavailable: state.chatUnavailable,
     }
   }
 
@@ -471,7 +506,52 @@ export class GiveawayRoom {
   // Each effect after a commit runs in its own try: a failed push must not skip the alarm.
   private afterWrite(): void {
     this.guarded("live-push", () => this.pushLive())
+    this.reconcile()
+  }
+
+  private reconcile(): void {
+    this.guarded("chat", () => this.syncChat())
     this.guarded("alarm", () => this.rearm())
+  }
+
+  // The watcher runs while a winner waits to claim, until it gave up for this giveaway.
+  private syncChat(): void {
+    const state = this.readState()
+    const waiting = state.status === "drawn" && this.nextClaimDeadline() !== null
+    if (waiting && !state.chatUnavailable) this.chat.open()
+    else this.chat.close()
+  }
+
+  /** The end of the soonest claim time among winners who may still claim, `null` when none waits. */
+  private nextClaimDeadline(): Instant | null {
+    const row = this.sql.exec(nextClaimDeadlineSql, [this.clock.now()])[0]
+    return row === undefined ? null : new RowReader("draws", row).nullableInt("deadline")
+  }
+
+  // A message from the waiting winner claims; every other message is dropped here, unread and unlogged.
+  private onChatMessage(message: ChatMessage): void {
+    const now = this.clock.now()
+    const pick = this.sql.exec(waitingPickOfChatterSql, [message.chatterUserId, now])[0]
+    if (pick === undefined) return
+    const state = this.readState()
+    const { claimKeyword } = state.rules
+    if (
+      claimKeyword !== null
+      && !message.text.toLowerCase().includes(claimKeyword.trim().toLowerCase())
+    ) {
+      return
+    }
+    this.claim(
+      new RowReader("draws", pick).int("n"),
+      { platform: state.platform, platformUserId: message.chatterUserId },
+      "chat",
+    )
+  }
+
+  // The watcher has already closed; the flag keeps the room from opening it again.
+  private chatUnavailable(cause: unknown): void {
+    this.sql.exec("UPDATE room_state SET chat_unavailable = 1 WHERE id = 1", [])
+    this.recordFailure("eventsub", cause)
   }
 
   private pushLive(): void {
@@ -488,11 +568,15 @@ export class GiveawayRoom {
   private rearm(): void {
     const state = this.readState()
     const open = state.status === "open"
+    const claimDeadline = state.status === "drawn" ? this.nextClaimDeadline() : null
     const wakeups = [
       open ? state.closesAt : null,
       open ? state.rolesRefreshAt : null,
       this.pushDueAt,
       state.mirrorPending ? (this.mirrorRetryAt ?? this.clock.now()) : null,
+      // One past the inclusive deadline, so the alarm finds the claim time over and closes the chat watch.
+      claimDeadline === null ? null : claimDeadline + 1,
+      this.chat.wakeAt(),
     ].filter((at): at is Instant => at !== null)
     if (wakeups.length === 0) this.alarm.clear()
     else this.alarm.set(Math.min(...wakeups))

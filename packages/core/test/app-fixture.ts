@@ -28,6 +28,7 @@ import type { RoomDirectory, RoomStub } from "../src/room/room-directory.ts"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "../src/sqlite-bun.ts"
 import { TwitchClient } from "../src/twitch/twitch-client.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
+import { idleChat } from "./idle-chat.ts"
 
 export const accountsSchema = await Bun.file(
   new URL("../schema/accounts/0001_init.sql", import.meta.url),
@@ -115,6 +116,7 @@ export class InProcessRooms implements RoomDirectory {
       clock: this.clock,
       random: secureRandom,
       config: this.config,
+      chat: idleChat,
     })
     this.rooms.set(giveawayId, room)
     return room

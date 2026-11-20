@@ -5,6 +5,7 @@ import type { GiveawayRules } from "../domain/rules.ts"
 import { drawWinners } from "../lib/draw.ts"
 import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql } from "../ports.ts"
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
+import { idleChat } from "../../test/idle-chat.ts"
 import { GiveawayRoom, type GiveawayInit, type RoomViewer } from "./giveaway-room.ts"
 import { applyMigrations } from "./migrate.ts"
 import { roomMigrations } from "./migrations.ts"
@@ -101,7 +102,7 @@ function setup(init: GiveawayInit = giveaway) {
   const clock = new TestClock(0)
   const alarm = new TestAlarm()
   const hub = new TestHub()
-  const room = new GiveawayRoom({ sql, alarm, live: hub, clock, random, config })
+  const room = new GiveawayRoom({ sql, alarm, live: hub, clock, random, config, chat: idleChat })
   room.init(init)
   return { room, sql, clock, alarm, hub }
 }

@@ -13,6 +13,7 @@ import { waitFor } from "./wait.ts"
 const scenarioTimeoutMs = 30_000
 const waitTimeoutMs = 15_000
 
+export const eventSubPath = "/eventsub/ws"
 export const vipsPath = "/helix/channels/vips"
 export const moderatorsPath = "/helix/moderation/moderators"
 
@@ -176,6 +177,14 @@ export class World {
     )
   }
 
+  closeGiveaway(giveaway: CreatedGiveaway): Promise<Response> {
+    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/close`, {})
+  }
+
+  drawWinners(giveaway: CreatedGiveaway, count: number): Promise<Response> {
+    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, { count })
+  }
+
   /** Requests the fake Twitch has received on `path`. */
   twitchCalls(path: string): number {
     return this.twitch.fake.control.calls.filter((call) => call.path === path).length
@@ -191,6 +200,7 @@ export class World {
       PUBLIC_URL: "http://localhost",
       TWITCH_ID_BASE_URL: this.twitch.origin,
       TWITCH_HELIX_BASE_URL: this.twitch.origin,
+      EVENTSUB_URL: `${this.twitch.origin.replace(/^http/, "ws")}${eventSubPath}`,
       TWITCH_TIMEOUT_MS: "2000",
       HELIX_RETRY_DELAY_MS: "0",
       ENTRY_WRITE_RETRY_DELAYS_MS: "0",

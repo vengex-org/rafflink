@@ -30,6 +30,10 @@ export interface FakeTwitchControl {
   sendChatMessage(broadcasterId: string, chatterUserId: string, text: string): void
   /** Sends `session_reconnect` on every open EventSub socket. */
   reconnect(): void
+  /** EventSub sockets that are open now. */
+  eventSubConnections(): number
+  /** Chat subscriptions on the open EventSub sockets. */
+  eventSubSubscriptions(): number
   readonly calls: readonly Call[]
 }
 
@@ -98,6 +102,8 @@ export function createFakeTwitch(options: FakeTwitchOptions): FakeTwitch {
     },
     sendChatMessage: eventSub.sendChatMessage,
     reconnect: eventSub.reconnect,
+    eventSubConnections: eventSub.connectionCount,
+    eventSubSubscriptions: eventSub.subscriptionCount,
     calls: state.calls,
   }
 

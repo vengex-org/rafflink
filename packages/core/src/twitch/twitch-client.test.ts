@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import { createFakeTwitch, type FakeTwitch, type FakeUser, type Tier } from "@rafflink/fake-twitch"
+import {
+  createFakeTwitch,
+  websocket,
+  type FakeTwitch,
+  type FakeUser,
+  type Tier,
+} from "@rafflink/fake-twitch"
 import { resolveConfig, type ResolvedConfig } from "../config.ts"
 import {
   TwitchInvalid,
@@ -26,9 +32,10 @@ const streamer: FakeUser = {
 type Scopes = readonly [string, ...string[]]
 const VIEWER_SCOPES: Scopes = ["openid", "user:read:subscriptions", "user:read:follows"]
 const STREAMER_SCOPES: Scopes = ["openid", "channel:read:vips", "moderation:read"]
+const CHAT_SCOPES: Scopes = ["openid", "user:read:chat"]
 
 let fake: FakeTwitch
-let server: Bun.Server<undefined>
+let server: ReturnType<typeof serveFake>
 let client: TwitchClient
 
 beforeEach(() => {
@@ -40,13 +47,17 @@ beforeEach(() => {
     keepaliveTimeoutSeconds: 10,
   })
   fake.control.addUser(streamer)
-  server = Bun.serve({ port: 0, fetch: fake.app.fetch })
+  server = serveFake()
   client = new TwitchClient(configFor(server.url.origin), fetch)
 })
 
 afterEach(async () => {
   await server.stop(true)
 })
+
+function serveFake() {
+  return Bun.serve({ port: 0, fetch: fake.app.fetch, websocket })
+}
 
 function configFor(origin: string, overrides: Record<string, string> = {}): ResolvedConfig {
   return resolveConfig({
@@ -403,6 +414,51 @@ describe("channelRoles", () => {
   })
 })
 
+describe("subscribeChatMessages", () => {
+  it("delivers the channel's chat messages to the session", async () => {
+    const { accessToken } = await signIn("200", CHAT_SCOPES)
+    const session = await openSession()
+
+    await client.subscribeChatMessages(accessToken, "200", session.id)
+    fake.control.sendChatMessage("200", "100", "!claim")
+
+    expect(await session.nextNotification()).toMatchObject({
+      payload: {
+        subscription: { condition: { broadcaster_user_id: "200", user_id: "200" } },
+        event: { chatter_user_id: "100", message: { text: "!claim" } },
+      },
+    })
+  })
+
+  it("retries a Helix 503 once", async () => {
+    const { accessToken } = await signIn("200", CHAT_SCOPES)
+    const session = await openSession()
+    fake.control.failNext("eventsub", 503, 1)
+
+    await client.subscribeChatMessages(accessToken, "200", session.id)
+
+    expect(callsTo("/helix/eventsub/subscriptions")).toBe(2)
+  })
+
+  it("rejects a token without the chat scope as invalid", async () => {
+    const { accessToken } = await signIn("200", STREAMER_SCOPES)
+    const session = await openSession()
+
+    const error = await rejection(client.subscribeChatMessages(accessToken, "200", session.id))
+
+    expect(error).toBeInstanceOf(TwitchInvalid)
+    expect(error).toMatchObject({ endpoint: "eventsub", status: 403 })
+  })
+
+  it("rejects a session that does not exist as invalid", async () => {
+    const { accessToken } = await signIn("200", CHAT_SCOPES)
+
+    const error = await rejection(client.subscribeChatMessages(accessToken, "200", "gone"))
+
+    expect(error).toMatchObject({ endpoint: "eventsub", status: 400 })
+  })
+})
+
 describe("validate", () => {
   it("reports a live token as valid with its user id", async () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
@@ -443,3 +499,43 @@ describe("validate", () => {
     expect(await throttled.validate("token")).toEqual({ status: "unavailable" })
   })
 })
+
+interface SocketMessage {
+  metadata: { message_type: string }
+  payload: { session?: { id: string } }
+}
+
+interface Session {
+  readonly id: string
+  nextNotification(): Promise<SocketMessage>
+}
+
+/** Opens an EventSub socket on the fake and reads its welcome; the server closes the socket when the test ends. */
+async function openSession(): Promise<Session> {
+  const socket = new WebSocket(`ws://${server.hostname}:${server.port}/eventsub/ws`)
+  const queue: SocketMessage[] = []
+  const waiting: ((message: SocketMessage) => void)[] = []
+  socket.addEventListener("message", (event) => {
+    const message: SocketMessage = JSON.parse(String(event.data))
+    const waiter = waiting.shift()
+    if (waiter === undefined) queue.push(message)
+    else waiter(message)
+  })
+  const next = (): Promise<SocketMessage> => {
+    const queued = queue.shift()
+    return queued === undefined
+      ? new Promise((resolve) => waiting.push(resolve))
+      : Promise.resolve(queued)
+  }
+  const id = (await next()).payload.session?.id
+  if (id === undefined) throw new Error("first message was not a welcome")
+  return {
+    id,
+    nextNotification: async () => {
+      for (;;) {
+        const message = await next()
+        if (message.metadata.message_type === "notification") return message
+      }
+    },
+  }
+}

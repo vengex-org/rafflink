@@ -9,7 +9,7 @@ import {
   type RoomDirectory,
   type RoomStub,
 } from "@rafflink/core/room/room-directory"
-import type { Clock, Random } from "@rafflink/core/ports"
+import type { Clock, Random, SocketConnector } from "@rafflink/core/ports"
 import { BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { openDatabase } from "./database.ts"
 import { TimerAlarm } from "./timer-alarm.ts"
@@ -24,6 +24,9 @@ export interface LocalRoomDirectoryDeps {
   readonly publish: (topic: string, message: string) => void
   /** Runs when a room's alarm fires; its error is logged and goes no further. */
   readonly onAlarm: (giveawayId: string, room: GiveawayRoom) => Promise<void>
+  readonly connector: SocketConnector
+  /** Subscribes an EventSub session to the chat of a giveaway's channel. */
+  readonly subscribeChat: (giveawayId: string, sessionId: string) => Promise<void>
 }
 
 /** The pub/sub topic of a room's live pages. */
@@ -62,7 +65,8 @@ export class LocalRoomDirectory implements RoomDirectory {
   }
 
   close(): void {
-    for (const { alarm, db } of this.open.values()) {
+    for (const { room, alarm, db } of this.open.values()) {
+      room.closeChat()
       alarm.clear()
       db.close()
     }
@@ -87,6 +91,10 @@ export class LocalRoomDirectory implements RoomDirectory {
       clock: this.deps.clock,
       random: this.deps.random,
       config: this.deps.config,
+      chat: {
+        connector: this.deps.connector,
+        subscribe: (sessionId) => this.deps.subscribeChat(giveawayId, sessionId),
+      },
     })
     this.open.set(giveawayId, { room, alarm, db })
     return room

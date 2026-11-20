@@ -10,6 +10,10 @@ export interface EventSub {
   subscriptionRoutes: Hono<HelixEnv>
   sendChatMessage(broadcasterId: string, chatterUserId: string, text: string): void
   reconnect(): void
+  /** EventSub sockets that are open now. */
+  connectionCount(): number
+  /** Chat subscriptions on the open sockets. */
+  subscriptionCount(): number
 }
 
 const CHAT_MESSAGE = "channel.chat.message"
@@ -41,6 +45,8 @@ interface SubscribeRequest {
 
 export function createEventSub(state: FakeState): EventSub {
   const sessions = new Map<string, Session>()
+  // A socket that a `session_reconnect` replaced stays open until its client closes it, so it is not in `sessions`.
+  const open = new Set<Session>()
   const socketRoutes = new Hono()
   const subscriptionRoutes = new Hono<HelixEnv>()
 
@@ -138,6 +144,9 @@ export function createEventSub(state: FakeState): EventSub {
         }
       }
     },
+    connectionCount: () => open.size,
+    subscriptionCount: () =>
+      [...open].reduce((count, session) => count + session.subscriptions.length, 0),
     reconnect() {
       for (const session of sessions.values()) {
         send(session.ws, {
@@ -179,6 +188,7 @@ export function createEventSub(state: FakeState): EventSub {
       }, subscribeWindowMs),
     }
     sessions.set(id, session)
+    open.add(session)
     send(ws, {
       metadata: metadata("session_welcome"),
       payload: {
@@ -197,6 +207,7 @@ export function createEventSub(state: FakeState): EventSub {
   function closeSession(session: Session): void {
     clearInterval(session.keepalive)
     clearTimeout(session.subscribeWindow)
+    open.delete(session)
     if (sessions.get(session.id) === session) sessions.delete(session.id)
   }
 }

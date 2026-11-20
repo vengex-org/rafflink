@@ -4,3 +4,4 @@ export { startFakeTwitch, users, type RunningFakeTwitch } from "./fake-twitch.ts
 export { openSocket } from "./socket.ts"
 export type { ContractTarget, StartTarget } from "./target.ts"
 export { waitFor } from "./wait.ts"
+export { idleChat } from "../idle-chat.ts"
