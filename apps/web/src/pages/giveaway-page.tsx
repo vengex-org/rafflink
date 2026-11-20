@@ -4,6 +4,7 @@ import { groups } from "@rafflink/core/domain/groups"
 import type { EntrySummary } from "@rafflink/core/room/rows"
 import type { ViewerState } from "@rafflink/core/http/json"
 import { claimPrize, entryFromQuery, type GiveawayView } from "../api/client.ts"
+import { Countdown } from "../components/countdown.tsx"
 import { Disclosure } from "../components/disclosure.tsx"
 import {
   AlertIcon,
@@ -35,7 +36,7 @@ import { forgetStoredGiveaway, loadGiveaway } from "../lib/stored-giveaway.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { useViewerPush } from "../lib/use-viewer-push.ts"
 import { applyViewerPush } from "../lib/viewer-outcome.ts"
-import { formatClock, formatLeft, useRemainingMs } from "../lib/use-remaining.ts"
+import { formatLeft, useRemainingMs } from "../lib/use-remaining.ts"
 
 const stepNames = ["giveaway.stepSignIn", "giveaway.stepTicket"] as const
 
@@ -131,6 +132,7 @@ function GiveawayDetails({
             entry={entry}
             tickets={entered ?? (me.kind === "entered" ? me.entry : null)}
             notDrawn={me.kind === "not-won"}
+            signedOut={me.kind === "signed-out"}
             giveaway={giveaway}
             signInHref={signInHref}
           />
@@ -171,6 +173,7 @@ function EntryPanel({
   entry,
   tickets,
   notDrawn,
+  signedOut,
   giveaway,
   signInHref,
 }: {
@@ -179,6 +182,8 @@ function EntryPanel({
   readonly tickets: EntrySummary | null
   /** The viewer entered and was not drawn. */
   readonly notDrawn: boolean
+  /** No valid viewer cookie: the viewer has to sign in before anything else. */
+  readonly signedOut: boolean
   readonly giveaway: GiveawayView
   readonly signInHref: string
 }) {
@@ -207,6 +212,20 @@ function EntryPanel({
         title={t("giveaway.notThisTime.title")}
       >
         <p>{t("giveaway.notThisTime.text")}</p>
+      </StateCard>
+    )
+  }
+  if (tickets !== null && status === "closed" && (card === null || card.entered)) {
+    return (
+      <StateCard
+        tone="info"
+        align="center"
+        icon={<ClockIcon />}
+        title={t("giveaway.waiting.title")}
+      >
+        <TicketCount tickets={tickets} />
+        <p>{ticketsText}</p>
+        <p>{t("giveaway.waiting.text")}</p>
       </StateCard>
     )
   }
@@ -243,8 +262,15 @@ function EntryPanel({
         tone={card === null ? "info" : card.tone}
         align="center"
         icon={card === null ? <GiftIcon /> : card.icon}
-        title={card === null ? t("giveaway.ready.title") : card.title}
+        title={
+          card === null
+            ? t(signedOut ? "giveaway.signedOut.title" : "giveaway.ready.title")
+            : card.title
+        }
       >
+        {card !== null && card.entered && tickets !== null ? (
+          <TicketCount tickets={tickets} />
+        ) : null}
         <p>{card === null ? t("giveaway.ready.text") : card.detail}</p>
         {card !== null && card.entered && ticketsText !== null ? <p>{ticketsText}</p> : null}
         {card !== null && card.help !== null ? <p>{card.help}</p> : null}
@@ -262,6 +288,15 @@ function EntryPanel({
         ) : null}
       </StateCard>
     </>
+  )
+}
+
+/** The number is decoration for the eye; the sentence under it says the same in words. */
+function TicketCount({ tickets }: { readonly tickets: EntrySummary }) {
+  return (
+    <strong className="ticket-count" aria-hidden="true">
+      {tickets.tickets}
+    </strong>
   )
 }
 
@@ -417,7 +452,7 @@ function ClaimPanel({
   const claimed = win.claim.state === "claimed" || message === "viewerClaim.claimed"
   if (claimed) {
     return (
-      <StateCard tone="win" align="center" icon={<TrophyIcon />} title={t("win.title")}>
+      <StateCard tone="success" align="center" icon={<TrophyIcon />} title={t("win.claimed.title")}>
         <p>{t("viewerClaim.claimed")}</p>
       </StateCard>
     )
@@ -432,8 +467,8 @@ function ClaimPanel({
   }
   return (
     <StateCard tone="win" align="center" icon={<TrophyIcon />} title={t("win.title")}>
-      <p className="big-clock">
-        <span role="timer">{formatClock(remaining)}</span> {t("claim.minLeft")}
+      <p className="claim-clock">
+        <Countdown initialMs={win.claimRemainingMs} />
       </p>
       <p>{t("win.press")}</p>
       <button

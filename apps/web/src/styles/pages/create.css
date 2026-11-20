@@ -12,6 +12,26 @@
   margin-top: var(--space-3);
 }
 
+.ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--space-2);
+}
+
+.ticket-grid .field {
+  margin-bottom: 0;
+}
+
+.odds {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-1) var(--space-2);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
 @media (max-width: 39.99rem) {
   .wizard-actions {
     flex-direction: column-reverse;
@@ -20,6 +40,17 @@
 
   .wizard-actions .button {
     width: 100%;
+  }
+
+  .wizard .segment {
+    min-width: 0;
+  }
+
+  .wizard .segment label {
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: var(--space-1) 0.25rem;
+    overflow-wrap: anywhere;
   }
 }
 

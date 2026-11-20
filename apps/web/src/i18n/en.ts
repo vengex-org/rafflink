@@ -244,6 +244,10 @@ export const en = {
   "giveaway.ready.text":
     "Sign in with your Twitch account to get your ticket. It takes a few seconds.",
   "giveaway.enter": "Enter with Twitch",
+  "giveaway.signedOut.title": "Sign in to enter",
+  "giveaway.waiting.title": "Waiting for the draw",
+  "giveaway.waiting.text":
+    "Entries are closed. The streamer draws the winner live. Keep this page open: it changes to the claim screen by itself if you win.",
   "giveaway.closed.title": "Sorry, giveaway closed.",
   "giveaway.closed.text":
     "The streamer stopped taking entries. Follow the channel to catch the next one.",
@@ -279,6 +283,7 @@ export const en = {
   "entry.invalidState.help": "Press the button to start again.",
   "win.another.title": "Another winner was picked",
   "win.title": "You won",
+  "win.claimed.title": "Prize claimed",
   "win.up.title": "Time is up",
   "win.up.text": "The streamer may pick another winner.",
   "win.press": "Press the button before the time runs out.",
@@ -374,13 +379,12 @@ export const en = {
   "live.reroll.confirm": "Yes, pick another winner",
   "live.problems.title": "Problems",
 
-  "wizard.step.give": "What you give away",
-  "wizard.step.audience": "Who can enter",
-  "wizard.step.ending": "When it ends",
+  "wizard.step.basics": "Basics",
+  "wizard.step.rules": "Entry rules",
   "wizard.step.review": "Review",
-  "wizard.q.give": "What are you giving away?",
+  "wizard.q.basics": "Start with the basics",
+  "wizard.q.rules": "Set the entry rules",
   "wizard.q.audience": "Who can enter?",
-  "wizard.q.ending": "When does it end?",
   "wizard.q.review": "Check your giveaway",
   "wizard.fix": "Please fix this to continue.",
   "wizard.start": "Start giveaway",
@@ -399,9 +403,18 @@ export const en = {
   "wizard.minAge.label": "Minimum account age in days (optional)",
   "wizard.minAge.help":
     "Stops people from making fresh accounts just to enter. Leave it empty to allow any account.",
-  "wizard.extra.summary": "Extra tickets (optional)",
-  "wizard.extra.help":
+  "wizard.tickets.legend": "Tickets per group",
+  "wizard.tickets.help":
     "Every group gets 1 ticket. More tickets mean a better chance of winning, for example 3 for subscribers. Leave this as it is if everyone should have the same chance.",
+  "odds.same": "Everyone has the same chance of winning.",
+  "odds.viewersOut": "Viewers get no tickets and cannot win.",
+  "odds.noBetter": "No group has better odds than a viewer.",
+  "odds.follower": "A follower has {times}x the chance of a viewer.",
+  "odds.sub_t1": "A Tier 1 sub has {times}x the chance of a viewer.",
+  "odds.sub_t2": "A Tier 2 sub has {times}x the chance of a viewer.",
+  "odds.sub_t3": "A Tier 3 sub has {times}x the chance of a viewer.",
+  "odds.vip": "A VIP has {times}x the chance of a viewer.",
+  "odds.moderator": "A moderator has {times}x the chance of a viewer.",
   "wizard.ending.legend": "When do entries end?",
   "wizard.ending.never": "When I close them",
   "wizard.ending.never.help": "Entries stay open until you press Close entries.",

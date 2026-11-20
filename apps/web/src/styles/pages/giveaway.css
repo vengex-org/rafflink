@@ -1,15 +1,59 @@
 .hero h1 {
   margin-top: var(--space-1);
+  font-size: var(--fs-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-wrap: balance;
 }
 
-.big-clock {
-  font-size: var(--fs-lg);
-  font-weight: 600;
-}
-
-.big-clock [role="timer"] {
-  font-size: 3rem;
+.ticket-count {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: 3.5rem;
   font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+/* The win moment: the one card that carries the accent. */
+
+.outcome .state-card[data-tone="win"] {
+  animation: reveal var(--dur-reveal) var(--ease) both;
+}
+
+.outcome .state-card[data-tone="win"] h2 {
+  font-size: var(--fs-display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.outcome .state-card[data-tone="win"] .muted {
+  color: inherit;
+}
+
+/* The plate keeps the clock readable on the accent in both themes, so its tone can use the warning and danger colors. */
+.claim-clock {
+  display: inline-block;
+  min-width: 10rem;
+  margin-block: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.claim-clock [role="timer"] {
+  display: block;
+  font-size: 3rem;
   letter-spacing: -0.03em;
   line-height: 1.2;
+}
+
+.claim-clock .countdown-label {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 700;
 }

@@ -244,6 +244,10 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "giveaway.ready.text":
     "Prihlás sa účtom na Twitchi a získaj svoj lístok. Trvá to len pár sekúnd.",
   "giveaway.enter": "Zapojiť sa cez Twitch",
+  "giveaway.signedOut.title": "Prihlás sa a zapoj sa",
+  "giveaway.waiting.title": "Čaká sa na žrebovanie",
+  "giveaway.waiting.text":
+    "Prihlasovanie je uzavreté. Streamer žrebuje víťaza naživo. Nechaj túto stránku otvorenú: ak vyhráš, sama sa prepne na obrazovku s prevzatím.",
   "giveaway.closed.title": "Ľutujeme, súťaž skončila.",
   "giveaway.closed.text":
     "Streamer prestal prijímať zápisy. Sleduj kanál, aby ti neušla ďalšia súťaž.",
@@ -280,6 +284,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "entry.invalidState.help": "Stlač tlačidlo a začni odznova.",
   "win.another.title": "Vybraný bol iný víťaz",
   "win.title": "Vyhral si",
+  "win.claimed.title": "Výhra prevzatá",
   "win.up.title": "Čas vypršal",
   "win.up.text": "Streamer môže vybrať iného víťaza.",
   "win.press": "Stlač tlačidlo skôr, ako čas vyprší.",
@@ -375,13 +380,12 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.reroll.confirm": "Áno, vybrať iného víťaza",
   "live.problems.title": "Problémy",
 
-  "wizard.step.give": "Čo rozdávaš",
-  "wizard.step.audience": "Kto sa môže zapojiť",
-  "wizard.step.ending": "Kedy to končí",
+  "wizard.step.basics": "Základ",
+  "wizard.step.rules": "Pravidlá zapojenia",
   "wizard.step.review": "Kontrola",
-  "wizard.q.give": "Čo rozdávaš?",
+  "wizard.q.basics": "Začni základom",
+  "wizard.q.rules": "Nastav pravidlá zapojenia",
   "wizard.q.audience": "Kto sa môže zapojiť?",
-  "wizard.q.ending": "Kedy súťaž končí?",
   "wizard.q.review": "Skontroluj súťaž",
   "wizard.fix": "Oprav to a môžeš pokračovať.",
   "wizard.start": "Spustiť súťaž",
@@ -400,9 +404,18 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.minAge.label": "Minimálny vek účtu v dňoch (nepovinné)",
   "wizard.minAge.help":
     "Zabráni ľuďom vytvárať nové účty len kvôli súťaži. Keď pole nevyplníš, zapojiť sa môže akýkoľvek účet.",
-  "wizard.extra.summary": "Lístky navyše (nepovinné)",
-  "wizard.extra.help":
+  "wizard.tickets.legend": "Lístky podľa skupiny",
+  "wizard.tickets.help":
     "Každá skupina dostane 1 lístok. Viac lístkov znamená väčšiu šancu vyhrať, napríklad 3 pre predplatiteľov. Nechaj to tak, ak majú mať všetci rovnakú šancu.",
+  "odds.same": "Všetci majú rovnakú šancu vyhrať.",
+  "odds.viewersOut": "Diváci nedostanú žiadne lístky a nemôžu vyhrať.",
+  "odds.noBetter": "Žiadna skupina nemá lepšie šance ako divák.",
+  "odds.follower": "Sledovateľ má {times}-krát väčšiu šancu ako divák.",
+  "odds.sub_t1": "Predplatiteľ 1. úrovne má {times}-krát väčšiu šancu ako divák.",
+  "odds.sub_t2": "Predplatiteľ 2. úrovne má {times}-krát väčšiu šancu ako divák.",
+  "odds.sub_t3": "Predplatiteľ 3. úrovne má {times}-krát väčšiu šancu ako divák.",
+  "odds.vip": "VIP má {times}-krát väčšiu šancu ako divák.",
+  "odds.moderator": "Moderátor má {times}-krát väčšiu šancu ako divák.",
   "wizard.ending.legend": "Kedy zápis končí?",
   "wizard.ending.never": "Keď ho uzavriem",
   "wizard.ending.never.help": "Zápis zostane otvorený, kým nestlačíš Uzavrieť zápis.",

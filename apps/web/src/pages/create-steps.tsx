@@ -1,23 +1,17 @@
 import type { Dispatch, SetStateAction } from "react"
 import { groups } from "@rafflink/core/domain/groups"
-import { Disclosure } from "../components/disclosure.tsx"
 import { Segmented, TextField, type SegmentOption } from "../components/form-fields.tsx"
-import {
-  ClockIcon,
-  HeartIcon,
-  LockIcon,
-  StarIcon,
-  TagIcon,
-  UsersIcon,
-} from "../components/icons.tsx"
+import { ClockIcon, HeartIcon, LockIcon, StarIcon, UsersIcon } from "../components/icons.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { claimTimeText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
 import {
   claimPresets,
+  oddsOf,
   type Audience,
   type ClaimPreset,
   type Ending,
   type Issue,
+  type Odds,
   type Values,
 } from "./create-values.ts"
 
@@ -31,9 +25,23 @@ function errorOf(i18n: I18n, issue: Issue | null, field: string): string | null 
   return issue?.field === field ? i18n.t(issue.message) : null
 }
 
-export function GiveawayStep({ values, setValues, issue }: StepProps) {
+export function BasicsStep({ values, setValues, issue }: StepProps) {
   const i18n = useI18n()
   const { t } = i18n
+  const endings: readonly SegmentOption<Ending>[] = [
+    {
+      value: "never",
+      label: t("wizard.ending.never"),
+      icon: <LockIcon />,
+      description: t("wizard.ending.never.help"),
+    },
+    {
+      value: "at-time",
+      label: t("wizard.ending.atTime"),
+      icon: <ClockIcon />,
+      description: t("wizard.ending.atTime.help"),
+    },
+  ]
   return (
     <>
       <TextField
@@ -56,11 +64,31 @@ export function GiveawayStep({ values, setValues, issue }: StepProps) {
         error={errorOf(i18n, issue, "prize")}
         onChange={(prize) => setValues((current) => ({ ...current, prize }))}
       />
+      <Segmented
+        name="ending"
+        legend={t("wizard.ending.legend")}
+        help={null}
+        options={endings}
+        value={values.ending}
+        onSelect={(ending) => setValues((current) => ({ ...current, ending }))}
+      />
+      {values.ending === "at-time" ? (
+        <TextField
+          name="closesAt"
+          label={t("wizard.closesAt.label")}
+          help={t("wizard.closesAt.help")}
+          type="datetime-local"
+          min={null}
+          value={values.closesAt}
+          error={errorOf(i18n, issue, "closesAt")}
+          onChange={(closesAt) => setValues((current) => ({ ...current, closesAt }))}
+        />
+      ) : null}
     </>
   )
 }
 
-export function AudienceStep({ values, setValues, issue }: StepProps) {
+export function RulesStep({ values, setValues, issue }: StepProps) {
   const i18n = useI18n()
   const { t } = i18n
   const audiences: readonly SegmentOption<Audience>[] = [
@@ -83,6 +111,13 @@ export function AudienceStep({ values, setValues, issue }: StepProps) {
       description: t("wizard.audience.subscribers.help"),
     },
   ]
+  const claimOptions: readonly SegmentOption<ClaimPreset>[] = claimPresets.map((seconds) => ({
+    value: seconds,
+    label: claimTimeText(i18n, seconds),
+    icon: null,
+    description: "",
+  }))
+  const odds = oddsOf(values.tickets)
   return (
     <>
       <Segmented
@@ -105,80 +140,31 @@ export function AudienceStep({ values, setValues, issue }: StepProps) {
           setValues((current) => ({ ...current, minAccountAgeDays }))
         }
       />
-      <Disclosure
-        icon={<TagIcon />}
-        summary={t("wizard.extra.summary")}
-        open={issue?.field.startsWith("tickets.") === true}
-      >
-        <p className="help">{t("wizard.extra.help")}</p>
-        {groups.map((group) => (
-          <TextField
-            key={group}
-            name={`tickets.${group}`}
-            label={t(`group.${group}`)}
-            help={null}
-            type="number"
-            min={0}
-            value={values.tickets[group]}
-            error={errorOf(i18n, issue, `tickets.${group}`)}
-            onChange={(count) =>
-              setValues((current) => ({
-                ...current,
-                tickets: { ...current.tickets, [group]: count },
-              }))
-            }
-          />
-        ))}
-      </Disclosure>
-    </>
-  )
-}
-
-export function TimingStep({ values, setValues, issue }: StepProps) {
-  const i18n = useI18n()
-  const { t } = i18n
-  const endings: readonly SegmentOption<Ending>[] = [
-    {
-      value: "never",
-      label: t("wizard.ending.never"),
-      icon: <LockIcon />,
-      description: t("wizard.ending.never.help"),
-    },
-    {
-      value: "at-time",
-      label: t("wizard.ending.atTime"),
-      icon: <ClockIcon />,
-      description: t("wizard.ending.atTime.help"),
-    },
-  ]
-  const claimOptions: readonly SegmentOption<ClaimPreset>[] = claimPresets.map((seconds) => ({
-    value: seconds,
-    label: claimTimeText(i18n, seconds),
-    icon: null,
-    description: "",
-  }))
-  return (
-    <>
-      <Segmented
-        name="ending"
-        legend={t("wizard.ending.legend")}
-        help={null}
-        options={endings}
-        value={values.ending}
-        onSelect={(ending) => setValues((current) => ({ ...current, ending }))}
-      />
-      {values.ending === "at-time" ? (
-        <TextField
-          name="closesAt"
-          label={t("wizard.closesAt.label")}
-          help={t("wizard.closesAt.help")}
-          type="datetime-local"
-          min={null}
-          value={values.closesAt}
-          error={errorOf(i18n, issue, "closesAt")}
-          onChange={(closesAt) => setValues((current) => ({ ...current, closesAt }))}
-        />
-      ) : null}
+      <fieldset className="field">
+        <legend>{t("wizard.tickets.legend")}</legend>
+        <p className="help">{t("wizard.tickets.help")}</p>
+        <div className="ticket-grid">
+          {groups.map((group) => (
+            <TextField
+              key={group}
+              name={`tickets.${group}`}
+              label={t(`group.${group}`)}
+              help={null}
+              type="number"
+              min={0}
+              value={values.tickets[group]}
+              error={errorOf(i18n, issue, `tickets.${group}`)}
+              onChange={(count) =>
+                setValues((current) => ({
+                  ...current,
+                  tickets: { ...current.tickets, [group]: count },
+                }))
+              }
+            />
+          ))}
+        </div>
+        {odds === null ? null : <output className="odds">{oddsText(i18n, odds)}</output>}
+      </fieldset>
       <Segmented
         name="claimSeconds"
         legend={t("wizard.claim.legend")}
@@ -271,4 +257,15 @@ function ReviewRow({ label, value }: { readonly label: string; readonly value: s
       <dd>{value}</dd>
     </div>
   )
+}
+
+function oddsText(i18n: I18n, odds: Odds): string {
+  switch (odds.kind) {
+    case "same":
+    case "viewersOut":
+    case "noBetter":
+      return i18n.t(`odds.${odds.kind}`)
+    case "times":
+      return i18n.t(`odds.${odds.group}`, { times: i18n.number(odds.times) })
+  }
 }

@@ -39,7 +39,7 @@ describe("dashboard", () => {
       "Draw live. Close entries and pick the winner on your stream.",
     ])
     fireEvent.click(view.getByRole("button", { name: "Create giveaway" }))
-    expect(await view.findByText("Step 1 of 4: What you give away")).toBeTruthy()
+    expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
   })
 
   it("lists each giveaway as a card with its prize, status and a link to its live page", async () => {
