@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router"
 import { groups } from "@rafflink/core/domain/groups"
 import type { EntrySummary } from "@rafflink/core/room/rows"
 import type { ViewerState } from "@rafflink/core/http/json"
-import { claimPrize, entryFromQuery, getGiveaway, type GiveawayView } from "../api/client.ts"
+import { claimPrize, entryFromQuery, type GiveawayView } from "../api/client.ts"
 import { Disclosure } from "../components/disclosure.tsx"
 import {
   AlertIcon,
@@ -31,7 +31,10 @@ import {
 } from "../lib/rules-text.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useEntryResult, type EntryView } from "../lib/use-entry-result.ts"
+import { forgetStoredGiveaway, loadGiveaway } from "../lib/stored-giveaway.ts"
 import { useLoad } from "../lib/use-load.ts"
+import { useViewerPush } from "../lib/use-viewer-push.ts"
+import { applyViewerPush } from "../lib/viewer-outcome.ts"
 import { formatClock, formatLeft, useRemainingMs } from "../lib/use-remaining.ts"
 
 const stepNames = ["giveaway.stepSignIn", "giveaway.stepTicket"] as const
@@ -42,7 +45,10 @@ export function GiveawayPage() {
 }
 
 function Loaded({ code }: { readonly code: string }) {
-  const load = useCallback(() => getGiveaway(code), [code])
+  const [query] = useSearchParams()
+  // A page that comes back from the sign-in has just changed what the server knows about the viewer.
+  const [allowStored] = useState(() => !query.has("entry"))
+  const load = useCallback(() => loadGiveaway(code, allowStored), [code, allowStored])
   const { result } = useLoad(load)
   switch (result.state) {
     case "loading":
@@ -60,14 +66,16 @@ function Loaded({ code }: { readonly code: string }) {
 
 function GiveawayDetails({
   code,
-  giveaway,
-  me,
+  giveaway: loadedGiveaway,
+  me: loadedMe,
 }: {
   readonly code: string
   readonly giveaway: GiveawayView
   readonly me: ViewerState
 }) {
   const i18n = useI18n()
+  const push = useViewerPush(code, !loadedGiveaway.finished)
+  const { giveaway, me } = applyViewerPush({ giveaway: loadedGiveaway, me: loadedMe }, push)
   const [query] = useSearchParams()
   const initial = useMemo(() => entryFromQuery(query), [query])
   const fromSignIn = useEntryResult(code, initial, giveaway.poll)
@@ -426,7 +434,11 @@ function ClaimPanel({
         disabled={busy}
         onClick={() =>
           void run(
-            () => claimPrize(code),
+            async () => {
+              const outcome = await claimPrize(code)
+              forgetStoredGiveaway(code)
+              return outcome
+            },
             (outcome) => `viewerClaim.${outcome}`,
           )
         }

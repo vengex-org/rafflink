@@ -21,17 +21,23 @@ export interface PublicGiveaway {
   readonly closesAt: Instant | null
   readonly claimSeconds: number
   readonly entrantCount: number
+  /** The draw is done and no winner can still claim; the page then opens no push socket. */
+  readonly finished: boolean
   /** How the page polls a queued entry: every `intervalMs`, for at most `maxMs`. */
   readonly poll: { readonly intervalMs: number; readonly maxMs: number }
 }
 
-/** Where the viewer behind the viewer cookie stands in one giveaway; `signed-out` means no valid cookie. */
+/**
+ * Where the viewer behind the viewer cookie stands in one giveaway; `signed-out` means no valid cookie.
+ * Every other kind carries the viewer's platform user id, which the page compares with the winners of a push.
+ */
 export type ViewerState =
   | { readonly kind: "signed-out" }
-  | { readonly kind: "not-entered" }
-  | { readonly kind: "entered"; readonly entry: EntrySummary }
+  | { readonly kind: "not-entered"; readonly userId: string }
+  | { readonly kind: "entered"; readonly userId: string; readonly entry: EntrySummary }
   | {
       readonly kind: "won"
+      readonly userId: string
       readonly n: number
       /** Computed by the server, so a wrong clock on the viewer's device does not change it. */
       readonly claimRemainingMs: number
@@ -39,7 +45,7 @@ export type ViewerState =
       /** Whether a chat message can still claim; false when the chat watch is off. */
       readonly chatClaimAvailable: boolean
     }
-  | { readonly kind: "not-won" }
+  | { readonly kind: "not-won"; readonly userId: string }
 
 /** The streamer's own view of a giveaway, with the overlay token. */
 export interface DashboardGiveaway {

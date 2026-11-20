@@ -11,6 +11,7 @@ import { giveawayInit, tempDir, testConfig } from "../test/fixtures.ts"
 import {
   LocalRoomDirectory,
   liveTopic,
+  viewerTopic,
   type LocalRoomDirectoryDeps,
 } from "./local-room-directory.ts"
 
@@ -103,6 +104,23 @@ describe("LocalRoomDirectory", () => {
     expect(published).toHaveLength(1)
     expect(published[0]?.topic).toBe(liveTopic(id))
     expect(JSON.parse(published[0]?.message ?? "")).toMatchObject({ entrantCount: 1 })
+  })
+
+  it("publishes the outcome to the viewers' topic, apart from the live topic, and hands a new socket the same text", async () => {
+    const published: { topic: string; message: string }[] = []
+    const directory = directoryWith({
+      publish: (topic, message) => published.push({ topic, message }),
+    })
+    await directory.get(id).init(giveawayInit(id))
+
+    await directory.get(id).close()
+
+    expect(published.map((item) => item.topic).toSorted()).toEqual(
+      [liveTopic(id), viewerTopic(id)].toSorted(),
+    )
+    const viewerMessage = published.find((item) => item.topic === viewerTopic(id))?.message
+    expect(JSON.parse(viewerMessage ?? "")).toMatchObject({ status: "closed", winners: [] })
+    expect(JSON.parse(directory.viewerPushText(id))).toMatchObject({ status: "closed" })
   })
 
   it("wraps a locked room database in RoomTransientError", async () => {

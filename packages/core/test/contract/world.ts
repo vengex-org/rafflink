@@ -5,7 +5,7 @@ import type { QueueStats } from "../../src/queue/token-queue.ts"
 import type { LiveSnapshot } from "../../src/room/giveaway-room.ts"
 import { Browser } from "./browser.ts"
 import { clientCredentials, startFakeTwitch, users, type RunningFakeTwitch } from "./fake-twitch.ts"
-import { openSocket } from "./socket.ts"
+import { openSocket, type LiveMessage } from "./socket.ts"
 import { webFixture } from "./spa-fixture.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { waitFor } from "./wait.ts"
@@ -105,8 +105,8 @@ export class World {
     return waitFor(check, waitTimeoutMs, `${what} on ${this.context.targetName}`)
   }
 
-  openSocket(url: URL, headers: Record<string, string> = {}) {
-    const opened = openSocket(url, headers)
+  openSocket<Message = LiveMessage>(url: URL, headers: Record<string, string> = {}) {
+    const opened = openSocket<Message>(url, headers)
     this.sockets.push(opened.socket)
     return opened
   }

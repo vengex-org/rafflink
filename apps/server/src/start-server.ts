@@ -105,6 +105,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null
   const app = createServerApp({
     api: createApp(deps, staticDir === null ? null : indexTemplateOf(staticDir)),
+    rooms,
     fakeTwitch,
     staticDir,
   })

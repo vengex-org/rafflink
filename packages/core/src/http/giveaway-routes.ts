@@ -1,13 +1,15 @@
 import { Hono, type Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway } from "../accounts/account-store.ts"
-import type { ClaimOutcome, RoomSummary, WinnerPick } from "../room/giveaway-room.ts"
+import type { ClaimOutcome, PublicSummary, WinnerPick } from "../room/giveaway-room.ts"
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
 import { errorClass } from "../lib/error-class.ts"
 import type { PublicGiveaway, ViewerState } from "./json.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
+import { viewerRoomHeader } from "./viewer-socket.ts"
+import { webSocketOrigin } from "./websocket-origin.ts"
 import {
   endPendingEntry,
   readPendingEntry,
@@ -18,6 +20,8 @@ import {
 
 export function giveawayRoutes(deps: AppDeps): Hono {
   const app = new Hono()
+
+  app.use("/api/g/:code/live", webSocketOrigin(deps.config, { allowMissing: false }))
 
   // One request per page load. The public part of an anonymous load comes from the cache when it can,
   // so a refresh reads neither the account store nor the room; a load with a viewer cookie is read
@@ -42,6 +46,18 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     }
     const me = await viewerState(deps, giveaway, session, summary)
     return jsonText(c, withViewer(publicText, me))
+  })
+
+  // Only decides who may connect and which room the socket belongs to; the target's socket layer
+  // sends the outcomes. The answer to the upgrade request never reaches a browser.
+  app.get("/api/g/:code/live", async (c) => {
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") {
+      return c.json({ error: "upgrade-required" }, 426)
+    }
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    c.header(viewerRoomHeader, giveaway.id)
+    return c.body(null, 204)
   })
 
   app.get("/api/g/:code/pending/:ticket", async (c) => {
@@ -112,7 +128,7 @@ async function pickOf(
   )
 }
 
-function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: RoomSummary): PublicGiveaway {
+function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: PublicSummary): PublicGiveaway {
   return {
     code: giveaway.code,
     title: giveaway.title,
@@ -123,6 +139,7 @@ function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: RoomSummary)
     closesAt: summary.closesAt,
     claimSeconds: giveaway.claimSeconds,
     entrantCount: summary.entrantCount,
+    finished: summary.finished,
     poll: {
       intervalMs: deps.config.queuePollSeconds * 1000,
       maxMs: deps.config.queuePollMaxSeconds * 1000,
@@ -163,7 +180,7 @@ async function viewerState(
   deps: AppDeps,
   giveaway: Giveaway,
   session: ViewerSession,
-  summary: RoomSummary,
+  summary: PublicSummary,
 ): Promise<ViewerState> {
   const room = deps.rooms.get(giveaway.id)
   if (summary.status === "drawn") {
@@ -171,6 +188,7 @@ async function viewerState(
     if (pick !== undefined) {
       return {
         kind: "won",
+        userId: session.userId,
         n: pick.n,
         claimRemainingMs: Math.max(0, pick.claimUntil - deps.clock.now()),
         claim: pick.claim,
@@ -179,6 +197,8 @@ async function viewerState(
     }
   }
   const entry = await room.entryOf({ platform: session.platform, platformUserId: session.userId })
-  if (entry === null) return { kind: "not-entered" }
-  return summary.status === "drawn" ? { kind: "not-won" } : { kind: "entered", entry }
+  if (entry === null) return { kind: "not-entered", userId: session.userId }
+  return summary.status === "drawn"
+    ? { kind: "not-won", userId: session.userId }
+    : { kind: "entered", userId: session.userId, entry }
 }

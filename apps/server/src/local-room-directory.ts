@@ -35,6 +35,11 @@ export function liveTopic(giveawayId: string): string {
   return `live:${giveawayId}`
 }
 
+/** The pub/sub topic of a room's viewer pages. */
+export function viewerTopic(giveawayId: string): string {
+  return `viewers:${giveawayId}`
+}
+
 interface OpenRoom {
   readonly room: GiveawayRoom
   readonly alarm: TimerAlarm
@@ -56,6 +61,11 @@ export class LocalRoomDirectory implements RoomDirectory {
 
   get(giveawayId: string): RoomStub {
     return new LocalRoomStub(this.roomFor(giveawayId))
+  }
+
+  /** The outcome a viewer's page connecting now starts from, as the JSON text of a push. */
+  viewerPushText(giveawayId: string): string {
+    return JSON.stringify(this.roomFor(giveawayId).viewerPush())
   }
 
   /** Opens every room file and runs its alarm once, so a restart finds the end times, role refreshes and mirrors that were due. */
@@ -97,7 +107,10 @@ export class LocalRoomDirectory implements RoomDirectory {
     const room = new GiveawayRoom({
       sql,
       alarm,
-      live: { broadcast: (json) => this.deps.publish(liveTopic(giveawayId), json) },
+      live: {
+        broadcast: (json) => this.deps.publish(liveTopic(giveawayId), json),
+        broadcastViewers: (json) => this.deps.publish(viewerTopic(giveawayId), json),
+      },
       clock: this.deps.clock,
       random: this.deps.random,
       config: this.deps.config,

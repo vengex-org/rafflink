@@ -569,17 +569,18 @@ function roomUnderTest(
   const subscriptions = new Subscriptions()
   const config = configWith(options.env)
   const chatLink = { connector, subscribe: subscriptions.subscribe }
+  const viewerMessages: string[] = []
   const room = new GiveawayRoom({
     sql,
     alarm,
-    live: { broadcast: () => {} },
+    live: { broadcast: () => {}, broadcastViewers: (json) => void viewerMessages.push(json) },
     clock,
     random,
     config,
     chat: chatLink,
   })
   room.init(roomInit(options.claimKeyword ?? null))
-  return { db, sql, room, clock, alarm, connector, subscriptions, config, chatLink }
+  return { db, sql, room, clock, alarm, connector, subscriptions, config, chatLink, viewerMessages }
 }
 
 /**
@@ -758,7 +759,7 @@ describe("chat watch lifetime", () => {
     const revived = new GiveawayRoom({
       sql,
       alarm,
-      live: { broadcast: () => {} },
+      live: { broadcast: () => {}, broadcastViewers: () => {} },
       clock,
       random,
       config,
@@ -799,6 +800,19 @@ describe("chat claim unavailable", () => {
     expect(room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")).toEqual({
       kind: "claimed",
     })
+  })
+
+  it("tells the viewers' pages that a chat message no longer claims", async () => {
+    const { connector, subscriptions, viewerMessages } = await drawnRoom()
+    spyOn(console, "warn").mockImplementation(() => {})
+    subscriptions.refusal = new Error("subscription refused")
+    const before = viewerMessages.length
+
+    connector.sockets[0]?.receive(welcome("session-1"))
+    await flush()
+
+    expect(viewerMessages).toHaveLength(before + 1)
+    expect(JSON.parse(viewerMessages.at(-1) ?? "")).toMatchObject({ chatClaimAvailable: false })
   })
 
   it("is reported after the reconnects in a row passed the cap, once", async () => {

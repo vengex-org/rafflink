@@ -156,6 +156,49 @@ cd apps/server
 docker compose up -d --build
 ```
 
+The Bun server reads no client IP: no `X-Forwarded-For`, no remote address, and its logs carry a request id
+only. So it has no trusted-proxy setting, and any rate limit belongs to the proxy in front of it. Viewer
+sockets check the `Origin` header against `PUBLIC_URL`, not an address.
+
+### Coolify (Traefik)
+
+Coolify puts Traefik in front of the container, so the Caddy service of the compose file is not needed:
+Traefik gets the certificate and proxies to the Bun container. Create an application from this repository
+with the Dockerfile build pack and the file `apps/server/Dockerfile` (build context: the repository root),
+set the exposed port to `3000`, add a persistent storage mounted at `/data`, and enter the settings from
+`.env.example` as environment variables with `PUBLIC_URL` set to your `https://` domain, `DATA_DIR=/data` and
+`PORT=3000`. WebSockets pass through Traefik without extra settings.
+
+Caddy also compressed responses (`encode zstd gzip`). Turn on compression in Coolify, or use the `compress`
+middleware below, because a full entrants list is large.
+
+To limit `/api`, add a Traefik `rateLimit` middleware to a router that matches only `PathPrefix(`/api`)`, in
+the application's custom labels. Traefik takes the longer rule first, so `/api` goes through this router and
+every other path through the one Coolify made. Replace the domain:
+
+```yaml
+traefik.enable=true
+traefik.http.middlewares.rafflink-api-limit.ratelimit.average=3
+traefik.http.middlewares.rafflink-api-limit.ratelimit.period=1s
+traefik.http.middlewares.rafflink-api-limit.ratelimit.burst=30
+traefik.http.middlewares.rafflink-compress.compress=true
+traefik.http.routers.rafflink-api.rule=Host(`rafflink.example.com`) && PathPrefix(`/api`)
+traefik.http.routers.rafflink-api.entrypoints=https
+traefik.http.routers.rafflink-api.tls=true
+traefik.http.routers.rafflink-api.tls.certresolver=letsencrypt
+traefik.http.routers.rafflink-api.middlewares=rafflink-api-limit,rafflink-compress
+traefik.http.routers.rafflink-api.service=rafflink-api
+traefik.http.services.rafflink-api.loadbalancer.server.port=3000
+```
+
+`average=3` per `1s` with `burst=30` allows 30 requests at once and three a second after that, the same
+budget as the Cloudflare rule above (a viewer needs under 10 in 10 seconds). Traefik counts per client IP,
+the address of the connection. When another proxy such as Cloudflare sits in front of Traefik, every viewer
+shares that proxy's address; then add
+`traefik.http.middlewares.rafflink-api-limit.ratelimit.sourcecriterion.ipstrategy.depth=1` and make the
+Traefik entrypoint trust that proxy's forwarded headers. The entrypoint and certificate resolver names above
+are Coolify's defaults; check them in your Coolify proxy settings.
+
 ### Cloudflare
 
 You need a Cloudflare account with Workers and D1. Run the `wrangler` commands in `apps/cloudflare`.
@@ -219,6 +262,45 @@ public part of its answer is kept for `PUBLIC_GIVEAWAY_CACHE_SECONDS` (5 by defa
 refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache API stores nothing on a
 `workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
 seconds old.
+
+### What a viewer costs
+
+A viewer's giveaway page opens one WebSocket to `/api/g/<code>/live` (one Worker request and one Durable
+Object request, sent with the site's own `Origin`). The room pushes the outcome through it: closing, the
+draw, rerolls, claims and a chat claim that stops working. The push carries the winners' Twitch user ids and
+claim deadlines, so the page compares them with its own viewer and shows "You won" or "Not this time"
+without asking the server again, and a draw never makes every viewer fetch `/api/g/<code>` at once. Messages
+the room sends are not billed and viewers send none. The page reconnects with backoff and jitter and stops
+once the giveaway is finished (the draw is done and no winner can still claim). A push holds public data
+only: no cookie, no sign-in state and no names.
+
+The page also keeps its last `/api/g/<code>` answer in `sessionStorage`. A reload within 30 seconds
+(`storedGiveawayWindowMs` in `apps/web/src/lib/stored-giveaway.ts`, a starting guess) renders from it and
+opens only the socket, whose first message brings the page up to date. After a sign-in, a queued entry or a
+claim the page asks the server again, because what it knows about the viewer changed.
+
+### Rate limit for `/api/*` (Cloudflare)
+
+Viewers who keep refreshing, or a script, can use up the free 100,000 requests a day, because Cloudflare
+counts every Worker request, also one served from the cache. A rate limiting rule runs in front of the Worker,
+so a blocked request is not a Worker request. It needs the domain to be on Cloudflare (a custom domain, not
+`workers.dev`). The free plan allows one rule, counted per IP address over a period of 10 seconds, with a
+block of 10 seconds.
+
+1. In the Cloudflare dashboard open your domain, then **Security**, **WAF**, **Rate limiting rules**, and
+   choose **Create rule**.
+2. Name it, for example `rafflink api`.
+3. Under **If incoming requests match**, choose the field **URI Path**, the operator **starts with** and the
+   value `/api/`. The expression is `starts_with(http.request.uri.path, "/api/")`.
+4. Leave the characteristic at **IP**. Set **Requests** to `30` and **Period** to `10 seconds`.
+5. Under **Then take action** choose **Block** with the duration `10 seconds`, then **Deploy**.
+
+Why 30 does not hurt a normal viewer: one viewer makes two requests when the page opens (the giveaway and
+the socket), then a poll every 3 seconds while a queued entry is processed, and a few more when the socket
+reconnects after a network drop. That stays under 10 requests in 10 seconds. 30 leaves room for a few people
+behind one shared address (a household, a school or a mobile carrier) and still cuts off a script or a
+refresh loop at three requests a second. 30 is a starting guess; raise it if many viewers share addresses.
+`/auth/*` is not covered, because the free plan has one rule.
 
 To upgrade, pull the new code, run `bun run build`, apply new migrations with
 `bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`.

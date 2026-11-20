@@ -95,7 +95,7 @@ export function useLive(path: string): LiveState {
   return live
 }
 
-function socketUrl(path: string): string {
+export function socketUrl(path: string): string {
   const url = new URL(path, window.location.href)
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
   return url.href

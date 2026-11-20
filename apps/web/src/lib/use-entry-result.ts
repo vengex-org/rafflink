@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { pollEntry, type EntryResult } from "../api/client.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import type { PollTiming } from "./poll-timing.ts"
+import { forgetStoredGiveaway } from "./stored-giveaway.ts"
 
 /** An entry the page stopped waiting for. */
 export type EntryView = EntryResult | { readonly kind: "timed-out" }
@@ -32,6 +33,7 @@ export function useEntryResult(
           const result = await pollEntry(code, ticket)
           if (!current) return
           if (result.kind !== "pending") {
+            forgetStoredGiveaway(code)
             setView(result)
             forgetEntryInUrl()
             return

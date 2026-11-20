@@ -16,6 +16,10 @@ interface OpenRoom {
   readonly runtime: Runtime
 }
 
+// Tags of the hibernating sockets: the streamer's live and overlay pages, and the viewers' giveaway pages.
+const liveTag = "live"
+const viewerTag = "viewer"
+
 /**
  * One giveaway's room in a SQLite-backed Durable Object named by the giveaway id. Live pages are
  * hibernating WebSockets of the object; the storage alarm runs {@link runRoomAlarm}.
@@ -65,15 +69,16 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
     return (await this.opened).room.liveSnapshot()
   }
 
-  /** Accepts a live page's WebSocket and sends it the current snapshot; the Worker has already checked who may connect. */
+  /** Accepts a page's WebSocket and sends it the current snapshot, or for a viewer's page the current outcome; the Worker has already checked who may connect. */
   override async fetch(request: Request): Promise<Response> {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
       return new Response("expected a WebSocket upgrade", { status: 426 })
     }
     const { room } = await this.opened
     const pair = new WebSocketPair()
-    this.ctx.acceptWebSocket(pair[1])
-    pair[1].send(JSON.stringify(room.liveSnapshot()))
+    const viewer = new URL(request.url).pathname.startsWith("/api/g/")
+    this.ctx.acceptWebSocket(pair[1], [viewer ? viewerTag : liveTag])
+    pair[1].send(JSON.stringify(viewer ? room.viewerPush() : room.liveSnapshot()))
     return new Response(null, { status: 101, webSocket: pair[0] })
   }
 
@@ -101,7 +106,10 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
     const room = new GiveawayRoom({
       sql,
       alarm: new DurableObjectAlarm(this.ctx.storage),
-      live: { broadcast: (json) => this.broadcast(json) },
+      live: {
+        broadcast: (json) => this.broadcast(json, liveTag),
+        broadcastViewers: (json) => this.broadcast(json, viewerTag),
+      },
       clock: runtime.clock,
       random: runtime.random,
       config: runtime.config,
@@ -113,8 +121,8 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
     return { room, runtime }
   }
 
-  private broadcast(json: string): void {
-    for (const socket of this.ctx.getWebSockets()) {
+  private broadcast(json: string, tag: string): void {
+    for (const socket of this.ctx.getWebSockets(tag)) {
       try {
         socket.send(json)
       } catch (error) {

@@ -17,6 +17,8 @@ import type {
   LiveSnapshot,
   LiveWinner,
   RerollOutcome,
+  ViewerPush,
+  ViewerWinner,
   WinnerClaim,
 } from "@rafflink/core/room/giveaway-room"
 import {
@@ -121,11 +123,21 @@ export const liveSnapshotPath = (id: string) => `/api/live/${encodeURIComponent(
 export const overlaySnapshotPath = (id: string, token: string) =>
   `/api/overlay/${encodeURIComponent(id)}/${encodeURIComponent(token)}`
 
+export const viewerSocketPath = (code: string) => `/api/g/${encodeURIComponent(code)}/live`
+
 export async function getGiveaway(code: string): Promise<GiveawayLoad | null> {
   const { status, body } = await send(`/api/g/${encodeURIComponent(code)}`)
   if (status === 404) return null
   if (status !== 200) throw new ApiError(status)
-  const source = record(body, "giveaway")
+  return parseGiveawayLoad(record(body, "giveaway"))
+}
+
+/** The shape of the giveaway page's response: the public part and `me` in one object. */
+export function giveawayLoadJson(load: GiveawayLoad): string {
+  return JSON.stringify({ ...load.giveaway, me: load.me })
+}
+
+export function parseGiveawayLoad(source: Json): GiveawayLoad {
   return {
     giveaway: {
       code: text(source, "code"),
@@ -137,6 +149,7 @@ export async function getGiveaway(code: string): Promise<GiveawayLoad | null> {
       closesAt: nullableNum(source, "closesAt"),
       claimSeconds: num(source, "claimSeconds"),
       entrantCount: num(source, "entrantCount"),
+      finished: bool(source, "finished"),
       poll: {
         intervalMs: num(child(source, "poll"), "intervalMs"),
         maxMs: num(child(source, "poll"), "maxMs"),
@@ -150,19 +163,41 @@ function parseViewerState(source: Json): ViewerState {
   const kind = oneOf(source, "kind", viewerKinds)
   switch (kind) {
     case "entered":
-      return { kind, entry: parseEntry(child(source, "entry")) }
+      return { kind, userId: text(source, "userId"), entry: parseEntry(child(source, "entry")) }
     case "won":
       return {
         kind,
+        userId: text(source, "userId"),
         n: num(source, "n"),
         claimRemainingMs: num(source, "claimRemainingMs"),
         claim: parseClaim(child(source, "claim")),
         chatClaimAvailable: bool(source, "chatClaimAvailable"),
       }
-    case "signed-out":
     case "not-entered":
     case "not-won":
+      return { kind, userId: text(source, "userId") }
+    case "signed-out":
       return { kind }
+  }
+}
+
+/** A message of the viewer socket: the draw and claim state of the giveaway. */
+export function parseViewerPush(source: Json): ViewerPush {
+  return {
+    status: oneOf(source, "status", roomStatuses),
+    finished: bool(source, "finished"),
+    chatClaimAvailable: bool(source, "chatClaimAvailable"),
+    winners: list(source, "winners", parseViewerWinner),
+    now: num(source, "now"),
+  }
+}
+
+function parseViewerWinner(source: Json): ViewerWinner {
+  return {
+    n: num(source, "n"),
+    platformUserId: text(source, "platformUserId"),
+    claimUntil: num(source, "claimUntil"),
+    claim: parseClaim(child(source, "claim")),
   }
 }
 

@@ -6,7 +6,12 @@ import { drawWinners } from "../lib/draw.ts"
 import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql } from "../ports.ts"
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
 import { idleChat } from "../../test/idle-chat.ts"
-import { GiveawayRoom, type GiveawayInit, type RoomViewer } from "./giveaway-room.ts"
+import {
+  GiveawayRoom,
+  type GiveawayInit,
+  type RoomViewer,
+  type ViewerPush,
+} from "./giveaway-room.ts"
 import { applyMigrations } from "./migrate.ts"
 import { roomMigrations } from "./migrations.ts"
 import {
@@ -73,8 +78,12 @@ class TestAlarm implements Alarm {
 
 class TestHub implements LiveHub {
   readonly messages: string[] = []
+  readonly viewerMessages: string[] = []
   broadcast(json: string): void {
     this.messages.push(json)
+  }
+  broadcastViewers(json: string): void {
+    this.viewerMessages.push(json)
   }
 }
 
@@ -863,5 +872,199 @@ describe("room queries", () => {
     expect(
       details.some((detail) => detail.startsWith("SCAN entries") && !detail.includes("INDEX")),
     ).toBe(false)
+  })
+})
+
+function lastViewerPush(hub: TestHub): ViewerPush {
+  const push: ViewerPush = JSON.parse(hub.viewerMessages.at(-1) ?? "null")
+  return push
+}
+
+describe("viewer push", () => {
+  it("does not repeat to a viewer the outcome it got on connect when the alarm runs", () => {
+    const { room, hub } = setup()
+
+    room.viewerPush()
+    room.onAlarm()
+
+    expect(hub.viewerMessages).toEqual([])
+  })
+
+  it("sends nothing to viewers for entries, which change nothing their page shows", () => {
+    const { room, hub } = setup()
+
+    enterMany(room, ["1", "2", "3"])
+
+    expect(hub.messages.length).toBeGreaterThan(0)
+    expect(hub.viewerMessages).toEqual([])
+  })
+
+  it("pushes closed when the streamer closes entries", () => {
+    const { room, hub } = setup()
+
+    room.close()
+
+    expect(hub.viewerMessages).toHaveLength(1)
+    expect(lastViewerPush(hub)).toEqual({
+      status: "closed",
+      finished: false,
+      chatClaimAvailable: true,
+      winners: [],
+      now: 0,
+    })
+  })
+
+  it("pushes closed when the end time passes", () => {
+    const { room, hub, clock } = setup({ ...giveaway, closesAt: 5000 })
+
+    clock.advance(5000)
+    room.onAlarm()
+
+    expect(lastViewerPush(hub)).toMatchObject({ status: "closed" })
+  })
+
+  it("pushes the draw with each winner's platform user id and claim deadline, without the draw's seed or any entrant", async () => {
+    const { hub, winner, clock } = await drawnRoom()
+
+    const push = lastViewerPush(hub)
+
+    expect(push).toEqual({
+      status: "drawn",
+      finished: false,
+      chatClaimAvailable: true,
+      winners: [
+        {
+          n: 0,
+          platformUserId: winner.platformUserId,
+          claimUntil: clock.now() + 300_000,
+          claim: { state: "waiting" },
+        },
+      ],
+      now: clock.now(),
+    })
+  })
+
+  it("pushes a claim to viewers, and the push says the giveaway is finished when it was the last one", async () => {
+    const { room, hub, winner } = await drawnRoom()
+
+    room.claim(0, winner, "chat")
+
+    expect(lastViewerPush(hub)).toMatchObject({
+      finished: true,
+      winners: [{ n: 0, claim: { state: "claimed", via: "chat" } }],
+    })
+  })
+
+  it("pushes the replaced pick as rerolled next to the new one, and the giveaway is not finished", async () => {
+    const { room, hub } = await drawnRoom()
+
+    await room.reroll(0)
+
+    const push = lastViewerPush(hub)
+    expect(push.finished).toBe(false)
+    expect(push.winners.map((winner) => [winner.n, winner.claim.state])).toEqual([
+      [0, "rerolled"],
+      [1, "waiting"],
+    ])
+  })
+
+  it("pushes the expiry of the last claim time on the alarm that finds it over", async () => {
+    const { room, hub, clock } = await drawnRoom()
+    const before = hub.viewerMessages.length
+
+    clock.advance(300_001)
+    room.onAlarm()
+
+    expect(hub.viewerMessages).toHaveLength(before + 1)
+    expect(lastViewerPush(hub)).toMatchObject({
+      finished: true,
+      winners: [{ claim: { state: "expired" } }],
+    })
+  })
+
+  it("does not push an outcome that is the same as the last one", async () => {
+    const { room, hub, clock } = await drawnRoom()
+    const before = hub.viewerMessages.length
+
+    clock.advance(1000)
+    room.onAlarm()
+    room.onAlarm()
+
+    expect(hub.viewerMessages).toHaveLength(before)
+  })
+
+  it("pushes again after the room object was recreated, because it does not know what was sent", async () => {
+    const { room, sql, alarm, clock, hub } = await drawnRoom()
+    const revivedHub = new TestHub()
+    const revived = new GiveawayRoom({
+      sql,
+      alarm,
+      live: revivedHub,
+      clock,
+      random,
+      config,
+      chat: idleChat,
+    })
+    const before = hub.viewerMessages.length
+
+    room.onAlarm()
+    revived.onAlarm()
+
+    expect(hub.viewerMessages).toHaveLength(before)
+    expect(revivedHub.viewerMessages).toHaveLength(1)
+  })
+
+  it("hands a page that connects now the same outcome with the room's clock", async () => {
+    const { room, hub, clock } = await drawnRoom()
+    clock.advance(42_000)
+
+    const first = room.viewerPush()
+
+    expect(first).toEqual({ ...lastViewerPush(hub), now: clock.now() })
+  })
+
+  it("survives a viewer push that throws and still arms the alarm", async () => {
+    const { room, hub, alarm } = await drawnRoom()
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const failure = new Error("socket gone")
+    spyOn(hub, "broadcastViewers").mockImplementation(() => {
+      throw failure
+    })
+
+    room.onAlarm()
+    await room.reroll(0)
+
+    expect(warn).toHaveBeenCalledWith("room effect failed", {
+      giveawayId: "g1",
+      effect: "viewer-push",
+      error: failure,
+    })
+    expect(alarm.at).not.toBeNull()
+  })
+})
+
+describe("public summary", () => {
+  it("is not finished while open, closed, or while a winner can still claim", async () => {
+    const open = setup()
+    const closed = setup()
+    closed.room.close()
+    const waiting = await drawnRoom()
+
+    expect([open.room, closed.room, waiting.room].map((room) => room.summary().finished)).toEqual([
+      false,
+      false,
+      false,
+    ])
+  })
+
+  it("is finished after the last claim time ran out, and for a draw nobody won", async () => {
+    const expired = await drawnRoom()
+    expired.clock.advance(300_001)
+    const empty = setup()
+    empty.room.close()
+    await empty.room.draw(1)
+
+    expect(expired.room.summary().finished).toBe(true)
+    expect(empty.room.summary().finished).toBe(true)
   })
 })

@@ -116,6 +116,7 @@ describe("language", () => {
       [1204, "Zapísalo sa 1 204 ľudí"],
     ] as const
     for (const [entrantCount, text] of counts) {
+      window.sessionStorage.clear()
       mockFetch({
         "GET /api/g/ABCDE": () => ok({ ...giveaway, entrantCount }),
       })

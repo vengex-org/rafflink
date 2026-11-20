@@ -340,6 +340,7 @@ describe("creating a giveaway", () => {
       closesAt: null,
       claimSeconds: 300,
       entrantCount: 1,
+      finished: false,
       poll: { intervalMs: 3000, maxMs: 120_000 },
       me: { kind: "signed-out" },
     })
@@ -1102,7 +1103,7 @@ describe("viewer state", () => {
     const viewer = new Browser(harness)
     await viewerSignIn(users.viewer.id, second.code, viewer)
 
-    expect(await meOf(viewer, first.code)).toEqual({ kind: "not-entered" })
+    expect(await meOf(viewer, first.code)).toEqual({ kind: "not-entered", userId: users.viewer.id })
   })
 
   it("shows the tickets and the group of an entry when the page is opened again", async () => {
@@ -1113,6 +1114,7 @@ describe("viewer state", () => {
 
     expect(await meOf(viewer, code)).toEqual({
       kind: "entered",
+      userId: users.viewer.id,
       entry: { group: "sub_t2", tickets: 4, enteredAt: harness.clock.now() },
     })
   })
@@ -1126,6 +1128,7 @@ describe("viewer state", () => {
 
     expect(won).toEqual({
       kind: "won",
+      userId: users.viewer.id,
       n: 0,
       claimRemainingMs: 240_000,
       claim: { state: "waiting" },
@@ -1135,6 +1138,27 @@ describe("viewer state", () => {
       kind: "won",
       claim: { state: "claimed", via: "rafflink" },
     })
+  })
+
+  it("says the giveaway is finished once the draw is done and no winner can still claim", async () => {
+    const { code, winnerBrowser } = await drawnGiveaway()
+
+    const waiting = await pageOf(undefined, code)
+    await winnerBrowser.request(`/api/g/${code}/claim`, { method: "POST" })
+    const claimed = await pageOf(undefined, code)
+
+    expect(waiting).toMatchObject({ status: "drawn", finished: false })
+    expect(claimed).toMatchObject({ status: "drawn", finished: true })
+  })
+
+  it("says the giveaway is not finished while entries are open or closed", async () => {
+    const { browser, id, code } = await createGiveaway(harness)
+    const open = await pageOf(undefined, code)
+    await browser.postJson(`/api/dash/giveaways/${id}/close`, {})
+    const closed = await pageOf(undefined, code)
+
+    expect(open).toMatchObject({ status: "open", finished: false })
+    expect(closed).toMatchObject({ status: "closed", finished: false })
   })
 
   it("says not-won to an entrant who was not drawn", async () => {
@@ -1498,5 +1522,46 @@ describe("logs", () => {
       { requestId: body.requestId, errorClass: "TypeError" },
     ])
     error.mockRestore()
+  })
+})
+
+describe("viewer socket route", () => {
+  const upgrade = { upgrade: "websocket", connection: "Upgrade" }
+  const socketRequest = (code: string, headers: Record<string, string>) =>
+    harness.app.request(`/api/g/${code}/live`, { headers: { ...upgrade, ...headers } })
+
+  it("names the room of the giveaway for an upgrade from the site's own origin", async () => {
+    const { id, code } = await createGiveaway(harness)
+
+    const response = await socketRequest(code, { origin: harness.config.publicUrl })
+
+    expect(response.status).toBe(204)
+    expect(response.headers.get("x-rafflink-room")).toBe(id)
+  })
+
+  it("refuses an upgrade from another origin and one without an origin", async () => {
+    const { code } = await createGiveaway(harness)
+
+    const other = await socketRequest(code, { origin: "https://evil.example" })
+    const missing = await socketRequest(code, {})
+
+    expect([other.status, missing.status]).toEqual([403, 403])
+    expect(other.headers.get("x-rafflink-room")).toBeNull()
+  })
+
+  it("answers 404 for a code that does not exist and names no room", async () => {
+    const response = await socketRequest("NOPE0", { origin: harness.config.publicUrl })
+
+    expect(response.status).toBe(404)
+    expect(response.headers.get("x-rafflink-room")).toBeNull()
+  })
+
+  it("answers 426 to a plain request, which is no way to read the outcome", async () => {
+    const { code } = await createGiveaway(harness)
+
+    const response = await harness.app.request(`/api/g/${code}/live`)
+
+    expect(response.status).toBe(426)
+    expect(response.headers.get("x-rafflink-room")).toBeNull()
   })
 })

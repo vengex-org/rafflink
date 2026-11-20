@@ -1,12 +1,18 @@
-import { afterEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
+import { installFakeSocket } from "./fake-socket.ts"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
+let restoreSocket = () => {}
+beforeEach(() => {
+  restoreSocket = installFakeSocket()
+})
 afterEach(() => {
   cleanup()
   mock.restore()
+  restoreSocket()
 })
 
 const giveawayRoute = { "GET /api/g/ABCDE": () => ok(giveaway) }
@@ -19,7 +25,7 @@ const wonRoute = (
     ok({
       ...giveaway,
       status: "drawn",
-      me: { kind: "won", n: 0, claimRemainingMs, claim, chatClaimAvailable },
+      me: { kind: "won", userId: "u1", n: 0, claimRemainingMs, claim, chatClaimAvailable },
     }),
 })
 
@@ -185,6 +191,7 @@ describe("returning viewer", () => {
     mockFetch(
       meRoute({
         kind: "entered",
+        userId: "u1",
         entry: { group: "sub_t1", tickets: 3, enteredAt: 1 },
       }),
     )
@@ -197,7 +204,13 @@ describe("returning viewer", () => {
   })
 
   it("shows the tickets in the singular for a viewer", async () => {
-    mockFetch(meRoute({ kind: "entered", entry: { group: "viewer", tickets: 1, enteredAt: 1 } }))
+    mockFetch(
+      meRoute({
+        kind: "entered",
+        userId: "u1",
+        entry: { group: "viewer", tickets: 1, enteredAt: 1 },
+      }),
+    )
 
     const view = renderApp("/ABCDE?entry=entered")
 
@@ -205,7 +218,7 @@ describe("returning viewer", () => {
   })
 
   it("tells an entrant who was not drawn, without a sign-in", async () => {
-    mockFetch(meRoute({ kind: "not-won" }, "drawn"))
+    mockFetch(meRoute({ kind: "not-won", userId: "u1" }, "drawn"))
 
     const view = renderApp("/ABCDE")
 
@@ -352,7 +365,11 @@ describe("entry outcomes", () => {
       "GET /api/g/ABCDE": () =>
         ok({
           ...giveaway,
-          me: { kind: "entered", entry: { group: "sub_t1", tickets: 3, enteredAt: 1 } },
+          me: {
+            kind: "entered",
+            userId: "u1",
+            entry: { group: "sub_t1", tickets: 3, enteredAt: 1 },
+          },
         }),
     })
 
@@ -460,6 +477,7 @@ describe("winner claim", () => {
           rules: { ...giveaway.rules, claimKeyword: "mine" },
           me: {
             kind: "won",
+            userId: "u1",
             n: 0,
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },

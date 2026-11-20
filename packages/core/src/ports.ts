@@ -28,9 +28,10 @@ export interface Alarm {
   clear(): void
 }
 
-/** Pushes one JSON text to every live page connected to one room. */
+/** Pushes one JSON text to the pages connected to one room: the streamer's live and overlay pages, and the viewers' giveaway pages. */
 export interface LiveHub {
   broadcast(json: string): void
+  broadcastViewers(json: string): void
 }
 
 /** What an open {@link TextSocket} reports. */

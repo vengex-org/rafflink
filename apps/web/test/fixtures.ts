@@ -22,6 +22,7 @@ export const giveaway: GiveawayView & { readonly me: ViewerState } = {
   closesAt: null,
   claimSeconds: 300,
   entrantCount: 42,
+  finished: false,
   poll: { intervalMs: 10, maxMs: 80 },
   me: { kind: "signed-out" },
 }

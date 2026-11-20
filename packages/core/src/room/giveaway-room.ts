@@ -129,6 +129,12 @@ export interface RoomSummary {
   readonly chatClaimUnavailable: boolean
 }
 
+/** The room as a viewer's page loads it. */
+export interface PublicSummary extends RoomSummary {
+  /** The draw is done and no winner can still claim, so nothing on a viewer's page changes unless the streamer rerolls an expired pick. */
+  readonly finished: boolean
+}
+
 /** A winner's claim as the live page shows it. */
 export type WinnerClaim =
   | { readonly state: "claimed"; readonly via: ClaimedVia }
@@ -155,6 +161,29 @@ export interface LiveSnapshot extends RoomSummary {
   readonly winners: readonly LiveWinner[]
   readonly roleRefreshFailures: number
   readonly eventSubFailures: number
+}
+
+/** A winner as every viewer's page sees them: the platform user id lets the page compare it with its own viewer, and nothing else identifies the person. */
+export interface ViewerWinner {
+  readonly n: number
+  readonly platformUserId: string
+  readonly claimUntil: Instant
+  readonly claim: WinnerClaim
+}
+
+/** What a viewer's page needs to show the draw and claim outcome without asking the server. */
+export interface ViewerOutcome {
+  readonly status: RoomStatus
+  /** Same meaning as {@link PublicSummary.finished}; the page stops listening. */
+  readonly finished: boolean
+  /** Whether a chat message can still claim; false when the chat watch is off. */
+  readonly chatClaimAvailable: boolean
+  readonly winners: readonly ViewerWinner[]
+}
+
+/** A {@link ViewerOutcome} with the room's clock, so the page measures claim times without trusting its own clock. */
+export interface ViewerPush extends ViewerOutcome {
+  readonly now: Instant
 }
 
 /** The entrants written since the previous push: `rows` continue after `fromSeq`; `truncated` means more arrived than fit. */
@@ -185,6 +214,8 @@ export class GiveawayRoom {
   // Lost with the object; the first push after that carries no rows and the page fetches the gap.
   private lastPushedSeq: number | null = null
   private pushDueAt: Instant | null = null
+  // Lost with the object; the first outcome after that is pushed again.
+  private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
 
   constructor(deps: RoomDeps) {
@@ -271,8 +302,18 @@ export class GiveawayRoom {
     return outcome
   }
 
-  summary(): RoomSummary {
-    return summarize(this.readState())
+  summary(): PublicSummary {
+    const state = this.readState()
+    return { ...summarize(state), finished: this.isFinished(state) }
+  }
+
+  /** The outcome a viewer's page connecting now starts from. */
+  viewerPush(): ViewerPush {
+    const outcome = this.viewerOutcome(this.readState())
+    // Every write a page shows pushes at once, so the pages already connected hold this outcome too;
+    // the first alarm after a fresh instance must not send it again.
+    this.lastViewerOutcome ??= JSON.stringify(outcome)
+    return { ...outcome, now: this.clock.now() }
   }
 
   /** The viewer's entry, `null` when they did not enter. */
@@ -290,7 +331,7 @@ export class GiveawayRoom {
   close(): CloseOutcome {
     if (!this.closeOpenRoom()) return { kind: "not-open", status: this.readState().status }
     this.mirrorRetryAt = this.clock.now() + this.config.mirrorRetrySeconds * 1000
-    this.afterWrite()
+    this.afterOutcomeWrite()
     return { kind: "closed" }
   }
 
@@ -304,6 +345,7 @@ export class GiveawayRoom {
       state = this.readState()
     }
     if (pushNow) this.guarded("live-push", () => this.pushLive())
+    this.guarded("viewer-push", () => this.pushViewers())
     const refreshRoles =
       state.status === "open" && state.rolesRefreshAt !== null && now >= state.rolesRefreshAt
     if (refreshRoles) {
@@ -347,7 +389,7 @@ export class GiveawayRoom {
     })
     if (outcome.kind === "drawn") {
       this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
-      this.afterWrite()
+      this.afterOutcomeWrite()
     }
     return outcome
   }
@@ -381,7 +423,7 @@ export class GiveawayRoom {
       this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
       return { kind: "rerolled", replaced: n, winner }
     })
-    if (outcome.kind === "rerolled") this.afterWrite()
+    if (outcome.kind === "rerolled") this.afterOutcomeWrite()
     return outcome
   }
 
@@ -396,7 +438,7 @@ export class GiveawayRoom {
       [now, via, n, winner.platform, winner.platformUserId, now],
     )
     if (claimed.length === 1) {
-      this.afterWrite()
+      this.afterOutcomeWrite()
       return { kind: "claimed" }
     }
     return claimRefusal(this.readDraw(n), winner)
@@ -544,6 +586,12 @@ export class GiveawayRoom {
     return closed.length > 0
   }
 
+  // A write the viewers' pages show: the same effects as {@link afterWrite}, plus the viewers' push.
+  private afterOutcomeWrite(): void {
+    this.guarded("viewer-push", () => this.pushViewers())
+    this.afterWrite()
+  }
+
   // Each effect after a commit runs in its own try: a failed push must not skip the alarm.
   private afterWrite(): void {
     this.guarded("live-push", () => this.pushLive())
@@ -592,6 +640,7 @@ export class GiveawayRoom {
   // The watcher has already closed; the flag keeps the room from opening it again until a reroll.
   private chatUnavailable(cause: unknown): void {
     this.sql.exec("UPDATE room_state SET chat_unavailable = 1 WHERE id = 1", [])
+    this.guarded("viewer-push", () => this.pushViewers())
     this.recordFailure("eventsub", cause)
   }
 
@@ -606,6 +655,35 @@ export class GiveawayRoom {
     const push: LivePush = { ...this.liveSnapshot(), entrantsAfter: this.entrantsDelta() }
     this.live.broadcast(JSON.stringify(push))
     this.lastPushedSeq = this.headSeq()
+  }
+
+  // Entries change nothing a viewer's page shows, so an unchanged outcome sends nothing.
+  private pushViewers(): void {
+    const outcome = this.viewerOutcome(this.readState())
+    const key = JSON.stringify(outcome)
+    if (key === this.lastViewerOutcome) return
+    this.lastViewerOutcome = key
+    const push: ViewerPush = { ...outcome, now: this.clock.now() }
+    this.live.broadcastViewers(JSON.stringify(push))
+  }
+
+  private viewerOutcome(state: RoomState): ViewerOutcome {
+    const now = this.clock.now()
+    return {
+      status: state.status,
+      finished: this.isFinished(state),
+      chatClaimAvailable: !state.chatUnavailable,
+      winners: this.readDraws().map((draw) => ({
+        n: draw.n,
+        platformUserId: draw.platformUserId,
+        claimUntil: draw.claimUntil,
+        claim: winnerClaim(draw, now),
+      })),
+    }
+  }
+
+  private isFinished(state: RoomState): boolean {
+    return state.status === "drawn" && this.nextClaimDeadline() === null
   }
 
   private entrantsDelta(): EntrantsDelta {

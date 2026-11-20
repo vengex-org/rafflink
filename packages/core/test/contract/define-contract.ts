@@ -6,6 +6,7 @@ import { liveScenarios } from "./live.scenarios.ts"
 import { operationsScenarios } from "./operations.scenarios.ts"
 import { pageScenarios } from "./page.scenarios.ts"
 import { queueScenarios } from "./queue.scenarios.ts"
+import { viewerPushScenarios } from "./viewer-push.scenarios.ts"
 import type { PageServing, StartTarget } from "./target.ts"
 
 /**
@@ -23,6 +24,7 @@ export function defineContract(
     queueScenarios(context)
     giveawayScenarios(context)
     liveScenarios(context)
+    viewerPushScenarios(context)
     chatClaimScenarios(context)
     operationsScenarios(context)
     pageScenarios(context)
