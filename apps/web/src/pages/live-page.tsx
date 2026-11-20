@@ -9,28 +9,31 @@ import {
   rerollWinner,
 } from "../api/client.ts"
 import { ConfirmAction } from "../components/confirm-action.tsx"
-import { AlertIcon } from "../components/icons.tsx"
-import { EntrantNames, Stat, WinnerList } from "../components/live-parts.tsx"
+import {
+  ActivityIcon,
+  AlertIcon,
+  CheckCircleIcon,
+  LockIcon,
+  RefreshIcon,
+  ShuffleIcon,
+  TagIcon,
+  UsersIcon,
+} from "../components/icons.tsx"
+import { EntrantNames, Stat, StatusPill, WinnerList } from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
 import { ShareLinks } from "../components/share-panel.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
-import {
-  closeText,
-  drawText,
-  giveawayName,
-  markClaimedText,
-  rerollText,
-  statusLabel,
-} from "../lib/messages.ts"
+import { useI18n } from "../i18n/i18n.tsx"
+import { giveawayName } from "../lib/messages.ts"
 import { peopleText } from "../lib/rules-text.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLive } from "../lib/use-live.ts"
 
-const stepNames = ["Collect entries", "Draw winners", "Winners claim"] as const
+const stepNames = ["live.step.collect", "live.step.draw", "live.step.claim"] as const
 
 export function LivePage() {
   const { id } = useParams()
-  return id === undefined ? <NotFound title="Giveaway not found" /> : <Loaded id={id} />
+  return id === undefined ? <NotFound title="notFound.giveaway" /> : <Loaded id={id} />
 }
 
 function Loaded({ id }: { readonly id: string }) {
@@ -41,9 +44,9 @@ function Loaded({ id }: { readonly id: string }) {
     case "failed":
       return <Failed />
     case "unauthorized":
-      return <SignIn why="Sign in with Twitch to open the live page of your giveaway." />
+      return <SignIn why="signIn.why.live" />
     case "not-found":
-      return <NotFound title="Giveaway not found" />
+      return <NotFound title="notFound.giveaway" />
     case "ready":
       return <Controls id={id} snapshot={live.snapshot} connected={live.connected} />
   }
@@ -58,12 +61,14 @@ function Controls({
   readonly snapshot: LiveSnapshot
   readonly connected: boolean
 }) {
+  const i18n = useI18n()
+  const { t } = i18n
   const { message, busy, run } = useAction()
 
   const winnerActions = (winner: LiveWinner) => {
     const open = winner.claim.state === "waiting"
     const expired = winner.claim.state === "expired"
-    const name = winner.displayName ?? `winner ${winner.n + 1}`
+    const name = winner.displayName ?? t("live.winnerFallback", { n: winner.n + 1 })
     return (
       <span className="actions">
         {snapshot.chatClaimUnavailable && open ? (
@@ -71,22 +76,34 @@ function Controls({
             type="button"
             className="button tonal small"
             disabled={busy}
-            aria-label={`Mark as claimed for ${name}`}
-            onClick={() => void run(() => markClaimed(id, winner.n), markClaimedText)}
+            aria-label={t("live.mark.aria", { name })}
+            onClick={() =>
+              void run(
+                () => markClaimed(id, winner.n),
+                (outcome) => `markResult.${outcome}`,
+              )
+            }
           >
-            Mark as claimed
+            <CheckCircleIcon />
+            {t("live.mark.label")}
           </button>
         ) : null}
         {open || expired ? (
           <ConfirmAction
-            label="Pick another winner"
-            question={`Pick another winner instead of ${name}?`}
-            detail={`${name} loses the prize. This cannot be undone.`}
-            confirmLabel="Yes, pick another winner"
+            icon={<RefreshIcon />}
+            label={t("live.reroll.label")}
+            question={t("live.reroll.question", { name })}
+            detail={t("live.reroll.detail", { name })}
+            confirmLabel={t("live.reroll.confirm")}
             busy={busy}
             disabled={false}
             quiet={open}
-            onConfirm={() => void run(() => rerollWinner(id, winner.n), rerollText)}
+            onConfirm={() =>
+              void run(
+                () => rerollWinner(id, winner.n),
+                (outcome) => `rerollResult.${outcome}`,
+              )
+            }
           />
         ) : null}
       </span>
@@ -95,48 +112,76 @@ function Controls({
 
   return (
     <>
-      {connected ? null : <output className="status">Reconnecting to the live feed…</output>}
+      {connected ? null : <output className="status">{t("live.reconnecting")}</output>}
       <header className="page-head">
         <div>
-          <h1>{giveawayName(snapshot.title, snapshot.code)}</h1>
-          <p className="muted">Code {snapshot.code}</p>
+          <h1>{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
+          <p className="muted">{t("live.code", { code: snapshot.code })}</p>
         </div>
-        <span className="pill" data-status={snapshot.status}>
-          {statusLabel[snapshot.status]}
-        </span>
+        <StatusPill status={snapshot.status} />
       </header>
       <StepIndicator steps={stepNames} current={stepOf(snapshot.status)} />
-      {snapshot.chatClaimUnavailable ? (
-        <section role="alert" className="card banner" data-tone="warning">
-          <span className="state-icon">
-            <AlertIcon />
-          </span>
-          <h2>Chat watch is off</h2>
-          <p>
-            Chat claim unavailable: Rafflink cannot read your chat right now, so winners cannot
-            claim by typing there. When a winner tells you they are in, press Mark as claimed next
-            to their name.
-          </p>
-        </section>
-      ) : null}
-      {snapshot.status === "open" ? (
-        <OpenStep id={id} snapshot={snapshot} busy={busy} run={run} />
-      ) : null}
-      {snapshot.status === "closed" ? (
-        <DrawStep id={id} snapshot={snapshot} busy={busy} run={run} />
-      ) : null}
-      {snapshot.status === "drawn" ? (
-        <section className="card next" aria-labelledby="winners-title">
-          <h2 id="winners-title">Winners</h2>
-          <p>
-            Each winner has a limited time to claim the prize. They claim on the giveaway page
-            {snapshot.chatClaimUnavailable ? "." : " or by typing in your chat."}
-          </p>
-          <WinnerList winners={snapshot.winners} actions={winnerActions} />
-        </section>
-      ) : null}
-      {message === null ? null : <Status>{message}</Status>}
-      <Problems snapshot={snapshot} />
+      <div className="live-grid">
+        <div className="live-main">
+          {snapshot.chatClaimUnavailable ? (
+            <section role="alert" className="card banner" data-tone="warning">
+              <span className="state-icon">
+                <AlertIcon />
+              </span>
+              <h2>{t("live.chatOff.title")}</h2>
+              <p>{t("live.chatOff.text")}</p>
+            </section>
+          ) : null}
+          {snapshot.status === "open" ? (
+            <OpenStep id={id} snapshot={snapshot} busy={busy} run={run} />
+          ) : null}
+          {snapshot.status === "closed" ? (
+            <DrawStep id={id} snapshot={snapshot} busy={busy} run={run} />
+          ) : null}
+          {snapshot.status === "drawn" ? (
+            <section className="card next" aria-labelledby="winners-title">
+              <h2 id="winners-title">{t("live.winners.title")}</h2>
+              <p>
+                {snapshot.chatClaimUnavailable
+                  ? t("live.winners.page")
+                  : t("live.winners.pageOrChat")}
+              </p>
+              <WinnerList winners={snapshot.winners} actions={winnerActions} />
+            </section>
+          ) : null}
+          {message === null ? null : <Status>{t(message)}</Status>}
+          <Problems snapshot={snapshot} />
+        </div>
+        <aside className="live-side">
+          <section className="card" aria-labelledby="entrants-title">
+            <dl className="stats">
+              <Stat
+                icon={<UsersIcon />}
+                value={i18n.number(snapshot.entrantCount)}
+                label={t("stat.people")}
+              />
+              <Stat
+                icon={<ActivityIcon />}
+                value={i18n.decimal(snapshot.entriesPerSecond)}
+                label={t("stat.perSecond")}
+              />
+              <Stat
+                icon={<TagIcon />}
+                value={i18n.number(snapshot.ticketTotal)}
+                label={t("stat.tickets")}
+              />
+            </dl>
+            <h2 id="entrants-title">{t("entrants.latest")}</h2>
+            <EntrantNames names={snapshot.lastNames} />
+          </section>
+          {snapshot.status === "open" ? (
+            <section className="card" aria-labelledby="share-title">
+              <h2 id="share-title">{t("live.share.title")}</h2>
+              <ShareLinks code={snapshot.code} />
+            </section>
+          ) : null}
+        </aside>
+      </div>
     </>
   )
 }
@@ -154,38 +199,30 @@ function OpenStep({
   readonly busy: boolean
   readonly run: Run
 }) {
+  const { t, dateTime } = useI18n()
   return (
-    <>
-      <section className="card next" aria-labelledby="open-title">
-        <h2 id="open-title">Entries are open</h2>
-        <dl className="stats">
-          <Stat value={snapshot.entrantCount.toLocaleString("en-US")} label="people entered" />
-          <Stat value={snapshot.entriesPerSecond.toFixed(1)} label="entries per second" />
-          <Stat value={snapshot.ticketTotal.toLocaleString("en-US")} label="tickets in total" />
-        </dl>
-        <h3>Latest entrants</h3>
-        <EntrantNames names={snapshot.lastNames} />
-        {snapshot.closesAt === null ? null : (
-          <p className="muted">
-            Entries close by themselves at {new Date(snapshot.closesAt).toLocaleString()}.
-          </p>
-        )}
-        <ConfirmAction
-          label="Close entries"
-          question="Close entries now?"
-          detail="Nobody new can enter after this. You cannot undo it."
-          confirmLabel="Yes, close entries"
-          busy={busy}
-          disabled={false}
-          quiet={false}
-          onConfirm={() => void run(() => closeEntries(id), closeText)}
-        />
-      </section>
-      <section className="card" aria-labelledby="share-title">
-        <h2 id="share-title">Share with your chat</h2>
-        <ShareLinks code={snapshot.code} />
-      </section>
-    </>
+    <section className="card next" aria-labelledby="open-title">
+      <h2 id="open-title">{t("live.open.title")}</h2>
+      {snapshot.closesAt === null ? null : (
+        <p className="muted">{t("live.closesAt", { time: dateTime(snapshot.closesAt) })}</p>
+      )}
+      <ConfirmAction
+        icon={<LockIcon />}
+        label={t("live.close.label")}
+        question={t("live.close.question")}
+        detail={t("live.close.detail")}
+        confirmLabel={t("live.close.confirm")}
+        busy={busy}
+        disabled={false}
+        quiet={false}
+        onConfirm={() =>
+          void run(
+            () => closeEntries(id),
+            (outcome) => `closeResult.${outcome}`,
+          )
+        }
+      />
+    </section>
   )
 }
 
@@ -200,23 +237,19 @@ function DrawStep({
   readonly busy: boolean
   readonly run: Run
 }) {
+  const i18n = useI18n()
+  const { t } = i18n
   const [count, setCount] = useState("1")
   const winners = Number(count)
   const countValid = count.trim() !== "" && Number.isInteger(winners) && winners >= 1
   const blocked =
-    snapshot.entrantCount === 0
-      ? "Nobody entered, so there is nobody to draw."
-      : countValid
-        ? null
-        : "Enter a whole number of winners, at least 1."
+    snapshot.entrantCount === 0 ? t("live.draw.nobody") : countValid ? null : t("live.draw.invalid")
   return (
     <section className="card next" aria-labelledby="draw-title">
-      <h2 id="draw-title">Entries are closed</h2>
-      <p>
-        {peopleText(snapshot.entrantCount)}. Now choose how many winners you want and draw them.
-      </p>
+      <h2 id="draw-title">{t("live.draw.title")}</h2>
+      <p>{t("live.draw.text", { people: peopleText(i18n, snapshot.entrantCount) })}</p>
       <div className="field">
-        <label htmlFor="draw-count">How many winners?</label>
+        <label htmlFor="draw-count">{t("live.draw.count")}</label>
         <input
           id="draw-count"
           type="number"
@@ -228,41 +261,42 @@ function DrawStep({
         <p id="draw-help" className="help">
           {blocked
             ?? (countValid && winners > snapshot.entrantCount
-              ? `Only ${snapshot.entrantCount} entered, so you may get fewer winners than this.`
-              : "Winners are picked at random from everyone who entered.")}
+              ? t("live.draw.fewer", { count: i18n.number(snapshot.entrantCount) })
+              : t("live.draw.random"))}
         </p>
       </div>
       <ConfirmAction
-        label="Draw winners"
-        question={`Draw ${winners} ${winners === 1 ? "winner" : "winners"} now?`}
-        detail="The winners are picked at random. You cannot undo this."
-        confirmLabel="Yes, draw winners"
+        icon={<ShuffleIcon />}
+        label={t("live.draw.label")}
+        question={i18n.plural("drawQuestion", winners)}
+        detail={t("live.draw.detail")}
+        confirmLabel={t("live.draw.confirm")}
         busy={busy}
         disabled={blocked !== null}
         quiet={false}
-        onConfirm={() => void run(() => drawWinners(id, winners), drawText)}
+        onConfirm={() =>
+          void run(
+            () => drawWinners(id, winners),
+            (outcome) => `drawResult.${outcome}`,
+          )
+        }
       />
     </section>
   )
 }
 
 function Problems({ snapshot }: { readonly snapshot: LiveSnapshot }) {
+  const { t, plural } = useI18n()
   if (snapshot.roleRefreshFailures === 0 && snapshot.eventSubFailures === 0) return null
   return (
     <section className="card" aria-labelledby="problems-title">
-      <h2 id="problems-title">Problems</h2>
+      <h2 id="problems-title">{t("live.problems.title")}</h2>
       <ul>
         {snapshot.roleRefreshFailures === 0 ? null : (
-          <li>
-            {snapshot.roleRefreshFailures} times Rafflink could not load your VIP and moderator
-            lists from Twitch. Those viewers may be missing extra tickets.
-          </li>
+          <li>{plural("roleFailures", snapshot.roleRefreshFailures)}</li>
         )}
         {snapshot.eventSubFailures === 0 ? null : (
-          <li>
-            {snapshot.eventSubFailures} times Rafflink lost the connection to your chat. Chat watch
-            may have missed messages.
-          </li>
+          <li>{plural("chatFailures", snapshot.eventSubFailures)}</li>
         )}
       </ul>
     </section>

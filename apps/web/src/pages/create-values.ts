@@ -1,5 +1,6 @@
 import { groups, type Group } from "@rafflink/core/domain/groups"
 import type { CreateGiveawayBody } from "../api/client.ts"
+import type { MessageKey } from "../i18n/dictionaries.ts"
 
 export type Step = 1 | 2 | 3 | 4
 export type Audience = "everyone" | "followers" | "subscribers"
@@ -23,7 +24,7 @@ export interface Values {
 
 export interface Issue {
   readonly field: string
-  readonly message: string
+  readonly message: MessageKey
 }
 
 export const initialValues: Values = {
@@ -55,13 +56,13 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
     case 2: {
       for (const group of groups) {
         if (!isWholeNumber(values.tickets[group])) {
-          return { field: `tickets.${group}`, message: "Enter a whole number, 0 or more." }
+          return { field: `tickets.${group}`, message: "issue.not-a-non-negative-integer" }
         }
       }
       if (values.minAccountAgeDays.trim() !== "" && !isWholeNumber(values.minAccountAgeDays)) {
         return {
           field: "minAccountAgeDays",
-          message: "Enter a whole number of days, or leave it empty.",
+          message: "issue.wholeDays",
         }
       }
       return null
@@ -70,9 +71,9 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
       if (values.ending === "never") return null
       const end = new Date(values.closesAt).getTime()
       if (Number.isNaN(end)) {
-        return { field: "closesAt", message: "Pick the date and time when entries end." }
+        return { field: "closesAt", message: "issue.pickEnd" }
       }
-      return end > now ? null : { field: "closesAt", message: "Pick a time in the future." }
+      return end > now ? null : { field: "closesAt", message: "issue.future" }
     }
   }
 }

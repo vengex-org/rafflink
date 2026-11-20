@@ -8,7 +8,3 @@ export function overlayUrl(id: string, overlayToken: string): string {
     window.location.origin,
   ).href
 }
-
-export function chatMessage(code: string): string {
-  return `Enter the giveaway: ${shareUrl(code)}`
-}

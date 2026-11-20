@@ -1,7 +1,10 @@
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { useI18n } from "../i18n/i18n.tsx"
+import { CloseIcon } from "./icons.tsx"
 
 /** A button for something that cannot be undone: it first asks in a dialog, in plain words, what will happen. */
 export function ConfirmAction({
+  icon,
   label,
   question,
   detail,
@@ -11,6 +14,7 @@ export function ConfirmAction({
   quiet,
   onConfirm,
 }: {
+  readonly icon: ReactNode
   readonly label: string
   readonly question: string
   readonly detail: string
@@ -21,6 +25,7 @@ export function ConfirmAction({
   readonly quiet: boolean
   readonly onConfirm: () => void
 }) {
+  const { t } = useI18n()
   const questionId = useId()
   const [asking, setAsking] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -45,6 +50,7 @@ export function ConfirmAction({
         disabled={busy || disabled}
         onClick={() => setAsking(true)}
       >
+        {icon}
         {label}
       </button>
       {asking ? (
@@ -66,7 +72,8 @@ export function ConfirmAction({
               className="button text"
               onClick={() => setAsking(false)}
             >
-              Cancel
+              <CloseIcon />
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -76,6 +83,7 @@ export function ConfirmAction({
                 onConfirm()
               }}
             >
+              {icon}
               {confirmLabel}
             </button>
           </div>

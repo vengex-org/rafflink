@@ -2,11 +2,22 @@ import { useState } from "react"
 import { Link } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import { listGiveaways, type CreateResult } from "../api/client.ts"
-import { CheckIcon, GiftIcon, PlusIcon, TvIcon } from "../components/icons.tsx"
+import { Disclosure } from "../components/disclosure.tsx"
+import {
+  ActivityIcon,
+  ArrowLeftIcon,
+  CheckIcon,
+  GiftIcon,
+  LinkIcon,
+  PlusIcon,
+  TvIcon,
+} from "../components/icons.tsx"
+import { StatusPill } from "../components/live-parts.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StateCard } from "../components/state-card.tsx"
-import { giveawayName, statusLabel } from "../lib/messages.ts"
+import { useI18n } from "../i18n/i18n.tsx"
+import { giveawayName } from "../lib/messages.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { CreateForm } from "./create-form.tsx"
 
@@ -18,25 +29,24 @@ type View =
   | { readonly kind: "created"; readonly created: Created }
 
 export function DashboardPage() {
+  const { t } = useI18n()
   const { result, reload } = useLoad(listGiveaways)
   const [view, setView] = useState<View>({ kind: "list" })
   const [signedOut, setSignedOut] = useState(false)
 
-  if (signedOut) return <SignIn why="Your session ended. Sign in with Twitch to go on." />
+  if (signedOut) return <SignIn why="signIn.why.expired" />
   switch (result.state) {
     case "loading":
       return <Loading />
     case "failed":
       return <Failed />
     case "ready":
-      if (result.value === "unauthorized") {
-        return <SignIn why="Sign in with Twitch to create and run giveaways." />
-      }
+      if (result.value === "unauthorized") return <SignIn why="signIn.why.dashboard" />
       switch (view.kind) {
         case "create":
           return (
-            <div className="column">
-              <h1>New giveaway</h1>
+            <>
+              <h1>{t("dash.new.title")}</h1>
               <CreateForm
                 onCreated={(created) => {
                   setView({ kind: "created", created })
@@ -45,7 +55,7 @@ export function DashboardPage() {
                 onUnauthorized={() => setSignedOut(true)}
                 onCancel={() => setView({ kind: "list" })}
               />
-            </div>
+            </>
           )
         case "created":
           return <CreatedScreen created={view.created} onDone={() => setView({ kind: "list" })} />
@@ -64,40 +74,33 @@ function CreatedScreen({
   readonly created: Created
   readonly onDone: () => void
 }) {
+  const { t, rich, plural } = useI18n()
   const { giveaway } = created
   return (
     <div className="column">
-      <StateCard tone="success" icon={<CheckIcon />} title="Your giveaway is live!">
+      <StateCard tone="success" align="start" icon={<CheckIcon />} title={t("dash.created.title")}>
         {created.usageLow === null ? null : (
-          <p role="alert">
-            Heads up: the server has only {created.usageLow.remaining} requests left for today.
-            Entries may stop working once they run out.
-          </p>
+          <p role="alert">{plural("usageLow", created.usageLow.remaining)}</p>
         )}
-        {created.roomReady ? null : (
-          <p role="alert">
-            The giveaway is not fully ready yet. Open the live page to finish setting it up.
-          </p>
-        )}
-        <p>
-          Next, tell your chat. Paste the message below into your Twitch chat. The giveaway code is{" "}
-          <strong>{giveaway.code}</strong>.
-        </p>
+        {created.roomReady ? null : <p role="alert">{t("dash.roomNotReady")}</p>}
+        <p>{rich("dash.next", { code: <strong>{giveaway.code}</strong> })}</p>
         <ShareLinks code={giveaway.code} />
         <Link className="button block" to={`/live/${giveaway.id}`}>
-          Open live page
+          <ActivityIcon />
+          {t("dash.openLive")}
         </Link>
       </StateCard>
       <section className="card" aria-labelledby="obs-title">
         <span className="state-icon">
           <TvIcon />
         </span>
-        <h2 id="obs-title">Add to OBS (optional)</h2>
-        <p>Show the entries on your stream while people join.</p>
+        <h2 id="obs-title">{t("dash.obs.title")}</h2>
+        <p>{t("dash.obs.text")}</p>
         <ObsSteps giveaway={giveaway} />
       </section>
       <button type="button" className="button outlined" onClick={onDone}>
-        Back to my giveaways
+        <ArrowLeftIcon />
+        {t("dash.back")}
       </button>
     </div>
   )
@@ -110,26 +113,28 @@ function GiveawayList({
   readonly giveaways: readonly DashboardGiveaway[]
   readonly onCreate: () => void
 }) {
+  const i18n = useI18n()
+  const { t } = i18n
   if (giveaways.length === 0) {
     return (
       <>
-        <h1>My giveaways</h1>
-        <StateCard tone="info" icon={<GiftIcon />} title="Create your first giveaway">
-          <p>It takes about a minute. Here is how it works.</p>
+        <h1>{t("dash.title")}</h1>
+        <StateCard tone="info" align="start" icon={<GiftIcon />} title={t("dash.empty.title")}>
+          <p>{t("dash.empty.text")}</p>
           <ol className="explainer">
             <li>
-              <strong>Create it.</strong> Say what you give away and who can enter.
+              <strong>{t("dash.empty.create.lead")}</strong> {t("dash.empty.create.rest")}
             </li>
             <li>
-              <strong>Share the link.</strong> Paste it in your chat. Viewers sign in with Twitch to
-              enter.
+              <strong>{t("dash.empty.share.lead")}</strong> {t("dash.empty.share.rest")}
             </li>
             <li>
-              <strong>Draw live.</strong> Close entries and pick the winner on your stream.
+              <strong>{t("dash.empty.draw.lead")}</strong> {t("dash.empty.draw.rest")}
             </li>
           </ol>
           <button type="button" className="button block" onClick={onCreate}>
-            Create giveaway
+            <PlusIcon />
+            {t("dash.empty.button")}
           </button>
         </StateCard>
       </>
@@ -138,33 +143,34 @@ function GiveawayList({
   return (
     <>
       <div className="page-head">
-        <h1>My giveaways</h1>
+        <h1>{t("dash.title")}</h1>
         <button type="button" className="button" onClick={onCreate}>
           <PlusIcon />
-          New giveaway
+          {t("dash.new.button")}
         </button>
       </div>
       <ul className="giveaways">
         {giveaways.map((giveaway) => (
           <li key={giveaway.id} className="card" data-status={giveaway.status}>
             <div className="giveaway-head">
-              <h2>{giveawayName(giveaway.title, giveaway.code)}</h2>
-              <span className="pill" data-status={giveaway.status}>
-                {statusLabel[giveaway.status]}
-              </span>
+              <h2>{giveawayName(i18n, giveaway.title, giveaway.code)}</h2>
+              <StatusPill status={giveaway.status} />
             </div>
-            {giveaway.prize === null ? null : <p>Prize: {giveaway.prize}</p>}
+            {giveaway.prize === null ? null : <p>{t("dash.prize", { prize: giveaway.prize })}</p>}
             <p className="muted">
-              Code {giveaway.code}, created {new Date(giveaway.createdAt).toLocaleDateString()}
+              {t("dash.codeCreated", {
+                code: giveaway.code,
+                date: i18n.date(giveaway.createdAt),
+              })}
             </p>
             <Link className="button tonal" to={`/live/${giveaway.id}`}>
-              Open live page
+              <ActivityIcon />
+              {t("dash.openLive")}
             </Link>
-            <details className="extra">
-              <summary>Link and OBS overlay</summary>
+            <Disclosure icon={<LinkIcon />} summary={t("dash.linkObs")} open={false}>
               <ShareLinks code={giveaway.code} />
               <ObsSteps giveaway={giveaway} />
-            </details>
+            </Disclosure>
           </li>
         ))}
       </ul>

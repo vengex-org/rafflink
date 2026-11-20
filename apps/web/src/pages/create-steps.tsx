@@ -1,7 +1,16 @@
 import type { Dispatch, SetStateAction } from "react"
 import { groups } from "@rafflink/core/domain/groups"
+import { Disclosure } from "../components/disclosure.tsx"
 import { Segmented, TextField, type SegmentOption } from "../components/form-fields.tsx"
-import { groupLabel } from "../lib/messages.ts"
+import {
+  ClockIcon,
+  HeartIcon,
+  LockIcon,
+  StarIcon,
+  TagIcon,
+  UsersIcon,
+} from "../components/icons.tsx"
+import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { claimTimeText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
 import {
   claimPresets,
@@ -18,80 +27,67 @@ interface StepProps {
   readonly issue: Issue | null
 }
 
-function errorOf(issue: Issue | null, field: string): string | null {
-  return issue?.field === field ? issue.message : null
+function errorOf(i18n: I18n, issue: Issue | null, field: string): string | null {
+  return issue?.field === field ? i18n.t(issue.message) : null
 }
 
 export function GiveawayStep({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
   return (
     <>
       <TextField
         name="title"
-        label="Giveaway name (optional)"
-        help="Viewers see this at the top of the page. Example: Friday gaming chair giveaway. Leave it empty and they see the giveaway code instead."
+        label={t("wizard.title.label")}
+        help={t("wizard.title.help")}
         type="text"
         min={null}
         value={values.title}
-        error={errorOf(issue, "title")}
+        error={errorOf(i18n, issue, "title")}
         onChange={(title) => setValues((current) => ({ ...current, title }))}
       />
       <TextField
         name="prize"
-        label="What does the winner get? (optional)"
-        help="Example: A gaming chair, or a 25 euro Steam card"
+        label={t("wizard.prize.label")}
+        help={t("wizard.prize.help")}
         type="text"
         min={null}
         value={values.prize}
-        error={errorOf(issue, "prize")}
+        error={errorOf(i18n, issue, "prize")}
         onChange={(prize) => setValues((current) => ({ ...current, prize }))}
       />
     </>
   )
 }
 
-const audiences: readonly SegmentOption<Audience>[] = [
-  {
-    value: "everyone",
-    label: "Everyone",
-    description: "Any viewer with a Twitch account can enter.",
-  },
-  {
-    value: "followers",
-    label: "Followers only",
-    description: "Only people who follow your channel can enter.",
-  },
-  {
-    value: "subscribers",
-    label: "Subscribers only",
-    description: "Only your paying subscribers can enter.",
-  },
-]
-
-const endings: readonly SegmentOption<Ending>[] = [
-  {
-    value: "never",
-    label: "When I close them",
-    description: "Entries stay open until you press Close entries.",
-  },
-  {
-    value: "at-time",
-    label: "At a set time",
-    description: "Entries close by themselves at the time you pick.",
-  },
-]
-
-const claimOptions: readonly SegmentOption<ClaimPreset>[] = claimPresets.map((seconds) => ({
-  value: seconds,
-  label: claimTimeText(seconds),
-  description: "",
-}))
-
 export function AudienceStep({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const audiences: readonly SegmentOption<Audience>[] = [
+    {
+      value: "everyone",
+      label: t("wizard.audience.everyone"),
+      icon: <UsersIcon />,
+      description: t("wizard.audience.everyone.help"),
+    },
+    {
+      value: "followers",
+      label: t("wizard.audience.followers"),
+      icon: <HeartIcon />,
+      description: t("wizard.audience.followers.help"),
+    },
+    {
+      value: "subscribers",
+      label: t("wizard.audience.subscribers"),
+      icon: <StarIcon />,
+      description: t("wizard.audience.subscribers.help"),
+    },
+  ]
   return (
     <>
       <Segmented
         name="audience"
-        legend="Who can enter?"
+        legend={t("wizard.q.audience")}
         help={null}
         options={audiences}
         value={values.audience}
@@ -99,32 +95,32 @@ export function AudienceStep({ values, setValues, issue }: StepProps) {
       />
       <TextField
         name="minAccountAgeDays"
-        label="Minimum account age in days (optional)"
-        help="Stops people from making fresh accounts just to enter. Leave it empty to allow any account."
+        label={t("wizard.minAge.label")}
+        help={t("wizard.minAge.help")}
         type="number"
         min={0}
         value={values.minAccountAgeDays}
-        error={errorOf(issue, "minAccountAgeDays")}
+        error={errorOf(i18n, issue, "minAccountAgeDays")}
         onChange={(minAccountAgeDays) =>
           setValues((current) => ({ ...current, minAccountAgeDays }))
         }
       />
-      <details className="extra" open={issue?.field.startsWith("tickets.") === true}>
-        <summary>Extra tickets (optional)</summary>
-        <p className="help">
-          Every group gets 1 ticket. More tickets mean a better chance of winning, for example 3 for
-          subscribers. Leave this as it is if everyone should have the same chance.
-        </p>
+      <Disclosure
+        icon={<TagIcon />}
+        summary={t("wizard.extra.summary")}
+        open={issue?.field.startsWith("tickets.") === true}
+      >
+        <p className="help">{t("wizard.extra.help")}</p>
         {groups.map((group) => (
           <TextField
             key={group}
             name={`tickets.${group}`}
-            label={groupLabel[group]}
+            label={t(`group.${group}`)}
             help={null}
             type="number"
             min={0}
             value={values.tickets[group]}
-            error={errorOf(issue, `tickets.${group}`)}
+            error={errorOf(i18n, issue, `tickets.${group}`)}
             onChange={(count) =>
               setValues((current) => ({
                 ...current,
@@ -133,17 +129,39 @@ export function AudienceStep({ values, setValues, issue }: StepProps) {
             }
           />
         ))}
-      </details>
+      </Disclosure>
     </>
   )
 }
 
 export function TimingStep({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const endings: readonly SegmentOption<Ending>[] = [
+    {
+      value: "never",
+      label: t("wizard.ending.never"),
+      icon: <LockIcon />,
+      description: t("wizard.ending.never.help"),
+    },
+    {
+      value: "at-time",
+      label: t("wizard.ending.atTime"),
+      icon: <ClockIcon />,
+      description: t("wizard.ending.atTime.help"),
+    },
+  ]
+  const claimOptions: readonly SegmentOption<ClaimPreset>[] = claimPresets.map((seconds) => ({
+    value: seconds,
+    label: claimTimeText(i18n, seconds),
+    icon: null,
+    description: "",
+  }))
   return (
     <>
       <Segmented
         name="ending"
-        legend="When do entries end?"
+        legend={t("wizard.ending.legend")}
         help={null}
         options={endings}
         value={values.ending}
@@ -152,31 +170,31 @@ export function TimingStep({ values, setValues, issue }: StepProps) {
       {values.ending === "at-time" ? (
         <TextField
           name="closesAt"
-          label="Entries end at"
-          help="This uses the time zone of this device."
+          label={t("wizard.closesAt.label")}
+          help={t("wizard.closesAt.help")}
           type="datetime-local"
           min={null}
           value={values.closesAt}
-          error={errorOf(issue, "closesAt")}
+          error={errorOf(i18n, issue, "closesAt")}
           onChange={(closesAt) => setValues((current) => ({ ...current, closesAt }))}
         />
       ) : null}
       <Segmented
         name="claimSeconds"
-        legend="How long does a winner have to claim the prize?"
-        help="Most streams use 5 minutes."
+        legend={t("wizard.claim.legend")}
+        help={t("wizard.claim.help")}
         options={claimOptions}
         value={values.claimSeconds}
         onSelect={(claimSeconds) => setValues((current) => ({ ...current, claimSeconds }))}
       />
       <TextField
         name="claimKeyword"
-        label="Chat word (optional)"
-        help="A winner can also claim by typing this word in your chat. Leave it empty and any chat message from the winner counts."
+        label={t("wizard.keyword.label")}
+        help={t("wizard.keyword.help")}
         type="text"
         min={null}
         value={values.claimKeyword}
-        error={errorOf(issue, "claimKeyword")}
+        error={errorOf(i18n, issue, "claimKeyword")}
         onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
       />
     </>
@@ -184,56 +202,66 @@ export function TimingStep({ values, setValues, issue }: StepProps) {
 }
 
 export function ReviewStep({ values }: { readonly values: Values }) {
+  const i18n = useI18n()
+  const { t } = i18n
   const customTickets = groups.filter((group) => values.tickets[group].trim() !== "1")
   const keyword = values.claimKeyword.trim()
   return (
     <dl className="review">
-      <ReviewRow label="Name" value={textOrNotSet(values.title)} />
-      <ReviewRow label="Prize" value={textOrNotSet(values.prize)} />
+      <ReviewRow label={t("review.name")} value={textOrNotSet(i18n, values.title)} />
+      <ReviewRow label={t("review.prize")} value={textOrNotSet(i18n, values.prize)} />
       <ReviewRow
-        label="Who can enter"
-        value={whoCanEnterText(values.audience === "subscribers", values.audience === "followers")}
+        label={t("review.who")}
+        value={whoCanEnterText(
+          i18n,
+          values.audience === "subscribers",
+          values.audience === "followers",
+        )}
       />
       <ReviewRow
-        label="Tickets"
+        label={t("review.tickets")}
         value={
           customTickets.length === 0
-            ? "Everyone gets 1 ticket."
+            ? t("review.everyoneOne")
             : customTickets
-                .map(
-                  (group) => `${groupLabel[group]}: ${ticketText(Number(values.tickets[group]))}`,
+                .map((group) =>
+                  t("rules.groupTickets", {
+                    group: t(`group.${group}`),
+                    tickets: ticketText(i18n, Number(values.tickets[group])),
+                  }),
                 )
                 .join(", ")
         }
       />
       {values.minAccountAgeDays.trim() === "" ? null : (
         <ReviewRow
-          label="Account age"
-          value={`Accounts must be at least ${Number(values.minAccountAgeDays)} days old.`}
+          label={t("review.age")}
+          value={t("review.ageText", {
+            days: i18n.plural("day", Number(values.minAccountAgeDays)),
+          })}
         />
       )}
       <ReviewRow
-        label="Entries end"
+        label={t("review.end")}
         value={
           values.ending === "never"
-            ? "When you close them."
-            : new Date(values.closesAt).toLocaleString()
+            ? t("review.endsManual")
+            : i18n.dateTime(new Date(values.closesAt).getTime())
         }
       />
       <ReviewRow
-        label="Time to claim"
-        value={`${claimTimeText(values.claimSeconds)}. ${
-          keyword === ""
-            ? "Any chat message from the winner also counts."
-            : `The winner can also type "${keyword}" in your chat.`
-        }`}
+        label={t("review.claim")}
+        value={t("review.claimText", {
+          time: claimTimeText(i18n, values.claimSeconds),
+          chat: keyword === "" ? t("review.anyChat") : t("review.keywordChat", { keyword }),
+        })}
       />
     </dl>
   )
 }
 
-function textOrNotSet(text: string): string {
-  return text.trim() === "" ? "Not set" : text
+function textOrNotSet(i18n: I18n, text: string): string {
+  return text.trim() === "" ? i18n.t("review.notSet") : text
 }
 
 function ReviewRow({ label, value }: { readonly label: string; readonly value: string }) {

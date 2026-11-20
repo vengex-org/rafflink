@@ -1,26 +1,25 @@
 import { useCallback, useState } from "react"
+import type { MessageKey } from "../i18n/dictionaries.ts"
 import { errorClass } from "./use-load.ts"
 
-const failedText = "Something went wrong. Try again."
-
-/** Runs one request at a time and keeps the sentence for its outcome, for a polite live region. */
+/** Runs one request at a time and keeps the message for its outcome, for a polite live region; the page shows it in the current language. */
 export function useAction() {
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<MessageKey | null>(null)
   const [busy, setBusy] = useState(false)
 
   const run = useCallback(
     async <K extends string>(
       call: () => Promise<K>,
-      texts: Readonly<Record<K, string>>,
+      messageOf: (outcome: K) => MessageKey,
     ): Promise<K | "failed"> => {
       setBusy(true)
       try {
         const outcome = await call()
-        setMessage(texts[outcome])
+        setMessage(messageOf(outcome))
         return outcome
       } catch (error) {
         console.error("action failed", { errorClass: errorClass(error) })
-        setMessage(failedText)
+        setMessage("action.failed")
         return "failed"
       } finally {
         setBusy(false)

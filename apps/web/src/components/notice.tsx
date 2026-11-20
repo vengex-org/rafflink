@@ -1,31 +1,43 @@
 import type { ReactNode } from "react"
-import { AlertIcon, LockIcon } from "./icons.tsx"
+import { useI18n } from "../i18n/i18n.tsx"
+import type { MessageKey } from "../i18n/dictionaries.ts"
+import { AlertIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
 import { StateCard } from "./state-card.tsx"
 
 export function Loading() {
+  const { t } = useI18n()
   return (
     <output className="loading">
       <span className="spinner" aria-hidden="true" />
-      Loading…
+      {t("common.loading")}
     </output>
   )
 }
 
 export function Failed() {
+  const { t } = useI18n()
   return (
-    <StateCard tone="danger" icon={<AlertIcon />} title="Something went wrong" level={1}>
-      <p role="alert">Something went wrong. Reload the page.</p>
+    <StateCard
+      tone="danger"
+      align="center"
+      icon={<AlertIcon />}
+      title={t("failed.title")}
+      level={1}
+    >
+      <p role="alert">{t("failed.text")}</p>
       <button type="button" className="button" onClick={() => window.location.reload()}>
-        Reload page
+        <RefreshIcon />
+        {t("common.reloadPage")}
       </button>
     </StateCard>
   )
 }
 
-export function NotFound({ title }: { readonly title: string }) {
+export function NotFound({ title }: { readonly title: MessageKey }) {
+  const { t } = useI18n()
   return (
-    <StateCard tone="warning" icon={<AlertIcon />} title={title} level={1}>
-      <p>Check the link and try again.</p>
+    <StateCard tone="warning" align="center" icon={<AlertIcon />} title={t(title)} level={1}>
+      <p>{t("notFound.hint")}</p>
     </StateCard>
   )
 }
@@ -35,12 +47,14 @@ export function Status({ children }: { readonly children: ReactNode }) {
   return <output className="status">{children}</output>
 }
 
-export function SignIn({ why }: { readonly why: string }) {
+export function SignIn({ why }: { readonly why: MessageKey }) {
+  const { t } = useI18n()
   return (
-    <StateCard tone="info" icon={<LockIcon />} title="Sign in" level={1}>
-      <p>{why}</p>
+    <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
+      <p>{t(why)}</p>
       <a className="button block" href="/auth/twitch/streamer/start">
-        Sign in with Twitch
+        <LogInIcon />
+        {t("signIn.button")}
       </a>
     </StateCard>
   )

@@ -78,3 +78,142 @@ export const PlusIcon = () => (
     <path d="M12 5v14M5 12h14" />
   </Icon>
 )
+
+export const LogInIcon = () => (
+  <Icon>
+    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
+  </Icon>
+)
+
+export const CopyIcon = () => (
+  <Icon>
+    <rect x="9" y="9" width="13" height="13" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </Icon>
+)
+
+export const CheckCircleIcon = () => (
+  <Icon>
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3" />
+  </Icon>
+)
+
+export const ShuffleIcon = () => (
+  <Icon>
+    <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+  </Icon>
+)
+
+export const RefreshIcon = () => (
+  <Icon>
+    <path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </Icon>
+)
+
+export const ArrowLeftIcon = () => (
+  <Icon>
+    <path d="M19 12H5M12 19l-7-7 7-7" />
+  </Icon>
+)
+
+export const ArrowRightIcon = () => (
+  <Icon>
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </Icon>
+)
+
+export const CloseIcon = () => (
+  <Icon>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </Icon>
+)
+
+export const PlayIcon = () => (
+  <Icon>
+    <path d="M5 3 19 12 5 21z" />
+  </Icon>
+)
+
+export const ActivityIcon = () => (
+  <Icon>
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+  </Icon>
+)
+
+export const ListIcon = () => (
+  <Icon>
+    <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+  </Icon>
+)
+
+export const LinkIcon = () => (
+  <Icon>
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </Icon>
+)
+
+export const InfoIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4M12 8h.01" />
+  </Icon>
+)
+
+export const TagIcon = () => (
+  <Icon>
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01" />
+  </Icon>
+)
+
+export const HeartIcon = () => (
+  <Icon>
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </Icon>
+)
+
+export const StarIcon = () => (
+  <Icon>
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+  </Icon>
+)
+
+export const SunIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="5" />
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+  </Icon>
+)
+
+export const MoonIcon = () => (
+  <Icon>
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </Icon>
+)
+
+export const GlobeIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </Icon>
+)
+
+export const ServerIcon = () => (
+  <Icon>
+    <rect x="2" y="2" width="20" height="8" rx="2" />
+    <rect x="2" y="14" width="20" height="8" rx="2" />
+    <path d="M6 6h.01M6 18h.01" />
+  </Icon>
+)
+
+export const DatabaseIcon = () => (
+  <Icon>
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+  </Icon>
+)
+
+export const ChevronDownIcon = () => (
+  <Icon>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+)

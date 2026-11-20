@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react"
+import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "../lib/use-load.ts"
+import { CheckIcon, CopyIcon } from "./icons.tsx"
 
 type CopyState = "idle" | "copied" | "failed"
 
@@ -15,6 +17,7 @@ export function CopyField({
   readonly value: string
   readonly buttonLabel: string
 }) {
+  const { t } = useI18n()
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<CopyState>("idle")
@@ -48,12 +51,18 @@ export function CopyField({
           onFocus={(event) => event.currentTarget.select()}
         />
         <button type="button" className="button tonal" onClick={() => void copy()}>
+          {state === "copied" ? <CheckIcon /> : <CopyIcon />}
           {buttonLabel}
         </button>
       </div>
       <output className="snackbar">
-        {state === "copied" ? "Copied!" : null}
-        {state === "failed" ? "Could not copy. The text is selected: press Ctrl+C." : null}
+        {state === "copied" ? (
+          <>
+            <CheckIcon />
+            {t("copy.copied")}
+          </>
+        ) : null}
+        {state === "failed" ? t("copy.failed") : null}
       </output>
     </div>
   )

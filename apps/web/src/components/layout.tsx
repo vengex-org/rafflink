@@ -1,26 +1,34 @@
 import { Link, Outlet } from "react-router"
-import { GiftIcon } from "./icons.tsx"
+import { useI18n } from "../i18n/i18n.tsx"
+import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
+import { GiftIcon, ListIcon } from "./icons.tsx"
 
-/** The app bar and the page column; viewer pages use the narrow column, streamer pages the wide one. */
+/** The app bar and the page column; both share one width, so their edges line up. Viewer pages use the narrow column, streamer pages the wide one. */
 export function Layout({ width }: { readonly width: "narrow" | "wide" }) {
+  const { t } = useI18n()
   return (
-    <>
+    <div className="layout" data-width={width}>
       <header className="app-bar">
-        <div className="app-bar-inner">
+        <div className="container app-bar-inner">
           <Link to="/" className="brand">
             <GiftIcon />
             Rafflink
           </Link>
-          <nav aria-label="Main">
+          <nav aria-label={t("nav.main")}>
             <Link to="/dashboard" className="button text">
-              My giveaways
+              <ListIcon />
+              {t("nav.myGiveaways")}
             </Link>
           </nav>
+          <div className="app-bar-controls">
+            <ThemeSwitch />
+            <LanguageSwitch />
+          </div>
         </div>
       </header>
-      <main data-width={width}>
+      <main className="container">
         <Outlet />
       </main>
-    </>
+    </div>
   )
 }

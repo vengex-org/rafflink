@@ -325,7 +325,7 @@ describe("create wizard", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
 
-    expect(await view.findByText(/only 1200 requests left for today/)).toBeTruthy()
+    expect(await view.findByText(/only 1,200 requests left for today/)).toBeTruthy()
     expect(view.getByText(/not fully ready yet/)).toBeTruthy()
   })
 

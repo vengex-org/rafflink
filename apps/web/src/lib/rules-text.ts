@@ -1,16 +1,17 @@
 import { groups } from "@rafflink/core/domain/groups"
 import type { GiveawayRules } from "@rafflink/core/domain/rules"
+import type { I18n } from "../i18n/i18n.tsx"
 import { formatClock } from "./use-remaining.ts"
 
-export function whoCanEnterText(subsOnly: boolean, followersOnly: boolean): string {
-  if (subsOnly && followersOnly) return "Only subscribers who follow the channel can enter."
-  if (subsOnly) return "Only subscribers can enter."
-  if (followersOnly) return "Only followers can enter."
-  return "Everyone can enter."
+export function whoCanEnterText(i18n: I18n, subsOnly: boolean, followersOnly: boolean): string {
+  if (subsOnly && followersOnly) return i18n.t("who.both")
+  if (subsOnly) return i18n.t("who.subs")
+  if (followersOnly) return i18n.t("who.followers")
+  return i18n.t("who.everyone")
 }
 
 /** The one sentence about extra tickets a viewer reads before signing in; null when nobody gets extra. */
-export function extraTicketsText(tickets: GiveawayRules["tickets"]): string | null {
+export function extraTicketsText(i18n: I18n, tickets: GiveawayRules["tickets"]): string | null {
   const extra = groups.filter((group) => tickets[group] > tickets.viewer)
   if (extra.length === 0) return null
   const onlySubs = extra.every((group) => group.startsWith("sub_"))
@@ -20,32 +21,26 @@ export function extraTicketsText(tickets: GiveawayRules["tickets"]): string | nu
     && tickets.sub_t1 === tickets.sub_t2
     && tickets.sub_t2 === tickets.sub_t3
   ) {
-    return `Subscribers get ${tickets.sub_t1} ${ticketWord(tickets.sub_t1)}.`
+    return i18n.t("extraTickets.subs", { tickets: i18n.plural("ticket", tickets.sub_t1) })
   }
-  return "Some viewers get extra tickets. The list below shows how many."
+  return i18n.t("extraTickets.some")
 }
 
-export function ticketText(count: number): string {
-  return count === 0 ? "cannot enter" : `${count} ${ticketWord(count)}`
-}
-
-function ticketWord(count: number): string {
-  return count === 1 ? "ticket" : "tickets"
+export function ticketText(i18n: I18n, count: number): string {
+  return count === 0 ? i18n.t("ticket.cannotEnter") : i18n.plural("ticket", count)
 }
 
 /** "5 minutes" for whole minutes, the clock otherwise. */
-export function claimTimeText(seconds: number): string {
-  if (seconds % 60 !== 0) return `${formatClock(seconds * 1000)} minutes`
-  const minutes = seconds / 60
-  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`
+export function claimTimeText(i18n: I18n, seconds: number): string {
+  if (seconds % 60 !== 0) return i18n.t("claimTime.clock", { clock: formatClock(seconds * 1000) })
+  return i18n.plural("minute", seconds / 60)
 }
 
-export function peopleText(count: number): string {
-  return `${count.toLocaleString("en-US")} ${count === 1 ? "person" : "people"} entered`
+export function peopleText(i18n: I18n, count: number): string {
+  return i18n.plural("entered", count)
 }
 
 /** How long a queued entry may take, in whole minutes: "1 minute", "2 minutes". */
-export function waitText(ms: number): string {
-  const minutes = Math.max(1, Math.ceil(ms / 60_000))
-  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`
+export function waitText(i18n: I18n, ms: number): string {
+  return i18n.plural("minute", Math.max(1, Math.ceil(ms / 60_000)))
 }

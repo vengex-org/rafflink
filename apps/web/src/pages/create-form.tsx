@@ -1,7 +1,17 @@
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { createGiveaway, type CreateResult } from "../api/client.ts"
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  CloseIcon,
+  GiftIcon,
+  PlayIcon,
+  UsersIcon,
+} from "../components/icons.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
-import { issueText } from "../lib/messages.ts"
+import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "../lib/use-load.ts"
 import { AudienceStep, GiveawayStep, ReviewStep, TimingStep } from "./create-steps.tsx"
 import {
@@ -15,14 +25,12 @@ import {
 
 type Created = Extract<CreateResult, { kind: "created" }>
 
-const stepNames = ["What you give away", "Who can enter", "When it ends", "Review"] as const
-
-const stepQuestions: Readonly<Record<Step, string>> = {
-  1: "What are you giving away?",
-  2: "Who can enter?",
-  3: "When does it end?",
-  4: "Check your giveaway",
-}
+const stepNames = [
+  "wizard.step.give",
+  "wizard.step.audience",
+  "wizard.step.ending",
+  "wizard.step.review",
+] as const
 
 /** Creates a giveaway in four steps; each step is checked before the next, and the server's complaint sends the streamer back to its step. */
 export function CreateForm({
@@ -34,6 +42,7 @@ export function CreateForm({
   readonly onUnauthorized: () => void
   readonly onCancel: () => void
 }) {
+  const { t } = useI18n()
   const [values, setValues] = useState(initialValues)
   const [step, setStep] = useState<Step>(1)
   const [issue, setIssue] = useState<Issue | null>(null)
@@ -58,7 +67,7 @@ export function CreateForm({
           onCreated(result)
           return
         case "invalid":
-          setIssue({ field: result.field, message: issueText[result.code] })
+          setIssue({ field: result.field, message: `issue.${result.code}` })
           setStep(stepOfField(result.field))
           return
         case "unauthorized":
@@ -81,65 +90,98 @@ export function CreateForm({
       aria-labelledby="wizard-title"
     >
       <StepIndicator steps={stepNames} current={step} />
-      <StepHeading key={step} text={stepQuestions[step]} />
-      {issue === null ? null : (
-        <p role="alert" className="form-alert">
-          Please fix this to continue.
-        </p>
-      )}
-      {step === 1 ? <GiveawayStep values={values} setValues={setValues} issue={issue} /> : null}
-      {step === 2 ? <AudienceStep values={values} setValues={setValues} issue={issue} /> : null}
-      {step === 3 ? <TimingStep values={values} setValues={setValues} issue={issue} /> : null}
-      {step === 4 ? <ReviewStep values={values} /> : null}
-      {step === 4 && issue !== null ? <p className="field-error">{issue.message}</p> : null}
-      {failed ? (
-        <p role="alert" className="form-alert">
-          Something went wrong. Try again.
-        </p>
-      ) : null}
-      <div className="actions wizard-actions">
-        {step === 1 ? (
-          <button type="button" className="button text" onClick={onCancel}>
-            Cancel
-          </button>
-        ) : (
-          <button
-            key="back"
-            type="button"
-            className="button text"
-            onClick={() => {
-              setIssue(null)
-              setStep(previous(step))
-            }}
-          >
-            Back
-          </button>
+      <div className="wizard-body">
+        <StepHeading key={step} icon={stepIcon(step)} text={t(stepQuestion(step))} />
+        {issue === null ? null : (
+          <p role="alert" className="form-alert">
+            {t("wizard.fix")}
+          </p>
         )}
-        {step === 4 ? (
-          <button key="start" type="submit" className="button" disabled={busy}>
-            {busy ? "Starting…" : "Start giveaway"}
-          </button>
-        ) : (
-          <button key="next" type="submit" className="button">
-            Next
-          </button>
-        )}
+        {step === 1 ? <GiveawayStep values={values} setValues={setValues} issue={issue} /> : null}
+        {step === 2 ? <AudienceStep values={values} setValues={setValues} issue={issue} /> : null}
+        {step === 3 ? <TimingStep values={values} setValues={setValues} issue={issue} /> : null}
+        {step === 4 ? <ReviewStep values={values} /> : null}
+        {step === 4 && issue !== null ? <p className="field-error">{t(issue.message)}</p> : null}
+        {failed ? (
+          <p role="alert" className="form-alert">
+            {t("action.failed")}
+          </p>
+        ) : null}
+        <div className="actions wizard-actions">
+          {step === 1 ? (
+            <button type="button" className="button text" onClick={onCancel}>
+              <CloseIcon />
+              {t("common.cancel")}
+            </button>
+          ) : (
+            <button
+              key="back"
+              type="button"
+              className="button text"
+              onClick={() => {
+                setIssue(null)
+                setStep(previous(step))
+              }}
+            >
+              <ArrowLeftIcon />
+              {t("common.back")}
+            </button>
+          )}
+          {step === 4 ? (
+            <button key="start" type="submit" className="button" disabled={busy}>
+              <PlayIcon />
+              {busy ? t("wizard.starting") : t("wizard.start")}
+            </button>
+          ) : (
+            <button key="next" type="submit" className="button">
+              {t("common.next")}
+              <ArrowRightIcon />
+            </button>
+          )}
+        </div>
       </div>
     </form>
   )
 }
 
 // Focus moves when the step changes (a new `key` mounts a new heading), never on a render caused by typing.
-function StepHeading({ text }: { readonly text: string }) {
+function StepHeading({ icon, text }: { readonly icon: ReactNode; readonly text: string }) {
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     heading.current?.focus()
   }, [])
   return (
-    <h2 id="wizard-title" tabIndex={-1} ref={heading}>
+    <h2 id="wizard-title" className="wizard-heading" tabIndex={-1} ref={heading}>
+      {icon}
       {text}
     </h2>
   )
+}
+
+function stepQuestion(step: Step) {
+  switch (step) {
+    case 1:
+      return "wizard.q.give"
+    case 2:
+      return "wizard.q.audience"
+    case 3:
+      return "wizard.q.ending"
+    case 4:
+      return "wizard.q.review"
+  }
+}
+
+function stepIcon(step: Step): ReactNode {
+  switch (step) {
+    case 1:
+      return <GiftIcon />
+    case 2:
+      return <UsersIcon />
+    case 3:
+      return <ClockIcon />
+    case 4:
+      return <CheckCircleIcon />
+  }
 }
 
 function following(step: Exclude<Step, 4>): Step {

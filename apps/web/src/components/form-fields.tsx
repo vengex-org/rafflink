@@ -1,4 +1,5 @@
 import { useId } from "react"
+import { SegmentRow, type SegmentRowOption } from "./segment-row.tsx"
 
 /** A labelled input with optional help under the label and the problem under the input. */
 export function TextField({
@@ -51,14 +52,12 @@ export function TextField({
   )
 }
 
-export interface SegmentOption<T extends string | number> {
-  readonly value: T
-  readonly label: string
+export interface SegmentOption<T extends string | number> extends SegmentRowOption<T> {
   /** Shown under the control while this option is selected. */
   readonly description: string
 }
 
-/** A row of mutually exclusive presets that explains the selected one; every segment is a radio button. */
+/** A row of mutually exclusive presets that explains the selected one. */
 export function Segmented<T extends string | number>({
   name,
   legend,
@@ -74,26 +73,12 @@ export function Segmented<T extends string | number>({
   readonly value: T
   readonly onSelect: (value: T) => void
 }) {
-  const id = useId()
   const selected = options.find((option) => option.value === value)
   return (
     <fieldset className="field">
       <legend>{legend}</legend>
       {help === null ? null : <p className="help">{help}</p>}
-      <div className="segmented">
-        {options.map((option) => (
-          <div key={option.value} className="segment">
-            <input
-              id={`${id}-${option.value}`}
-              type="radio"
-              name={name}
-              checked={option.value === value}
-              onChange={() => onSelect(option.value)}
-            />
-            <label htmlFor={`${id}-${option.value}`}>{option.label}</label>
-          </div>
-        ))}
-      </div>
+      <SegmentRow name={name} options={options} value={value} onSelect={onSelect} labels="shown" />
       {selected === undefined || selected.description === "" ? null : (
         <p className="help">{selected.description}</p>
       )}

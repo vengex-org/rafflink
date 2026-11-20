@@ -1,9 +1,10 @@
 /*
- * Tonal tokens in the Material You roles, derived from one accent. Light and dark share the names.
+ * Tonal tokens in the Material You roles, derived from one accent. Light and dark share the names;
+ * the theme switch (and index.html before first paint) sets data-theme to "light" or "dark" on <html>.
  * Type follows the Apple HIG scale; spacing is an 8 px grid; two radii: 12 px and full.
  */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
   --primary: #6750a4;
   --on-primary: #ffffff;
@@ -39,6 +40,12 @@
   --radius: 12px;
   --radius-full: 999px;
   --target: 48px;
+  --target-compact: 44px;
+
+  /* Material state layers: the content color laid over the surface. */
+  --state-hover: 0.08;
+  --state-pressed: 0.12;
+  --motion: 150ms ease-out;
 
   --fs-large-title: 2.125rem;
   --fs-title: 1.5rem;
@@ -47,39 +54,54 @@
   --fs-callout: 1rem;
   --fs-footnote: 0.8125rem;
 
+  /* Side gutters grow with the viewport; the page column is set per page type below. */
+  --gutter: 1rem;
+
   font-family:
     -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   font-size: var(--fs-body);
   line-height: 1.5;
 }
 
-@media (prefers-color-scheme: dark) {
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --primary: #d0bcff;
+  --on-primary: #381e72;
+  --primary-container: #4f378b;
+  --on-primary-container: #eaddff;
+  --secondary-container: #4a4458;
+  --on-secondary-container: #e8def8;
+
+  --surface: #141218;
+  --surface-container-low: #1d1b20;
+  --surface-container: #211f26;
+  --surface-container-high: #2b2930;
+  --on-surface: #e6e0e9;
+  --on-surface-variant: #cac4d0;
+  --outline: #938f99;
+  --outline-variant: #49454f;
+  --inverse-surface: #e6e0e9;
+  --inverse-on-surface: #322f35;
+
+  --error: #f2b8b5;
+  --error-container: #8c1d18;
+  --on-error-container: #f9dedc;
+  --success-container: #0f3d1c;
+  --on-success-container: #c7f0cf;
+  --warning-container: #4a3300;
+  --on-warning-container: #ffdea6;
+}
+
+@media (min-width: 48rem) {
   :root {
-    --primary: #d0bcff;
-    --on-primary: #381e72;
-    --primary-container: #4f378b;
-    --on-primary-container: #eaddff;
-    --secondary-container: #4a4458;
-    --on-secondary-container: #e8def8;
+    --gutter: 1.5rem;
+  }
+}
 
-    --surface: #141218;
-    --surface-container-low: #1d1b20;
-    --surface-container: #211f26;
-    --surface-container-high: #2b2930;
-    --on-surface: #e6e0e9;
-    --on-surface-variant: #cac4d0;
-    --outline: #938f99;
-    --outline-variant: #49454f;
-    --inverse-surface: #e6e0e9;
-    --inverse-on-surface: #322f35;
-
-    --error: #f2b8b5;
-    --error-container: #8c1d18;
-    --on-error-container: #f9dedc;
-    --success-container: #0f3d1c;
-    --on-success-container: #c7f0cf;
-    --warning-container: #4a3300;
-    --on-warning-container: #ffdea6;
+@media (min-width: 80rem) {
+  :root {
+    --gutter: 2rem;
   }
 }
 
@@ -93,17 +115,37 @@ body {
   color: var(--on-surface);
 }
 
-main {
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Page container: the app bar and the page content share one width and gutter, so their left edges line up. */
+
+.layout[data-width="narrow"] {
+  --column: 45rem;
+}
+
+.layout[data-width="wide"] {
+  --column: 70rem;
+}
+
+.container {
+  width: 100%;
+  max-width: calc(var(--column) + 2 * var(--gutter));
   margin: 0 auto;
-  padding: var(--space-3) var(--space-2) var(--space-5);
+  padding-inline: var(--gutter);
 }
 
-main[data-width="narrow"] {
-  max-width: 40rem;
-}
-
-main[data-width="wide"] {
-  max-width: 60rem;
+main.container {
+  padding-block: var(--space-3) var(--space-5);
 }
 
 /* Type scale */
@@ -169,6 +211,86 @@ h2:focus {
   outline: none;
 }
 
+/* Clickable things look clickable; disabled ones say so. */
+
+button,
+a[href],
+summary,
+label[for],
+input[readonly],
+.segment input {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* State layers: hover about 8 % and pressed about 12 % of the content color over the surface. */
+
+:is(.button, .segment label, .extra summary, .brand) {
+  position: relative;
+}
+
+:is(.button, .segment label, .extra summary, .brand)::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion);
+}
+
+@media (hover: hover) {
+  .button:hover:not(:disabled)::before,
+  .segment:hover label::before,
+  .extra summary:hover::before,
+  .brand:hover::before {
+    opacity: var(--state-hover);
+  }
+
+  input:not([type="radio"]):hover {
+    border-color: var(--on-surface);
+  }
+}
+
+.button:active:not(:disabled)::before,
+.segment:active label::before,
+.extra summary:active::before,
+.brand:active::before {
+  opacity: var(--state-pressed);
+}
+
+/* Icons: one outline style; 24 px by default, 20 px inside buttons and rows of text. */
+
+.icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+}
+
+.button .icon,
+.segment .icon,
+.extra summary .icon,
+.pill .icon,
+.stat dt .icon,
+.winner-claim .icon,
+.empty .icon,
+.usage-label .icon,
+.snackbar .icon,
+.wizard-heading .icon,
+.facts .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.pill .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 /* App bar */
 
 .app-bar {
@@ -178,19 +300,32 @@ h2:focus {
 
 .app-bar-inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  max-width: 60rem;
+  gap: var(--space-1) var(--space-2);
   min-height: 64px;
-  margin: 0 auto;
-  padding: 0 var(--space-2);
+  padding-block: var(--space-1);
+}
+
+.app-bar-inner nav {
+  margin-right: auto;
+}
+
+.app-bar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  min-height: var(--target-compact);
+  margin-left: calc(-1 * var(--space-1));
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
   color: var(--on-surface);
   font-size: var(--fs-headline);
   font-weight: 600;
@@ -201,10 +336,24 @@ h2:focus {
   color: var(--primary);
 }
 
-.icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  flex: none;
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.toggle > .icon {
+  color: var(--on-surface-variant);
+}
+
+.toggle .segment label {
+  min-height: var(--target-compact);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-footnote);
 }
 
 /* Buttons: filled (default), tonal, outlined, text */
@@ -225,22 +374,6 @@ h2:focus {
   font-weight: 600;
   text-align: center;
   text-decoration: none;
-  cursor: pointer;
-  transition: background-image 150ms ease-out;
-}
-
-.button:hover:not(:disabled) {
-  background-image: linear-gradient(
-    color-mix(in srgb, currentColor 8%, transparent),
-    color-mix(in srgb, currentColor 8%, transparent)
-  );
-}
-
-.button:active:not(:disabled) {
-  background-image: linear-gradient(
-    color-mix(in srgb, currentColor 12%, transparent),
-    color-mix(in srgb, currentColor 12%, transparent)
-  );
 }
 
 .button.tonal {
@@ -261,7 +394,7 @@ h2:focus {
 }
 
 .button.small {
-  min-height: 44px;
+  min-height: var(--target-compact);
   padding: 0 var(--space-2);
 }
 
@@ -272,9 +405,19 @@ h2:focus {
   margin-top: var(--space-2);
 }
 
+@media (min-width: 40rem) {
+  .button.block {
+    width: auto;
+    min-width: 16rem;
+  }
+
+  [data-align="center"] > .button.block {
+    margin-inline: auto;
+  }
+}
+
 .button:disabled {
   opacity: 0.38;
-  cursor: not-allowed;
 }
 
 /* Cards */
@@ -297,8 +440,35 @@ h2:focus {
   border-color: var(--primary);
 }
 
+/* A short outcome is centered as a whole; a card with fields or lists stays left-aligned. */
+
 .state-card {
   max-width: 40rem;
+}
+
+.layout[data-width="wide"] .state-card {
+  margin-inline: auto;
+}
+
+.column {
+  max-width: 45rem;
+  margin-inline: auto;
+}
+
+.column .state-card {
+  max-width: none;
+}
+
+.state-card[data-align="center"] {
+  text-align: center;
+}
+
+.layout[data-width="narrow"] .state-card {
+  max-width: none;
+}
+
+.state-card[data-align="center"] p {
+  margin-inline: auto;
 }
 
 .state-icon {
@@ -310,6 +480,10 @@ h2:focus {
   border-radius: var(--radius-full);
   background: var(--primary-container);
   color: var(--on-primary-container);
+}
+
+[data-align="center"] > .state-icon {
+  margin-inline: auto;
 }
 
 [data-tone="success"] > .state-icon {
@@ -356,12 +530,15 @@ h2:focus {
 }
 
 .facts .icon {
+  margin-top: 0.125rem;
   color: var(--on-surface-variant);
 }
 
 .pill {
-  display: inline-block;
-  padding: 0 var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem var(--space-2);
   border-radius: var(--radius-full);
   background: var(--secondary-container);
   color: var(--on-secondary-container);
@@ -391,7 +568,7 @@ h2:focus {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1) var(--space-2);
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--space-2);
 }
 
 .page-head h1 {
@@ -402,15 +579,22 @@ h2:focus {
   margin: 0;
 }
 
-.giveaways {
+.giveaways,
+.card-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.giveaways .card {
+.card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
+
+.giveaways .card,
+.card-grid .card {
   margin: 0;
 }
 
@@ -440,11 +624,36 @@ h2:focus {
   font-weight: 600;
 }
 
-.column {
-  max-width: 40rem;
+/* Live page: one column on a phone; status and the next step on the left and the numbers on the right from 64rem. */
+
+.live-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
 }
 
-/* Steps */
+.live-main,
+.live-side {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  min-width: 0;
+}
+
+.live-main > *,
+.live-side > * {
+  margin: 0;
+}
+
+@media (min-width: 64rem) {
+  .live-grid {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    gap: var(--space-3);
+    align-items: start;
+  }
+}
+
+/* Steps: a bar per step on top; in the wizard from 52rem a list on the left. */
 
 .steps {
   margin-bottom: var(--space-3);
@@ -493,6 +702,10 @@ h2:focus {
   font-weight: 600;
 }
 
+.step-marker {
+  display: none;
+}
+
 .step-name {
   overflow-wrap: anywhere;
 }
@@ -508,6 +721,7 @@ h2:focus {
 .field {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: var(--space-1);
   margin-bottom: var(--space-3);
 }
@@ -518,6 +732,7 @@ label {
 }
 
 input:not([type="radio"]) {
+  width: 100%;
   min-height: var(--target);
   padding: 0 var(--space-2);
   border: 1px solid var(--outline);
@@ -525,6 +740,7 @@ input:not([type="radio"]) {
   background: var(--surface);
   color: inherit;
   font: inherit;
+  transition: border-color var(--motion);
 }
 
 input:not([type="radio"]):focus-visible {
@@ -578,20 +794,19 @@ legend {
   height: 100%;
   margin: 0;
   opacity: 0;
-  cursor: pointer;
 }
 
 .segment label {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-1);
   min-height: var(--target);
   padding: var(--space-1);
   background: transparent;
   color: var(--on-surface);
   font-weight: 500;
   text-align: center;
-  transition: background-color 150ms ease-out;
 }
 
 .segment input:checked + label {
@@ -623,9 +838,10 @@ legend {
   min-width: 0;
 }
 
+/* Disclosure: a row that opens a section */
+
 .extra {
   margin: var(--space-2) 0 0;
-  padding: 0 var(--space-2);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius);
 }
@@ -634,20 +850,40 @@ legend {
   padding-bottom: var(--space-2);
 }
 
+.extra > :not(summary) {
+  margin-inline: var(--space-2);
+}
+
 .extra summary {
   display: flex;
   align-items: center;
+  gap: var(--space-1);
   min-height: var(--target);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius);
   font-weight: 600;
-  cursor: pointer;
+  list-style: none;
+}
+
+.extra summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary-text {
+  flex: 1;
+}
+
+.chevron {
+  display: inline-flex;
+  transition: transform var(--motion);
+}
+
+.extra[open] > summary .chevron {
+  transform: rotate(180deg);
 }
 
 .card > .extra {
   margin-top: var(--space-2);
-}
-
-.wizard .extra {
-  margin-bottom: var(--space-3);
 }
 
 .review {
@@ -681,12 +917,100 @@ legend {
   gap: var(--space-1);
 }
 
-.wizard-actions {
-  justify-content: space-between;
+/* Wizard: steps on top on a phone; from 52rem the step list sits on the left and the fields in a 38rem column. */
+
+.wizard-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
-.wizard-actions .button:not(.text) {
-  flex: 1 1 12rem;
+.wizard-actions {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 39.99rem) {
+  .wizard-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .wizard-actions .button {
+    width: 100%;
+  }
+}
+
+@media (min-width: 52rem) {
+  .wizard {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 38rem);
+    gap: var(--space-5);
+    justify-content: center;
+    padding: var(--space-4);
+  }
+
+  .wizard .steps {
+    position: sticky;
+    top: var(--space-3);
+    align-self: start;
+    margin: 0;
+  }
+
+  .wizard .step-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .wizard .steps ol {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .wizard .steps li {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--fs-callout);
+  }
+
+  .wizard .steps li::before {
+    display: none;
+  }
+
+  .wizard .step-marker {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    font-size: var(--fs-footnote);
+    font-weight: 600;
+  }
+
+  .wizard .step-marker .icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .wizard li[data-state="current"] .step-marker {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+
+  .wizard li[data-state="done"] .step-marker {
+    border-color: transparent;
+    background: var(--secondary-container);
+    color: var(--on-secondary-container);
+  }
 }
 
 /* Snackbar: a short confirmation that floats above the page */
@@ -696,6 +1020,9 @@ legend {
   bottom: var(--space-3);
   left: 50%;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   max-width: calc(100vw - 2 * var(--space-2));
   padding: var(--space-2);
   border-radius: var(--radius);
@@ -739,7 +1066,7 @@ legend {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--space-1);
-  margin: var(--space-2) 0;
+  margin: 0 0 var(--space-2);
 }
 
 .stat {
@@ -751,6 +1078,9 @@ legend {
 }
 
 .stat dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   color: var(--on-surface-variant);
   font-size: var(--fs-callout);
 }
@@ -778,6 +1108,13 @@ legend {
   border-radius: var(--radius);
   font-size: var(--fs-callout);
   line-height: 2rem;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
 }
 
 .winners {
@@ -815,6 +1152,12 @@ legend {
   font-weight: 600;
 }
 
+.winner-claim {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 .claim-clock {
   font-variant-numeric: tabular-nums;
 }
@@ -838,6 +1181,12 @@ legend {
 
 .usage {
   margin-bottom: var(--space-3);
+}
+
+.usage-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .usage progress {
@@ -925,7 +1274,7 @@ legend {
 }
 
 .overlay {
-  max-width: none;
+  padding: var(--space-3);
   color: #ffffff;
   font-size: 1.5rem;
   text-shadow:
