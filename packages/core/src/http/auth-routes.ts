@@ -16,6 +16,7 @@ import {
   startStreamerSession,
   startViewerSession,
   takeOAuthState,
+  startPendingEntry,
 } from "./session.ts"
 
 /** Shared by every request of one app: until when new viewer codes go straight to the queue. */
@@ -126,6 +127,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
     const queued = async (cause: EnqueueCause) => {
       const enqueued = await deps.queue.enqueue(item, cause)
       cooldown.until = Math.max(cooldown.until, enqueued.cooldownUntil)
+      await startPendingEntry(c, deps, { ticket: enqueued.ticket, giveawayId: giveaway.id })
       return c.redirect(returnTo(giveaway.code, { kind: "pending", ticket: enqueued.ticket }))
     }
     if (deps.clock.now() < cooldown.until) return queued("cooldown")

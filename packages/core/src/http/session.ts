@@ -9,6 +9,7 @@ export type SessionConfig = Pick<
   | "sessionTtlSeconds"
   | "viewerSessionTtlSeconds"
   | "stateCookieTtlSeconds"
+  | "queueCodeMaxAgeSeconds"
   | "publicUrl"
 >
 
@@ -29,6 +30,12 @@ export interface ViewerSession {
   readonly userId: string
 }
 
+/** A queued sign-in: only the browser that was queued may poll the ticket and receive the viewer session. */
+export interface PendingEntry {
+  readonly ticket: string
+  readonly giveawayId: string
+}
+
 export type OAuthFlow = "streamer" | "viewer"
 
 /** What the sign-in start remembers for the callback. `giveawayCode` is set for the viewer flow. */
@@ -41,6 +48,7 @@ export interface OAuthState {
 const cookieNames = {
   streamer: "rl_streamer",
   viewer: "rl_viewer",
+  pending: "rl_pending",
   oauth: { streamer: "rl_oauth_streamer", viewer: "rl_oauth_viewer" },
 } as const
 
@@ -79,6 +87,32 @@ export async function startViewerSession(
   session: ViewerSession,
 ): Promise<void> {
   await writeCookie(c, deps, cookieNames.viewer, session, deps.config.viewerSessionTtlSeconds)
+}
+
+export async function startPendingEntry(
+  c: Context,
+  deps: SessionDeps,
+  pending: PendingEntry,
+): Promise<void> {
+  // Outlives the queued code: the browser must still prove the ticket when the queue reports the drop.
+  const ttlSeconds = deps.config.queueCodeMaxAgeSeconds * 2
+  await writeCookie(c, deps, cookieNames.pending, pending, ttlSeconds)
+}
+
+export async function readPendingEntry(
+  c: Context,
+  deps: SessionDeps,
+): Promise<PendingEntry | null> {
+  return readCookie(c, deps, cookieNames.pending, (value) => {
+    const { ticket, giveawayId } = value
+    return typeof ticket === "string" && typeof giveawayId === "string"
+      ? { ticket, giveawayId }
+      : null
+  })
+}
+
+export function endPendingEntry(c: Context): void {
+  deleteCookie(c, cookieNames.pending, { path: "/" })
 }
 
 export async function startOAuthState(

@@ -512,19 +512,19 @@ describe("token endpoint limits", () => {
     const { code, id } = await createGiveaway(harness)
     harness.fake.control.failNext("token", 429, 1)
 
-    const { query } = await viewerSignIn(users.viewer.id, code)
+    const { browser, query } = await viewerSignIn(users.viewer.id, code)
 
     expect(query.get("entry")).toBe("pending")
     const ticket = query.get("ticket") ?? ""
     expect(harness.queue.stats().queued).toBe(1)
     expect(harness.rooms.roomFor(id).summary().entrantCount).toBe(0)
-    const waiting = await harness.app.request(`/api/g/${code}/pending/${ticket}`)
+    const waiting = await browser.request(`/api/g/${code}/pending/${ticket}`)
     expect(await waiting.json()).toEqual({ kind: "pending", ticket })
 
     harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
     await harness.queue.onAlarm()
 
-    const done = await harness.app.request(`/api/g/${code}/pending/${ticket}`)
+    const done = await browser.request(`/api/g/${code}/pending/${ticket}`)
     expect(await done.json()).toMatchObject({
       kind: "entered",
       entry: { group: "viewer", tickets: 1 },
@@ -589,32 +589,69 @@ describe("token endpoint limits", () => {
   })
 
   it("starts no viewer cookie for a settled entry that has no verified user", async () => {
-    const { code, id } = await createGiveaway(harness)
+    const { code } = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    const { browser, query } = await viewerSignIn(users.viewer.id, code)
+    const ticket = query.get("ticket") ?? ""
     harness.queueDb.exec(
-      `INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state, result_json, user_id)
-       VALUES ('T1', 'c', '${id}', 'n', ${harness.clock.now()}, 'done', '{"kind":"try-again"}', NULL)`,
+      `UPDATE token_queue SET state = 'done', result_json = '{"kind":"try-again"}', user_id = NULL
+       WHERE ticket = '${ticket}'`,
     )
-    const browser = new Browser(harness)
 
-    const response = await browser.request(`/api/g/${code}/pending/T1`)
+    const response = await browser.request(`/api/g/${code}/pending/${ticket}`)
 
     expect(await response.json()).toEqual({ kind: "try-again" })
-    expect(response.headers.getSetCookie()).toEqual([])
+    const cookies = response.headers.getSetCookie()
+    expect(cookies.some((cookie) => cookie.startsWith("rl_viewer="))).toBe(false)
+    expect(cookies.some((cookie) => cookie.startsWith("rl_pending=;"))).toBe(true)
   })
 
   it("answers 404 for the poll of a giveaway that does not exist and keeps the result", async () => {
     const { code } = await createGiveaway(harness)
     harness.fake.control.failNext("token", 429, 1)
-    const { query } = await viewerSignIn(users.viewer.id, code)
+    const { browser, query } = await viewerSignIn(users.viewer.id, code)
     const ticket = query.get("ticket") ?? ""
     harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
     await harness.queue.onAlarm()
 
-    const wrong = await harness.app.request(`/api/g/ZZZZZ/pending/${ticket}`)
-    const right = await harness.app.request(`/api/g/${code}/pending/${ticket}`)
+    const wrong = await browser.request(`/api/g/ZZZZZ/pending/${ticket}`)
+    const right = await browser.request(`/api/g/${code}/pending/${ticket}`)
 
     expect(wrong.status).toBe(404)
     expect(await right.json()).toMatchObject({ kind: "entered" })
+  })
+
+  it("gives a copied pending URL neither the result nor the viewer session", async () => {
+    const { code } = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    const { browser, query } = await viewerSignIn(users.viewer.id, code)
+    const ticket = query.get("ticket") ?? ""
+    harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
+    await harness.queue.onAlarm()
+    const stranger = new Browser(harness)
+
+    const copied = await stranger.request(`/api/g/${code}/pending/${ticket}`)
+
+    expect(await copied.json()).toEqual({ kind: "dropped" })
+    expect(copied.headers.getSetCookie()).toEqual([])
+    expect(await meOf(stranger, code)).toEqual({ kind: "signed-out" })
+    const owner = await browser.request(`/api/g/${code}/pending/${ticket}`)
+    expect(await owner.json()).toMatchObject({ kind: "entered" })
+  })
+
+  it("does not accept the pending cookie of one giveaway on another", async () => {
+    const first = await createGiveaway(harness)
+    const second = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    const { browser, query } = await viewerSignIn(users.viewer.id, first.code)
+    const ticket = query.get("ticket") ?? ""
+    harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
+    await harness.queue.onAlarm()
+
+    const other = await browser.request(`/api/g/${second.code}/pending/${ticket}`)
+
+    expect(await other.json()).toEqual({ kind: "dropped" })
+    expect(other.headers.getSetCookie()).toEqual([])
   })
 
   it("answers dropped for a ticket the queue no longer holds", async () => {

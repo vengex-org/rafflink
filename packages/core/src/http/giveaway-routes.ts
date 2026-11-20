@@ -6,7 +6,14 @@ import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
 import type { PublicGiveaway, ViewerState } from "./json.ts"
-import { readViewerSession, startViewerSession, type ViewerSession } from "./session.ts"
+import { timingSafeEqual } from "hono/utils/buffer"
+import {
+  endPendingEntry,
+  readPendingEntry,
+  readViewerSession,
+  startViewerSession,
+  type ViewerSession,
+} from "./session.ts"
 
 export function giveawayRoutes(deps: AppDeps): Hono {
   const app = new Hono()
@@ -44,9 +51,23 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const ticket = c.req.param("ticket")
+    // The ticket travels in the page URL, which a viewer may share; only the queued browser's cookie
+    // proves the ticket is theirs. Any other browser gets "dropped" (enter again) and the queued result
+    // stays for its owner, so a copied URL cannot take over the entry or its viewer session.
+    const pending = await readPendingEntry(c, deps)
+    if (
+      pending === null
+      || pending.giveawayId !== giveaway.id
+      || !(await timingSafeEqual(pending.ticket, ticket))
+    ) {
+      return c.json(pendingOutcome({ kind: "gone" }, ticket))
+    }
     const polled = await deps.queue.poll(ticket)
-    if (polled.kind === "done" && polled.userId !== null) {
-      await startViewerSession(c, deps, { platform: giveaway.platform, userId: polled.userId })
+    if (polled.kind === "done") {
+      endPendingEntry(c)
+      if (polled.userId !== null) {
+        await startViewerSession(c, deps, { platform: giveaway.platform, userId: polled.userId })
+      }
     }
     return c.json(pendingOutcome(polled, ticket))
   })
