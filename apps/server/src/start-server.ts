@@ -19,7 +19,7 @@ import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
-import { mkdirSync } from "node:fs"
+import { mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { BunSocketConnector } from "./bun-socket-connector.ts"
 import { openDatabase } from "./database.ts"
@@ -35,6 +35,8 @@ export interface ServerOptions {
   readonly staticDir: string | null
   /** The SPA entry served with hot reload; set only together with `config.devFakeTwitch`. */
   readonly devSpa: Bun.HTMLBundle | null
+  /** The web app's `public/` folder, answered ahead of the dev SPA; null serves none. */
+  readonly devPublicDir: string | null
 }
 
 export interface RunningServer {
@@ -48,7 +50,7 @@ const roomsDirName = "rooms"
 
 /** Opens the data folder, starts the timers and listens. With `config.devFakeTwitch` the fake Twitch answers at the Twitch URLs. */
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
-  const { config, staticDir, devSpa } = options
+  const { config, staticDir, devSpa, devPublicDir } = options
   const clock = systemClock
   const random = systemRandom
   mkdirSync(config.dataDir, { recursive: true })
@@ -107,7 +109,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     api: createApp(deps, staticDir === null ? null : indexTemplateOf(staticDir)),
     rooms,
     fakeTwitch,
-    staticDir,
+    staticDir: staticDir ?? devPublicDir,
   })
   const server = Bun.serve({
     port: config.port,
@@ -115,7 +117,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     websocket,
     ...(devSpa === null
       ? {}
-      : { routes: devRoutes(app, devSpa), development: { hmr: true, console: true } }),
+      : {
+          routes: devRoutes(app, devSpa, devPublicDir),
+          development: { hmr: true, console: true },
+        }),
   })
 
   const validateTimer = setInterval(() => void runValidation(), config.validatePeriodSeconds * 1000)
@@ -171,15 +176,18 @@ async function createFakeTwitchApp(config: ResolvedConfig): Promise<Hono> {
 }
 
 // A wildcard route for the SPA would swallow every path, so each path the server answers is listed.
-function devRoutes(app: Hono, spa: Bun.HTMLBundle) {
-  const handled = [...apiPrefixes, ...fakeTwitchPrefixes].map((prefix) => `${prefix}*`)
-  return {
-    ...Object.fromEntries(
-      handled.map((path) => [
-        path,
-        (request: Request, bunServer: Bun.Server<unknown>) => app.fetch(request, bunServer),
-      ]),
-    ),
-    "/*": spa,
-  }
+function devRoutes(app: Hono, spa: Bun.HTMLBundle, publicDir: string | null) {
+  const answered = (request: Request, bunServer: Bun.Server<unknown>) =>
+    app.fetch(request, bunServer)
+  const publicPaths =
+    publicDir === null
+      ? []
+      : readdirSync(publicDir, { withFileTypes: true }).map((entry) =>
+          entry.isDirectory() ? `/${entry.name}/*` : `/${entry.name}`,
+        )
+  const handled = [
+    ...[...apiPrefixes, ...fakeTwitchPrefixes].map((prefix) => `${prefix}*`),
+    ...publicPaths,
+  ]
+  return { ...Object.fromEntries(handled.map((path) => [path, answered])), "/*": spa }
 }

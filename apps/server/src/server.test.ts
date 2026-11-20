@@ -61,7 +61,12 @@ async function launch(
   env: Readonly<Record<string, string>> = {},
   staticDir: string | null = null,
 ): Promise<RunningServer> {
-  const server = await startServer({ config: configFor(env), staticDir, devSpa: null })
+  const server = await startServer({
+    config: configFor(env),
+    staticDir,
+    devSpa: null,
+    devPublicDir: null,
+  })
   running.push(server)
   return server
 }
