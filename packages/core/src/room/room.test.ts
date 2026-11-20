@@ -1198,6 +1198,55 @@ describe("public summary", () => {
     ])
   })
 
+  it("tells the live snapshot nobody is left to reroll while the window is still open", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    await room.draw(1)
+    clock.advance(300_001)
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "nobody-left" })
+  })
+
+  it("tells the live snapshot the window is over", async () => {
+    const { room, clock } = await drawnRoom()
+    clock.advance(900_001)
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "window-over" })
+  })
+
+  it("names the window as the reason when it is over and nobody is left", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    await room.draw(1)
+    clock.advance(900_001)
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "window-over" })
+  })
+
+  it("gives no reroll reason before the draw or once every pick is claimed", async () => {
+    const open = setup()
+    const claimed = await drawnRoom()
+    claimed.room.claim(0, claimed.winner, "chat")
+
+    expect(
+      [open.room, claimed.room].map((room) => {
+        const { rerollOpen, rerollBlocked } = room.liveSnapshot()
+        return { rerollOpen, rerollBlocked }
+      }),
+    ).toEqual([
+      { rerollOpen: false, rerollBlocked: null },
+      { rerollOpen: false, rerollBlocked: null },
+    ])
+  })
+
+  it("gives no reroll reason while the reroll is open", async () => {
+    const { room } = await drawnRoom()
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: true, rerollBlocked: null })
+  })
+
   it("rerolls up to the end of the reroll window and refuses after it", async () => {
     const early = await drawnRoom()
     early.clock.advance(900_000)

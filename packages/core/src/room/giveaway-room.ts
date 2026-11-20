@@ -158,17 +158,26 @@ export interface LiveWinner {
 /** A pick with who it went to. */
 export interface WinnerPick extends LiveWinner, Identity {}
 
-export interface LiveSnapshot extends RoomSummary {
-  /** A streamer can still reroll an unclaimed pick; false once the reroll window after the last claim deadline is over. */
-  readonly rerollOpen: boolean
-  readonly title: string | null
-  readonly code: string
-  readonly entriesPerSecond: number
-  readonly lastNames: readonly string[]
-  readonly winners: readonly LiveWinner[]
-  readonly roleRefreshFailures: number
-  readonly eventSubFailures: number
-}
+/**
+ * Whether the streamer can still reroll an unclaimed pick, and why not. `rerollBlocked` is `null`
+ * while a reroll is open, before the draw, and while no unclaimed pick is left to reroll (every claim
+ * is done); otherwise `"window-over"` once the reroll window after the last claim deadline has passed
+ * (also when nobody is left), or `"nobody-left"` while the window is open but every entrant is drawn.
+ */
+export type RerollState =
+  | { readonly rerollOpen: true; readonly rerollBlocked: null }
+  | { readonly rerollOpen: false; readonly rerollBlocked: "window-over" | "nobody-left" | null }
+
+export type LiveSnapshot = RoomSummary
+  & RerollState & {
+    readonly title: string | null
+    readonly code: string
+    readonly entriesPerSecond: number
+    readonly lastNames: readonly string[]
+    readonly winners: readonly LiveWinner[]
+    readonly roleRefreshFailures: number
+    readonly eventSubFailures: number
+  }
 
 /** A winner as every viewer's page sees them: the platform user id lets the page compare it with its own viewer, and nothing else identifies the person. */
 export interface ViewerWinner {
@@ -201,9 +210,7 @@ export interface EntrantsDelta {
 }
 
 /** What every live page receives after a write: the snapshot and the new entrants. */
-export interface LivePush extends LiveSnapshot {
-  readonly entrantsAfter: EntrantsDelta
-}
+export type LivePush = LiveSnapshot & { readonly entrantsAfter: EntrantsDelta }
 
 /**
  * The state and rules of one giveaway over its own SQLite database. The room owns the giveaway's
@@ -519,11 +526,7 @@ export class GiveawayRoom {
         recent === undefined ? 0 : new RowReader("entries", recent).int("c") / windowSeconds,
       lastNames,
       winners,
-      rerollOpen:
-        state.status === "drawn"
-        && this.rerollWindowEnd() !== null
-        && !this.rerollWindowOver()
-        && this.hasUndrawnEntrant(),
+      ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
     }
@@ -726,6 +729,14 @@ export class GiveawayRoom {
   private rerollWindowOver(): boolean {
     const end = this.rerollWindowEnd()
     return end !== null && this.clock.now() > end
+  }
+
+  private rerollState(state: RoomState): RerollState {
+    const end = this.rerollWindowEnd()
+    if (state.status !== "drawn" || end === null) return { rerollOpen: false, rerollBlocked: null }
+    if (this.clock.now() > end) return { rerollOpen: false, rerollBlocked: "window-over" }
+    if (!this.hasUndrawnEntrant()) return { rerollOpen: false, rerollBlocked: "nobody-left" }
+    return { rerollOpen: true, rerollBlocked: null }
   }
 
   private entrantsDelta(): EntrantsDelta {

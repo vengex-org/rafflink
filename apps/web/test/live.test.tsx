@@ -30,6 +30,7 @@ const drawn: LiveSnapshot = {
   ...liveSnapshot,
   status: "drawn",
   rerollOpen: true,
+  rerollBlocked: null,
   winners: [
     {
       n: 0,

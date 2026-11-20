@@ -51,6 +51,7 @@ export const liveSnapshot: LiveSnapshot = {
   lastNames: ["Ada", "Bob"],
   winners: [],
   rerollOpen: false,
+  rerollBlocked: null,
   roleRefreshFailures: 0,
   eventSubFailures: 0,
   chatClaimUnavailable: false,

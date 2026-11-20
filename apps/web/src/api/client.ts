@@ -17,6 +17,7 @@ import type {
   LiveSnapshot,
   LiveWinner,
   RerollOutcome,
+  RerollState,
   ViewerPush,
   ViewerWinner,
   WinnerClaim,
@@ -509,11 +510,24 @@ export function parseLiveSnapshot(source: Json): LiveSnapshot {
     entriesPerSecond: num(source, "entriesPerSecond"),
     lastNames: textList(source, "lastNames"),
     winners: list(source, "winners", parseWinner),
-    rerollOpen: bool(source, "rerollOpen"),
+    ...parseRerollState(source),
     roleRefreshFailures: num(source, "roleRefreshFailures"),
     eventSubFailures: num(source, "eventSubFailures"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
   }
+}
+
+function parseRerollState(source: Json): RerollState {
+  const open = bool(source, "rerollOpen")
+  const blocked =
+    source.rerollBlocked === null
+      ? null
+      : oneOf(source, "rerollBlocked", ["window-over", "nobody-left"])
+  if (open) {
+    if (blocked !== null) throw new ApiShapeError("rerollBlocked")
+    return { rerollOpen: true, rerollBlocked: null }
+  }
+  return { rerollOpen: false, rerollBlocked: blocked }
 }
 
 function parseWinner(source: Json): LiveWinner {
