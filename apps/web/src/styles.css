@@ -1,0 +1,237 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7fb;
+  --surface: #ffffff;
+  --text: #17171c;
+  --muted: #5b5b6b;
+  --border: #d4d4de;
+  --accent: #6441a5;
+  --accent-text: #ffffff;
+  --danger: #b3261e;
+  --focus: #1a73e8;
+  --radius: 8px;
+  --gap: 1rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e0e12;
+    --surface: #1b1b22;
+    --text: #efeff3;
+    --muted: #a5a5b5;
+    --border: #3a3a47;
+    --accent: #9b7ddb;
+    --accent-text: #0e0e12;
+    --danger: #f2b8b5;
+    --focus: #8ab4f8;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--gap);
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem var(--gap);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.brand {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button,
+button {
+  display: inline-block;
+  min-height: 44px;
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.prize {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.outcome,
+.card {
+  margin: var(--gap) 0;
+  padding: var(--gap);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.outcome:empty {
+  display: none;
+}
+
+.outcome h2 {
+  margin-top: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+input {
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+fieldset {
+  margin: 0 0 var(--gap);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.check input {
+  min-height: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.field-error,
+[role="alert"] {
+  color: var(--danger);
+  margin: 0.25rem 0;
+}
+
+.warning {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.status {
+  display: block;
+  color: var(--muted);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  margin: var(--gap) 0;
+}
+
+.stats dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stats dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.names,
+.winners,
+.giveaways {
+  padding: 0;
+  list-style: none;
+}
+
+.winners li,
+.giveaways li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+[data-surface="overlay"] body {
+  background: transparent;
+}
+
+.overlay {
+  max-width: none;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+}
+
+.overlay .winners li,
+.overlay .giveaways li {
+  border-color: rgb(255 255 255 / 0.3);
+}
+
+.overlay .stats dt {
+  color: inherit;
+}

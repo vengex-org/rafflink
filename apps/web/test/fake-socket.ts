@@ -1,0 +1,37 @@
+/** Stands in for the browser WebSocket: the test pushes messages and closes the connection. */
+export class FakeSocket {
+  static readonly opened: FakeSocket[] = []
+  private readonly listeners = new Map<string, ((event: Event) => void)[]>()
+  closed = false
+
+  constructor(readonly url: string) {
+    FakeSocket.opened.push(this)
+  }
+
+  addEventListener(type: string, listener: (event: Event) => void): void {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener])
+  }
+
+  close(): void {
+    this.closed = true
+  }
+
+  push(data: unknown): void {
+    this.emit(new MessageEvent("message", { data: JSON.stringify(data) }))
+  }
+
+  drop(): void {
+    this.emit(new Event("close"))
+  }
+
+  private emit(event: Event): void {
+    for (const listener of this.listeners.get(event.type) ?? []) listener(event)
+  }
+}
+
+export function installFakeSocket(): () => void {
+  const original = globalThis.WebSocket
+  FakeSocket.opened.length = 0
+  Reflect.set(globalThis, "WebSocket", FakeSocket)
+  return () => Reflect.set(globalThis, "WebSocket", original)
+}
