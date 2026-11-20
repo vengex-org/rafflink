@@ -227,3 +227,16 @@ export const ChevronDownIcon = () => (
     <path d="m6 9 6 6 6-6" />
   </Icon>
 )
+
+/** The Twitch glyph is a filled brand mark, so it does not use the outline wrapper. */
+export const TwitchIcon = () => (
+  <svg
+    className="icon"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    focusable="false"
+    fill="currentColor"
+  >
+    <path d="M4.3 2 3 5.4v13.4h4.6V22h2.6l3.1-3.2h3.7L22 13.7V2H4.3Zm15.9 10.8-2.9 3h-4.6L9.2 18.6v-2.8H5.4V3.7h14.8v9.1ZM17.3 6.9h-1.8v5.2h1.8V6.9Zm-4.9 0h-1.8v5.2h1.8V6.9Z" />
+  </svg>
+)

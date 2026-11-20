@@ -20,6 +20,7 @@ export const en = {
   "failed.title": "Something went wrong",
   "failed.text": "Something went wrong. Reload the page.",
   "notFound.hint": "Check the link and try again.",
+  "notFound.home": "Go to the home page",
   "notFound.page": "Page not found",
   "notFound.giveaway": "Giveaway not found",
   "notFound.generic": "Not found",
@@ -31,10 +32,26 @@ export const en = {
   "signIn.why.dashboard": "Sign in with Twitch to create and run giveaways.",
   "signIn.why.live": "Sign in with Twitch to open the live page of your giveaway.",
 
-  "home.title": "Giveaways for your Twitch chat",
+  "home.title": "Fair Twitch giveaways, drawn live on stream.",
   "home.text":
-    "Viewers enter with one Twitch sign-in instead of typing fast in chat. You share a link, close entries and draw the winner live.",
-  "home.create": "Create a giveaway",
+    "Viewers enter from their phone. You draw on stream. Subs get extra tickets, and the rules say how many.",
+  "home.login": "Log in with Twitch",
+  "home.seeHow": "See how it works",
+  "home.preview.label": "Example of a draw",
+  "home.preview.winner": "Winner 2 of 3",
+  "home.how.title": "From chat to winner in three moves.",
+  "home.how.list": "How it works",
+  "home.how.create.title": "Create the giveaway",
+  "home.how.create.text":
+    "Name the prize, pick how many winners, and decide how many tickets each sub tier gets. The defaults work for most streams.",
+  "home.how.share.title": "Share one short link",
+  "home.how.share.text":
+    "Viewers open it on any phone and enter with one tap. The code has no look-alike letters, so it reads well on a TV.",
+  "home.how.draw.title": "Draw live",
+  "home.how.draw.text":
+    "Close entries and press Draw. The winner claims on their phone or in chat before the timer runs out. No claim, you reroll.",
+  "home.openSource": "Rafflink is open source under the AGPL-3.0 license.",
+  "home.setupGuide": "Setup guide on GitHub",
   "home.problemTitle": "Sign-in did not work",
   "home.problem.invalidState": "The sign-in expired. Please try again.",
   "home.problem.tryAgain": "Twitch did not answer. Please try again.",

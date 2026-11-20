@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react"
+import { Link } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { AlertIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
+import { AlertIcon, ArrowLeftIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
 import { StateCard } from "./state-card.tsx"
 
 export function Loading() {
@@ -38,6 +39,10 @@ export function NotFound({ title }: { readonly title: MessageKey }) {
   return (
     <StateCard tone="warning" align="center" icon={<AlertIcon />} title={t(title)} level={1}>
       <p>{t("notFound.hint")}</p>
+      <Link className="button block" to="/">
+        <ArrowLeftIcon />
+        {t("notFound.home")}
+      </Link>
     </StateCard>
   )
 }

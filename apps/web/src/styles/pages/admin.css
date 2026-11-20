@@ -1,7 +1,12 @@
+.admin-title {
+  margin-bottom: var(--space-3);
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: var(--space-2);
+  align-items: start;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -11,14 +16,28 @@
   margin: 0;
 }
 
+.card-grid h2 {
+  margin-bottom: var(--space-1);
+  font-size: var(--fs-lg);
+}
+
 .usage {
   margin-bottom: var(--space-3);
+}
+
+.usage:last-child {
+  margin-bottom: 0;
 }
 
 .usage-label {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  margin: 0;
+}
+
+.usage-label .icon {
+  color: var(--muted);
 }
 
 .usage progress {
@@ -45,4 +64,37 @@
 .usage progress::-moz-progress-bar {
   border-radius: var(--r-sm);
   background: var(--ink);
+}
+
+.usage-text {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-grid .stats {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  margin: var(--space-2) 0 0;
+}
+
+.card-grid .stat {
+  justify-content: space-between;
+  gap: var(--space-1);
+  border: 1px solid var(--line);
+}
+
+.card-grid .stat dt {
+  align-items: flex-start;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.card-grid .stat dd {
+  font-family: var(--font-mono);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
 }

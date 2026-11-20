@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, jest } from "bun:test"
 import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { Status } from "../src/components/notice.tsx"
 import { I18nProvider } from "../src/i18n/i18n.tsx"
+import { renderApp } from "./render-app.tsx"
 
 afterEach(() => {
   cleanup()
@@ -45,5 +46,14 @@ describe("Status toast", () => {
     view.rerender(toast("Winner drawn."))
 
     expect(view.queryByText("Winner drawn.")).not.toBeNull()
+  })
+})
+
+describe("not found page", () => {
+  it("names the missing page and offers the way back to the home page", () => {
+    const view = renderApp("/no/such/page")
+
+    expect(view.getByRole("heading", { level: 1, name: "Page not found" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "Go to the home page" }).getAttribute("href")).toBe("/")
   })
 })

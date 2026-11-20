@@ -21,6 +21,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "failed.title": "Něco se pokazilo",
   "failed.text": "Něco se pokazilo. Načti stránku znovu.",
   "notFound.hint": "Zkontroluj odkaz a zkus to znovu.",
+  "notFound.home": "Přejít na domovskou stránku",
   "notFound.page": "Stránka nebyla nalezena",
   "notFound.giveaway": "Soutěž nebyla nalezena",
   "notFound.generic": "Nenalezeno",
@@ -32,10 +33,26 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "signIn.why.dashboard": "Pro vytváření a vedení soutěží se přihlas přes Twitch.",
   "signIn.why.live": "Pro otevření živé stránky tvé soutěže se přihlas přes Twitch.",
 
-  "home.title": "Soutěže pro tvůj Twitch chat",
+  "home.title": "Férové Twitch soutěže, losované živě na streamu.",
   "home.text":
-    "Diváci se zapojí jedním přihlášením přes Twitch, nemusejí rychle psát do chatu. Ty sdílíš odkaz, uzavřeš přihlašování a vítěze vylosuješ živě.",
-  "home.create": "Vytvořit soutěž",
+    "Diváci se zapojí z telefonu. Ty losuješ na streamu. Sub-ové dostanou víc losů a pravidla řeknou kolik.",
+  "home.login": "Přihlásit se přes Twitch",
+  "home.seeHow": "Podívej se, jak to funguje",
+  "home.preview.label": "Ukázka losování",
+  "home.preview.winner": "Výherce 2 ze 3",
+  "home.how.title": "Od chatu k výherci ve třech krocích.",
+  "home.how.list": "Jak to funguje",
+  "home.how.create.title": "Vytvoř soutěž",
+  "home.how.create.text":
+    "Pojmenuj cenu, vyber počet výherců a nastav, kolik losů dostane každá úroveň subu. Výchozí hodnoty sedí většině streamů.",
+  "home.how.share.title": "Sdílej jeden krátký odkaz",
+  "home.how.share.text":
+    "Diváci ho otevřou na libovolném telefonu a zapojí se jedním klepnutím. Kód neobsahuje zaměnitelné znaky, takže je čitelný i na TV.",
+  "home.how.draw.title": "Losuj živě",
+  "home.how.draw.text":
+    "Uzavři zapojování a spusť losování. Výherce si výhru převezme v telefonu nebo v chatu, než vyprší čas. Když ho nepřevezme, losuješ znovu.",
+  "home.openSource": "Rafflink je open source pod licencí AGPL-3.0.",
+  "home.setupGuide": "Návod k nastavení na GitHubu",
   "home.problemTitle": "Přihlášení se nepovedlo",
   "home.problem.invalidState": "Přihlášení vypršelo. Zkus to prosím znovu.",
   "home.problem.tryAgain": "Twitch neodpověděl. Zkus to prosím znovu.",

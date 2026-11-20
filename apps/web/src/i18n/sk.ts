@@ -21,6 +21,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "failed.title": "Niečo sa pokazilo",
   "failed.text": "Niečo sa pokazilo. Načítaj stránku znova.",
   "notFound.hint": "Skontroluj odkaz a skús to znova.",
+  "notFound.home": "Prejsť na domovskú stránku",
   "notFound.page": "Stránka sa nenašla",
   "notFound.giveaway": "Súťaž sa nenašla",
   "notFound.generic": "Nenašlo sa",
@@ -32,10 +33,26 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "signIn.why.dashboard": "Na vytváranie a vedenie súťaží sa prihlás cez Twitch.",
   "signIn.why.live": "Na otvorenie živej stránky tvojej súťaže sa prihlás cez Twitch.",
 
-  "home.title": "Súťaže pre tvoj Twitch chat",
+  "home.title": "Férové Twitch súťaže, žrebované naživo na streame.",
   "home.text":
-    "Diváci sa zapoja jedným prihlásením cez Twitch, nemusia rýchlo písať do chatu. Ty zdieľaš odkaz, uzavrieš zapisovanie a víťaza vyžrebuješ naživo.",
-  "home.create": "Vytvoriť súťaž",
+    "Diváci sa zapoja z telefónu. Ty žrebuješ na streame. Sub-ovia dostanú viac lístkov a pravidlá povedia koľko.",
+  "home.login": "Prihlásiť sa cez Twitch",
+  "home.seeHow": "Pozri, ako to funguje",
+  "home.preview.label": "Ukážka žrebovania",
+  "home.preview.winner": "Výherca 2 z 3",
+  "home.how.title": "Od chatu k výhercovi na tri kroky.",
+  "home.how.list": "Ako to funguje",
+  "home.how.create.title": "Vytvor súťaž",
+  "home.how.create.text":
+    "Pomenuj cenu, vyber počet výhercov a nastav, koľko lístkov dostane každá úroveň subu. Predvolené hodnoty sedia väčšine streamov.",
+  "home.how.share.title": "Zdieľaj jeden krátky odkaz",
+  "home.how.share.text":
+    "Diváci ho otvoria na ľubovoľnom telefóne a zapoja sa jedným ťuknutím. Kód neobsahuje zameniteľné znaky, takže je čitateľný aj na TV.",
+  "home.how.draw.title": "Žrebuj naživo",
+  "home.how.draw.text":
+    "Uzavri zapájanie a spusti žrebovanie. Výherca si výhru prevezme v telefóne alebo v chate, kým nevyprší čas. Ak ho neprevezme, žrebuješ znova.",
+  "home.openSource": "Rafflink je open source pod licenciou AGPL-3.0.",
+  "home.setupGuide": "Návod na nastavenie na GitHube",
   "home.problemTitle": "Prihlásenie sa nepodarilo",
   "home.problem.invalidState": "Prihlásenie vypršalo. Skús to prosím znova.",
   "home.problem.tryAgain": "Twitch neodpovedal. Skús to prosím znova.",
