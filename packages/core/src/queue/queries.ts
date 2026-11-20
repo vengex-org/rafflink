@@ -20,13 +20,13 @@ export const claimQueuedSql = `UPDATE token_queue SET state = 'processing', clai
   )
   RETURNING ticket, code, giveaway_id, nonce`
 
-/** Returns one claimed row to the queue (parameters: ticket, claim time); nothing changes when the claim was lost. */
+/** Returns one claimed row to the queue (parameters: ticket, claim time); no row comes back when the claim was lost. */
 export const requeueClaimedSql = `UPDATE token_queue SET state = 'queued', claimed_at = NULL
-  WHERE ticket = ? AND state = 'processing' AND claimed_at = ?`
+  WHERE ticket = ? AND state = 'processing' AND claimed_at = ? RETURNING ticket`
 
-/** Stores the result of one claimed row (parameters: result, user, ticket, claim time). */
+/** Stores the result of one claimed row (parameters: result, user, ticket, claim time); no row comes back when the claim was lost. */
 export const finishClaimedSql = `UPDATE token_queue SET state = 'done', claimed_at = NULL, result_json = ?, user_id = ?
-  WHERE ticket = ? AND state = 'processing' AND claimed_at = ?`
+  WHERE ticket = ? AND state = 'processing' AND claimed_at = ? RETURNING ticket`
 
 /** One queued row, if any. */
 export const oldestQueuedSql = "SELECT ticket FROM token_queue WHERE state = 'queued' LIMIT 1"
@@ -40,4 +40,4 @@ export const oldestDoneSql = `SELECT received_at FROM token_queue WHERE state = 
   ORDER BY received_at, ticket LIMIT 1`
 
 export const statsSql =
-  "SELECT rate_per_second, cooldown_until, dropped, abandoned_results FROM queue_stats WHERE id = 1"
+  "SELECT rate_per_second, cooldown_until, dropped, abandoned_results, lost_claims FROM queue_stats WHERE id = 1"

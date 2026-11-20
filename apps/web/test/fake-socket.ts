@@ -20,6 +20,10 @@ export class FakeSocket {
     this.emit(new MessageEvent("message", { data: JSON.stringify(data) }))
   }
 
+  open(): void {
+    this.emit(new Event("open"))
+  }
+
   drop(): void {
     this.emit(new Event("close"))
   }

@@ -245,6 +245,61 @@ describe("TokenQueue claims", () => {
     warn.mockRestore()
   })
 
+  it("logs and counts a pass that lost its claim, without personal data", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const finish: ((attempt: EntryAttempt) => void)[] = []
+    let first = true
+    const { queue, clock } = setup(() => {
+      if (!first) return Promise.resolve(entered)
+      first = false
+      return new Promise<EntryAttempt>((resolve) => finish.push(resolve))
+    })
+    queue.enqueue(item("secret-code", "g7"), "unavailable")
+    const stale = queue.onAlarm()
+    clock.advance(config.queueProcessingTimeoutSeconds * 1000 + 1)
+    await queue.onAlarm()
+
+    finish[0]?.({ kind: "final", outcome: { kind: "closed" }, userId: "stale-user" })
+    await stale
+
+    expect(warn).toHaveBeenCalledWith("queue claim lost", { giveawayId: "g7", step: "finish" })
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/secret-code|stale-user/)
+    expect(queue.stats().lostClaims).toBe(1)
+    warn.mockRestore()
+  })
+
+  it("counts a deferred pass that lost its claim and leaves the rate alone", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const finish: ((attempt: EntryAttempt) => void)[] = []
+    let first = true
+    const { queue, clock } = setup(() => {
+      if (!first) return Promise.resolve(entered)
+      first = false
+      return new Promise<EntryAttempt>((resolve) => finish.push(resolve))
+    })
+    queue.enqueue(item("c1", "g7"), "unavailable")
+    const stale = queue.onAlarm()
+    clock.advance(config.queueProcessingTimeoutSeconds * 1000 + 1)
+    await queue.onAlarm()
+    const rate = queue.stats().ratePerSecond
+
+    finish[0]?.({ kind: "deferred", cause: "rate-limited" })
+    await stale
+
+    expect(warn).toHaveBeenCalledWith("queue claim lost", { giveawayId: "g7", step: "requeue" })
+    expect(queue.stats()).toMatchObject({ lostClaims: 1, ratePerSecond: rate, cooldownUntil: 0 })
+    warn.mockRestore()
+  })
+
+  it("counts no lost claim for a pass that kept its claim", async () => {
+    const { queue } = setup()
+    queue.enqueue(item("c1"), "unavailable")
+
+    await queue.onAlarm()
+
+    expect(queue.stats().lostClaims).toBe(0)
+  })
+
   it("drops a released claim that is older than the maximum age", async () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     const { queue, db, clock } = setup(() => new Promise<EntryAttempt>(() => {}))

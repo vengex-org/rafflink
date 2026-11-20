@@ -20,6 +20,7 @@ import {
   headSeqSql,
   lastNamesSql,
   recentEntriesCountSql,
+  rerollablePickSql,
 } from "./queries.ts"
 
 const config = resolveConfig({
@@ -881,13 +882,14 @@ function lastViewerPush(hub: TestHub): ViewerPush {
 }
 
 describe("viewer push", () => {
-  it("does not repeat to a viewer the outcome it got on connect when the alarm runs", () => {
+  it("pushes the current outcome on the first alarm of a fresh instance, whatever a page connected earlier holds", () => {
     const { room, hub } = setup()
 
     room.viewerPush()
     room.onAlarm()
 
-    expect(hub.viewerMessages).toEqual([])
+    expect(hub.viewerMessages).toHaveLength(1)
+    expect(lastViewerPush(hub)).toMatchObject({ status: "open", winners: [] })
   })
 
   it("sends nothing to viewers for entries, which change nothing their page shows", () => {
@@ -977,7 +979,7 @@ describe("viewer push", () => {
 
     expect(hub.viewerMessages).toHaveLength(before + 1)
     expect(lastViewerPush(hub)).toMatchObject({
-      finished: true,
+      finished: false,
       winners: [{ claim: { state: "expired" } }],
     })
   })
@@ -1057,14 +1059,39 @@ describe("public summary", () => {
     ])
   })
 
-  it("is finished after the last claim time ran out, and for a draw nobody won", async () => {
+  it("is not finished after the last claim time ran out, because a reroll can still replace the pick", async () => {
     const expired = await drawnRoom()
     expired.clock.advance(300_001)
+
+    expect(expired.room.summary().finished).toBe(false)
+  })
+
+  it("is finished once every pick is claimed, and for a draw nobody won", async () => {
+    const claimed = await drawnRoom()
+    claimed.room.claim(0, claimed.winner, "chat")
     const empty = setup()
     empty.room.close()
     await empty.room.draw(1)
 
-    expect(expired.room.summary().finished).toBe(true)
+    expect(claimed.room.summary().finished).toBe(true)
     expect(empty.room.summary().finished).toBe(true)
+  })
+
+  it("is not finished after a reroll replaced an expired pick with a waiting one", async () => {
+    const rerolled = await drawnRoom()
+    rerolled.clock.advance(300_001)
+
+    await rerolled.room.reroll(0)
+
+    expect(rerolled.room.summary().finished).toBe(false)
+    expect(lastViewerPush(rerolled.hub).finished).toBe(false)
+  })
+
+  it("looks for a pick a reroll could replace through the waiting index", async () => {
+    const { sql } = await drawnRoom()
+
+    const details = plan(sql, rerollablePickSql, [])
+
+    expect(details.some((detail) => detail.includes("INDEX draws_waiting"))).toBe(true)
   })
 })

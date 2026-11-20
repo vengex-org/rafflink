@@ -545,5 +545,6 @@ function parseQueue(source: Json): QueueStats {
     cooldownUntil: num(source, "cooldownUntil"),
     dropped: num(source, "dropped"),
     abandonedResults: num(source, "abandonedResults"),
+    lostClaims: num(source, "lostClaims"),
   }
 }

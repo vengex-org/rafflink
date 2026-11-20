@@ -45,6 +45,10 @@ exists only when `DEV_FAKE_TWITCH=true`; a production server answers 404 on its 
 anyone in, so `DEV_FAKE_TWITCH=true` only starts when `PUBLIC_URL` is a `localhost` or `127.0.0.1` origin;
 any other `PUBLIC_URL` stops the start with a configuration error.
 
+Open the dev page at exactly `PUBLIC_URL` (`http://localhost:3000`). `http://127.0.0.1:3000` is the same server, but
+the WebSocket routes compare the `Origin` header with `PUBLIC_URL` as text, so that address gets 403 on the live
+and viewer sockets and the page never updates.
+
 ### Cloudflare dev
 
 The fake Twitch cannot run inside the Worker, so it runs as its own process. Build the web app once with
@@ -270,8 +274,8 @@ Object request, sent with the site's own `Origin`). The room pushes the outcome 
 draw, rerolls, claims and a chat claim that stops working. The push carries the winners' Twitch user ids and
 claim deadlines, so the page compares them with its own viewer and shows "You won" or "Not this time"
 without asking the server again, and a draw never makes every viewer fetch `/api/g/<code>` at once. Messages
-the room sends are not billed and viewers send none. The page reconnects with backoff and jitter and stops
-once the giveaway is finished (the draw is done and no winner can still claim). A push holds public data
+the room sends are not billed and viewers send none. The page reconnects with backoff and jitter, gives up after a few connections in a row that never opened, and
+stops once the giveaway is finished (the draw is done and every pick is claimed, so no reroll can change anything). A push holds public data
 only: no cookie, no sign-in state and no names.
 
 The page also keeps its last `/api/g/<code>` answer in `sessionStorage`. A reload within 30 seconds

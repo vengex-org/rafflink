@@ -63,6 +63,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "admin.queue.rate": "přihlášek za sekundu",
   "admin.queue.dropped": "přihlášek zahozeno",
   "admin.queue.abandoned": "výsledků, které si nikdo nevyzvedl",
+  "admin.queue.lostClaims": "přihlášek zpracovaných dvakrát, jeden výsledek zahozen",
   "admin.queue.cooldown": "Twitch má pauzu do",
   "admin.queue.noCooldown": "žádná",
 

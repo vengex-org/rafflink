@@ -1,4 +1,5 @@
 import type { Parsed } from "./lib/parsed.ts"
+import { queuedEntryTwitchRequests } from "./viewer/enter-giveaway.ts"
 
 export type ConfigReason =
   | "missing"
@@ -10,7 +11,7 @@ export type ConfigReason =
   | "not-an-admin-entry"
   | "not-below-queue-code-max-age"
   | "not-below-eventsub-connection-max"
-  | "not-above-twitch-timeout"
+  | "not-above-queued-entry-twitch-time"
   | "fake-twitch-needs-local-public-url"
 
 /** Why a setting failed; a list entry that is not a secret also names itself. */
@@ -145,7 +146,7 @@ export const configSchema = {
     "QUEUE_PROCESSING_TIMEOUT_SECONDS",
     int(1),
     "60",
-    "A queued code claimed for processing returns to the queue after this long without a result, so a crashed pass does not strand it; starting guess, a few Twitch calls at TWITCH_TIMEOUT_MS each",
+    "A queued code claimed for processing returns to the queue after this long without a result, so a crashed pass does not strand it; must exceed the sequential Twitch requests of one code times TWITCH_TIMEOUT_MS, 60 is a starting guess",
   ),
   queueCooldownSeconds: withDefault(
     "QUEUE_COOLDOWN_SECONDS",
@@ -460,11 +461,14 @@ export function resolveConfig(env: Env): ResolvedConfig {
       "not-below-eventsub-connection-max",
     )
   }
-  // A claimed code must stay claimed longer than the Twitch calls that process it can take.
-  if (config.queueProcessingTimeoutSeconds * 1000 <= config.twitchTimeoutMs) {
+  // A claimed code must stay claimed longer than the Twitch requests that process it can take in a row.
+  if (
+    config.queueProcessingTimeoutSeconds * 1000
+    <= queuedEntryTwitchRequests * config.twitchTimeoutMs
+  ) {
     throw new ConfigError(
       configSchema.queueProcessingTimeoutSeconds.env,
-      "not-above-twitch-timeout",
+      "not-above-queued-entry-twitch-time",
     )
   }
   // The fake Twitch signs in anyone, so it must never run behind a public origin.

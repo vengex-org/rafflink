@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { ConfigError, configSchema, resolveConfig } from "./config.ts"
+import { queuedEntryTwitchRequests } from "./viewer/enter-giveaway.ts"
 
 const required = {
   TWITCH_CLIENT_ID: "client",
@@ -79,26 +80,27 @@ describe("resolveConfig", () => {
     )
   })
 
-  it("rejects a processing timeout that does not exceed the Twitch timeout", () => {
-    for (const seconds of ["4", "5"]) {
+  it("rejects a processing timeout that does not exceed the Twitch requests of one queued code in a row", () => {
+    const limitSeconds = queuedEntryTwitchRequests * 5
+    for (const seconds of [limitSeconds - 1, limitSeconds]) {
       expect(
         failure({
           ...required,
           TWITCH_TIMEOUT_MS: "5000",
-          QUEUE_PROCESSING_TIMEOUT_SECONDS: seconds,
+          QUEUE_PROCESSING_TIMEOUT_SECONDS: String(seconds),
         }),
       ).toMatchObject({
         env: "QUEUE_PROCESSING_TIMEOUT_SECONDS",
-        reason: "not-above-twitch-timeout",
+        reason: "not-above-queued-entry-twitch-time",
       })
     }
     expect(
       resolveConfig({
         ...required,
         TWITCH_TIMEOUT_MS: "5000",
-        QUEUE_PROCESSING_TIMEOUT_SECONDS: "6",
+        QUEUE_PROCESSING_TIMEOUT_SECONDS: String(limitSeconds + 1),
       }).queueProcessingTimeoutSeconds,
-    ).toBe(6)
+    ).toBe(limitSeconds + 1)
   })
 
   it("reads the limits of tickets, claim time, winners and the public cache", () => {

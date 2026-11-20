@@ -26,5 +26,6 @@ CREATE TABLE queue_stats (
   rate_per_second INTEGER NOT NULL CHECK (rate_per_second > 0),
   cooldown_until INTEGER NOT NULL DEFAULT 0,
   dropped INTEGER NOT NULL DEFAULT 0,
-  abandoned_results INTEGER NOT NULL DEFAULT 0
+  abandoned_results INTEGER NOT NULL DEFAULT 0,
+  lost_claims INTEGER NOT NULL DEFAULT 0
 )

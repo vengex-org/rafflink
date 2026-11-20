@@ -19,6 +19,7 @@ import {
   headSeqSql,
   lastNamesSql,
   nextClaimDeadlineSql,
+  rerollablePickSql,
   recentEntriesCountSql,
   waitingPickOfChatterSql,
 } from "./queries.ts"
@@ -131,7 +132,7 @@ export interface RoomSummary {
 
 /** The room as a viewer's page loads it. */
 export interface PublicSummary extends RoomSummary {
-  /** The draw is done and no winner can still claim, so nothing on a viewer's page changes unless the streamer rerolls an expired pick. */
+  /** The draw is done and no pick is left that a reroll could replace, so nothing on a viewer's page can change any more. */
   readonly finished: boolean
 }
 
@@ -309,11 +310,7 @@ export class GiveawayRoom {
 
   /** The outcome a viewer's page connecting now starts from. */
   viewerPush(): ViewerPush {
-    const outcome = this.viewerOutcome(this.readState())
-    // Every write a page shows pushes at once, so the pages already connected hold this outcome too;
-    // the first alarm after a fresh instance must not send it again.
-    this.lastViewerOutcome ??= JSON.stringify(outcome)
-    return { ...outcome, now: this.clock.now() }
+    return { ...this.viewerOutcome(this.readState()), now: this.clock.now() }
   }
 
   /** The viewer's entry, `null` when they did not enter. */
@@ -683,7 +680,7 @@ export class GiveawayRoom {
   }
 
   private isFinished(state: RoomState): boolean {
-    return state.status === "drawn" && this.nextClaimDeadline() === null
+    return state.status === "drawn" && this.sql.exec(rerollablePickSql, []).length === 0
   }
 
   private entrantsDelta(): EntrantsDelta {

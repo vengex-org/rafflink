@@ -49,7 +49,7 @@ function Loaded({ code }: { readonly code: string }) {
   // A page that comes back from the sign-in has just changed what the server knows about the viewer.
   const [allowStored] = useState(() => !query.has("entry"))
   const load = useCallback(() => loadGiveaway(code, allowStored), [code, allowStored])
-  const { result } = useLoad(load)
+  const { result, reload } = useLoad(load)
   switch (result.state) {
     case "loading":
       return <Loading />
@@ -59,7 +59,12 @@ function Loaded({ code }: { readonly code: string }) {
       return result.value === null ? (
         <NotFound title="notFound.giveaway" />
       ) : (
-        <GiveawayDetails code={code} giveaway={result.value.giveaway} me={result.value.me} />
+        <GiveawayDetails
+          code={code}
+          giveaway={result.value.giveaway}
+          me={result.value.me}
+          onEntered={reload}
+        />
       )
   }
 }
@@ -68,17 +73,20 @@ function GiveawayDetails({
   code,
   giveaway: loadedGiveaway,
   me: loadedMe,
+  onEntered,
 }: {
   readonly code: string
   readonly giveaway: GiveawayView
   readonly me: ViewerState
+  /** Loads the giveaway again; a viewer who entered through the queue is signed-out in the answer the page holds. */
+  readonly onEntered: () => void
 }) {
   const i18n = useI18n()
   const push = useViewerPush(code, !loadedGiveaway.finished)
   const { giveaway, me } = applyViewerPush({ giveaway: loadedGiveaway, me: loadedMe }, push)
   const [query] = useSearchParams()
   const initial = useMemo(() => entryFromQuery(query), [query])
-  const fromSignIn = useEntryResult(code, initial, giveaway.poll)
+  const fromSignIn = useEntryResult(code, initial, giveaway.poll, onEntered)
   // A returning viewer has no sign-in outcome in the URL; the viewer state says they are in. It also
   // wins over a `dropped` left in the URL, which only says the queued ticket is gone.
   const fromServer = me.kind === "entered" ? { kind: "entered" as const, entry: me.entry } : null

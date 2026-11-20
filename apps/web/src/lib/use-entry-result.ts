@@ -7,11 +7,16 @@ import { forgetStoredGiveaway } from "./stored-giveaway.ts"
 /** An entry the page stopped waiting for. */
 export type EntryView = EntryResult | { readonly kind: "timed-out" }
 
-/** The outcome to show; a pending one is polled every `poll.intervalMs` until it settles or `poll.maxMs` pass. */
+/**
+ * The outcome to show; a pending one is polled every `poll.intervalMs` until it settles or `poll.maxMs` pass.
+ * `onEntered` runs once when a queued entry settles as entered or already-in, because the poll answer
+ * starts the viewer's session and the page then has to ask who the viewer is.
+ */
 export function useEntryResult(
   code: string,
   initial: EntryResult | null,
   poll: PollTiming,
+  onEntered: () => void,
 ): EntryView | null {
   const [view, setView] = useState<EntryView | null>(initial)
   const ticket = initial?.kind === "pending" ? initial.ticket : null
@@ -36,6 +41,7 @@ export function useEntryResult(
             forgetStoredGiveaway(code)
             setView(result)
             forgetEntryInUrl()
+            if (result.kind === "entered" || result.kind === "already-in") onEntered()
             return
           }
         } catch (error) {
@@ -46,7 +52,7 @@ export function useEntryResult(
     return () => {
       current = false
     }
-  }, [code, ticket, poll.intervalMs, poll.maxMs])
+  }, [code, ticket, poll.intervalMs, poll.maxMs, onEntered])
 
   return view
 }

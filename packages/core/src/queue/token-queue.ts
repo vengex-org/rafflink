@@ -66,10 +66,11 @@ export type PollOutcome =
       /** The verified platform user who entered, for the viewer cookie; null when sign-in failed before that. */
       readonly userId: string | null
     }
-  /** No row: the code was dropped, or the result was already read. */
+  /** No row: the code was dropped or the result aged out. */
   | { readonly kind: "gone" }
 
 export interface QueueStats {
+  /** Codes waiting or being processed. */
   readonly queued: number
   readonly ratePerSecond: number
   readonly cooldownUntil: Instant
@@ -77,6 +78,8 @@ export interface QueueStats {
   readonly dropped: number
   /** Results that aged out before the browser read them. */
   readonly abandonedResults: number
+  /** Passes whose claim was released and retaken before they reported, so their result was discarded. */
+  readonly lostClaims: number
 }
 
 /** The queue methods the HTTP app calls, as an async stub. */
@@ -224,20 +227,39 @@ export class TokenQueue {
         giveawayId: item.giveawayId,
         errorClass: errorClass(error),
       })
-      this.sql.exec(requeueClaimedSql, [item.ticket, claimedAt])
+      this.requeue(item, claimedAt)
       return "failed"
     }
     if (attempt.kind === "deferred") {
-      this.sql.exec(requeueClaimedSql, [item.ticket, claimedAt])
-      return attempt.cause
+      return this.requeue(item, claimedAt) ? attempt.cause : "failed"
     }
-    this.sql.exec(finishClaimedSql, [
+    const finished = this.sql.exec(finishClaimedSql, [
       JSON.stringify(attempt.outcome),
       attempt.userId,
       item.ticket,
       claimedAt,
     ])
-    return "done"
+    return this.claimHeld(finished, item, "finish") ? "done" : "failed"
+  }
+
+  private requeue(item: QueuedItem, claimedAt: Instant): boolean {
+    return this.claimHeld(
+      this.sql.exec(requeueClaimedSql, [item.ticket, claimedAt]),
+      item,
+      "requeue",
+    )
+  }
+
+  // The statement matches only the claim this pass took; no row means the sweep released it and another pass owns the code now.
+  private claimHeld(
+    written: readonly SqlRow[],
+    item: QueuedItem,
+    step: "requeue" | "finish",
+  ): boolean {
+    if (written.length > 0) return true
+    console.warn("queue claim lost", { giveawayId: item.giveawayId, step })
+    this.sql.exec("UPDATE queue_stats SET lost_claims = lost_claims + 1 WHERE id = 1", [])
+    return false
   }
 
   private rearm(): void {
@@ -273,6 +295,7 @@ export class TokenQueue {
       cooldownUntil: reader.int("cooldown_until"),
       dropped: reader.int("dropped"),
       abandonedResults: reader.int("abandoned_results"),
+      lostClaims: reader.int("lost_claims"),
     }
   }
 }

@@ -30,7 +30,7 @@ export function viewerPushScenarios(context: ContractContext): void {
         chatClaimAvailable: true,
         winners: [],
       })
-      expect(messages.map((message) => message.status)).toEqual(["open", "closed"])
+      expect(statusRuns(messages)).toEqual(["open", "closed"])
     },
   )
 
@@ -96,6 +96,34 @@ export function viewerPushScenarios(context: ContractContext): void {
         "waiting",
       ])
       expect(late.messages[0]?.winners).toEqual(early.messages.at(-1)?.winners)
+    },
+  )
+
+  scenario(
+    context,
+    "an expired claim does not finish the giveaway, so a reroll after it still reaches the socket",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
+      await world.enter(target, giveaway.code, users.viewer.id)
+      await world.enter(target, giveaway.code, users.viewer2.id)
+      await world.closeGiveaway(giveaway)
+      await world.drawWinners(giveaway, 1)
+      const { messages } = openViewerSocket(world, target.url, giveaway)
+      await world.waitFor(
+        () => messages.some((message) => message.winners[0]?.claim.state === "expired"),
+        "the expired claim",
+      )
+
+      await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/reroll`, { n: 0 })
+      await world.waitFor(
+        () => messages.some((message) => message.winners.length === 2),
+        "the reroll outcome",
+      )
+
+      const expired = messages.find((message) => message.winners[0]?.claim.state === "expired")
+      expect(expired).toMatchObject({ status: "drawn", finished: false })
+      expect(messages.at(-1)).toMatchObject({ finished: false })
     },
   )
 
@@ -178,6 +206,13 @@ export function viewerPushScenarios(context: ContractContext): void {
       expect(statuses).toEqual([403, 403, 404, 426])
     },
   )
+}
+
+// A fresh room instance may repeat the outcome a page already holds, so only changes of status count.
+function statusRuns(messages: readonly ViewerPush[]): string[] {
+  return messages
+    .map((message) => message.status)
+    .filter((status, index, all) => status !== all[index - 1])
 }
 
 function openViewerSocket(world: World, baseUrl: URL, giveaway: CreatedGiveaway, cookie?: string) {

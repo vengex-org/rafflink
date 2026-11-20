@@ -325,7 +325,7 @@ giveaways(id, code UNIQUE, streamer_id, title, prize, rules_json, status,
 -- token queue (its own Durable Object or SQLite file)
 token_queue(ticket, code, giveaway_id, nonce, received_at, state, result_json,
             PRIMARY KEY (ticket)) WITHOUT ROWID
-queue_stats(id, rate_per_second, cooldown_until, dropped, abandoned_results)
+queue_stats(id, rate_per_second, cooldown_until, dropped, abandoned_results, lost_claims)
 
 -- inside each giveaway's room
 room_state(id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds,

@@ -8,7 +8,14 @@ afterEach(() => {
   mock.restore()
 })
 
-const queue = { queued: 7, ratePerSecond: 10, cooldownUntil: 0, dropped: 2, abandonedResults: 1 }
+const queue = {
+  queued: 7,
+  ratePerSecond: 10,
+  cooldownUntil: 0,
+  dropped: 2,
+  abandonedResults: 1,
+  lostClaims: 3,
+}
 const quota = (used: number, limit: number) => ({ used, limit })
 
 describe("admin page", () => {
@@ -31,6 +38,8 @@ describe("admin page", () => {
     expect(view.getByText("7")).toBeTruthy()
     expect(view.getByText("entries waiting")).toBeTruthy()
     expect(view.getByText("none")).toBeTruthy()
+    expect(view.getByText("3")).toBeTruthy()
+    expect(view.getByText("entries processed twice, one result discarded")).toBeTruthy()
   })
 
   it("says the usage is unavailable when the usage source did not answer", async () => {

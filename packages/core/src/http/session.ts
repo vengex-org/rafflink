@@ -1,5 +1,5 @@
 import type { Context } from "hono"
-import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie"
+import { deleteCookie, getCookie, getSignedCookie, setSignedCookie } from "hono/cookie"
 import type { ResolvedConfig } from "../config.ts"
 import type { Clock, Instant } from "../ports.ts"
 
@@ -60,6 +60,13 @@ const cookieNames = {
 // does not overwrite the first. Ids and states are 32 hex characters, which are safe in a cookie name.
 const oauthCookiePrefix = { streamer: "rl_oauth_streamer_", viewer: "rl_oauth_viewer_" } as const
 const hexId = /^[0-9a-f]{32}$/
+
+/**
+ * Sign-in states of one flow a browser keeps, the new one included. Only a finished callback deletes
+ * its cookie, so abandoned starts would pile up until the request header overflows; a starting guess,
+ * enough for a few tabs.
+ */
+export const oauthStatesPerFlow = 5
 
 function pendingCookie(giveaway: PendingGiveaway): { name: string; path: string } {
   return {
@@ -139,8 +146,28 @@ export async function startOAuthState(
   flow: OAuthFlow,
   state: OAuthState,
 ): Promise<void> {
+  await dropOlderOAuthStates(c, deps, flow)
   const name = `${oauthCookiePrefix[flow]}${state.state}`
   await writeCookie(c, deps, name, state, deps.config.stateCookieTtlSeconds)
+}
+
+// Keeps the newest states that leave room for the one being written.
+async function dropOlderOAuthStates(c: Context, deps: SessionDeps, flow: OAuthFlow): Promise<void> {
+  const prefix = oauthCookiePrefix[flow]
+  const names = Object.keys(getCookie(c)).filter((name) => name.startsWith(prefix))
+  // An expired or unverifiable cookie reads as no expiry and sorts last.
+  const expiries = await Promise.all(
+    names.map(async (name) => ({
+      name,
+      expiresAt: await readCookie(c, deps, name, (value) =>
+        typeof value.expiresAt === "number" ? value.expiresAt : null,
+      ),
+    })),
+  )
+  const newestFirst = expiries.toSorted((a, b) => (b.expiresAt ?? -1) - (a.expiresAt ?? -1))
+  for (const { name } of newestFirst.slice(oauthStatesPerFlow - 1)) {
+    deleteCookie(c, name, { path: "/" })
+  }
 }
 
 /**

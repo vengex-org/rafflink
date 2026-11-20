@@ -80,6 +80,11 @@ function Report({ report }: { readonly report: AdminUsage }) {
               label={t("admin.queue.abandoned")}
             />
             <Stat
+              icon={<AlertIcon />}
+              value={i18n.number(queue.lostClaims)}
+              label={t("admin.queue.lostClaims")}
+            />
+            <Stat
               icon={<ClockIcon />}
               value={
                 queue.cooldownUntil === 0

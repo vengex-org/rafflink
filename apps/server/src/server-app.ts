@@ -31,7 +31,7 @@ export function createServerApp(options: ServerAppOptions): Hono {
     socketRoute(api, async (_c, checked) => {
       const roomId = checked.headers.get(viewerRoomHeader)
       if (roomId === null) throw new TypeError("the viewer socket route named no room")
-      return { topic: viewerTopic(roomId), first: rooms.viewerPushText(roomId) }
+      return { topic: viewerTopic(roomId), first: () => rooms.viewerPushText(roomId) }
     }),
   )
   for (const prefix of apiPrefixes) app.all(`${prefix}*`, (c) => api.fetch(c.req.raw))
@@ -61,14 +61,15 @@ interface Subscribable {
   subscribe(topic: string): void
 }
 
-/** What a socket is subscribed to and the message it gets on open. */
+/** What a socket is subscribed to and the message it gets on open; `first` runs after the subscribe, so no push falls between the two. */
 interface Subscription {
   readonly topic: string
-  readonly first: string
+  readonly first: () => string
 }
 
 async function liveSubscription(c: Context, checked: Response): Promise<Subscription> {
-  return { topic: liveTopic(c.req.param("id") ?? ""), first: await checked.text() }
+  const first = await checked.text()
+  return { topic: liveTopic(c.req.param("id") ?? ""), first: () => first }
 }
 
 /**
@@ -88,7 +89,7 @@ function socketRoute(
       onOpen: (_event, ws) => {
         if (!isSubscribable(ws.raw)) throw new TypeError("the socket cannot subscribe to a topic")
         ws.raw.subscribe(topic)
-        ws.send(first)
+        ws.send(first())
       },
     }))(c, next)
   }

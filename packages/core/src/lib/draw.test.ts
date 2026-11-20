@@ -88,6 +88,25 @@ describe("drawWinners", () => {
   })
 })
 
+describe("drawWinners guard", () => {
+  it("throws when the ticket index falls outside the candidates instead of dropping the last one", async () => {
+    // The ticket total is read once, then the entry shrinks, so the drawn index points past every run.
+    let reads = 0
+    const shrinking: DrawEntry = {
+      platform: "twitch",
+      platformUserId: "1",
+      get tickets() {
+        reads += 1
+        return reads === 1 ? 1_000_000 : 1
+      },
+    }
+
+    await expect(drawWinners(seed, [shrinking], 1)).rejects.toThrow(
+      "ticket index outside the ticket total",
+    )
+  })
+})
+
 describe("pickWinner", () => {
   it("skips earlier winners including rerolled ones", async () => {
     const [first, second] = await drawWinners(seed, entries, 2)

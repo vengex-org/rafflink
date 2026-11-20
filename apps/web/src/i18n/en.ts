@@ -62,6 +62,7 @@ export const en = {
   "admin.queue.rate": "entries let in per second",
   "admin.queue.dropped": "entries dropped",
   "admin.queue.abandoned": "results nobody picked up",
+  "admin.queue.lostClaims": "entries processed twice, one result discarded",
   "admin.queue.cooldown": "Twitch cooldown until",
   "admin.queue.noCooldown": "none",
 

@@ -21,7 +21,7 @@ export interface PublicGiveaway {
   readonly closesAt: Instant | null
   readonly claimSeconds: number
   readonly entrantCount: number
-  /** The draw is done and no winner can still claim; the page then opens no push socket. */
+  /** The draw is done and no pick can still be replaced by a reroll; the page then opens no push socket. */
   readonly finished: boolean
   /** How the page polls a queued entry: every `intervalMs`, for at most `maxMs`. */
   readonly poll: { readonly intervalMs: number; readonly maxMs: number }

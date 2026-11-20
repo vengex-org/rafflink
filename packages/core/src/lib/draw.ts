@@ -30,7 +30,10 @@ export async function drawWinners(
   const winners: Winner[] = []
   for (let n = 0; n < count && total > 0n; n++) {
     const index = await sampleIndex(key, n, total)
-    const [taken] = candidates.splice(candidateAt(candidates, index), 1)
+    const position = candidateAt(candidates, index)
+    // splice(-1, 1) would drop the last candidate instead of failing.
+    if (position === -1) throw new Error("ticket index outside the ticket total")
+    const [taken] = candidates.splice(position, 1)
     if (taken === undefined) throw new Error("ticket index outside the ticket total")
     total -= BigInt(taken.tickets)
     winners.push({ n, platform: taken.platform, platformUserId: taken.platformUserId })

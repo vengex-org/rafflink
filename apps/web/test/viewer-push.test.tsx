@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import type { ViewerPush } from "@rafflink/core/room/giveaway-room"
-import { jitteredReconnectDelayMs } from "../src/lib/use-viewer-push.ts"
+import { jitteredReconnectDelayMs, maxViewerSocketFailures } from "../src/lib/use-viewer-push.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
@@ -172,6 +172,47 @@ describe("viewer page: push", () => {
     expect(view.getByRole("heading", { name: "You are in" })).toBeTruthy()
   })
 
+  it("keeps listening after the last claim time ran out, so a reroll still reaches the page", async () => {
+    mockFetch(pageRoute())
+    const view = renderApp("/ABCDE")
+    await view.findByRole("heading", { name: "You are in" })
+    const socket = await connected()
+    const expired = { ...waitingWinner("u1"), claim: { state: "expired" as const } }
+    act(() => socket.push(push({ status: "drawn", finished: false, winners: [expired] })))
+    await view.findByRole("heading", { name: "Time is up" })
+
+    act(() =>
+      socket.push(
+        push({
+          status: "drawn",
+          finished: false,
+          winners: [{ ...expired, claim: { state: "rerolled" } }, waitingWinner("u2", 1)],
+        }),
+      ),
+    )
+
+    expect(socket.closed).toBe(false)
+    expect(await view.findByText("The streamer picked another winner.")).toBeTruthy()
+  })
+
+  it("changes nothing on screen when the same push arrives twice", async () => {
+    mockFetch(pageRoute())
+    const view = renderApp("/ABCDE")
+    await view.findByRole("heading", { name: "You are in" })
+    const socket = await connected()
+    const claimed = push({
+      status: "drawn",
+      winners: [{ ...waitingWinner("u1"), claim: { state: "claimed", via: "chat" } }],
+    })
+    act(() => socket.push(claimed))
+    await view.findByText("Claimed! The streamer will contact you.")
+    const shown = view.container.innerHTML
+
+    act(() => socket.push(claimed))
+
+    expect(view.container.innerHTML).toBe(shown)
+  })
+
   it("opens no socket for a giveaway that is already finished", async () => {
     mockFetch({
       "GET /api/g/ABCDE": () =>
@@ -216,10 +257,61 @@ describe("viewer page: reconnect", () => {
     expect(FakeSocket.opened).toHaveLength(1)
   })
 
-  it("scales the backoff by half to one so viewers do not reconnect together", () => {
+  it("spreads the delay over zero to the whole backoff so viewers do not reconnect together", () => {
     expect([0, 0.5, 0.999].map((random) => jitteredReconnectDelayMs(2, random))).toEqual([
-      2000, 3000, 3998,
+      0, 2000, 3996,
     ])
+  })
+
+  it("stops after connections in a row that never opened, because a refused socket never recovers", async () => {
+    spyOn(Math, "random").mockReturnValue(0)
+    spyOn(console, "warn").mockImplementation(() => {})
+    mockFetch(pageRoute())
+    const view = renderApp("/ABCDE")
+    await view.findByRole("heading", { name: "You are in" })
+
+    for (let attempt = 1; attempt <= maxViewerSocketFailures; attempt++) {
+      await waitFor(() => expect(FakeSocket.opened).toHaveLength(attempt))
+      act(() => FakeSocket.opened[attempt - 1]?.drop())
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures)
+  })
+
+  it("keeps reconnecting while the connections open before they drop", async () => {
+    spyOn(Math, "random").mockReturnValue(0)
+    mockFetch(pageRoute())
+    const view = renderApp("/ABCDE")
+    await view.findByRole("heading", { name: "You are in" })
+    const drops = maxViewerSocketFailures + 2
+
+    for (let attempt = 1; attempt <= drops; attempt++) {
+      await waitFor(() => expect(FakeSocket.opened).toHaveLength(attempt))
+      act(() => FakeSocket.opened[attempt - 1]?.open())
+      act(() => FakeSocket.opened[attempt - 1]?.drop())
+    }
+
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(drops + 1))
+  })
+
+  it("counts only the failures in a row: a connection that opened starts the count again", async () => {
+    spyOn(Math, "random").mockReturnValue(0)
+    spyOn(console, "warn").mockImplementation(() => {})
+    mockFetch(pageRoute())
+    const view = renderApp("/ABCDE")
+    await view.findByRole("heading", { name: "You are in" })
+
+    const outcomes = [...Array(maxViewerSocketFailures - 1).fill("refused"), "opened"]
+    for (const [index, outcome] of outcomes.entries()) {
+      await waitFor(() => expect(FakeSocket.opened).toHaveLength(index + 1))
+      if (outcome === "opened") act(() => FakeSocket.opened[index]?.open())
+      act(() => FakeSocket.opened[index]?.drop())
+    }
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(outcomes.length + 1))
+    act(() => FakeSocket.opened[outcomes.length]?.drop())
+
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(outcomes.length + 2))
   })
 })
 
@@ -290,6 +382,36 @@ describe("viewer page: reload window", () => {
     await second.findByRole("link", { name: "Enter with Twitch" })
 
     expect(pageLoads(requests)).toBe(2)
+  })
+
+  it("knows the viewer after a queued entry settled, so a pushed draw shows the claim panel", async () => {
+    let loads = 0
+    const requests = mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({ ...giveaway, me: ++loads === 1 ? { kind: "signed-out" } : enteredAsU1 }),
+      "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "entered", entry }),
+    })
+    const view = renderApp("/g/ABCDE?entry=pending&ticket=T1")
+    await view.findByRole("heading", { name: "You are in" })
+    await waitFor(() => expect(pageLoads(requests)).toBe(2))
+    const socket = await connected()
+
+    act(() => socket.push(push({ status: "drawn", winners: [waitingWinner("u1")] })))
+
+    expect(await view.findByRole("button", { name: "Claim my prize" })).toBeTruthy()
+    expect(pageLoads(requests)).toBe(2)
+  })
+
+  it("does not ask again when a queued entry settled as not eligible", async () => {
+    const requests = mockFetch({
+      ...pageRoute({ kind: "signed-out" }),
+      "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "not-eligible", reason: "followers-only" }),
+    })
+    const view = renderApp("/g/ABCDE?entry=pending&ticket=T1")
+    await view.findByRole("heading", { name: "You cannot enter" })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(pageLoads(requests)).toBe(1)
   })
 
   it("fetches after the viewer claimed", async () => {

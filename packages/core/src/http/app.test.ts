@@ -13,6 +13,7 @@ import {
 import { codeAlphabet, codeLength } from "../lib/codes.ts"
 import { openSecret } from "../lib/seal.ts"
 import { RoomTransientError } from "../room/room-directory.ts"
+import { oauthStatesPerFlow } from "./session.ts"
 
 let harness: Harness
 
@@ -249,6 +250,24 @@ describe("two sign-ins started in one browser", () => {
     expect(entryQuery(answerB).get("entry")).toBe("entered")
     expect(entryQuery(answerA).get("entry")).toBe("already-in")
     expect(browser.cookieNames().filter((name) => name.startsWith("rl_oauth_"))).toEqual([])
+  })
+
+  it("keeps only the newest sign-in states of a flow, so unfinished starts cannot overflow the header", async () => {
+    const { code } = await createGiveaway(harness)
+    const browser = new Browser(harness)
+    const streamerState = await browser.startSignIn("/auth/twitch/streamer/start")
+    const viewerStates: string[] = []
+    for (let start = 0; start < oauthStatesPerFlow + 3; start++) {
+      harness.clock.advance(1000)
+      viewerStates.push(await browser.startSignIn(`/auth/twitch/viewer/start?giveaway=${code}`))
+    }
+
+    expect(browser.cookieNames().toSorted()).toEqual(
+      [
+        `rl_oauth_streamer_${streamerState}`,
+        ...viewerStates.slice(-oauthStatesPerFlow).map((state) => `rl_oauth_viewer_${state}`),
+      ].toSorted(),
+    )
   })
 
   it("lets both streamer sign-ins finish whichever comes back first", async () => {

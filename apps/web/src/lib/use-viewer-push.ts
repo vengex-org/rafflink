@@ -6,17 +6,25 @@ import { parseViewerPush, viewerSocketPath } from "../api/client.ts"
 import { reconnectDelayMs, socketUrl } from "./use-live.ts"
 
 /**
- * Delay before reconnect number `attempt`: the backoff of the live page, scaled by 0.5 to 1 so the
- * viewers of one giveaway do not all come back in the same moment after a Durable Object restart.
- * `random` is a number from 0 up to but not including 1.
+ * Delay before reconnect number `attempt`: a random point from 0 up to the backoff of the live page,
+ * so the viewers of one giveaway spread out instead of coming back together after a Durable Object
+ * restart. `random` is a number from 0 up to but not including 1.
  */
 export function jitteredReconnectDelayMs(attempt: number, random: number): number {
-  return reconnectDelayMs(attempt) * (0.5 + 0.5 * random)
+  return reconnectDelayMs(attempt) * random
 }
 
 /**
+ * Connections in a row that closed without ever opening, after which the page stops trying. A refused
+ * socket (wrong origin, deleted giveaway, server error) never recovers, and every attempt is a billed
+ * request; a starting guess, about seven seconds of backoff.
+ */
+export const maxViewerSocketFailures = 4
+
+/**
  * The latest draw and claim state the server pushed while `enabled`; null before the first message.
- * The page only listens: it sends nothing, and it stops for good once the push says the giveaway is finished.
+ * The page only listens: it sends nothing, and it stops for good once the push says the giveaway is
+ * finished or {@link maxViewerSocketFailures} connections in a row never opened.
  */
 export function useViewerPush(code: string, enabled: boolean): ViewerPush | null {
   const [push, setPush] = useState<ViewerPush | null>(null)
@@ -27,15 +35,18 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
     let socket: WebSocket | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
 
-    const connect = (attempt: number) => {
+    // `failures` counts the connections in a row that closed without opening.
+    const connect = (failures: number) => {
       const next = new WebSocket(socketUrl(viewerSocketPath(code)))
       socket = next
-      let healthy = false
+      let opened = false
       let finished = false
+      next.addEventListener("open", () => {
+        opened = true
+      })
       next.addEventListener("message", (event) => {
         try {
           const received = parseViewerPush(record(JSON.parse(String(event.data)), "push"))
-          healthy = true
           finished = received.finished
           setPush(received)
           if (finished) next.close()
@@ -46,10 +57,14 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
       })
       next.addEventListener("close", () => {
         if (!current || finished) return
-        const failures = healthy ? 0 : attempt
+        const failed = opened ? 0 : failures + 1
+        if (failed >= maxViewerSocketFailures) {
+          console.warn("viewer socket given up", { failures: failed })
+          return
+        }
         timer = setTimeout(
-          () => connect(failures + 1),
-          jitteredReconnectDelayMs(failures, Math.random()),
+          () => connect(failed),
+          jitteredReconnectDelayMs(Math.max(0, failed - 1), Math.random()),
         )
       })
     }
