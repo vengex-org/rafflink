@@ -28,6 +28,8 @@ describe("resolveConfig", () => {
     expect(config.adminTwitchIds).toEqual(["1", "2"])
     expect(config.publicUrl).toBe("https://rafflink.app")
     expect(config.devFakeTwitch).toBe(false)
+    expect(config.twitchIdBaseUrl).toBe("https://id.twitch.tv")
+    expect(config.twitchHelixBaseUrl).toBe("https://api.twitch.tv")
     expect(config.defaultClaimSeconds).toBe(300)
     expect(config.queuePollMaxSeconds).toBe(120)
     expect(config.queueCodeMaxAgeSeconds).toBe(300)

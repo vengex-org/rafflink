@@ -22,6 +22,17 @@ export interface Random {
   bytes(length: number): Uint8Array
 }
 
+/** The single wake-up timer of one room. Any implementation keeps at most one pending alarm: `set` replaces it, `clear` cancels it. */
+export interface Alarm {
+  set(at: Instant): void
+  clear(): void
+}
+
+/** Pushes one JSON text to every live page connected to one room. */
+export interface LiveHub {
+  broadcast(json: string): void
+}
+
 /**
  * Synchronous SQL over one SQLite database (Durable Object storage, bun:sqlite). Any implementation
  * binds `params` positionally, returns the rows of a statement (empty for a write, or the `RETURNING`

@@ -147,6 +147,18 @@ export const configSchema = {
     "500",
     "Wait before the single retry of a Helix 503; delay is a starting guess, one retry is spec AC-17",
   ),
+  twitchIdBaseUrl: withDefault(
+    "TWITCH_ID_BASE_URL",
+    url,
+    "https://id.twitch.tv",
+    "Origin of Twitch OAuth (authorize, token, keys, validate); only tests and the fake Twitch change it",
+  ),
+  twitchHelixBaseUrl: withDefault(
+    "TWITCH_HELIX_BASE_URL",
+    url,
+    "https://api.twitch.tv",
+    "Origin of the Twitch Helix API; only tests and the fake Twitch change it",
+  ),
   twitchTimeoutMs: withDefault(
     "TWITCH_TIMEOUT_MS",
     int(1),
@@ -207,11 +219,17 @@ export const configSchema = {
     "25000",
     "Warn at giveaway creation below this many Worker requests left; spec AC-23",
   ),
-  rolesInsertChunk: withDefault(
-    "ROLES_INSERT_CHUNK",
+  liveRateWindowSeconds: withDefault(
+    "LIVE_RATE_WINDOW_SECONDS",
     int(1),
-    "25",
-    "Role rows per insert; 100 bound parameters (D1 limit) over the 4 columns of channel_roles",
+    "10",
+    "Entries are counted over this window for the entries per second on the live page; starting guess",
+  ),
+  mirrorRetrySeconds: withDefault(
+    "MIRROR_RETRY_SECONDS",
+    int(1),
+    "30",
+    "Wait before the room alarm retries a status mirror to the account store; starting guess",
   ),
 }
 
@@ -238,6 +256,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     entryWriteRetryDelaysMs: read(env, configSchema.entryWriteRetryDelaysMs),
     entryWriteJitterPercent: read(env, configSchema.entryWriteJitterPercent),
     helixRetryDelayMs: read(env, configSchema.helixRetryDelayMs),
+    twitchIdBaseUrl: read(env, configSchema.twitchIdBaseUrl),
+    twitchHelixBaseUrl: read(env, configSchema.twitchHelixBaseUrl),
     twitchTimeoutMs: read(env, configSchema.twitchTimeoutMs),
     eventSubSubscribeSeconds: read(env, configSchema.eventSubSubscribeSeconds),
     eventSubReconnectMarginSeconds: read(env, configSchema.eventSubReconnectMarginSeconds),
@@ -248,7 +268,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
     codeInsertRetries: read(env, configSchema.codeInsertRetries),
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
-    rolesInsertChunk: read(env, configSchema.rolesInsertChunk),
+    liveRateWindowSeconds: read(env, configSchema.liveRateWindowSeconds),
+    mirrorRetrySeconds: read(env, configSchema.mirrorRetrySeconds),
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
