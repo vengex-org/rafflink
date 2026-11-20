@@ -884,11 +884,11 @@ describe("chat claim queries", () => {
     expect(details.some((detail) => detail.includes("USING INDEX draws_by_entrant"))).toBe(true)
   })
 
-  it("finds the soonest claim deadline through the waiting-picks index", async () => {
+  it("finds the soonest claim deadline through the index of standing picks", async () => {
     const { db } = await drawnRoom()
 
     const details = plan(db, nextClaimDeadlineSql, [0])
 
-    expect(details.some((detail) => detail.includes("INDEX draws_waiting"))).toBe(true)
+    expect(details.some((detail) => detail.includes("INDEX draws_standing"))).toBe(true)
   })
 })

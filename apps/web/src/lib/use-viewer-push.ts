@@ -33,7 +33,7 @@ export const minViewerSocketGiveUpMs = 60_000
  * The page only listens: it sends nothing, and it stops for good once the push says the giveaway is
  * finished or has given up after {@link maxViewerSocketFailures} failures in a row over at least
  * {@link minViewerSocketGiveUpMs}. A given-up page tries once more when the browser comes back online or
- * the tab becomes visible.
+ * the tab becomes visible at least {@link minViewerSocketGiveUpMs} after it gave up.
  */
 export function useViewerPush(code: string, enabled: boolean): ViewerPush | null {
   const [push, setPush] = useState<ViewerPush | null>(null)
@@ -44,12 +44,12 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
     let socket: WebSocket | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
 
-    let givenUp = false
+    let givenUpAt: number | null = null
 
     // `failures` counts the connections in a row that closed before a valid message; `streakStart` is
     // the time of the first of them.
     const connect = (failures: number, streakStart: number | null) => {
-      givenUp = false
+      givenUpAt = null
       const next = new WebSocket(socketUrl(viewerSocketPath(code)))
       socket = next
       let healthy = false
@@ -76,7 +76,7 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
           && Date.now() - started >= minViewerSocketGiveUpMs
         ) {
           console.warn("viewer socket given up", { failures: failed })
-          givenUp = true
+          givenUpAt = Date.now()
           return
         }
         timer = setTimeout(
@@ -86,17 +86,20 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
       })
     }
 
-    const retryAfterGivingUp = () => {
-      if (givenUp && current && document.visibilityState === "visible") connect(0, null)
+    const retryAfterGivingUp = (minWaitMs: number) => {
+      if (givenUpAt === null || !current || document.visibilityState !== "visible") return
+      if (Date.now() - givenUpAt >= minWaitMs) connect(0, null)
     }
-    window.addEventListener("online", retryAfterGivingUp)
-    document.addEventListener("visibilitychange", retryAfterGivingUp)
+    const retryOnline = () => retryAfterGivingUp(0)
+    const retryVisible = () => retryAfterGivingUp(minViewerSocketGiveUpMs)
+    window.addEventListener("online", retryOnline)
+    document.addEventListener("visibilitychange", retryVisible)
 
     connect(0, null)
     return () => {
       current = false
-      window.removeEventListener("online", retryAfterGivingUp)
-      document.removeEventListener("visibilitychange", retryAfterGivingUp)
+      window.removeEventListener("online", retryOnline)
+      document.removeEventListener("visibilitychange", retryVisible)
       if (timer !== null) clearTimeout(timer)
       socket?.close()
     }

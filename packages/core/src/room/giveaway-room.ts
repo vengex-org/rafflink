@@ -20,6 +20,7 @@ import {
   lastNamesSql,
   nextClaimDeadlineSql,
   lastClaimDeadlineSql,
+  lastStandingDeadlineSql,
   undrawnEntrantSql,
   recentEntriesCountSql,
   waitingPickOfChatterSql,
@@ -224,7 +225,6 @@ export class GiveawayRoom {
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
   // Lost with the object; the first reroll window end after that is not pushed to the live pages.
-  private lastLiveRerollOpen: boolean | null = null
 
   constructor(deps: RoomDeps) {
     this.sql = deps.sql
@@ -348,7 +348,7 @@ export class GiveawayRoom {
       pushNow = this.closeOpenRoom() || pushNow
       state = this.readState()
     }
-    pushNow = (this.lastLiveRerollOpen === true && !this.liveSnapshot().rerollOpen) || pushNow
+    pushNow = (state.status === "drawn" && this.rerollWindowOver()) || pushNow
     if (pushNow) this.guarded("live-push", () => this.pushLive())
     this.guarded("viewer-push", () => this.pushViewers())
     const refreshRoles =
@@ -416,6 +416,7 @@ export class GiveawayRoom {
     const outcome = this.sql.transaction((): RerollOutcome => {
       const current = rerollRefusal(this.readDraw(n))
       if (current !== null) return current
+      if (this.rerollWindowOver()) return { kind: "reroll-window-over" }
       if (this.sql.exec("SELECT n FROM draws WHERE n = ?", [next]).length > 0) {
         return { kind: "try-again" }
       }
@@ -519,7 +520,10 @@ export class GiveawayRoom {
       lastNames,
       winners,
       rerollOpen:
-        state.status === "drawn" && this.rerollWindowEnd() !== null && !this.rerollWindowOver(),
+        state.status === "drawn"
+        && this.rerollWindowEnd() !== null
+        && !this.rerollWindowOver()
+        && this.hasUndrawnEntrant(),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
     }
@@ -661,7 +665,6 @@ export class GiveawayRoom {
     this.lastPushAt = now
     this.pushDueAt = null
     const push: LivePush = { ...this.liveSnapshot(), entrantsAfter: this.entrantsDelta() }
-    this.lastLiveRerollOpen = push.rerollOpen
     this.live.broadcast(JSON.stringify(push))
     this.lastPushedSeq = this.headSeq()
   }
@@ -711,8 +714,12 @@ export class GiveawayRoom {
     return this.sql.exec(undrawnEntrantSql, []).length > 0
   }
 
+  // Counted from the latest deadline of every pick still standing, claimed ones too, so a claim never
+  // pulls the end of the window back; `null` while no unclaimed pick is left to reroll.
   private rerollWindowEnd(): Instant | null {
-    const last = this.lastClaimDeadline()
+    if (this.lastClaimDeadline() === null) return null
+    const row = this.sql.exec(lastStandingDeadlineSql, [])[0]
+    const last = row === undefined ? null : new RowReader("draws", row).nullableInt("deadline")
     return last === null ? null : last + this.config.rerollWindowSeconds * 1000
   }
 

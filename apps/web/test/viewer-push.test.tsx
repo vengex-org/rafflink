@@ -405,6 +405,20 @@ describe("viewer page: reconnect", () => {
     expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures)
 
     showAs("visible")
+    clock.now += minViewerSocketGiveUpMs
+    act(() => document.dispatchEvent(new Event("visibilitychange")))
+    expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures + 1)
+  })
+
+  it("ignores the tab becoming visible until the minimum time has passed since giving up", async () => {
+    const clock = freezeClock()
+    await giveUp(clock)
+
+    clock.now += minViewerSocketGiveUpMs - 1
+    act(() => document.dispatchEvent(new Event("visibilitychange")))
+    expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures)
+
+    clock.now += 1
     act(() => document.dispatchEvent(new Event("visibilitychange")))
     expect(FakeSocket.opened).toHaveLength(maxViewerSocketFailures + 1)
   })

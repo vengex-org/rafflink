@@ -21,6 +21,7 @@ import {
   lastNamesSql,
   recentEntriesCountSql,
   lastClaimDeadlineSql,
+  lastStandingDeadlineSql,
   undrawnEntrantSql,
 } from "./queries.ts"
 
@@ -1123,6 +1124,69 @@ describe("public summary", () => {
     expect(JSON.parse(hub.messages.at(-1) ?? "null")).toMatchObject({ rerollOpen: false })
   })
 
+  it("pushes the end of the reroll window from a new room instance over the same storage", async () => {
+    const { room, sql, clock, alarm } = await drawnRoom()
+    room.markMirrored("drawn")
+    clock.advance(1000)
+    room.onAlarm()
+    const hub = new TestHub()
+    const evicted = new GiveawayRoom({
+      sql,
+      alarm,
+      live: hub,
+      clock,
+      random,
+      config,
+      chat: idleChat,
+    })
+    clock.advance(899_001)
+
+    evicted.onAlarm()
+
+    expect(JSON.parse(hub.messages.at(-1) ?? "null")).toMatchObject({ rerollOpen: false })
+  })
+
+  it("keeps the reroll window of an unclaimed pick open to the end of a later pick's window after that pick claimed", async () => {
+    const { room, sql, clock } = setup()
+    enterMany(room, ["1", "2", "3", "4"])
+    room.close()
+    await room.draw(2)
+    clock.advance(300_001)
+    await room.reroll(1)
+    const later = twitch(String(picks(sql)[2]?.platform_user_id))
+    clock.advance(299_999)
+    expect(room.claim(2, later, "chat").kind).toBe("claimed")
+
+    clock.advance(399_999)
+    expect(room.liveSnapshot().rerollOpen).toBe(true)
+    expect(room.summary().finished).toBe(false)
+    clock.advance(200_003)
+    expect(room.liveSnapshot().rerollOpen).toBe(false)
+    expect(room.summary().finished).toBe(true)
+    expect(await room.reroll(0)).toEqual({ kind: "reroll-window-over" })
+  })
+
+  it("keeps the live snapshot closed for rerolls when every entrant was drawn", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    await room.draw(1)
+    clock.advance(300_001)
+
+    expect(room.liveSnapshot().rerollOpen).toBe(false)
+  })
+
+  it("refuses a reroll that started inside the window but finished after it ended", async () => {
+    const { room, sql, clock } = await drawnRoom()
+    clock.advance(900_000)
+
+    const started = room.reroll(0)
+    clock.advance(1)
+
+    expect(await started).toEqual({ kind: "reroll-window-over" })
+    expect(picks(sql)).toHaveLength(1)
+  })
+
   it("keeps the live snapshot closed for rerolls while entries are open or the draw has no pick to replace", async () => {
     const open = setup()
     const claimed = await drawnRoom()
@@ -1166,12 +1230,20 @@ describe("public summary", () => {
     expect(lastViewerPush(rerolled.hub).finished).toBe(false)
   })
 
-  it("finds the last claim time of the picks a reroll could replace through the waiting index", async () => {
+  it("finds the last claim time of the picks a reroll could replace through the index of standing picks", async () => {
     const { sql } = await drawnRoom()
 
     const details = plan(sql, lastClaimDeadlineSql, [])
 
-    expect(details.some((detail) => detail.includes("INDEX draws_waiting"))).toBe(true)
+    expect(details.some((detail) => detail.includes("INDEX draws_standing"))).toBe(true)
+  })
+
+  it("finds the end of the reroll window through the index of standing picks", async () => {
+    const { sql } = await drawnRoom()
+
+    const details = plan(sql, lastStandingDeadlineSql, [])
+
+    expect(details.some((detail) => detail.includes("INDEX draws_standing"))).toBe(true)
   })
 
   it("looks for an undrawn entrant through the unique index of picks", async () => {

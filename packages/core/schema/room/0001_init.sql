@@ -61,4 +61,4 @@ CREATE TABLE draws (
 
 CREATE UNIQUE INDEX draws_by_entrant ON draws (platform, platform_user_id);
 
-CREATE INDEX draws_waiting ON draws (claim_until) WHERE claimed_at IS NULL AND rerolled = 0
+CREATE INDEX draws_standing ON draws (claim_until) WHERE rerolled = 0

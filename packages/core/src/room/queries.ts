@@ -17,6 +17,10 @@ export const nextClaimDeadlineSql =
 export const lastClaimDeadlineSql =
   "SELECT MAX(claim_until) AS deadline FROM draws WHERE claimed_at IS NULL AND rerolled = 0"
 
+/** The latest claim deadline among picks that are not rerolled, claimed ones included; `deadline` is NULL when none is left. */
+export const lastStandingDeadlineSql =
+  "SELECT MAX(claim_until) AS deadline FROM draws WHERE rerolled = 0"
+
 /** One entrant who was never picked, so a reroll has someone to pick; no row when every entrant was drawn. */
 export const undrawnEntrantSql = `SELECT 1 FROM entries e WHERE NOT EXISTS (
   SELECT 1 FROM draws d WHERE d.platform = e.platform AND d.platform_user_id = e.platform_user_id
