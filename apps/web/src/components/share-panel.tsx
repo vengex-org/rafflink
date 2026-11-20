@@ -26,17 +26,24 @@ export function ObsSteps({
   const { t } = useI18n()
   return (
     <>
-      <ol className="how-to">
-        <li>{t("share.obs.1")}</li>
-        <li>{t("share.obs.2")}</li>
-        <li>{t("share.obs.3")}</li>
-        <li>{t("share.obs.4")}</li>
-      </ol>
+      <ObsStepList />
       <CopyField
         label={t("share.overlay")}
         value={overlayUrl(giveaway.id, giveaway.overlayToken)}
         buttonLabel={t("share.copyOverlay")}
       />
     </>
+  )
+}
+
+export function ObsStepList() {
+  const { t } = useI18n()
+  return (
+    <ol className="how-to">
+      <li>{t("share.obs.1")}</li>
+      <li>{t("share.obs.2")}</li>
+      <li>{t("share.obs.3")}</li>
+      <li>{t("share.obs.4")}</li>
+    </ol>
   )
 }

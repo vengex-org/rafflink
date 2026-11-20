@@ -729,6 +729,38 @@ describe("live page: overlay link", () => {
     expect(copied).toEqual(["http://rafflink.test/overlay/gid-1/tok-1"])
   })
 
+  it("adds the chosen mode and QR code to the overlay link", async () => {
+    const copied = stubClipboard(false)
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("Ada")
+    fireEvent.click(view.getByRole("radio", { name: "Winner only" }))
+    fireEvent.click(view.getByRole("radio", { name: "Show" }))
+
+    const field = view.getByLabelText("Overlay link")
+    expect(field instanceof HTMLInputElement && field.value).toBe(
+      "http://rafflink.test/overlay/gid-1/tok-1?mode=winner&qr=1",
+    )
+    fireEvent.click(view.getByRole("button", { name: "Copy overlay link" }))
+    await view.findByText("Copied!")
+    expect(copied).toEqual(["http://rafflink.test/overlay/gid-1/tok-1?mode=winner&qr=1"])
+  })
+
+  it("keeps the plain overlay link while the defaults are chosen", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("Ada")
+    fireEvent.click(view.getByRole("radio", { name: "Corner badge" }))
+    fireEvent.click(view.getByRole("radio", { name: "Automatic" }))
+
+    const field = view.getByLabelText("Overlay link")
+    expect(field instanceof HTMLInputElement && field.value).toBe(
+      "http://rafflink.test/overlay/gid-1/tok-1",
+    )
+  })
+
   it("keeps the overlay link when a socket push arrives", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 

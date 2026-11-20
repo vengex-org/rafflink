@@ -10,7 +10,9 @@ import {
   rerollWinner,
 } from "../api/client.ts"
 import { ConfirmAction } from "../components/confirm-action.tsx"
+import { CopyField } from "../components/copy-field.tsx"
 import { EntrantsSection } from "../components/entrants-table.tsx"
+import { Segmented, type SegmentOption } from "../components/form-fields.tsx"
 import {
   ActivityIcon,
   AlertIcon,
@@ -30,13 +32,14 @@ import {
   WinnerList,
 } from "../components/live-parts.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
-import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
+import { ObsStepList, ShareLinks } from "../components/share-panel.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { WinnerChat } from "../components/winner-chat.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
-import { shareUrl } from "../lib/links.ts"
+import { overlayUrl, shareUrl } from "../lib/links.ts"
 import { giveawayName } from "../lib/messages.ts"
+import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
 import { peopleText } from "../lib/rules-text.ts"
 import { readStored, writeStored } from "../lib/safe-storage.ts"
 import { useAction } from "../lib/use-action.ts"
@@ -358,10 +361,22 @@ function DrawStep({
   )
 }
 
-/** The overlay link and the OBS steps in a popover, so they take no room on the page that is shown on stream. */
+/** The overlay link and the OBS steps in a popover, so they take no room on the page that is shown on stream. The streamer picks what the overlay shows and the link follows. */
 function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overlayToken: string }) {
   const { t } = useI18n()
   const popoverId = useId()
+  const [mode, setMode] = useState<OverlayMode>("auto")
+  const [qr, setQr] = useState(false)
+  const modeOptions: readonly SegmentOption<OverlayMode>[] = overlayModes.map((value) => ({
+    value,
+    label: t(`live.overlay.mode.${value}`),
+    icon: null,
+    description: t(`live.overlay.mode.${value}.help`),
+  }))
+  const qrOptions: readonly SegmentOption<"on" | "off">[] = [
+    { value: "off", label: t("live.overlay.qr.off"), icon: null, description: "" },
+    { value: "on", label: t("live.overlay.qr.on"), icon: null, description: "" },
+  ]
   return (
     <>
       <button type="button" className="button text" popoverTarget={popoverId}>
@@ -370,7 +385,28 @@ function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overl
       </button>
       <div id={popoverId} popover="auto" className="live-overlay">
         <h2>{t("live.overlay.title")}</h2>
-        <ObsSteps giveaway={{ id, overlayToken }} />
+        <ObsStepList />
+        <Segmented
+          name="overlay-mode"
+          legend={t("live.overlay.mode")}
+          help={null}
+          options={modeOptions}
+          value={mode}
+          onSelect={setMode}
+        />
+        <Segmented
+          name="overlay-qr"
+          legend={t("live.overlay.qr")}
+          help={t("live.overlay.qr.help")}
+          options={qrOptions}
+          value={qr ? "on" : "off"}
+          onSelect={(choice) => setQr(choice === "on")}
+        />
+        <CopyField
+          label={t("share.overlay")}
+          value={withOverlayOptions(overlayUrl(id, overlayToken), { mode, qr })}
+          buttonLabel={t("share.copyOverlay")}
+        />
       </div>
     </>
   )

@@ -38,9 +38,8 @@
 
   /* The OBS overlay sits on gameplay, so it keeps light text and a dark plate in both themes. */
   --overlay-ink: #fafafa;
-  --overlay-plate: rgb(17 17 19 / 0.88);
+  --overlay-plate: #111113;
   --overlay-line: rgb(250 250 250 / 0.6);
-  --overlay-text-shadow: 0 1px 3px rgb(0 0 0 / 0.9), 0 0 16px rgb(0 0 0 / 0.6);
 
   --r-sm: 6px;
   --r: 8px;

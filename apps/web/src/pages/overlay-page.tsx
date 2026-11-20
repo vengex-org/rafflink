@@ -1,16 +1,25 @@
 import { useEffect } from "react"
-import { useParams } from "react-router"
+import { useParams, useSearchParams } from "react-router"
+import type { OverlaySnapshot } from "@rafflink/core/room/giveaway-room"
 import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
-import { ActivityIcon, UsersIcon } from "../components/icons.tsx"
-import { EntrantNames, Stat, WinnerList } from "../components/live-parts.tsx"
-import { Failed, Loading, NotFound } from "../components/notice.tsx"
+import { UsersIcon } from "../components/icons.tsx"
+import { EntrantNames, Stat } from "../components/live-parts.tsx"
+import { Failed, Loading } from "../components/notice.tsx"
+import { QrCode } from "../components/qr-code.tsx"
+import { WinnerPlate } from "../components/winner-plate.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
+import { shareUrl } from "../lib/links.ts"
 import { giveawayName } from "../lib/messages.ts"
+import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
 import { useLive } from "../lib/use-live.ts"
 
-/** The read-only live view for an OBS browser source: no session, a transparent background. */
+/** Names on the compact plate: what a viewer can read in a glance. */
+const newestNames = 3
+
+/** The read-only live view for an OBS browser source: no session, a transparent page, text only on solid plates. */
 export function OverlayPage() {
   const { id, token } = useParams()
+  const [params] = useSearchParams()
   useEffect(() => {
     document.documentElement.dataset.surface = "overlay"
     return () => {
@@ -18,15 +27,31 @@ export function OverlayPage() {
     }
   }, [])
   return id === undefined || token === undefined ? (
-    <NotFound title="notFound.generic" />
+    <OverlayNotFound />
   ) : (
-    <Loaded id={id} token={token} />
+    <Loaded id={id} token={token} options={readOverlayOptions(params)} />
   )
 }
 
-function Loaded({ id, token }: { readonly id: string; readonly token: string }) {
-  const i18n = useI18n()
-  const { t } = i18n
+/** No link back to the home page: this is on stream. */
+function OverlayNotFound() {
+  const { t } = useI18n()
+  return (
+    <main className="overlay">
+      <h1 className="overlay-plate">{t("notFound.generic")}</h1>
+    </main>
+  )
+}
+
+function Loaded({
+  id,
+  token,
+  options,
+}: {
+  readonly id: string
+  readonly token: string
+  readonly options: OverlayOptions
+}) {
   const live = useLive(overlaySnapshotPath(id, token), parseOverlaySnapshot)
   switch (live.state) {
     case "loading":
@@ -35,35 +60,70 @@ function Loaded({ id, token }: { readonly id: string; readonly token: string }) 
       return <Failed />
     case "unauthorized":
     case "not-found":
-      return <NotFound title="notFound.generic" />
-    case "ready": {
-      const { snapshot } = live
+      return <OverlayNotFound />
+    case "ready":
+      return <Overlay snapshot={live.snapshot} options={options} />
+  }
+}
+
+function Overlay({
+  snapshot,
+  options,
+}: {
+  readonly snapshot: OverlaySnapshot
+  readonly options: OverlayOptions
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const heading = <h1 className="sr-only">{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
+  if (snapshot.status === "drawn") {
+    const standing = snapshot.winners.filter((winner) => winner.claim.state !== "rerolled")
+    return (
+      <main className="overlay">
+        {heading}
+        <h2 className="sr-only">{t("overlay.winners")}</h2>
+        <ul className="overlay-winners">
+          {standing.map((winner) => (
+            <li key={winner.n}>
+              <WinnerPlate name={winner.displayName ?? t("winner.removed")} />
+            </li>
+          ))}
+        </ul>
+      </main>
+    )
+  }
+  switch (options.mode) {
+    case "winner":
+      return <main className="overlay">{heading}</main>
+    case "auto":
+    case "compact":
       return (
         <main className="overlay">
-          <h1>{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
-          <p className="overlay-code">{t("overlay.code", { code: snapshot.code })}</p>
-          <dl className="stats">
-            <Stat
-              icon={<UsersIcon />}
-              value={i18n.number(snapshot.entrantCount)}
-              label={t("stat.people")}
-            />
-            <Stat
-              icon={<ActivityIcon />}
-              value={i18n.decimal(snapshot.entriesPerSecond)}
-              label={t("stat.perSecond")}
-            />
-          </dl>
-          <h2>{t("entrants.latest")}</h2>
-          <EntrantNames names={snapshot.lastNames} />
-          {snapshot.winners.length === 0 ? null : (
-            <>
-              <h2>{t("overlay.winners")}</h2>
-              <WinnerList winners={snapshot.winners} actions={null} />
-            </>
-          )}
+          {heading}
+          <div className="overlay-plate overlay-open">
+            <div className="overlay-link">
+              <div className="overlay-chip">
+                <span className="overlay-chip-label">
+                  {snapshot.status === "open" ? t("overlay.enterAt") : t("status.closed")}
+                </span>
+                <span className="overlay-url">
+                  {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
+                </span>
+              </div>
+              {options.qr ? (
+                <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} />
+              ) : null}
+            </div>
+            <dl className="stats">
+              <Stat
+                icon={<UsersIcon />}
+                value={i18n.number(snapshot.entrantCount)}
+                label={t("stat.people")}
+              />
+            </dl>
+            <EntrantNames names={snapshot.lastNames.slice(0, newestNames)} />
+          </div>
         </main>
       )
-    }
   }
 }
