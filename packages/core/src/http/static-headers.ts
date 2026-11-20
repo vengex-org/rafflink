@@ -14,20 +14,20 @@ export function staticCacheControl(pathname: string): string {
 
 /**
  * The `_headers` file of Cloudflare static assets, which are answered without the Worker: the security
- * headers, the cache rules of {@link staticCacheControl} and {@link noindex} for every file but the home page.
+ * headers, the cache rules of {@link staticCacheControl} and {@link noindex} for every path but the home page.
  */
 export function headersFile(security: Readonly<Record<string, string>>): string {
-  const everything = [
-    ...Object.entries(security),
-    ["Cache-Control", revalidate],
-    ["X-Robots-Tag", noindex],
-  ]
+  const everything = [...Object.entries(security), ["Cache-Control", revalidate]]
   const hashed = hashedAssetGlobs.map((glob) =>
     [glob, "  ! Cache-Control", `  Cache-Control: ${immutable}`].join("\n"),
   )
   return [
     ["/*", ...everything.map(([name, value]) => `  ${name}: ${value}`)].join("\n"),
-    ["/", "  ! X-Robots-Tag"].join("\n"),
+    // Cloudflare does not apply a `! X-Robots-Tag` detach under `/` to the home page, so noindex goes on each
+    // page below it instead: `/:segment` never matches `/`, the splats cover the deeper app routes.
+    ...["/:segment", "/g/*", "/live/*", "/overlay/*"].map(
+      (pattern) => `${pattern}\n  X-Robots-Tag: ${noindex}`,
+    ),
     ...hashed,
     "",
   ].join("\n")

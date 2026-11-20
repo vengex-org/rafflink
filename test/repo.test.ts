@@ -90,8 +90,8 @@ describe("repository", () => {
     const headers = await Bun.file(new URL("_headers", dist)).text()
 
     expect(headers).toStartWith("/*\n")
-    expect(headers).toContain("  X-Robots-Tag: noindex, nofollow\n")
-    expect(headers).toContain("\n/\n  ! X-Robots-Tag\n")
+    expect(headers).toContain("\n/:segment\n  X-Robots-Tag: noindex, nofollow\n")
+    expect(headers).not.toContain("! X-Robots-Tag")
     expect(headers).toContain("  Strict-Transport-Security: max-age=31536000; includeSubDomains\n")
     expect(headers).toContain("  Cache-Control: no-cache\n")
   }, 60_000)
