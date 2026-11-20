@@ -7,7 +7,7 @@
     "./index.html": "./index.html"
   },
   "scripts": {
-    "build": "bun build ./index.html --outdir dist --production",
+    "build": "bun build ./index.html --outdir dist --production --public-path /",
     "test": "bun test"
   },
   "dependencies": {
