@@ -74,7 +74,7 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
   useEffect(() => {
     if (deadline === null) return
     const timer = setTimeout(
-      () => dispatch({ type: "expire", now: Date.now() }),
+      () => dispatch({ type: "expire", now: Math.max(Date.now(), deadline) }),
       Math.max(0, deadline - Date.now()),
     )
     return () => clearTimeout(timer)

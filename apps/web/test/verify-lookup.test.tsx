@@ -37,6 +37,15 @@ describe("verify a draw", () => {
     expect(requests.filter((request) => request.route !== "GET /api/session")).toHaveLength(0)
   })
 
+  it("moves focus to the field when the code is invalid, so its error is read", () => {
+    mockFetch({})
+    const view = renderApp("/verify")
+
+    typeCode(view, "not a code")
+
+    expect(document.activeElement).toBe(view.getByLabelText("Giveaway code or link"))
+  })
+
   it("clears the error as soon as the person types again", () => {
     mockFetch({})
     const view = renderApp("/verify")
@@ -69,5 +78,27 @@ describe("verify link in the header and the home footer", () => {
     const footer = within(view.getByRole("navigation", { name: "Footer" }))
     expect(footer.getByRole("link", { name: "Verify a draw" }).getAttribute("href")).toBe("/verify")
     expect(view.getAllByRole("link", { name: "Verify a draw" }).length).toBeGreaterThan(1)
+  })
+})
+
+describe("settings popover", () => {
+  // happy-dom has no Popover API, so the panel stands in for an open popover.
+  it("closes when a link in it opens another page", () => {
+    mockFetch({})
+    const view = renderApp("/privacy")
+    const panel = view.container.querySelector<HTMLElement>("[popover]")
+    if (panel === null) throw new Error("no settings panel")
+    let open = true
+    panel.matches = () => open
+    panel.hidePopover = () => {
+      open = false
+    }
+
+    const link = panel.querySelector("a")
+    if (link === null) throw new Error("the panel has no link")
+    fireEvent.click(link)
+
+    expect(view.getByRole("heading", { level: 1, name: "Verify a draw" })).toBeTruthy()
+    expect(open).toBe(false)
   })
 })

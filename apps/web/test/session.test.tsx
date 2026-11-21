@@ -128,17 +128,23 @@ describe("header session", () => {
     expect(logged).not.toHaveBeenCalled()
   })
 
-  it("asks for the session on the streamer's pages only, not on a giveaway page", async () => {
-    const restoreSocket = installFakeSocket()
-    const requests = mockFetch({ "GET /api/g/ABCDE": () => ok(giveaway) })
+  it.each(["/ABCDE", "/g/ABCDE/verify", "/demo"])(
+    "makes no session call on %s, which viewers visit",
+    async (path) => {
+      const restoreSocket = installFakeSocket()
+      const requests = mockFetch({
+        "GET /api/g/ABCDE": () => ok(giveaway),
+        "GET /api/g/ABCDE/verify": () => ({ status: 404, body: null }),
+      })
 
-    const view = renderApp("/ABCDE")
-    await view.findByRole("heading", { level: 1 })
+      const view = renderApp(path)
+      await setTimeout(50)
 
-    expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
-    expect(requests.map((request) => request.route)).toEqual(["GET /api/g/ABCDE"])
-    restoreSocket()
-  })
+      expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
+      expect(requests.map((request) => request.route)).not.toContain("GET /api/session")
+      restoreSocket()
+    },
+  )
 
   it.each(["/verify", "/privacy", "/terms"])(
     "asks for the session once on %s and shows the account menu signed in",

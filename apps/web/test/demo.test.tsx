@@ -344,7 +344,7 @@ describe("demo views", () => {
     expect(view.container.querySelector(".winner-chat-hint strong")).toBeNull()
   })
 
-  it("shows a later pick as out of time once its claim clock ends", async () => {
+  it("shows a later pick as out of time once its claim clock ends", () => {
     const view = renderApp("/demo?view=streamer")
     advanceInSlices(3000 + 1500 + 5000 + 1500 + 2500 + 3000)
     fireEvent.click(view.getByRole("button", { name: "Draw next winner" }))

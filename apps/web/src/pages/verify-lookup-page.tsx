@@ -12,11 +12,17 @@ export function VerifyLookupPage() {
   const [input, setInput] = useState("")
   const [invalid, setInvalid] = useState(false)
 
-  const open = (event: FormEvent) => {
+  const open = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const code = parseGiveawayCode(input)
     setInvalid(code === null)
-    if (code !== null) navigate(`/g/${code}/verify`)
+    if (code !== null) {
+      navigate(`/g/${code}/verify`)
+      return
+    }
+    // The error is the input's description, so focus there makes a screen reader read it.
+    const field = event.currentTarget.elements.namedItem("code")
+    if (field instanceof HTMLElement) field.focus()
   }
 
   return (

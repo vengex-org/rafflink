@@ -1,4 +1,5 @@
-import { useEffect, useId, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import { languages, type Language } from "../i18n/language.ts"
 import {
@@ -22,6 +23,15 @@ const languageNames: Readonly<Record<Language, string>> = {
 export function SettingsMenu({ children }: { readonly children?: ReactNode | undefined }) {
   const { t } = useI18n()
   const panelId = useId()
+  const panel = useRef<HTMLDivElement>(null)
+  const { pathname } = useLocation()
+
+  // The bar stays mounted across pages, so a link in the open panel would leave it covering the page it opens.
+  useEffect(() => {
+    const element = panel.current
+    if (element !== null && element.matches(":popover-open")) element.hidePopover()
+  }, [pathname])
+
   return (
     <>
       <button
@@ -32,7 +42,7 @@ export function SettingsMenu({ children }: { readonly children?: ReactNode | und
       >
         <SlidersIcon />
       </button>
-      <div id={panelId} popover="auto" className="settings-panel">
+      <div id={panelId} ref={panel} popover="auto" className="settings-panel">
         {children}
         <ThemeSwitch />
         <LanguageSwitch />
