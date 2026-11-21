@@ -109,7 +109,7 @@ describe("home page", () => {
       expect(currentLabel(view)).toBe("Winner drawn")
       expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
       expect(preview.getByText("A gaming chair", { selector: ".overlay-prize" })).toBeTruthy()
-      expect(preview.getAllByText("mira_vex")).toHaveLength(2)
+      expect(preview.getAllByText("Kestrel27")).toHaveLength(2)
       expect(preview.getAllByText("0:42")).toHaveLength(2)
       expect(preview.getByText("You won")).toBeTruthy()
       expect(preview.getByText("Claim my prize")).toBeTruthy()

@@ -19,9 +19,9 @@ describe("StatusChip", () => {
 
 describe("WinnerPlate", () => {
   it("shows the winner name on the plate", () => {
-    const view = render(<WinnerPlate name="mira_vex" />)
+    const view = render(<WinnerPlate name="Kestrel27" />)
 
-    expect(view.getByText("mira_vex").closest(".winner-plate")).not.toBeNull()
+    expect(view.getByText("Kestrel27").closest(".winner-plate")).not.toBeNull()
   })
 })
 

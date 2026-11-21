@@ -158,13 +158,13 @@ const demoClosesAt = ({ step, closesAt }: DemoState) =>
   step === "entered" || step === "rising" ? closesAt : null
 
 const crowd = [
-  "Pixel_Pete",
+  "PixelPete",
   "nova_k",
   "BlueFalcon",
   "tomas_plays",
   "LunaByte",
   "grizzly_g",
-  "Ada_Codes",
+  "AdaCodes",
   "retro_rex",
   "SkyWalker77",
   "mintyfresh",

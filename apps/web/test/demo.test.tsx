@@ -98,7 +98,7 @@ describe("demo page", () => {
     expect(view.getByText("Drawing a winner…")).toBeTruthy()
 
     advance(2500)
-    expect(view.getByText("mira_vex")).toBeTruthy()
+    expect(view.getByText("Kestrel27")).toBeTruthy()
     expect(view.getByText("You won")).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))
@@ -107,7 +107,7 @@ describe("demo page", () => {
     fireEvent.click(view.getByRole("button", { name: "Play again" }))
     expect(view.getByText("Ready to enter?")).toBeTruthy()
     expect(view.getByText("41 people entered")).toBeTruthy()
-    expect(view.queryByText("mira_vex")).toBeNull()
+    expect(view.queryByText("Kestrel27")).toBeNull()
 
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(FakeSocket.opened).toHaveLength(0)
@@ -302,7 +302,7 @@ describe("demo views", () => {
 
     expect(view.queryByText("You are in")).toBeNull()
     expect(view.getByRole("heading", { name: /Entrants/ }).textContent).toContain("42")
-    expect(view.getAllByText("mira_vex").length).toBeGreaterThan(0)
+    expect(view.getAllByText("Kestrel27").length).toBeGreaterThan(0)
 
     advanceInSlices(1500 + 5000 + 1500 + 2500 + 3000)
     expect(view.getByRole("heading", { name: "Winner 1 of 1" })).toBeTruthy()
@@ -322,8 +322,8 @@ describe("demo views", () => {
 
     const chat = within(view.getByRole("region", { name: "Chat" }))
     expect(chat.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-      "mira_vexthank you so much!!",
-      "mira_vexI will message you on discord",
+      "Kestrel27thank you so much!!",
+      "Kestrel27I will message you on discord",
     ])
 
     fireEvent.click(view.getByRole("radio", { name: "Viewer" }))
@@ -362,7 +362,7 @@ describe("demo views", () => {
     expect(view.queryByText("Ready to enter?")).toBeNull()
     advanceInSlices(3000 + 1500 + 5000 + 1500 + 2500 + 3000)
 
-    fireEvent.click(view.getByRole("button", { name: "Mark as claimed for mira_vex" }))
+    fireEvent.click(view.getByRole("button", { name: "Mark as claimed for Kestrel27" }))
     fireEvent.click(view.getByRole("radio", { name: "Viewer" }))
 
     expect(view.getByText("Prize claimed")).toBeTruthy()
@@ -378,13 +378,13 @@ describe("demo views", () => {
     advanceInSlices(5500)
     expect(view.getByRole("heading", { name: "Winner 1 of 1" })).toBeTruthy()
 
-    fireEvent.click(view.getByRole("button", { name: "Reroll mira_vex" }))
+    fireEvent.click(view.getByRole("button", { name: "Reroll Kestrel27" }))
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
     advanceInSlices(2000)
     fireEvent.click(view.getByRole("radio", { name: "Viewer" }))
 
     expect(view.getByText("Another winner was picked")).toBeTruthy()
-    expect(view.queryByText("mira_vex")).toBeNull()
+    expect(view.queryByText("Kestrel27")).toBeNull()
   })
 
   it("sends no request and opens no socket from the streamer's view", async () => {
@@ -396,7 +396,7 @@ describe("demo views", () => {
     fireEvent.click(view.getByRole("button", { name: "Closed" }))
     fireEvent.click(view.getByRole("button", { name: "Yes, close entries" }))
     advanceInSlices(10_000)
-    fireEvent.click(view.getByRole("button", { name: "Mark as claimed for mira_vex" }))
+    fireEvent.click(view.getByRole("button", { name: "Mark as claimed for Kestrel27" }))
     await act(() => Promise.resolve())
     fireEvent.click(view.getByRole("button", { name: "Draw next winner" }))
     advanceInSlices(10_000)
