@@ -704,4 +704,53 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Tyto podmínky můžeme změnit. Datum na začátku ukazuje aktuální verzi a používáním služby po změně ji přijímáš. Giveaway můžeme odstranit a účet zablokovat, pokud porušuje tyto podmínky.",
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Dotazy k těmto podmínkám: {contactEmail}.",
+  "drawResult.round-pending":
+    "Náhodné číslo pro toto losování ještě není zveřejněné. Zkus to znovu za pár sekund.",
+  "drawResult.beacon-unavailable":
+    "Zdroj náhody (drand) se nepodařilo zastihnout. Nic se nevylosovalo. Zkus to znovu.",
+  "giveaway.verify.link": "Ověřit toto losování",
+  "verify.title": "Ověření losování",
+  "verify.intro":
+    "Ve svém prohlížeči zkontroluj, že vítězové vycházejí ze seznamu přihlášek a z veřejného náhodného čísla, které tu nikdo neovládá.",
+  "verify.back": "Zpět na giveaway",
+  "verify.open": "Přihlašování ještě běží. Seznam přihlášek se uzamkne, až se přihlašování uzavře.",
+  "verify.closed.pending":
+    "Přihlašování je uzavřené a seznam se právě uzamyká. Za chvíli stránku načti znovu.",
+  "verify.unverifiable":
+    "Toto losování proběhlo dřív, než šla losování ověřovat, takže není co kontrolovat.",
+  "verify.facts.entrants": "Přihlášení",
+  "verify.facts.tickets": "Tikety",
+  "verify.facts.root": "Merkle root",
+  "verify.facts.chain": "Řetězec drand",
+  "verify.facts.round": "Kolo drand",
+  "verify.facts.leaves": "Seznam přihlášek",
+  "verify.facts.leavesLink": "Otevřít seznam přihlášek",
+  "verify.run": "Ověřit",
+  "verify.running": "Kontroluji…",
+  "verify.check.counts.match": "Seznam má tolik přihlášek a tiketů, kolik se oznámilo.",
+  "verify.check.counts.mismatch": "Seznam nemá oznámený počet přihlášek a tiketů.",
+  "verify.check.root.match": "Merkle root seznamu je zveřejněný root.",
+  "verify.check.root.mismatch": "Merkle root seznamu není zveřejněný root.",
+  "verify.check.winners.match":
+    "Vítězové vycházejí ze seznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.mismatch":
+    "Vítězové nevycházejí ze seznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.unavailable": "Kolo drand {round} se nepodařilo přečíst. Zkus to později.",
+  "verify.check.winners.none": "Zatím nejsou vylosovaní žádní vítězové, takže není co porovnat.",
+  "verify.winners.title": "Vítězové",
+  "verify.winner.entry": "Výběr {n} je přihláška {leaf} ze seznamu.",
+  "verify.winner.rerolled": "(vylosovaný znovu)",
+  "verify.mine.title": "Tvoje přihláška",
+  "verify.mine.signedOut":
+    "Přihlas se na stránce giveaway stejným účtem jako při přihlášení do losování a zkontroluj svou přihlášku.",
+  "verify.mine.hint":
+    "Tvoje přihláška se hashuje z těchto hodnot a tvé soukromé soli. Sůl nesdílej.",
+  "verify.mine.platform": "Platforma",
+  "verify.mine.user": "ID uživatele",
+  "verify.mine.salt": "Sůl (soukromá)",
+  "verify.mine.noSalt":
+    "Tvoje přihláška zatím nemá sůl. Dostane ji, až se přihlašování uzavře. Načti stránku později.",
+  "verify.mine.found": "Tvoje přihláška je přihláška {leaf} ze seznamu, s {tickets} tikety.",
+  "verify.mine.won": "Jsi výběr {n}.",
+  "verify.mine.missing": "Tvoje přihláška není v seznamu.",
 }

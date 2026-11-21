@@ -1,8 +1,14 @@
 import type { Context } from "hono"
+import { toHex } from "../lib/encoding.ts"
 import type { Giveaway } from "../accounts/account-store.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import type { Instant } from "../ports.ts"
-import type { LiveSnapshot, WinnerClaim } from "../room/giveaway-room.ts"
+import type {
+  LiveSnapshot,
+  Verification,
+  VerifiedPick,
+  WinnerClaim,
+} from "../room/giveaway-room.ts"
 import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
@@ -49,6 +55,35 @@ export type ViewerState =
     }
   | { readonly kind: "not-won"; readonly userId: string }
 
+/** The public facts a visitor checks a draw against; `commitment` is null before the commit and for a giveaway drawn before commitments existed. */
+export interface VerifyJson {
+  readonly status: RoomStatus
+  readonly entrantCount: number
+  readonly ticketTotal: number
+  readonly commitment: {
+    /** Lower-case hex. */
+    readonly merkleRoot: string
+    readonly chainHash: string
+    /** The drand round whose randomness seeded the draw. */
+    readonly round: number
+  } | null
+  readonly picks: readonly VerifiedPick[]
+}
+
+/** The published leaves in leaf order: `hashes[i]` is lower-case hex and `tickets[i]` belongs to it. */
+export interface LeavesJson {
+  readonly hashes: readonly string[]
+  readonly tickets: readonly number[]
+}
+
+/** The preimage of the signed-in viewer's own leaf; `salt` is lower-case hex, null until the room commits for an entry written before salts existed. */
+export interface MyLeafJson {
+  readonly platform: string
+  readonly platformUserId: string
+  readonly tickets: number
+  readonly salt: string | null
+}
+
 /** Who the streamer cookie belongs to; `null` when there is no valid session. */
 export interface SessionJson {
   readonly streamer: { readonly displayName: string; readonly login: string } | null
@@ -75,6 +110,17 @@ export type OwnerLiveSnapshot = LiveSnapshot & { readonly overlayToken: string }
 export interface EntrantsPage {
   readonly rows: readonly Entrant[]
   readonly more: boolean
+}
+
+export function verifyJson(chainHash: string, verification: Verification): VerifyJson {
+  const { commitment, ...rest } = verification
+  return {
+    ...rest,
+    commitment:
+      commitment === null
+        ? null
+        : { merkleRoot: toHex(commitment.merkleRoot), chainHash, round: commitment.drandRound },
+  }
 }
 
 export function dashboardGiveaway(giveaway: Giveaway): DashboardGiveaway {

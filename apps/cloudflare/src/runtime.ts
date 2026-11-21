@@ -1,7 +1,9 @@
 import { AccountStore } from "@rafflink/core/accounts/account-store"
+import { DrandBeacon } from "@rafflink/core/beacon/drand-beacon"
 import type { StreamerTokenDeps } from "@rafflink/core/accounts/streamer-token"
 import { resolveConfig, type ResolvedConfig } from "@rafflink/core/config"
 import { openKeyRing } from "@rafflink/core/lib/seal"
+import type { RandomnessBeacon } from "@rafflink/core/ports"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { D1AsyncSql } from "./adapters/d1-async-sql.ts"
@@ -12,6 +14,7 @@ import { settingsOf, type WorkerEnv } from "./env.ts"
 export interface Runtime extends StreamerTokenDeps {
   readonly config: ResolvedConfig
   readonly entryUserLimiter: RateLimitBindingLimiter
+  readonly beacon: RandomnessBeacon
 }
 
 const runtimes = new WeakMap<WorkerEnv, Promise<Runtime>>()
@@ -32,6 +35,7 @@ async function openRuntime(env: WorkerEnv): Promise<Runtime> {
     random: systemRandom,
     // Called through a wrapper: the global `fetch` throws when it is called as a method of another object.
     twitch: new TwitchClient(config, (input, init) => fetch(input, init)),
+    beacon: new DrandBeacon(config, (input, init) => fetch(input, init), systemRandom),
     accounts: new AccountStore(new D1AsyncSql(env.DB), config),
     keyRing: await openKeyRing(config.tokenSealKeys),
     entryUserLimiter: new RateLimitBindingLimiter(env.ENTRY_USER_LIMITER),

@@ -13,6 +13,7 @@ import type {
   TextSocket,
 } from "../ports.ts"
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
+import { FakeBeacon } from "../../test/fake-beacon.ts"
 import {
   ChatConnectionLost,
   ChatWatcher,
@@ -587,6 +588,7 @@ function roomUnderTest(
     random,
     config,
     chat: chatLink,
+    beacon: new FakeBeacon(),
   })
   room.init(roomInit(options.claimKeyword ?? null))
   return {
@@ -828,6 +830,7 @@ describe("chat watch lifetime", () => {
       random,
       config,
       chat: { connector: revivedConnector, subscribe: new Subscriptions().subscribe },
+      beacon: new FakeBeacon(),
     })
 
     revived.onAlarm()

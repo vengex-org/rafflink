@@ -22,6 +22,29 @@ export interface Random {
   bytes(length: number): Uint8Array
 }
 
+/** One published round of a public randomness beacon. `randomness` is the 32-byte seed the round yields. */
+export interface BeaconRound {
+  readonly round: number
+  readonly randomness: Uint8Array<ArrayBuffer>
+  /** Lower-case hex of the beacon's signature over the round. */
+  readonly signature: string
+}
+
+/** Why a round could not be read: `not-yet` it is not published, `unavailable` the beacon failed or answered nonsense. */
+export type BeaconAnswer =
+  | { readonly kind: "round"; readonly round: BeaconRound }
+  | { readonly kind: "not-yet" }
+  | { readonly kind: "unavailable" }
+
+/**
+ * Reads rounds of a public randomness beacon (drand) so the draw seed is a value nobody here chose. Any
+ * implementation retries transient failures itself and never invents a round: it answers `not-yet` or
+ * `unavailable` instead.
+ */
+export interface RandomnessBeacon {
+  fetchRound(round: number): Promise<BeaconAnswer>
+}
+
 /** The single wake-up timer of one room. Any implementation keeps at most one pending alarm: `set` replaces it, `clear` cancels it. */
 export interface Alarm {
   set(at: Instant): void

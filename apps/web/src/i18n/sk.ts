@@ -704,4 +704,53 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Tieto podmienky môžeme zmeniť. Dátum na začiatku ukazuje aktuálnu verziu a používaním služby po zmene ju prijímaš. Giveaway môžeme odstrániť a účet zablokovať, ak porušuje tieto podmienky.",
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Otázky k týmto podmienkam: {contactEmail}.",
+  "drawResult.round-pending":
+    "Náhodné číslo pre toto žrebovanie ešte nie je zverejnené. Skús to znova o pár sekúnd.",
+  "drawResult.beacon-unavailable":
+    "Zdroj náhody (drand) sa nepodarilo zastihnúť. Nič sa nevyžrebovalo. Skús to znova.",
+  "giveaway.verify.link": "Overiť toto žrebovanie",
+  "verify.title": "Overenie žrebovania",
+  "verify.intro":
+    "Vo svojom prehliadači skontroluj, že víťazi vychádzajú zo zoznamu zápisov a z verejného náhodného čísla, ktoré tu nikto neovláda.",
+  "verify.back": "Späť na giveaway",
+  "verify.open": "Zápis ešte beží. Zoznam zápisov sa uzamkne, keď sa zápis uzavrie.",
+  "verify.closed.pending":
+    "Zápis je uzavretý a zoznam sa práve uzamyká. Za chvíľu stránku načítaj znova.",
+  "verify.unverifiable":
+    "Toto žrebovanie prebehlo skôr, než sa dali žrebovania overovať, takže nie je čo kontrolovať.",
+  "verify.facts.entrants": "Zapísaní",
+  "verify.facts.tickets": "Tikety",
+  "verify.facts.root": "Merkle root",
+  "verify.facts.chain": "Reťazec drand",
+  "verify.facts.round": "Kolo drand",
+  "verify.facts.leaves": "Zoznam zápisov",
+  "verify.facts.leavesLink": "Otvoriť zoznam zápisov",
+  "verify.run": "Overiť",
+  "verify.running": "Kontrolujem…",
+  "verify.check.counts.match": "Zoznam má toľko zápisov a tiketov, koľko sa oznámilo.",
+  "verify.check.counts.mismatch": "Zoznam nemá oznámený počet zápisov a tiketov.",
+  "verify.check.root.match": "Merkle root zoznamu je zverejnený root.",
+  "verify.check.root.mismatch": "Merkle root zoznamu nie je zverejnený root.",
+  "verify.check.winners.match":
+    "Víťazi vychádzajú zo zoznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.mismatch":
+    "Víťazi nevychádzajú zo zoznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.unavailable": "Kolo drand {round} sa nepodarilo prečítať. Skús to neskôr.",
+  "verify.check.winners.none": "Zatiaľ nie sú vyžrebovaní žiadni víťazi, takže nie je čo porovnať.",
+  "verify.winners.title": "Víťazi",
+  "verify.winner.entry": "Výber {n} je zápis {leaf} zo zoznamu.",
+  "verify.winner.rerolled": "(vyžrebovaný znova)",
+  "verify.mine.title": "Tvoj zápis",
+  "verify.mine.signedOut":
+    "Prihlás sa na stránke giveawayu rovnakým účtom ako pri zápise a skontroluj svoj zápis.",
+  "verify.mine.hint":
+    "Tvoj zápis sa hashuje z týchto hodnôt a tvojej súkromnej soli. Soľ nezdieľaj.",
+  "verify.mine.platform": "Platforma",
+  "verify.mine.user": "ID používateľa",
+  "verify.mine.salt": "Soľ (súkromná)",
+  "verify.mine.noSalt":
+    "Tvoj zápis zatiaľ nemá soľ. Dostane ju, keď sa zápis uzavrie. Načítaj stránku neskôr.",
+  "verify.mine.found": "Tvoj zápis je zápis {leaf} zo zoznamu, s {tickets} tiketmi.",
+  "verify.mine.won": "Si výber {n}.",
+  "verify.mine.missing": "Tvoj zápis nie je v zozname.",
 }

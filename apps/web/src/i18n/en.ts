@@ -700,6 +700,54 @@ export const en = {
     "We may change these terms. The date at the top shows the current version, and using the service after a change means you accept it. We may remove a giveaway or block an account that breaks these terms.",
   "terms.contact.h": "Contact",
   "terms.contact.p1": "Questions about these terms: {contactEmail}.",
+  "drawResult.round-pending":
+    "The random number for this draw is not published yet. Try again in a few seconds.",
+  "drawResult.beacon-unavailable":
+    "Could not reach the random source (drand). Nothing was drawn. Try again.",
+  "giveaway.verify.link": "Verify this draw",
+  "verify.title": "Verify this draw",
+  "verify.intro":
+    "Check in your browser that the winners follow from the list of entries and from a public random number that nobody here controls.",
+  "verify.back": "Back to the giveaway",
+  "verify.open": "Entries are still open. The list of entries is fixed when they close.",
+  "verify.closed.pending": "Entries are closed and the list is being fixed. Reload in a moment.",
+  "verify.unverifiable":
+    "This giveaway was drawn before draws could be verified, so there is nothing to check.",
+  "verify.facts.entrants": "Entrants",
+  "verify.facts.tickets": "Tickets",
+  "verify.facts.root": "Merkle root",
+  "verify.facts.chain": "drand chain",
+  "verify.facts.round": "drand round",
+  "verify.facts.leaves": "Entry list",
+  "verify.facts.leavesLink": "Open the entry list",
+  "verify.run": "Verify",
+  "verify.running": "Checking…",
+  "verify.check.counts.match": "The list has as many entries and tickets as announced.",
+  "verify.check.counts.mismatch":
+    "The list does not have the announced number of entries and tickets.",
+  "verify.check.root.match": "The Merkle root of the list is the published root.",
+  "verify.check.root.mismatch": "The Merkle root of the list is not the published root.",
+  "verify.check.winners.match":
+    "The winners follow from the list and the random number of drand round {round}.",
+  "verify.check.winners.mismatch":
+    "The winners do not follow from the list and the random number of drand round {round}.",
+  "verify.check.winners.unavailable": "Could not read drand round {round}. Try again later.",
+  "verify.check.winners.none": "No winners are drawn yet, so there is nothing to compare.",
+  "verify.winners.title": "Winners",
+  "verify.winner.entry": "Pick {n} is entry {leaf} of the list.",
+  "verify.winner.rerolled": "(rerolled)",
+  "verify.mine.title": "Your entry",
+  "verify.mine.signedOut":
+    "Sign in on the giveaway page with the account you entered with to check your own entry.",
+  "verify.mine.hint":
+    "Your entry is hashed from these values and your private salt. Do not share the salt.",
+  "verify.mine.platform": "Platform",
+  "verify.mine.user": "User id",
+  "verify.mine.salt": "Salt (private)",
+  "verify.mine.noSalt": "Your entry has no salt yet. It gets one when entries close. Reload later.",
+  "verify.mine.found": "Your entry is entry {leaf} of the list, with {tickets} tickets.",
+  "verify.mine.won": "You are pick {n}.",
+  "verify.mine.missing": "Your entry is not in the list.",
 } as const satisfies Record<string, string>
 
 export type MessageKey = keyof typeof en

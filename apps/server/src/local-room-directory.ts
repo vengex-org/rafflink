@@ -10,7 +10,7 @@ import {
   type RoomDirectory,
   type RoomStub,
 } from "@rafflink/core/room/room-directory"
-import type { Clock, Random, SocketConnector } from "@rafflink/core/ports"
+import type { Clock, Random, RandomnessBeacon, SocketConnector } from "@rafflink/core/ports"
 import { BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { openDatabase } from "./database.ts"
 import { TimerAlarm } from "./timer-alarm.ts"
@@ -21,6 +21,8 @@ export interface LocalRoomDirectoryDeps {
   readonly config: RoomConfig
   readonly clock: Clock
   readonly random: Random
+  /** Where the rooms read the drand round their draw is seeded with. */
+  readonly beacon: RandomnessBeacon
   /** Sends one text to every socket subscribed to the topic. */
   readonly publish: (topic: string, message: string) => void
   /** Runs when a room's alarm fires; its error is logged and goes no further. */
@@ -130,6 +132,7 @@ export class LocalRoomDirectory implements RoomDirectory {
       clock: this.deps.clock,
       random: this.deps.random,
       config: this.deps.config,
+      beacon: this.deps.beacon,
       chat: {
         connector: this.deps.connector,
         subscribe: (sessionId) => this.deps.subscribeChat(giveawayId, sessionId),
@@ -179,6 +182,15 @@ class LocalRoomStub implements RoomStub {
   }
   entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
     return inRoom(() => this.room.entrants(...args))
+  }
+  leafOf(...args: Parameters<GiveawayRoom["leafOf"]>) {
+    return inRoom(() => this.room.leafOf(...args))
+  }
+  verification() {
+    return inRoom(() => this.room.verification())
+  }
+  leaves() {
+    return inRoom(() => this.room.leaves())
   }
   close() {
     return inRoom(() => this.room.close())

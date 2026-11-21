@@ -335,22 +335,26 @@ queue_stats(id, rate_per_second, cooldown_until, dropped, abandoned_results, los
 -- inside each giveaway's room
 room_state(id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds,
            status, closes_at, seed, entrant_count, ticket_total, role_refresh_failures,
-           eventsub_failures, chat_unavailable, roles_refresh_at, mirror_pending)
-entries(platform, platform_user_id, login, display_name, group_name, tickets, entered_at,
+           eventsub_failures, chat_unavailable, roles_refresh_at, mirror_pending,
+           merkle_root, drand_round)
+entries(platform, platform_user_id, login, display_name, group_name, tickets, entered_at, salt,
         PRIMARY KEY (platform, platform_user_id)) WITHOUT ROWID
 channel_roles(platform, platform_user_id, role, fetched_at,
               PRIMARY KEY (platform, platform_user_id, role)) WITHOUT ROWID
 draws(n, platform, platform_user_id, drawn_at, claim_until, claimed_at, claimed_via, rerolled,
-      PRIMARY KEY (n))
+      leaf_index, PRIMARY KEY (n))
+leaves(chunk, data)
 ```
 
-Left out of the M1 schema because M2 adds them: `merkle_root`, `drand_round` and the per-entry `salt`. There is
+Room migration 0003 adds `merkle_root`, `drand_round`, `entries.salt`, `draws.leaf_index` and `leaves` (the leaf
+list, 1000 leaves of 40 bytes per row). All are nullable or new, so a room created before it keeps working. There is
 no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Platforms).
 
 - `giveaways.status` and `room_state.status` are `open`, `closed` or `drawn`. The room owns the status, the
   accounts store mirrors it, and the room alarm retries a mirror that failed.
 - `overlay_token`: the credential of the read-only overlay URL of the live page, compared in constant time.
-- `room_state.seed`: 32 random bytes written at the draw (see The draw).
+- `room_state.seed`: 32 bytes written at the draw: the randomness of the drand round in `drand_round` (a room
+  drawn before 0003 holds 32 random bytes and no root; the verify page reports it as unverifiable).
 
 - `draws.claimed_via`: `rafflink` (the winner pressed Claim), `chat` (the chat watch saw a message) or
   `manual` (the streamer marked it while the chat watch was down).
@@ -447,6 +451,17 @@ of the id could be brute-forced into a list of who entered.
   static assets or by the VPS server.
 - Hosting targets: Cloudflare and a VPS from one core with ports and a shared contract test suite.
 - Code: public repo `vengex-org/rafflink` on GitHub, license AGPL-3.0.
+
+Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
+
+- The room commits from its alarm right after the close and again at the draw if the alarm has not run; `close()`
+  stays synchronous. The draw never uses local randomness: while the round is missing it answers `round-pending`
+  (409) or `beacon-unavailable` (503) and draws nothing.
+- Leaf = SHA-256(`platform|platformUserId|tickets|` + salt), node = SHA-256(0x01 + left + right), an odd node
+  moves up unchanged. The drand signature is not verified with BLS on the Worker (10 ms CPU limit); the chain hash
+  is pinned in the request path and randomness must equal SHA-256 of the signature.
+- An open or closed room from before the migration gets salts at commit and draws the new way; a room that was
+  already drawn stays on its random seed and is reported unverifiable.
 
 Decisions made while building M1 (2026-11-20):
 

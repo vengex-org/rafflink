@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto"
 import { describe, expect, it } from "bun:test"
-import { drawWinners, indexFromDigest, pickWinner, type DrawEntry } from "./draw.ts"
+import { drawLeafPicks, drawWinners, indexFromDigest, pickWinner, type DrawEntry } from "./draw.ts"
 
 const seed = new Uint8Array(32).fill(7)
 const entries: DrawEntry[] = [
@@ -27,7 +27,12 @@ describe("drawWinners", () => {
     const index = Number(firstWord() % 8n)
     const expected = index < 5 ? "1" : index < 7 ? "2" : "3"
     const [winner] = await drawWinners(seed, entries, 1)
-    expect(winner).toEqual({ n: 0, platform: "twitch", platformUserId: expected })
+    expect(winner).toEqual({
+      n: 0,
+      leafIndex: Number(expected) - 1,
+      platform: "twitch",
+      platformUserId: expected,
+    })
   })
 
   it("sorts by platform before platform user id", async () => {
@@ -88,25 +93,6 @@ describe("drawWinners", () => {
   })
 })
 
-describe("drawWinners guard", () => {
-  it("throws when the ticket index falls outside the candidates instead of dropping the last one", async () => {
-    // The ticket total is read once, then the entry shrinks, so the drawn index points past every run.
-    let reads = 0
-    const shrinking: DrawEntry = {
-      platform: "twitch",
-      platformUserId: "1",
-      get tickets() {
-        reads += 1
-        return reads === 1 ? 1_000_000 : 1
-      },
-    }
-
-    await expect(drawWinners(seed, [shrinking], 1)).rejects.toThrow(
-      "ticket index outside the ticket total",
-    )
-  })
-})
-
 describe("pickWinner", () => {
   it("skips earlier winners including rerolled ones", async () => {
     const [first, second] = await drawWinners(seed, entries, 2)
@@ -146,5 +132,77 @@ describe("indexFromDigest", () => {
     const digest = new Uint8Array(8)
     new DataView(digest.buffer).setBigUint64(0, 10n)
     expect(indexFromDigest(digest, 4n)).toBe(2n)
+  })
+})
+
+// Expected picks come from an independent implementation (Python hmac) of the same sampling.
+describe("drawLeafPicks", () => {
+  it("picks the known leaves for a known seed", async () => {
+    expect(await drawLeafPicks(seed, [5, 2, 1], 3)).toEqual([
+      { n: 0, leafIndex: 0 },
+      { n: 1, leafIndex: 1 },
+      { n: 2, leafIndex: 2 },
+    ])
+    expect(await drawLeafPicks(seed, Array(10).fill(1), 4)).toEqual([
+      { n: 0, leafIndex: 8 },
+      { n: 1, leafIndex: 0 },
+      { n: 2, leafIndex: 7 },
+      { n: 3, leafIndex: 2 },
+    ])
+  })
+
+  it("picks the known leaves for a drand randomness", async () => {
+    const randomness = Uint8Array.from(
+      "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3".match(/../g) ?? [],
+      (pair) => Number.parseInt(pair, 16),
+    )
+
+    expect(await drawLeafPicks(randomness, [3, 1, 4, 1, 5, 9, 2, 6], 5)).toEqual([
+      { n: 0, leafIndex: 0 },
+      { n: 1, leafIndex: 2 },
+      { n: 2, leafIndex: 3 },
+      { n: 3, leafIndex: 6 },
+      { n: 4, leafIndex: 5 },
+    ])
+  })
+
+  it("stops when no tickets remain", async () => {
+    expect(await drawLeafPicks(seed, [2, 1], 5)).toHaveLength(2)
+    expect(await drawLeafPicks(seed, [], 3)).toEqual([])
+  })
+
+  it("rejects a count that is not a non-negative safe integer", async () => {
+    for (const count of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      await expect(drawLeafPicks(seed, [1], count)).rejects.toThrow(RangeError)
+    }
+  })
+
+  it("gives the same positions as the winners of the sorted entries", async () => {
+    const sorted = entries.toSorted((a, b) => a.platformUserId.localeCompare(b.platformUserId))
+    const winners = await drawWinners(seed, entries, 3)
+
+    expect(winners.map(({ n, leafIndex }) => ({ n, leafIndex }))).toEqual(
+      await drawLeafPicks(
+        seed,
+        sorted.map((entry) => entry.tickets),
+        3,
+      ),
+    )
+    for (const winner of winners) {
+      expect(sorted[winner.leafIndex]?.platformUserId).toBe(winner.platformUserId)
+    }
+  })
+})
+
+describe("pickWinner leaf index", () => {
+  it("is the position among all sorted entries, not among the remaining ones", async () => {
+    const [first] = await drawWinners(seed, entries, 1)
+    if (first === undefined) throw new Error("expected a winner")
+    const again = await pickWinner(seed, 1, entries, [first])
+    const sorted = entries.toSorted((a, b) => a.platformUserId.localeCompare(b.platformUserId))
+
+    expect(again?.leafIndex).toBe(
+      sorted.findIndex((entry) => entry.platformUserId === again?.platformUserId),
+    )
   })
 })

@@ -83,6 +83,10 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
         case "drawn":
           await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "drawn")
           return c.json({ kind: "drawn", winners: outcome.winners.map((winner) => winner.n) })
+        case "round-pending":
+          return c.json({ kind: outcome.kind, availableAt: outcome.availableAt }, 409)
+        case "beacon-unavailable":
+          return c.json({ kind: outcome.kind }, 503)
         case "not-closed":
         case "already-drawn":
         case "entries-deleted":

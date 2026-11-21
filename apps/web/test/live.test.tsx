@@ -264,6 +264,34 @@ describe("live page: drawing", () => {
     expect(requests.at(-1)?.body).toEqual({ count: 2 })
   })
 
+  it.each([
+    [
+      "round-pending",
+      409,
+      "The random number for this draw is not published yet. Try again in a few seconds.",
+    ],
+    [
+      "beacon-unavailable",
+      503,
+      "Could not reach the random source (drand). Nothing was drawn. Try again.",
+    ],
+  ])(
+    "tells the streamer nothing was drawn when the answer is %s",
+    async (kind, status, message) => {
+      mockLive({
+        "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
+        "POST /api/dash/giveaways/gid-1/draw": () => ({ status, body: { kind, availableAt: 1 } }),
+      })
+
+      const view = renderApp("/live/gid-1")
+      fireEvent.click(await view.findByRole("button", { name: "Draw winners" }))
+      fireEvent.click(view.getByRole("button", { name: "Yes, draw winners" }))
+
+      expect(await view.findByText(message)).toBeTruthy()
+      expect(view.getByRole("button", { name: "Draw winners" })).toBeTruthy()
+    },
+  )
+
   it("asks about one winner in the singular", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
 

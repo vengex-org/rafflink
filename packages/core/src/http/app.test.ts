@@ -12,6 +12,7 @@ import {
   type Harness,
 } from "../../test/app-fixture.ts"
 import { codeAlphabet, codeLength } from "../lib/codes.ts"
+import { drandChain, roundTime } from "../lib/drand.ts"
 import { openSecret } from "../lib/seal.ts"
 import { RoomTransientError } from "../room/room-directory.ts"
 import { oauthStatesPerFlow } from "./session.ts"
@@ -1795,5 +1796,114 @@ describe("viewer socket route", () => {
 
     expect(response.status).toBe(426)
     expect(response.headers.get("x-rafflink-room")).toBeNull()
+  })
+})
+
+async function committedGiveaway() {
+  const created = await createGiveaway(harness)
+  const viewer = new Browser(harness)
+  await viewerSignIn(users.viewer.id, created.code, viewer)
+  await created.browser.postJson(`/api/dash/giveaways/${created.id}/close`, {})
+  await harness.rooms.roomFor(created.id).commit()
+  return { ...created, viewer }
+}
+
+describe("draw commitment", () => {
+  it("answers 404 for a code that does not exist, on every verification route", async () => {
+    const browser = new Browser(harness)
+    await viewerSignIn(users.viewer.id, (await createGiveaway(harness)).code, browser)
+
+    for (const path of ["verify", "leaves", "my-leaf"]) {
+      const response = await browser.request(`/api/g/NOPE0/${path}`)
+      expect(response.status).toBe(404)
+    }
+  })
+
+  it("shows an open giveaway without a commitment and refuses its leaves", async () => {
+    const { code } = await createGiveaway(harness)
+
+    const verify = await new Browser(harness).request(`/api/g/${code}/verify`)
+    const leaves = await new Browser(harness).request(`/api/g/${code}/leaves`)
+
+    expect(await verify.json()).toEqual({
+      status: "open",
+      entrantCount: 0,
+      ticketTotal: 0,
+      commitment: null,
+      picks: [],
+    })
+    expect(leaves.status).toBe(409)
+    expect(await leaves.json()).toEqual({ error: "not-committed" })
+    expect(leaves.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("publishes the root, the chain and the round, and the leaves for good", async () => {
+    const { code } = await committedGiveaway()
+
+    const verify = await new Browser(harness).request(`/api/g/${code}/verify`)
+    const leaves = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const body: { commitment: { merkleRoot: string; chainHash: string; round: number } } =
+      await verify.json()
+    const list: { hashes: string[]; tickets: number[] } = await leaves.json()
+
+    expect(body.commitment.merkleRoot).toMatch(/^[0-9a-f]{64}$/)
+    expect(body.commitment.chainHash).toBe(harness.config.drandChainHash)
+    expect(body.commitment.round).toBeGreaterThan(0)
+    expect(verify.headers.get("cache-control")).toBe("no-store")
+    expect(list.hashes).toHaveLength(1)
+    expect(list.tickets).toEqual([1])
+    expect(leaves.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
+  })
+
+  it("gives the salt to the entrant's browser only, and keeps it out of the public answers", async () => {
+    const { code, viewer } = await committedGiveaway()
+    const stranger = new Browser(harness)
+    await viewerSignIn(users.viewer2.id, code, stranger)
+
+    const mine = await viewer.request(`/api/g/${code}/my-leaf`)
+    const theirs = await stranger.request(`/api/g/${code}/my-leaf`)
+    const anonymous = await new Browser(harness).request(`/api/g/${code}/my-leaf`)
+    const body: { salt: string } = await mine.json()
+    const publicText =
+      (await (await new Browser(harness).request(`/api/g/${code}/verify`)).text())
+      + (await (await new Browser(harness).request(`/api/g/${code}/leaves`)).text())
+      + JSON.stringify(await pageOf(undefined, code))
+
+    expect(mine.status).toBe(200)
+    expect(mine.headers.get("cache-control")).toBe("no-store")
+    expect(body).toMatchObject({ platform: "twitch", platformUserId: users.viewer.id, tickets: 1 })
+    expect(body.salt).toMatch(/^[0-9a-f]{32}$/)
+    expect(theirs.status).toBe(404)
+    expect(await theirs.json()).toEqual({ error: "not-entered" })
+    expect(anonymous.status).toBe(401)
+    expect(publicText).not.toContain(body.salt)
+  })
+
+  it("answers a draw before the round is published with 409 and the time, and draws on a repeat", async () => {
+    const { id, browser } = await committedGiveaway()
+    harness.rooms.beacon.answer = "not-yet"
+
+    const early = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
+    harness.rooms.beacon.answer = "round"
+    const drawn = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
+
+    const round = harness.rooms.roomFor(id).verification().commitment?.drandRound ?? 0
+    expect(early.status).toBe(409)
+    expect(await early.json()).toEqual({
+      kind: "round-pending",
+      availableAt: roundTime(drandChain(harness.config), round),
+    })
+    expect(await drawn.json()).toEqual({ kind: "drawn", winners: [0] })
+  })
+
+  it("answers a draw while the beacon fails with 503 and keeps the giveaway closed", async () => {
+    const { id, code, browser } = await committedGiveaway()
+    harness.rooms.beacon.answer = "unavailable"
+
+    const response = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({ kind: "beacon-unavailable" })
+    expect(await pageOf(undefined, code)).toMatchObject({ status: "closed" })
   })
 })

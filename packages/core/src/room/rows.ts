@@ -18,7 +18,13 @@ export class RoomRowError extends Error {
   }
 }
 
-/** The one `room_state` row, parsed. A drawn room has its seed, any other has none; an open room has no close time, any other has one. */
+/** What a closed room committed to before the draw: the Merkle root over its entrants and the drand round that will seed the draw. */
+export interface Commitment {
+  readonly merkleRoot: Uint8Array<ArrayBuffer>
+  readonly drandRound: number
+}
+
+/** The one `room_state` row, parsed. A drawn room has its seed, any other has none; an open room has no close time, any other has one. A room that closed before commitments existed has no commitment. */
 export type RoomState = {
   readonly platform: string
   readonly giveawayId: string
@@ -38,6 +44,7 @@ export type RoomState = {
   readonly mirrorPending: boolean
   /** The retention alarm deleted the entrants' data. */
   readonly entriesDeleted: boolean
+  readonly commitment: Commitment | null
 } & (
   | { readonly status: "open"; readonly seed: null; readonly closedAt: null }
   | { readonly status: "closed"; readonly seed: null; readonly closedAt: Instant }
@@ -57,6 +64,8 @@ export interface DrawRow {
   readonly claimUntil: Instant
   readonly claim: DrawClaim
   readonly rerolled: boolean
+  /** Null for a pick drawn before commitments existed. */
+  readonly leafIndex: number | null
 }
 
 export interface EntrySummary {
@@ -89,6 +98,7 @@ export function parseState(
     rolesRefreshAt: reader.nullableInt("roles_refresh_at"),
     mirrorPending: reader.int("mirror_pending") === 1,
     entriesDeleted: reader.int("entries_deleted") === 1,
+    commitment: parseCommitment(reader),
   }
   const status = reader.oneOf("status", roomStatuses)
   const seed = reader.nullableBlob("seed")
@@ -117,6 +127,7 @@ export function parseDraw(row: SqlRow): DrawRow {
     claimUntil: reader.int("claim_until"),
     claim: parseClaim(claimedAt, claimedVia),
     rerolled: reader.int("rerolled") === 1,
+    leafIndex: reader.nullableInt("leaf_index"),
   }
 }
 
@@ -178,6 +189,12 @@ export class RowReader {
     return this.row[column] === null ? null : this.int(column)
   }
 
+  blob(column: string): Uint8Array<ArrayBuffer> {
+    const value = this.nullableBlob(column)
+    if (value === null) throw new RoomRowError(this.table, column)
+    return value
+  }
+
   nullableBlob(column: string): Uint8Array<ArrayBuffer> | null {
     const value = this.row[column]
     if (value === null) return null
@@ -191,6 +208,15 @@ export class RowReader {
     if (found === undefined) throw new RoomRowError(this.table, column)
     return found
   }
+}
+
+function parseCommitment(reader: RowReader): Commitment | null {
+  const merkleRoot = reader.nullableBlob("merkle_root")
+  const drandRound = reader.nullableInt("drand_round")
+  if (merkleRoot === null && drandRound === null) return null
+  if (merkleRoot === null || drandRound === null)
+    throw new RoomRowError("room_state", "merkle_root")
+  return { merkleRoot, drandRound }
 }
 
 function parseClaim(claimedAt: Instant | null, claimedVia: string | null): DrawClaim {

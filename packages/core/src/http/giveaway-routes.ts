@@ -6,7 +6,14 @@ import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
 import { errorClass } from "../lib/error-class.ts"
-import type { PublicGiveaway, ViewerState } from "./json.ts"
+import { toHex } from "../lib/encoding.ts"
+import {
+  verifyJson,
+  type LeavesJson,
+  type MyLeafJson,
+  type PublicGiveaway,
+  type ViewerState,
+} from "./json.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import { viewerRoomHeader } from "./viewer-socket.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
@@ -79,6 +86,51 @@ export function giveawayRoutes(deps: AppDeps): Hono {
       }
     }
     return c.json(pendingOutcome(polled, ticket))
+  })
+
+  app.get("/api/g/:code/verify", async (c) => {
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    c.header("Cache-Control", "no-store")
+    const verification = await deps.rooms.get(giveaway.id).verification()
+    return c.json(verifyJson(deps.config.drandChainHash, verification))
+  })
+
+  app.get("/api/g/:code/leaves", async (c) => {
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    const leaves = await deps.rooms.get(giveaway.id).leaves()
+    if (leaves === null) {
+      c.header("Cache-Control", "no-store")
+      return c.json({ error: "not-committed" }, 409)
+    }
+    // The list never changes once the room committed.
+    c.header("Cache-Control", "public, max-age=31536000, immutable")
+    const body: LeavesJson = {
+      hashes: leaves.map((leaf) => toHex(leaf.hash)),
+      tickets: leaves.map((leaf) => leaf.tickets),
+    }
+    return c.json(body)
+  })
+
+  // The salt is the entrant's secret: only the browser that holds the viewer cookie of that entry gets it.
+  app.get("/api/g/:code/my-leaf", async (c) => {
+    c.header("Cache-Control", "no-store")
+    const session = await readViewerSession(c, deps)
+    if (session === null) return c.json({ error: "unauthorized" }, 401)
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    const leaf = await deps.rooms
+      .get(giveaway.id)
+      .leafOf({ platform: session.platform, platformUserId: session.userId })
+    if (leaf === null) return c.json({ error: "not-entered" }, 404)
+    const body: MyLeafJson = {
+      platform: leaf.platform,
+      platformUserId: leaf.platformUserId,
+      tickets: leaf.tickets,
+      salt: leaf.salt === null ? null : toHex(leaf.salt),
+    }
+    return c.json(body)
   })
 
   app.post("/api/g/:code/claim", async (c) => {

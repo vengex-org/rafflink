@@ -1,5 +1,6 @@
 import { describe } from "bun:test"
 import { chatClaimScenarios } from "./chat-claim.scenarios.ts"
+import { commitmentScenarios } from "./commitment.scenarios.ts"
 import { entryScenarios } from "./entry.scenarios.ts"
 import { giveawayScenarios } from "./giveaway.scenarios.ts"
 import { liveScenarios } from "./live.scenarios.ts"
@@ -24,6 +25,7 @@ export function defineContract(
     entryScenarios(context)
     queueScenarios(context)
     giveawayScenarios(context)
+    commitmentScenarios(context)
     liveScenarios(context)
     viewerPushScenarios(context)
     chatClaimScenarios(context)

@@ -5,6 +5,7 @@ import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streame
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import type { ResolvedConfig } from "@rafflink/core/config"
 import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
+import { DrandBeacon } from "@rafflink/core/beacon/drand-beacon"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { MemoryPublicCache } from "@rafflink/core/lib/memory-public-cache"
@@ -72,6 +73,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     config,
     clock,
     random,
+    beacon: new DrandBeacon(config, fetch, random),
     publish: (topic, message) => void server.publish(topic, message),
     onAlarm: (giveawayId, room) => runRoomAlarm(tokenDeps, giveawayId, room),
     connector: new BunSocketConnector(),

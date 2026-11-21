@@ -48,6 +48,15 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
   async entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
     return (await this.opened).room.entrants(...args)
   }
+  async leafOf(...args: Parameters<GiveawayRoom["leafOf"]>) {
+    return (await this.opened).room.leafOf(...args)
+  }
+  async verification() {
+    return (await this.opened).room.verification()
+  }
+  async leaves() {
+    return (await this.opened).room.leaves()
+  }
   async close() {
     return (await this.opened).room.close()
   }
@@ -123,6 +132,7 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
       clock: runtime.clock,
       random: runtime.random,
       config: runtime.config,
+      beacon: runtime.beacon,
       chat: {
         connector: new DurableObjectSocketConnector(),
         subscribe: (sessionId) => subscribeChat(runtime, this.giveawayId(), sessionId),

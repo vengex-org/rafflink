@@ -2,9 +2,13 @@ import { Database } from "bun:sqlite"
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { resolveConfig } from "../config.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
-import { drawWinners } from "../lib/draw.ts"
+import { drawLeafPicks, drawWinners } from "../lib/draw.ts"
+import { quicknet, roundTime } from "../lib/drand.ts"
+import { toHex } from "../lib/encoding.ts"
+import { leafHash, merkleRoot } from "../lib/merkle.ts"
 import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql } from "../ports.ts"
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
+import { FakeBeacon, fakeRandomness } from "../../test/fake-beacon.ts"
 import { idleChat } from "../../test/idle-chat.ts"
 import {
   GiveawayRoom,
@@ -124,16 +128,26 @@ function viewer(id: string, overrides: Partial<RoomViewer> = {}): RoomViewer {
   }
 }
 
-function setup(init: GiveawayInit = giveaway) {
+function setup(init: GiveawayInit = giveaway, rng: Random = random) {
   const db = new Database(":memory:")
   const sql = new RecordingSql(new BunSqliteSyncSql(db))
   applyMigrations(sql, roomMigrations)
   const clock = new TestClock(0)
   const alarm = new TestAlarm()
   const hub = new TestHub()
-  const room = new GiveawayRoom({ sql, alarm, live: hub, clock, random, config, chat: idleChat })
+  const beacon = new FakeBeacon()
+  const room = new GiveawayRoom({
+    sql,
+    alarm,
+    live: hub,
+    clock,
+    random: rng,
+    config,
+    chat: idleChat,
+    beacon,
+  })
   room.init(init)
-  return { room, sql, clock, alarm, hub }
+  return { room, sql, clock, alarm, hub, beacon }
 }
 
 function enterMany(room: GiveawayRoom, ids: readonly string[]): void {
@@ -496,7 +510,7 @@ describe("GiveawayRoom roles", () => {
 describe("GiveawayRoom alarm", () => {
   it("closes the room at the end time and asks for a status mirror", () => {
     const { room, clock, alarm } = setup({ ...giveaway, closesAt: 5000 })
-    expect(room.onAlarm()).toEqual({ refreshRoles: true, mirrorStatus: null })
+    expect(room.onAlarm()).toEqual({ refreshRoles: true, mirrorStatus: null, commit: false })
     room.replaceRoles([], [])
     expect(alarm.at).toBe(5000)
 
@@ -504,7 +518,7 @@ describe("GiveawayRoom alarm", () => {
     const duties = room.onAlarm()
 
     expect(room.summary().status).toBe("closed")
-    expect(duties).toEqual({ refreshRoles: false, mirrorStatus: "closed" })
+    expect(duties).toEqual({ refreshRoles: false, mirrorStatus: "closed", commit: true })
     expect(room.enter(viewer("1"))).toEqual({ kind: "closed" })
   })
 
@@ -532,10 +546,11 @@ describe("GiveawayRoom alarm", () => {
     expect(room.onAlarm().refreshRoles).toBe(false)
   })
 
-  it("retries a pending mirror after the retry delay until it is marked", () => {
+  it("retries a pending mirror after the retry delay until it is marked", async () => {
     const { room, clock, alarm } = setup()
     room.replaceRoles([], [])
     room.close()
+    await room.commit()
     expect(room.onAlarm().mirrorStatus).toBeNull()
     expect(alarm.at).toBe(30_000)
 
@@ -1020,6 +1035,7 @@ describe("viewer push", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
     const before = hub.viewerMessages.length
 
@@ -1154,6 +1170,7 @@ describe("public summary", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
     clock.advance(899_001)
 
@@ -1408,6 +1425,7 @@ describe("GiveawayRoom retention", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
 
     room.armAlarm()
@@ -1430,6 +1448,7 @@ describe("GiveawayRoom retention", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
 
     room.armAlarm()
@@ -1483,5 +1502,360 @@ describe("GiveawayRoom retention", () => {
     sql.exec("UPDATE room_state SET closed_at = NULL", [])
 
     expect(() => room.summary()).toThrow(RoomRowError)
+  })
+})
+
+// A salt per call that differs from every other, so leaves can be told apart.
+function countingRandom(): Random {
+  let next = 0
+  return {
+    bytes: (length) => {
+      next += 1
+      return new Uint8Array(length).fill(next % 256)
+    },
+  }
+}
+
+const genesisMs = quicknet.genesisSeconds * 1000
+
+describe("GiveawayRoom salt", () => {
+  it("gives each entry 16 random bytes", () => {
+    const { room, sql } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2"])
+
+    const salts = sql.exec("SELECT salt FROM entries ORDER BY seq", []).map((row) => row.salt)
+
+    expect(salts).toEqual([new Uint8Array(16).fill(1), new Uint8Array(16).fill(2)])
+  })
+
+  it("shows the salt to nobody but its entry through leafOf", () => {
+    const { room } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2"])
+
+    expect(room.leafOf(twitch("2"))).toEqual({
+      ...twitch("2"),
+      tickets: 1,
+      salt: new Uint8Array(16).fill(2),
+    })
+    expect(room.leafOf(twitch("3"))).toBeNull()
+  })
+
+  it("keeps the salt out of every push to a page", () => {
+    const { room, hub } = setup(giveaway, countingRandom())
+    enterMany(room, ["1"])
+    room.close()
+
+    const texts = [...hub.messages, ...hub.overlayMessages, ...hub.viewerMessages].join()
+
+    expect(texts).not.toContain("salt")
+    expect(JSON.stringify(room.summary())).not.toContain("salt")
+    expect(JSON.stringify(room.liveSnapshot())).not.toContain("salt")
+  })
+})
+
+function saltOf(sql: SyncSql, id: string): Uint8Array<ArrayBuffer> {
+  const salt = sql.exec("SELECT salt FROM entries WHERE platform_user_id = ?", [id])[0]?.salt
+  if (!(salt instanceof Uint8Array)) throw new Error("entry has no salt")
+  return new Uint8Array(salt)
+}
+
+describe("GiveawayRoom commit", () => {
+  it("stores the Merkle root over the leaves sorted by platform user id, and the leaves", async () => {
+    const { room, sql, clock } = setup(giveaway, countingRandom())
+    clock.advance(genesisMs)
+    enterMany(room, ["30", "10", "20"])
+    room.close()
+
+    await room.commit()
+
+    const expected = await Promise.all(
+      ["10", "20", "30"].map((id) =>
+        leafHash({ ...twitch(id), tickets: 1, salt: saltOf(sql, id) }),
+      ),
+    )
+    const leaves = room.leaves()
+    expect(leaves?.map((leaf) => toHex(leaf.hash))).toEqual(expected.map(toHex))
+    expect(leaves?.map((leaf) => leaf.tickets)).toEqual([1, 1, 1])
+    expect(room.verification().commitment?.merkleRoot).toEqual(await merkleRoot(expected))
+  })
+
+  it("commits to the first round at least the lead after the close, and to nothing before the close", async () => {
+    const { room, clock } = setup()
+    clock.advance(genesisMs)
+    await room.commit()
+    expect(room.verification().commitment).toBeNull()
+    expect(room.leaves()).toBeNull()
+
+    room.close()
+    await room.commit()
+
+    // 30 s after genesis is the time of round 11.
+    expect(room.verification().commitment?.drandRound).toBe(11)
+    expect(roundTime(quicknet, 11)).toBe(genesisMs + 30_000)
+  })
+
+  it("commits an empty room to the root of nothing", async () => {
+    const { room } = setup()
+    room.close()
+
+    await room.commit()
+
+    expect(room.leaves()).toEqual([])
+    expect(room.verification().commitment?.merkleRoot).toEqual(await merkleRoot([]))
+  })
+
+  it("writes the leaves in chunks that read back whole and in order", async () => {
+    const { room, sql } = setup()
+    const ids = Array.from({ length: 1001 }, (_, i) => String(i).padStart(5, "0"))
+    enterMany(room, ids)
+    room.close()
+
+    await room.commit()
+
+    expect(sql.exec("SELECT COUNT(*) AS c FROM leaves", [])[0]?.c).toBe(2)
+    expect(room.leaves()).toHaveLength(1001)
+    expect(room.verification().entrantCount).toBe(1001)
+  })
+
+  it("commits once when two commits run at the same time", async () => {
+    const { room, sql } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2"])
+    room.close()
+
+    await Promise.all([room.commit(), room.commit()])
+
+    expect(sql.exec("SELECT COUNT(*) AS c FROM leaves", [])[0]?.c).toBe(1)
+    expect(room.leaves()).toHaveLength(2)
+  })
+
+  it("leaves an open room and a committed room alone", async () => {
+    const { room, clock } = setup()
+    enterMany(room, ["1"])
+    await room.commit()
+    expect(room.verification().commitment).toBeNull()
+
+    room.close()
+    await room.commit()
+    const first = room.verification().commitment
+    clock.advance(60_000)
+    await room.commit()
+
+    expect(room.verification().commitment).toEqual(first)
+  })
+
+  it("is due from the alarm right after the close and again after the retry delay while it fails", async () => {
+    const { room, clock, alarm } = setup()
+    room.replaceRoles([], [])
+    room.close()
+    expect(alarm.at).toBe(0)
+
+    expect(room.onAlarm().commit).toBe(true)
+    expect(alarm.at).toBe(30_000)
+    clock.advance(29_999)
+    expect(room.onAlarm().commit).toBe(false)
+    clock.advance(1)
+    expect(room.onAlarm().commit).toBe(true)
+
+    await room.commit()
+    clock.advance(60_000)
+    expect(room.onAlarm().commit).toBe(false)
+  })
+
+  it("is due when the end time closes the room", () => {
+    const { room, clock } = setup({ ...giveaway, closesAt: 5000 })
+    room.replaceRoles([], [])
+    clock.advance(5000)
+
+    expect(room.onAlarm().commit).toBe(true)
+  })
+})
+
+// The database of the code before commitments existed, with entries written by raw SQL, then upgraded in place.
+function legacyRoom(ids: readonly string[], status: "open" | "closed", rng: Random) {
+  const sql = new BunSqliteSyncSql(new Database(":memory:"))
+  applyMigrations(sql, roomMigrations.slice(0, 1))
+  sql.exec(
+    "INSERT INTO room_state (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, entrant_count, ticket_total) VALUES (1, 'twitch', 'g1', 'broadcaster', 'Giveaway', 'ABCDE', ?, 300, ?, ?, ?)",
+    [JSON.stringify(rules), status, ids.length, ids.length],
+  )
+  for (const [index, id] of ids.entries()) {
+    sql.exec(
+      "INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at) VALUES (?, 'twitch', ?, ?, ?, 'viewer', 1, 0)",
+      [index + 1, id, `login${id}`, `Name${id}`],
+    )
+  }
+  return {
+    sql,
+    upgrade() {
+      applyMigrations(sql, roomMigrations)
+      return new GiveawayRoom({
+        sql,
+        alarm: new TestAlarm(),
+        live: new TestHub(),
+        clock: new TestClock(0),
+        random: rng,
+        config,
+        chat: idleChat,
+        beacon: new FakeBeacon(),
+      })
+    },
+  }
+}
+
+describe("GiveawayRoom of an older database", () => {
+  it("salts an entry written before salts existed at commit, and keeps the salt it got", async () => {
+    const { sql, upgrade } = legacyRoom(["1"], "closed", countingRandom())
+    const room = upgrade()
+    expect(room.leafOf(twitch("1"))?.salt).toBeNull()
+
+    await room.commit()
+
+    const salt = saltOf(sql, "1")
+    expect(room.leafOf(twitch("1"))?.salt).toEqual(salt)
+    expect(room.leaves()?.map((leaf) => toHex(leaf.hash))).toEqual([
+      toHex(await leafHash({ ...twitch("1"), tickets: 1, salt })),
+    ])
+  })
+
+  it("lets an entry of the older code enter a room that is still open, and commit later", async () => {
+    const { upgrade } = legacyRoom(["1"], "open", countingRandom())
+    const room = upgrade()
+
+    expect(room.enter(viewer("2")).kind).toBe("entered")
+    room.close()
+    await room.commit()
+
+    expect(room.leaves()).toHaveLength(2)
+  })
+
+  it("reports a room drawn before commitments existed as having none, and still rerolls it", async () => {
+    const { sql, upgrade } = legacyRoom(["1", "2", "3"], "closed", random)
+    sql.exec("UPDATE room_state SET status = 'drawn', seed = ?", [new Uint8Array(32).fill(9)])
+    sql.exec(
+      "INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until) VALUES (0, 'twitch', '1', 0, 300000)",
+      [],
+    )
+    const room = upgrade()
+
+    await room.commit()
+    const outcome = await room.reroll(0)
+
+    expect(room.verification()).toMatchObject({
+      status: "drawn",
+      commitment: null,
+      picks: [{ n: 0, leafIndex: null, rerolled: true }, { n: 1 }],
+    })
+    expect(room.leaves()).toBeNull()
+    expect(room.onAlarm().commit).toBe(false)
+    expect(outcome.kind).toBe("rerolled")
+  })
+})
+
+describe("GiveawayRoom damaged commitment", () => {
+  it("refuses a leaf chunk that is not whole records and one that holds an impossible ticket count", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1"])
+    room.close()
+    await room.commit()
+
+    sql.exec("UPDATE leaves SET data = ?", [new Uint8Array(39)])
+    expect(() => room.leaves()).toThrow(RoomRowError)
+
+    sql.exec("UPDATE leaves SET data = ?", [new Uint8Array(40).fill(255)])
+    expect(() => room.leaves()).toThrow(RoomRowError)
+  })
+
+  it("refuses a root without a round and a round without a root", () => {
+    const { room, sql } = setup()
+    room.close()
+
+    sql.exec("UPDATE room_state SET merkle_root = ?", [new Uint8Array(32)])
+    expect(() => room.verification()).toThrow(RoomRowError)
+
+    sql.exec("UPDATE room_state SET merkle_root = NULL, drand_round = 5", [])
+    expect(() => room.verification()).toThrow(RoomRowError)
+  })
+})
+
+describe("GiveawayRoom draw with drand", () => {
+  it("commits at the draw when the alarm has not yet, and seeds the draw with the round it committed to", async () => {
+    const { room, sql, beacon } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2", "3"])
+    room.close()
+
+    const outcome = await room.draw(2)
+
+    const round = room.verification().commitment?.drandRound
+    expect(round).toBeGreaterThan(0)
+    expect(beacon.requested).toEqual([round ?? -1])
+    expect(sql.exec("SELECT seed FROM room_state", [])[0]?.seed).toEqual(fakeRandomness)
+    expect(outcome.kind).toBe("drawn")
+  })
+
+  it("draws nothing while the round is not published and says when it comes", async () => {
+    const { room, sql, beacon, clock } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.close()
+    beacon.answer = "not-yet"
+
+    const outcome = await room.draw(1)
+
+    expect(outcome).toEqual({ kind: "round-pending", availableAt: genesisMs + 30_000 })
+    expect(room.summary().status).toBe("closed")
+    expect(sql.exec("SELECT seed FROM room_state", [])[0]?.seed).toBeNull()
+    expect(picks(sql)).toEqual([])
+  })
+
+  it("draws nothing while the beacon fails and draws on a repeat", async () => {
+    const { room, sql, beacon } = setup()
+    enterMany(room, ["1"])
+    room.close()
+    beacon.answer = "unavailable"
+
+    expect(await room.draw(1)).toEqual({ kind: "beacon-unavailable" })
+    expect(room.summary().status).toBe("closed")
+    expect(picks(sql)).toEqual([])
+
+    beacon.answer = "round"
+    expect((await room.draw(1)).kind).toBe("drawn")
+  })
+
+  it("asks for random bytes only for salts, never for a seed", async () => {
+    const lengths: number[] = []
+    const { room } = setup(giveaway, {
+      bytes: (length) => {
+        lengths.push(length)
+        return new Uint8Array(length)
+      },
+    })
+    enterMany(room, ["1", "2"])
+    room.close()
+    await room.draw(1)
+
+    expect(lengths).toEqual([16, 16])
+  })
+
+  it("stores the leaf index of every pick, rerolls included, and they replay from the leaves", async () => {
+    const { room, sql } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2", "3", "4"])
+    room.close()
+    await room.draw(2)
+    await room.reroll(0)
+
+    const leaves = room.leaves() ?? []
+    const replay = await drawLeafPicks(
+      fakeRandomness,
+      leaves.map((leaf) => leaf.tickets),
+      3,
+    )
+
+    expect(room.verification().picks).toEqual(
+      replay.map((pick) => ({ n: pick.n, leafIndex: pick.leafIndex, rerolled: pick.n === 0 })),
+    )
+    const ids = sql.exec("SELECT platform_user_id FROM draws ORDER BY n", [])
+    expect(ids.map((row) => row.platform_user_id)).toEqual(
+      replay.map((pick) => String(pick.leafIndex + 1)),
+    )
   })
 })

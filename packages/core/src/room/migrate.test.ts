@@ -68,6 +68,13 @@ describe("applyMigrations", () => {
     expect(() => applyMigrations(sql, ["CREATE TABLE a (id INTEGER)"])).toThrow(RangeError)
   })
 
+  it("refuses a room database that applied the commitment migration when the code lacks it", () => {
+    const sql = openSql()
+    applyMigrations(sql, roomMigrations)
+
+    expect(() => applyMigrations(sql, roomMigrations.slice(0, 1))).toThrow(RangeError)
+  })
+
   it("lists every file of schema/room in order", () => {
     const files = readdirSync(new URL("../../schema/room", import.meta.url)).toSorted()
     expect(files).toHaveLength(roomMigrations.length)

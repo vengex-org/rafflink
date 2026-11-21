@@ -1,9 +1,10 @@
+import { errorClass } from "../lib/error-class.ts"
 import type { StreamerTokenDeps } from "../accounts/streamer-token.ts"
 import type { GiveawayRoom } from "./giveaway-room.ts"
 import { mirrorStatus } from "./mirror-status.ts"
 import { openGiveawayStreamerAccess } from "./streamer-access.ts"
 
-/** What the room's alarm asks of the adapter: the role lists need Twitch, the status mirror needs the account store. */
+/** What the room's alarm asks of the adapter: the role lists need Twitch, the commit is asynchronous, the status mirror needs the account store. */
 export async function runRoomAlarm(
   deps: StreamerTokenDeps,
   giveawayId: string,
@@ -11,8 +12,18 @@ export async function runRoomAlarm(
 ): Promise<void> {
   const duties = room.onAlarm()
   if (duties.refreshRoles) await refreshRoles(deps, giveawayId, room)
+  if (duties.commit) await commitRoom(giveawayId, room)
   if (duties.mirrorStatus !== null)
     await mirrorStatus(room, deps.accounts, giveawayId, duties.mirrorStatus)
+}
+
+// A failed commit stays due in the room, whose alarm retries it, so nothing is thrown here.
+async function commitRoom(giveawayId: string, room: GiveawayRoom): Promise<void> {
+  try {
+    await room.commit()
+  } catch (error) {
+    console.warn("room commit failed", { giveawayId, errorClass: errorClass(error) })
+  }
 }
 
 // Every failure is counted on the room, whose live page shows it; the room logs it with the giveaway id.
