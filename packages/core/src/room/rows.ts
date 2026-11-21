@@ -55,8 +55,12 @@ export type RoomState = {
   readonly commitRetryAt: Instant | null
   /** The alarm used up its attempts and logged it. */
   readonly commitGaveUp: boolean
-  /** How many winners the draw picks; settled while entries are open. */
+  /** How many winners the streamer planned; the draw does not stop there. */
   readonly winnerCount: number
+  /** The streamer pressed Draw before the round was published; the alarm draws once it is. */
+  readonly drawRequested: boolean
+  /** When the alarm tries a requested draw next; null before the first try. */
+  readonly drawRetryAt: Instant | null
 } & (
   | { readonly status: "open"; readonly seed: null; readonly closedAt: null }
   | { readonly status: "closed"; readonly seed: null; readonly closedAt: Instant }
@@ -115,6 +119,8 @@ export function parseState(
     commitRetryAt: reader.nullableInt("commit_retry_at"),
     commitGaveUp: reader.int("commit_gave_up") === 1,
     winnerCount: reader.int("winner_count"),
+    drawRequested: reader.int("draw_requested") === 1,
+    drawRetryAt: reader.nullableInt("draw_retry_at"),
   }
   const status = reader.oneOf("status", roomStatuses)
   const seed = reader.nullableBlob("seed")

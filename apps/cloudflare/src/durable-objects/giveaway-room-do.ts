@@ -60,6 +60,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async close() {
     return (await this.opened).room.close()
   }
+  async requestDraw() {
+    return (await this.opened).room.requestDraw()
+  }
   async draw(...args: Parameters<GiveawayRoom["draw"]>) {
     return (await this.opened).room.draw(...args)
   }

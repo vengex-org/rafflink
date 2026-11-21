@@ -14,6 +14,7 @@ export type RoomStub = Remote<
     | "verification"
     | "leaves"
     | "close"
+    | "requestDraw"
     | "draw"
     | "setWinnerCount"
     | "reroll"

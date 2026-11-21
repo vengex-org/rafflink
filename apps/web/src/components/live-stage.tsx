@@ -6,6 +6,7 @@ import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { peopleText } from "../lib/rules-text.ts"
 import { useRemainingMs } from "../lib/use-remaining.ts"
 import { claimTone, Countdown } from "./countdown.tsx"
+import { DrawShuffle } from "./draw-shuffle.tsx"
 import { UsersIcon } from "./icons.tsx"
 import type { Doing } from "./live-bar.tsx"
 import { Avatar, claimLabel, EarlierPicks, msUntil, Stat } from "./live-parts.tsx"
@@ -14,6 +15,7 @@ import { StatusChip } from "./status-chip.tsx"
 import { WinnerChat } from "./winner-chat.tsx"
 import { WinnerPlate } from "./winner-plate.tsx"
 import { standingWinners } from "../lib/standing-winners.ts"
+import { useDrawShuffle } from "../lib/use-draw-shuffle.ts"
 
 /** What the stage shows for each step: that entries are open, the closed count, or the winner of the moment with the claim clock. */
 export function LiveStage({
@@ -35,6 +37,10 @@ export function LiveStage({
   /** False in clean mode: viewers' chat text must not reach a shared screen. */
   readonly showChat: boolean
 }) {
+  const shuffle = useDrawShuffle(snapshot)
+  if (shuffle.shuffling) {
+    return <ShuffleStage names={shuffle.names} waitMs={waitMsOf(snapshot)} />
+  }
   switch (snapshot.status) {
     case "open":
       return <OpenStage snapshot={snapshot} />
@@ -53,6 +59,33 @@ export function LiveStage({
       )
   }
 }
+
+/** The winner slot while a draw is pending: names flash and the pick lands in its place. Picks stay out of it until the shuffle ends. */
+function ShuffleStage({
+  names,
+  waitMs,
+}: {
+  readonly names: readonly string[]
+  readonly waitMs: number | null
+}) {
+  const { t } = useI18n()
+  const headId = useId()
+  return (
+    <section className="live-stage" aria-labelledby={headId}>
+      <div className="live-stage-head">
+        <h2 id={headId}>{t("live.draw.due")}</h2>
+      </div>
+      <div className="live-reveal">
+        <div className="live-winner">
+          <DrawShuffle key={waitMs} names={names} waitMs={waitMs} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const waitMsOf = (snapshot: LiveSnapshot) =>
+  snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
 
 function OpenStage({ snapshot }: { readonly snapshot: LiveSnapshot }) {
   const { t, dateTime } = useI18n()

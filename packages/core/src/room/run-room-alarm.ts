@@ -13,6 +13,7 @@ export async function runRoomAlarm(
   const duties = room.onAlarm()
   if (duties.refreshRoles) await refreshRoles(deps, giveawayId, room)
   if (duties.commit) await commitRoom(giveawayId, room)
+  if (duties.draw) await drawRoom(deps, giveawayId, room)
   if (duties.mirrorStatus !== null)
     await mirrorStatus(room, deps.accounts, giveawayId, duties.mirrorStatus)
 }
@@ -23,6 +24,20 @@ async function commitRoom(giveawayId: string, room: GiveawayRoom): Promise<void>
     await room.commit()
   } catch (error) {
     console.warn("room commit failed", { giveawayId, errorClass: errorClass(error) })
+  }
+}
+
+// A draw the room could not make stays requested in the room, whose alarm retries it until the round is late, so nothing is thrown here.
+async function drawRoom(
+  deps: StreamerTokenDeps,
+  giveawayId: string,
+  room: GiveawayRoom,
+): Promise<void> {
+  try {
+    const outcome = await room.drawFirst()
+    if (outcome.kind === "drawn") await mirrorStatus(room, deps.accounts, giveawayId, "drawn")
+  } catch (error) {
+    console.warn("room draw failed", { giveawayId, errorClass: errorClass(error) })
   }
 }
 

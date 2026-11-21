@@ -183,15 +183,17 @@ describe("verify page", () => {
     ).toBeTruthy()
   })
 
-  it("says the winners do not follow when fewer picks were drawn than the winner count", async () => {
+  it.each([
+    ["fewer picks than the planned count", { winnerCount: 5, picks: drawn.picks.slice(0, 2) }],
+    ["more picks than the planned count", { winnerCount: 1, picks: drawn.picks }],
+  ])("checks %s as the seeded order the picks must follow", async (_name, change) => {
     const view = await verified({
-      "GET /api/g/ABCDE/verify": () =>
-        ok({ ...drawn, winnerCount: 5, picks: drawn.picks.slice(0, 2) }),
+      "GET /api/g/ABCDE/verify": () => ok({ ...drawn, ...change }),
     })
 
     expect(
       await view.findByText(
-        "The winners do not follow from the list and the random number of drand round 1000000.",
+        "The winners follow from the list and the random number of drand round 1000000.",
       ),
     ).toBeTruthy()
   })
@@ -201,7 +203,7 @@ describe("verify page", () => {
 
     const view = renderApp("/g/ABCDE/verify")
 
-    expect(await view.findByText("Winners to draw")).toBeTruthy()
+    expect(await view.findByText("Planned winners")).toBeTruthy()
     expect(view.getByText("List fixed at")).toBeTruthy()
     expect(
       view.getByText(/The streamer may reroll a winner who did not meet the conditions/),

@@ -120,6 +120,12 @@ export const configSchema = {
     "20",
     "Latest entrant names on the live page; spec AC-4",
   ),
+  liveShuffleNames: withDefault(
+    "LIVE_SHUFFLE_NAMES",
+    int(1),
+    "50",
+    "Random entrant names a live push carries while a draw is pending, for the shuffle animation; starting guess, about 1 KB per push",
+  ),
   liveEntrantsPerPush: withDefault(
     "LIVE_ENTRANTS_PER_PUSH",
     int(1),
@@ -304,7 +310,7 @@ export const configSchema = {
     "DRAW_MAX_WINNERS",
     int(1),
     "100",
-    "Most winners one draw picks; starting guess, a draw signs once per winner",
+    "Most picks one giveaway holds, rerolled ones included, and the most planned winners a streamer can set; starting guess, every pick is a row the verify page replays",
   ),
   publicGiveawayCacheSeconds: withDefault(
     "PUBLIC_GIVEAWAY_CACHE_SECONDS",
@@ -441,8 +447,8 @@ export const configSchema = {
   drandLeadSeconds: withDefault(
     "DRAND_LEAD_SECONDS",
     int(0),
-    "30",
-    "A giveaway commits to the first drand round at least this long after entries close, so nobody knows its value yet; spec The draw",
+    "6",
+    "A giveaway commits to the first drand round at least this long after the commit, so nobody knows its value yet; two quicknet periods, a starting guess; spec The draw",
   ),
   drandPublishMarginSeconds: withDefault(
     "DRAND_PUBLISH_MARGIN_SECONDS",
@@ -543,6 +549,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
     liveIntervalMs: read(env, configSchema.liveIntervalMs),
     liveLastNames: read(env, configSchema.liveLastNames),
+    liveShuffleNames: read(env, configSchema.liveShuffleNames),
     liveEntrantsPerPush: read(env, configSchema.liveEntrantsPerPush),
     liveWinnerChatMax: read(env, configSchema.liveWinnerChatMax),
     entrantsPageMax: read(env, configSchema.entrantsPageMax),

@@ -5,6 +5,7 @@ import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
 import { UsersIcon } from "../components/icons.tsx"
 import { EntrantNames, msUntil, Stat } from "../components/live-parts.tsx"
 import { Failed, Loading } from "../components/notice.tsx"
+import { DrawShuffle } from "../components/draw-shuffle.tsx"
 import { QrCode } from "../components/qr-code.tsx"
 import { WinnerPlate } from "../components/winner-plate.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -15,6 +16,7 @@ import { useLive } from "../lib/use-live.ts"
 import { useGiveawayFacts } from "../lib/use-giveaway-facts.ts"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
+import { useDrawShuffle } from "../lib/use-draw-shuffle.ts"
 
 /** Names on the compact plate: what a viewer can read in a glance. */
 const newestNames = 3
@@ -84,8 +86,26 @@ function Overlay({
       {giveawayDisplayName(i18n, { title: snapshot.title, prize: null, code: snapshot.code })}
     </h1>
   )
+  const shuffle = useDrawShuffle(snapshot)
   const standing = standingWinners(snapshot.winners)
   const qr = options.qr ? <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} /> : null
+  if (shuffle.shuffling) {
+    const waitMs =
+      snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
+    return (
+      <main className="overlay">
+        {heading}
+        <ul className="overlay-winners">
+          <li className="overlay-plate overlay-winner">
+            <div>
+              <p className="overlay-label">{t("live.draw.due")}</p>
+              <DrawShuffle key={waitMs} names={shuffle.names} waitMs={waitMs} />
+            </div>
+          </li>
+        </ul>
+      </main>
+    )
+  }
   if (snapshot.status === "drawn" && options.mode !== "compact") {
     return (
       <main className="overlay">

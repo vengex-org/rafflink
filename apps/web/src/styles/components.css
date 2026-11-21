@@ -359,6 +359,18 @@ main.container {
   animation: reveal var(--dur-reveal) var(--ease) both;
 }
 
+/* The plate holds still while names flash in it; the real plate then mounts with the reveal. */
+.winner-plate[data-shuffling] {
+  min-width: 8ch;
+  animation: none;
+}
+
+.winner-plate[data-shuffling] .winner-plate-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .winner-plate-name {
   display: block;
   overflow-wrap: anywhere;

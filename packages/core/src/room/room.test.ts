@@ -30,7 +30,7 @@ import {
   undrawnEntrantSql,
 } from "./queries.ts"
 
-const config = resolveConfig({
+const baseEnv = {
   TWITCH_CLIENT_ID: "client",
   TWITCH_CLIENT_SECRET: "secret",
   TOKEN_SEAL_KEYS: "k1",
@@ -46,7 +46,8 @@ const config = resolveConfig({
   REROLL_WINDOW_SECONDS: "600",
   // The chat sockets of these tests never answer; the subscribe window must not wake the alarm.
   EVENTSUB_SUBSCRIBE_SECONDS: "100000",
-})
+}
+const config = resolveConfig(baseEnv)
 
 const rules: GiveawayRules = {
   tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
@@ -129,7 +130,11 @@ function viewer(id: string, overrides: Partial<RoomViewer> = {}): RoomViewer {
   }
 }
 
-function setup(init: GiveawayInit = giveaway, rng: Random = random) {
+function setup(
+  init: GiveawayInit = giveaway,
+  rng: Random = random,
+  env: Record<string, string> = {},
+) {
   const db = new Database(":memory:")
   const sql = new RecordingSql(new BunSqliteSyncSql(db))
   applyMigrations(sql, roomMigrations)
@@ -143,7 +148,7 @@ function setup(init: GiveawayInit = giveaway, rng: Random = random) {
     live: hub,
     clock,
     random: rng,
-    config,
+    config: resolveConfig({ ...baseEnv, ...env }),
     chat: idleChat,
     beacon,
   })
@@ -161,6 +166,16 @@ function enterMany(room: GiveawayRoom, ids: readonly string[]): void {
 
 function picks(sql: SyncSql): SqlRow[] {
   return sql.exec("SELECT n, platform_user_id, rerolled, claimed_via FROM draws ORDER BY n", [])
+}
+
+async function drawPicks(room: GiveawayRoom, times: number): Promise<void> {
+  for (let i = 0; i < times; i++) await room.draw()
+}
+
+function roundTimeOf(room: GiveawayRoom): Instant {
+  const round = room.verification().commitment?.drandRound
+  if (round === undefined) throw new Error("room has not committed")
+  return roundTime(quicknet, round)
 }
 
 function twitch(id: string) {
@@ -277,25 +292,81 @@ describe("GiveawayRoom entries", () => {
 })
 
 describe("GiveawayRoom draw", () => {
-  it("stores the seed and the picks the seed produces", async () => {
+  it("stores the seed and draws pick 0 of the seeded order", async () => {
     const { room, sql } = setup()
     enterMany(room, ["1", "2", "3"])
-    room.setWinnerCount(5)
     room.close()
 
     const outcome = await room.draw()
 
-    expect(outcome.kind).toBe("drawn")
     const stored = sql.exec("SELECT seed, status FROM room_state", [])[0]
     expect(stored?.status).toBe("drawn")
     expect(stored?.seed).toEqual(new Uint8Array(32).fill(7))
     const entries = ["1", "2", "3"].map((id) => ({ ...twitch(id), tickets: 1 }))
-    const expected = await drawWinners(new Uint8Array(32).fill(7), entries, 5)
-    expect(expected).toHaveLength(3)
-    expect(outcome).toEqual({ kind: "drawn", winners: expected })
+    const expected = await drawWinners(new Uint8Array(32).fill(7), entries, 1)
+    expect(outcome.kind === "drawn" ? outcome.winner : null).toEqual(expected.at(0) ?? null)
+    expect(picks(sql).map((row) => row.platform_user_id)).toEqual([expected[0]?.platformUserId])
+  })
+
+  it("draws one more pick per call, each the next of the seeded order, past the planned count", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2", "3", "4"])
+    room.close()
+
+    await drawPicks(room, 3)
+
+    expect(room.summary().winnerCount).toBe(1)
+    const entries = ["1", "2", "3", "4"].map((id) => ({ ...twitch(id), tickets: 1 }))
+    const expected = await drawWinners(new Uint8Array(32).fill(7), entries, 3)
     expect(picks(sql).map((row) => row.platform_user_id)).toEqual(
       expected.map((winner) => winner.platformUserId),
     )
+  })
+
+  it("draws the same order when a reroll sits between two draws", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2", "3", "4"])
+    room.close()
+
+    await room.draw()
+    await room.reroll(0)
+    await room.draw()
+
+    const entries = ["1", "2", "3", "4"].map((id) => ({ ...twitch(id), tickets: 1 }))
+    const expected = await drawWinners(new Uint8Array(32).fill(7), entries, 3)
+    expect(picks(sql).map((row) => row.platform_user_id)).toEqual(
+      expected.map((winner) => winner.platformUserId),
+    )
+  })
+
+  it("says so when every entrant is picked, and writes nothing", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2"])
+    room.close()
+    await drawPicks(room, 2)
+
+    expect(await room.draw()).toEqual({ kind: "no-entrants-left" })
+    expect(picks(sql)).toHaveLength(2)
+  })
+
+  it("moves a room nobody entered to drawn with no pick on the first draw", async () => {
+    const { room, sql } = setup()
+    room.close()
+
+    expect(await room.draw()).toEqual({ kind: "no-entrants-left" })
+    expect(room.summary().status).toBe("drawn")
+    expect(picks(sql)).toEqual([])
+  })
+
+  it("stops at the pick limit, rerolled picks counted", async () => {
+    const { room, sql } = setup(giveaway, random, { DRAW_MAX_WINNERS: "2" })
+    enterMany(room, ["1", "2", "3", "4"])
+    room.close()
+    await room.draw()
+    await room.reroll(0)
+
+    expect(await room.draw()).toEqual({ kind: "pick-limit" })
+    expect(picks(sql)).toHaveLength(2)
   })
 
   it("refuses a draw before the room is closed", async () => {
@@ -306,30 +377,211 @@ describe("GiveawayRoom draw", () => {
     expect(room.summary().status).toBe("open")
   })
 
-  it("refuses a second draw and keeps the first picks", async () => {
+  it("lets only one of two simultaneous first draws through", async () => {
     const { room, sql } = setup()
     enterMany(room, ["1", "2", "3"])
-    room.close()
-    await room.draw()
-    const before = picks(sql)
-
-    expect(await room.draw()).toEqual({ kind: "already-drawn" })
-    expect(picks(sql)).toEqual(before)
-  })
-
-  it("lets only one of two simultaneous draws through", async () => {
-    const { room, sql } = setup()
-    enterMany(room, ["1", "2", "3"])
-    room.setWinnerCount(2)
     room.close()
 
     const outcomes = await Promise.all([room.draw(), room.draw()])
 
-    expect(outcomes.map((outcome) => outcome.kind).toSorted()).toEqual(["already-drawn", "drawn"])
-    const drawn = outcomes.find((outcome) => outcome.kind === "drawn")
-    expect(sql.exec("SELECT COUNT(*) AS c FROM draws", [])[0]?.c).toBe(
-      drawn?.kind === "drawn" ? drawn.winners.length : -1,
-    )
+    expect(outcomes.map((outcome) => outcome.kind).toSorted()).toEqual(["drawn", "try-again"])
+    expect(sql.exec("SELECT COUNT(*) AS c FROM draws", [])[0]?.c).toBe(1)
+  })
+
+  it("lets only one of two simultaneous next draws write the next pick", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2", "3", "4"])
+    room.close()
+    await room.draw()
+
+    const outcomes = await Promise.all([room.draw(), room.draw()])
+
+    expect(outcomes.map((outcome) => outcome.kind).toSorted()).toEqual(["drawn", "try-again"])
+    expect(sql.exec("SELECT COUNT(*) AS c FROM draws", [])[0]?.c).toBe(2)
+  })
+
+  it("gives a pick drawn after the first a fresh claim time and a fresh chat watch", async () => {
+    const { room, sql, clock } = setup()
+    enterMany(room, ["1", "2"])
+    room.close()
+    await room.draw()
+    sql.exec("UPDATE room_state SET chat_unavailable = 1", [])
+    clock.advance(1000)
+
+    await room.draw()
+
+    expect(room.summary().chatClaimUnavailable).toBe(false)
+    expect(sql.exec("SELECT claim_until FROM draws WHERE n = 1", [])[0]?.claim_until).toBe(301_000)
+  })
+})
+
+describe("GiveawayRoom requested draw", () => {
+  it("closes an open room and keeps the request until the round is published", async () => {
+    const { room, clock, alarm } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1", "2"])
+
+    expect(room.requestDraw()).toEqual({ kind: "requested" })
+    expect(room.summary().status).toBe("closed")
+    expect(room.liveSnapshot().drawRequested).toBe(true)
+    expect(room.requestDraw()).toEqual({ kind: "not-open", status: "closed" })
+
+    expect(room.onAlarm()).toMatchObject({ commit: true, draw: false })
+    room.markMirrored("closed")
+    clock.advance(config.liveIntervalMs)
+    await room.commit()
+    expect(alarm.at).toBe(roundTimeOf(room) + 500)
+  })
+
+  it("asks for the draw from the round time on and draws once the round is there", async () => {
+    const { room, clock, sql } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1", "2"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
+
+    expect(room.onAlarm()).toMatchObject({ draw: true })
+    expect((await room.draw()).kind).toBe("drawn")
+
+    expect(room.summary().status).toBe("drawn")
+    expect(room.liveSnapshot().drawRequested).toBe(false)
+    expect(picks(sql)).toHaveLength(1)
+  })
+
+  it("tries again every drand period while the round is late and gives up after the publish margin", async () => {
+    const { room, clock, alarm } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
+
+    expect(room.onAlarm().draw).toBe(true)
+    expect(alarm.at).toBe(roundTimeOf(room) + 500 + config.drandPeriodSeconds * 1000)
+
+    clock.advance(config.drandPublishMarginSeconds * 1000 + 1)
+    expect(room.onAlarm().draw).toBe(false)
+    expect(room.liveSnapshot().drawRequested).toBe(false)
+    expect(room.summary().status).toBe("closed")
+  })
+
+  it("keeps the next try where it was when other writes rearm the alarm in between", async () => {
+    const { room, clock, alarm } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
+    room.onAlarm()
+    const nextTry = alarm.at
+
+    clock.advance(1000)
+    room.init(giveaway)
+    room.setWinnerCount(2)
+
+    expect(alarm.at).toBe(nextTry)
+    clock.advance((nextTry ?? 0) - clock.now())
+    expect(room.onAlarm().draw).toBe(true)
+  })
+
+  it("pushes the live page when it gives up on a late round", async () => {
+    const { room, clock, hub } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(roundTimeOf(room) - clock.now() + config.drandPublishMarginSeconds * 1000 + 1)
+    const before = hub.messages.length
+
+    room.onAlarm()
+
+    expect(hub.messages.length).toBeGreaterThan(before)
+    expect(hub.messages.at(-1)).toContain('"drawRequested":false')
+  })
+
+  it("stops showing a request once the commit gave up, and pushes it", async () => {
+    const { room, clock, hub } = setup(giveaway, random, { COMMIT_MAX_ATTEMPTS: "1" })
+    enterMany(room, ["1"])
+    room.requestDraw()
+    expect(room.liveSnapshot().drawRequested).toBe(true)
+    expect(room.onAlarm().commit).toBe(true)
+    clock.advance(config.commitRetrySeconds * 1000)
+
+    expect(room.onAlarm().commit).toBe(false)
+
+    expect(room.liveSnapshot().drawRequested).toBe(false)
+    expect(hub.messages.at(-1)).toContain('"drawRequested":false')
+  })
+
+  it("stops showing a request once the entries were deleted", async () => {
+    const { room, clock } = setup()
+    enterMany(room, ["1"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(config.entryRetentionSeconds * 1000)
+    room.onAlarm()
+
+    expect(room.liveSnapshot().drawRequested).toBe(false)
+  })
+
+  it("draws from a new room instance over the same storage, at the round time plus a short lag", async () => {
+    const { room, sql, clock, alarm } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1", "2"])
+    room.requestDraw()
+    await room.commit()
+    const evicted = new GiveawayRoom({
+      sql,
+      alarm,
+      live: new TestHub(),
+      clock,
+      random,
+      config,
+      chat: idleChat,
+      beacon: new FakeBeacon(),
+    })
+
+    evicted.markMirrored("closed")
+    expect(alarm.at).toBe(roundTimeOf(room) + 500)
+    advanceToAlarm(clock, alarm)
+
+    expect(evicted.onAlarm().draw).toBe(true)
+    expect((await evicted.drawFirst()).kind).toBe("drawn")
+  })
+
+  it("draws only pick 0 for the alarm: a drawn room is refused", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2"])
+    room.close()
+    await room.draw()
+
+    expect(await room.drawFirst()).toEqual({ kind: "try-again" })
+    expect(picks(sql)).toHaveLength(1)
+  })
+
+  it("is set by a draw that finds the round missing, so the alarm draws it", async () => {
+    const { room, clock, beacon } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.close()
+    beacon.answer = "not-yet"
+
+    expect((await room.draw()).kind).toBe("round-pending")
+
+    expect(room.liveSnapshot().drawRequested).toBe(true)
+  })
+
+  it("is not set by a draw after the beacon failed for good", async () => {
+    const { room, clock, beacon } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.close()
+    await room.commit()
+    beacon.answer = "unavailable"
+
+    expect(await room.draw()).toEqual({ kind: "beacon-unavailable" })
+    expect(room.liveSnapshot().drawRequested).toBe(false)
   })
 })
 
@@ -533,7 +785,12 @@ describe("GiveawayRoom roles", () => {
 describe("GiveawayRoom alarm", () => {
   it("closes the room at the end time and asks for a status mirror", () => {
     const { room, clock, alarm } = setup({ ...giveaway, closesAt: 5000 })
-    expect(room.onAlarm()).toEqual({ refreshRoles: true, mirrorStatus: null, commit: false })
+    expect(room.onAlarm()).toEqual({
+      refreshRoles: true,
+      mirrorStatus: null,
+      commit: false,
+      draw: false,
+    })
     room.replaceRoles([], [])
     expect(alarm.at).toBe(5000)
 
@@ -541,7 +798,12 @@ describe("GiveawayRoom alarm", () => {
     const duties = room.onAlarm()
 
     expect(room.summary().status).toBe("closed")
-    expect(duties).toEqual({ refreshRoles: false, mirrorStatus: "closed", commit: true })
+    expect(duties).toEqual({
+      refreshRoles: false,
+      mirrorStatus: "closed",
+      commit: true,
+      draw: false,
+    })
     expect(room.enter(viewer("1"))).toEqual({ kind: "closed" })
   })
 
@@ -855,7 +1117,7 @@ describe("GiveawayRoom live push of entrants", () => {
     await room.commit()
 
     expect(room.liveSnapshot()).toMatchObject({
-      drawAvailableAt: genesisMs + 30_000,
+      drawAvailableAt: genesisMs + 6000,
       now: genesisMs,
     })
   })
@@ -872,7 +1134,7 @@ describe("GiveawayRoom live push of entrants", () => {
 
     const pushed = hub.messages.slice(before).map((message) => JSON.parse(message))
     expect(pushed).toHaveLength(1)
-    expect(pushed[0]).toMatchObject({ status: "closed", drawAvailableAt: genesisMs + 33_000 })
+    expect(pushed[0]).toMatchObject({ status: "closed", drawAvailableAt: genesisMs + 9000 })
   })
 
   it("keeps the entrants out of the snapshot a GET returns", () => {
@@ -1238,9 +1500,8 @@ describe("public summary", () => {
   it("keeps the reroll window of an unclaimed pick open to the end of a later pick's window after that pick claimed", async () => {
     const { room, sql, clock } = setup()
     enterMany(room, ["1", "2", "3", "4"])
-    room.setWinnerCount(2)
     room.close()
-    await room.draw()
+    await drawPicks(room, 2)
     clock.advance(300_001)
     await room.reroll(1)
     const later = twitch(String(picks(sql)[2]?.platform_user_id))
@@ -1534,7 +1795,8 @@ describe("GiveawayRoom retention", () => {
     clock.advance(retentionMs)
     room.onAlarm()
 
-    expect(await room.draw()).toEqual({ kind: "drawn", winners: [] })
+    expect(await room.draw()).toEqual({ kind: "no-entrants-left" })
+    expect(room.summary().status).toBe("drawn")
   })
 
   it("refuses to reroll once the entries were deleted", async () => {
@@ -1682,9 +1944,9 @@ describe("GiveawayRoom commit", () => {
     room.close()
     await room.commit()
 
-    // 30 s after genesis is the time of round 11.
-    expect(room.verification().commitment?.drandRound).toBe(11)
-    expect(roundTime(quicknet, 11)).toBe(genesisMs + 30_000)
+    // 6 s after genesis is the time of round 3.
+    expect(room.verification().commitment?.drandRound).toBe(3)
+    expect(roundTime(quicknet, 3)).toBe(genesisMs + 6000)
   })
 
   it("commits an empty room to the root of nothing", async () => {
@@ -1990,7 +2252,7 @@ describe("GiveawayRoom draw with drand", () => {
 
     expect(outcome).toEqual({
       kind: "round-pending",
-      availableAt: genesisMs + 30_000,
+      availableAt: genesisMs + 6000,
       now: genesisMs,
     })
     expect(room.summary().status).toBe("closed")
@@ -2030,9 +2292,8 @@ describe("GiveawayRoom draw with drand", () => {
   it("stores the leaf index of every pick, rerolls included, and they replay from the leaves", async () => {
     const { room, sql } = setup(giveaway, countingRandom())
     enterMany(room, ["1", "2", "3", "4"])
-    room.setWinnerCount(2)
     room.close()
-    await room.draw()
+    await drawPicks(room, 2)
     await room.reroll(0)
 
     const leaves = room.leaves() ?? []
@@ -2052,18 +2313,48 @@ describe("GiveawayRoom draw with drand", () => {
   })
 })
 
-describe("GiveawayRoom winner count", () => {
-  it("is the one the giveaway was created with, and the draw picks that many", async () => {
-    const { room } = setup({ ...giveaway, winnerCount: 2 })
-    enterMany(room, ["1", "2", "3"])
-    expect(room.summary().winnerCount).toBe(2)
+describe("GiveawayRoom shuffle names", () => {
+  const ids = ["1", "2", "3", "4", "5"]
+  const entrantNames = ids.map((id) => `Name${id}`)
+
+  it("sends none while entries are open", () => {
+    const { room } = setup()
+    enterMany(room, ids)
+
+    expect(room.liveSnapshot().shuffleNames).toEqual([])
+  })
+
+  it("sends a bounded sample of entrant names once the room is committed, and none after the draw", async () => {
+    const { room } = setup(giveaway, random, { LIVE_SHUFFLE_NAMES: "3" })
+    enterMany(room, ids)
     room.close()
+    expect(room.liveSnapshot().shuffleNames).toEqual([])
+    await room.commit()
 
-    const outcome = await room.draw()
+    const sample = room.liveSnapshot().shuffleNames
 
-    expect(outcome.kind === "drawn" ? outcome.winners.map((winner) => winner.n) : []).toEqual([
-      0, 1,
-    ])
+    expect(sample).toHaveLength(3)
+    expect(new Set(sample).size).toBe(3)
+    expect(sample.every((name) => entrantNames.includes(name))).toBe(true)
+    await room.draw()
+    expect(room.liveSnapshot().shuffleNames).toEqual([])
+  })
+
+  it("sends the sample as soon as the draw is requested", () => {
+    const { room } = setup()
+    enterMany(room, ids)
+
+    room.requestDraw()
+
+    expect(room.liveSnapshot().shuffleNames.length).toBeGreaterThan(0)
+  })
+})
+
+describe("GiveawayRoom winner count", () => {
+  it("is the planned count the giveaway was created with", () => {
+    const { room } = setup({ ...giveaway, winnerCount: 2 })
+
+    expect(room.summary().winnerCount).toBe(2)
     expect(room.verification().winnerCount).toBe(2)
   })
 
@@ -2078,22 +2369,16 @@ describe("GiveawayRoom winner count", () => {
     expect(hub.messages.at(-1)).toContain('"winnerCount":4')
   })
 
-  it("is frozen by the close, so it cannot follow the random number", async () => {
-    const { room } = setup()
-    room.close()
-
-    expect(room.setWinnerCount(3)).toEqual({ kind: "not-open", status: "closed" })
-    await room.commit()
-    expect(room.setWinnerCount(3)).toEqual({ kind: "not-open", status: "closed" })
-    expect(room.summary().winnerCount).toBe(1)
-  })
-
-  it("is not changeable once the winners are drawn", async () => {
-    const { room } = setup()
+  it("changes after the draw too, without touching the picks", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2"])
     room.close()
     await room.draw()
 
-    expect(room.setWinnerCount(2)).toEqual({ kind: "not-open", status: "drawn" })
+    expect(room.setWinnerCount(3)).toEqual({ kind: "set" })
+
+    expect(room.summary().winnerCount).toBe(3)
+    expect(picks(sql)).toHaveLength(1)
   })
 
   it("is 1 for a room that existed before the migration", () => {
@@ -2137,7 +2422,7 @@ describe("GiveawayRoom late round", () => {
     room.close()
     await room.commit()
     beacon.answer = "not-yet"
-    clock.advance(30_000 + config.drandPublishMarginSeconds * 1000)
+    clock.advance(6000 + config.drandPublishMarginSeconds * 1000)
 
     expect((await room.draw()).kind).toBe("round-pending")
     clock.advance(1)

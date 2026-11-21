@@ -41,6 +41,9 @@ export const winnerChatNameSql = `SELECT e.display_name FROM draws d
 export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, tickets FROM entries
   WHERE seq > ? ORDER BY seq LIMIT ?`
 
+/** Random entrant names (parameter 1 is how many), for the draw shuffle; the order carries no information about the draw. */
+export const shuffleNamesSql = "SELECT display_name FROM entries ORDER BY RANDOM() LIMIT ?"
+
 /** The sequence number of the newest entry; `head` is NULL when nobody entered. */
 export const headSeqSql = "SELECT MAX(seq) AS head FROM entries"
 

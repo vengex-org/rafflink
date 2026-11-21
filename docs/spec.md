@@ -67,7 +67,7 @@ This applies to the Cloudflare target only. The VPS target has no daily request 
    deleted.
 4. Watches a live page: entrant count, entries per second, latest names. OBS has no Twitch session, so the
    page has a second, read-only overlay link with an unguessable token that works as a browser source.
-5. Closes entries, draws one or more winners and announces them on stream.
+5. Closes entries and draws winners one at a time, as many as they want, and announces them on stream.
 6. Sees on the live page whether each winner has claimed, and how (button, chat or by hand). Rerolls a winner who did
    not claim within the claim time.
 
@@ -340,7 +340,7 @@ room_state(id, platform, giveaway_id, broadcaster_id, title, code, rules_json, c
            status, closes_at, seed, entrant_count, ticket_total, role_refresh_failures,
            eventsub_failures, chat_unavailable, roles_refresh_at, mirror_pending,
            merkle_root, drand_round, committed_at, drand_chain_hash, drand_genesis_seconds,
-           drand_period_seconds, winner_count)
+           drand_period_seconds, winner_count, draw_requested)
 entries(platform, platform_user_id, login, display_name, group_name, tickets, entered_at, salt,
         PRIMARY KEY (platform, platform_user_id)) WITHOUT ROWID
 channel_roles(platform, platform_user_id, role, fetched_at,
@@ -352,7 +352,7 @@ leaves(chunk, data)
 
 Room migration 0003 adds `merkle_root`, `drand_round`, the commit time and the drand chain of the commit,
 `winner_count` (existing rooms get 1), `entries.salt`, `draws.leaf_index` and `leaves` (the leaf
-list, 1000 leaves of 40 bytes per row). All are nullable or new, so a room created before it keeps working. There is
+list, 1000 leaves of 40 bytes per row). Room migration 0005 adds `draw_requested`. All are nullable or new, so a room created before it keeps working. There is
 no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Platforms).
 
 - `giveaways.status` and `room_state.status` are `open`, `closed` or `drawn`. The room owns the status, the
@@ -390,14 +390,13 @@ for a drand round and adds the Merkle root, as described next.
    `SHA-256(0x00 | leaf | tickets)`, so the root also binds the ticket counts the draw uses. It publishes the Merkle root, the
    entrant count, the total tickets and the leaf list (hashes and tickets only, no names).
 2. **Commit to future randomness.** At close it also publishes a drand round number: the first round of the
-   drand `quicknet` beacon at least 30 seconds in the future. drand is a public randomness beacon run by
+   drand `quicknet` beacon at least `DRAND_LEAD_SECONDS` (default 6, two rounds) after the commit. drand is a public randomness beacon run by
    independent organizations (Cloudflare is one); nobody can predict a round before it is produced, and
-   anyone can verify its signature. The number of winners is a giveaway setting chosen at creation and editable
-   only while entries are open, so it is settled before the round is known. The commit time and the chain are
-   published with the root.
+   anyone can verify its signature. The commit time and the chain are published with the root.
 3. **Draw.** When the round exists, the seed is its randomness. Winner `n` is picked by
    `HMAC-SHA256(seed, n)` mapped to a ticket index over the sorted leaves, rejection sampling to avoid modulo
-   bias. A reroll takes the next `n`; the streamer cannot choose which entrant comes next.
+   bias. Every press of "Draw winner" takes the next `n` among the entrants not picked yet, and so does a reroll;
+   the streamer cannot choose which entrant comes next, and the picks stay a fixed sequence of the seed.
 4. **Verify.** The giveaway page shows the root, the round, the leaf list and a "Verify" button that
    recomputes the winner in the browser. Each entrant sees their own leaf preimage and its Merkle proof, so
    they can check they were in the list that was drawn.
@@ -465,16 +464,28 @@ Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
 - The room commits from its alarm right after the close and again at the draw if the alarm has not run; `close()`
   stays synchronous. The draw never uses local randomness: while the round is missing it answers `round-pending`
   (409) or `beacon-unavailable` (503) and draws nothing.
-- No auto-draw (owner decision): the streamer's snapshot carries `drawAvailableAt`, the instant the committed round is
-  published. The live page counts down to it and keeps Draw disabled until then; a `round-pending` answer starts
-  the same countdown from its `availableAt`.
+- One pick per press (owner decision, 2026-11-21): `draw` adds pick `max(n) + 1` of the seeded order, skipping every
+  earlier pick, rerolled ones included. The streamer may draw more than `winner_count`, which is only the planned count
+  the live page measures progress against (editable at any time). `DRAW_MAX_WINNERS` caps the stored picks. The verify page
+  replays any number of picks. Drawing the first pick of a room nobody entered still moves it to drawn.
+- Draw shuffle (owner decision, 2026-11-21): while a draw is pending the stage and the OBS overlay flash entrant names in
+  the winner slot, and every later pick shuffles for at least 1.5 s before it shows. The names are a random sample of
+  up to `LIVE_SHUFFLE_NAMES` entrants in the snapshot (`shuffleNames`, only while the room is closed and asked to draw or
+  committed), picked without regard to the draw. Under `prefers-reduced-motion` the slot shows the countdown instead.
+- Draw is always on the live page (owner decision, 2026-11-21). Pressed while entries are open, it closes them and sets
+  `room_state.draw_requested`; the room alarm commits, wakes at the time of the round, and draws pick 0 itself
+  (`AlarmDuties.draw`), retrying every drand period until the round is `DRAND_PUBLISH_MARGIN_SECONDS` late, then
+  dropping the request. It runs in the room, not the page, so it survives a closed tab. The snapshot carries
+  `drawAvailableAt`, the instant the committed round is published, and `drawRequested`; the live page counts down
+  to the first and a `round-pending` answer also sets the request.
 - Leaf = SHA-256(`platform|platformUserId|tickets|` + salt), tree leaf = SHA-256(0x00 + leaf + tickets as 8
   bytes, big-endian), node = SHA-256(0x01 + left + right), an odd node moves up unchanged. The drand signature is
   not verified with BLS on the Worker (10 ms CPU limit); the Worker pins the chain hash in the request path and
   checks that randomness is SHA-256 of the signature. The verify page does check the BLS signature in the browser.
-- The winner count is fixed before the round is known (owner decision, review of PR 11): a streamer who could
-  pick it afterwards could choose a count that includes an accomplice. Reroll stays allowed at any time (owner
-  decision), and the verify page lists every rerolled pick.
+- The winner count no longer limits the draw (owner decision, 2026-11-21, replaces the review of PR 11 rule that fixed
+  it before the round). A streamer can draw until an accomplice comes up, the same as with rerolls, which stay allowed
+  at any time. The seeded order stays fixed and the verify page lists every pick and every reroll, so the extra draws
+  are visible.
 - An open or closed room from before the migration gets salts at commit and draws the new way; a room that was
   already drawn stays on its random seed and is reported unverifiable.
 

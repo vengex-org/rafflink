@@ -60,7 +60,7 @@ export interface VerifyJson {
   readonly status: RoomStatus
   readonly entrantCount: number
   readonly ticketTotal: number
-  /** How many winners the draw picks; fixed while entries were open. */
+  /** How many winners the streamer planned; the draw may hold more picks. */
   readonly winnerCount: number
   readonly commitment: {
     /** Lower-case hex. */

@@ -1,4 +1,4 @@
-import { useId, useState } from "react"
+import { useCallback, useId, useState } from "react"
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import {
   closeEntries,
@@ -10,6 +10,8 @@ import {
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { overlayUrl } from "../lib/links.ts"
+import { standingWinners } from "../lib/standing-winners.ts"
+import { useShortcut } from "../lib/use-shortcut.ts"
 import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
 import type { useAction } from "../lib/use-action.ts"
 import { ConfirmAction } from "./confirm-action.tsx"
@@ -46,7 +48,7 @@ export const isUnsettled = (winner: LiveWinner) =>
 const nameOf = (winner: LiveWinner, t: I18n["t"]) =>
   winner.displayName ?? t("live.winnerFallback", { n: winner.n + 1 })
 
-/** The next step of the draw: draw once entries are closed, then mark or replace the winner on the plate. Null when no step is due: entries open, or the winner on the plate claimed or replaced. */
+/** The next step of the draw: the Draw winner button in every step, and beside it mark or replace the winner on the plate while that pick is unsettled. */
 export function LiveActions({
   id,
   busy,
@@ -58,22 +60,9 @@ export function LiveActions({
   readonly current: LiveWinner | null
 }) {
   const { t } = useI18n()
-  if (snapshot.status === "open") return null
-  if (snapshot.status === "drawn" && (current === null || !isUnsettled(current))) return null
   return (
     <div className="live-actions" role="toolbar" aria-label={t("live.bar.label")}>
-      {snapshot.status === "closed" ? (
-        <DrawStep
-          id={id}
-          busy={busy}
-          run={run}
-          entrantCount={snapshot.entrantCount}
-          winnerCount={snapshot.winnerCount}
-          snapshotWaitMs={
-            snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
-          }
-        />
-      ) : null}
+      <DrawStep id={id} busy={busy} run={run} snapshot={snapshot} />
       {snapshot.status === "drawn" && current !== null ? (
         <>
           <MarkClaimed
@@ -99,7 +88,7 @@ export function LiveActions({
   )
 }
 
-/** What the streamer sets around the draw: the winner count while entries are open, the entries switch, the overlay link and the way to hide the controls. */
+/** What the streamer sets around the draw: the planned winner count, the entries switch, the overlay link and the way to hide the controls. */
 export function LiveSettings({
   id,
   busy,
@@ -117,9 +106,7 @@ export function LiveSettings({
   return (
     <section className="live-card live-settings" aria-labelledby={headId}>
       <h2 id={headId}>{t("live.settings.title")}</h2>
-      {snapshot.status === "open" ? (
-        <WinnerCountControl id={id} busy={busy} run={run} winnerCount={snapshot.winnerCount} />
-      ) : null}
+      <WinnerCountControl id={id} busy={busy} run={run} winnerCount={snapshot.winnerCount} />
       <EntriesSwitch id={id} busy={busy} run={run} status={snapshot.status} />
       <span className="live-settings-end">
         {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
@@ -290,21 +277,12 @@ function EntriesSwitch({
   )
 }
 
-function DrawStep({
-  id,
-  busy,
-  run,
-  entrantCount,
-  winnerCount,
-  snapshotWaitMs,
-}: Doing & {
-  readonly entrantCount: number
-  readonly winnerCount: number
-  /** Milliseconds from the snapshot's `now` to the committed round; null before the commit. */
-  readonly snapshotWaitMs: number | null
-}) {
+/** The Draw winner button with what it will do next: it is there in every step and draws the next winner. */
+function DrawStep({ id, busy, run, snapshot }: Doing & { readonly snapshot: LiveSnapshot }) {
   // A round-pending answer covers a snapshot older than the commit.
   const [pendingMs, setPendingMs] = useState<number | null>(null)
+  const snapshotWaitMs =
+    snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
   const waitMs = snapshotWaitMs ?? pendingMs
   return (
     <DrawControls
@@ -312,8 +290,7 @@ function DrawStep({
       id={id}
       busy={busy}
       run={run}
-      entrantCount={entrantCount}
-      winnerCount={winnerCount}
+      snapshot={snapshot}
       waitMs={waitMs ?? 0}
       onPending={setPendingMs}
     />
@@ -325,59 +302,132 @@ function DrawControls({
   id,
   busy,
   run,
-  entrantCount,
-  winnerCount,
+  snapshot,
   waitMs,
   onPending,
 }: Doing & {
-  readonly entrantCount: number
-  readonly winnerCount: number
+  readonly snapshot: LiveSnapshot
   readonly waitMs: number
   readonly onPending: (waitMs: number) => void
 }) {
   const i18n = useI18n()
   const { t } = i18n
   const remainingMs = useRemainingMs(waitMs)
-  const blocked = entrantCount === 0 ? t("live.draw.nobody") : null
+  const { status, drawRequested, entrantCount } = snapshot
+  const blocked = blockedText(snapshot, t)
+  const draw = () =>
+    void run(
+      async () => {
+        const answer = await drawWinners(id)
+        if (answer.kind !== "round-pending") return answer.kind
+        const pendingMs = answer.availableAt - answer.now
+        onPending(Math.max(0, pendingMs))
+        return pendingMs > 0 ? answer.kind : "round-due"
+      },
+      (outcome) => `drawResult.${outcome}`,
+    )
   return (
     <>
       <p id="draw-help" className="live-draw-help">
         {blocked
-          ?? (remainingMs > 0
-            ? t("live.draw.waiting", { clock: formatClock(remainingMs) })
-            : winnerCount > entrantCount
-              ? t("live.draw.fewer", { count: i18n.number(entrantCount) })
-              : t("live.draw.random"))}{" "}
-        {t("live.draw.fixed", { count: i18n.number(winnerCount) })}
-      </p>
-      <ConfirmAction
-        icon={<ShuffleIcon />}
-        label={t("live.draw.label")}
-        question={i18n.plural("drawQuestion", winnerCount)}
-        detail={t("live.draw.detail")}
-        confirmLabel={t("live.draw.confirm")}
-        busy={busy}
-        disabled={blocked !== null || remainingMs > 0}
-        className="live-btn primary"
-        shortcut="d"
-        onConfirm={() =>
-          void run(
-            async () => {
-              const answer = await drawWinners(id)
-              if (answer.kind !== "round-pending") return answer.kind
-              const pendingMs = answer.availableAt - answer.now
-              onPending(Math.max(0, pendingMs))
-              return pendingMs > 0 ? answer.kind : "round-due"
+          ?? drawHelp(
+            {
+              status,
+              drawRequested,
+              remainingMs,
+              standing: standingWinners(snapshot.winners).length,
+              planned: snapshot.winnerCount,
             },
-            (outcome) => `drawResult.${outcome}`,
-          )
-        }
-      />
+            i18n,
+          )}
+      </p>
+      {status === "open" ? (
+        <ConfirmAction
+          icon={<ShuffleIcon />}
+          label={t("live.draw.label")}
+          question={t("live.draw.question")}
+          detail={t("live.draw.detail")}
+          confirmLabel={t("live.draw.confirm")}
+          busy={busy}
+          disabled={entrantCount === 0}
+          className="live-btn primary"
+          shortcut="d"
+          onConfirm={draw}
+        />
+      ) : (
+        <DrawButton
+          label={t(status === "drawn" ? "live.draw.next" : "live.draw.label")}
+          disabled={busy || blocked !== null || drawRequested}
+          onPress={draw}
+        />
+      )}
     </>
   )
 }
 
-/** The winner count, editable while entries are open: once they close it is settled, before the random number exists. */
+function DrawButton({
+  label,
+  disabled,
+  onPress,
+}: {
+  readonly label: string
+  readonly disabled: boolean
+  readonly onPress: () => void
+}) {
+  useShortcut(
+    "d",
+    useCallback(() => {
+      if (!disabled) onPress()
+    }, [disabled, onPress]),
+  )
+  return (
+    <button
+      type="button"
+      className="live-btn primary"
+      disabled={disabled}
+      aria-keyshortcuts="d"
+      aria-describedby="draw-help"
+      onClick={onPress}
+    >
+      <ShuffleIcon />
+      {label}
+      <kbd aria-hidden="true">D</kbd>
+    </button>
+  )
+}
+
+// Why the button cannot draw, or null while it can.
+function blockedText(snapshot: LiveSnapshot, t: I18n["t"]): string | null {
+  if (snapshot.entrantCount === 0) return t("live.draw.nobody")
+  if (snapshot.status === "drawn" && snapshot.winners.length >= snapshot.entrantCount) {
+    return t("live.draw.nobodyLeft")
+  }
+  return null
+}
+
+function drawHelp(
+  state: {
+    readonly status: LiveSnapshot["status"]
+    readonly drawRequested: boolean
+    readonly remainingMs: number
+    readonly standing: number
+    readonly planned: number
+  },
+  { t, number }: I18n,
+): string {
+  switch (state.status) {
+    case "open":
+      return t("live.draw.open")
+    case "closed":
+      if (state.remainingMs > 0)
+        return t("live.draw.waiting", { clock: formatClock(state.remainingMs) })
+      return t(state.drawRequested ? "live.draw.due" : "live.draw.random")
+    case "drawn":
+      return t("live.draw.fixed", { drawn: number(state.standing), planned: number(state.planned) })
+  }
+}
+
+/** The planned winner count, editable in every step: the draw never stops there, the live page only shows progress against it. */
 function WinnerCountControl({
   id,
   busy,
