@@ -7,14 +7,15 @@ export function WinnerChat({ lines }: { readonly lines: readonly WinnerChatLine[
   const { t } = useI18n()
   const titleId = useId()
   const list = useRef<HTMLOListElement>(null)
-  const newestAt = lines.at(-1)?.at
+  const newest = lines.length === 0 ? null : `${lines.length}@${lines.at(-1)?.at}`
 
-  // A push repeats the older lines; only a newer last line moves the scroll, so reading back is not interrupted.
+  // A push repeats the older lines; only a new last line moves the scroll, so reading back is not interrupted.
+  // At the cap the count stays and two lines can share a time, so the key holds both.
   useEffect(() => {
-    if (newestAt !== undefined && list.current !== null) {
+    if (newest !== null && list.current !== null) {
       list.current.scrollTop = list.current.scrollHeight
     }
-  }, [newestAt])
+  }, [newest])
 
   if (lines.length === 0) return null
   return (

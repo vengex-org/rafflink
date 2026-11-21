@@ -4,9 +4,9 @@ export const noindex = "noindex, nofollow"
 const immutable = "public, max-age=31536000, immutable"
 const revalidate = "no-cache"
 
-/** The bundles `bun build` names with a content hash and the fonts, which carry their version in the name; every other file keeps its name across builds. */
-const hashedAsset = /^\/(?:index-[a-z0-9]+\.(?:js|css)|fonts\/[^/]+)$/
-const hashedAssetGlobs = ["/index-*.js", "/index-*.css", "/fonts/*"] as const
+/** The bundles `bun build` names with a content hash and the versioned font files (`*.woff2`); every other file, the font licence included, keeps its name across builds. */
+const hashedAsset = /^\/(?:index-[a-z0-9]+\.(?:js|css)|fonts\/[^/]+\.woff2)$/
+const hashedAssetGlobs = ["/index-*.js", "/index-*.css", "/fonts/*.woff2"] as const
 
 export function staticCacheControl(pathname: string): string {
   return hashedAsset.test(pathname) ? immutable : revalidate

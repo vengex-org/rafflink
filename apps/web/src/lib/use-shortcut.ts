@@ -1,11 +1,12 @@
 import { useEffect } from "react"
 
-/** Runs `onPress` for a plain press of `key` unless the streamer is typing in a field or a question is open; Ctrl, Meta and Alt keep their own meaning. A null `key` listens to nothing. */
+/** Runs `onPress` for a plain press of `key` unless the streamer is typing in a field or a question is open; Ctrl, Meta and Alt keep their own meaning, and a held key presses once. A null `key` listens to nothing. */
 export function useShortcut(key: string | null, onPress: () => void): void {
   useEffect(() => {
     if (key === null) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== key || event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.repeat || event.key.toLowerCase() !== key) return
+      if (event.ctrlKey || event.metaKey || event.altKey) return
       if (isTyping(event.target) || document.querySelector("dialog[open]") !== null) return
       onPress()
     }

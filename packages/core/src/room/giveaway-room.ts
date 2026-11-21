@@ -251,7 +251,7 @@ export class GiveawayRoom {
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
   // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
-  private winnerChat: readonly WinnerChatLine[] = []
+  private winnerChat: readonly ChatterLine[] = []
 
   constructor(deps: RoomDeps) {
     this.sql = deps.sql
@@ -457,7 +457,10 @@ export class GiveawayRoom {
       this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
       return { kind: "rerolled", replaced: n, winner }
     })
-    if (outcome.kind === "rerolled") this.afterOutcomeWrite()
+    if (outcome.kind === "rerolled") {
+      this.dropChatOf(draws.find((draw) => draw.n === n)?.platformUserId)
+      this.afterOutcomeWrite()
+    }
     return outcome
   }
 
@@ -546,7 +549,7 @@ export class GiveawayRoom {
         recent === undefined ? 0 : new RowReader("entries", recent).int("c") / windowSeconds,
       lastNames,
       winners,
-      winnerChat: this.winnerChat,
+      winnerChat: this.winnerChat.map((entry) => entry.line),
       ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
@@ -657,6 +660,10 @@ export class GiveawayRoom {
     return end === null || this.clock.now() > end
   }
 
+  private dropChatOf(chatterUserId: string | undefined): void {
+    this.winnerChat = this.winnerChat.filter((entry) => entry.chatterUserId !== chatterUserId)
+  }
+
   private forgetWinnerChat(): void {
     if (this.winnerChat.length === 0) return
     this.winnerChat = []
@@ -674,7 +681,11 @@ export class GiveawayRoom {
   private onChatMessage(message: ChatMessage): void {
     const shown = this.showWinnerChat(message)
     const claimed = this.claimFromChat(message)
-    if (shown && !claimed) this.pushLive()
+    if (shown && !claimed) {
+      this.pushLive()
+      // A throttled push only sets `pushDueAt`; the alarm has to wake the room for it.
+      this.guarded("alarm", () => this.rearm())
+    }
   }
 
   private showWinnerChat(message: ChatMessage): boolean {
@@ -685,7 +696,9 @@ export class GiveawayRoom {
       text: message.text,
       at: this.clock.now(),
     }
-    this.winnerChat = [...this.winnerChat, line].slice(-this.config.liveWinnerChatMax)
+    this.winnerChat = [...this.winnerChat, { chatterUserId: message.chatterUserId, line }].slice(
+      -this.config.liveWinnerChatMax,
+    )
     return true
   }
 
@@ -865,6 +878,12 @@ export class GiveawayRoom {
     const row = this.sql.exec("SELECT giveaway_id FROM room_state WHERE id = 1", [])[0]
     return row === undefined ? null : new RowReader("room_state", row).text("giveaway_id")
   }
+}
+
+// A winner's chat line with whom it came from, so a reroll can drop that chatter's lines.
+interface ChatterLine {
+  readonly chatterUserId: string
+  readonly line: WinnerChatLine
 }
 
 // 256 bits, the HMAC-SHA256 key size.

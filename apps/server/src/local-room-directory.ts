@@ -2,7 +2,7 @@ import { errorClass } from "@rafflink/core/lib/error-class"
 import { SQLiteError, type Database } from "bun:sqlite"
 import { mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { GiveawayRoom, type RoomConfig } from "@rafflink/core/room/giveaway-room"
+import { GiveawayRoom, overlaySnapshot, type RoomConfig } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
 import {
@@ -71,6 +71,16 @@ export class LocalRoomDirectory implements RoomDirectory {
   /** The outcome a viewer's page connecting now starts from, as the JSON text of a push. */
   viewerPushText(giveawayId: string): string {
     return JSON.stringify(this.roomFor(giveawayId).viewerPush())
+  }
+
+  /** The snapshot a streamer's live page connecting now starts from, as the JSON text of a push. */
+  liveSnapshotText(giveawayId: string): string {
+    return JSON.stringify(this.roomFor(giveawayId).liveSnapshot())
+  }
+
+  /** {@link liveSnapshotText} for the overlay: without the winner chat. */
+  overlaySnapshotText(giveawayId: string): string {
+    return JSON.stringify(overlaySnapshot(this.roomFor(giveawayId).liveSnapshot()))
   }
 
   /** Opens every room file and runs its alarm once, so a restart finds the end times, role refreshes and mirrors that were due. */

@@ -61,7 +61,7 @@ describe("repository", () => {
   }, 60_000)
 
   // font-src is 'self', so the fonts ship with the build; their versioned names make a year of caching safe.
-  it("builds the vendored fonts and marks /fonts/* immutable in the headers file", async () => {
+  it("builds the vendored fonts and marks /fonts/*.woff2 immutable in the headers file", async () => {
     buildWeb()
     const headers = await Bun.file(new URL("_headers", dist)).text()
 
@@ -69,7 +69,7 @@ describe("repository", () => {
       expect(existsSync(new URL(`fonts/${name}`, dist))).toBe(true)
     }
     expect(headers).toContain(
-      "\n/fonts/*\n  ! Cache-Control\n  Cache-Control: public, max-age=31536000, immutable\n",
+      "\n/fonts/*.woff2\n  ! Cache-Control\n  Cache-Control: public, max-age=31536000, immutable\n",
     )
   }, 60_000)
 

@@ -13,8 +13,11 @@ import {
 export interface ServerAppOptions {
   /** The HTTP app of core. */
   readonly api: Hono
-  /** Where a viewer's socket gets its first message. */
-  readonly rooms: Pick<LocalRoomDirectory, "viewerPushText">
+  /** Where a socket gets its first message. */
+  readonly rooms: Pick<
+    LocalRoomDirectory,
+    "viewerPushText" | "liveSnapshotText" | "overlaySnapshotText"
+  >
   /** Mounted under {@link fakeTwitchPrefixes} in dev only. */
   readonly fakeTwitch: Hono | null
   /** The built SPA files except `index.html`, which the HTTP app of core answers as a page; null serves no files. */
@@ -29,11 +32,23 @@ export function createServerApp(options: ServerAppOptions): Hono {
   const { api, rooms, fakeTwitch, staticDir } = options
   const app = new Hono()
 
-  app.get("/api/live/:id", socketRoute(api, liveSubscription))
-  app.get("/api/overlay/:id/:token", socketRoute(api, overlaySubscription))
+  app.get(
+    "/api/live/:id",
+    socketRoute(api, (c) => {
+      const id = c.req.param("id") ?? ""
+      return { topic: liveTopic(id), first: () => rooms.liveSnapshotText(id) }
+    }),
+  )
+  app.get(
+    "/api/overlay/:id/:token",
+    socketRoute(api, (c) => {
+      const id = c.req.param("id") ?? ""
+      return { topic: overlayTopic(id), first: () => rooms.overlaySnapshotText(id) }
+    }),
+  )
   app.get(
     "/api/g/:code/live",
-    socketRoute(api, async (_c, checked) => {
+    socketRoute(api, (_c, checked) => {
       const roomId = checked.headers.get(viewerRoomHeader)
       if (roomId === null) throw new TypeError("the viewer socket route named no room")
       return { topic: viewerTopic(roomId), first: () => rooms.viewerPushText(roomId) }
@@ -72,29 +87,19 @@ interface Subscription {
   readonly first: () => string
 }
 
-async function liveSubscription(c: Context, checked: Response): Promise<Subscription> {
-  const first = await checked.text()
-  return { topic: liveTopic(c.req.param("id") ?? ""), first: () => first }
-}
-
-async function overlaySubscription(c: Context, checked: Response): Promise<Subscription> {
-  const first = await checked.text()
-  return { topic: overlayTopic(c.req.param("id") ?? ""), first: () => first }
-}
-
 /**
  * Turns a WebSocket upgrade into a subscription to a room's topic. The JSON route of core on the same
  * path decides who may connect, so the checks live in one place; `subscribe` says what the socket gets.
  */
 function socketRoute(
   api: Hono,
-  subscribe: (c: Context, checked: Response) => Promise<Subscription>,
+  subscribe: (c: Context, checked: Response) => Subscription,
 ): MiddlewareHandler {
   return async (c, next) => {
     if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return next()
     const checked = await api.fetch(c.req.raw)
     if (!checked.ok) return checked
-    const { topic, first } = await subscribe(c, checked)
+    const { topic, first } = subscribe(c, checked)
     return upgradeWebSocket(() => ({
       onOpen: (_event, ws) => {
         if (!isSubscribable(ws.raw)) throw new TypeError("the socket cannot subscribe to a topic")

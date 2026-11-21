@@ -23,6 +23,7 @@ export function LiveStage({
   current,
   currentEntrant,
   pickControls,
+  showChat,
 }: {
   readonly snapshot: LiveSnapshot
   readonly facts: GiveawayView | null
@@ -32,6 +33,8 @@ export function LiveStage({
   readonly currentEntrant: Entrant | null
   /** Buttons on the earlier picks; null hides them (clean mode). */
   readonly pickControls: Doing | null
+  /** False in clean mode: viewers' chat text must not reach a shared screen. */
+  readonly showChat: boolean
 }) {
   switch (snapshot.status) {
     case "open":
@@ -46,6 +49,7 @@ export function LiveStage({
           current={current}
           currentEntrant={currentEntrant}
           pickControls={pickControls}
+          showChat={showChat}
         />
       )
   }
@@ -112,12 +116,14 @@ function DrawnStage({
   current,
   currentEntrant,
   pickControls,
+  showChat,
 }: {
   readonly snapshot: LiveSnapshot
   readonly facts: GiveawayView | null
   readonly current: LiveWinner | null
   readonly currentEntrant: Entrant | null
   readonly pickControls: Doing | null
+  readonly showChat: boolean
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -155,7 +161,7 @@ function DrawnStage({
             <p className="live-claim-hint">
               <ClaimHint snapshot={snapshot} facts={facts} name={name} />
             </p>
-            <WinnerChat lines={snapshot.winnerChat} />
+            {showChat ? <WinnerChat lines={snapshot.winnerChat} /> : null}
           </div>
           <div className="live-timer">
             {current.claim.state === "waiting" ? (

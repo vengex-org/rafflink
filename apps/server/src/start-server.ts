@@ -19,7 +19,7 @@ import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
-import { mkdirSync, readdirSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { BunSocketConnector } from "./bun-socket-connector.ts"
 import { openDatabase } from "./database.ts"
@@ -176,11 +176,12 @@ async function createFakeTwitchApp(config: ResolvedConfig): Promise<Hono> {
 }
 
 // A wildcard route for the SPA would swallow every path, so each path the server answers is listed.
+// The folder is read once at start: a file added to it later needs a restart.
 function devRoutes(app: Hono, spa: Bun.HTMLBundle, publicDir: string | null) {
   const answered = (request: Request, bunServer: Bun.Server<unknown>) =>
     app.fetch(request, bunServer)
   const publicPaths =
-    publicDir === null
+    publicDir === null || !existsSync(publicDir)
       ? []
       : readdirSync(publicDir, { withFileTypes: true }).map((entry) =>
           entry.isDirectory() ? `/${entry.name}/*` : `/${entry.name}`,

@@ -614,6 +614,18 @@ describe("live page: clean mode", () => {
     expect(view.getByRole("toolbar", toolbar)).toBeTruthy()
   })
 
+  it("ignores the repeats of a held c key", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByRole("toolbar", toolbar)
+    await effectsRun()
+    fireEvent.keyDown(document.body, { key: "c" })
+    fireEvent.keyDown(document.body, { key: "c", repeat: true })
+
+    expect(view.queryByRole("toolbar", toolbar)).toBeNull()
+  })
+
   it("does not toggle while the streamer types in a field", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
 
@@ -717,12 +729,16 @@ describe("live page: winners' chat", () => {
     expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
   })
 
-  it("stays on the page in clean mode", async () => {
+  it("is hidden in clean mode and back with Show controls", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
 
     const view = renderApp("/live/gid-1")
-    fireEvent.click(await view.findByRole("button", { name: "Hide controls" }))
+    expect(await view.findByRole("list", { name: "Winner chat" })).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "Hide controls" }))
 
+    expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
+    expect(view.queryByText("I am here!")).toBeNull()
+    fireEvent.click(view.getByRole("button", { name: "Show controls" }))
     expect(view.getByRole("list", { name: "Winner chat" })).toBeTruthy()
   })
 
@@ -738,6 +754,24 @@ describe("live page: winners' chat", () => {
     })
 
     await view.findByText("me too")
+    expect(list.scrollTop).toBe(480)
+  })
+
+  it("scrolls to a new message that has the same time as the one before it", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
+
+    const view = renderApp("/live/gid-1")
+    const list = await view.findByRole("list", { name: "Winner chat" })
+    Object.defineProperty(list, "scrollHeight", { value: 480 })
+    act(() => {
+      list.scrollTop = 0
+      FakeSocket.opened[0]?.push({
+        ...drawn,
+        winnerChat: [...chat, { name: "Wanda", text: "same millisecond", at: 2 }],
+      })
+    })
+
+    await view.findByText("same millisecond")
     expect(list.scrollTop).toBe(480)
   })
 })

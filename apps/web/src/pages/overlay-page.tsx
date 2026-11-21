@@ -79,6 +79,7 @@ function Overlay({
   const { t } = i18n
   const heading = <h1 className="sr-only">{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
   const standing = standingWinners(snapshot.winners)
+  const qr = options.qr ? <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} /> : null
   if (snapshot.status === "drawn" && options.mode !== "compact") {
     return (
       <main className="overlay">
@@ -101,10 +102,18 @@ function Overlay({
             </li>
           ))}
         </ul>
+        {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
       </main>
     )
   }
-  if (options.mode === "winner") return <main className="overlay">{heading}</main>
+  if (options.mode === "winner") {
+    return (
+      <main className="overlay">
+        {heading}
+        {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
+      </main>
+    )
+  }
   const drawn = snapshot.status === "drawn"
   return (
     <main className="overlay">
@@ -129,9 +138,7 @@ function Overlay({
               </span>
             )}
           </div>
-          {options.qr && !drawn ? (
-            <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} />
-          ) : null}
+          {qr}
         </div>
         {drawn ? null : (
           <>

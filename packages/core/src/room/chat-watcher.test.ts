@@ -1005,6 +1005,55 @@ describe("winner chat", () => {
     expect(room.liveSnapshot().winnerChat).toEqual([])
   })
 
+  it("delivers a chat push held back by the throttle when the interval is over", async () => {
+    const { room, socket, winner, liveMessages, alarm, clock } = await connectedRoom({
+      claimKeyword: "!claim",
+      env: { LIVE_INTERVAL_MS: "1000" },
+    })
+    clock.advance(1_000)
+    room.onAlarm()
+    socket?.receive(chat(winner, "first line"))
+    const firstPushAt = clock.now()
+    clock.advance(10)
+    socket?.receive(chat(winner, "second line"))
+    const pushed = liveMessages.length
+
+    expect(alarm.at).not.toBeNull()
+    expect(alarm.at ?? Infinity).toBeLessThanOrEqual(firstPushAt + 1_000)
+    clock.advance(firstPushAt + 1_000 - clock.now())
+    room.onAlarm()
+
+    expect(liveMessages).toHaveLength(pushed + 1)
+    expect(liveMessages.at(-1)).toContain("second line")
+  })
+
+  it("drops the lines of a rerolled pick and pushes the live page", async () => {
+    const { room, socket, winner, liveMessages, clock } = await connectedRoom({
+      claimKeyword: "!claim",
+    })
+    socket?.receive(chat(winner, "old winner line"))
+    clock.advance(1)
+
+    await room.reroll(0)
+
+    expect(room.liveSnapshot().winnerChat).toEqual([])
+    expect(liveMessages.at(-1)).not.toContain("old winner line")
+  })
+
+  it("closes the chat watch and forgets the lines once the giveaway is finished", async () => {
+    const { room, socket, winner, clock, drawnAt, connector } = await connectedRoom({
+      env: { ...longLived, REROLL_WINDOW_SECONDS: "10" },
+    })
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    socket?.receive(chat(winner, "thanks"))
+    clock.advance(drawnAt + 310_001 - clock.now())
+    room.onAlarm()
+
+    expect(room.summary().finished).toBe(true)
+    expect(connector.sockets[0]?.closed).toBe(true)
+    expect(room.liveSnapshot().winnerChat).toEqual([])
+  })
+
   it("pushes the live page when a winner writes, and the overlay push has no chat", async () => {
     const { socket, winner, liveMessages, overlayMessages, clock } = await connectedRoom({
       claimKeyword: "!claim",

@@ -132,6 +132,7 @@ function Controls({
             current={current}
             currentEntrant={currentEntrant}
             pickControls={clean ? null : { id, busy, run }}
+            showChat={!clean}
           />
           {message === null ? null : <Status>{t(message)}</Status>}
           <Problems snapshot={snapshot} />

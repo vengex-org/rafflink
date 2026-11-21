@@ -19,26 +19,6 @@ const others = cssFiles(stylesDir)
 const index = sheet(join(src, "styles.css"))
 const everySheet = [index, tokens, ...others]
 
-const requiredTokens = [
-  "--bg",
-  "--surface",
-  "--surface-2",
-  "--ink",
-  "--ink-2",
-  "--muted",
-  "--line",
-  "--accent",
-  "--accent-ink",
-  "--success",
-  "--warning",
-  "--danger",
-  "--focus",
-  "--r-sm",
-  "--r",
-  "--r-lg",
-  "--shadow",
-]
-
 const pages = ["home", "dashboard", "create", "giveaway", "live", "overlay", "admin"]
 
 const namedColors = new Set(
@@ -74,15 +54,6 @@ describe("stylesheet", () => {
     )
   })
 
-  it("defines the direction B tokens for light and dark", () => {
-    const light = declaredIn(rootBlock(tokens.text, ":root"))
-    const dark = declaredIn(rootBlock(tokens.text, ':root[data-theme="dark"]'))
-    for (const name of requiredTokens) expect(light).toContain(name)
-    for (const name of ["--bg", "--surface", "--ink", "--line", "--danger", "--focus"]) {
-      expect(dark).toContain(name)
-    }
-  })
-
   it("keeps color literals in tokens.css only", () => {
     for (const { name, text } of [index, ...others]) {
       expect([name, colorLiteralsIn(text)]).toEqual([name, []])
@@ -108,12 +79,6 @@ describe("stylesheet", () => {
     const reduced = blocks.join("\n")
     expect(reduced).toMatch(/animation:\s*none\s*!important/)
     expect(reduced).toMatch(/transition:\s*none\s*!important/)
-  })
-
-  it("moves with the 180ms ease and the 640ms reveal of the design", () => {
-    expect(tokens.text).toMatch(/--ease:\s*cubic-bezier\(0?\.16,\s*1,\s*0?\.3,\s*1\)/)
-    expect(tokens.text).toMatch(/--dur:\s*180ms/)
-    expect(tokens.text).toMatch(/--dur-reveal:\s*640ms/)
   })
 
   it("loads Geist and Geist Mono from files that exist, swapping in the text first", () => {

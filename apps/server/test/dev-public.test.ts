@@ -46,6 +46,24 @@ describe("dev server public files", () => {
     expect(page.headers.get("content-type")).toContain("text/html")
   })
 
+  it("starts without any public files when the web public folder is missing", async () => {
+    const devSpa = (await import("@rafflink/web/index.html")).default
+    server = await startServer({
+      config: testConfig({
+        DATA_DIR: dataDir.path,
+        DEV_FAKE_TWITCH: "true",
+        PUBLIC_URL: "http://localhost:0",
+      }),
+      staticDir: null,
+      devSpa,
+      devPublicDir: join(dataDir.path, "no-such-public"),
+    })
+
+    const page = await fetch(new URL("/some/page", server.url))
+
+    expect(page.headers.get("content-type")).toContain("text/html")
+  })
+
   it("serves the built SPA folder and none of the web public folder in production", async () => {
     writeFileSync(join(dataDir.path, "built.txt"), "built")
     server = await startServer({

@@ -173,7 +173,7 @@ it("treats an unknown mode like auto", async () => {
 it("shows only the winner plate in winner mode after a draw", async () => {
   routeSnapshot(drawn)
 
-  const view = renderApp("/overlay/gid-1/tok-1?mode=winner&qr=1")
+  const view = renderApp("/overlay/gid-1/tok-1?mode=winner")
 
   expect(await view.findByText("Bob")).toBeTruthy()
   expect(view.queryByText("ABCDE")).toBeNull()
@@ -183,7 +183,7 @@ it("shows only the winner plate in winner mode after a draw", async () => {
 it("shows nothing before a draw in winner mode", async () => {
   routeSnapshot(liveSnapshot)
 
-  const view = renderApp("/overlay/gid-1/tok-1?mode=winner&qr=1")
+  const view = renderApp("/overlay/gid-1/tok-1?mode=winner")
 
   expect(await view.findByRole("heading", { level: 1, name: "Summer giveaway" })).toBeTruthy()
   expect(view.queryByText("Ada")).toBeNull()
@@ -218,13 +218,27 @@ it("draws no QR code unless qr is 1", async () => {
   expect(view.queryByRole("img")).toBeNull()
 })
 
-it("draws no QR code on the winner plate after a draw", async () => {
-  routeSnapshot(drawn)
+it.each(["auto", "compact", "winner"])(
+  "draws the QR code with qr=1 after a draw in %s mode, outside the winner plate",
+  async (mode) => {
+    routeSnapshot(drawn)
 
-  const view = renderApp("/overlay/gid-1/tok-1?qr=1")
+    const view = renderApp(`/overlay/gid-1/tok-1?mode=${mode}&qr=1`)
 
-  expect(await view.findByText("Bob")).toBeTruthy()
-  expect(view.queryByRole("img")).toBeNull()
+    expect(await view.findByText("Bob")).toBeTruthy()
+    const qr = view.getByRole("img", { name: "QR code with the link to enter the giveaway" })
+    expect(qr.closest(".overlay-winner")).toBeNull()
+  },
+)
+
+it("draws the QR code with qr=1 in winner mode before a draw", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=winner&qr=1")
+
+  expect(
+    await view.findByRole("img", { name: "QR code with the link to enter the giveaway" }),
+  ).toBeTruthy()
 })
 
 it("shows not found for an invalid token and opens no socket", async () => {
