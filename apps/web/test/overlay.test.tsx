@@ -442,6 +442,21 @@ describe("host mark", () => {
     expect(plates[0]?.querySelector(".overlay-host")).toBeNull()
     expect(plates[1]?.lastElementChild).toBe(mark(view))
   })
+
+  it("keeps the host on a plate of its own when no winner stands", async () => {
+    routeSnapshot({
+      ...drawn,
+      winners: drawn.winners.map((winner) => ({ ...winner, claim: { state: "rerolled" } })),
+    })
+
+    const view = renderApp("/overlay/gid-1/tok-1")
+
+    expect(await view.findByRole("heading", { level: 2, name: "Winners" })).toBeTruthy()
+    expect(mark(view)?.textContent).toBe("Rrafflink.test")
+    expect(view.container.querySelectorAll(".overlay-winner")).toHaveLength(1)
+    expect(mark(view)?.parentElement?.className).toBe("overlay-plate overlay-winner")
+    expect(view.container.querySelector(".winner-plate")).toBeNull()
+  })
 })
 
 it("shows not found for an invalid token and opens no socket", async () => {

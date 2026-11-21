@@ -233,7 +233,7 @@ function FetchedWinnerPlates({
   return <WinnerPlates standing={standing} prize={prize} />
 }
 
-/** One plate per standing winner with the prize line and, while the claim is open, its clock. */
+/** One plate per standing winner with the prize line and, while the claim is open, its clock; the host alone when none stands. */
 export function WinnerPlates({
   standing,
   prize,
@@ -247,6 +247,12 @@ export function WinnerPlates({
     <>
       <h2 className="sr-only">{t("overlay.winners")}</h2>
       <ul className="overlay-winners">
+        {/* No plate to hold the host row when every pick was rerolled or none was made. */}
+        {standing.length === 0 ? (
+          <li className="overlay-plate overlay-winner">
+            <PlateHost />
+          </li>
+        ) : null}
         {standing.map((winner, index) => (
           <li key={winner.n} className="overlay-plate overlay-winner">
             <div>

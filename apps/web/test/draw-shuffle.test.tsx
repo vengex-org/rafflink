@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
-import { act, cleanup } from "@testing-library/react"
+import { act, cleanup, render } from "@testing-library/react"
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { giveaway, liveSnapshot } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
+import { DrawShuffle } from "../src/components/draw-shuffle.tsx"
+import { I18nProvider } from "../src/i18n/i18n.tsx"
+import { ClockProvider } from "../src/lib/use-remaining.ts"
 
 const now = Date.UTC(2026, 10, 21, 12)
 const sample = ["Ann", "Bo"]
@@ -192,5 +195,32 @@ describe.each(surfaces)("draw shuffle on the $name", ({ open }) => {
     expect(plateName(view)).toBe("0:03")
     expect(view.queryByText("Ann")).toBeNull()
     expect(view.queryByText("Bo")).toBeNull()
+  })
+})
+
+describe("draw shuffle on a stopped clock", () => {
+  it("keeps the name it shows while the clock is not running", () => {
+    const names = ["Ann", "Bo", "Cy", "Di"]
+    const view = (running: boolean) => (
+      <I18nProvider>
+        <ClockProvider value={{ now: () => Date.now(), running }}>
+          <DrawShuffle names={names} waitMs={5000} />
+        </ClockProvider>
+      </I18nProvider>
+    )
+    const shown = render(view(false))
+    const name = () => shown.container.querySelector(".winner-plate-name")?.textContent
+    const first = name()
+
+    for (let i = 0; i < 20; i++) tick(90)
+    expect(name()).toBe(first)
+
+    const seen = new Set<string | null | undefined>()
+    shown.rerender(view(true))
+    for (let i = 0; i < 40; i++) {
+      tick(90)
+      seen.add(name())
+    }
+    expect(seen.size).toBeGreaterThan(1)
   })
 })

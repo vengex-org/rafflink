@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
-import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
+import { formatClock, useClock, useRemainingMs } from "../lib/use-remaining.ts"
 
 const flashMs = 90
 const reducedMotion = "(prefers-reduced-motion: reduce)"
@@ -29,10 +29,12 @@ export function DrawShuffle({
 
 function FlashingName({ names }: { readonly names: readonly string[] }) {
   const [name, setName] = useState(() => pickName(names))
+  const { running } = useClock()
   useEffect(() => {
+    if (!running) return
     const timer = setInterval(() => setName(pickName(names)), flashMs)
     return () => clearInterval(timer)
-  }, [names])
+  }, [names, running])
   return (
     <span className="winner-plate-name" aria-hidden="true">
       {name}

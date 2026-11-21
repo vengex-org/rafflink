@@ -20,6 +20,12 @@ export function useRemainingMs(initialMs: number): number {
   const { now: readNow, running } = useClock()
   const [startedAt] = useState(readNow)
   const [now, setNow] = useState(startedAt)
+  // Read the clock as soon as it stops or starts, so a pause between two ticks shows its own time and resuming does not jump.
+  const [last, setLast] = useState({ readNow, running })
+  if (last.readNow !== readNow || last.running !== running) {
+    setLast({ readNow, running })
+    setNow(readNow())
+  }
   const remaining = Math.max(0, initialMs - (now - startedAt))
   const over = remaining === 0
   useEffect(() => {
