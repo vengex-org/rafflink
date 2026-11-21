@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, jest, spyOn } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent } from "@testing-library/react"
 import { demoReducer, demoSteps, initialDemoState, type DemoState } from "../src/lib/demo-script.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
+import { mockFetch } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 describe("demo timeline", () => {
@@ -28,8 +29,10 @@ describe("demo timeline", () => {
   })
 })
 
-const refuseFetch = () => {
-  throw new Error("the demo must not call fetch")
+// The header asks for the session on every page; the demo itself must not call anything else.
+const answerSessionOnly = (input: string | URL | Request) => {
+  if (input !== "/api/session") throw new Error("the demo must not call fetch")
+  return Promise.resolve(Response.json({ streamer: null }))
 }
 const advance = (ms: number) => act(() => jest.advanceTimersByTime(ms))
 
@@ -40,9 +43,11 @@ describe("demo page", () => {
     jest.useFakeTimers()
     restoreSocket = installFakeSocket()
     FakeSocket.opened.length = 0
+    mockFetch({})
   })
   afterEach(() => {
     cleanup()
+    mock.restore()
     jest.useRealTimers()
     restoreSocket()
   })
@@ -50,7 +55,7 @@ describe("demo page", () => {
   it("plays a giveaway from entering to the claim without a request, and plays again", () => {
     // lib.dom's fetch type has no `preconnect`, Bun's has; the demo never calls it.
     const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
-      Object.assign(refuseFetch, { preconnect: () => {} }),
+      Object.assign(answerSessionOnly, { preconnect: () => {} }),
     )
     const view = renderApp("/demo")
 
@@ -87,7 +92,7 @@ describe("demo page", () => {
     expect(view.getByText("41 people entered")).toBeTruthy()
     expect(view.queryByText("mira_vex")).toBeNull()
 
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(fetchSpy.mock.calls.map(([input]) => input)).toEqual(["/api/session"])
     expect(FakeSocket.opened).toHaveLength(0)
   })
 

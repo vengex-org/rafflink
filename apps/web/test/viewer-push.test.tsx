@@ -123,6 +123,69 @@ describe("viewer page: push", () => {
     expect(pageLoads(requests)).toBe(1)
   })
 
+  it("keeps the entry the page knew when a push turns the viewer into a winner", async () => {
+    mockFetch(pageRoute({ ...enteredAsU1, entry: { group: "vip", tickets: 6, enteredAt: 1 } }))
+    const view = renderApp("/ABCDE")
+    await view.findByRole("heading", { name: "You are in" })
+
+    const socket = await connected()
+    act(() => socket.push(push({ status: "drawn", winners: [waitingWinner("u1")] })))
+
+    expect(await view.findByText("Your entry: 6 tickets as a VIP.")).toBeTruthy()
+  })
+
+  it("keeps the tickets of a viewer the page loaded as a winner when a later push arrives", async () => {
+    mockFetch(
+      pageRoute({
+        kind: "won",
+        userId: "u1",
+        n: 0,
+        tickets: 2,
+        group: "moderator",
+        claimRemainingMs: 90_000,
+        claim: { state: "waiting" },
+        chatClaimAvailable: true,
+      }),
+    )
+    const view = renderApp("/ABCDE")
+    await view.findByRole("heading", { name: "You won" })
+
+    const socket = await connected()
+    act(() => socket.push(push({ status: "drawn", winners: [waitingWinner("u1")] })))
+
+    await view.findByRole("button", { name: "Claim my prize" })
+    expect(view.getByText("Your entry: 2 tickets as a moderator.")).toBeTruthy()
+  })
+
+  it("loads the page again when a reroll makes a viewer the page loaded as not-won the winner", async () => {
+    const answers = [
+      { kind: "not-won", userId: "u1" },
+      {
+        kind: "won",
+        userId: "u1",
+        n: 1,
+        tickets: 3,
+        group: "vip",
+        claimRemainingMs: 90_000,
+        claim: { state: "waiting" },
+        chatClaimAvailable: true,
+      },
+    ]
+    const requests = mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({ ...giveaway, me: answers[Math.min(pageLoads(requests) - 1, 1)] }),
+    })
+    const view = renderApp("/ABCDE")
+    await view.findByText("The winner was drawn. It was not you this time.")
+
+    const socket = await connected()
+    act(() => socket.push(push({ status: "drawn", winners: [waitingWinner("u1", 1)] })))
+
+    expect(await view.findByRole("heading", { name: "You won" })).toBeTruthy()
+    expect(view.getByText("Your entry: 3 tickets as a VIP.")).toBeTruthy()
+    expect(pageLoads(requests)).toBe(2)
+  })
+
   it("says it was not them when the winners are other users", async () => {
     const requests = mockFetch(pageRoute())
     const view = renderApp("/ABCDE")
@@ -147,7 +210,7 @@ describe("viewer page: push", () => {
       socket.push(
         push({
           status: "drawn",
-          winners: [{ ...waitingWinner("u1"), claim: { state: "claimed", via: "chat" } }],
+          winners: [{ ...waitingWinner("u1"), claim: { state: "claimed", at: 1, via: "chat" } }],
         }),
       ),
     )
@@ -238,7 +301,7 @@ describe("viewer page: push", () => {
     const socket = await connected()
     const claimed = push({
       status: "drawn",
-      winners: [{ ...waitingWinner("u1"), claim: { state: "claimed", via: "chat" } }],
+      winners: [{ ...waitingWinner("u1"), claim: { state: "claimed", at: 1, via: "chat" } }],
     })
     act(() => socket.push(claimed))
     await view.findByText("Claimed! The streamer will contact you.")
@@ -547,6 +610,8 @@ describe("viewer page: reload window", () => {
             kind: "won",
             userId: "u1",
             n: 0,
+            tickets: 3,
+            group: "follower",
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,
@@ -573,6 +638,8 @@ describe("viewer page: reload window", () => {
         kind: "won",
         userId: "u1",
         n: 0,
+        tickets: 3,
+        group: "follower",
         claimRemainingMs: 90_000,
         claim: { state: "waiting" },
         chatClaimAvailable: true,
@@ -587,7 +654,7 @@ describe("viewer page: reload window", () => {
     const view = renderApp("/ABCDE")
 
     expect((await view.findByRole("timer")).textContent).toMatch(/^1:(09|10)$/)
-    expect(requests).toEqual([])
+    expect(pageLoads(requests)).toBe(0)
   })
 
   it.each([
@@ -629,6 +696,8 @@ describe("viewer page: reload window", () => {
             kind: "won",
             userId: "u1",
             n: 0,
+            tickets: 3,
+            group: "follower",
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,

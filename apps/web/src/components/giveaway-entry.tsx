@@ -37,13 +37,6 @@ export function EntryPanel({
   const { t } = i18n
   const { status } = giveaway
   const card = entry === null ? null : entryCard(entry, giveaway, i18n)
-  const ticketsText =
-    tickets === null
-      ? null
-      : t("entry.in.tickets", {
-          tickets: i18n.plural("ticket", tickets.tickets),
-          role: t(`entry.role.${tickets.group}`),
-        })
   const canEnter = status === "open" && (card === null || card.retry)
   // These outcomes end the flow, so a step count would suggest it goes on.
   const endsFlow =
@@ -65,7 +58,7 @@ export function EntryPanel({
   if (tickets !== null && status === "closed" && (card === null || card.entered)) {
     return (
       <GiveawayState tone="info" icon={<ClockIcon />} title={t("giveaway.waiting.title")}>
-        <TicketBox tickets={tickets}>{ticketsText}</TicketBox>
+        <TicketBox tickets={tickets} />
         <p className="viewer-note">{t("giveaway.waiting.text")}</p>
       </GiveawayState>
     )
@@ -99,9 +92,7 @@ export function EntryPanel({
             : card.title
         }
       >
-        {card !== null && card.entered && tickets !== null ? (
-          <TicketBox tickets={tickets}>{ticketsText}</TicketBox>
-        ) : null}
+        {card !== null && card.entered && tickets !== null ? <TicketBox tickets={tickets} /> : null}
         <div className="viewer-notes">
           <p className="viewer-note">{card === null ? t("giveaway.ready.text") : card.detail}</p>
           {card !== null && card.help !== null ? <p className="viewer-note">{card.help}</p> : null}

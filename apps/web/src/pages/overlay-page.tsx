@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router"
 import type { LiveWinner, OverlaySnapshot } from "@rafflink/core/room/giveaway-room"
-import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
+import { getGiveaway, overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
 import { UsersIcon } from "../components/icons.tsx"
 import { EntrantNames, msUntil, Stat } from "../components/live-parts.tsx"
 import { Failed, Loading } from "../components/notice.tsx"
@@ -12,6 +12,7 @@ import { shareUrl } from "../lib/links.ts"
 import { giveawayName } from "../lib/messages.ts"
 import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
 import { useLive } from "../lib/use-live.ts"
+import { useLoad } from "../lib/use-load.ts"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 
@@ -79,6 +80,13 @@ function Overlay({
   const { t } = i18n
   const heading = <h1 className="sr-only">{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
   const standing = standingWinners(snapshot.winners)
+  const loadGiveaway = useCallback(() => getGiveaway(snapshot.code), [snapshot.code])
+  const { result: giveaway } = useLoad(loadGiveaway)
+  const named = giveaway.state === "ready" ? giveaway.value?.giveaway.prize : null
+  const prize =
+    named === null || named === undefined || named.trim() === ""
+      ? giveawayName(i18n, snapshot.title, snapshot.code)
+      : named
   const qr = options.qr ? <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} /> : null
   if (snapshot.status === "drawn" && options.mode !== "compact") {
     return (
@@ -96,7 +104,7 @@ function Overlay({
                   })}
                 </p>
                 <WinnerPlate name={winner.displayName ?? t("winner.removed")} />
-                <p className="overlay-prize">{giveawayName(i18n, snapshot.title, snapshot.code)}</p>
+                <p className="overlay-prize">{prize}</p>
               </div>
               {winner.claim.state === "waiting" ? <ClaimTimer winner={winner} /> : null}
             </li>

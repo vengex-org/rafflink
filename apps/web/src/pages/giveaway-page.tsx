@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams, useSearchParams } from "react-router"
 import type { ViewerState } from "@rafflink/core/http/json"
 import { entryFromQuery, type GiveawayView } from "../api/client.ts"
@@ -10,7 +10,7 @@ import { TwitchIcon } from "../components/icons.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useEntryResult } from "../lib/use-entry-result.ts"
-import { loadGiveaway } from "../lib/stored-giveaway.ts"
+import { forgetStoredGiveaway, loadGiveaway } from "../lib/stored-giveaway.ts"
 import { twitchChannelUrl } from "../lib/twitch-channel.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { useViewerPush } from "../lib/use-viewer-push.ts"
@@ -40,7 +40,7 @@ function Loaded({ code }: { readonly code: string }) {
           code={code}
           giveaway={result.value.giveaway}
           me={result.value.me}
-          onEntered={reload}
+          onReload={reload}
         />
       )
   }
@@ -50,20 +50,31 @@ function GiveawayDetails({
   code,
   giveaway: loadedGiveaway,
   me: loadedMe,
-  onEntered,
+  onReload,
 }: {
   readonly code: string
   readonly giveaway: GiveawayView
   readonly me: ViewerState
-  /** Loads the giveaway again; a viewer who entered through the queue is signed-out in the answer the page holds. */
-  readonly onEntered: () => void
+  /** Loads the giveaway again: after an enter through the queue, or when a push makes a viewer the page holds as not-won a winner. */
+  readonly onReload: () => void
 }) {
   const { t } = useI18n()
   const push = useViewerPush(code, !loadedGiveaway.finished)
   const { giveaway, me } = applyViewerPush({ giveaway: loadedGiveaway, me: loadedMe }, push)
+  // The push names winners without their entry, so a reroll winner the page held as not-won asks the
+  // server for their own outcome once; the fresh answer says won and this stops.
+  const rerolledIn =
+    loadedMe.kind === "not-won"
+    && push?.status === "drawn"
+    && push.winners.some((winner) => winner.platformUserId === loadedMe.userId)
+  useEffect(() => {
+    if (!rerolledIn) return
+    forgetStoredGiveaway(code)
+    onReload()
+  }, [rerolledIn, code, onReload])
   const [query] = useSearchParams()
   const initial = useMemo(() => entryFromQuery(query), [query])
-  const fromSignIn = useEntryResult(code, initial, giveaway.poll, onEntered)
+  const fromSignIn = useEntryResult(code, initial, giveaway.poll, onReload)
   // A returning viewer has no sign-in outcome in the URL; the viewer state says they are in. It also
   // wins over a `dropped` left in the URL, which only says the queued ticket is gone.
   const fromServer = me.kind === "entered" ? { kind: "entered" as const, entry: me.entry } : null

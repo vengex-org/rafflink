@@ -57,3 +57,7 @@ export const liveSnapshot: LiveSnapshot = {
   eventSubFailures: 0,
   chatClaimUnavailable: false,
 }
+
+/** A claim time and how the English interface writes it, in the zone the test runs in. */
+export const claimedAt = Date.UTC(2026, 10, 21, 14, 5)
+export const claimedAtText = new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(claimedAt)

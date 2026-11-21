@@ -1,7 +1,12 @@
-import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent } from "@testing-library/react"
 import { inputOf } from "./queries.ts"
+import { mockFetch } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
+
+beforeEach(() => {
+  mockFetch({})
+})
 
 afterEach(() => {
   cleanup()

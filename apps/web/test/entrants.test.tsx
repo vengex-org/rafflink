@@ -333,7 +333,7 @@ describe("entrants table: winners", () => {
           entrySeq: 2,
           displayName: "Bo",
           claimUntil: 1,
-          claim: { state: "claimed", via: "chat" },
+          claim: { state: "claimed", at: 1, via: "chat" },
         },
         { n: 0, entrySeq: 1, displayName: "Ada", claimUntil: 1, claim: { state: "expired" } },
         { n: 2, entrySeq: 9, displayName: "Gone", claimUntil: 1, claim: { state: "rerolled" } },
@@ -364,7 +364,7 @@ describe("entrants table: winners", () => {
           entrySeq: 1,
           displayName: "Ada",
           claimUntil: 1,
-          claim: { state: "claimed", via: "chat" },
+          claim: { state: "claimed", at: 1, via: "chat" },
         },
         { n: 1, entrySeq: 2, displayName: "Bo", claimUntil: 1, claim: { state: "rerolled" } },
         {
@@ -396,7 +396,7 @@ describe("entrants table: winners", () => {
           entrySeq: 1,
           displayName: "Ada",
           claimUntil: 1,
-          claim: { state: "claimed", via: "chat" },
+          claim: { state: "claimed", at: 1, via: "chat" },
         },
         { n: 1, entrySeq: 2, displayName: "Bo", claimUntil: 1, claim: { state: "rerolled" } },
         {

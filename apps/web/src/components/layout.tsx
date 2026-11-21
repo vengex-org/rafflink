@@ -1,7 +1,11 @@
 import { useId } from "react"
-import { Link, Outlet } from "react-router"
+import { Link, Outlet, useNavigate } from "react-router"
+import { getSession, logout } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl } from "../lib/links.ts"
+import { useAction } from "../lib/use-action.ts"
+import { useLoad } from "../lib/use-load.ts"
+import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
 import { SlidersIcon, TwitchIcon } from "./icons.tsx"
@@ -32,10 +36,7 @@ export function Layout() {
             <Link className="button text app-demo" to="/demo">
               {t("nav.demo")}
             </Link>
-            <Link className="button" to="/dashboard">
-              <TwitchIcon />
-              {t("nav.login")}
-            </Link>
+            <Account />
             <button
               type="button"
               className="icon-button"
@@ -56,5 +57,47 @@ export function Layout() {
         <Outlet />
       </main>
     </div>
+  )
+}
+
+/** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. */
+function Account() {
+  const { t } = useI18n()
+  const { result, reload } = useLoad(getSession)
+  const { message, busy, run } = useAction()
+  const navigate = useNavigate()
+  const streamer = result.state === "ready" ? result.value.streamer : null
+
+  async function signOut() {
+    const outcome = await run(logout, () => "nav.loggedOut")
+    if (outcome === "failed") return
+    reload()
+    navigate("/")
+  }
+
+  return (
+    <>
+      {streamer === null ? (
+        <Link className="button" to="/dashboard">
+          <TwitchIcon />
+          {t("nav.login")}
+        </Link>
+      ) : (
+        <>
+          <Link className="button text" to="/dashboard">
+            {streamer.displayName}
+          </Link>
+          <button
+            type="button"
+            className="button text"
+            disabled={busy}
+            onClick={() => void signOut()}
+          >
+            {t("nav.logout")}
+          </button>
+        </>
+      )}
+      {message === null ? null : <Status>{t(message)}</Status>}
+    </>
   )
 }

@@ -5,6 +5,7 @@ import type {
   DashboardGiveaway,
   EntrantsPage,
   PublicGiveaway,
+  SessionJson,
   ViewerState,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
@@ -128,6 +129,25 @@ export const overlaySnapshotPath = (id: string, token: string) =>
 
 export const viewerSocketPath = (code: string) => `/api/g/${encodeURIComponent(code)}/live`
 
+/** Who the streamer cookie belongs to; a signed-out visitor is an answer, not an error. */
+export async function getSession(): Promise<SessionJson> {
+  const { status, body } = await send("/api/session")
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "session")
+  if (source.streamer === null) return { streamer: null }
+  const streamer = child(source, "streamer")
+  return {
+    streamer: { displayName: text(streamer, "displayName"), login: text(streamer, "login") },
+  }
+}
+
+/** The logout answers 204 without a body, so it does not go through `send`. */
+export async function logout(): Promise<"logged-out"> {
+  const response = await fetch("/auth/logout", { method: "POST" })
+  if (response.status !== 204) throw new ApiError(response.status)
+  return "logged-out"
+}
+
 export async function getGiveaway(code: string): Promise<GiveawayLoad | null> {
   const { status, body } = await send(`/api/g/${encodeURIComponent(code)}`)
   if (status === 404) return null
@@ -172,6 +192,8 @@ function parseViewerState(source: Json): ViewerState {
         kind,
         userId: text(source, "userId"),
         n: num(source, "n"),
+        tickets: num(source, "tickets"),
+        group: oneOf(source, "group", groups),
         claimRemainingMs: num(source, "claimRemainingMs"),
         claim: parseClaim(child(source, "claim")),
         chatClaimAvailable: bool(source, "chatClaimAvailable"),
@@ -449,7 +471,7 @@ function parseClaim(source: Json): WinnerClaim {
   const state = oneOf(source, "state", ["claimed", "waiting", "expired", "rerolled"])
   switch (state) {
     case "claimed":
-      return { state, via: oneOf(source, "via", claimedVias) }
+      return { state, at: num(source, "at"), via: oneOf(source, "via", claimedVias) }
     case "waiting":
     case "expired":
     case "rerolled":

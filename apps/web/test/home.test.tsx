@@ -1,8 +1,15 @@
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, within } from "@testing-library/react"
+import { mockFetch } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
-afterEach(cleanup)
+beforeEach(() => {
+  mockFetch({})
+})
+afterEach(() => {
+  cleanup()
+  mock.restore()
+})
 
 describe("home page", () => {
   it("opens with the one-sentence promise as the only h1", () => {

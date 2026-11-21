@@ -14,12 +14,18 @@ export function applyViewerPush(load: GiveawayLoad, push: ViewerPush | null): Gi
   }
   const winner = push.winners.find((candidate) => candidate.platformUserId === me.userId)
   if (winner === undefined) return { giveaway, me: { kind: "not-won", userId: me.userId } }
+  // The push names winners only, so their own entry comes from the page's earlier answer. A viewer
+  // the page loaded as not-won has none; the page loads again for them (giveaway-page.tsx).
+  const entry = me.kind === "won" ? me : me.kind === "entered" ? me.entry : null
+  if (entry === null) return { giveaway, me }
   return {
     giveaway,
     me: {
       kind: "won",
       userId: me.userId,
       n: winner.n,
+      tickets: entry.tickets,
+      group: entry.group,
       claimRemainingMs: Math.max(0, winner.claimUntil - push.now),
       claim: winner.claim,
       chatClaimAvailable: push.chatClaimAvailable,

@@ -7,7 +7,7 @@ import { giveawayName } from "../lib/messages.ts"
 import { useRemainingMs } from "../lib/use-remaining.ts"
 import { claimTone, Countdown } from "./countdown.tsx"
 import { AlertIcon, CheckIcon, ClockIcon } from "./icons.tsx"
-import { GiveawayState } from "./giveaway-state.tsx"
+import { GiveawayState, TicketBox } from "./giveaway-state.tsx"
 import { Status } from "./notice.tsx"
 
 const ringRadius = 52
@@ -41,6 +41,10 @@ export function ClaimPanel({
   if (claimed) {
     return (
       <GiveawayState tone="win" title={t("win.claimed.title")} line={prize}>
+        <TicketBox tickets={win} />
+        {win.claim.state === "claimed" ? (
+          <p className="viewer-note">{t("win.claimedAt", { time: i18n.time(win.claim.at) })}</p>
+        ) : null}
         <p className="viewer-note">{t("viewerClaim.claimed")}</p>
       </GiveawayState>
     )
@@ -68,6 +72,7 @@ export function ClaimPanel({
         />
       }
     >
+      <TicketBox tickets={win} />
       <p className="viewer-note">{t("win.press")}</p>
       <button
         type="button"
