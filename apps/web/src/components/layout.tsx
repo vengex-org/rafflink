@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { Link, Outlet, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl } from "../lib/links.ts"
+import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { AppFrame } from "./page.tsx"
@@ -170,9 +171,9 @@ function AccountMenu({
           </li>
           {donateUrl === null ? null : (
             <li>
-              <a href={donateUrl} target="_blank" rel="noopener" onClick={() => setOpen(false)}>
+              <DonateLink url={donateUrl} onClick={() => setOpen(false)}>
                 {t("nav.support")}
-              </a>
+              </DonateLink>
             </li>
           )}
           <li>

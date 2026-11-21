@@ -92,18 +92,15 @@ export interface MyLeafJson {
   readonly salt: string | null
 }
 
-/** Who the streamer cookie belongs to; `null` when there is no valid session. */
-/** Who is signed in; only a signed-in streamer gets the deployment's support link (`DONATE_URL`, null when unset). */
-export type SessionJson =
-  | { readonly streamer: null }
-  | {
-      readonly streamer: {
-        readonly displayName: string
-        readonly login: string
-        readonly profileImageUrl: string | null
-      }
-      readonly donateUrl: string | null
-    }
+/** Who the streamer cookie belongs to (`null` without a valid session), and the deployment's support link (`DONATE_URL`, null when unset). */
+export interface SessionJson {
+  readonly streamer: {
+    readonly displayName: string
+    readonly login: string
+    readonly profileImageUrl: string | null
+  } | null
+  readonly donateUrl: string | null
+}
 
 /** The streamer's own view of a giveaway, with the overlay token. */
 export interface DashboardGiveaway {
@@ -122,8 +119,11 @@ export interface DashboardGiveaway {
 /** The subscriber badge image of each ticket group a subscriber can be in; `null` when none is known and the page shows a tier chip. */
 export type BadgesJson = SubscriberBadges
 
-/** The live snapshot the streamer's own page loads first; the overlay token lets it show the OBS link. */
-export type OwnerLiveSnapshot = LiveSnapshot & { readonly overlayToken: string }
+/** The live snapshot the streamer's own page loads first; the overlay token lets it show the OBS link, the support link (`DONATE_URL`, null when unset) a quiet way to support the deployment. */
+export type OwnerLiveSnapshot = LiveSnapshot & {
+  readonly overlayToken: string
+  readonly donateUrl: string | null
+}
 
 /** One page of the entrants table; `more` is true when entrants follow the last row. */
 export interface EntrantsPage {

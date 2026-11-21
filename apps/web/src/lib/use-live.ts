@@ -14,6 +14,8 @@ export type LiveState<Snapshot> =
       readonly entrantsAfter: EntrantsDelta | null
       /** Known from the first answer of the streamer's own route; the overlay route has none. */
       readonly overlayToken: string | null
+      /** The deployment's support page, known like the overlay token; null when unset. */
+      readonly donateUrl: string | null
     }
   | { readonly state: "unauthorized" | "not-found" | "failed" }
 
@@ -40,6 +42,7 @@ export function useLive<Snapshot>(
     let current = true
     let socket: WebSocket | null = null
     let overlayToken: string | null = null
+    let donateUrl: string | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
 
     const connect = (attempt: number) => {
@@ -53,7 +56,14 @@ export function useLive<Snapshot>(
             parseSnapshot,
           )
           healthy = true
-          setLive({ state: "ready", snapshot, connected: true, entrantsAfter, overlayToken })
+          setLive({
+            state: "ready",
+            snapshot,
+            connected: true,
+            entrantsAfter,
+            overlayToken,
+            donateUrl,
+          })
         } catch (error) {
           if (!(error instanceof ApiShapeError || error instanceof SyntaxError)) throw error
           console.error("live message ignored", { errorClass: errorClass(error) })
@@ -77,12 +87,14 @@ export function useLive<Snapshot>(
           return
         }
         overlayToken = first.overlayToken
+        donateUrl = first.donateUrl
         setLive({
           state: "ready",
           snapshot: first.snapshot,
           connected: false,
           entrantsAfter: null,
           overlayToken,
+          donateUrl,
         })
         connect(0)
       },

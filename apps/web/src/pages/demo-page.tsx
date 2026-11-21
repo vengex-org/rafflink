@@ -176,6 +176,7 @@ function StreamerDemo({
           snapshot={snapshot}
           connected
           overlayToken={null}
+          donateUrl={null}
           cleanModeKey="rafflink-demo-clean"
           facts={facts}
           entrants={{ rows: entrants, phase: "ready", retry: noRetry }}

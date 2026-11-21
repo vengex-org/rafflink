@@ -74,7 +74,7 @@ describe("session", () => {
     const response = await new Browser(harness).request("/api/session")
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ streamer: null })
+    expect(await response.json()).toEqual({ streamer: null, donateUrl: null })
   })
 
   it("names the signed-in streamer", async () => {
@@ -94,11 +94,14 @@ describe("session", () => {
     })
   })
 
-  it("gives the configured support link to a signed-in streamer only", async () => {
+  it("gives the configured support link to a signed-out visitor and a signed-in streamer", async () => {
     await harness.stop()
     harness = await createHarness({ env: { DONATE_URL: "https://ko-fi.com/rafflink" } })
     const browser = new Browser(harness)
-    expect(await (await browser.request("/api/session")).json()).toEqual({ streamer: null })
+    expect(await (await browser.request("/api/session")).json()).toEqual({
+      streamer: null,
+      donateUrl: "https://ko-fi.com/rafflink",
+    })
 
     await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
 
@@ -111,7 +114,7 @@ describe("session", () => {
 
     const response = await browser.request("/api/session")
 
-    expect(await response.json()).toEqual({ streamer: null })
+    expect(await response.json()).toEqual({ streamer: null, donateUrl: null })
     expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
     expect(browser.cookie("rl_streamer")).toBeUndefined()
   })
@@ -124,7 +127,10 @@ describe("session", () => {
 
     expect(response.status).toBe(204)
     expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
-    expect(await (await browser.request("/api/session")).json()).toEqual({ streamer: null })
+    expect(await (await browser.request("/api/session")).json()).toEqual({
+      streamer: null,
+      donateUrl: null,
+    })
   })
 
   it("refuses a logout from another origin and keeps the session", async () => {
@@ -1707,6 +1713,18 @@ describe("overlay and admin", () => {
 
     expect(owner).toMatchObject({ overlayToken, status: "open" })
     expect(overlay).not.toHaveProperty("overlayToken")
+  })
+
+  it("sends the configured support link with the owner's live snapshot and not with the overlay's", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { DONATE_URL: "https://ko-fi.com/rafflink" } })
+    const { browser, id, overlayToken } = await createGiveaway(harness)
+
+    const owner = await (await browser.request(`/api/live/${id}`)).json()
+    const overlay = await (await harness.app.request(`/api/overlay/${id}/${overlayToken}`)).json()
+
+    expect(owner).toMatchObject({ donateUrl: "https://ko-fi.com/rafflink" })
+    expect(overlay).not.toHaveProperty("donateUrl")
   })
 
   it("shows the live view to a request with the overlay token and no session", async () => {

@@ -777,6 +777,12 @@
   padding: 0 0.875rem;
 }
 
+.live-settings-end .donate-link {
+  margin-inline-start: auto;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
 .live-draw-help {
   flex: 1 1 100%;
   margin: 0;

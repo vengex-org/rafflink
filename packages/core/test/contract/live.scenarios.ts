@@ -225,7 +225,7 @@ export function liveScenarios(context: ContractContext): void {
 
   scenario(
     context,
-    "the owner's live JSON carries the overlay token and the overlay's does not",
+    "the owner's live JSON carries the overlay token and the support link and the overlay's does not",
     async (world) => {
       const target = await world.start()
       const giveaway = await world.createGiveaway(target)
@@ -236,7 +236,9 @@ export function liveScenarios(context: ContractContext): void {
       ).json()
 
       expect(owner.overlayToken).toBe(giveaway.overlayToken)
+      expect(owner.donateUrl).toBeNull()
       expect(overlay.overlayToken).toBeUndefined()
+      expect(overlay.donateUrl).toBeUndefined()
     },
   )
 

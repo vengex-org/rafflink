@@ -545,7 +545,7 @@ export const configSchema = {
     "DONATE_URL",
     optional(httpsUrl),
     "",
-    "HTTPS page where streamers can support this deployment; the dashboard and the account menu link to it, never a viewer page or the overlay; blank shows no link",
+    "HTTPS page where people can support this deployment; the home page, the dashboard, the account menu and the streamer's live page link to it, never a viewer page or the overlay; blank shows no link",
   ),
 }
 

@@ -74,6 +74,8 @@ export interface GiveawayLoad {
 export interface LiveLoad<Snapshot> {
   readonly snapshot: Snapshot
   readonly overlayToken: string | null
+  /** The deployment's support page, sent with the streamer's own route only; null on the overlay route and when unset. */
+  readonly donateUrl: string | null
 }
 
 /** What the viewer's sign-in came to. The redirect query carries no entry details; a poll answer does. */
@@ -155,7 +157,8 @@ export async function getSession(): Promise<SessionJson> {
   const { status, body } = await send(sessionPath)
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "session")
-  if (source.streamer === null) return { streamer: null }
+  const donateUrl = nullableText(source, "donateUrl")
+  if (source.streamer === null) return { streamer: null, donateUrl }
   const streamer = child(source, "streamer")
   return {
     streamer: {
@@ -163,7 +166,7 @@ export async function getSession(): Promise<SessionJson> {
       login: text(streamer, "login"),
       profileImageUrl: nullableText(streamer, "profileImageUrl"),
     },
-    donateUrl: nullableText(source, "donateUrl"),
+    donateUrl,
   }
 }
 
@@ -418,6 +421,7 @@ export async function getLive<Snapshot>(
   return {
     snapshot: parseSnapshot(source),
     overlayToken: source.overlayToken === undefined ? null : text(source, "overlayToken"),
+    donateUrl: source.donateUrl === undefined ? null : nullableText(source, "donateUrl"),
   }
 }
 
