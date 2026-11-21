@@ -710,6 +710,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "terms.contact.p1": "Dotazy k těmto podmínkám: {contactEmail}.",
   "drawResult.round-pending":
     "Náhodné číslo pro toto losování ještě není zveřejněné. Zkus to znovu za pár sekund.",
+  "drawResult.round-due": "Náhodné číslo pro toto losování už letí. Zkus to znovu za chvíli.",
   "drawResult.beacon-unavailable":
     "Zdroj náhody (drand) se nepodařilo zastihnout. Nic se nevylosovalo. Zkus to znovu.",
   "giveaway.verify.link": "Ověřit toto losování",

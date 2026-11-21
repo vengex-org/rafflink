@@ -573,6 +573,7 @@ describe("GiveawayRoom alarm", () => {
     const { room, clock, alarm } = setup()
     room.replaceRoles([], [])
     room.close()
+    clock.advance(config.liveIntervalMs)
     await room.commit()
     expect(room.onAlarm().mirrorStatus).toBeNull()
     expect(alarm.at).toBe(30_000)
@@ -853,7 +854,25 @@ describe("GiveawayRoom live push of entrants", () => {
 
     await room.commit()
 
-    expect(room.liveSnapshot().drawAvailableAt).toBe(genesisMs + 30_000)
+    expect(room.liveSnapshot()).toMatchObject({
+      drawAvailableAt: genesisMs + 30_000,
+      now: genesisMs,
+    })
+  })
+
+  it("pushes the live snapshot with drawAvailableAt once the commit is stored", async () => {
+    const { room, clock, hub } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.close()
+    clock.advance(config.liveIntervalMs * 3)
+    const before = hub.messages.length
+
+    await room.commit()
+
+    const pushed = hub.messages.slice(before).map((message) => JSON.parse(message))
+    expect(pushed).toHaveLength(1)
+    expect(pushed[0]).toMatchObject({ status: "closed", drawAvailableAt: genesisMs + 33_000 })
   })
 
   it("keeps the entrants out of the snapshot a GET returns", () => {
@@ -1431,6 +1450,7 @@ describe("GiveawayRoom retention", () => {
     room.enter(viewer("1"))
     clock.advance(1000)
     room.close()
+    clock.advance(config.liveIntervalMs)
     await room.commit()
     room.markMirrored("closed")
     expect(alarm.at).toBe(1000 + retentionMs)
@@ -1968,7 +1988,11 @@ describe("GiveawayRoom draw with drand", () => {
 
     const outcome = await room.draw()
 
-    expect(outcome).toEqual({ kind: "round-pending", availableAt: genesisMs + 30_000 })
+    expect(outcome).toEqual({
+      kind: "round-pending",
+      availableAt: genesisMs + 30_000,
+      now: genesisMs,
+    })
     expect(room.summary().status).toBe("closed")
     expect(sql.exec("SELECT seed FROM room_state", [])[0]?.seed).toBeNull()
     expect(picks(sql)).toEqual([])

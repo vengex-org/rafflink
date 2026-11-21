@@ -710,6 +710,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "terms.contact.p1": "Otázky k týmto podmienkam: {contactEmail}.",
   "drawResult.round-pending":
     "Náhodné číslo pre toto žrebovanie ešte nie je zverejnené. Skús to znova o pár sekúnd.",
+  "drawResult.round-due": "Náhodné číslo pre toto žrebovanie už letí. Skús znova o chvíľu.",
   "drawResult.beacon-unavailable":
     "Zdroj náhody (drand) sa nepodarilo zastihnúť. Nič sa nevyžrebovalo. Skús to znova.",
   "giveaway.verify.link": "Overiť toto žrebovanie",

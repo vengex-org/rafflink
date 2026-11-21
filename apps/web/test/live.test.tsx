@@ -279,7 +279,10 @@ describe("live page: drawing", () => {
     async (kind, status, message) => {
       mockLive({
         "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
-        "POST /api/dash/giveaways/gid-1/draw": () => ({ status, body: { kind, availableAt: 1 } }),
+        "POST /api/dash/giveaways/gid-1/draw": () => ({
+          status,
+          body: { kind, availableAt: Date.now() + 60_000, now: Date.now() },
+        }),
       })
 
       const view = renderApp("/live/gid-1")
@@ -392,7 +395,7 @@ describe("live page: waiting for the drand round", () => {
   it("counts down to the committed round and enables the draw when it is published", async () => {
     mockLive({
       "GET /api/live/gid-1": () =>
-        ok({ ...liveSnapshot, status: "closed", drawAvailableAt: now + 20_000 }),
+        ok({ ...liveSnapshot, status: "closed", now, drawAvailableAt: now + 20_000 }),
     })
 
     const view = renderApp("/live/gid-1")
@@ -412,7 +415,7 @@ describe("live page: waiting for the drand round", () => {
       "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
       "POST /api/dash/giveaways/gid-1/draw": () => ({
         status: 409,
-        body: { kind: "round-pending", availableAt: now + 12_000 },
+        body: { kind: "round-pending", availableAt: now + 12_000, now },
       }),
     })
 
@@ -422,6 +425,42 @@ describe("live page: waiting for the drand round", () => {
 
     expect(await view.findAllByText(drawsIn("0:12"))).not.toHaveLength(0)
     expect(view.getByRole("button", { name: "Draw winners" }).hasAttribute("disabled")).toBe(true)
+  })
+
+  it("counts from the server clock when the browser clock is behind", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () =>
+        ok({
+          ...liveSnapshot,
+          status: "closed",
+          now: now + 3_600_000,
+          drawAvailableAt: now + 3_600_000 + 20_000,
+        }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findAllByText(drawsIn("0:20"))).not.toHaveLength(0)
+  })
+
+  it("says the round is on its way when a draw answers round-pending with its time already reached", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
+      "POST /api/dash/giveaways/gid-1/draw": () => ({
+        status: 409,
+        body: { kind: "round-pending", availableAt: now, now },
+      }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.click(await view.findByRole("button", { name: "Draw winners" }))
+    fireEvent.click(view.getByRole("button", { name: "Yes, draw winners" }))
+
+    expect(
+      await view.findByText(
+        "The random number for this draw is on its way. Try again in a moment.",
+      ),
+    ).toBeTruthy()
   })
 })
 

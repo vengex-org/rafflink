@@ -706,6 +706,7 @@ export const en = {
   "terms.contact.p1": "Questions about these terms: {contactEmail}.",
   "drawResult.round-pending":
     "The random number for this draw is not published yet. Try again in a few seconds.",
+  "drawResult.round-due": "The random number for this draw is on its way. Try again in a moment.",
   "drawResult.beacon-unavailable":
     "Could not reach the random source (drand). Nothing was drawn. Try again.",
   "giveaway.verify.link": "Verify this draw",

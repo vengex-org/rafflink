@@ -2010,6 +2010,7 @@ describe("draw commitment", () => {
     expect(await early.json()).toEqual({
       kind: "round-pending",
       availableAt: roundTime(drandChain(harness.config), round),
+      now: harness.clock.now(),
     })
     expect(await drawn.json()).toEqual({ kind: "drawn", winners: [0] })
   })

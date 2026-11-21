@@ -1,30 +1,17 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useState } from "react"
 
 /** Milliseconds left, counted down from `initialMs` (what the server computed) since the first render; never below 0. */
 export function useRemainingMs(initialMs: number): number {
   const [startedAt] = useState(() => Date.now())
   const [now, setNow] = useState(startedAt)
+  const remaining = Math.max(0, initialMs - (now - startedAt))
+  const over = remaining === 0
   useEffect(() => {
+    if (over) return
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
-  }, [])
-  return Math.max(0, initialMs - (now - startedAt))
-}
-
-const nowSecond = () => Math.floor(Date.now() / 1000)
-
-/** Milliseconds until the instant `at`, to the second and never below 0; 0 while `at` is null. */
-export function useMsUntil(at: number | null): number {
-  const subscribe = useCallback(
-    (onTick: () => void) => {
-      if (at === null) return () => {}
-      const timer = setInterval(onTick, 1000)
-      return () => clearInterval(timer)
-    },
-    [at],
-  )
-  const second = useSyncExternalStore(subscribe, nowSecond)
-  return at === null ? 0 : Math.max(0, at - second * 1000)
+  }, [over])
+  return remaining
 }
 
 export function formatClock(ms: number): string {

@@ -409,13 +409,15 @@ export function closeEntries(id: string): Promise<CloseKind | Rejected> {
 /** What a draw answered: the outcome, and for `round-pending` the instant the committed round is published. */
 export type DrawAnswer =
   | { readonly kind: Exclude<DrawKind, "round-pending"> | Rejected }
-  | { readonly kind: "round-pending"; readonly availableAt: number }
+  | { readonly kind: "round-pending"; readonly availableAt: number; readonly now: number }
 
 /** The count is the giveaway's own setting, so the draw sends none. */
 export async function drawWinners(id: string): Promise<DrawAnswer> {
   const source = await post(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, {})
   const kind = answerKind(source, drawKinds)
-  return kind === "round-pending" ? { kind, availableAt: num(source, "availableAt") } : { kind }
+  return kind === "round-pending"
+    ? { kind, availableAt: num(source, "availableAt"), now: num(source, "now") }
+    : { kind }
 }
 
 export function setWinnerCount(id: string, count: number): Promise<SetWinnerCountKind | Rejected> {
@@ -681,6 +683,7 @@ function parseSharedSnapshotFields(source: Json) {
     roleRefreshFailures: num(source, "roleRefreshFailures"),
     eventSubFailures: num(source, "eventSubFailures"),
     drawAvailableAt: nullableNum(source, "drawAvailableAt"),
+    now: num(source, "now"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
   }
 }
