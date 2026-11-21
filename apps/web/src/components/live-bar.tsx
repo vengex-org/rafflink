@@ -8,6 +8,7 @@ import {
   setWinnerCount,
 } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
+import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { overlayUrl } from "../lib/links.ts"
 import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
 import type { useAction } from "../lib/use-action.ts"
@@ -68,6 +69,9 @@ export function LiveBar({
           run={run}
           entrantCount={snapshot.entrantCount}
           winnerCount={snapshot.winnerCount}
+          snapshotWaitMs={
+            snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
+          }
         />
       ) : null}
       {snapshot.status === "open" ? (
@@ -263,17 +267,58 @@ function DrawStep({
   run,
   entrantCount,
   winnerCount,
-}: Doing & { readonly entrantCount: number; readonly winnerCount: number }) {
+  snapshotWaitMs,
+}: Doing & {
+  readonly entrantCount: number
+  readonly winnerCount: number
+  /** Milliseconds from the snapshot's `now` to the committed round; null before the commit. */
+  readonly snapshotWaitMs: number | null
+}) {
+  // A round-pending answer covers a snapshot older than the commit.
+  const [pendingMs, setPendingMs] = useState<number | null>(null)
+  const waitMs = snapshotWaitMs ?? pendingMs
+  return (
+    <DrawControls
+      key={waitMs}
+      id={id}
+      busy={busy}
+      run={run}
+      entrantCount={entrantCount}
+      winnerCount={winnerCount}
+      waitMs={waitMs ?? 0}
+      onPending={setPendingMs}
+    />
+  )
+}
+
+// Keyed by the wait it was given, so a new snapshot or answer restarts the countdown from its own server clock.
+function DrawControls({
+  id,
+  busy,
+  run,
+  entrantCount,
+  winnerCount,
+  waitMs,
+  onPending,
+}: Doing & {
+  readonly entrantCount: number
+  readonly winnerCount: number
+  readonly waitMs: number
+  readonly onPending: (waitMs: number) => void
+}) {
   const i18n = useI18n()
   const { t } = i18n
+  const remainingMs = useRemainingMs(waitMs)
   const blocked = entrantCount === 0 ? t("live.draw.nobody") : null
   return (
     <>
       <p id="draw-help" className="live-draw-help">
         {blocked
-          ?? (winnerCount > entrantCount
-            ? t("live.draw.fewer", { count: i18n.number(entrantCount) })
-            : t("live.draw.random"))}{" "}
+          ?? (remainingMs > 0
+            ? t("live.draw.waiting", { clock: formatClock(remainingMs) })
+            : winnerCount > entrantCount
+              ? t("live.draw.fewer", { count: i18n.number(entrantCount) })
+              : t("live.draw.random"))}{" "}
         {t("live.draw.fixed", { count: i18n.number(winnerCount) })}
       </p>
       <ConfirmAction
@@ -283,12 +328,18 @@ function DrawStep({
         detail={t("live.draw.detail")}
         confirmLabel={t("live.draw.confirm")}
         busy={busy}
-        disabled={blocked !== null}
+        disabled={blocked !== null || remainingMs > 0}
         className="live-btn primary"
         shortcut="d"
         onConfirm={() =>
           void run(
-            () => drawWinners(id),
+            async () => {
+              const answer = await drawWinners(id)
+              if (answer.kind !== "round-pending") return answer.kind
+              const pendingMs = answer.availableAt - answer.now
+              onPending(Math.max(0, pendingMs))
+              return pendingMs > 0 ? answer.kind : "round-due"
+            },
             (outcome) => `drawResult.${outcome}`,
           )
         }

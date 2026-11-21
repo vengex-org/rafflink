@@ -471,6 +471,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.draw.label": "Vyžrebovať víťazov",
   "live.draw.detail": "Víťazi sa vyberú náhodne. Nedá sa to vrátiť späť.",
   "live.draw.confirm": "Áno, vyžrebovať",
+  "live.draw.waiting": "Čaká sa na verejné náhodné číslo (drand). Žrebovanie sa otvorí o {clock}.",
   "live.winners.title": "Víťazi",
   "live.winners.pageOrChat":
     "Každý víťaz má na prevzatie výhry obmedzený čas. Preberie ju na stránke súťaže alebo napísaním do tvojho chatu.",
@@ -709,6 +710,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "terms.contact.p1": "Otázky k týmto podmienkam: {contactEmail}.",
   "drawResult.round-pending":
     "Náhodné číslo pre toto žrebovanie ešte nie je zverejnené. Skús to znova o pár sekúnd.",
+  "drawResult.round-due": "Náhodné číslo pre toto žrebovanie už letí. Skús znova o chvíľu.",
   "drawResult.beacon-unavailable":
     "Zdroj náhody (drand) sa nepodarilo zastihnúť. Nič sa nevyžrebovalo. Skús to znova.",
   "giveaway.verify.link": "Overiť toto žrebovanie",

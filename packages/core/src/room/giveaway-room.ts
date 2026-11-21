@@ -136,7 +136,7 @@ export type SetWinnerCountOutcome =
 export type DrawOutcome =
   | { readonly kind: "drawn"; readonly winners: readonly Winner[] }
   /** The committed drand round is not published yet; nothing was drawn and a later call may draw. */
-  | { readonly kind: "round-pending"; readonly availableAt: Instant }
+  | { readonly kind: "round-pending"; readonly availableAt: Instant; readonly now: Instant }
   /** The beacon failed after its retries; nothing was drawn and a later call may draw. */
   | { readonly kind: "beacon-unavailable" }
   | { readonly kind: "not-closed" }
@@ -236,6 +236,10 @@ export type OverlaySnapshot = RoomSummary
     readonly winners: readonly LiveWinner[]
     readonly roleRefreshFailures: number
     readonly eventSubFailures: number
+    /** When the committed drand round is published and a draw can start; null before the room has committed. */
+    readonly drawAvailableAt: Instant | null
+    /** The room's clock when the snapshot was taken, so a page measures `drawAvailableAt` without trusting its own clock. */
+    readonly now: Instant
   }
 
 /** The streamer's live page snapshot: the overlay's plus the winners' chat. */
@@ -579,6 +583,7 @@ export class GiveawayRoom {
     const chain = drandChain(this.config)
     const now = this.clock.now()
     const round = roundAtOrAfter(chain, now + this.config.drandLeadSeconds * 1000)
+    let committed = false
     this.sql.transaction(() => {
       const stored = this.sql.exec(
         `UPDATE room_state SET merkle_root = ?, drand_round = ?, committed_at = ?, drand_chain_hash = ?,
@@ -587,6 +592,7 @@ export class GiveawayRoom {
         [root, round, now, chain.chainHash, chain.genesisSeconds, chain.periodSeconds],
       )
       if (stored.length === 0) return
+      committed = true
       for (let from = 0; from < leaves.length; from += leavesPerChunk) {
         this.sql.exec("INSERT INTO leaves (chunk, data) VALUES (?, ?)", [
           from / leavesPerChunk,
@@ -594,6 +600,7 @@ export class GiveawayRoom {
         ])
       }
     })
+    if (committed) this.guarded("live-push", () => this.pushLive())
     this.guarded("alarm", () => this.rearm())
   }
 
@@ -618,7 +625,7 @@ export class GiveawayRoom {
         if (this.clock.now() > availableAt + this.config.drandPublishMarginSeconds * 1000) {
           return { kind: "beacon-unavailable" }
         }
-        return { kind: "round-pending", availableAt }
+        return { kind: "round-pending", availableAt, now: this.clock.now() }
       }
       case "unavailable":
         return { kind: "beacon-unavailable" }
@@ -773,6 +780,11 @@ export class GiveawayRoom {
       ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
+      now,
+      drawAvailableAt:
+        state.commitment === null
+          ? null
+          : roundTime(state.commitment.chain, state.commitment.drandRound),
     }
   }
 

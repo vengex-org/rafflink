@@ -468,6 +468,7 @@ export const en = {
   "live.draw.label": "Draw winners",
   "live.draw.detail": "The winners are picked at random. You cannot undo this.",
   "live.draw.confirm": "Yes, draw winners",
+  "live.draw.waiting": "Waiting for the public random number (drand). Drawing opens in {clock}.",
   "live.winners.title": "Winners",
   "live.winners.pageOrChat":
     "Each winner has a limited time to claim the prize. They claim on the giveaway page or by typing in your chat.",
@@ -705,6 +706,7 @@ export const en = {
   "terms.contact.p1": "Questions about these terms: {contactEmail}.",
   "drawResult.round-pending":
     "The random number for this draw is not published yet. Try again in a few seconds.",
+  "drawResult.round-due": "The random number for this draw is on its way. Try again in a moment.",
   "drawResult.beacon-unavailable":
     "Could not reach the random source (drand). Nothing was drawn. Try again.",
   "giveaway.verify.link": "Verify this draw",

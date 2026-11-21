@@ -56,6 +56,8 @@ export const liveSnapshot: LiveSnapshot = {
   rerollBlocked: null,
   roleRefreshFailures: 0,
   eventSubFailures: 0,
+  drawAvailableAt: null,
+  now: 1_700_000_000_000,
   chatClaimUnavailable: false,
 }
 
