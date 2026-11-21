@@ -39,7 +39,7 @@ const exampleValues: Values = {
 
 const noChange = () => {}
 
-/** The "three moves" section: the headline on the left, the steps with their small previews on the right. */
+/** The "three moves" section: the headline on top, then each step with its small preview beside it. */
 export function HomeHow() {
   const { t } = useI18n()
   return (

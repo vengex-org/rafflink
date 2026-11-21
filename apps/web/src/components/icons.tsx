@@ -88,6 +88,12 @@ export const PlusIcon = () => (
   </Icon>
 )
 
+export const MinusIcon = () => (
+  <Icon>
+    <path d="M5 12h14" />
+  </Icon>
+)
+
 export const LogInIcon = () => (
   <Icon>
     <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />

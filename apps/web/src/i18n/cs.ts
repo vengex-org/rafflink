@@ -541,6 +541,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "wizard.tickets.legend": "Losy podle skupiny",
   "wizard.tickets.help":
     "Každá skupina dostane 1 los. Víc losů znamená větší šanci vyhrát, například 3 pro předplatitele. Nech to tak, pokud mají mít všichni stejnou šanci.",
+  "wizard.tickets.fewer": "Méně losů: {group}",
+  "wizard.tickets.more": "Více losů: {group}",
   "odds.same": "Všichni mají stejnou šanci vyhrát.",
   "odds.viewersOut": "Diváci nedostanou žádné losy a nemohou vyhrát.",
   "odds.noBetter": "Žádná skupina nemá lepší šance než divák.",

@@ -117,6 +117,86 @@ describe("create wizard", () => {
     expect(view.queryByRole("status")).toBeNull()
   })
 
+  it("steps a ticket count with the minus and plus buttons and stops at 0", async () => {
+    mockFetch(listed)
+    const view = await openWizard()
+    next(view)
+    await view.findByText("Step 2 of 3: Entry rules")
+    const followers = inputOf(view.getByLabelText("Followers"))
+    const fewer = view.getByRole("button", { name: "Fewer tickets for Followers" })
+    const more = view.getByRole("button", { name: "More tickets for Followers" })
+
+    fireEvent.click(more)
+    fireEvent.click(more)
+    expect(followers.value).toBe("3")
+    expect(view.getByText("A follower has 3x the chance of a viewer.")).toBeTruthy()
+
+    fireEvent.click(fewer)
+    fireEvent.click(fewer)
+    fireEvent.click(fewer)
+    expect(followers.value).toBe("0")
+    expect(fewer.hasAttribute("disabled")).toBe(true)
+    expect(more.hasAttribute("disabled")).toBe(false)
+
+    fireEvent.click(fewer)
+    expect(followers.value).toBe("0")
+  })
+
+  it("moves focus to the ticket count when the minus button reaches 0 and disables itself", async () => {
+    mockFetch(listed)
+    const view = await openWizard()
+    next(view)
+    await view.findByText("Step 2 of 3: Entry rules")
+    const followers = inputOf(view.getByLabelText("Followers"))
+    const fewer = view.getByRole("button", { name: "Fewer tickets for Followers" })
+
+    fewer.focus()
+    fireEvent.click(fewer)
+    expect(followers.value).toBe("0")
+    expect(fewer.hasAttribute("disabled")).toBe(true)
+    expect(document.activeElement === followers).toBe(true)
+  })
+
+  it("steps a ticket count with the arrow keys and never below 0", async () => {
+    mockFetch(listed)
+    const view = await openWizard()
+    next(view)
+    await view.findByText("Step 2 of 3: Entry rules")
+    const vips = inputOf(view.getByLabelText("VIPs"))
+
+    fireEvent.keyDown(vips, { key: "ArrowUp" })
+    expect(vips.value).toBe("2")
+
+    fireEvent.keyDown(vips, { key: "ArrowDown" })
+    fireEvent.keyDown(vips, { key: "ArrowDown" })
+    fireEvent.keyDown(vips, { key: "ArrowDown" })
+    expect(vips.value).toBe("0")
+    expect(
+      view.getByRole("button", { name: "Fewer tickets for VIPs" }).hasAttribute("disabled"),
+    ).toBe(true)
+  })
+
+  it.each([
+    ["empty", "", "More tickets for Moderators", "1"],
+    ["a fraction", "2.5", "More tickets for Moderators", "3"],
+    ["a negative number", "-3", "More tickets for Moderators", "0"],
+    ["a fraction", "2.5", "Fewer tickets for Moderators", "1"],
+  ])(
+    "steps a ticket count typed as %s (%s) to a whole number",
+    async (_kind, typed, button, stepped) => {
+      mockFetch(listed)
+      const view = await openWizard()
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      const moderators = inputOf(view.getByLabelText("Moderators"))
+
+      fireEvent.change(moderators, { target: { value: typed } })
+      fireEvent.click(view.getByRole("button", { name: button }))
+
+      expect(moderators.value).toBe(stepped)
+    },
+  )
+
   it.each([
     ["Extra tickets: a negative number", "VIPs", "-1", "Enter a whole number, 0 or more."],
     ["Extra tickets: a fraction", "VIPs", "1.5", "Enter a whole number, 0 or more."],

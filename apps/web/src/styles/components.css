@@ -559,6 +559,50 @@ fieldset {
   border: 0;
 }
 
+/* A number between a minus and a plus button, framed as one control; the buttons replace the browser's spinner. */
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.stepper:has(input[aria-invalid="true"]) {
+  border-color: var(--danger);
+}
+
+.stepper .icon-button {
+  flex: none;
+  width: var(--target);
+  min-height: var(--target);
+  border-radius: 0;
+}
+
+.stepper .icon-button:disabled {
+  color: var(--muted);
+}
+
+.stepper input:not([type="radio"]) {
+  width: 3.5rem;
+  min-height: var(--target);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  appearance: textfield;
+}
+
+.stepper input::-webkit-inner-spin-button,
+.stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
 legend {
   margin-bottom: var(--space-1);
   padding: 0;

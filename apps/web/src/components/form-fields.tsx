@@ -1,4 +1,5 @@
-import { useId } from "react"
+import { useId, useRef } from "react"
+import { MinusIcon, PlusIcon } from "./icons.tsx"
 import { SegmentRow, type SegmentRowOption } from "./segment-row.tsx"
 
 /** A labelled input with optional help under the label and the problem under the input. */
@@ -44,6 +45,88 @@ export function TextField({
         aria-describedby={describedBy === "" ? undefined : describedBy}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
+      {error === null ? null : (
+        <p id={`${id}-error`} className="field-error">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** A labelled whole-number input between a minus and a plus button; the buttons and the arrow keys step by 1, never below `min`. */
+export function StepperField({
+  name,
+  label,
+  value,
+  min,
+  error,
+  onChange,
+  decreaseLabel,
+  increaseLabel,
+}: {
+  readonly name: string
+  readonly label: string
+  readonly value: string
+  readonly min: number
+  readonly error: string | null
+  readonly onChange: (value: string) => void
+  readonly decreaseLabel: string
+  readonly increaseLabel: string
+}) {
+  const id = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const count = Number(value)
+  const atMin = !(count > min)
+  // A value that is not a number yet (empty, a typo) steps from `min`; a fraction steps from its whole part.
+  const stepBy = (delta: number) => {
+    const from = value.trim() !== "" && Number.isFinite(count) ? Math.trunc(count) : min
+    const next = Math.max(min, from + delta)
+    onChange(String(next))
+    return next
+  }
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <div className="stepper">
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={decreaseLabel}
+          disabled={atMin}
+          onClick={() => {
+            if (stepBy(-1) === min) inputRef.current?.focus()
+          }}
+        >
+          <MinusIcon />
+        </button>
+        <input
+          ref={inputRef}
+          id={id}
+          name={name}
+          type="number"
+          inputMode="numeric"
+          autoComplete="off"
+          min={min}
+          value={value}
+          aria-invalid={error !== null}
+          aria-describedby={error === null ? undefined : `${id}-error`}
+          onChange={(event) => onChange(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+            event.preventDefault()
+            stepBy(event.key === "ArrowUp" ? 1 : -1)
+          }}
+        />
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={increaseLabel}
+          onClick={() => stepBy(1)}
+        >
+          <PlusIcon />
+        </button>
+      </div>
       {error === null ? null : (
         <p id={`${id}-error`} className="field-error">
           {error}

@@ -535,6 +535,8 @@ export const en = {
   "wizard.tickets.legend": "Tickets per group",
   "wizard.tickets.help":
     "Every group gets 1 ticket. More tickets mean a better chance of winning, for example 3 for subscribers. Leave this as it is if everyone should have the same chance.",
+  "wizard.tickets.fewer": "Fewer tickets for {group}",
+  "wizard.tickets.more": "More tickets for {group}",
   "odds.same": "Everyone has the same chance of winning.",
   "odds.viewersOut": "Viewers get no tickets and cannot win.",
   "odds.noBetter": "No group has better odds than a viewer.",
