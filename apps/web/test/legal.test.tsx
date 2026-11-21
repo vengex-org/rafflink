@@ -53,6 +53,7 @@ describe("legal pages", () => {
         const text = view.getByRole("article").textContent
         expect(text).toContain(operator.name)
         expect(text).toContain(operator.address)
+        expect(text).toContain(operator.id)
         expect(text).toContain(operator.contactEmail)
         cleanup()
       }
@@ -60,7 +61,7 @@ describe("legal pages", () => {
   })
 
   it("keep the operator placeholders as markers in the dictionaries, never as values", () => {
-    const markers = ["{operatorName}", "{operatorAddress}", "{contactEmail}"]
+    const markers = ["{operatorName}", "{operatorAddress}", "{operatorId}", "{contactEmail}"]
     for (const language of languages) {
       const texts = Object.values(dictionaries[language]).join("\n")
       for (const marker of markers) expect(texts).toContain(marker)
