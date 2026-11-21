@@ -52,7 +52,7 @@ export const en = {
   "home.title": "Fair Twitch giveaways, {highlight} on stream.",
   "home.title.highlight": "drawn live",
   "home.text":
-    "Viewers enter from their phone. You draw on stream. Subs get extra tickets, and the rules say how many.",
+    "Viewers enter with one click, you draw in front of your chat. No Nightbot, no waiting.",
   "home.login": "Log in with Twitch",
   "home.demo": "Try the demo",
   "home.reads": "We only read your name, VIPs, moderators and chat.",
