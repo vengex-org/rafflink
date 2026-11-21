@@ -46,6 +46,7 @@ const drawnWith = (...winners: LiveWinner[]): LiveSnapshot => ({
   now,
   entrantCount: 9,
   winners,
+  shuffleNames: sample,
   rerollOpen: true,
   rerollBlocked: null,
 })
@@ -122,6 +123,37 @@ describe.each(surfaces)("draw shuffle on the $name", ({ open }) => {
     expect(plateName(view)).toBe("Wanda")
 
     push(drawnWith(winner(0, "Wanda"), winner(1, "Cy")))
+    expect(shuffling(view)).toBe(true)
+    expect(sample).toContain(plateName(view) ?? "")
+    tick(1400)
+    expect(plateName(view)).not.toBe("Cy")
+    tick(200)
+
+    expect(plateName(view)).toBe("Cy")
+    expect(shuffling(view)).toBe(false)
+  })
+
+  it("flashes the sampled names for a next draw on a page that opened drawn, then reveals the new winner", async () => {
+    const view = open(drawnWith(winner(0, "Wanda")))
+    await view.findAllByText("Winner 1 of 1")
+
+    push(drawnWith(winner(0, "Wanda"), winner(1, "Cy")))
+    expect(shuffling(view)).toBe(true)
+    expect(sample).toContain(plateName(view) ?? "")
+    tick(1400)
+    expect(plateName(view)).not.toBe("Cy")
+    tick(200)
+
+    expect(plateName(view)).toBe("Cy")
+    expect(shuffling(view)).toBe(false)
+  })
+
+  it("flashes the sampled names for a reroll on a page that opened drawn, then reveals the replacement", async () => {
+    const view = open(drawnWith(winner(0, "Wanda")))
+    await view.findAllByText("Winner 1 of 1")
+
+    const rerolled: LiveWinner = { ...winner(0, "Wanda"), claim: { state: "rerolled" } }
+    push(drawnWith(rerolled, winner(1, "Cy")))
     expect(shuffling(view)).toBe(true)
     expect(sample).toContain(plateName(view) ?? "")
     tick(1400)
