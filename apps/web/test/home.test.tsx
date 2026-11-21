@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
-import { act, cleanup, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, within } from "@testing-library/react"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
+import { languageStorageKey } from "../src/i18n/language.ts"
 import { renderApp } from "./render-app.tsx"
 
 beforeEach(() => {
@@ -164,7 +165,7 @@ describe("home page", () => {
     })
 
     it("shows the example prize and title in the page language", () => {
-      window.localStorage.setItem("rafflink-language", "cs")
+      window.localStorage.setItem(languageStorageKey, "cs")
       const view = renderApp("/")
 
       advance(5000)
@@ -174,6 +175,19 @@ describe("home page", () => {
       expect(preview.getByText("Herní křeslo", { selector: ".overlay-prize" })).toBeTruthy()
       expect(preview.getByText("Streamy, Letní soutěž")).toBeTruthy()
       expect(preview.queryByText(/gaming chair|Summer giveaway/)).toBeNull()
+    })
+
+    it("switches the overlay text with the page language in the middle of a step", () => {
+      const view = renderApp("/")
+      advance(5000)
+      advance(4000)
+      expect(stage(view).getByText("A gaming chair", { selector: ".overlay-prize" })).toBeTruthy()
+
+      fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
+
+      const preview = within(view.getByRole("region", { name: "Ukázka losování" }))
+      expect(preview.getByText("Herní křeslo", { selector: ".overlay-prize" })).toBeTruthy()
+      expect(preview.queryByText("A gaming chair")).toBeNull()
     })
 
     it("are inert and hidden from the accessibility tree, with one h1 on the page", () => {

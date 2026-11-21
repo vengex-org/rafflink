@@ -211,7 +211,7 @@ describe("live page: collecting entries", () => {
     expect(
       await view.findByText("Could not copy. The text is selected: press Ctrl+C."),
     ).toBeTruthy()
-    const field = within(view.getByRole("banner")).getByLabelText("Your link")
+    const field = within(view.getByRole("banner")).getByRole("textbox", { name: "Your link" })
     if (!(field instanceof HTMLInputElement)) throw new Error("the link field is not an input")
     expect(field.value).toBe("http://rafflink.test/ABCDE")
     expect([field.selectionStart, field.selectionEnd]).toEqual([0, field.value.length])
@@ -1379,7 +1379,7 @@ describe("live page: overlay link", () => {
     expect(
       await view.findByText("In OBS, find the Sources box and press the + button."),
     ).toBeTruthy()
-    const field = view.getByLabelText("Overlay link")
+    const field = view.getByRole("textbox", { name: "Overlay link" })
     expect(field instanceof HTMLInputElement && field.value).toBe(
       "http://rafflink.test/overlay/gid-1/tok-1",
     )
@@ -1397,7 +1397,7 @@ describe("live page: overlay link", () => {
     fireEvent.click(view.getByRole("radio", { name: "Winner only" }))
     fireEvent.click(view.getByRole("radio", { name: "Show" }))
 
-    const field = view.getByLabelText("Overlay link")
+    const field = view.getByRole("textbox", { name: "Overlay link" })
     expect(field instanceof HTMLInputElement && field.value).toBe(
       "http://rafflink.test/overlay/gid-1/tok-1?mode=winner&qr=1",
     )
@@ -1414,7 +1414,7 @@ describe("live page: overlay link", () => {
     fireEvent.click(view.getByRole("radio", { name: "Corner badge" }))
     fireEvent.click(view.getByRole("radio", { name: "Automatic" }))
 
-    const field = view.getByLabelText("Overlay link")
+    const field = view.getByRole("textbox", { name: "Overlay link" })
     expect(field instanceof HTMLInputElement && field.value).toBe(
       "http://rafflink.test/overlay/gid-1/tok-1",
     )
@@ -1428,7 +1428,7 @@ describe("live page: overlay link", () => {
     act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 9 }))
 
     await waitFor(() => expect(entrantsHeading(view)).toBe("Entrants 9"))
-    expect(view.getByLabelText("Overlay link")).toBeTruthy()
+    expect(view.getByRole("textbox", { name: "Overlay link" })).toBeTruthy()
   })
 
   it("shows no overlay link when the answer carries no token", async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { DemoViewer } from "../pages/demo-page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { demoNames, type DemoLive } from "../lib/demo-live.ts"
@@ -70,7 +70,11 @@ function useStageIndex(): number {
 /** Mounts again per step, so the claim clock and the entrance animations start with it. */
 function ExampleStep({ step }: { readonly step: StageStep }) {
   const { t } = useI18n()
-  const [{ state, snapshot, facts }] = useState(() => exampleDraw(step, Date.now(), demoNames(t)))
+  const [startedAt] = useState(Date.now)
+  const { state, snapshot, facts } = useMemo(
+    () => exampleDraw(step, startedAt, demoNames(t)),
+    [step, startedAt, t],
+  )
   return (
     <>
       <div className="stage-stream" inert aria-hidden="true">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { CheckIcon, CopyIcon } from "./icons.tsx"
@@ -24,16 +24,19 @@ export function CopyLink({
   readonly clipped: boolean
   readonly children: ReactNode
 }) {
+  const labelId = useId()
   return (
-    <div className="field">
-      <span className="field-label">{label}</span>
+    <fieldset className="field" aria-labelledby={labelId}>
+      <span className="field-label" id={labelId}>
+        {label}
+      </span>
       <div className="share-link">
         <span className="share-link-url" data-clipped={clipped}>
           {children}
         </span>
         <CopyButton value={value} label={buttonLabel} fieldLabel={label} />
       </div>
-    </div>
+    </fieldset>
   )
 }
 

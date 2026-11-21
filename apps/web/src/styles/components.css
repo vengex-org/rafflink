@@ -701,6 +701,7 @@ legend {
 /* The share link: the address with the code marked and a small icon button that copies it, as in the live bar. */
 .share-link {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);

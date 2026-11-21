@@ -78,10 +78,10 @@ describe("dashboard", () => {
     const view = renderApp("/dashboard")
     await view.findByText("Link and OBS overlay")
 
-    expect(view.getByLabelText("Your link").getAttribute("value")).toBe(
+    expect(view.getByRole("textbox", { name: "Your link" }).getAttribute("value")).toBe(
       "http://rafflink.test/ABCDE",
     )
-    expect(view.getByLabelText("Overlay link").getAttribute("value")).toBe(
+    expect(view.getByRole("textbox", { name: "Overlay link" }).getAttribute("value")).toBe(
       "http://rafflink.test/overlay/gid-1/tok-1",
     )
     fireEvent.click(view.getByRole("button", { name: "Copy link" }))
