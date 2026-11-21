@@ -1,6 +1,12 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { createRemoteJWKSet, jwtVerify } from "jose"
-import { serveFakeTwitch, type FakeTwitchOptions, type FakeUser } from "../src/index.ts"
+import {
+  seededLogin,
+  serveFakeTwitch,
+  type FakeTwitchOptions,
+  type FakeUser,
+} from "../src/index.ts"
+import { createState, tokenLimitReached } from "../src/state.ts"
 
 const options: FakeTwitchOptions = {
   clientId: "client-1",
@@ -233,6 +239,33 @@ describe("id service", () => {
     expect(await first.text()).toBe("")
   })
 
+  test("answers 429 on the token endpoint beyond tokenLimitPerSecond and counts a new second afresh", async () => {
+    await fake.server.stop(true)
+    fake = serveFakeTwitch(0, { ...options, tokenLimitPerSecond: 2 })
+    const now = spyOn(Date, "now")
+    const codes = await Promise.all([1, 2, 3, 4].map(() => authorizeCode("openid")))
+
+    now.mockReturnValue(5_000_100)
+    const first = [await exchangeCode(codes[0] ?? ""), await exchangeCode(codes[1] ?? "")]
+    const rejected = await exchangeCode(codes[2] ?? "")
+    now.mockReturnValue(6_000_100)
+    const nextSecond = await exchangeCode(codes[3] ?? "")
+    now.mockRestore()
+
+    expect(first.map((response) => response.status)).toEqual([200, 200])
+    expect(rejected.status).toBe(429)
+    expect(await rejected.text()).toBe("")
+    expect(nextSecond.status).toBe(200)
+  })
+
+  test("never limits the token endpoint without tokenLimitPerSecond", () => {
+    const state = createState(options)
+
+    const reached = Array.from({ length: 1000 }, () => tokenLimitReached(state, 1_000_000))
+
+    expect(reached).not.toContain(true)
+  })
+
   test("answers a scripted 503 on the token endpoint", async () => {
     fake.control.failNext("token", 503, 1)
 
@@ -279,6 +312,27 @@ describe("id service", () => {
     expect(revoked.status).toBe(401)
     expect(await revoked.json()).toEqual({ status: 401, message: "invalid access token" })
     expect(refreshed.status).toBe(400)
+  })
+})
+
+describe("bulk users", () => {
+  test("seedUsers adds consecutive ids that sign in with login_hint", async () => {
+    fake.control.seedUsers(3, 5000)
+
+    const code = await authorizeWithHint("5002")
+    const tokens: TokenResponse = await (await exchangeCode(code)).json()
+    const users: { data: { id: string; login: string }[] } = await (
+      await helix("/helix/users", tokens.access_token)
+    ).json()
+
+    expect(users.data.map((user) => [user.id, user.login])).toEqual([["5002", seededLogin("5002")]])
+    expect((await fetch(url(`/oauth2/authorize?${hintQuery("5003")}`))).status).toBe(400)
+  })
+
+  test("seedUsers with a count of 0 adds nobody", async () => {
+    fake.control.seedUsers(0, 7000)
+
+    expect((await fetch(url(`/oauth2/authorize?${hintQuery("7000")}`))).status).toBe(400)
   })
 })
 

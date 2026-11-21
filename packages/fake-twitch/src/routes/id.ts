@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { bearerToken } from "../lib/auth.ts"
 import { accessTokenTtlSeconds, issueAppToken, issueTokens, signIdToken } from "../lib/tokens.ts"
 import { userPickerPage } from "../lib/user-picker.ts"
-import { requireUser, takeFailure, type FakeState } from "../state.ts"
+import { requireUser, takeFailure, tokenLimitReached, type FakeState } from "../state.ts"
 
 export function idRoutes(state: FakeState): Hono {
   const app = new Hono()
@@ -41,6 +41,7 @@ export function idRoutes(state: FakeState): Hono {
   })
 
   app.post("/token", async (c) => {
+    if (tokenLimitReached(state, Date.now())) return c.body(null, 429)
     const failure = takeFailure(state, "token")
     if (failure !== undefined) return c.body(null, failure)
 

@@ -16,8 +16,16 @@ import {
   type Tier,
 } from "./state.ts"
 
+const seededCreatedAt = "2020-01-01T00:00:00Z"
+
+export function seededLogin(userId: string): string {
+  return `seeded_${userId}`
+}
+
 export interface FakeTwitchControl {
   addUser(user: FakeUser): void
+  /** Adds `count` users with ids `firstId`, `firstId + 1`, ... and the logins from {@link seededLogin}. */
+  seedUsers(count: number, firstId: number): void
   /** The user the next `/oauth2/authorize` requests sign in. */
   signInAs(userId: string): void
   /** `null` removes the subscription. */
@@ -69,6 +77,17 @@ export function createFakeTwitch(options: FakeTwitchOptions): FakeTwitch {
   const control: FakeTwitchControl = {
     addUser(user) {
       state.users.set(user.id, user)
+    },
+    seedUsers(count, firstId) {
+      for (let id = firstId; id < firstId + count; id++) {
+        const userId = String(id)
+        state.users.set(userId, {
+          id: userId,
+          login: seededLogin(userId),
+          displayName: seededLogin(userId),
+          createdAt: seededCreatedAt,
+        })
+      }
     },
     signInAs(userId) {
       state.signInUserId = requireUser(state, userId).id

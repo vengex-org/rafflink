@@ -19,6 +19,8 @@ export interface FakeTwitchOptions {
   subscribeWindowMs: number
   /** Announced in the welcome message; keepalive messages go out at half of it. */
   keepaliveTimeoutSeconds: number
+  /** Token endpoint requests allowed per second; the rest answer 429 like a rate-limited Twitch. No limit when unset. */
+  tokenLimitPerSecond?: number
 }
 
 export type Tier = "1000" | "2000" | "3000"
@@ -83,6 +85,8 @@ export interface FakeState {
   readonly calls: Call[]
   readonly signingKey: Promise<SigningKey>
   signInUserId: string
+  /** Token endpoint requests counted in the whole second `second`. */
+  tokenWindow: { second: number; count: number }
 }
 
 export function createState(options: FakeTwitchOptions): FakeState {
@@ -100,6 +104,7 @@ export function createState(options: FakeTwitchOptions): FakeState {
     calls: [],
     signingKey: createSigningKey(),
     signInUserId: options.defaultUser.id,
+    tokenWindow: { second: 0, count: 0 },
   }
 }
 
@@ -119,6 +124,16 @@ export function takeFailure(
   endpoint: FailableEndpoint,
 ): FailureStatus | undefined {
   return state.failures.get(endpoint)?.shift()
+}
+
+/** Counts one token endpoint request; true when `tokenLimitPerSecond` is spent for the current second. */
+export function tokenLimitReached(state: FakeState, nowMs: number): boolean {
+  const limit = state.options.tokenLimitPerSecond
+  if (limit === undefined) return false
+  const second = Math.floor(nowMs / 1000)
+  if (state.tokenWindow.second !== second) state.tokenWindow = { second, count: 0 }
+  state.tokenWindow.count += 1
+  return state.tokenWindow.count > limit
 }
 
 async function createSigningKey(): Promise<SigningKey> {

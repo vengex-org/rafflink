@@ -14,7 +14,8 @@
     "test": "bun test --path-ignore-patterns 'apps/web/**' && bun run --filter @rafflink/web test",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test",
     "build": "bun run --filter '*' build",
-    "env:example": "bun scripts/env-example.ts"
+    "env:example": "bun scripts/env-example.ts",
+    "load-test": "BUN_CONFIG_MAX_HTTP_REQUESTS=20000 bun scripts/load-test.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.5",

@@ -61,6 +61,28 @@ bun run dev:twitch   # fake Twitch on http://localhost:3001
 bun run dev          # wrangler dev on http://localhost:8787, settings from dev.env
 ```
 
+### Load test
+
+`bun run load-test` drives fake viewers through the real entry flow (sign-in start, fake Twitch consent,
+callback, and the queue poll when the callback queues) against a local Bun server and reports throughput,
+p50/p95/p99 latency, 429 and error counts, and whether the entrant count matches the accepted entries without
+duplicates. Defaults: 500 viewers per second for 30 seconds, 5% of the viewers enter a second time.
+
+```sh
+bun run load-test -- --rate 500 --duration 30 --duplicates 5
+bun run load-test -- --rate 300 --duration 10 --token-limit 100   # fake Twitch answers 429 above 100 token calls per second
+```
+
+The script starts the Bun server and the fake Twitch as child processes on free local ports, with a throwaway
+data folder. Server settings such as `QUEUE_MAX_RATE_PER_SECOND` are read from your environment. To test a
+Worker, run the fake Twitch with `SEED_USERS` of at least rate times duration (`SEED_USERS=15000 bun run dev:twitch`
+in `apps/cloudflare`), start `bun run dev` there and pass `--target http://127.0.0.1:8787`. The exit code is 1 when a
+check fails and 2 for bad flags.
+
+The load test only talks to `localhost`, `127.0.0.1` and `[::1]`: any other host is refused before a request is
+sent. Never point load at the hosted service. On Windows, wrangler closes every connection, so a long run
+exhausts the client's ephemeral ports at a few hundred sign-ins per second; run the Bun server for 500 per second.
+
 ## Twitch app registration
 
 Rafflink signs streamers and viewers in with Twitch, so every installation needs its own Twitch app. You
