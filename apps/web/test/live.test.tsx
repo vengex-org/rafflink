@@ -382,7 +382,7 @@ describe("live page: winners", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByText(`Claimed in chat at ${claimedAtText}`)).toBeTruthy()
+    expect(await view.findByText(`Claimed in chat on ${claimedAtText}`)).toBeTruthy()
     expect(view.getByRole("heading", { name: "Winner 1 of 3" })).toBeTruthy()
     expect(view.getByText("Claim time ran out")).toBeTruthy()
     expect(view.container.querySelector(".live-ring [role=timer]")?.textContent).toMatch(
@@ -447,7 +447,7 @@ describe("live page: winners", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
     fireEvent.click(
       within(pickPill(view, "Eve")).getByRole("button", { name: "Pick another winner" }),
     )
@@ -472,7 +472,7 @@ describe("live page: winners", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
 
     expect(view.getByRole("button", { name: "Reroll Wanda" })).toBeTruthy()
     expect(
@@ -486,7 +486,7 @@ describe("live page: winners", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(windowOver) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
 
     expect(view.queryByRole("button", { name: /^Reroll|^Pick another winner/ })).toBeNull()
     expect(view.getByText(windowOverText)).toBeTruthy()
@@ -497,7 +497,7 @@ describe("live page: winners", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(nobodyLeft) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
 
     expect(view.queryByRole("button", { name: /^Reroll|^Pick another winner/ })).toBeNull()
     expect(view.getByText(nobodyLeftText)).toBeTruthy()
@@ -532,7 +532,7 @@ describe("live page: winners", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
 
     expect(view.queryByText(windowOverText)).toBeNull()
     expect(view.queryByText(nobodyLeftText)).toBeNull()
@@ -548,7 +548,7 @@ describe("live page: winners", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
     fireEvent.click(view.getByRole("button", { name: "Reroll Wanda" }))
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
 
@@ -569,7 +569,7 @@ describe("live page: winners", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
     fireEvent.click(view.getByRole("button", { name: "Reroll Wanda" }))
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
 
@@ -604,7 +604,7 @@ describe("live page: winners", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
     await view.findByRole("heading", { name: "The list is empty" })
 
     expect(view.queryByRole("heading", { name: "Chat watch is off" })).toBeNull()
@@ -804,7 +804,7 @@ describe("live page: winners' chat", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat at /)
+    await view.findByText(/^Claimed in chat on /)
 
     expect(view.queryByRole("heading", { name: "Winner chat" })).toBeNull()
     expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()

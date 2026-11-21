@@ -115,7 +115,7 @@ describe("demo page", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))
 
-    expect(view.getByText(`Claimed at ${claimedAtText}.`)).toBeTruthy()
+    expect(view.getByText(`Claimed on ${claimedAtText}.`)).toBeTruthy()
   })
 
   it("claims by itself when the visitor outwaits the claim window", () => {

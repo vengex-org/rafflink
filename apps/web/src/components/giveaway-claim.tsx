@@ -43,7 +43,7 @@ export function ClaimPanel({
       <GiveawayState tone="win" title={t("win.claimed.title")} line={prize}>
         {win.entry === null ? null : <TicketBox tickets={win.entry} />}
         {win.claim.state === "claimed" ? (
-          <p className="viewer-note">{t("win.claimedAt", { time: i18n.time(win.claim.at) })}</p>
+          <p className="viewer-note">{t("win.claimedAt", { at: i18n.dateTime(win.claim.at) })}</p>
         ) : null}
         <p className="viewer-note">{t("viewerClaim.claimed")}</p>
       </GiveawayState>

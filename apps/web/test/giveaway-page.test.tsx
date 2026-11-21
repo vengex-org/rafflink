@@ -523,7 +523,7 @@ describe("winner claim", () => {
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText(`Claimed at ${claimedAtText}.`)).toBeTruthy()
+    expect(await view.findByText(`Claimed on ${claimedAtText}.`)).toBeTruthy()
     expect(view.getByText("Your entry: 3 tickets as a follower.")).toBeTruthy()
   })
 
