@@ -153,6 +153,23 @@ export class World {
     return { viewer, ...callbackOutcome(response) }
   }
 
+  /** Like {@link enter} in a fresh browser whose callback comes from `address`, as each target's edge reports it. */
+  async enterFromAddress(
+    target: ContractTarget,
+    code: string,
+    userId: string,
+    address: string,
+  ): Promise<EntryResult> {
+    const viewer = new Browser(target.url)
+    const response = await viewer.signInAs(
+      userId,
+      `/auth/twitch/viewer/start?giveaway=${code}`,
+      this.twitch.fake.control,
+      { "cf-connecting-ip": address, "x-forwarded-for": address },
+    )
+    return { viewer, ...callbackOutcome(response) }
+  }
+
   /** Polls a queued code the way the page does, until it is no longer waiting. */
   async settle(viewer: Browser, code: string, ticket: string): Promise<PendingResult> {
     let result: PendingResult = { kind: "pending" }

@@ -192,8 +192,7 @@ function parseViewerState(source: Json): ViewerState {
         kind,
         userId: text(source, "userId"),
         n: num(source, "n"),
-        tickets: num(source, "tickets"),
-        group: oneOf(source, "group", groups),
+        entry: source.entry === null ? null : parseWonEntry(child(source, "entry")),
         claimRemainingMs: num(source, "claimRemainingMs"),
         claim: parseClaim(child(source, "claim")),
         chatClaimAvailable: bool(source, "chatClaimAvailable"),
@@ -339,7 +338,12 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
-const drawKinds = ["drawn", "not-closed", "already-drawn"] as const satisfies readonly DrawKind[]
+const drawKinds = [
+  "drawn",
+  "not-closed",
+  "already-drawn",
+  "entries-deleted",
+] as const satisfies readonly DrawKind[]
 const rerollKinds = [
   "rerolled",
   "already-rerolled",
@@ -347,6 +351,7 @@ const rerollKinds = [
   "unknown-pick",
   "not-drawn",
   "no-entrants-left",
+  "entries-deleted",
   "reroll-window-over",
   "try-again",
 ] as const satisfies readonly RerollKind[]
@@ -382,6 +387,7 @@ const entryKinds = [
   "already-in",
   "not-eligible",
   "closed",
+  "rate-limited",
   "pending",
   "dropped",
   "try-again",
@@ -432,11 +438,16 @@ function parseEntryResult(source: Json): EntryResult {
         entry: Object.hasOwn(source, "entry") ? parseEntry(child(source, "entry")) : null,
       }
     case "closed":
+    case "rate-limited":
     case "dropped":
     case "try-again":
     case "invalid-state":
       return { kind }
   }
+}
+
+function parseWonEntry(source: Json): Pick<EntrySummary, "tickets" | "group"> {
+  return { group: oneOf(source, "group", groups), tickets: num(source, "tickets") }
 }
 
 function parseEntry(source: Json): EntrySummary {

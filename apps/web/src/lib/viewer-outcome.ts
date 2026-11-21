@@ -1,19 +1,13 @@
 import type { ViewerState } from "@rafflink/core/http/json"
 import type { ViewerPush } from "@rafflink/core/room/giveaway-room"
-import type { EntrySummary } from "@rafflink/core/room/rows"
 import type { GiveawayLoad, GiveawayView } from "../api/client.ts"
 
-/** A winner as the page shows them; `entry` is null when only a push named them and the page never saw their entry. */
-export type WonView = Omit<Extract<ViewerState, { kind: "won" }>, "tickets" | "group"> & {
-  readonly entry: Pick<EntrySummary, "tickets" | "group"> | null
-}
-
-/** The viewer's state on the page: the loaded {@link ViewerState} with the winner's entry made optional. */
-export type ViewerView = Exclude<ViewerState, { kind: "won" }> | WonView
+/** A winner as the page shows them; `entry` is null when the entry was deleted or only a push named them and the page never saw their entry. */
+export type WonView = Extract<ViewerState, { kind: "won" }>
 
 export interface GiveawayPageState {
   readonly giveaway: GiveawayView
-  readonly me: ViewerView
+  readonly me: ViewerState
 }
 
 /**
@@ -21,7 +15,7 @@ export interface GiveawayPageState {
  * the push can carry everyone's outcome and no viewer has to ask the server for theirs.
  */
 export function applyViewerPush(load: GiveawayLoad, push: ViewerPush | null): GiveawayPageState {
-  const me = viewOf(load.me)
+  const me = load.me
   if (push === null) return { giveaway: load.giveaway, me }
   const giveaway = { ...load.giveaway, status: push.status, finished: push.finished }
   if (push.status !== "drawn" || me.kind === "signed-out" || me.kind === "not-entered") {
@@ -44,10 +38,4 @@ export function applyViewerPush(load: GiveawayLoad, push: ViewerPush | null): Gi
       chatClaimAvailable: push.chatClaimAvailable,
     },
   }
-}
-
-function viewOf(me: ViewerState): ViewerView {
-  if (me.kind !== "won") return me
-  const { tickets, group, ...rest } = me
-  return { ...rest, entry: { tickets, group } }
 }

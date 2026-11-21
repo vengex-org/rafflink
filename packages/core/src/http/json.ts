@@ -3,7 +3,6 @@ import type { Giveaway } from "../accounts/account-store.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import type { Instant } from "../ports.ts"
 import type { LiveSnapshot, WinnerClaim } from "../room/giveaway-room.ts"
-import type { Group } from "../domain/groups.ts"
 import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
@@ -40,9 +39,8 @@ export type ViewerState =
       readonly kind: "won"
       readonly userId: string
       readonly n: number
-      /** The winner's own entry, so the won screen can show what the draw was weighted by. */
-      readonly tickets: number
-      readonly group: Group
+      /** The winner's own entry, so the won screen can show what the draw was weighted by; null once the entry was deleted. */
+      readonly entry: Pick<EntrySummary, "tickets" | "group"> | null
       /** Computed by the server, so a wrong clock on the viewer's device does not change it. */
       readonly claimRemainingMs: number
       readonly claim: WinnerClaim
@@ -107,6 +105,7 @@ export function outcomeQuery(outcome: CallbackOutcome): URLSearchParams {
     case "entered":
     case "already-in":
     case "closed":
+    case "rate-limited":
     case "dropped":
     case "try-again":
     case "invalid-state":

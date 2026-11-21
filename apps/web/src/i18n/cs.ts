@@ -233,6 +233,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "drawResult.drawn": "Vítězové jsou vylosovaní.",
   "drawResult.not-closed": "Před losováním uzavři přihlašování.",
   "drawResult.already-drawn": "Vítězové už jsou vylosovaní. Vyber raději jiného vítěze.",
+  "drawResult.entries-deleted":
+    "Údaje účastníků se už po uchovávací lhotě smazaly, vítěze už nelze vylosovat.",
   "drawResult.rejected": "Losování se nepovedlo. Zadej celé číslo vítězů, alespoň 1.",
   "rerollResult.rerolled": "Byl vybrán jiný vítěz.",
   "rerollResult.already-rerolled": "Na toto místo už byl vybrán jiný vítěz.",
@@ -240,6 +242,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "rerollResult.unknown-pick": "Takový vítěz neexistuje.",
   "rerollResult.not-drawn": "Nejdřív vylosuj vítěze.",
   "rerollResult.no-entrants-left": "Nezbyl nikdo, koho by šlo vybrat.",
+  "rerollResult.entries-deleted":
+    "Údaje účastníků se už po uchovávací lhotě smazaly, dalšího vítěze už nelze vybrat.",
   "rerollResult.reroll-window-over":
     "Čas na výběr jiného vítěze vypršel. Kontaktuj vítěze sám nebo spusť nový giveaway.",
   "rerollResult.try-again": "Nepovedlo se. Zkus to znovu.",
@@ -370,6 +374,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "entry.tryAgain.title": "Zkus to znovu",
   "entry.tryAgain.detail": "Twitch neodpověděl včas.",
   "entry.tryAgain.help": "Stiskni tlačítko a zkus to ještě jednou.",
+  "entry.rateLimited.title": "Příliš mnoho pokusů",
+  "entry.rateLimited.detail": "Zkoušel ses zapojit příliš často za krátkou dobu.",
+  "entry.rateLimited.help": "Počkej minutu a stiskni tlačítko, ať to zkusíš znovu.",
   "entry.invalidState.title": "Přihlášení vypršelo",
   "entry.invalidState.detail": "Přihlašování trvalo příliš dlouho.",
   "entry.invalidState.help": "Stiskni tlačítko a začni znovu.",

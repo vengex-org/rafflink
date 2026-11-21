@@ -18,7 +18,7 @@ export class RoomRowError extends Error {
   }
 }
 
-/** The one `room_state` row, parsed. A drawn room has its seed, any other has none. */
+/** The one `room_state` row, parsed. A drawn room has its seed, any other has none; an open room has no close time, any other has one. */
 export type RoomState = {
   readonly platform: string
   readonly giveawayId: string
@@ -36,9 +36,12 @@ export type RoomState = {
   readonly chatUnavailable: boolean
   readonly rolesRefreshAt: Instant | null
   readonly mirrorPending: boolean
+  /** The retention alarm deleted the entrants' data. */
+  readonly entriesDeleted: boolean
 } & (
-  | { readonly status: "open" | "closed"; readonly seed: null }
-  | { readonly status: "drawn"; readonly seed: Uint8Array<ArrayBuffer> }
+  | { readonly status: "open"; readonly seed: null; readonly closedAt: null }
+  | { readonly status: "closed"; readonly seed: null; readonly closedAt: Instant }
+  | { readonly status: "drawn"; readonly seed: Uint8Array<ArrayBuffer>; readonly closedAt: Instant }
 )
 
 /** Whether a pick is still open to claim, was claimed, or is out. */
@@ -85,15 +88,22 @@ export function parseState(
     chatUnavailable: reader.int("chat_unavailable") === 1,
     rolesRefreshAt: reader.nullableInt("roles_refresh_at"),
     mirrorPending: reader.int("mirror_pending") === 1,
+    entriesDeleted: reader.int("entries_deleted") === 1,
   }
   const status = reader.oneOf("status", roomStatuses)
   const seed = reader.nullableBlob("seed")
+  const closedAt = reader.nullableInt("closed_at")
+  if (status === "open") {
+    if (seed !== null || closedAt !== null) throw new RoomRowError("room_state", "closed_at")
+    return { ...base, status, seed, closedAt }
+  }
+  if (closedAt === null) throw new RoomRowError("room_state", "closed_at")
   if (status === "drawn") {
     if (seed === null) throw new RoomRowError("room_state", "seed")
-    return { ...base, status, seed }
+    return { ...base, status, seed, closedAt }
   }
   if (seed !== null) throw new RoomRowError("room_state", "seed")
-  return { ...base, status, seed }
+  return { ...base, status, seed, closedAt }
 }
 
 export function parseDraw(row: SqlRow): DrawRow {

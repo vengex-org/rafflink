@@ -168,8 +168,7 @@ export function giveawayScenarios(context: ContractContext): void {
     expect(me).toMatchObject({
       kind: "won",
       n: 0,
-      tickets: 1,
-      group: "viewer",
+      entry: { tickets: 1, group: "viewer" },
       claim: { state: "waiting" },
     })
     expect(me.claimRemainingMs).toBeGreaterThan(0)

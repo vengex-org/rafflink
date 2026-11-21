@@ -160,9 +160,21 @@ cd apps/server
 docker compose up -d --build
 ```
 
-The Bun server reads no client IP: no `X-Forwarded-For`, no remote address, and its logs carry a request id
-only. So it has no trusted-proxy setting, and any rate limit belongs to the proxy in front of it. Viewer
-sockets check the `Origin` header against `PUBLIC_URL`, not an address.
+The Bun server limits viewer sign-in callbacks per client address (`ENTRY_IP_LIMIT_PER_MINUTE`, 60 by
+default) and its logs carry a request id only. Which address it counts depends on `CLIENT_IP_HEADER`:
+
+- Unset (the default): the address of the connection. That is right when nothing sits in front of the
+  server. Behind a proxy it is the proxy's address, so every viewer shares one limit; it also means a
+  client cannot dodge the limit by writing its own `X-Forwarded-For`.
+- Set to a header name: the server reads the client address from that header, and when the value lists
+  several addresses, from the last one, which the nearest proxy appended. Set it only when your proxy
+  overwrites or appends that header on every request, or a client can choose its own address. Behind
+  Cloudflare use `CF-Connecting-IP`; behind Caddy or Traefik alone use `X-Forwarded-For`. Behind
+  Cloudflare and then Caddy, `X-Forwarded-For` ends in Cloudflare's address, so use `CF-Connecting-IP`.
+
+A request without the configured header has no known address and is not limited by address. The limit is
+a loose backstop because many viewers can share one mobile address. Viewer sockets check the `Origin`
+header against `PUBLIC_URL`, not an address.
 
 ### Coolify (Traefik)
 
@@ -254,7 +266,8 @@ You need a Cloudflare account with Workers and D1. Run the `wrangler` commands i
 
 A cron trigger (`0 * * * *`, in `wrangler.jsonc`) validates every stored streamer token once an hour, as
 Twitch requires. If you change `VALIDATE_PERIOD_SECONDS`, change the cron to match; a test checks that they
-agree.
+agree. The same cron wakes the rooms of closed giveaways once, up to `ENTRY_RETENTION_SWEEP_BATCH` per
+run, so each arms the alarm that deletes the entrants' data `ENTRY_RETENTION_SECONDS` after the close.
 
 Optional usage meter: the Cloudflare free plan allows 100,000 Worker requests a day. To show the day's use on
 the admin page and warn streamers when fewer than 25,000 are left, add `CLOUDFLARE_ACCOUNT_ID` as a var and

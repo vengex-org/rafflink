@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite"
+import { readdirSync } from "node:fs"
 import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
 import type { Hono } from "hono"
 import { AdminDirectory } from "../src/admin/admin-directory.ts"
@@ -9,6 +10,7 @@ import { createApp } from "../src/http/create-app.ts"
 import { codeAlphabet, codeLength } from "../src/lib/codes.ts"
 import { toBase64 } from "../src/lib/encoding.ts"
 import { MemoryPublicCache } from "../src/lib/memory-public-cache.ts"
+import { MemoryRateLimiter } from "../src/lib/memory-rate-limiter.ts"
 import { openKeyRing } from "../src/lib/seal.ts"
 import type {
   Alarm,
@@ -32,9 +34,15 @@ import { TwitchClient } from "../src/twitch/twitch-client.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
 import { idleChat } from "./idle-chat.ts"
 
-export const accountsSchema = await Bun.file(
-  new URL("../schema/accounts/0001_init.sql", import.meta.url),
-).text()
+const accountsSchemaDir = new URL("../schema/accounts/", import.meta.url)
+
+export const accountsSchema = (
+  await Promise.all(
+    readdirSync(accountsSchemaDir)
+      .toSorted()
+      .map((name) => Bun.file(new URL(name, accountsSchemaDir)).text()),
+  )
+).join("\n")
 
 export class TestClock implements Clock {
   constructor(private at: Instant) {}
@@ -220,6 +228,9 @@ export const validRules = {
   claimKeyword: null,
 }
 
+/** The header a test sets to give a request a client address; the real targets read the one their edge sets. */
+export const testAddressHeader = "x-test-address"
+
 export interface Harness {
   readonly app: Hono
   readonly deps: AppDeps
@@ -277,7 +288,8 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const queueDb = new Database(":memory:")
   const queueSql = new BunSqliteSyncSql(queueDb)
   applyMigrations(queueSql, queueMigrations)
-  const entryDeps = { config, clock, random, twitch, accounts, rooms }
+  const entryUserLimiter = new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, 60_000)
+  const entryDeps = { config, clock, random, twitch, accounts, rooms, entryUserLimiter }
   const queue = new TokenQueue({
     sql: queueSql,
     alarm: new TestAlarm(),
@@ -293,6 +305,8 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     publicCache: new MemoryPublicCache(clock),
     keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),
+    entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, 60_000),
+    clientAddress: (request) => request.headers.get(testAddressHeader),
   }
   return {
     app: createApp(deps, null),
@@ -358,15 +372,21 @@ export class Browser {
     return new URL(start.headers.get("location") ?? "").searchParams.get("state") ?? ""
   }
 
-  /** Sign-in start, the fake's consent, and the callback; the callback response is returned. */
-  async signInAs(userId: string, startPath: string): Promise<SignIn> {
+  /** Sign-in start, the fake's consent, and the callback, which carries `callbackHeaders`; the callback response is returned. */
+  async signInAs(
+    userId: string,
+    startPath: string,
+    callbackHeaders: HeadersInit = {},
+  ): Promise<SignIn> {
     this.harness.fake.control.signInAs(userId)
     const start = await this.request(startPath)
     const authorizeUrl = new URL(start.headers.get("location") ?? "")
     const authorize = await fetch(authorizeUrl, { redirect: "manual" })
     const callbackUrl = new URL(authorize.headers.get("location") ?? "")
     return {
-      response: await this.request(callbackUrl.pathname + callbackUrl.search),
+      response: await this.request(callbackUrl.pathname + callbackUrl.search, {
+        headers: callbackHeaders,
+      }),
       state: authorizeUrl.searchParams.get("state") ?? "",
       nonce: authorizeUrl.searchParams.get("nonce") ?? "",
       code: callbackUrl.searchParams.get("code") ?? "",

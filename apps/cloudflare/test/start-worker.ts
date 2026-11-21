@@ -2,9 +2,9 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import type { ContractTarget, StartTarget } from "@rafflink/core/test/contract"
-import { Log, LogLevel, Miniflare } from "miniflare"
+import { Log, LogLevel, Miniflare, PeriodType } from "miniflare"
 import { bundleWorker } from "../src/build/bundle-worker.ts"
-import { readWranglerConfig } from "./wrangler-config.ts"
+import { readWranglerConfig, type WranglerConfig } from "./wrangler-config.ts"
 
 const d1Binding = "DB"
 
@@ -34,6 +34,7 @@ export const startWorker: StartTarget = async (env, webDir) => {
       },
     },
     bindings: env,
+    ratelimits: rateLimitsOf(env, wrangler.rateLimits),
     outboundService: { network: { allow: ["public", "private", "local"], deny: [] } },
     // Info and warnings of the Worker are expected traffic of the scenarios; errors stay visible.
     log: new Log(LogLevel.ERROR),
@@ -48,6 +49,32 @@ export const startWorker: StartTarget = async (env, webDir) => {
     await miniflare.dispose()
     throw error
   }
+}
+
+// The limit of a binding is fixed in wrangler.jsonc; the contract sets the same keys the Bun server reads, so a scenario can lower them.
+function rateLimitsOf(
+  env: Record<string, string>,
+  configured: WranglerConfig["rateLimits"],
+): Record<string, { namespace_id: string; simple: { limit: number; period: PeriodType } }> {
+  const overrides: Record<string, string | undefined> = {
+    ENTRY_USER_LIMITER: env.ENTRY_USER_LIMIT_PER_MINUTE,
+    ENTRY_IP_LIMITER: env.ENTRY_IP_LIMIT_PER_MINUTE,
+  }
+  return Object.fromEntries(
+    Object.entries(configured).map(([name, { namespaceId, limit }]) => {
+      const override = overrides[name]
+      return [
+        name,
+        {
+          namespace_id: namespaceId,
+          simple: {
+            limit: override === undefined ? limit : Number(override),
+            period: PeriodType.MINUTE,
+          },
+        },
+      ]
+    }),
+  )
 }
 
 function target(

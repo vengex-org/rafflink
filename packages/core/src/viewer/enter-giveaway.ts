@@ -1,7 +1,7 @@
 import { setTimeout } from "node:timers/promises"
 import type { AccountStore, Giveaway } from "../accounts/account-store.ts"
 import type { ResolvedConfig } from "../config.ts"
-import type { Clock, Random } from "../ports.ts"
+import type { Clock, RateLimiter, Random } from "../ports.ts"
 import type { QueuedCode } from "../queue/token-queue.ts"
 import type { RoomViewer } from "../room/giveaway-room.ts"
 import { RoomTransientError, type RoomDirectory } from "../room/room-directory.ts"
@@ -29,10 +29,12 @@ export interface EntryDeps {
   readonly twitch: TwitchClient
   readonly accounts: AccountStore
   readonly rooms: RoomDirectory
+  /** Limits verified sign-ins per platform user, so a viewer's retries cannot flood the room; it runs after the code exchange and the ID-token check, so those Twitch calls are not saved. */
+  readonly entryUserLimiter: RateLimiter
 }
 
 /** The giveaway fields the routine needs; the sign-in callback has already loaded the giveaway. */
-export type EntryTarget = Pick<Giveaway, "id" | "broadcasterId">
+export type EntryTarget = Pick<Giveaway, "id" | "platform" | "broadcasterId">
 
 /**
  * Steps 2 to 5 of the viewer flow: exchange the code, verify the id_token, read eligibility, write the
@@ -61,6 +63,9 @@ export async function enterGiveaway(
     return twitchFailure(error, null)
   }
   const { userId } = verified
+  if (!(await deps.entryUserLimiter.allow(`${target.platform}:${userId}`))) {
+    return final({ kind: "rate-limited" }, userId)
+  }
 
   let viewer: RoomViewer
   try {

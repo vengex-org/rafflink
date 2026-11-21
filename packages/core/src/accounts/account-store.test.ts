@@ -18,6 +18,7 @@ import {
   ownedGiveawaySql,
   streamerByIdSql,
   streamerByPlatformUserSql,
+  unarmedRetentionSql,
 } from "./queries.ts"
 
 const config = resolveConfig({
@@ -257,6 +258,42 @@ describe("AccountStore giveaways", () => {
     await store.setStatus("g1", "closed")
 
     expect(await store.findGiveawayById("g1")).toMatchObject({ status: "closed" })
+  })
+
+  it("lists closed giveaways whose retention was not armed, oldest first, and no more than the limit", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 3 }))
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 1 }))
+    await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 2 }))
+    await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", createdAt: 0 }))
+    await store.setStatus("g1", "closed")
+    await store.setStatus("g2", "drawn")
+    await store.setStatus("g3", "closed")
+
+    expect(await store.listUnarmedRetention(10)).toEqual(["g2", "g3", "g1"])
+    expect(await store.listUnarmedRetention(2)).toEqual(["g2", "g3"])
+  })
+
+  it("stops listing a giveaway once its retention is marked armed, and marking twice changes nothing", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 1 }))
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 2 }))
+    await store.setStatus("g1", "closed")
+    await store.setStatus("g2", "closed")
+
+    await store.markRetentionArmed("g1")
+    await store.markRetentionArmed("g1")
+
+    expect(await store.listUnarmedRetention(10)).toEqual(["g2"])
+  })
+
+  it("lists the unarmed giveaways through the partial index without a sort", () => {
+    const { db } = setup()
+
+    const details = explainPlan(db, unarmedRetentionSql, [10])
+
+    expect(details.join("\n")).toContain("giveaways_retention_unarmed")
+    expect(details.some((detail) => detail.includes("TEMP B-TREE"))).toBe(false)
   })
 
   it("refuses to store a status outside the CHECK", async () => {

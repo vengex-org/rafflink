@@ -110,3 +110,11 @@ export interface PublicCache {
   read(key: string): Promise<string | null>
   write(key: string, text: string, ttlSeconds: number): Promise<void>
 }
+
+/**
+ * Counts calls per key over a time window. Any implementation answers `true` for a call that is within
+ * the limit its window allows for `key`, and `false` for each call beyond it until the window moves on.
+ */
+export interface RateLimiter {
+  allow(key: string): Promise<boolean>
+}

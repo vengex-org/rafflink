@@ -6,6 +6,7 @@ import {
   createHarness,
   entryQuery,
   sqlRows,
+  testAddressHeader,
   users,
   validRules,
   type Harness,
@@ -773,6 +774,83 @@ describe("viewer entry", () => {
   })
 })
 
+async function restart(env: Record<string, string>): Promise<void> {
+  await harness.stop()
+  harness = await createHarness({ env })
+}
+
+async function signInFrom(userId: string, code: string, address: string | null) {
+  const browser = new Browser(harness)
+  const headers = address === null ? {} : { [testAddressHeader]: address }
+  const signIn = await browser.signInAs(
+    userId,
+    `/auth/twitch/viewer/start?giveaway=${code}`,
+    headers,
+  )
+  return entryQuery(signIn.response).get("entry")
+}
+
+describe("entry rate limits", () => {
+  it("refuses a sign-in of one user beyond the limit instead of answering already-in, and writes nothing", async () => {
+    await restart({ ENTRY_USER_LIMIT_PER_MINUTE: "1" })
+    const { code, id } = await createGiveaway(harness)
+    const browser = new Browser(harness)
+    await viewerSignIn(users.viewer.id, code, browser)
+
+    const { query } = await viewerSignIn(users.viewer.id, code, browser)
+
+    expect(query.get("entry")).toBe("rate-limited")
+    expect(harness.rooms.roomFor(id).summary().entrantCount).toBe(1)
+  })
+
+  it("counts per user, so another user still enters", async () => {
+    await restart({ ENTRY_USER_LIMIT_PER_MINUTE: "1" })
+    const { code } = await createGiveaway(harness)
+    await viewerSignIn(users.viewer.id, code)
+
+    const { query } = await viewerSignIn(users.viewer2.id, code)
+
+    expect(query.get("entry")).toBe("entered")
+  })
+
+  it("lets the user sign in again after the minute", async () => {
+    await restart({ ENTRY_USER_LIMIT_PER_MINUTE: "1" })
+    const { code } = await createGiveaway(harness)
+    const browser = new Browser(harness)
+    await viewerSignIn(users.viewer.id, code, browser)
+    harness.clock.advance(60_000)
+
+    const { query } = await viewerSignIn(users.viewer.id, code, browser)
+
+    expect(query.get("entry")).toBe("already-in")
+  })
+
+  it("refuses a second callback from one address before any Twitch call, and lets another address in", async () => {
+    await restart({ ENTRY_IP_LIMIT_PER_MINUTE: "1" })
+    const { code } = await createGiveaway(harness)
+    expect(await signInFrom(users.viewer.id, code, "203.0.113.7")).toBe("entered")
+    const callsBefore = harness.fake.control.calls.length
+
+    const refused = await signInFrom(users.viewer2.id, code, "203.0.113.7")
+    const otherAddress = await signInFrom(users.viewer3.id, code, "203.0.113.8")
+
+    expect(refused).toBe("rate-limited")
+    expect(otherAddress).toBe("entered")
+    const paths = harness.fake.control.calls.slice(callsBefore).map((call) => call.path)
+    expect(paths.filter((path) => path === "/oauth2/token")).toHaveLength(1)
+  })
+
+  it("does not limit callbacks that carry no address", async () => {
+    await restart({ ENTRY_IP_LIMIT_PER_MINUTE: "1" })
+    const { code } = await createGiveaway(harness)
+
+    const first = await signInFrom(users.viewer.id, code, null)
+    const second = await signInFrom(users.viewer2.id, code, null)
+
+    expect([first, second]).toEqual(["entered", "entered"])
+  })
+})
+
 describe("token endpoint limits", () => {
   it("a token-endpoint 429 queues the code and answers pending", async () => {
     const { code, id } = await createGiveaway(harness)
@@ -1265,36 +1343,33 @@ describe("viewer state", () => {
       userId: users.viewer.id,
       n: 0,
       claimRemainingMs: 240_000,
-      tickets: 1,
-      group: "viewer",
+      entry: { tickets: 1, group: "viewer" },
       claim: { state: "waiting" },
       chatClaimAvailable: true,
     })
     expect(await meOf(winnerBrowser, code)).toMatchObject({
       kind: "won",
-      tickets: 1,
-      group: "viewer",
+      entry: { tickets: 1, group: "viewer" },
       claim: { state: "claimed", via: "rafflink", at: harness.clock.now() },
     })
   })
 
-  it("answers 500 without details when a winner has no entry row", async () => {
-    const error = spyOn(console, "error").mockImplementation(() => {})
+  it("shows a winner whose entry was deleted after the retention time without an entry", async () => {
+    await harness.stop()
+    // The cookie must outlive the retention time, or the viewer is signed out before the entry is gone.
+    harness = await createHarness({ env: { VIEWER_SESSION_TTL_SECONDS: "5184000" } })
     const { code, id, winnerBrowser } = await drawnGiveaway()
-    spyOn(harness.rooms.roomFor(id), "entryOf").mockReturnValue(null)
+    harness.clock.advance(harness.config.entryRetentionSeconds * 1000)
+    harness.rooms.roomFor(id).onAlarm()
 
     const response = await winnerBrowser.request(`/api/g/${code}`)
 
-    expect(response.status).toBe(500)
-    expect(await response.json()).toEqual({
-      error: "internal",
-      requestId: expect.stringMatching(/\S/),
+    expect(response.status).toBe(200)
+    expect(await meOf(winnerBrowser, code)).toMatchObject({
+      kind: "won",
+      userId: users.viewer.id,
+      entry: null,
     })
-    expect(error).toHaveBeenCalledWith("request failed", {
-      requestId: expect.stringMatching(/\S/),
-      errorClass: "Error",
-    })
-    error.mockRestore()
   })
 
   it("says the giveaway is finished once the draw is done and every pick is claimed", async () => {

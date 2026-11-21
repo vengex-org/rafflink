@@ -14,6 +14,7 @@ import {
 } from "./giveaway-room.ts"
 import { applyMigrations } from "./migrate.ts"
 import { roomMigrations } from "./migrations.ts"
+import { RoomRowError } from "./rows.ts"
 import {
   entrantsAfterSql,
   entryOfSql,
@@ -1100,7 +1101,8 @@ describe("public summary", () => {
     expect(alarm.at).toBe(900_001)
     clock.advance(600_000)
     room.onAlarm()
-    expect(alarm.at).toBeNull()
+    // Only the deletion of the entrants' data is left.
+    expect(alarm.at).toBe(config.entryRetentionSeconds * 1000)
   })
 
   it("is finished and pushed once the reroll window after the last claim time has passed", async () => {
@@ -1119,7 +1121,7 @@ describe("public summary", () => {
 
     expect(room.summary().finished).toBe(true)
     expect(lastViewerPush(hub).finished).toBe(true)
-    expect(alarm.at).toBeNull()
+    expect(alarm.at).toBe(config.entryRetentionSeconds * 1000)
   })
 
   it("tells the live snapshot when the reroll window is over and pushes it to the live pages", async () => {
@@ -1315,5 +1317,171 @@ describe("public summary", () => {
     const details = plan(sql, undrawnEntrantSql, [])
 
     expect(details.some((detail) => detail.includes("INDEX draws_by_entrant"))).toBe(true)
+  })
+})
+
+function count(sql: SyncSql, table: "entries" | "channel_roles"): unknown {
+  return sql.exec(`SELECT COUNT(*) AS c FROM ${table}`, [])[0]?.c
+}
+
+describe("GiveawayRoom retention", () => {
+  const retentionMs = config.entryRetentionSeconds * 1000
+
+  it("deletes entries and channel roles once the retention time after the close has passed, and nothing before", async () => {
+    const { room, sql, clock } = await drawnRoom()
+    room.replaceRoles(["9"], [])
+
+    clock.advance(retentionMs - 1)
+    room.onAlarm()
+    expect([count(sql, "entries"), count(sql, "channel_roles")]).toEqual([3, 1])
+
+    clock.advance(1)
+    room.onAlarm()
+    expect([count(sql, "entries"), count(sql, "channel_roles")]).toEqual([0, 0])
+  })
+
+  it("keeps the counts, the status and the picks, and the winner loses only the name and the entry", async () => {
+    const { room, clock, winner } = await drawnRoom()
+
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    expect(room.summary()).toMatchObject({ status: "drawn", entrantCount: 3, ticketTotal: 3 })
+    expect(room.picks()).toMatchObject([
+      { n: 0, platformUserId: winner.platformUserId, entrySeq: null, displayName: null },
+    ])
+    expect(room.entryOf(winner)).toBeNull()
+    expect(room.liveSnapshot().lastNames).toEqual([])
+  })
+
+  it("counts the retention time from the close, not from the entry", () => {
+    const { room, sql, clock } = setup()
+    room.enter(viewer("1"))
+    clock.advance(retentionMs)
+    room.onAlarm()
+    expect(count(sql, "entries")).toBe(1)
+
+    room.close()
+    clock.advance(retentionMs - 1)
+    room.onAlarm()
+    expect(count(sql, "entries")).toBe(1)
+
+    clock.advance(1)
+    room.onAlarm()
+    expect(count(sql, "entries")).toBe(0)
+  })
+
+  it("sets the alarm to the deadline while data remains and to nothing once it is deleted", () => {
+    const { room, alarm, clock } = setup()
+    room.enter(viewer("1"))
+    clock.advance(1000)
+    room.close()
+    room.markMirrored("closed")
+    expect(alarm.at).toBe(1000 + retentionMs)
+
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    expect(alarm.at).toBeNull()
+  })
+
+  it("arms the retention alarm of a room that was closed before the schema change and gets no further write", () => {
+    const sql = new BunSqliteSyncSql(new Database(":memory:"))
+    applyMigrations(sql, roomMigrations.slice(0, 1))
+    sql.exec(
+      `INSERT INTO room_state (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, closes_at)
+       VALUES (1, 'twitch', 'g1', 'b', 't', 'ABCDE', ?, 300, 'closed', 1000)`,
+      [JSON.stringify(rules)],
+    )
+    sql.exec(
+      "INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at) VALUES (1, 'twitch', 'u', 'l', 'n', 'viewer', 1, 500)",
+      [],
+    )
+    applyMigrations(sql, roomMigrations)
+    const clock = new TestClock(0)
+    const alarm = new TestAlarm()
+    const room = new GiveawayRoom({
+      sql,
+      alarm,
+      live: new TestHub(),
+      clock,
+      random,
+      config,
+      chat: idleChat,
+    })
+
+    room.armAlarm()
+    expect(alarm.at).toBe(1000 + retentionMs)
+
+    clock.advance(1000 + retentionMs)
+    room.onAlarm()
+    expect(count(sql, "entries")).toBe(0)
+  })
+
+  it("arms nothing for a room that was never initialised", () => {
+    const sql = new BunSqliteSyncSql(new Database(":memory:"))
+    applyMigrations(sql, roomMigrations)
+    const alarm = new TestAlarm()
+    const room = new GiveawayRoom({
+      sql,
+      alarm,
+      live: new TestHub(),
+      clock: new TestClock(0),
+      random,
+      config,
+      chat: idleChat,
+    })
+
+    room.armAlarm()
+
+    expect(alarm.at).toBeNull()
+  })
+
+  it("refuses to draw a closed room whose entries were deleted, and leaves it closed", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    expect(await room.draw(1)).toEqual({ kind: "entries-deleted" })
+    expect(room.summary()).toMatchObject({ status: "closed" })
+    expect(room.picks()).toEqual([])
+  })
+
+  it("draws a closed room that never had entries after the retention time", async () => {
+    const { room, clock } = setup()
+    room.close()
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    expect(await room.draw(1)).toEqual({ kind: "drawn", winners: [] })
+  })
+
+  it("refuses to reroll once the entries were deleted", async () => {
+    const { room, clock } = await drawnRoom()
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    expect(await room.reroll(0)).toEqual({ kind: "entries-deleted" })
+    expect(room.picks()).toHaveLength(1)
+  })
+
+  it("never deletes the entries of an open room", () => {
+    const { room, sql, clock } = setup()
+    room.enter(viewer("1"))
+
+    clock.advance(10 * retentionMs)
+    room.onAlarm()
+
+    expect(count(sql, "entries")).toBe(1)
+  })
+
+  it("refuses to read a closed room that has no close time", () => {
+    const { room, sql } = setup()
+    room.close()
+    sql.exec("UPDATE room_state SET closed_at = NULL", [])
+
+    expect(() => room.summary()).toThrow(RoomRowError)
   })
 })

@@ -405,8 +405,8 @@ of the id could be brute-forced into a list of who entered.
 ## Privacy
 
 - Stored per entrant: platform, user id, login, display name, group, tickets, time (and the salt from M2).
-- Entries are deleted 30 days after the giveaway closes (the deletion job comes in M2); the winner list, Merkle
-  root and leaf list stay with the giveaway.
+- Entries and the channel role lists are deleted 30 days after the giveaway closes (`ENTRY_RETENTION_SECONDS`), by
+  the room alarm; the winner list, counts, Merkle root and leaf list stay with the giveaway.
 - Rafflink asks only for read scopes and never posts to chat.
 - Chat is read from the draw until the giveaway is finished. Messages are matched in memory and never stored or logged.
 

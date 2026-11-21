@@ -5,11 +5,13 @@ import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { D1AsyncSql } from "./adapters/d1-async-sql.ts"
+import { RateLimitBindingLimiter } from "./adapters/rate-limit-binding.ts"
 import { settingsOf, type WorkerEnv } from "./env.ts"
 
 /** What the Worker and both Durable Objects share, built once per isolate from the environment. */
 export interface Runtime extends StreamerTokenDeps {
   readonly config: ResolvedConfig
+  readonly entryUserLimiter: RateLimitBindingLimiter
 }
 
 const runtimes = new WeakMap<WorkerEnv, Promise<Runtime>>()
@@ -32,5 +34,6 @@ async function openRuntime(env: WorkerEnv): Promise<Runtime> {
     twitch: new TwitchClient(config, (input, init) => fetch(input, init)),
     accounts: new AccountStore(new D1AsyncSql(env.DB), config),
     keyRing: await openKeyRing(config.tokenSealKeys),
+    entryUserLimiter: new RateLimitBindingLimiter(env.ENTRY_USER_LIMITER),
   }
 }

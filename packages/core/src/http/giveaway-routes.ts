@@ -187,13 +187,11 @@ async function viewerState(
   if (summary.status === "drawn") {
     const pick = await pickOf(deps, giveaway, session)
     if (pick !== undefined) {
-      if (entry === null) throw new Error("winner has no entry")
       return {
         kind: "won",
         userId: session.userId,
         n: pick.n,
-        tickets: entry.tickets,
-        group: entry.group,
+        entry: entry === null ? null : { tickets: entry.tickets, group: entry.group },
         claimRemainingMs: Math.max(0, pick.claimUntil - deps.clock.now()),
         claim: pick.claim,
         chatClaimAvailable: !summary.chatClaimUnavailable,

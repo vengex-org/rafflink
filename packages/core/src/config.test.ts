@@ -103,6 +103,43 @@ describe("resolveConfig", () => {
     ).toBe(limitSeconds + 1)
   })
 
+  it("rejects a retention time below the claim and reroll windows or above 30 days", () => {
+    const windows = { CLAIM_SECONDS_MAX: "100", REROLL_WINDOW_SECONDS: "50" }
+    expect(failure({ ...required, ...windows, ENTRY_RETENTION_SECONDS: "149" })).toMatchObject({
+      env: "ENTRY_RETENTION_SECONDS",
+      reason: "below-claim-and-reroll-windows",
+    })
+    expect(
+      resolveConfig({ ...required, ...windows, ENTRY_RETENTION_SECONDS: "150" })
+        .entryRetentionSeconds,
+    ).toBe(150)
+    expect(
+      resolveConfig({ ...required, ENTRY_RETENTION_SECONDS: "2592000" }).entryRetentionSeconds,
+    ).toBe(2_592_000)
+    expect(failure({ ...required, ENTRY_RETENTION_SECONDS: "2592001" })).toMatchObject({
+      env: "ENTRY_RETENTION_SECONDS",
+      reason: "out-of-range",
+    })
+    expect(failure({ ...required, ENTRY_RETENTION_SECONDS: "0" })).toMatchObject({
+      env: "ENTRY_RETENTION_SECONDS",
+      reason: "out-of-range",
+    })
+  })
+
+  it("reads the client address header as lower case, blank as unset, and rejects what is no header name", () => {
+    expect(resolveConfig(required).clientIpHeader).toBeNull()
+    expect(resolveConfig({ ...required, CLIENT_IP_HEADER: "  " }).clientIpHeader).toBeNull()
+    expect(
+      resolveConfig({ ...required, CLIENT_IP_HEADER: "CF-Connecting-IP" }).clientIpHeader,
+    ).toBe("cf-connecting-ip")
+    for (const value of ["X Forwarded", "x-forwarded-for:", "a,b"]) {
+      expect(failure({ ...required, CLIENT_IP_HEADER: value })).toMatchObject({
+        env: "CLIENT_IP_HEADER",
+        reason: "not-a-header-name",
+      })
+    }
+  })
+
   it("reads the limits of tickets, claim time, winners and the public cache", () => {
     const config = resolveConfig(required)
 

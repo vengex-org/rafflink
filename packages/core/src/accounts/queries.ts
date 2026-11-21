@@ -24,6 +24,13 @@ export const insertGiveawaySql = `INSERT INTO giveaways
 /** Parameters: status, giveaway id. */
 export const setStatusSql = "UPDATE giveaways SET status = ? WHERE id = ?"
 
+/** Ids of giveaways the room reported as no longer open and the retention sweep has not woken yet, oldest first (parameter 1 is how many). */
+export const unarmedRetentionSql =
+  "SELECT id FROM giveaways WHERE retention_armed = 0 AND status != 'open' ORDER BY created_at, id LIMIT ?"
+
+/** A giveaway id (parameter 1). */
+export const setRetentionArmedSql = "UPDATE giveaways SET retention_armed = 1 WHERE id = ?"
+
 /** Parameters: id, platform, platform user id, login, display name, created at. */
 export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, created_at)
   VALUES (?, ?, ?, ?, ?, ?)
