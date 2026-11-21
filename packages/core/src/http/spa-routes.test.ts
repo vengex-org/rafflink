@@ -51,9 +51,11 @@ describe("page routes", () => {
   it("leaves the home page indexable and every other page not", async () => {
     const home = await app.request("/")
     const dashboard = await app.request("/dashboard")
+    const demo = await app.request("/demo")
 
     expect(home.headers.get("x-robots-tag")).toBeNull()
     expect(dashboard.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+    expect(demo.headers.get("x-robots-tag")).toBe("noindex, nofollow")
   })
 
   it("keeps an unknown API path a JSON 404", async () => {

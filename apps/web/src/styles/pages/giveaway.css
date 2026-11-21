@@ -501,3 +501,26 @@ main.container:has(> .viewer) {
     background: none;
   }
 }
+
+/* The demo: a label, one sentence and the replay button above a real viewer page */
+
+.demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.demo-bar p {
+  flex: 1 1 14rem;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.demo-drawing {
+  display: block;
+  margin: 0;
+  color: var(--ink-2);
+  font-weight: 600;
+}

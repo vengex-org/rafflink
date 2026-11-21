@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { installFakeSocket } from "./fake-socket.ts"
-import { giveaway } from "./fixtures.ts"
+import { claimedAt, claimedAtText, giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -18,14 +18,23 @@ afterEach(() => {
 const giveawayRoute = { "GET /api/g/ABCDE": () => ok(giveaway) }
 const wonRoute = (
   claimRemainingMs: number,
-  claim: { state: string; via?: string },
+  claim: { state: string; at?: number; via?: string },
   chatClaimAvailable = true,
 ) => ({
   "GET /api/g/ABCDE": () =>
     ok({
       ...giveaway,
       status: "drawn",
-      me: { kind: "won", userId: "u1", n: 0, claimRemainingMs, claim, chatClaimAvailable },
+      me: {
+        kind: "won",
+        userId: "u1",
+        n: 0,
+        tickets: 3,
+        group: "follower",
+        claimRemainingMs,
+        claim,
+        chatClaimAvailable,
+      },
     }),
 })
 
@@ -468,6 +477,23 @@ describe("winner claim", () => {
     expect(requests.map((request) => request.route)).toContain("POST /api/g/ABCDE/claim")
   })
 
+  it("shows the winner their own tickets and group", async () => {
+    mockFetch(wonRoute(90_000, { state: "waiting" }))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Your entry: 3 tickets as a follower.")).toBeTruthy()
+  })
+
+  it("shows a claimed winner their tickets and when the prize was claimed", async () => {
+    mockFetch(wonRoute(0, { state: "claimed", at: claimedAt, via: "chat" }))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText(`Claimed at ${claimedAtText}.`)).toBeTruthy()
+    expect(view.getByText("Your entry: 3 tickets as a follower.")).toBeTruthy()
+  })
+
   it("offers the chat word as the alternative to the button", async () => {
     mockFetch({
       ...wonRoute(90_000, { state: "waiting" }),
@@ -480,6 +506,8 @@ describe("winner claim", () => {
             kind: "won",
             userId: "u1",
             n: 0,
+            tickets: 3,
+            group: "follower",
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,
@@ -543,7 +571,7 @@ describe("winner claim", () => {
   })
 
   it("shows a claimed winner the contact message without a button", async () => {
-    mockFetch(wonRoute(5000, { state: "claimed", via: "chat" }))
+    mockFetch(wonRoute(5000, { state: "claimed", at: 1, via: "chat" }))
 
     const view = renderApp("/ABCDE")
 
@@ -605,7 +633,7 @@ describe("state screens", () => {
   })
 
   it("shows a winner who claimed the prize a done screen", async () => {
-    mockFetch(wonRoute(5000, { state: "claimed", via: "chat" }))
+    mockFetch(wonRoute(5000, { state: "claimed", at: 1, via: "chat" }))
 
     await expectOnlyScreen("/ABCDE", "Prize claimed")
   })

@@ -23,7 +23,7 @@ export function chatClaimScenarios(context: ContractContext): void {
       "the chat message to claim",
     )
 
-    expect((await world.live(giveaway)).winners[0]?.claim).toEqual({
+    expect((await world.live(giveaway)).winners[0]?.claim).toMatchObject({
       state: "claimed",
       via: "chat",
     })
@@ -40,7 +40,7 @@ export function chatClaimScenarios(context: ContractContext): void {
       "the winner's message to claim",
     )
 
-    expect((await world.live(giveaway)).winners[0]?.claim).toEqual({
+    expect((await world.live(giveaway)).winners[0]?.claim).toMatchObject({
       state: "claimed",
       via: "chat",
     })
@@ -62,7 +62,7 @@ export function chatClaimScenarios(context: ContractContext): void {
       "the chat message to claim after the reconnect",
     )
 
-    expect((await world.live(giveaway)).winners[0]?.claim).toEqual({
+    expect((await world.live(giveaway)).winners[0]?.claim).toMatchObject({
       state: "claimed",
       via: "chat",
     })

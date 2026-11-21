@@ -69,6 +69,73 @@ async function deletedStreamerBrowser(): Promise<Browser> {
   return browser
 }
 
+describe("session", () => {
+  it("answers a null streamer without a cookie", async () => {
+    const response = await new Browser(harness).request("/api/session")
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ streamer: null })
+  })
+
+  it("names the signed-in streamer", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const response = await browser.request("/api/session")
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(await response.json()).toEqual({
+      streamer: { displayName: users.streamerA.displayName, login: users.streamerA.login },
+    })
+  })
+
+  it("answers null for a deleted streamer and deletes the cookie", async () => {
+    const browser = await deletedStreamerBrowser()
+
+    const response = await browser.request("/api/session")
+
+    expect(await response.json()).toEqual({ streamer: null })
+    expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
+    expect(browser.cookie("rl_streamer")).toBeUndefined()
+  })
+
+  it("logs out by deleting the cookie", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const response = await browser.request("/auth/logout", { method: "POST" })
+
+    expect(response.status).toBe(204)
+    expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
+    expect(await (await browser.request("/api/session")).json()).toEqual({ streamer: null })
+  })
+
+  it("refuses a logout from another origin and keeps the session", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const response = await browser.request("/auth/logout", {
+      method: "POST",
+      headers: { origin: "https://evil.example" },
+    })
+
+    expect(response.status).toBe(403)
+    expect(browser.cookie("rl_streamer")).toBeDefined()
+  })
+
+  it("accepts a logout from the public origin", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const response = await browser.request("/auth/logout", {
+      method: "POST",
+      headers: { origin: "http://localhost" },
+    })
+
+    expect(response.status).toBe(204)
+  })
+})
+
 describe("streamer sign-in", () => {
   it("stores the refresh token sealed and starts a session", async () => {
     const browser = new Browser(harness)
@@ -962,6 +1029,7 @@ describe("winners", () => {
     expect(harness.rooms.roomFor(id).liveSnapshot().winners[0]?.claim).toEqual({
       state: "claimed",
       via: "rafflink",
+      at: harness.clock.now(),
     })
   })
 
@@ -992,6 +1060,7 @@ describe("winners", () => {
     expect(harness.rooms.roomFor(id).liveSnapshot().winners[0]?.claim).toEqual({
       state: "claimed",
       via: "manual",
+      at: harness.clock.now(),
     })
   })
 
@@ -1196,13 +1265,36 @@ describe("viewer state", () => {
       userId: users.viewer.id,
       n: 0,
       claimRemainingMs: 240_000,
+      tickets: 1,
+      group: "viewer",
       claim: { state: "waiting" },
       chatClaimAvailable: true,
     })
     expect(await meOf(winnerBrowser, code)).toMatchObject({
       kind: "won",
-      claim: { state: "claimed", via: "rafflink" },
+      tickets: 1,
+      group: "viewer",
+      claim: { state: "claimed", via: "rafflink", at: harness.clock.now() },
     })
+  })
+
+  it("answers 500 without details when a winner has no entry row", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const { code, id, winnerBrowser } = await drawnGiveaway()
+    spyOn(harness.rooms.roomFor(id), "entryOf").mockReturnValue(null)
+
+    const response = await winnerBrowser.request(`/api/g/${code}`)
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({
+      error: "internal",
+      requestId: expect.stringMatching(/\S/),
+    })
+    expect(error).toHaveBeenCalledWith("request failed", {
+      requestId: expect.stringMatching(/\S/),
+      errorClass: "Error",
+    })
+    error.mockRestore()
   })
 
   it("says the giveaway is finished once the draw is done and every pick is claimed", async () => {

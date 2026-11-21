@@ -11,7 +11,8 @@ import { mirrorStatus } from "../room/mirror-status.ts"
 import { parseCreateGiveaway } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import { dashboardGiveaway, readJson, type EntrantsPage, type OwnerLiveSnapshot } from "./json.ts"
-import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
+import type { StreamerSession } from "./session.ts"
+import { currentStreamer } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 
 type Env = { Variables: { streamer: StreamerSession } }
@@ -188,13 +189,9 @@ const manualClaimStatus: Readonly<Record<ClaimOutcome["kind"], ContentfulStatusC
 
 function requireStreamer(deps: AppDeps): MiddlewareHandler<Env> {
   return async (c, next) => {
-    const session = await readStreamerSession(c, deps)
-    if (session === null) return c.json({ error: "unauthorized" }, 401)
-    if ((await deps.accounts.findStreamer(session.streamerId)) === null) {
-      endStreamerSession(c)
-      return c.json({ error: "unauthorized" }, 401)
-    }
-    c.set("streamer", session)
+    const current = await currentStreamer(c, deps)
+    if (current === null) return c.json({ error: "unauthorized" }, 401)
+    c.set("streamer", current.session)
     return next()
   }
 }

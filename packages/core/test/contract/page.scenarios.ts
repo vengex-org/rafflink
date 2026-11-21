@@ -49,7 +49,7 @@ export function pageScenarios(context: ContractContext): void {
     async (world) => {
       const target = await world.start()
 
-      for (const path of ["/ZZZZZ", "/g/ZZZZZ", "/dashboard", "/live/x", "/admin"]) {
+      for (const path of ["/ZZZZZ", "/g/ZZZZZ", "/dashboard", "/live/x", "/admin", "/demo"]) {
         const response = await page(target, path)
         const html = await response.text()
 

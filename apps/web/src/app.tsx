@@ -4,6 +4,7 @@ import { NotFound } from "./components/notice.tsx"
 import { I18nProvider } from "./i18n/i18n.tsx"
 import { AdminPage } from "./pages/admin-page.tsx"
 import { DashboardPage } from "./pages/dashboard-page.tsx"
+import { DemoPage } from "./pages/demo-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
 import { HomePage } from "./pages/home-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
@@ -15,13 +16,16 @@ export function AppRoutes() {
       <Routes>
         <Route path="/overlay/:id/:token" element={<OverlayPage />} />
         <Route path="live/:id" element={<LivePage />} />
-        <Route element={<Layout />}>
+        <Route element={<Layout account />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="admin" element={<AdminPage />} />
           <Route index element={<HomePage />} />
+          <Route path="*" element={<NotFound title="notFound.page" />} />
+        </Route>
+        <Route element={<Layout account={false} />}>
+          <Route path="demo" element={<DemoPage />} />
           <Route path="g/:code" element={<GiveawayPage />} />
           <Route path=":code" element={<GiveawayPage />} />
-          <Route path="*" element={<NotFound title="notFound.page" />} />
         </Route>
       </Routes>
     </I18nProvider>

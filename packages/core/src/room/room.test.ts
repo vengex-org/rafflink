@@ -637,16 +637,20 @@ describe("GiveawayRoom live push", () => {
   })
 
   it("shows how a winner claimed and which pick was rerolled", async () => {
-    const { room, sql } = setup()
+    const { room, sql, clock } = setup()
     enterMany(room, ["1", "2", "3"])
     room.close()
     await room.draw(1)
     await room.reroll(0)
+    clock.advance(1234)
     room.claim(1, twitch(String(picks(sql)[1]?.platform_user_id)), "chat")
 
     const claims = room.liveSnapshot().winners.map((winner) => winner.claim)
 
-    expect(claims).toEqual([{ state: "rerolled" }, { state: "claimed", via: "chat" }])
+    expect(claims).toEqual([
+      { state: "rerolled" },
+      { state: "claimed", via: "chat", at: clock.now() },
+    ])
   })
 })
 

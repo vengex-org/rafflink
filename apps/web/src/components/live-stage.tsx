@@ -171,7 +171,7 @@ function DrawnStage({
                 windowMs={facts === null ? null : facts.claimSeconds * 1000}
               />
             ) : (
-              <StatusChip tone={settledTone(current)}>{claimLabel(current, t)}</StatusChip>
+              <StatusChip tone={settledTone(current)}>{claimLabel(current, i18n)}</StatusChip>
             )}
             {facts === null ? null : (
               <p>{t("live.claimWindow", { seconds: i18n.number(facts.claimSeconds) })}</p>
@@ -192,13 +192,14 @@ function Progress({
   readonly standing: readonly LiveWinner[]
   readonly current: LiveWinner | null
 }) {
-  const { t } = useI18n()
+  const i18n = useI18n()
+  const { t } = i18n
   return (
     <ol className="live-progress" aria-label={t("live.progress")}>
       {standing.map((winner) => (
         <li key={winner.n} data-state={segmentState(winner, current)}>
           <span className="sr-only">
-            {winner.displayName ?? t("winner.removed")}: {claimLabel(winner, t)}
+            {winner.displayName ?? t("winner.removed")}: {claimLabel(winner, i18n)}
           </span>
         </li>
       ))}

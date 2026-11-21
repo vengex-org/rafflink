@@ -1,8 +1,15 @@
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, within } from "@testing-library/react"
+import { mockFetch } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
-afterEach(cleanup)
+beforeEach(() => {
+  mockFetch({})
+})
+afterEach(() => {
+  cleanup()
+  mock.restore()
+})
 
 describe("home page", () => {
   it("opens with the one-sentence promise as the only h1", () => {
@@ -88,7 +95,16 @@ describe("home page", () => {
     )
     expect(nav.queryByRole("link", { name: "Fair odds" })).toBeNull()
     expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
-    expect(view.getByRole("link", { name: "Demo giveaway" })).toBeTruthy()
+  })
+
+  it("opens the demo from the header, the hero and the how-it-works section", () => {
+    const view = renderApp("/")
+
+    const links = ["Demo giveaway", "Try the demo", "Open the demo giveaway"].map((name) =>
+      view.getByRole("link", { name }).getAttribute("href"),
+    )
+
+    expect(links).toEqual(["/demo", "/demo", "/demo"])
   })
 
   it("keeps the theme and language switches inside one settings button", () => {

@@ -183,20 +183,23 @@ async function viewerState(
   summary: PublicSummary,
 ): Promise<ViewerState> {
   const room = deps.rooms.get(giveaway.id)
+  const entry = await room.entryOf({ platform: session.platform, platformUserId: session.userId })
   if (summary.status === "drawn") {
     const pick = await pickOf(deps, giveaway, session)
     if (pick !== undefined) {
+      if (entry === null) throw new Error("winner has no entry")
       return {
         kind: "won",
         userId: session.userId,
         n: pick.n,
+        tickets: entry.tickets,
+        group: entry.group,
         claimRemainingMs: Math.max(0, pick.claimUntil - deps.clock.now()),
         claim: pick.claim,
         chatClaimAvailable: !summary.chatClaimUnavailable,
       }
     }
   }
-  const entry = await room.entryOf({ platform: session.platform, platformUserId: session.userId })
   if (entry === null) return { kind: "not-entered", userId: session.userId }
   return summary.status === "drawn"
     ? { kind: "not-won", userId: session.userId }

@@ -12,6 +12,7 @@ import { shareUrl } from "../lib/links.ts"
 import { giveawayName } from "../lib/messages.ts"
 import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
 import { useLive } from "../lib/use-live.ts"
+import { useGiveawayFacts } from "../lib/use-giveaway-facts.ts"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 
@@ -84,24 +85,7 @@ function Overlay({
     return (
       <main className="overlay">
         {heading}
-        <h2 className="sr-only">{t("overlay.winners")}</h2>
-        <ul className="overlay-winners">
-          {standing.map((winner, index) => (
-            <li key={winner.n} className="overlay-plate overlay-winner">
-              <div>
-                <p className="overlay-label">
-                  {t("live.winnerOf", {
-                    n: i18n.number(index + 1),
-                    total: i18n.number(standing.length),
-                  })}
-                </p>
-                <WinnerPlate name={winner.displayName ?? t("winner.removed")} />
-                <p className="overlay-prize">{giveawayName(i18n, snapshot.title, snapshot.code)}</p>
-              </div>
-              {winner.claim.state === "waiting" ? <ClaimTimer winner={winner} /> : null}
-            </li>
-          ))}
-        </ul>
+        <WinnerPlates snapshot={snapshot} standing={standing} />
         {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
       </main>
     )
@@ -154,6 +138,48 @@ function Overlay({
         )}
       </div>
     </main>
+  )
+}
+
+/** The prize is not in the snapshot, so it is fetched when the plates show; until then its line stays empty. */
+function WinnerPlates({
+  snapshot,
+  standing,
+}: {
+  readonly snapshot: OverlaySnapshot
+  readonly standing: readonly LiveWinner[]
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const { facts, pending } = useGiveawayFacts(snapshot.code)
+  const named = facts?.prize
+  const fallback = giveawayName(i18n, snapshot.title, snapshot.code)
+  const prize = pending
+    ? ""
+    : named === null || named === undefined || named.trim() === ""
+      ? fallback
+      : named
+  return (
+    <>
+      <h2 className="sr-only">{t("overlay.winners")}</h2>
+      <ul className="overlay-winners">
+        {standing.map((winner, index) => (
+          <li key={winner.n} className="overlay-plate overlay-winner">
+            <div>
+              <p className="overlay-label">
+                {t("live.winnerOf", {
+                  n: i18n.number(index + 1),
+                  total: i18n.number(standing.length),
+                })}
+              </p>
+              <WinnerPlate name={winner.displayName ?? t("winner.removed")} />
+              <p className="overlay-prize">{prize}</p>
+            </div>
+            {winner.claim.state === "waiting" ? <ClaimTimer winner={winner} /> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
 

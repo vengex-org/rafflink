@@ -86,7 +86,8 @@ export function EarlierPicks({
   readonly snapshot: LiveSnapshot
   readonly controls: Doing | null
 }) {
-  const { t } = useI18n()
+  const i18n = useI18n()
+  const { t } = i18n
   if (winners.length === 0) return null
   return (
     <ul className="live-history" aria-label={t("live.history.label")}>
@@ -102,7 +103,7 @@ export function EarlierPicks({
               ) : (
                 <>
                   {claimIcon(winner)}
-                  {claimLabel(winner, t)}
+                  {claimLabel(winner, i18n)}
                 </>
               )}
             </span>
@@ -154,10 +155,13 @@ export function claimIcon(winner: LiveWinner): ReactNode {
   }
 }
 
-export function claimLabel(winner: LiveWinner, t: I18n["t"]): string {
+export function claimLabel(winner: LiveWinner, { t, time }: I18n): string {
   switch (winner.claim.state) {
     case "claimed":
-      return t(`claim.claimed.${winner.claim.via}`)
+      return t("claim.at", {
+        label: t(`claim.claimed.${winner.claim.via}`),
+        time: time(winner.claim.at),
+      })
     case "waiting":
       return t("claim.waiting")
     case "expired":

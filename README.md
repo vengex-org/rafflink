@@ -266,6 +266,8 @@ public part of its answer is kept for `PUBLIC_GIVEAWAY_CACHE_SECONDS` (5 by defa
 refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache API stores nothing on a
 `workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
 seconds old.
+The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
+`/api/g/<code>` request when it shows winners, to read the prize; the giveaway and demo pages make no session request.
 
 ### What a viewer costs
 

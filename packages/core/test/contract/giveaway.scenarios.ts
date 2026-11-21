@@ -162,17 +162,25 @@ export function giveawayScenarios(context: ContractContext): void {
     const { me }: { me: { claimRemainingMs: number } } = await (
       await entered.viewer.request(`/api/g/${giveaway.code}`)
     ).json()
+    const claimStart = Date.now()
     const claimed = await entered.viewer.postJson(`/api/g/${giveaway.code}/claim`, {})
 
-    expect(me).toMatchObject({ kind: "won", n: 0, claim: { state: "waiting" } })
+    expect(me).toMatchObject({
+      kind: "won",
+      n: 0,
+      tickets: 1,
+      group: "viewer",
+      claim: { state: "waiting" },
+    })
     expect(me.claimRemainingMs).toBeGreaterThan(0)
     expect(me.claimRemainingMs).toBeLessThanOrEqual(120_000)
     expect(claimed.status).toBe(200)
     expect(await claimed.json()).toEqual({ kind: "claimed" })
-    expect((await world.live(giveaway)).winners[0]?.claim).toEqual({
-      state: "claimed",
-      via: "rafflink",
-    })
+    const claim = (await world.live(giveaway)).winners[0]?.claim
+    expect(claim).toMatchObject({ state: "claimed", via: "rafflink" })
+    const claimedAt = claim?.state === "claimed" ? claim.at : Number.NaN
+    expect(claimedAt).toBeGreaterThanOrEqual(claimStart)
+    expect(claimedAt).toBeLessThanOrEqual(Date.now())
   })
 
   scenario(
@@ -232,7 +240,7 @@ export function giveawayScenarios(context: ContractContext): void {
     })
 
     expect(marked.status).toBe(200)
-    expect((await world.live(giveaway)).winners[0]?.claim).toEqual({
+    expect((await world.live(giveaway)).winners[0]?.claim).toMatchObject({
       state: "claimed",
       via: "manual",
     })

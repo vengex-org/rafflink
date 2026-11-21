@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import type { EntrySummary } from "@rafflink/core/room/rows"
+import { useI18n } from "../i18n/i18n.tsx"
 import type { Tone } from "./state-card.tsx"
 
 /**
@@ -42,15 +43,19 @@ export function GiveawayState({
 /** The number is decoration for the eye; the sentence beside it says the same in words. */
 export function TicketBox({
   tickets,
-  children,
 }: {
-  readonly tickets: EntrySummary
-  readonly children: ReactNode
+  readonly tickets: Pick<EntrySummary, "tickets" | "group">
 }) {
+  const i18n = useI18n()
   return (
     <div className="viewer-tickets">
       <strong aria-hidden="true">{tickets.tickets}</strong>
-      <p>{children}</p>
+      <p>
+        {i18n.t("entry.in.tickets", {
+          tickets: i18n.plural("ticket", tickets.tickets),
+          role: i18n.t(`entry.role.${tickets.group}`),
+        })}
+      </p>
     </div>
   )
 }

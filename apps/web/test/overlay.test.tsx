@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, expect, it, mock } from "bun:test"
-import { act, cleanup } from "@testing-library/react"
+import { afterEach, beforeEach, expect, it, mock, spyOn } from "bun:test"
+import { act, cleanup, waitFor } from "@testing-library/react"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { encode } from "uqr"
 import { shareUrl } from "../src/lib/links.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
-import { liveSnapshot } from "./fixtures.ts"
-import { mockFetch, ok } from "./mock-fetch.ts"
+import { giveaway, liveSnapshot } from "./fixtures.ts"
+import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 let restoreSocket = () => {}
@@ -27,13 +27,19 @@ const drawn: LiveSnapshot = {
       entrySeq: 1,
       displayName: "Bob",
       claimUntil: 1,
-      claim: { state: "claimed", via: "chat" },
+      claim: { state: "claimed", at: 1, via: "chat" },
     },
   ],
 }
 
-function routeSnapshot(snapshot: LiveSnapshot) {
-  mockFetch({ "GET /api/overlay/gid-1/tok-1": () => ok(snapshot) })
+function routeSnapshot(
+  snapshot: LiveSnapshot,
+  giveawayReply: () => Reply | Promise<Reply> = () => ok({ ...giveaway, prize: null }),
+) {
+  return mockFetch({
+    "GET /api/overlay/gid-1/tok-1": () => ok(snapshot),
+    "GET /api/g/ABCDE": giveawayReply,
+  })
 }
 
 it("shows the live view read-only on the overlay socket without a session", async () => {
@@ -85,7 +91,7 @@ it("labels each standing winner by place and counts down the claim only for a wa
         entrySeq: 1,
         displayName: "Bob",
         claimUntil: 1,
-        claim: { state: "claimed", via: "chat" },
+        claim: { state: "claimed", at: 1, via: "chat" },
       },
       {
         n: 1,
@@ -101,10 +107,84 @@ it("labels each standing winner by place and counts down the claim only for a wa
 
   expect(await view.findByText("Winner 1 of 2")).toBeTruthy()
   expect(view.getByText("Winner 2 of 2")).toBeTruthy()
-  expect(view.getAllByText("Summer giveaway")).toHaveLength(3)
+  // The plates show the title once the prize answer says there is none.
+  await waitFor(() => expect(view.getAllByText("Summer giveaway")).toHaveLength(3))
   expect(view.getAllByRole("timer")).toHaveLength(1)
   expect(view.getByRole("timer").textContent).toBe("1:30")
   expect(view.getByText("to claim")).toBeTruthy()
+})
+
+it("shows the prize on each winner plate", async () => {
+  routeSnapshot(
+    {
+      ...drawn,
+      winners: [
+        { n: 0, entrySeq: 1, displayName: "Bob", claimUntil: 1, claim: { state: "waiting" } },
+        { n: 1, entrySeq: 2, displayName: "Cy", claimUntil: 1, claim: { state: "waiting" } },
+      ],
+    },
+    () => ok(giveaway),
+  )
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findAllByText("A gaming chair")).toHaveLength(2)
+  expect(view.getAllByText("Summer giveaway")).toHaveLength(1)
+})
+
+it("leaves the prize line empty while the prize loads, so the title never flashes first", async () => {
+  routeSnapshot(drawn, () => new Promise<Reply>(() => {}))
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Bob")).toBeTruthy()
+  expect(view.container.querySelector(".overlay-prize")?.textContent).toBe("")
+  expect(view.getAllByText("Summer giveaway")).toHaveLength(1)
+})
+
+it("does not load the prize in compact mode, which shows no prize", async () => {
+  const requests = routeSnapshot(drawn)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=compact")
+  await view.findByRole("heading", { level: 1, hidden: true })
+
+  expect(requests.map((request) => request.route)).toEqual(["GET /api/overlay/gid-1/tok-1"])
+})
+
+it("does not load the prize while the giveaway is open", async () => {
+  const requests = routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+  await view.findByRole("heading", { level: 1, hidden: true })
+
+  expect(requests.map((request) => request.route)).toEqual(["GET /api/overlay/gid-1/tok-1"])
+})
+
+it.each([
+  ["has no prize", null],
+  ["has an empty prize", ""],
+  ["has a blank prize", "  "],
+])("names the giveaway on the plate when it %s", async (_case, prize) => {
+  routeSnapshot(drawn, () => ok({ ...giveaway, prize }))
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Bob")).toBeTruthy()
+  await waitFor(() => expect(view.getAllByText("Summer giveaway")).toHaveLength(2))
+  expect(view.queryByText("A gaming chair")).toBeNull()
+})
+
+it("names the giveaway on the plate and logs when the prize cannot be loaded", async () => {
+  const logged = spyOn(console, "error").mockImplementation(() => {})
+  routeSnapshot(drawn, () => ({ status: 500, body: { error: "unavailable" } }))
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Bob")).toBeTruthy()
+  await waitFor(() =>
+    expect(logged).toHaveBeenCalledWith("load failed", { errorClass: "ApiError", round: 0 }),
+  )
+  expect(view.getAllByText("Summer giveaway")).toHaveLength(2)
 })
 
 it("keeps a replaced winner off the overlay", async () => {

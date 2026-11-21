@@ -1,11 +1,17 @@
-import { afterEach, describe, expect, it, jest } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, jest, mock } from "bun:test"
 import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { Status } from "../src/components/notice.tsx"
 import { I18nProvider } from "../src/i18n/i18n.tsx"
+import { mockFetch } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
+
+beforeEach(() => {
+  mockFetch({})
+})
 
 afterEach(() => {
   cleanup()
+  mock.restore()
   jest.useRealTimers()
 })
 
