@@ -26,6 +26,7 @@ const drawn: LiveSnapshot = {
       n: 0,
       entrySeq: 1,
       displayName: "Bob",
+      profileImageUrl: null,
       claimUntil: 1,
       claim: { state: "claimed", at: 1, via: "chat" },
     },
@@ -90,6 +91,7 @@ it("labels each standing winner by place and counts down the claim only for a wa
         n: 0,
         entrySeq: 1,
         displayName: "Bob",
+        profileImageUrl: null,
         claimUntil: 1,
         claim: { state: "claimed", at: 1, via: "chat" },
       },
@@ -97,6 +99,7 @@ it("labels each standing winner by place and counts down the claim only for a wa
         n: 1,
         entrySeq: 2,
         displayName: "Cy",
+        profileImageUrl: null,
         claimUntil: Date.now() + 90_000,
         claim: { state: "waiting" },
       },
@@ -119,8 +122,22 @@ it("shows the prize on each winner plate", async () => {
     {
       ...drawn,
       winners: [
-        { n: 0, entrySeq: 1, displayName: "Bob", claimUntil: 1, claim: { state: "waiting" } },
-        { n: 1, entrySeq: 2, displayName: "Cy", claimUntil: 1, claim: { state: "waiting" } },
+        {
+          n: 0,
+          entrySeq: 1,
+          displayName: "Bob",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "waiting" },
+        },
+        {
+          n: 1,
+          entrySeq: 2,
+          displayName: "Cy",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "waiting" },
+        },
       ],
     },
     () => ok(giveaway),
@@ -191,8 +208,22 @@ it("keeps a replaced winner off the overlay", async () => {
   routeSnapshot({
     ...drawn,
     winners: [
-      { n: 0, entrySeq: 1, displayName: "Bob", claimUntil: 1, claim: { state: "rerolled" } },
-      { n: 1, entrySeq: 2, displayName: "Cy", claimUntil: 1, claim: { state: "waiting" } },
+      {
+        n: 0,
+        entrySeq: 1,
+        displayName: "Bob",
+        profileImageUrl: null,
+        claimUntil: 1,
+        claim: { state: "rerolled" },
+      },
+      {
+        n: 1,
+        entrySeq: 2,
+        displayName: "Cy",
+        profileImageUrl: null,
+        claimUntil: 1,
+        claim: { state: "waiting" },
+      },
     ],
   })
 
@@ -217,8 +248,22 @@ it("keeps the corner badge small after a draw and names the standing winner on i
   routeSnapshot({
     ...drawn,
     winners: [
-      { n: 0, entrySeq: 1, displayName: "Bob", claimUntil: 1, claim: { state: "rerolled" } },
-      { n: 1, entrySeq: 2, displayName: "Cy", claimUntil: 1, claim: { state: "waiting" } },
+      {
+        n: 0,
+        entrySeq: 1,
+        displayName: "Bob",
+        profileImageUrl: null,
+        claimUntil: 1,
+        claim: { state: "rerolled" },
+      },
+      {
+        n: 1,
+        entrySeq: 2,
+        displayName: "Cy",
+        profileImageUrl: null,
+        claimUntil: 1,
+        claim: { state: "waiting" },
+      },
     ],
   })
 

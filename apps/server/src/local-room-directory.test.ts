@@ -22,6 +22,7 @@ const viewer = {
   platformUserId: "100",
   login: "viewer",
   displayName: "Viewer",
+  profileImageUrl: null,
   isFollower: false,
   subTier: null,
   accountAgeDays: 100,

@@ -30,6 +30,7 @@ async function setup(closedIds: readonly string[]) {
     platformUserId: "200",
     login: "streamer",
     displayName: "Streamer",
+    profileImageUrl: null,
     sealedRefreshToken: "sealed",
     scopes: "openid",
     now: 1,

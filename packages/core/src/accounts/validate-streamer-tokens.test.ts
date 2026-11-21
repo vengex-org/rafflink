@@ -1,6 +1,11 @@
 import { Database } from "bun:sqlite"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
+import {
+  createFakeTwitch,
+  profileImageUrlOf,
+  type FakeTwitch,
+  type FakeUser,
+} from "@rafflink/fake-twitch"
 import { accountsSchema, secureRandom, sqlRows, TestClock } from "../../test/app-fixture.ts"
 import { resolveConfig, type ResolvedConfig } from "../config.ts"
 import { toBase64 } from "../lib/encoding.ts"
@@ -43,7 +48,14 @@ afterEach(async () => {
 })
 
 function user(id: string): FakeUser {
-  return { id, login: `user_${id}`, displayName: `User_${id}`, createdAt: "2019-01-01T00:00:00Z" }
+  const login = `user_${id}`
+  return {
+    id,
+    login,
+    displayName: `User_${id}`,
+    createdAt: "2019-01-01T00:00:00Z",
+    profileImageUrl: profileImageUrlOf(login),
+  }
 }
 
 function configFor(origin: string, overrides: Record<string, string>): ResolvedConfig {
@@ -93,6 +105,7 @@ async function storeStreamer(id: string, userId: string, sealedAs = userId): Pro
     platformUserId: userId,
     login: `user_${userId}`,
     displayName: `User_${userId}`,
+    profileImageUrl: null,
     sealedRefreshToken: await sealSecret(
       keyRing,
       tokens.refreshToken,

@@ -2,6 +2,7 @@ import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
+  BadgesJson,
   DashboardGiveaway,
   EntrantsPage,
   LeavesJson,
@@ -157,7 +158,11 @@ export async function getSession(): Promise<SessionJson> {
   if (source.streamer === null) return { streamer: null }
   const streamer = child(source, "streamer")
   return {
-    streamer: { displayName: text(streamer, "displayName"), login: text(streamer, "login") },
+    streamer: {
+      displayName: text(streamer, "displayName"),
+      login: text(streamer, "login"),
+      profileImageUrl: nullableText(streamer, "profileImageUrl"),
+    },
   }
 }
 
@@ -386,6 +391,18 @@ export async function getEntrants(id: string, afterSeq: number): Promise<Entrant
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "entrants")
   return { rows: list(source, "rows", parseEntrant), more: bool(source, "more") }
+}
+
+/** The channel's subscriber badge image per tier; the server reads Twitch once and answers every tier `null` while Twitch gives none. */
+export async function getBadges(id: string): Promise<BadgesJson> {
+  const { status, body } = await send(`${liveSnapshotPath(id)}/badges`)
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "badges")
+  return {
+    sub_t1: nullableText(source, "sub_t1"),
+    sub_t2: nullableText(source, "sub_t2"),
+    sub_t3: nullableText(source, "sub_t3"),
+  }
 }
 
 export async function getLive<Snapshot>(
@@ -655,6 +672,7 @@ function parseEntrant(source: Json): Entrant {
     displayName: text(source, "displayName"),
     tickets: num(source, "tickets"),
     group: oneOf(source, "group", groups),
+    profileImageUrl: nullableText(source, "profileImageUrl"),
   }
 }
 
@@ -721,6 +739,7 @@ function parseWinner(source: Json): LiveWinner {
     n: num(source, "n"),
     entrySeq: nullableNum(source, "entrySeq"),
     displayName: nullableText(source, "displayName"),
+    profileImageUrl: nullableText(source, "profileImageUrl"),
     claimUntil: num(source, "claimUntil"),
     claim: parseClaim(child(source, "claim")),
   }

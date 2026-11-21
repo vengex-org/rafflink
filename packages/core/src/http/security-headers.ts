@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from "hono"
 import type { ResolvedConfig } from "../config.ts"
 import { publicDrandUrls } from "../lib/drand.ts"
+import { twitchImageHost } from "../twitch/lib/image-url.ts"
 
 export interface SecurityHeaderOptions {
   /** Only a deployment served over https sends HSTS; browsers ignore it over http, but a local http origin must not pin itself. */
@@ -11,6 +12,7 @@ export interface SecurityHeaderOptions {
 
 // A page of this app embeds nothing and is embedded nowhere. `connect-src 'self'` covers the live
 // WebSocket in current browsers; the drand origins are where the verify page reads the draw's round.
+// Profile pictures and badges of Twitch accounts are images from Twitch's CDN.
 // React sets style props through the CSSOM, which `style-src` does not block.
 export function contentSecurityPolicy(scriptHashes: readonly string[]): string {
   const scripts = ["'self'", ...scriptHashes.map((hash) => `'${hash}'`)].join(" ")
@@ -18,7 +20,7 @@ export function contentSecurityPolicy(scriptHashes: readonly string[]): string {
     "default-src 'self'",
     `script-src ${scripts}`,
     "style-src 'self'",
-    "img-src 'self' data:",
+    `img-src 'self' data: https://${twitchImageHost}`,
     `connect-src 'self' ${publicDrandUrls.join(" ")}`,
     "font-src 'self'",
     "object-src 'none'",

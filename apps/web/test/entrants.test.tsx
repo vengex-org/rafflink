@@ -24,7 +24,14 @@ afterEach(() => {
 const entrantsPath = (after: number) => `GET /api/live/gid-1/entrants?after=${after}`
 
 function entrant(seq: number, name: string, group: Group = "viewer", tickets = 1): Entrant {
-  return { seq, login: name.toLowerCase(), displayName: name, tickets, group }
+  return {
+    seq,
+    login: name.toLowerCase(),
+    displayName: name,
+    tickets,
+    group,
+    profileImageUrl: null,
+  }
 }
 
 function numbered(from: number, to: number): Entrant[] {
@@ -161,7 +168,14 @@ describe("entrants table: the list", () => {
   it("shows the login in small type only when it differs from the display name", async () => {
     const { view } = await openLive([
       entrant(1, "Ada"),
-      { seq: 2, login: "bob_b", displayName: "Bobby", tickets: 1, group: "viewer" },
+      {
+        seq: 2,
+        login: "bob_b",
+        displayName: "Bobby",
+        tickets: 1,
+        group: "viewer",
+        profileImageUrl: null,
+      },
     ])
 
     await view.findByText("Bobby")
@@ -284,7 +298,14 @@ describe("entrants table: search", () => {
 
   it("matches the login when it differs from the display name", async () => {
     const { view } = await openLive([
-      { seq: 1, login: "quiet_fox", displayName: "Reynard", tickets: 1, group: "viewer" },
+      {
+        seq: 1,
+        login: "quiet_fox",
+        displayName: "Reynard",
+        tickets: 1,
+        group: "viewer",
+        profileImageUrl: null,
+      },
       entrant(2, "Bob"),
     ])
     await view.findByText("Reynard")
@@ -322,6 +343,97 @@ describe("entrants table: search", () => {
   })
 })
 
+describe("entrants table: avatars and badges", () => {
+  const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/ada.png"
+  const badge = "https://static-cdn.jtvnw.net/badges/v1/tier2/2"
+
+  it("shows the profile picture of an entrant and the initials of one without a picture", async () => {
+    const { view } = await openLive([
+      { ...entrant(1, "Ada"), profileImageUrl: picture },
+      entrant(2, "Bo"),
+    ])
+    await view.findByText("Bo")
+
+    const rows = tableRows(view)
+    expect(rows[1]?.querySelector(".live-avatar img")?.getAttribute("src")).toBe(picture)
+    expect(rows[0]?.querySelector(".live-avatar img")).toBeNull()
+    expect(cellsOf(rows[0])[0]).toBe("BO")
+  })
+
+  it("falls back to the initials when the picture does not load", async () => {
+    const { view } = await openLive([{ ...entrant(1, "Zed"), profileImageUrl: picture }])
+    const image = (await view.findByText("Zed")).closest("tr")?.querySelector(".live-avatar img")
+    if (image === null || image === undefined) throw new Error("the picture is not shown")
+
+    fireEvent.error(image)
+
+    await waitFor(() => expect(cellsOf(tableRows(view)[0])[0]).toBe("ZE"))
+    expect(tableRows(view)[0]?.querySelector(".live-avatar img")).toBeNull()
+  })
+
+  it("shows the channel's badge of the tier next to a subscriber and nothing next to a viewer", async () => {
+    const { view } = await openLive([entrant(1, "Ada"), entrant(2, "Bo", "sub_t2", 4)], {
+      "GET /api/live/gid-1/badges": () => ok({ sub_t1: null, sub_t2: badge, sub_t3: null }),
+    })
+    await view.findByText("Bo")
+
+    await waitFor(() =>
+      expect(tableRows(view)[0]?.querySelector("img.entrants-badge")?.getAttribute("src")).toBe(
+        badge,
+      ),
+    )
+    expect(tableRows(view)[1]?.querySelector(".entrants-badge, .entrants-tier-chip")).toBeNull()
+  })
+
+  it("shows a tier chip for a subscriber whose tier has no badge", async () => {
+    const { view } = await openLive([entrant(1, "Ada", "sub_t3", 5), entrant(2, "Bo", "sub_t1", 3)])
+    await view.findByText("Bo")
+
+    expect(
+      tableRows(view).map((row) => row.querySelector(".entrants-tier-chip")?.textContent),
+    ).toEqual(["T1", "T3"])
+  })
+
+  it("shows a tier chip when the badges cannot be read and logs it", async () => {
+    const logged = spyOn(console, "error").mockImplementation(() => {})
+    const { view } = await openLive([entrant(1, "Zed", "sub_t2", 4)], {
+      "GET /api/live/gid-1/badges": () => ({ status: 503, body: { error: "unavailable" } }),
+    })
+    await view.findByText("Zed")
+
+    await waitFor(() =>
+      expect(logged).toHaveBeenCalledWith("subscriber badges failed", { errorClass: "ApiError" }),
+    )
+    expect(tableRows(view)[0]?.querySelector(".entrants-tier-chip")?.textContent).toBe("T2")
+  })
+
+  it("falls back to the tier chip when the badge image does not load", async () => {
+    const { view } = await openLive([entrant(1, "Zed", "sub_t2", 4)], {
+      "GET /api/live/gid-1/badges": () => ok({ sub_t1: null, sub_t2: badge, sub_t3: null }),
+    })
+    await view.findByText("Zed")
+    const image = await waitFor(() => {
+      const found = tableRows(view)[0]?.querySelector("img.entrants-badge")
+      if (!found) throw new Error("the badge is not shown yet")
+      return found
+    })
+
+    fireEvent.error(image)
+
+    await waitFor(() =>
+      expect(tableRows(view)[0]?.querySelector(".entrants-tier-chip")?.textContent).toBe("T2"),
+    )
+  })
+
+  it("asks for the badges once however many rows show them", async () => {
+    const { requests } = await openLive(
+      Array.from({ length: 30 }, (_, index) => entrant(index + 1, `User${index}`, "sub_t1", 3)),
+    )
+
+    expect(requests.filter((request) => request.route.endsWith("/badges"))).toHaveLength(1)
+  })
+})
+
 describe("entrants table: winners", () => {
   it("lists winners first by place with their claim state, then everyone else newest first", async () => {
     const snapshot: LiveSnapshot = {
@@ -332,11 +444,26 @@ describe("entrants table: winners", () => {
           n: 1,
           entrySeq: 2,
           displayName: "Bo",
+          profileImageUrl: null,
           claimUntil: 1,
           claim: { state: "claimed", at: 1, via: "chat" },
         },
-        { n: 0, entrySeq: 1, displayName: "Ada", claimUntil: 1, claim: { state: "expired" } },
-        { n: 2, entrySeq: 9, displayName: "Gone", claimUntil: 1, claim: { state: "rerolled" } },
+        {
+          n: 0,
+          entrySeq: 1,
+          displayName: "Ada",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "expired" },
+        },
+        {
+          n: 2,
+          entrySeq: 9,
+          displayName: "Gone",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "rerolled" },
+        },
       ],
     }
     const { view } = await openLive(
@@ -363,14 +490,23 @@ describe("entrants table: winners", () => {
           n: 0,
           entrySeq: 1,
           displayName: "Ada",
+          profileImageUrl: null,
           claimUntil: 1,
           claim: { state: "claimed", at: 1, via: "chat" },
         },
-        { n: 1, entrySeq: 2, displayName: "Bo", claimUntil: 1, claim: { state: "rerolled" } },
+        {
+          n: 1,
+          entrySeq: 2,
+          displayName: "Bo",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "rerolled" },
+        },
         {
           n: 2,
           entrySeq: 3,
           displayName: "Cy",
+          profileImageUrl: null,
           claimUntil: Date.now() + 120_000,
           claim: { state: "waiting" },
         },
@@ -395,14 +531,23 @@ describe("entrants table: winners", () => {
           n: 0,
           entrySeq: 1,
           displayName: "Ada",
+          profileImageUrl: null,
           claimUntil: 1,
           claim: { state: "claimed", at: 1, via: "chat" },
         },
-        { n: 1, entrySeq: 2, displayName: "Bo", claimUntil: 1, claim: { state: "rerolled" } },
+        {
+          n: 1,
+          entrySeq: 2,
+          displayName: "Bo",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "rerolled" },
+        },
         {
           n: 2,
           entrySeq: 3,
           displayName: "Cy",
+          profileImageUrl: null,
           claimUntil: Date.now() + 120_000,
           claim: { state: "waiting" },
         },
@@ -428,6 +573,7 @@ describe("entrants table: winners", () => {
           n: 0,
           entrySeq: 1,
           displayName: "Ada",
+          profileImageUrl: null,
           claimUntil: Date.now() + 120_000,
           claim: { state: "waiting" },
         },

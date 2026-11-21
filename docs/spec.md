@@ -323,7 +323,7 @@ Cloudflare and one file per giveaway on the VPS.
 
 ```
 -- accounts store (D1 or accounts.sqlite)
-streamers(id, platform, platform_user_id, login, created_at,
+streamers(id, platform, platform_user_id, login, display_name, profile_image_url, created_at,
           UNIQUE (platform, platform_user_id))
 streamer_tokens(streamer_id, refresh_token_enc, scopes, validated_at,
                 PRIMARY KEY (streamer_id))
@@ -341,7 +341,7 @@ room_state(id, platform, giveaway_id, broadcaster_id, title, code, rules_json, c
            eventsub_failures, chat_unavailable, roles_refresh_at, mirror_pending,
            merkle_root, drand_round, committed_at, drand_chain_hash, drand_genesis_seconds,
            drand_period_seconds, winner_count, draw_requested)
-entries(platform, platform_user_id, login, display_name, group_name, tickets, entered_at, salt,
+entries(platform, platform_user_id, login, display_name, profile_image_url, group_name, tickets, entered_at, salt,
         PRIMARY KEY (platform, platform_user_id)) WITHOUT ROWID
 channel_roles(platform, platform_user_id, role, fetched_at,
               PRIMARY KEY (platform, platform_user_id, role)) WITHOUT ROWID
@@ -415,7 +415,7 @@ of the id could be brute-forced into a list of who entered.
 
 ## Privacy
 
-- Stored per entrant: platform, user id, login, display name, group, tickets, time (and the salt from M2).
+- Stored per entrant: platform, user id, login, display name, profile picture URL, group, tickets, time (and the salt from M2).
 - Entries and the channel role lists are deleted 30 days after the giveaway closes (`ENTRY_RETENTION_SECONDS`), by
   the room alarm; the winner list, counts, Merkle root and leaf list stay with the giveaway.
 - Rafflink asks only for read scopes and never posts to chat.

@@ -13,6 +13,7 @@ import {
   parseFollowed,
   parseAppToken,
   parseRolePage,
+  parseSubscriberBadgeImages,
   parseSubscriptionCreated,
   parseTier,
   parseTokenResponse,
@@ -64,6 +65,8 @@ export type TokenValidation =
 
 export class TwitchClient {
   private readonly jwks: ReturnType<typeof createRemoteJWKSet>
+  private appToken: { readonly accessToken: string; readonly expiresAt: number } | null = null
+  private appTokenGrant: Promise<string> | null = null
 
   constructor(
     private readonly config: ResolvedConfig,
@@ -103,9 +106,18 @@ export class TwitchClient {
     )
   }
 
-  /** An app access token (client credentials grant); needs no user, so it serves lookups the app makes on its own. */
+  /**
+   * An app access token (client credentials grant); needs no user, so it serves lookups the app makes on its own.
+   * The token is kept until a tenth of its lifetime is left, and callers at once share one grant.
+   */
   async appAccessToken(): Promise<string> {
-    return this.tokenRequest({ grant_type: "client_credentials" }, parseAppToken)
+    if (this.appToken !== null && Date.now() < this.appToken.expiresAt) {
+      return this.appToken.accessToken
+    }
+    this.appTokenGrant ??= this.grantAppToken().finally(() => {
+      this.appTokenGrant = null
+    })
+    return this.appTokenGrant
   }
 
   async verifyIdToken(idToken: string, expectedNonce: string): Promise<VerifiedIdToken> {
@@ -151,6 +163,37 @@ export class TwitchClient {
   /** Login, display name and creation time of the account the token belongs to. */
   async userProfile(accessToken: string): Promise<UserProfile> {
     return this.helix("users", "/helix/users", {}, accessToken, parseUserProfile)
+  }
+
+  /** The badge image of each subscription tier in the channel's own badge set (an app token is enough); `null` for a tier the channel set no badge for. */
+  async channelSubscriberBadges(
+    appToken: string,
+    broadcasterId: string,
+  ): Promise<Readonly<Record<SubscriptionGroup, string | null>>> {
+    const images = await this.helix(
+      "badges",
+      "/helix/chat/badges",
+      { broadcaster_id: broadcasterId },
+      appToken,
+      parseSubscriberBadgeImages,
+    )
+    return {
+      sub_t1: images.get(baseBadgeVersions.sub_t1) ?? null,
+      sub_t2: images.get(baseBadgeVersions.sub_t2) ?? null,
+      sub_t3: images.get(baseBadgeVersions.sub_t3) ?? null,
+    }
+  }
+
+  /** The subscriber badge every channel without its own set shows; `null` when Twitch lists none. */
+  async globalSubscriberBadge(appToken: string): Promise<string | null> {
+    const images = await this.helix(
+      "badges",
+      "/helix/chat/badges/global",
+      {},
+      appToken,
+      parseSubscriberBadgeImages,
+    )
+    return images.get(globalBadgeVersion) ?? null
   }
 
   /** Login to user id of the accounts that exist; Twitch answers 100 logins per call, so a longer list is sent in chunks. A login without an account is absent from the result. */
@@ -234,6 +277,16 @@ export class TwitchClient {
     return validated.ok
       ? { status: "valid", userId: validated.value.userId }
       : { status: "unavailable" }
+  }
+
+  private async grantAppToken(): Promise<string> {
+    const startedAt = Date.now()
+    const grant = await this.tokenRequest({ grant_type: "client_credentials" }, parseAppToken)
+    this.appToken = {
+      accessToken: grant.accessToken,
+      expiresAt: startedAt + grant.expiresInSeconds * appTokenUsableShare * 1000,
+    }
+    return grant.accessToken
   }
 
   private async tokenRequest<T>(
@@ -372,6 +425,18 @@ const idTokenIssuer = "https://id.twitch.tv/oauth2"
 
 /** Twitch caps `first` at 100 on its paginated endpoints. */
 const helixMaxPageSize = 100
+
+// Twitch names the first badge version of a tier by the tier: "0" for tier 1, "2000" and "3000" above it; later versions count months.
+const baseBadgeVersions: Readonly<Record<SubscriptionGroup, string>> = {
+  sub_t1: "0",
+  sub_t2: "2000",
+  sub_t3: "3000",
+}
+
+const globalBadgeVersion = "0"
+
+/** The part of an app token's lifetime it is used for, so a call that is slow to start does not meet it expired. */
+const appTokenUsableShare = 0.9
 
 const tierGroups: Readonly<Record<Tier, SubscriptionGroup>> = {
   "1000": "sub_t1",

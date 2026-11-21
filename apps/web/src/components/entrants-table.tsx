@@ -1,9 +1,12 @@
 import { Fragment, useDeferredValue, useId, useMemo, useRef, useState, type ReactNode } from "react"
+import { useParams } from "react-router"
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import type { LiveWinner } from "@rafflink/core/room/giveaway-room"
+import type { SubscriberBadges } from "@rafflink/core/twitch/channel-badges"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { orderEntrants, searchEntrants, type ListedEntrant } from "../lib/entrant-list.ts"
 import { useEntrants } from "../lib/use-entrants.ts"
+import { useSubscriberBadges } from "../lib/use-subscriber-badges.ts"
 import { useVirtualRows, type RowGeometry } from "../lib/use-virtual-rows.ts"
 import { AlertIcon, GiftIcon, RefreshIcon, SearchIcon, UsersIcon } from "./icons.tsx"
 import { Avatar } from "./live-parts.tsx"
@@ -39,6 +42,7 @@ export function EntrantsSection({
   const ordered = useMemo(() => orderEntrants(entrants.rows, winners), [entrants.rows, winners])
   const standing = useMemo(() => standingWinners(winners), [winners])
   const found = useMemo(() => searchEntrants(ordered, searched), [ordered, searched])
+  const badges = useSubscriberBadges(useParams().id)
   const scroller = useRef<HTMLDivElement>(null)
   const virtual = useVirtualRows(found.length, geometry)
   const backToTop = () => {
@@ -160,6 +164,7 @@ export function EntrantsSection({
                     row={row}
                     index={virtual.first + offset}
                     standing={standing}
+                    badges={badges}
                   />
                 ))}
                 <Spacer rows={found.length - virtual.end} />
@@ -247,10 +252,12 @@ function EntrantRow({
   row,
   index,
   standing,
+  badges,
 }: {
   readonly row: ListedEntrant
   readonly index: number
   readonly standing: readonly LiveWinner[]
+  readonly badges: SubscriberBadges | null
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -265,7 +272,7 @@ function EntrantRow({
       data-claim={winner?.claim.state}
     >
       <Cell>
-        <Avatar name={entrant.displayName} />
+        <Avatar name={entrant.displayName} imageUrl={entrant.profileImageUrl} />
         <span className="entrants-primary">
           <Marked text={entrant.displayName} positions={name} />
         </span>
@@ -276,6 +283,7 @@ function EntrantRow({
         ) : null}
       </Cell>
       <Cell>
+        <SubscriberBadge group={entrant.group} badges={badges} />
         <span className="entrants-status">
           {winner === null ? t(`tier.${entrant.group}`) : winnerStatus(winner, standing, t)}
         </span>
@@ -285,6 +293,48 @@ function EntrantRow({
       </Cell>
     </tr>
   )
+}
+
+const subscriberChips: Readonly<Record<keyof SubscriberBadges, string>> = {
+  sub_t1: "T1",
+  sub_t2: "T2",
+  sub_t3: "T3",
+}
+
+/** The channel's badge of a subscriber's tier, or a tier chip when the badge is not known or does not load; nothing for an entrant who is not in a subscriber group. The tier is written beside it, so it is hidden from screen readers. */
+function SubscriberBadge({
+  group,
+  badges,
+}: {
+  readonly group: Group
+  readonly badges: SubscriberBadges | null
+}) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  if (!isSubscriberGroup(group)) return null
+  const image = badges?.[group] ?? null
+  if (image === null || image === failedUrl) {
+    return (
+      <span className="entrants-tier-chip" aria-hidden="true">
+        {subscriberChips[group]}
+      </span>
+    )
+  }
+  return (
+    <img
+      className="entrants-badge"
+      src={image}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      aria-hidden="true"
+      onError={() => setFailedUrl(image)}
+    />
+  )
+}
+
+function isSubscriberGroup(group: Group): group is keyof SubscriberBadges {
+  return Object.hasOwn(subscriberChips, group)
 }
 
 /** A winner's row says who they are in the draw while the claim is open, and how it ended after. */

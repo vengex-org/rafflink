@@ -35,10 +35,13 @@ export const recordRetentionFailureSql =
 /** A giveaway id (parameter 1). */
 export const setRetentionArmedSql = "UPDATE giveaways SET retention_armed = 1 WHERE id = ?"
 
-/** Parameters: id, platform, platform user id, login, display name, created at. */
-export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, created_at)
-  VALUES (?, ?, ?, ?, ?, ?)
-  ON CONFLICT (platform, platform_user_id) DO UPDATE SET login = excluded.login, display_name = excluded.display_name`
+/** Parameters: id, platform, platform user id, login, display name, profile image URL, created at. */
+export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, profile_image_url, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT (platform, platform_user_id) DO UPDATE SET
+    login = excluded.login,
+    display_name = excluded.display_name,
+    profile_image_url = excluded.profile_image_url`
 
 /** Parameters: sealed token, scopes, validated at, platform, platform user id. */
 export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id, refresh_token_enc, scopes, validated_at)
@@ -50,11 +53,11 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
 
 /** Parameters: platform, platform user id. */
 export const streamerByPlatformUserSql =
-  "SELECT id, platform, platform_user_id, login, display_name FROM streamers WHERE platform = ? AND platform_user_id = ?"
+  "SELECT id, platform, platform_user_id, login, display_name, profile_image_url FROM streamers WHERE platform = ? AND platform_user_id = ?"
 
 /** A streamer by id (parameter 1). */
 export const streamerByIdSql =
-  "SELECT id, platform, platform_user_id, login, display_name FROM streamers WHERE id = ?"
+  "SELECT id, platform, platform_user_id, login, display_name, profile_image_url FROM streamers WHERE id = ?"
 
 const streamerTokenSelect = `SELECT t.streamer_id, s.platform, s.platform_user_id, t.refresh_token_enc
   FROM streamer_tokens t JOIN streamers s ON s.id = t.streamer_id`

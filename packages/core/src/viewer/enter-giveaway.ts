@@ -124,6 +124,7 @@ async function readViewer(
     platformUserId: userId,
     login: profile.login,
     displayName: profile.displayName,
+    profileImageUrl: profile.profileImageUrl,
   }
   // The broadcaster is refused by the room whatever Twitch says, so their follow and sub are not asked.
   if (userId === target.broadcasterId) {

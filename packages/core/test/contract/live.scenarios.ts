@@ -1,4 +1,5 @@
 import { expect } from "bun:test"
+import { globalSubscriberBadgeUrl } from "@rafflink/fake-twitch"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { moderatorsPath, publicOrigin, scenario, vipsPath, type World } from "./world.ts"
@@ -86,9 +87,39 @@ export function liveScenarios(context: ContractContext): void {
           displayName: viewer.displayName,
           tickets: 1,
           group: "viewer",
+          profileImageUrl: viewer.profileImageUrl,
         })),
       })
       expect(second).toMatchObject({ more: true, rows: [{ seq: 2, login: users.viewer2.login }] })
+      expect(refused.status).toBe(404)
+      expect(anonymous.status).toBe(401)
+    },
+  )
+
+  scenario(
+    context,
+    "the badges route gives the owner the channel's subscriber badges and reads Twitch once",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+      const tier2 = "https://static-cdn.jtvnw.net/badges/v1/tier2/2"
+      world.twitch.fake.control.setChannelSubscriberBadges(users.streamer.id, { "2000": tier2 })
+      const other = await world.signInStreamer(target, users.otherStreamer.id)
+
+      const first = await giveaway.streamer.request(`/api/live/${giveaway.id}/badges`)
+      const second = await giveaway.streamer.request(`/api/live/${giveaway.id}/badges`)
+      const refused = await other.request(`/api/live/${giveaway.id}/badges`)
+      const anonymous = await fetch(new URL(`/api/live/${giveaway.id}/badges`, target.url))
+
+      expect(await first.json()).toEqual({
+        sub_t1: globalSubscriberBadgeUrl,
+        sub_t2: tier2,
+        sub_t3: globalSubscriberBadgeUrl,
+      })
+      expect(await second.json()).toMatchObject({ sub_t2: tier2 })
+      expect(
+        world.twitch.fake.control.calls.filter((call) => call.path === "/helix/chat/badges"),
+      ).toHaveLength(1)
       expect(refused.status).toBe(404)
       expect(anonymous.status).toBe(401)
     },
@@ -124,6 +155,7 @@ export function liveScenarios(context: ContractContext): void {
             displayName: users.viewer2.displayName,
             tickets: 1,
             group: "viewer",
+            profileImageUrl: users.viewer2.profileImageUrl,
           },
         ],
       })

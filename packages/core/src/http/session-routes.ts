@@ -15,7 +15,11 @@ export function sessionRoutes(deps: AppDeps): Hono {
       streamer:
         current === null
           ? null
-          : { displayName: current.streamer.displayName, login: current.streamer.login },
+          : {
+              displayName: current.streamer.displayName,
+              login: current.streamer.login,
+              profileImageUrl: current.streamer.profileImageUrl,
+            },
     }
     return c.json(body)
   })

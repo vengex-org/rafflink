@@ -35,6 +35,7 @@ const winner = (n: number, name: string): LiveWinner => ({
   n,
   entrySeq: n + 1,
   displayName: name,
+  profileImageUrl: null,
   claimUntil: now + 300_000,
   claim: { state: "waiting" },
 })

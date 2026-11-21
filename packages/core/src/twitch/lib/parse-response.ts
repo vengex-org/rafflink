@@ -1,5 +1,6 @@
 import type { Instant } from "../../ports.ts"
 import type { Parsed } from "../../lib/parsed.ts"
+import { twitchImageUrl } from "./image-url.ts"
 
 export type Malformed = Parsed<never, "malformed">
 
@@ -18,6 +19,8 @@ export interface UserProfile {
   readonly login: string
   readonly displayName: string
   readonly createdAt: Instant
+  /** `null` when Twitch sent no picture on its image host. */
+  readonly profileImageUrl: string | null
 }
 
 /** A Helix user found by login. */
@@ -43,10 +46,18 @@ export function parseTokenResponse(body: unknown): Parsed<ExchangedCode, "malfor
 }
 
 /** The app access token of a client credentials grant. */
-export function parseAppToken(body: unknown): Parsed<string, "malformed"> {
-  return isRecord(body) && typeof body.access_token === "string"
-    ? { ok: true, value: body.access_token }
-    : malformed
+export interface AppToken {
+  readonly accessToken: string
+  readonly expiresInSeconds: number
+}
+
+export function parseAppToken(body: unknown): Parsed<AppToken, "malformed"> {
+  if (!isRecord(body)) return malformed
+  const { access_token: accessToken, expires_in: expiresInSeconds } = body
+  if (typeof accessToken !== "string") return malformed
+  if (typeof expiresInSeconds !== "number" || !Number.isFinite(expiresInSeconds)) return malformed
+  if (expiresInSeconds <= 0) return malformed
+  return { ok: true, value: { accessToken, expiresInSeconds } }
 }
 
 /** Users of a lookup by login; a login Twitch does not know is absent. */
@@ -84,7 +95,39 @@ export function parseUserProfile(body: unknown): Parsed<UserProfile, "malformed"
   if (typeof createdAt !== "string") return malformed
   const instant = Date.parse(createdAt)
   if (!Number.isFinite(instant)) return malformed
-  return { ok: true, value: { login, displayName, createdAt: instant } }
+  return {
+    ok: true,
+    value: {
+      login,
+      displayName,
+      createdAt: instant,
+      profileImageUrl: twitchImageUrl(entry.value.profile_image_url),
+    },
+  }
+}
+
+/**
+ * The subscriber badge images of a badge answer by version id (image of 36 px); a version without a
+ * valid image is absent. An answer with no subscriber set has no versions.
+ */
+export function parseSubscriberBadgeImages(
+  body: unknown,
+): Parsed<ReadonlyMap<string, string>, "malformed"> {
+  const data = dataOf(body)
+  if (!data.ok) return data
+  const images = new Map<string, string>()
+  for (const set of data.value) {
+    if (!isRecord(set) || typeof set.set_id !== "string" || !Array.isArray(set.versions)) {
+      return malformed
+    }
+    if (set.set_id !== "subscriber") continue
+    for (const version of set.versions) {
+      if (!isRecord(version) || typeof version.id !== "string") return malformed
+      const image = twitchImageUrl(version.image_url_2x)
+      if (image !== null) images.set(version.id, image)
+    }
+  }
+  return { ok: true, value: images }
 }
 
 export function parseRolePage(body: unknown): Parsed<RolePage, "malformed"> {

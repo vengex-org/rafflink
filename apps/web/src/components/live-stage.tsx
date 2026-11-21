@@ -164,7 +164,7 @@ function DrawnStage({
         <div className="live-reveal">
           <div className="live-winner">
             <div className="live-who">
-              <Avatar name={name} />
+              <Avatar name={name} imageUrl={current.profileImageUrl} />
               {currentEntrant === null ? null : (
                 <div className="live-meta">
                   <span className="live-badge">{tierText(currentEntrant, t)}</span>

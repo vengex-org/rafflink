@@ -110,6 +110,7 @@ const viewer = {
   platformUserId: "300",
   login: "vip_viewer",
   displayName: "Vip_Viewer",
+  profileImageUrl: null,
   isFollower: false,
   subTier: null,
   accountAgeDays: 100,

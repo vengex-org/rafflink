@@ -600,11 +600,11 @@ export const en = {
   "privacy.data.p1":
     "Everything comes from Twitch when you sign in with it. Rafflink asks for read access only and never posts to chat.",
   "privacy.data.i1":
-    "Streamers: Twitch user ID, login name, display name and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
+    "Streamers: Twitch user ID, login name, display name, the URL of the Twitch profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
   "privacy.data.i2":
     "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway.",
   "privacy.data.i3":
-    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
+    "Entrants: Twitch user ID, login name, display name, the URL of the Twitch profile picture, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4": "Winners: the draw result and whether and how the prize was claimed.",
   "privacy.data.i5":
     "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
@@ -621,7 +621,7 @@ export const en = {
     "To keep you signed in with cookies that are strictly necessary for that. Rafflink uses no advertising, no analytics and no tracking, and it does not sell or share data for marketing.",
   "privacy.retention.h": "How long data is kept",
   "privacy.retention.i1":
-    "Entries (names, groups, tickets, entry times) are deleted 30 days after the giveaway closes.",
+    "Entries (names, picture URLs, groups, tickets, entry times) are deleted 30 days after the giveaway closes.",
   "privacy.retention.i2":
     "When a streamer removes Rafflink's access on Twitch, only the stored Twitch token is deleted. The account and its giveaways stay until the streamer asks the operator to delete them (see the contact above).",
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
@@ -634,9 +634,9 @@ export const en = {
   "privacy.recipients.i1":
     "Cloudflare hosts the service (Workers, Durable Objects, D1) as our processor and may process data outside the European Economic Area under its standard contractual clauses.",
   "privacy.recipients.i2":
-    "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. Twitch is an independent controller under its own privacy notice.",
+    "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. The streamer's browser also loads profile pictures and subscriber badges from Twitch's image servers. Twitch is an independent controller under its own privacy notice.",
   "privacy.recipients.i3":
-    "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay.",
+    "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay, and their profile pictures on the live page.",
   "privacy.recipients.i4":
     "The public drand randomness beacon is read for the draw. No personal data is sent to it.",
   "privacy.cookies.h": "Cookies and local storage",

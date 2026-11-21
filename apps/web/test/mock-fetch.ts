@@ -6,11 +6,13 @@ export interface Reply {
 }
 
 const signedOut: Reply = { status: 200, body: { streamer: null } }
+const noBadges: Reply = { status: 200, body: { sub_t1: null, sub_t2: null, sub_t3: null } }
 
-/** Answers `fetch(path, init)` by "METHOD /path", after the route's promise when it returns one; a request nobody listed fails the test that made it. The header's session call is answered signed-out unless a route says otherwise. */
+/** Answers `fetch(path, init)` by "METHOD /path", after the route's promise when it returns one; a request nobody listed fails the test that made it. The header's session call is answered signed-out and the live page's badges call with no badges unless a route says otherwise. */
 export function mockFetch(routes: Readonly<Record<string, () => Reply | Promise<Reply>>>) {
   const answers: Readonly<Record<string, () => Reply | Promise<Reply>>> = {
     "GET /api/session": () => signedOut,
+    "GET /api/live/gid-1/badges": () => noBadges,
     ...routes,
   }
   const requests: { readonly route: string; readonly body: unknown }[] = []

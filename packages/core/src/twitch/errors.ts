@@ -7,6 +7,7 @@ export type TwitchEndpoint =
   | "users"
   | "vips"
   | "moderators"
+  | "badges"
   | "eventsub"
 
 /**

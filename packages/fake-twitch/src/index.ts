@@ -1,4 +1,5 @@
-export { createFakeTwitch, seededLogin } from "./fake-twitch.ts"
+export { createFakeTwitch, profileImageUrlOf, seededLogin } from "./fake-twitch.ts"
+export { globalSubscriberBadgeUrl } from "./routes/helix.ts"
 export type { FakeTwitch, FakeTwitchControl } from "./fake-twitch.ts"
 export {
   devFakeTwitchOptions,

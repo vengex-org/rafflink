@@ -539,6 +539,7 @@ function viewer(id: string): RoomViewer {
     platformUserId: id,
     login: `login${id}`,
     displayName: `Name${id}`,
+    profileImageUrl: null,
     isFollower: false,
     subTier: null,
     accountAgeDays: 100,

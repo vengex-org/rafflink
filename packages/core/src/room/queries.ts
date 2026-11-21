@@ -38,7 +38,7 @@ export const winnerChatNameSql = `SELECT e.display_name FROM draws d
     AND d.platform_user_id = ? AND d.rerolled = 0`
 
 /** Entrants after a sequence number (parameter 1), oldest first (parameter 2 is how many). */
-export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, tickets FROM entries
+export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, tickets, profile_image_url FROM entries
   WHERE seq > ? ORDER BY seq LIMIT ?`
 
 /** Random entrant names (parameter 1 is how many), for the draw shuffle; the order carries no information about the draw. */

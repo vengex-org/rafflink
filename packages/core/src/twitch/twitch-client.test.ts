@@ -1,6 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import {
   createFakeTwitch,
+  globalSubscriberBadgeUrl,
+  profileImageUrlOf,
   websocket,
   type FakeTwitch,
   type FakeUser,
@@ -22,12 +24,14 @@ const viewer: FakeUser = {
   login: "viewer",
   displayName: "Viewer",
   createdAt: "2021-03-04T05:06:07Z",
+  profileImageUrl: profileImageUrlOf("viewer"),
 }
 const streamer: FakeUser = {
   id: "200",
   login: "streamer",
   displayName: "Streamer",
   createdAt: "2019-01-01T00:00:00Z",
+  profileImageUrl: profileImageUrlOf("streamer"),
 }
 type Scopes = readonly [string, ...string[]]
 const VIEWER_SCOPES: Scopes = ["openid", "user:read:subscriptions", "user:read:follows"]
@@ -313,6 +317,7 @@ describe("appAccessToken and userIdsByLogin", () => {
         login: `user${n}`,
         displayName: `U${n}`,
         createdAt: "2020-01-01T00:00:00Z",
+        profileImageUrl: profileImageUrlOf(`user${n}`),
       })
     }
     const token = await client.appAccessToken()
@@ -325,6 +330,31 @@ describe("appAccessToken and userIdsByLogin", () => {
     expect(ids.size).toBe(150)
     expect(ids.get("user149")).toBe("1149")
     expect(callsTo("/helix/users")).toBe(2)
+  })
+
+  it("reuses the app token until it nears its end and mints one at once for callers together", async () => {
+    const now = spyOn(Date, "now")
+    now.mockReturnValue(1_000_000)
+    const [first, second] = await Promise.all([client.appAccessToken(), client.appAccessToken()])
+    const third = await client.appAccessToken()
+
+    expect(second).toBe(first)
+    expect(third).toBe(first)
+    expect(callsTo("/oauth2/token")).toBe(1)
+
+    now.mockReturnValue(1_000_000 + 5_184_000 * 1000)
+    const renewed = await client.appAccessToken()
+
+    expect(renewed).not.toBe(first)
+    expect(callsTo("/oauth2/token")).toBe(2)
+    now.mockRestore()
+  })
+
+  it("does not keep a failed app token request", async () => {
+    fake.control.failNext("token", 503, 1)
+
+    expect(await rejection(client.appAccessToken())).toBeInstanceOf(TwitchUnavailable)
+    expect(typeof (await client.appAccessToken())).toBe("string")
   })
 
   it("classifies a token endpoint 429 on the app token as rate limited", async () => {
@@ -437,7 +467,64 @@ describe("Helix", () => {
       login: "viewer",
       displayName: "Viewer",
       createdAt: Date.parse("2021-03-04T05:06:07Z"),
+      profileImageUrl: profileImageUrlOf("viewer"),
     })
+  })
+
+  it("reads no profile picture when Twitch's URL is not on its image host", async () => {
+    fake.control.addUser({ ...viewer, profileImageUrl: "https://example.com/me.png" })
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+
+    expect((await client.userProfile(accessToken)).profileImageUrl).toBeNull()
+  })
+})
+
+describe("subscriber badges", () => {
+  const t1 = "https://static-cdn.jtvnw.net/badges/v1/t1/2"
+  const t3 = "https://static-cdn.jtvnw.net/badges/v1/t3/2"
+
+  it("reads the images of the tiers a channel set and null for the rest", async () => {
+    fake.control.setChannelSubscriberBadges("200", { "1000": t1, "3000": t3 })
+
+    expect(await client.channelSubscriberBadges(await client.appAccessToken(), "200")).toEqual({
+      sub_t1: t1,
+      sub_t2: null,
+      sub_t3: t3,
+    })
+  })
+
+  it("reads nothing for a channel without its own badge set", async () => {
+    expect(await client.channelSubscriberBadges(await client.appAccessToken(), "200")).toEqual({
+      sub_t1: null,
+      sub_t2: null,
+      sub_t3: null,
+    })
+  })
+
+  it("ignores a badge image that is not on Twitch's image host", async () => {
+    fake.control.setChannelSubscriberBadges("200", {
+      "1000": "https://example.com/t1.png",
+      "2000": t1,
+    })
+
+    expect(await client.channelSubscriberBadges(await client.appAccessToken(), "200")).toEqual({
+      sub_t1: null,
+      sub_t2: t1,
+      sub_t3: null,
+    })
+  })
+
+  it("reads the global subscriber badge", async () => {
+    expect(await client.globalSubscriberBadge(await client.appAccessToken())).toBe(
+      globalSubscriberBadgeUrl,
+    )
+  })
+
+  it("classifies a 503 on the badges endpoint as unavailable", async () => {
+    const token = await client.appAccessToken()
+    fake.control.failNext("badges", 503, 2)
+
+    expect(await rejection(client.globalSubscriberBadge(token))).toBeInstanceOf(TwitchUnavailable)
   })
 })
 
@@ -450,6 +537,7 @@ describe("channelRoles", () => {
         login: `vip${id}`,
         displayName: `Vip${id}`,
         createdAt: viewer.createdAt,
+        profileImageUrl: profileImageUrlOf(`vip${id}`),
       })
       fake.control.setRole("200", id, "vip", true)
     }

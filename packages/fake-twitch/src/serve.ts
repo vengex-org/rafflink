@@ -1,5 +1,5 @@
 import { websocket } from "@hono/bun"
-import { createFakeTwitch } from "./fake-twitch.ts"
+import { createFakeTwitch, profileImageUrlOf } from "./fake-twitch.ts"
 import type { FakeTwitchOptions, FakeUser } from "./state.ts"
 
 /** Client id and secret a local Rafflink points at while it runs against the fake. */
@@ -11,6 +11,7 @@ export const devFakeTwitchOptions: FakeTwitchOptions = {
     login: "fake_viewer",
     displayName: "Fake_Viewer",
     createdAt: "2020-01-01T00:00:00Z",
+    profileImageUrl: profileImageUrlOf("fake_viewer"),
   },
   userPicker: true,
   // Twitch closes an EventSub socket that sends no subscription within 10 s, and allows keepalive timeouts from 10 s.
@@ -25,6 +26,7 @@ export const devFakeTwitchUsers: readonly FakeUser[] = [
     login: "fake_streamer",
     displayName: "Fake_Streamer",
     createdAt: "2020-01-01T00:00:00Z",
+    profileImageUrl: profileImageUrlOf("fake_streamer"),
   },
 ]
 

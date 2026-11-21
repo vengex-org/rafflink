@@ -169,6 +169,8 @@ export interface Entrant {
   readonly displayName: string
   readonly tickets: number
   readonly group: Group
+  /** Null when the entry has no picture on Twitch's image host. */
+  readonly profileImageUrl: string | null
 }
 
 export function parseEntrant(row: SqlRow): Entrant {
@@ -179,6 +181,7 @@ export function parseEntrant(row: SqlRow): Entrant {
     displayName: reader.text("display_name"),
     tickets: reader.int("tickets"),
     group: reader.oneOf("group_name", groups),
+    profileImageUrl: reader.nullableText("profile_image_url"),
   }
 }
 
