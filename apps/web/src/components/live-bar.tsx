@@ -34,34 +34,34 @@ export interface Doing {
   readonly run: Run
 }
 
-/** Whether the pick can be replaced: its claim is open or ran out, and the reroll window is open. */
+/** Whether the pick can be replaced: it is unsettled and the reroll window is open. */
 export function canReroll(winner: LiveWinner, snapshot: LiveSnapshot): boolean {
-  return (
-    (winner.claim.state === "waiting" || winner.claim.state === "expired") && snapshot.rerollOpen
-  )
+  return isUnsettled(winner) && snapshot.rerollOpen
 }
+
+/** A pick the streamer can still act on: its claim is open or ran out. */
+export const isUnsettled = (winner: LiveWinner) =>
+  winner.claim.state === "waiting" || winner.claim.state === "expired"
 
 const nameOf = (winner: LiveWinner, t: I18n["t"]) =>
   winner.displayName ?? t("live.winnerFallback", { n: winner.n + 1 })
 
-/** The buttons of the controls bar: the next step of the draw, the entries switch, the overlay link and the way to hide it all. */
-export function LiveBar({
+/** The next step of the draw: draw once entries are closed, then mark or replace the winner on the plate. Null when no step is due: entries open, or the winner on the plate claimed or replaced. */
+export function LiveActions({
   id,
   busy,
   run,
   snapshot,
   current,
-  overlayToken,
-  onHide,
 }: Doing & {
   readonly snapshot: LiveSnapshot
   readonly current: LiveWinner | null
-  readonly overlayToken: string | null
-  readonly onHide: () => void
 }) {
   const { t } = useI18n()
+  if (snapshot.status === "open") return null
+  if (snapshot.status === "drawn" && (current === null || !isUnsettled(current))) return null
   return (
-    <div className="live-bar" role="toolbar" aria-label={t("live.bar.label")}>
+    <div className="live-actions" role="toolbar" aria-label={t("live.bar.label")}>
       {snapshot.status === "closed" ? (
         <DrawStep
           id={id}
@@ -74,44 +74,61 @@ export function LiveBar({
           }
         />
       ) : null}
+      {snapshot.status === "drawn" && current !== null ? (
+        <>
+          <MarkClaimed
+            id={id}
+            busy={busy}
+            run={run}
+            winner={current}
+            className="live-btn secondary"
+          />
+          <RerollPick
+            id={id}
+            busy={busy}
+            run={run}
+            snapshot={snapshot}
+            winner={current}
+            label={t("live.reroll.bar", { name: nameOf(current, t) })}
+            className="live-btn secondary"
+            shortcut="r"
+          />
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+/** What the streamer sets around the draw: the winner count while entries are open, the entries switch, the overlay link and the way to hide the controls. */
+export function LiveSettings({
+  id,
+  busy,
+  run,
+  snapshot,
+  overlayToken,
+  onHide,
+}: Doing & {
+  readonly snapshot: LiveSnapshot
+  readonly overlayToken: string | null
+  readonly onHide: () => void
+}) {
+  const { t } = useI18n()
+  const headId = useId()
+  return (
+    <section className="live-card live-settings" aria-labelledby={headId}>
+      <h2 id={headId}>{t("live.settings.title")}</h2>
       {snapshot.status === "open" ? (
         <WinnerCountControl id={id} busy={busy} run={run} winnerCount={snapshot.winnerCount} />
       ) : null}
-      {snapshot.status === "drawn" ? (
-        <>
-          <p className="sr-only">{claimStatusText(snapshot.winners, current, t)}</p>
-          {current === null ? null : (
-            <>
-              <MarkClaimed
-                id={id}
-                busy={busy}
-                run={run}
-                winner={current}
-                className="live-btn secondary"
-              />
-              <RerollPick
-                id={id}
-                busy={busy}
-                run={run}
-                snapshot={snapshot}
-                winner={current}
-                label={t("live.reroll.bar", { name: nameOf(current, t) })}
-                className="live-btn secondary"
-                shortcut="r"
-              />
-            </>
-          )}
-        </>
-      ) : null}
       <EntriesSwitch id={id} busy={busy} run={run} status={snapshot.status} />
-      <span className="live-bar-end">
+      <span className="live-settings-end">
         {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
         <button type="button" className="live-btn ghost" aria-keyshortcuts="c" onClick={onHide}>
           <EyeOffIcon />
           {t("live.clean.hide")}
         </button>
       </span>
-    </div>
+    </section>
   )
 }
 
@@ -141,6 +158,18 @@ export function PickActions({
   )
 }
 
+/** One line for screen readers once winners are drawn: whose claim is open, who claimed, or that nobody did. */
+export function ClaimStatus({
+  winners,
+  current,
+}: {
+  readonly winners: readonly LiveWinner[]
+  readonly current: LiveWinner | null
+}) {
+  const { t } = useI18n()
+  return <p className="sr-only">{claimStatusText(winners, current, t)}</p>
+}
+
 /** The streamer's own word that the winner claimed, offered for a pick that is neither claimed nor rerolled, after its claim time too. */
 function MarkClaimed({
   id,
@@ -153,7 +182,7 @@ function MarkClaimed({
   readonly className: string
 }) {
   const { t } = useI18n()
-  if (winner.claim.state !== "waiting" && winner.claim.state !== "expired") return null
+  if (!isUnsettled(winner)) return null
   return (
     <button
       type="button"
@@ -439,7 +468,6 @@ function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overl
   )
 }
 
-/** One line for screen readers once winners are drawn: whose claim is open, who claimed, or that nobody did. */
 function claimStatusText(
   winners: readonly LiveWinner[],
   current: LiveWinner | null,

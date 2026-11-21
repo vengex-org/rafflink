@@ -699,6 +699,30 @@ legend {
   opacity: 1;
 }
 
+/* The icon copy button: its field stays out of sight until a refused copy shows it beside the button, value selected. */
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.copy-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.copy-button[data-state="failed"] input {
+  position: static;
+  width: min(20rem, 60vw);
+  height: auto;
+  font-family: var(--font-mono);
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .copy-value code {
   display: block;
   overflow: hidden;

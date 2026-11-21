@@ -5,6 +5,8 @@ import type { GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { shareUrl } from "../lib/links.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
+import { CopyButton } from "./copy-field.tsx"
+import { SettingsMenu } from "./header-controls.tsx"
 import { StatusPill } from "./live-parts.tsx"
 
 /** The live page's own frame: a skip link, the top bar that `bar` fills, and the main landmark. The page shows on stream, so it has no shared app bar. */
@@ -38,13 +40,15 @@ export function LiveBrand() {
   )
 }
 
-/** The brand, what is given away, how to enter, how many did, and whether entries are open. */
+/** The brand, what is given away, how to enter, whether entries are open, and the theme and language. `controls` false (clean mode) leaves the buttons out. */
 export function LiveTopBar({
   snapshot,
   facts,
+  controls,
 }: {
   readonly snapshot: LiveSnapshot
   readonly facts: GiveawayView | null
+  readonly controls: boolean
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -69,16 +73,24 @@ export function LiveTopBar({
         <span className="live-link">
           {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
         </span>
-      </div>
-      <div className="live-count">
-        <strong>{i18n.number(snapshot.entrantCount)}</strong>
-        <span>{t("live.entered")}</span>
+        {controls ? (
+          <CopyButton
+            value={shareUrl(snapshot.code)}
+            label={t("share.copyLink")}
+            fieldLabel={t("share.link")}
+          />
+        ) : null}
       </div>
       {snapshot.status === "open" ? (
         <span className="live-chip">{t("live.chip")}</span>
       ) : (
         <StatusPill status={snapshot.status} />
       )}
+      {controls ? (
+        <span className="live-top-end">
+          <SettingsMenu />
+        </span>
+      ) : null}
     </>
   )
 }

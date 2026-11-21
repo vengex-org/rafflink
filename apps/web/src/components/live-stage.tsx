@@ -6,17 +6,16 @@ import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { peopleText } from "../lib/rules-text.ts"
 import { useRemainingMs } from "../lib/use-remaining.ts"
 import { claimTone, Countdown } from "./countdown.tsx"
-import { ActivityIcon, UsersIcon } from "./icons.tsx"
+import { UsersIcon } from "./icons.tsx"
 import type { Doing } from "./live-bar.tsx"
-import { Avatar, claimLabel, EarlierPicks, EntrantNames, msUntil, Stat } from "./live-parts.tsx"
-import { ShareLinks } from "./share-panel.tsx"
+import { Avatar, claimLabel, EarlierPicks, msUntil, Stat } from "./live-parts.tsx"
 import type { Tone } from "./state-card.tsx"
 import { StatusChip } from "./status-chip.tsx"
 import { WinnerChat } from "./winner-chat.tsx"
 import { WinnerPlate } from "./winner-plate.tsx"
 import { standingWinners } from "../lib/standing-winners.ts"
 
-/** What the stage shows for each step: the latest entrants, the closed count, or the winner of the moment with the claim clock. */
+/** What the stage shows for each step: that entries are open, the closed count, or the winner of the moment with the claim clock. */
 export function LiveStage({
   snapshot,
   facts,
@@ -56,8 +55,7 @@ export function LiveStage({
 }
 
 function OpenStage({ snapshot }: { readonly snapshot: LiveSnapshot }) {
-  const i18n = useI18n()
-  const { t, dateTime } = i18n
+  const { t, dateTime } = useI18n()
   const headId = useId()
   return (
     <section className="live-stage" aria-labelledby={headId}>
@@ -66,22 +64,6 @@ function OpenStage({ snapshot }: { readonly snapshot: LiveSnapshot }) {
         {snapshot.closesAt === null ? null : (
           <p>{t("live.closesAt", { time: dateTime(snapshot.closesAt) })}</p>
         )}
-      </div>
-      <div className="live-open">
-        <div className="live-open-names">
-          <h3>{t("entrants.latest")}</h3>
-          <EntrantNames names={snapshot.lastNames} />
-        </div>
-        <div className="live-open-side">
-          <dl className="stats live-rate">
-            <Stat
-              icon={<ActivityIcon />}
-              value={i18n.decimal(snapshot.entriesPerSecond)}
-              label={t("stat.perSecond")}
-            />
-          </dl>
-          <ShareLinks code={snapshot.code} />
-        </div>
       </div>
     </section>
   )
