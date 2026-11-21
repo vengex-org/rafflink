@@ -181,10 +181,9 @@ function DrawnStage({
               <WinnerChat
                 lines={snapshot.winnerChat}
                 hint={
-                  snapshot.chatClaimUnavailable
-                  || snapshot.rerollBlocked === "window-over" ? null : (
+                  snapshot.winnerChatOpen ? (
                     <ChatHint facts={facts} waiting={current.claim.state === "waiting"} />
-                  )
+                  ) : null
                 }
               />
             ) : null}

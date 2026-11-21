@@ -261,6 +261,8 @@ export type OverlaySnapshot = RoomSummary
 export type LiveSnapshot = OverlaySnapshot & {
   /** The newest chat messages of winners, newest last; kept in room memory only. */
   readonly winnerChat: readonly WinnerChatLine[]
+  /** The chat watch is running, so a winner's message can still appear in `winnerChat`; false once it ended or gave up. */
+  readonly winnerChatOpen: boolean
 }
 
 /** A winner as every viewer's page sees them: the platform user id lets the page compare it with its own viewer, and nothing else identifies the person. */
@@ -546,7 +548,9 @@ export class GiveawayRoom {
       pushNow = this.closeOpenRoom() || pushNow
       state = this.readState()
     }
-    pushNow = (state.status === "drawn" && this.rerollWindowOver()) || pushNow
+    // The end of the chat watch changes the snapshot too, also when every pick is claimed and no reroll window runs.
+    pushNow =
+      (state.status === "drawn" && (this.rerollWindowOver() || this.chatWatchOver())) || pushNow
     if (this.deleteExpiredEntries(state, now)) {
       pushNow = true
       state = this.readState()
@@ -910,6 +914,7 @@ export class GiveawayRoom {
       lastNames,
       winners,
       winnerChat: this.winnerChat.map((entry) => entry.line),
+      winnerChatOpen: this.chatWatchOpen(state),
       ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
@@ -1080,14 +1085,16 @@ export class GiveawayRoom {
   // The watcher runs from the draw until the reroll window after the last pick's claim time ends, as
   // long as a pick is not rerolled and it did not give up for this giveaway. Closing forgets the messages.
   private syncChat(): void {
-    const state = this.readState()
-    const watching = state.status === "drawn" && !state.chatUnavailable && !this.chatWatchOver()
-    if (watching) {
+    if (this.chatWatchOpen(this.readState())) {
       this.chat.open()
       return
     }
     this.chat.close()
     this.forgetWinnerChat()
+  }
+
+  private chatWatchOpen(state: RoomState): boolean {
+    return state.status === "drawn" && !state.chatUnavailable && !this.chatWatchOver()
   }
 
   private chatWatchOver(): boolean {
@@ -1352,6 +1359,7 @@ const failureColumns = {
 /** Drops the winner chat from a snapshot, for audiences that must not see viewers' messages. */
 export function overlaySnapshot({
   winnerChat: _winnerChat,
+  winnerChatOpen: _winnerChatOpen,
   ...rest
 }: LiveSnapshot): OverlaySnapshot {
   return rest

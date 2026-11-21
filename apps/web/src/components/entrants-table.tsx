@@ -43,8 +43,12 @@ export function EntrantsSection({
   const { entrantCount, ticketTotal, winners } = snapshot
   const ordered = useMemo(() => orderEntrants(entrants.rows, winners), [entrants.rows, winners])
   const standing = useMemo(() => standingWinners(winners), [winners])
+  // Only winners whose entrant has a row count: a pick without a row would leave an empty column.
   const acting =
-    controls !== null && winners.some((winner) => winner !== current && isUnsettled(winner))
+    controls !== null
+    && ordered.some(
+      ({ winner }) => winner !== null && winner.n !== current?.n && isUnsettled(winner),
+    )
   const found = useMemo(() => searchEntrants(ordered, searched), [ordered, searched])
   const badges = useSubscriberBadges(useParams().id)
   const scroller = useRef<HTMLDivElement>(null)
@@ -306,7 +310,7 @@ function EntrantRow({
       </Cell>
       {controls === null ? null : (
         <Cell>
-          {winner === null || winner === current ? null : (
+          {winner === null || winner.n === current?.n ? null : (
             <PickActions {...controls} snapshot={snapshot} winner={winner} />
           )}
         </Cell>

@@ -34,6 +34,7 @@ function mockLive(routes: Readonly<Record<string, () => Reply>>) {
 const drawn: LiveSnapshot = {
   ...liveSnapshot,
   status: "drawn",
+  winnerChatOpen: true,
   rerollOpen: true,
   rerollBlocked: null,
   winners: [
@@ -745,6 +746,57 @@ describe("live page: winners", () => {
     expect(within(await pickRow(view, "Bob")).queryByRole("button")).toBeNull()
   })
 
+  it("gives an older expired pick its buttons in the table", async () => {
+    const [wanda, , eve] = drawn.winners
+    mockDrawn({
+      "GET /api/live/gid-1": () =>
+        ok({
+          ...drawn,
+          winners: [
+            { ...eve!, n: 0 },
+            { ...wanda!, n: 1 },
+          ],
+        }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    const row = await pickRow(view, "Eve")
+    expect(within(row).getByRole("button", { name: "Reroll Eve" })).toBeTruthy()
+    expect(within(row).getByRole("button", { name: "Mark as claimed for Eve" })).toBeTruthy()
+  })
+
+  it("has no actions column while the only unsettled pick is the one on the plate", async () => {
+    mockDrawn({
+      "GET /api/live/gid-1": () => ok({ ...drawn, winners: drawn.winners.slice(0, 2) }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    await pickRow(view, "Bob")
+    expect(view.container.querySelector(".entrants-col-actions")).toBeNull()
+    expect(view.container.querySelector(".entrants-act")).toBeNull()
+  })
+
+  it("has no actions column for an unsettled pick whose entrant row is not in the list", async () => {
+    const [wanda, , eve] = drawn.winners
+    mockDrawn({
+      "GET /api/live/gid-1": () =>
+        ok({
+          ...drawn,
+          winners: [
+            { ...eve!, n: 0, entrySeq: 99 },
+            { ...wanda!, n: 1 },
+          ],
+        }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    await pickRow(view, "Wanda")
+    expect(view.container.querySelector(".entrants-col-actions")).toBeNull()
+  })
+
   it("rerolls an older winner whose claim is still waiting from the table", async () => {
     const waiting: LiveSnapshot = {
       ...drawn,
@@ -1150,9 +1202,15 @@ describe("live page: winners' chat", () => {
     expect(view.queryByText("If the winner writes in chat, you will see it here.")).toBeNull()
   })
 
+  const claimedOnly: LiveSnapshot = { ...drawn, winners: drawn.winners.slice(1, 2) }
+
   it.each([
-    ["chat watch is off", { ...drawn, chatClaimUnavailable: true }],
-    ["the watch is over", { ...drawn, rerollOpen: false, rerollBlocked: "window-over" }],
+    ["chat watch is off", { ...drawn, chatClaimUnavailable: true, winnerChatOpen: false }],
+    ["a waiting pick's watch is over", { ...drawn, winnerChatOpen: false }],
+    [
+      "every pick is claimed and the window is over",
+      { ...claimedOnly, winnerChatOpen: false, rerollOpen: false, rerollBlocked: null },
+    ],
   ])("shows no hint when %s", async (_name, snapshot) => {
     mockLive({ "GET /api/live/gid-1": () => ok(snapshot) })
 
@@ -1160,6 +1218,18 @@ describe("live page: winners' chat", () => {
     await view.findByRole("heading", { name: /^Winner 1 of/ })
 
     expect(view.container.querySelector(".winner-chat-hint")).toBeNull()
+  })
+
+  it("drops the hint when a push says the chat watch is over", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(claimedOnly) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("If the winner writes in chat, you will see it here.")
+    act(() => FakeSocket.opened[0]?.push({ ...claimedOnly, winnerChatOpen: false }))
+
+    await waitFor(() =>
+      expect(view.queryByText("If the winner writes in chat, you will see it here.")).toBeNull(),
+    )
   })
 
   it("shows no hint in clean mode", async () => {

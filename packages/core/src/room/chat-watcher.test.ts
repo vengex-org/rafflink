@@ -1124,6 +1124,31 @@ describe("winner chat", () => {
     expect(room.liveSnapshot().winnerChat).toEqual([])
   })
 
+  it("reports the watch as open while it runs and pushes when it ends with every pick claimed", async () => {
+    const { room, winner, clock, drawnAt, liveMessages } = await connectedRoom({
+      env: { ...longLived, REROLL_WINDOW_SECONDS: "10" },
+    })
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    expect(room.liveSnapshot()).toMatchObject({ winnerChatOpen: true, rerollBlocked: null })
+    const pushed = liveMessages.length
+
+    clock.advance(drawnAt + 310_001 - clock.now())
+    room.onAlarm()
+
+    expect(room.liveSnapshot()).toMatchObject({ winnerChatOpen: false, rerollBlocked: null })
+    expect(liveMessages).toHaveLength(pushed + 1)
+    expect(liveMessages.at(-1)).toContain('"winnerChatOpen":false')
+  })
+
+  it("reports the watch as closed once the chat watch gave up", async () => {
+    const { room, socket } = await connectedRoom()
+    spyOn(console, "warn").mockImplementation(() => {})
+
+    socket?.receive(revocation)
+
+    expect(room.liveSnapshot()).toMatchObject({ chatClaimUnavailable: true, winnerChatOpen: false })
+  })
+
   it("pushes the live page when a winner writes, and the overlay push has no chat", async () => {
     const { socket, winner, liveMessages, overlayMessages, clock } = await connectedRoom({
       claimKeyword: "!claim",

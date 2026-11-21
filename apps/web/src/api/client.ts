@@ -681,6 +681,7 @@ export function parseLiveSnapshot(source: Json): LiveSnapshot {
   return {
     ...parseSharedSnapshotFields(source),
     winnerChat: list(source, "winnerChat", parseChatLine),
+    winnerChatOpen: bool(source, "winnerChatOpen"),
     ...parseRerollState(source),
   }
 }
