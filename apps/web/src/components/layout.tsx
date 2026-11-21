@@ -82,10 +82,13 @@ function Account() {
   const [loggedOut, setLoggedOut] = useState(false)
   const streamer = result.state === "ready" && !loggedOut ? result.value.streamer : null
 
+  // A signed-out header has nothing to correct, and a call still in flight already asks the server.
+  const signedIn = streamer !== null
   useEffect(() => {
+    if (!signedIn) return
     window.addEventListener(sessionLost, reload)
     return () => window.removeEventListener(sessionLost, reload)
-  }, [reload])
+  }, [signedIn, reload])
 
   async function signOut() {
     const outcome = await run(logout, () => "nav.loggedOut")

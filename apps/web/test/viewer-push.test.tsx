@@ -182,7 +182,7 @@ describe("viewer page: push", () => {
     }
     act(() => socket.push(push({ status: "drawn", winners: [claimed] })))
 
-    expect(await view.findByText(`Claimed at ${claimedAtText}.`)).toBeTruthy()
+    expect(await view.findByText(`Claimed on ${claimedAtText}.`)).toBeTruthy()
     expect(view.queryByText(/Your entry:/)).toBeNull()
   })
 

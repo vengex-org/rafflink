@@ -160,7 +160,7 @@ export function claimLabel(winner: LiveWinner, { t, dateTime }: I18n): string {
     case "claimed":
       return t("claim.at", {
         label: t(`claim.claimed.${winner.claim.via}`),
-        time: dateTime(winner.claim.at),
+        at: dateTime(winner.claim.at),
       })
     case "waiting":
       return t("claim.waiting")

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
+import { setTimeout } from "node:timers/promises"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { installFakeSocket } from "./fake-socket.ts"
 import { giveaway } from "./fixtures.ts"
@@ -122,6 +123,7 @@ describe("header session", () => {
 
   it("shows Log in when a dashboard call answers 401 after the session expired", async () => {
     let sessionCalls = 0
+    const headerShowsStreamer = Promise.withResolvers<void>()
     mockFetch({
       "GET /api/session": () => {
         sessionCalls += 1
@@ -129,14 +131,39 @@ describe("header session", () => {
           streamer: sessionCalls === 1 ? { displayName: "Streamy", login: "streamy" } : null,
         })
       },
-      "GET /api/dash/giveaways": () => ({ status: 401, body: { error: "unauthorized" } }),
+      "GET /api/dash/giveaways": async () => {
+        await headerShowsStreamer.promise
+        return { status: 401, body: { error: "unauthorized" } }
+      },
     })
 
     const view = renderApp("/dashboard")
 
+    await view.findByRole("link", { name: "Streamy" })
+    headerShowsStreamer.resolve()
     expect(await view.findByRole("link", { name: "Log in" })).toBeTruthy()
     expect(view.queryByRole("link", { name: "Streamy" })).toBeNull()
     expect(sessionCalls).toBe(2)
+  })
+
+  it("asks for the session once when a signed-out visitor's dashboard call answers 401", async () => {
+    let sessionCalls = 0
+    mockFetch({
+      "GET /api/session": () => {
+        sessionCalls += 1
+        return ok({ streamer: null })
+      },
+      "GET /api/dash/giveaways": async () => {
+        await setTimeout(0)
+        return { status: 401, body: { error: "unauthorized" } }
+      },
+    })
+
+    const view = renderApp("/dashboard")
+
+    await view.findByRole("link", { name: "Sign in with Twitch" })
+    await setTimeout(0)
+    expect(sessionCalls).toBe(1)
   })
 
   it("does not ask for the session again when the session call itself answers 401", async () => {
@@ -152,6 +179,7 @@ describe("header session", () => {
     const view = renderApp("/")
 
     await waitFor(() => expect(logged).toHaveBeenCalled())
+    await setTimeout(0)
     expect(view.getByRole("link", { name: "Log in" })).toBeTruthy()
     expect(sessionCalls).toBe(1)
   })
