@@ -5,8 +5,14 @@ import { giveawayName } from "../lib/messages.ts"
 import { peopleText } from "../lib/rules-text.ts"
 import { LockIcon, TrophyIcon } from "./icons.tsx"
 
-/** The streamer's avatar, the giveaway title and the prize as the page headline; every state shows it. */
-export function GiveawayHead({ giveaway }: { readonly giveaway: GiveawayView }) {
+/** The streamer's avatar, the giveaway title and the prize as the page headline; every state shows it. A preview inside another page passes `h2`. */
+export function GiveawayHead({
+  giveaway,
+  as: Heading,
+}: {
+  readonly giveaway: GiveawayView
+  readonly as: "h1" | "h2"
+}) {
   const i18n = useI18n()
   const name = giveawayName(i18n, giveaway.title, giveaway.code)
   const byline =
@@ -18,7 +24,7 @@ export function GiveawayHead({ giveaway }: { readonly giveaway: GiveawayView }) 
       </span>
       <div>
         <p>{byline}</p>
-        <h1>{giveaway.prize ?? name}</h1>
+        <Heading>{giveaway.prize ?? name}</Heading>
       </div>
     </header>
   )

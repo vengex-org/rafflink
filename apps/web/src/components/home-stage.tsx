@@ -1,110 +1,67 @@
-import type { ReactNode } from "react"
+import { useState } from "react"
+import { DemoClaim } from "../pages/demo-page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
+import { shareUrl } from "../lib/links.ts"
+import { exampleDraw } from "../lib/home-example.ts"
+import { demoViewerName } from "../lib/demo-script.ts"
+import { standingWinners } from "../lib/standing-winners.ts"
+import { GiveawayFacts } from "./giveaway-facts.tsx"
+import { GiveawayHead } from "./giveaway-head.tsx"
+import { QrCode } from "./qr-code.tsx"
+import { Replay } from "./replay.tsx"
+import { WinnerPlates } from "../pages/overlay-page.tsx"
+import { WinnerPlate } from "./winner-plate.tsx"
 
-const streamer = "kovac_plays"
-/** The example draw the whole home page tells: who won and how long the claim clock shows. */
-export const exampleWinner = "mira_vex"
-const prize = "Steam Deck OLED 512GB"
-const code = "K7HQ2"
-export const exampleClock = "0:42"
-const poolTickets = 622
-const winnerTickets = 3
-
-/** The home page's picture of the product: the stream with its overlay plate and the winner's phone. Pure markup, no images. */
+/**
+ * The home page's picture of the product: a stream with the real overlay plates over it and the real viewer page
+ * of the winner beside it, both fed by the demo giveaway. The pieces send no request and take no input.
+ */
 export function HomeStage() {
-  const { t, plural } = useI18n()
+  const { t } = useI18n()
   return (
     <section className="home-stage" aria-label={t("home.preview.label")}>
-      <div className="stage-stream">
+      <Replay>
+        <ExampleDraw />
+      </Replay>
+    </section>
+  )
+}
+
+function ExampleDraw() {
+  const { t } = useI18n()
+  const [{ state, snapshot, facts }] = useState(() => exampleDraw(Date.now()))
+  return (
+    <>
+      <div className="stage-stream" inert aria-hidden="true">
         <StreamScene />
         <div className="stage-tags">
           <span className="stage-live">{t("home.stage.live")}</span>
-          <span className="stage-viewers">{streamer}</span>
+          <span className="stage-viewers">{facts.streamerName}</span>
         </div>
-        <div className="stage-enter">
-          {t("home.stage.enterAt")}
-          <b>
-            rafflink.app/g/<em>{code}</em>
-          </b>
-        </div>
-        <div className="stage-plate">
-          <div>
-            <div className="stage-plate-label">{t("home.preview.winner")}</div>
-            <div className="stage-plate-name">{exampleWinner}</div>
-            <div className="stage-plate-prize">{prize}</div>
-          </div>
-          <div className="stage-plate-clock">
-            <strong>{exampleClock}</strong>
-            <span>{t("home.stage.toClaim")}</span>
+        <div className="stage-canvas">
+          <div className="overlay">
+            <WinnerPlates standing={standingWinners(snapshot.winners)} prize={facts.prize ?? ""} />
+            <div className="overlay-plate overlay-qr">
+              <QrCode value={shareUrl(facts.code)} label={t("overlay.qr")} />
+            </div>
           </div>
         </div>
       </div>
       <div className="stage-phone" aria-hidden="true">
         <div className="stage-screen">
-          <div className="phone-bar">
-            <span className="phone-brand">
-              <span className="brand-mark">R</span>
-              Rafflink
-            </span>
-            <span className="phone-code">/g/{code}</span>
-          </div>
-          <div className="phone-body">
-            <div>
-              <p className="phone-context">{t("home.phone.context", { streamer })}</p>
-              <p className="phone-prize">{prize}</p>
+          <div className="stage-viewer viewer" inert>
+            <GiveawayHead giveaway={facts} as="h2" />
+            <WinnerPlate name={demoViewerName} />
+            <div className="viewer-outcome">
+              <DemoClaim state={state} giveaway={facts} />
             </div>
-            <div className="phone-win">
-              <div className="phone-win-top">
-                <span className="phone-won">{t("home.phone.won")}</span>
-                <span className="phone-ring">
-                  <svg viewBox="0 0 120 120">
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="50"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeOpacity="0.15"
-                      strokeWidth="12"
-                    />
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r="50"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                      strokeDasharray="314"
-                      strokeDashoffset="94"
-                    />
-                  </svg>
-                  <b>{exampleClock}</b>
-                </span>
-              </div>
-              <p>{t("home.phone.claimHint")}</p>
-              <div className="phone-claim">{t("home.phone.claim")}</div>
+            <div className="viewer-details">
+              <GiveawayFacts kind="pool" giveaway={facts} />
             </div>
-            <PhoneRow label={t("home.phone.tickets")}>
-              {t("home.phone.ticketsValue", { count: winnerTickets })}
-            </PhoneRow>
-            <PhoneRow label={t("home.phone.pool")}>{plural("ticket", poolTickets)}</PhoneRow>
-            <PhoneRow label={t("home.phone.code")}>
-              <span className="phone-mono">{code}</span>
-            </PhoneRow>
           </div>
         </div>
       </div>
-    </section>
-  )
-}
-
-function PhoneRow({ label, children }: { readonly label: string; readonly children: ReactNode }) {
-  return (
-    <div className="phone-row">
-      <span>{label}</span>
-      <b>{children}</b>
-    </div>
+    </>
   )
 }
 

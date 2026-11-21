@@ -743,7 +743,8 @@ describe("live page: winners", () => {
     const view = renderApp("/live/gid-1")
     await view.findByText("Claimed")
 
-    expect(view.getByRole("button", { name: "Reroll Wanda" })).toBeTruthy()
+    const toolbarButton = view.getByRole("button", { name: "Reroll Wanda" })
+    expect(toolbarButton.querySelector("span[aria-hidden]")?.textContent).toBe("Reroll")
     expect(
       within(await pickRow(view, "Eve")).getByRole("button", { name: "Reroll Eve" }),
     ).toBeTruthy()
@@ -1142,7 +1143,7 @@ describe("live page: winners' chat", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
 
     const view = renderApp("/live/gid-1")
-    const list = await view.findByRole("list", { name: "Winner chat" })
+    const list = await view.findByRole("list", { name: "Chat" })
 
     const [first, second] = within(list).getAllByRole("listitem")
     expect(within(list).getAllByRole("listitem")).toHaveLength(2)
@@ -1159,8 +1160,8 @@ describe("live page: winners' chat", () => {
     const view = renderApp("/live/gid-1")
     await view.findByRole("heading", { name: "Winner 1 of 3" })
 
-    expect(view.queryByRole("heading", { name: "Winner chat" })).toBeNull()
-    expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
+    expect(view.queryByRole("heading", { name: "Chat" })).toBeNull()
+    expect(view.queryByRole("list", { name: "Chat" })).toBeNull()
   })
 
   const anyChatHint =
@@ -1172,9 +1173,9 @@ describe("live page: winners' chat", () => {
     const view = renderApp("/live/gid-1")
 
     expect(await view.findByText(anyChatHint)).toBeTruthy()
-    expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
+    expect(view.queryByRole("list", { name: "Chat" })).toBeNull()
     act(() => FakeSocket.opened[0]?.push({ ...drawn, winnerChat: chat }))
-    expect(await view.findByRole("list", { name: "Winner chat" })).toBeTruthy()
+    expect(await view.findByRole("list", { name: "Chat" })).toBeTruthy()
     expect(view.queryByText(anyChatHint)).toBeNull()
   })
 
@@ -1204,7 +1205,7 @@ describe("live page: winners' chat", () => {
       await view.findByText("If the winner writes in chat, you will see it here."),
     ).toBeTruthy()
     act(() => FakeSocket.opened[0]?.push({ ...settled, winnerChat: chat }))
-    expect(await view.findByRole("list", { name: "Winner chat" })).toBeTruthy()
+    expect(await view.findByRole("list", { name: "Chat" })).toBeTruthy()
     expect(view.queryByText("If the winner writes in chat, you will see it here.")).toBeNull()
   })
 
@@ -1252,20 +1253,20 @@ describe("live page: winners' chat", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
 
     const view = renderApp("/live/gid-1")
-    expect(await view.findByRole("list", { name: "Winner chat" })).toBeTruthy()
+    expect(await view.findByRole("list", { name: "Chat" })).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Hide controls" }))
 
-    expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
+    expect(view.queryByRole("list", { name: "Chat" })).toBeNull()
     expect(view.queryByText("I am here!")).toBeNull()
     fireEvent.click(view.getByRole("button", { name: "Show controls" }))
-    expect(view.getByRole("list", { name: "Winner chat" })).toBeTruthy()
+    expect(view.getByRole("list", { name: "Chat" })).toBeTruthy()
   })
 
   it("scrolls to the newest message when one arrives", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat.slice(0, 1) }) })
 
     const view = renderApp("/live/gid-1")
-    const list = await view.findByRole("list", { name: "Winner chat" })
+    const list = await view.findByRole("list", { name: "Chat" })
     Object.defineProperty(list, "scrollHeight", { value: 480 })
     act(() => {
       list.scrollTop = 0
@@ -1280,7 +1281,7 @@ describe("live page: winners' chat", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
 
     const view = renderApp("/live/gid-1")
-    const list = await view.findByRole("list", { name: "Winner chat" })
+    const list = await view.findByRole("list", { name: "Chat" })
     Object.defineProperty(list, "scrollHeight", { value: 480 })
     act(() => {
       list.scrollTop = 0
@@ -1301,7 +1302,7 @@ describe("live page: winners' chat", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
 
     const view = renderApp("/live/gid-1")
-    const list = await view.findByRole("list", { name: "Winner chat" })
+    const list = await view.findByRole("list", { name: "Chat" })
     // The chat's first effect may still be pending here; it would scroll to the bottom after the 120 below.
     await act(async () => {})
     Object.defineProperty(list, "scrollHeight", { value: 480 })

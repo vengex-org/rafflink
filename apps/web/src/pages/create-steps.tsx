@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
-import { groups } from "@rafflink/core/domain/groups"
+import { groups, type Group } from "@rafflink/core/domain/groups"
 import { Segmented, TextField, type SegmentOption } from "../components/form-fields.tsx"
 import { ClockIcon, HeartIcon, LockIcon, StarIcon, UsersIcon } from "../components/icons.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
@@ -120,7 +120,6 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
     icon: null,
     description: "",
   }))
-  const odds = oddsOf(values.tickets)
   return (
     <>
       <Segmented
@@ -143,31 +142,7 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
           setValues((current) => ({ ...current, minAccountAgeDays }))
         }
       />
-      <fieldset className="field">
-        <legend>{t("wizard.tickets.legend")}</legend>
-        <p className="help">{t("wizard.tickets.help")}</p>
-        <div className="ticket-table">
-          {groups.map((group) => (
-            <TextField
-              key={group}
-              name={`tickets.${group}`}
-              label={t(`group.${group}`)}
-              help={null}
-              type="number"
-              min={0}
-              value={values.tickets[group]}
-              error={errorOf(i18n, issue, `tickets.${group}`)}
-              onChange={(count) =>
-                setValues((current) => ({
-                  ...current,
-                  tickets: { ...current.tickets, [group]: count },
-                }))
-              }
-            />
-          ))}
-        </div>
-        {odds === null ? null : <output className="odds">{oddsText(i18n, odds)}</output>}
-      </fieldset>
+      <TicketsField values={values} setValues={setValues} issue={issue} shown={groups} />
       <TextField
         name="winnerCount"
         label={t("wizard.winners.label")}
@@ -197,6 +172,45 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
       />
     </>
+  )
+}
+
+/** The tickets each group gets; `shown` picks the groups that get a row. */
+export function TicketsField({
+  values,
+  setValues,
+  issue,
+  shown,
+}: StepProps & { readonly shown: readonly Group[] }) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const odds = oddsOf(values.tickets)
+  return (
+    <fieldset className="field">
+      <legend>{t("wizard.tickets.legend")}</legend>
+      <p className="help">{t("wizard.tickets.help")}</p>
+      <div className="ticket-table">
+        {shown.map((group) => (
+          <TextField
+            key={group}
+            name={`tickets.${group}`}
+            label={t(`group.${group}`)}
+            help={null}
+            type="number"
+            min={0}
+            value={values.tickets[group]}
+            error={errorOf(i18n, issue, `tickets.${group}`)}
+            onChange={(count) =>
+              setValues((current) => ({
+                ...current,
+                tickets: { ...current.tickets, [group]: count },
+              }))
+            }
+          />
+        ))}
+      </div>
+      {odds === null ? null : <output className="odds">{oddsText(i18n, odds)}</output>}
+    </fieldset>
   )
 }
 

@@ -52,7 +52,7 @@ main.container:has(> .viewer) {
   font-weight: 500;
 }
 
-.viewer-head h1 {
+.viewer-head :is(h1, h2) {
   font-size: 1.375rem;
   font-weight: 800;
   letter-spacing: -0.025em;
