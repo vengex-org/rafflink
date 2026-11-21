@@ -175,26 +175,98 @@ main.container:has(> .home) > .oauth-error {
   line-height: 1.5;
 }
 
-.stage-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 28px;
-  margin: 0;
-  padding: 0;
-  color: var(--muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-  list-style: none;
-}
-
-.stage-steps li {
+/* Sits in the stage's top margin, over the stream and the phone, so the pictures keep their place. */
+.stage-controls {
+  position: absolute;
+  top: -36px;
+  right: 0;
+  left: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* One segment per step, as wide as the step is long, so the fill moves at one speed through the loop. */
+.stage-progress {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.stage-progress span {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line-2);
+}
+
+.stage-progress span::after {
+  display: block;
+  height: 100%;
+  background: var(--accent-line);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.stage-progress [data-state]::after {
+  transform: none;
+}
+
+/* The segment's inline animation-duration is its step's length; under reduced motion the segment shows full. */
+.stage-progress [data-state="current"]::after {
+  animation: stage-fill linear both;
+  animation-duration: inherit;
+}
+
+.stage-progress[data-paused] [data-state="current"]::after {
+  animation-play-state: paused;
+}
+
+@keyframes stage-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.stage-toggle.icon-button {
+  width: 28px;
+  min-height: 28px;
+  border-radius: 50%;
+  color: var(--muted);
+}
+
+.stage-toggle .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.stage-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage-steps button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
   transition: color var(--dur) var(--ease);
 }
 
-.stage-steps li::before {
+.stage-steps button::before {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -203,13 +275,20 @@ main.container:has(> .home) > .oauth-error {
   transition: background-color var(--dur) var(--ease);
 }
 
-.stage-steps li[aria-current="step"] {
+.stage-steps button[aria-current="step"] {
   color: var(--ink);
 }
 
-.stage-steps li[aria-current="step"]::before {
+.stage-steps button[aria-current="step"]::before {
   background: var(--accent);
   box-shadow: 0 0 0 1px var(--ink);
+}
+
+@media (hover: hover) {
+  .stage-steps button:hover,
+  .stage-toggle.icon-button:hover {
+    color: var(--ink);
+  }
 }
 
 .stage-phone {

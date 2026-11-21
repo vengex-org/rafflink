@@ -16,13 +16,39 @@ afterEach(() => {
 
 let restoreSocket = () => {}
 
-const advance = (ms: number) => act(() => jest.advanceTimersByTime(ms))
+/** Step of the fake clock per act; every time the tests reach is a multiple of it. */
+const tickMs = 100
+/**
+ * Moves the fake clock in ticks of {@link tickMs}: act renders a state change only when it returns, so a timer that
+ * sets state and the timer the next render arms must not share one act.
+ */
+const advance = (ms: number) => {
+  for (let passed = 0; passed < ms; passed += tickMs) act(() => jest.advanceTimersByTime(tickMs))
+}
 const stage = (view: ReturnType<typeof renderApp>) =>
   within(view.getByRole("region", { name: "Example of a draw" }))
 const setVisibility = (value: "hidden" | "visible") =>
   Object.defineProperty(document, "visibilityState", { configurable: true, value })
 const currentLabel = (view: ReturnType<typeof renderApp>) =>
   view.container.querySelector(".stage-steps [aria-current='step']")?.textContent
+const progress = (view: ReturnType<typeof renderApp>) => {
+  const bar = view.container.querySelector(".stage-progress")
+  if (!(bar instanceof HTMLElement)) throw new Error("no progress bar")
+  return bar
+}
+const segmentStates = (view: ReturnType<typeof renderApp>) =>
+  [...progress(view).children].map((segment) => segment.getAttribute("data-state"))
+const preferReducedMotion = () =>
+  spyOn(window, "matchMedia").mockImplementation((query) => ({
+    matches: query.includes("prefers-reduced-motion"),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }))
 const phoneScreen = (view: ReturnType<typeof renderApp>) => {
   const screen = view.container.querySelector(".stage-screen")
   if (!(screen instanceof HTMLElement)) throw new Error("no phone screen")
@@ -45,7 +71,9 @@ const mouse = (
     cancelable: true,
   })
   Object.defineProperty(event, "timeStamp", { value: timeStamp })
-  screen.dispatchEvent(event)
+  act(() => {
+    screen.dispatchEvent(event)
+  })
 }
 const preparePhone = (view: ReturnType<typeof renderApp>) => {
   const screen = phoneScreen(view)
@@ -182,12 +210,12 @@ describe("home page", () => {
       expect(currentLabel(view)).toBe("Drawing")
     })
 
-    it("holds the step while the visitor scrolls the phone and goes on a while after the last touch", () => {
+    it("holds the step while the visitor scrolls the phone and plays the rest of it a while after the last touch", () => {
       const view = renderApp("/")
       advance(4000)
 
       dragPhone(view, 60)
-      advance(3900)
+      advance(4900)
       expect(currentLabel(view)).toBe("Entries open")
 
       advance(100)
@@ -204,7 +232,7 @@ describe("home page", () => {
       expect(currentLabel(view)).toBe("Entries open")
 
       mouse(screen, "pointerup", 400, 10_000)
-      advance(3900)
+      advance(4900)
       expect(currentLabel(view)).toBe("Entries open")
 
       advance(100)
@@ -224,17 +252,8 @@ describe("home page", () => {
       expect(screen.scrollTop).toBe(0)
     })
 
-    it("rests on the winner without cycling or step labels under reduced motion", () => {
-      spyOn(window, "matchMedia").mockImplementation((query) => ({
-        matches: query.includes("prefers-reduced-motion"),
-        media: query,
-        onchange: null,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        addListener: () => {},
-        removeListener: () => {},
-        dispatchEvent: () => false,
-      }))
+    it("rests on the winner without cycling under reduced motion, paused until the visitor plays it", () => {
+      preferReducedMotion()
       const view = renderApp("/")
       const preview = stage(view)
 
@@ -243,7 +262,130 @@ describe("home page", () => {
       expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
       expect(preview.getByText("Claim my prize")).toBeTruthy()
       expect(preview.queryByText("Enter at")).toBeNull()
-      expect(view.container.querySelector(".stage-steps")).toBeNull()
+      expect(currentLabel(view)).toBe("Winner drawn")
+      expect(progress(view).hasAttribute("data-paused")).toBe(true)
+
+      fireEvent.click(preview.getByRole("button", { name: "Play preview" }))
+      advance(6000)
+      expect(currentLabel(view)).toBe("Claimed")
+    })
+
+    it("switches steps by their labels under reduced motion without starting the loop", () => {
+      preferReducedMotion()
+      const view = renderApp("/")
+      const preview = stage(view)
+
+      fireEvent.click(preview.getByRole("button", { name: "Drawing" }))
+      advance(60_000)
+
+      expect(currentLabel(view)).toBe("Drawing")
+      expect(preview.getByText("Drawing a winner…")).toBeTruthy()
+      expect(preview.getByRole("button", { name: "Play preview" })).toBeTruthy()
+    })
+
+    it("stops on the current step when paused and plays the rest of it when played", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      advance(3000)
+
+      fireEvent.click(preview.getByRole("button", { name: "Pause preview" }))
+      advance(60_000)
+      expect(currentLabel(view)).toBe("Entries open")
+
+      fireEvent.click(preview.getByRole("button", { name: "Play preview" }))
+      advance(1900)
+      expect(currentLabel(view)).toBe("Entries open")
+      advance(100)
+      expect(currentLabel(view)).toBe("Drawing")
+      expect(preview.getByRole("button", { name: "Pause preview" })).toBeTruthy()
+    })
+
+    it("jumps to a clicked step and gives it its full time, also when it is the step shown", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      advance(3000)
+
+      fireEvent.click(preview.getByRole("button", { name: "Winner drawn" }))
+      expect(currentLabel(view)).toBe("Winner drawn")
+      expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
+      advance(5900)
+      expect(currentLabel(view)).toBe("Winner drawn")
+      advance(100)
+      expect(currentLabel(view)).toBe("Claimed")
+
+      advance(4000)
+      fireEvent.click(preview.getByRole("button", { name: "Claimed" }))
+      advance(4900)
+      expect(currentLabel(view)).toBe("Claimed")
+      advance(100)
+      expect(currentLabel(view)).toBe("Entries open")
+    })
+
+    it("marks only the shown step as current, on the labels and on the bar", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+
+      fireEvent.click(preview.getByRole("button", { name: "Drawing" }))
+
+      const current = preview
+        .getAllByRole("button")
+        .filter((button) => button.getAttribute("aria-current") === "step")
+      expect(current.map((button) => button.textContent)).toEqual(["Drawing"])
+      expect(segmentStates(view)).toEqual(["done", "current", null, null])
+    })
+
+    it("shows a clicked step while paused and starts it from the beginning on play", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      fireEvent.click(preview.getByRole("button", { name: "Pause preview" }))
+
+      fireEvent.click(preview.getByRole("button", { name: "Drawing" }))
+      advance(60_000)
+      expect(currentLabel(view)).toBe("Drawing")
+      expect(progress(view).hasAttribute("data-paused")).toBe(true)
+
+      fireEvent.click(preview.getByRole("button", { name: "Play preview" }))
+      advance(3900)
+      expect(currentLabel(view)).toBe("Drawing")
+      advance(100)
+      expect(currentLabel(view)).toBe("Winner drawn")
+    })
+
+    it("pauses the progress bar with the loop and starts a new bar on a step change", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      const firstBar = progress(view)
+      expect(firstBar.hasAttribute("data-paused")).toBe(false)
+
+      fireEvent.click(preview.getByRole("button", { name: "Pause preview" }))
+      expect(progress(view).hasAttribute("data-paused")).toBe(true)
+      fireEvent.click(preview.getByRole("button", { name: "Play preview" }))
+      expect(progress(view).hasAttribute("data-paused")).toBe(false)
+
+      setVisibility("hidden")
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      expect(progress(view).hasAttribute("data-paused")).toBe(true)
+      setVisibility("visible")
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      expect(progress(view).hasAttribute("data-paused")).toBe(false)
+
+      const screen = preparePhone(view)
+      mouse(screen, "pointerdown", 400, 0)
+      expect(progress(view).hasAttribute("data-paused")).toBe(true)
+      mouse(screen, "pointerup", 400, 100)
+      advance(3900)
+      expect(progress(view).hasAttribute("data-paused")).toBe(true)
+      advance(100)
+      expect(progress(view).hasAttribute("data-paused")).toBe(false)
+
+      advance(5000)
+      expect(currentLabel(view)).toBe("Drawing")
+      expect(progress(view)).not.toBe(firstBar)
+      expect(segmentStates(view)).toEqual(["done", "current", null, null])
     })
 
     it("shows the example prize and title in the page language", () => {

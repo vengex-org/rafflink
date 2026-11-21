@@ -65,6 +65,8 @@ export const en = {
   "home.stage.step.drawing": "Drawing",
   "home.stage.step.won": "Winner drawn",
   "home.stage.step.claimed": "Claimed",
+  "home.stage.pause": "Pause preview",
+  "home.stage.play": "Play preview",
   "home.trust.openSource": "Open source, AGPL-3.0",
   "home.trust.cloudflare": "Self-host on Cloudflare",
   "home.trust.noTracking": "No ads, no tracking",
