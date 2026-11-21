@@ -1,10 +1,5 @@
 /* The verify page: the facts a draw committed to, the button that recomputes them in the browser, and the viewer's own entry. */
 
-main.container:has(> .verify) {
-  max-width: 40rem;
-  padding-block: 1.25rem;
-}
-
 .verify {
   display: flex;
   flex-direction: column;
@@ -24,12 +19,6 @@ main.container:has(> .verify) {
 .verify ol,
 .verify ul {
   margin: 0;
-}
-
-.verify h1 {
-  font-size: 1.375rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
 }
 
 .verify h2 {

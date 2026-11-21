@@ -4,7 +4,7 @@ import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import type { GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { shareUrl } from "../lib/links.ts"
-import { giveawayName } from "../lib/messages.ts"
+import { giveawayDisplayName } from "../lib/messages.ts"
 import { StatusPill } from "./live-parts.tsx"
 
 /** The live page's own frame: a skip link, the top bar that `bar` fills, and the main landmark. The page shows on stream, so it has no shared app bar. */
@@ -53,7 +53,13 @@ export function LiveTopBar({
       <LiveBrand />
       <span className="live-sep" aria-hidden="true" />
       <div className="live-title">
-        <h1>{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
+        <h1>
+          {giveawayDisplayName(i18n, {
+            title: snapshot.title,
+            prize: facts?.prize ?? null,
+            code: snapshot.code,
+          })}
+        </h1>
         {facts === null || facts.prize === null ? null : (
           <p>{t("live.gives", { streamer: facts.streamerName, prize: facts.prize })}</p>
         )}

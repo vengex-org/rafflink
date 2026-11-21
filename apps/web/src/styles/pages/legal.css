@@ -1,10 +1,5 @@
 /* The privacy policy and the terms: one readable column, and the footer links every page below the home page ends with. */
 
-.legal {
-  max-width: 44rem;
-  margin-inline: auto;
-}
-
 .legal h2 {
   margin-top: var(--space-4);
   font-size: 1.25rem;

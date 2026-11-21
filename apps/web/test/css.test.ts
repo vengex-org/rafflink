@@ -104,6 +104,25 @@ describe("stylesheet", () => {
     expect(faces.join("\n")).toContain('font-family: "Geist Mono"')
   })
 
+  it("narrows a page only through the page width tokens of the Page column", () => {
+    const components = others.find(({ name }) => name === "styles/components.css")?.text ?? ""
+    expect(rootBlock(components, ".container")).toContain(
+      "max-width: calc(var(--page-wide) + 2 * var(--gutter));",
+    )
+    expect(rootBlock(components, '.page[data-width="text"]')).toContain(
+      "max-width: var(--page-text);",
+    )
+    expect(rootBlock(components, '.page[data-width="compact"]')).toContain(
+      "max-width: var(--page-compact);",
+    )
+    for (const { name, text } of others) {
+      const pageColumns = blocksOf(text, "main.container").filter((body) =>
+        /max-width:(?!\s*none)/.test(body),
+      )
+      expect([name, pageColumns]).toEqual([name, []])
+    }
+  })
+
   it("sizes an entrants row in live.css as the virtual list computes it", () => {
     const live = others.find(({ name }) => name === "styles/pages/live.css")?.text ?? ""
     expect(rootBlock(live, ".entrants-cell")).toContain(`height: ${entrantRowHeight}px;`)

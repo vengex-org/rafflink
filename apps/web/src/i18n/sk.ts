@@ -72,7 +72,6 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "home.how.title": "Od chatu k výhercovi na tri kroky.",
   "home.how.lede":
     "Priprav všetko pred streamom, zdieľaj jeden odkaz a žrebuj pred kamerou. Všetko, čo vidia diváci, sa aktualizuje naživo.",
-  "home.how.demo": "Otvoriť ukážkovú súťaž",
   "home.how.list": "Ako to funguje",
   "home.how.create.title": "Vytvor súťaž",
   "home.how.create.text":

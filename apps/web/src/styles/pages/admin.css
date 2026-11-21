@@ -1,9 +1,5 @@
 /* Admin: today's usage as bars, the entry line as a grid of figures with a rule between them. */
 
-.admin-title {
-  margin-bottom: var(--space-3);
-}
-
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));

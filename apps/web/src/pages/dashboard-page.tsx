@@ -14,11 +14,12 @@ import {
   TvIcon,
 } from "../components/icons.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
+import { Page } from "../components/page.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import type { Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
-import { giveawayName } from "../lib/messages.ts"
+import { giveawayDisplayName } from "../lib/messages.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { CreateForm } from "./create-form.tsx"
 import { initialValues, valuesFrom, type Values } from "./create-values.ts"
@@ -47,8 +48,10 @@ export function DashboardPage() {
       switch (view.kind) {
         case "create":
           return (
-            <div className="create">
-              <h1 className="dash-title">{t("dash.new.title")}</h1>
+            <Page width="text" className="create">
+              <div className="page-head">
+                <h1>{t("dash.new.title")}</h1>
+              </div>
               <CreateForm
                 seed={view.seed}
                 onCreated={(created) => {
@@ -58,7 +61,7 @@ export function DashboardPage() {
                 onUnauthorized={() => setSignedOut(true)}
                 onCancel={() => setView({ kind: "list" })}
               />
-            </div>
+            </Page>
           )
         case "created":
           return <CreatedScreen created={view.created} onDone={() => setView({ kind: "list" })} />
@@ -141,7 +144,9 @@ function GiveawayList({
   if (giveaways.length === 0) {
     return (
       <>
-        <h1 className="dash-title">{t("dash.title")}</h1>
+        <div className="page-head">
+          <h1>{t("dash.title")}</h1>
+        </div>
         <section className="card dash-empty" aria-labelledby="empty-title">
           <div>
             <h2 id="empty-title">{t("dash.empty.title")}</h2>
@@ -212,14 +217,16 @@ function GiveawayItem({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const name = giveawayName(i18n, giveaway.title, giveaway.code)
+  const name = giveawayDisplayName(i18n, giveaway)
+  // An untitled giveaway is already named by its prize, so the prize line would repeat it.
+  const prizeLine = giveaway.title === null ? null : giveaway.prize
   return (
     <li className={pinned ? "card" : "row"} data-status={giveaway.status}>
       <div className="giveaway-head">
         <h2>{name}</h2>
         <StatusChip tone={statusTone(giveaway.status)}>{t(`status.${giveaway.status}`)}</StatusChip>
       </div>
-      {giveaway.prize === null ? null : <p>{t("dash.prize", { prize: giveaway.prize })}</p>}
+      {prizeLine === null ? null : <p>{t("dash.prize", { prize: prizeLine })}</p>}
       <p className="muted giveaway-meta">
         {i18n.rich("dash.codeCreated", {
           code: <span className="code-tag">{giveaway.code}</span>,

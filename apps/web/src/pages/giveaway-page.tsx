@@ -8,6 +8,7 @@ import { GiveawayFacts, GiveawayRules } from "../components/giveaway-facts.tsx"
 import { GiveawayHead, GiveawayPhase } from "../components/giveaway-head.tsx"
 import { TwitchIcon } from "../components/icons.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
+import { Page } from "../components/page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useEntryResult } from "../lib/use-entry-result.ts"
 import { loadGiveaway } from "../lib/stored-giveaway.ts"
@@ -78,7 +79,7 @@ function GiveawayDetails({
   const isIn = entered !== null && !isWinner && giveaway.status !== "drawn"
 
   return (
-    <article className="viewer">
+    <Page width="compact" as="article" className="viewer">
       <GiveawayHead giveaway={giveaway} />
       {isWinner ? null : <GiveawayPhase giveaway={giveaway} />}
       <div aria-live="polite" className="viewer-outcome">
@@ -90,14 +91,16 @@ function GiveawayDetails({
             tickets={tickets}
             notDrawn={me.kind === "not-won"}
             signedOut={me.kind === "signed-out"}
-            showSteps={entry === null || entry !== fromServer}
+            showSteps={entry !== null && entry !== fromServer}
             giveaway={giveaway}
             signInHref={signInHref}
           />
         )}
       </div>
-      {isIn ? null : <GiveawayFacts kind={isWinner ? "pool" : "entry"} giveaway={giveaway} />}
-      <GiveawayRules giveaway={giveaway} />
+      <div className="viewer-details">
+        {isIn ? null : <GiveawayFacts kind={isWinner ? "pool" : "entry"} giveaway={giveaway} />}
+        <GiveawayRules giveaway={giveaway} />
+      </div>
       {giveaway.status === "drawn" ? (
         <Link className="button text" to={`/g/${code}/verify`}>
           {t("giveaway.verify.link")}
@@ -111,6 +114,6 @@ function GiveawayDetails({
           </a>
         </div>
       ) : null}
-    </article>
+    </Page>
   )
 }

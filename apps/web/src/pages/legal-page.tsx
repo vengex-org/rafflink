@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Link } from "react-router"
+import { Page } from "../components/page.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { legalUpdated, operator } from "../lib/operator.ts"
@@ -19,20 +19,15 @@ interface LegalDocument {
 }
 
 export function PrivacyPage() {
-  return <LegalPage document={privacy} other={{ to: "/terms", label: "legal.terms" }} />
+  return <LegalPage document={privacy} />
 }
 
 export function TermsPage() {
-  return <LegalPage document={terms} other={{ to: "/privacy", label: "legal.privacy" }} />
+  return <LegalPage document={terms} />
 }
 
-function LegalPage({
-  document,
-  other,
-}: {
-  readonly document: LegalDocument
-  readonly other: { readonly to: string; readonly label: MessageKey }
-}) {
+// The other legal text is one click away in the footer every legal page ends with, so the page does not link it again.
+function LegalPage({ document }: { readonly document: LegalDocument }) {
   const { t, rich, date } = useI18n()
   const placeholders: Readonly<Record<string, ReactNode>> = {
     operatorName: operator.name,
@@ -42,7 +37,7 @@ function LegalPage({
     repository: <a href={repositoryUrl}>{repositoryUrl}</a>,
   }
   return (
-    <article className="legal">
+    <Page width="text" as="article" className="legal">
       <h1>{t(document.title)}</h1>
       <p className="legal-updated">
         {t("legal.updated", { date: date(Date.parse(`${legalUpdated}T00:00`)) })}
@@ -63,10 +58,7 @@ function LegalPage({
           )}
         </section>
       ))}
-      <p>
-        <Link to={other.to}>{t(other.label)}</Link>
-      </p>
-    </article>
+    </Page>
   )
 }
 

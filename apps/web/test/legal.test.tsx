@@ -121,12 +121,13 @@ describe("legal pages", () => {
     expect(view.queryByRole("heading", { name: "Terms of use" })).toBeNull()
   })
 
-  it("link to each other", () => {
+  it("leave the link to the other text to the footer", () => {
     const view = renderApp("/privacy")
 
-    const link = within(view.getByRole("article")).getByRole("link", { name: "Terms" })
+    const footer = within(view.getByRole("navigation", { name: "Legal" }))
 
-    expect(link.getAttribute("href")).toBe("/terms")
+    expect(footer.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/terms")
+    expect(within(view.getByRole("article")).queryByRole("link", { name: "Terms" })).toBeNull()
   })
 })
 

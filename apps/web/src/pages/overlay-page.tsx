@@ -9,7 +9,7 @@ import { QrCode } from "../components/qr-code.tsx"
 import { WinnerPlate } from "../components/winner-plate.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { shareUrl } from "../lib/links.ts"
-import { giveawayName } from "../lib/messages.ts"
+import { giveawayDisplayName, giveawayName } from "../lib/messages.ts"
 import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
 import { useLive } from "../lib/use-live.ts"
 import { useGiveawayFacts } from "../lib/use-giveaway-facts.ts"
@@ -78,7 +78,12 @@ function Overlay({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const heading = <h1 className="sr-only">{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
+  // The snapshot carries no prize and the overlay fetches it only for the winner plates, so the heading names the code.
+  const heading = (
+    <h1 className="sr-only">
+      {giveawayDisplayName(i18n, { title: snapshot.title, prize: null, code: snapshot.code })}
+    </h1>
+  )
   const standing = standingWinners(snapshot.winners)
   const qr = options.qr ? <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} /> : null
   if (snapshot.status === "drawn" && options.mode !== "compact") {

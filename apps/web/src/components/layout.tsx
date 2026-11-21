@@ -7,6 +7,7 @@ import { useAction } from "../lib/use-action.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
+import { AppFrame } from "./page.tsx"
 import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
 import { SlidersIcon, TwitchIcon } from "./icons.tsx"
 
@@ -58,8 +59,10 @@ export function Layout({ account }: { readonly account: boolean }) {
         </div>
       </header>
       <main id="main" className="container">
-        <OAuthErrorCard />
-        <Outlet />
+        <AppFrame value>
+          <OAuthErrorCard />
+          <Outlet />
+        </AppFrame>
       </main>
       {showFooter ? (
         <footer className="site-footer">

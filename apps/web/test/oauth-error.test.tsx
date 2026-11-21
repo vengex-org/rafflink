@@ -27,6 +27,20 @@ describe("sign-in error card", () => {
     )
   })
 
+  it("is as wide as the viewer card above a giveaway and a text column above any other page", async () => {
+    mockFetch(giveawayRoutes)
+    const onGiveaway = renderApp("/g/ABCDE?error=access_denied")
+    const giveawayCard = await onGiveaway.findByRole("heading", {
+      name: "Sign-in with Twitch failed",
+    })
+    expect(giveawayCard.closest(".page")?.getAttribute("data-width")).toBe("compact")
+    onGiveaway.unmount()
+
+    const onHome = renderApp("/?error=access_denied")
+    const homeCard = await onHome.findByRole("heading", { name: "Sign-in with Twitch failed" })
+    expect(homeCard.closest(".page")?.getAttribute("data-width")).toBe("text")
+  })
+
   it("explains a redirect mismatch to the operator and links the setup steps", async () => {
     mockFetch({})
 

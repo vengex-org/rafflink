@@ -1,18 +1,15 @@
 /* The home page: hero with the stream and phone picture, the three moves, the tickets and self-host cards, the footer.
-   Bands run edge to edge, so the page column and the app bar widen to 80rem here and every band keeps its own content width. */
+   Bands run edge to edge, so the page column lets go of its width here and every band keeps the frame width inside. */
 
 main.container:has(> .home) {
   max-width: none;
   padding: 0;
 }
 
-main.container:has(> .home) > .state-card {
-  width: min(40rem, 100% - 2 * var(--gutter));
+/* The home page has no gutter of its own, so a sign-in error above it keeps one. */
+main.container:has(> .home) > .oauth-error {
+  width: min(var(--page-text), 100% - 2 * var(--gutter));
   margin: var(--space-3) auto 0;
-}
-
-.layout:has(> main.container > .home) .app-bar-inner {
-  max-width: 80rem;
 }
 
 .home {
@@ -21,7 +18,7 @@ main.container:has(> .home) > .state-card {
 
 .home-wrap {
   width: 100%;
-  max-width: 80rem;
+  max-width: calc(var(--page-wide) + 2 * var(--gutter));
   margin-inline: auto;
   padding-inline: var(--gutter);
 }
@@ -452,10 +449,6 @@ main.container:has(> .home) > .state-card {
   line-height: 1.6;
 }
 
-.home-demo {
-  margin-top: 1.75rem;
-}
-
 .home-steps {
   display: flex;
   flex-direction: column;
@@ -865,11 +858,6 @@ main.container:has(> .home) > .state-card {
 }
 
 @media (min-width: 48rem) {
-  .home-wrap,
-  .layout:has(> main.container > .home) .app-bar-inner {
-    padding-inline: var(--space-5);
-  }
-
   .home-tiers {
     grid-template-columns: repeat(4, 1fr);
   }
