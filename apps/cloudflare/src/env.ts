@@ -1,10 +1,10 @@
-import type { GiveawayRoomDO } from "./durable-objects/giveaway-room-do.ts"
+import type { GiveawayRoomObject } from "./durable-objects/giveaway-room-do.ts"
 import type { TokenQueueDO } from "./durable-objects/token-queue-do.ts"
 
 /** The bindings of `wrangler.jsonc`; the plain string values of the environment are the settings of `resolveConfig`. */
 export interface WorkerEnv {
   readonly DB: D1Database
-  readonly ROOMS: DurableObjectNamespace<GiveawayRoomDO>
+  readonly ROOMS: DurableObjectNamespace<GiveawayRoomObject>
   readonly QUEUE: DurableObjectNamespace<TokenQueueDO>
   readonly ENTRY_USER_LIMITER: RateLimit
   readonly ENTRY_IP_LIMITER: RateLimit

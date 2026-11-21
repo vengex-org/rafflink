@@ -25,7 +25,7 @@ const viewerTag = "viewer"
  * One giveaway's room in a SQLite-backed Durable Object named by the giveaway id. Live pages are
  * hibernating WebSockets of the object; the storage alarm runs {@link runRoomAlarm}.
  */
-export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
+export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   private readonly opened: Promise<OpenRoom>
 
   constructor(ctx: DurableObjectState, env: WorkerEnv) {
