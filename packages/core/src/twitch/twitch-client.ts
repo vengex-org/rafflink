@@ -65,6 +65,8 @@ export type TokenValidation =
 
 export class TwitchClient {
   private readonly jwks: ReturnType<typeof createRemoteJWKSet>
+  private appToken: { readonly accessToken: string; readonly expiresAt: number } | null = null
+  private appTokenGrant: Promise<string> | null = null
 
   constructor(
     private readonly config: ResolvedConfig,
@@ -104,9 +106,18 @@ export class TwitchClient {
     )
   }
 
-  /** An app access token (client credentials grant); needs no user, so it serves lookups the app makes on its own. */
+  /**
+   * An app access token (client credentials grant); needs no user, so it serves lookups the app makes on its own.
+   * The token is kept until a tenth of its lifetime is left, and callers at once share one grant.
+   */
   async appAccessToken(): Promise<string> {
-    return this.tokenRequest({ grant_type: "client_credentials" }, parseAppToken)
+    if (this.appToken !== null && Date.now() < this.appToken.expiresAt) {
+      return this.appToken.accessToken
+    }
+    this.appTokenGrant ??= this.grantAppToken().finally(() => {
+      this.appTokenGrant = null
+    })
+    return this.appTokenGrant
   }
 
   async verifyIdToken(idToken: string, expectedNonce: string): Promise<VerifiedIdToken> {
@@ -268,6 +279,16 @@ export class TwitchClient {
       : { status: "unavailable" }
   }
 
+  private async grantAppToken(): Promise<string> {
+    const startedAt = Date.now()
+    const grant = await this.tokenRequest({ grant_type: "client_credentials" }, parseAppToken)
+    this.appToken = {
+      accessToken: grant.accessToken,
+      expiresAt: startedAt + grant.expiresInSeconds * appTokenUsableShare * 1000,
+    }
+    return grant.accessToken
+  }
+
   private async tokenRequest<T>(
     params: Record<string, string>,
     parse: (body: unknown) => Parsed<T, "malformed">,
@@ -413,6 +434,9 @@ const baseBadgeVersions: Readonly<Record<SubscriptionGroup, string>> = {
 }
 
 const globalBadgeVersion = "0"
+
+/** The part of an app token's lifetime it is used for, so a call that is slow to start does not meet it expired. */
+const appTokenUsableShare = 0.9
 
 const tierGroups: Readonly<Record<Tier, SubscriptionGroup>> = {
   "1000": "sub_t1",

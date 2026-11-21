@@ -44,9 +44,15 @@ export class ChannelBadges {
       }
       this.cache.set(broadcasterId, entry)
     }
-    const badges = await entry.badges
+    let badges: SubscriberBadges | null
+    try {
+      badges = await entry.badges
+    } catch (error) {
+      this.forget(broadcasterId, entry)
+      throw error
+    }
     if (badges !== null) return badges
-    if (this.cache.get(broadcasterId) === entry) this.cache.delete(broadcasterId)
+    this.forget(broadcasterId, entry)
     return noBadges
   }
 
@@ -66,6 +72,10 @@ export class ChannelBadges {
       console.warn("channel badges unavailable", { broadcasterId, errorClass: errorClass(error) })
       return null
     }
+  }
+
+  private forget(broadcasterId: string, entry: Cached): void {
+    if (this.cache.get(broadcasterId) === entry) this.cache.delete(broadcasterId)
   }
 
   private dropExpired(now: Instant): void {

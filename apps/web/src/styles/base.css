@@ -237,6 +237,8 @@ button:disabled {
 }
 
 .account-menu-panel {
+  margin: 0;
+  list-style: none;
   position: absolute;
   inset: calc(100% + var(--space-1)) 0 auto auto;
   z-index: 10;
@@ -253,6 +255,8 @@ button:disabled {
 
 .account-menu-panel a,
 .account-menu-panel button {
+  display: block;
+  width: 100%;
   padding: var(--space-2);
   border: 0;
   border-radius: var(--r-sm);

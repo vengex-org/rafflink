@@ -23,6 +23,13 @@ describe("twitchImageUrl", () => {
     expect(twitchImageUrl(value)).toBeNull()
   })
 
+  it("accepts a URL of 512 characters and rejects one of 513", () => {
+    const prefix = "https://static-cdn.jtvnw.net/"
+
+    expect(twitchImageUrl(prefix + "a".repeat(512 - prefix.length))).not.toBeNull()
+    expect(twitchImageUrl(prefix + "a".repeat(513 - prefix.length))).toBeNull()
+  })
+
   it("rejects a value that is not a string", () => {
     expect(twitchImageUrl(undefined)).toBeNull()
     expect(twitchImageUrl(null)).toBeNull()

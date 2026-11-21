@@ -46,10 +46,18 @@ export function parseTokenResponse(body: unknown): Parsed<ExchangedCode, "malfor
 }
 
 /** The app access token of a client credentials grant. */
-export function parseAppToken(body: unknown): Parsed<string, "malformed"> {
-  return isRecord(body) && typeof body.access_token === "string"
-    ? { ok: true, value: body.access_token }
-    : malformed
+export interface AppToken {
+  readonly accessToken: string
+  readonly expiresInSeconds: number
+}
+
+export function parseAppToken(body: unknown): Parsed<AppToken, "malformed"> {
+  if (!isRecord(body)) return malformed
+  const { access_token: accessToken, expires_in: expiresInSeconds } = body
+  if (typeof accessToken !== "string") return malformed
+  if (typeof expiresInSeconds !== "number" || !Number.isFinite(expiresInSeconds)) return malformed
+  if (expiresInSeconds <= 0) return malformed
+  return { ok: true, value: { accessToken, expiresInSeconds } }
 }
 
 /** Users of a lookup by login; a login Twitch does not know is absent. */

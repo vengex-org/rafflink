@@ -6,7 +6,7 @@ import {
   websocket,
   type FakeTwitch,
 } from "@rafflink/fake-twitch"
-import { resolveConfig } from "../config.ts"
+import { resolveConfig, type ResolvedConfig } from "../config.ts"
 import { ChannelBadges } from "./channel-badges.ts"
 import { TwitchClient } from "./twitch-client.ts"
 
@@ -25,6 +25,7 @@ let fake: FakeTwitch
 let server: ReturnType<typeof Bun.serve>
 let now: number
 let badges: ChannelBadges
+let config: ResolvedConfig
 
 beforeEach(() => {
   fake = createFakeTwitch({
@@ -35,7 +36,7 @@ beforeEach(() => {
     keepaliveTimeoutSeconds: 10,
   })
   server = Bun.serve({ port: 0, fetch: fake.app.fetch, websocket })
-  const config = resolveConfig({
+  config = resolveConfig({
     TWITCH_CLIENT_ID: "client-1",
     TWITCH_CLIENT_SECRET: "secret-1",
     TOKEN_SEAL_KEYS: "key",
@@ -105,6 +106,29 @@ describe("ChannelBadges", () => {
 
     expect((await badges.of("200")).sub_t1).toBe(t1)
     expect((await badges.of("201")).sub_t1).toBe(t3)
+  })
+
+  it("does not keep a failure that is not Twitch's and passes it on", async () => {
+    let reads = 0
+    const broken = new ChannelBadges(
+      {
+        appAccessToken: () => {
+          reads += 1
+          return Promise.reject(new TypeError("bug"))
+        },
+        channelSubscriberBadges: () => Promise.reject(new Error("not reached")),
+        globalSubscriberBadge: () => Promise.reject(new Error("not reached")),
+      },
+      { now: () => now },
+      config,
+    )
+
+    const first = await broken.of("200").catch((error: unknown) => error)
+    const second = await broken.of("200").catch((error: unknown) => error)
+
+    expect(first).toBeInstanceOf(TypeError)
+    expect(second).toBeInstanceOf(TypeError)
+    expect(reads).toBe(2)
   })
 
   it("answers no badges when Twitch fails and does not keep that answer", async () => {

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import {
   createFakeTwitch,
   globalSubscriberBadgeUrl,
@@ -330,6 +330,31 @@ describe("appAccessToken and userIdsByLogin", () => {
     expect(ids.size).toBe(150)
     expect(ids.get("user149")).toBe("1149")
     expect(callsTo("/helix/users")).toBe(2)
+  })
+
+  it("reuses the app token until it nears its end and mints one at once for callers together", async () => {
+    const now = spyOn(Date, "now")
+    now.mockReturnValue(1_000_000)
+    const [first, second] = await Promise.all([client.appAccessToken(), client.appAccessToken()])
+    const third = await client.appAccessToken()
+
+    expect(second).toBe(first)
+    expect(third).toBe(first)
+    expect(callsTo("/oauth2/token")).toBe(1)
+
+    now.mockReturnValue(1_000_000 + 5_184_000 * 1000)
+    const renewed = await client.appAccessToken()
+
+    expect(renewed).not.toBe(first)
+    expect(callsTo("/oauth2/token")).toBe(2)
+    now.mockRestore()
+  })
+
+  it("does not keep a failed app token request", async () => {
+    fake.control.failNext("token", 503, 1)
+
+    expect(await rejection(client.appAccessToken())).toBeInstanceOf(TwitchUnavailable)
+    expect(typeof (await client.appAccessToken())).toBe("string")
   })
 
   it("classifies a token endpoint 429 on the app token as rate limited", async () => {

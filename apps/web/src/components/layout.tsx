@@ -133,8 +133,8 @@ function StreamerAvatar({ streamer }: { readonly streamer: SignedInStreamer }) {
 }
 
 /**
- * The account button (picture and name) with a small menu: the dashboard and Log out. Escape and a click or
- * focus outside close it, Escape returning focus to the button; opening moves focus to the first item.
+ * The account button (picture and name) that shows a short list: the dashboard and Log out. Escape and a click or
+ * focus outside close it, Escape returning focus to the button.
  */
 function AccountMenu({
   streamer,
@@ -153,7 +153,6 @@ function AccountMenu({
 
   useEffect(() => {
     if (!open) return
-    root.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus()
     const outside = (event: Event) => {
       if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false)
     }
@@ -180,29 +179,33 @@ function AccountMenu({
         className="button text"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
       >
         <StreamerAvatar streamer={streamer} />
         {streamer.displayName}
       </button>
       {open ? (
-        <div id={menuId} role="menu" className="account-menu-panel">
-          <Link role="menuitem" to="/dashboard" onClick={() => setOpen(false)}>
-            {t("nav.myGiveaways")}
-          </Link>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={busy}
-            onClick={() => {
-              setOpen(false)
-              onSignOut()
-            }}
-          >
-            {t("nav.logout")}
-          </button>
-        </div>
+        <ul id={menuId} className="account-menu-panel">
+          <li>
+            <Link to="/dashboard" onClick={() => setOpen(false)}>
+              {t("nav.myGiveaways")}
+            </Link>
+          </li>
+          <li>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                // The panel unmounts with the click; focus on the button keeps keyboard users in place when the logout fails.
+                button.current?.focus()
+                setOpen(false)
+                onSignOut()
+              }}
+            >
+              {t("nav.logout")}
+            </button>
+          </li>
+        </ul>
       ) : null}
     </div>
   )

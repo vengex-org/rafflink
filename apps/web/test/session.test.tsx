@@ -88,10 +88,10 @@ describe("header session", () => {
     })
     const view = renderApp("/dashboard")
     fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
-    fireEvent.click(view.getByRole("menuitem", { name: "Log out" }))
+    fireEvent.click(view.getByRole("button", { name: "Log out" }))
 
     expect(await view.findByRole("link", { name: "Log in" })).toBeTruthy()
-    expect(view.queryByRole("menuitem", { name: "Log out" })).toBeNull()
+    expect(view.queryByRole("button", { name: "Log out" })).toBeNull()
     expect(
       await view.findByRole("heading", { level: 1, name: /Fair Twitch giveaways/ }),
     ).toBeTruthy()
@@ -247,22 +247,23 @@ describe("header account menu", () => {
     const { view, button } = await openMenu()
 
     expect(button.getAttribute("aria-expanded")).toBe("false")
-    expect(view.queryByRole("menu")).toBeNull()
+    expect(view.queryByRole("link", { name: "My giveaways" })).toBeNull()
     expect(view.queryByRole("link", { name: "How it works" })).toBeNull()
     expect(view.queryByRole("link", { name: "Demo giveaway" })).toBeNull()
     expect(view.queryByRole("button", { name: "Log out" })).toBeNull()
   })
 
-  it("opens on click with My giveaways and Log out and moves focus to the first item", async () => {
+  it("opens on click with My giveaways and Log out", async () => {
     const { view, button } = await openMenu()
 
     fireEvent.click(button)
 
     expect(button.getAttribute("aria-expanded")).toBe("true")
-    const items = within(view.getByRole("menu")).getAllByRole("menuitem")
-    expect(items.map((item) => item.textContent)).toEqual(["My giveaways", "Log out"])
-    expect(items[0]?.getAttribute("href")).toBe("/dashboard")
-    expect(document.activeElement?.textContent).toBe("My giveaways")
+    const panel = document.getElementById(button.getAttribute("aria-controls") ?? "")
+    expect(panel).not.toBeNull()
+    expect(within(panel ?? view.container).getAllByRole("listitem")).toHaveLength(2)
+    expect(view.getByRole("link", { name: "My giveaways" }).getAttribute("href")).toBe("/dashboard")
+    expect(view.getByRole("button", { name: "Log out" })).toBeTruthy()
   })
 
   it("closes on Escape and returns focus to the button", async () => {
@@ -271,7 +272,7 @@ describe("header account menu", () => {
 
     fireEvent.keyDown(document.body, { key: "Escape" })
 
-    expect(view.queryByRole("menu")).toBeNull()
+    expect(view.queryByRole("link", { name: "My giveaways" })).toBeNull()
     expect(button.getAttribute("aria-expanded")).toBe("false")
     expect(document.activeElement).toBe(button)
   })
@@ -281,27 +282,37 @@ describe("header account menu", () => {
     fireEvent.click(button)
 
     fireEvent.pointerDown(document.body)
-    expect(view.queryByRole("menu")).toBeNull()
+    expect(view.queryByRole("link", { name: "My giveaways" })).toBeNull()
 
     fireEvent.click(button)
     fireEvent.click(button)
-    expect(view.queryByRole("menu")).toBeNull()
+    expect(view.queryByRole("link", { name: "My giveaways" })).toBeNull()
   })
 
-  it("stays open on a click inside the menu panel itself", async () => {
+  it("stays open on a click inside the panel itself", async () => {
     const { view, button } = await openMenu()
     fireEvent.click(button)
 
-    fireEvent.pointerDown(view.getByRole("menu"))
+    fireEvent.pointerDown(view.getByRole("link", { name: "My giveaways" }))
 
-    expect(view.getByRole("menu")).toBeTruthy()
+    expect(view.getByRole("link", { name: "My giveaways" })).toBeTruthy()
+  })
+
+  it("keeps focus on the account button after Log out is chosen", async () => {
+    const { view, button } = await openMenu()
+    fireEvent.click(button)
+
+    view.getByRole("button", { name: "Log out" }).focus()
+    fireEvent.click(view.getByRole("button", { name: "Log out" }))
+
+    expect(document.activeElement).toBe(button)
   })
 
   it("posts the logout from the menu item", async () => {
     const { view, button, requests } = await openMenu()
     fireEvent.click(button)
 
-    fireEvent.click(view.getByRole("menuitem", { name: "Log out" }))
+    fireEvent.click(view.getByRole("button", { name: "Log out" }))
 
     await waitFor(() =>
       expect(requests.map((request) => request.route)).toContain("POST /auth/logout"),

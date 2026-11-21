@@ -196,13 +196,17 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     }),
   )
 
-  app.get("/api/live/:id/badges", (c) =>
-    withOwnedRoom(c, deps, async (giveaway) => {
-      const body: BadgesJson = await badges.of(giveaway.broadcasterId)
-      c.header("Cache-Control", "no-store")
-      return c.json(body)
-    }),
-  )
+  // No room is involved, so a giveaway whose room is unreachable still gets its badges.
+  app.get("/api/live/:id/badges", async (c) => {
+    const giveaway = await deps.accounts.findOwnedGiveaway(
+      c.get("streamer").streamerId,
+      c.req.param("id"),
+    )
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    const body: BadgesJson = await badges.of(giveaway.broadcasterId)
+    c.header("Cache-Control", "no-store")
+    return c.json(body)
+  })
 
   app.get("/api/admin/usage", async (c) => {
     if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
