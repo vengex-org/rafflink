@@ -843,6 +843,19 @@ describe("GiveawayRoom live push of entrants", () => {
     ).toEqual([2, 3])
   })
 
+  it("tells when the committed drand round is published, and nothing before the commit", async () => {
+    const { room, clock } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    expect(room.liveSnapshot().drawAvailableAt).toBeNull()
+    room.close()
+    expect(room.liveSnapshot().drawAvailableAt).toBeNull()
+
+    await room.commit()
+
+    expect(room.liveSnapshot().drawAvailableAt).toBe(genesisMs + 30_000)
+  })
+
   it("keeps the entrants out of the snapshot a GET returns", () => {
     const { room } = setup()
     room.enter(viewer("1"))

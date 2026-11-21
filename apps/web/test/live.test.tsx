@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { reconnectDelayMs } from "../src/lib/use-live.ts"
@@ -373,6 +373,55 @@ describe("live page: drawing", () => {
       await view.findByText(/Only 3 entered, so you may get fewer winners than this\./),
     ).toBeTruthy()
     expect(view.getByRole("button", { name: "Draw winners" }).hasAttribute("disabled")).toBe(false)
+  })
+})
+
+const drawsIn = (clock: string) => new RegExp(`Drawing opens in ${clock}[.]`)
+
+describe("live page: waiting for the drand round", () => {
+  const now = Date.UTC(2026, 10, 21, 12)
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+    jest.setSystemTime(now)
+  })
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it("counts down to the committed round and enables the draw when it is published", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () =>
+        ok({ ...liveSnapshot, status: "closed", drawAvailableAt: now + 20_000 }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findAllByText(drawsIn("0:20"))).not.toHaveLength(0)
+    const draw = view.getByRole("button", { name: "Draw winners" })
+    expect(draw.hasAttribute("disabled")).toBe(true)
+    act(() => jest.advanceTimersByTime(19_000))
+    expect(await view.findAllByText(drawsIn("0:01"))).not.toHaveLength(0)
+    act(() => jest.advanceTimersByTime(1000))
+    await waitFor(() => expect(draw.hasAttribute("disabled")).toBe(false))
+    expect(view.queryByText(/Waiting for the public random number/)).toBeNull()
+  })
+
+  it("shows the countdown from availableAt when a draw answers round-pending", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
+      "POST /api/dash/giveaways/gid-1/draw": () => ({
+        status: 409,
+        body: { kind: "round-pending", availableAt: now + 12_000 },
+      }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.click(await view.findByRole("button", { name: "Draw winners" }))
+    fireEvent.click(view.getByRole("button", { name: "Yes, draw winners" }))
+
+    expect(await view.findAllByText(drawsIn("0:12"))).not.toHaveLength(0)
+    expect(view.getByRole("button", { name: "Draw winners" }).hasAttribute("disabled")).toBe(true)
   })
 })
 

@@ -471,6 +471,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.draw.label": "Vyžrebovať víťazov",
   "live.draw.detail": "Víťazi sa vyberú náhodne. Nedá sa to vrátiť späť.",
   "live.draw.confirm": "Áno, vyžrebovať",
+  "live.draw.waiting": "Čaká sa na verejné náhodné číslo (drand). Žrebovanie sa otvorí o {clock}.",
   "live.winners.title": "Víťazi",
   "live.winners.pageOrChat":
     "Každý víťaz má na prevzatie výhry obmedzený čas. Preberie ju na stránke súťaže alebo napísaním do tvojho chatu.",

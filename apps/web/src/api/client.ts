@@ -406,9 +406,16 @@ export function closeEntries(id: string): Promise<CloseKind | Rejected> {
   return act(`/api/dash/giveaways/${encodeURIComponent(id)}/close`, {}, closeKinds)
 }
 
+/** What a draw answered: the outcome, and for `round-pending` the instant the committed round is published. */
+export type DrawAnswer =
+  | { readonly kind: Exclude<DrawKind, "round-pending"> | Rejected }
+  | { readonly kind: "round-pending"; readonly availableAt: number }
+
 /** The count is the giveaway's own setting, so the draw sends none. */
-export function drawWinners(id: string): Promise<DrawKind | Rejected> {
-  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, {}, drawKinds)
+export async function drawWinners(id: string): Promise<DrawAnswer> {
+  const source = await post(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, {})
+  const kind = answerKind(source, drawKinds)
+  return kind === "round-pending" ? { kind, availableAt: num(source, "availableAt") } : { kind }
 }
 
 export function setWinnerCount(id: string, count: number): Promise<SetWinnerCountKind | Rejected> {
@@ -514,12 +521,19 @@ async function act<K extends string>(
   payload: unknown,
   kinds: readonly K[],
 ): Promise<K | Rejected> {
+  return answerKind(await post(path, payload), kinds)
+}
+
+async function post(path: string, payload: unknown): Promise<Json> {
   const { body } = await send(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   })
-  const source = record(body, "action")
+  return record(body, "action")
+}
+
+function answerKind<K extends string>(source: Json, kinds: readonly K[]): K | Rejected {
   return Object.hasOwn(source, "kind") ? oneOf(source, "kind", kinds) : "rejected"
 }
 
@@ -666,6 +680,7 @@ function parseSharedSnapshotFields(source: Json) {
     winners: list(source, "winners", parseWinner),
     roleRefreshFailures: num(source, "roleRefreshFailures"),
     eventSubFailures: num(source, "eventSubFailures"),
+    drawAvailableAt: nullableNum(source, "drawAvailableAt"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
   }
 }

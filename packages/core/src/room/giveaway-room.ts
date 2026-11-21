@@ -236,6 +236,8 @@ export type OverlaySnapshot = RoomSummary
     readonly winners: readonly LiveWinner[]
     readonly roleRefreshFailures: number
     readonly eventSubFailures: number
+    /** When the committed drand round is published and a draw can start; null before the room has committed. */
+    readonly drawAvailableAt: Instant | null
   }
 
 /** The streamer's live page snapshot: the overlay's plus the winners' chat. */
@@ -773,6 +775,10 @@ export class GiveawayRoom {
       ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
+      drawAvailableAt:
+        state.commitment === null
+          ? null
+          : roundTime(state.commitment.chain, state.commitment.drandRound),
     }
   }
 

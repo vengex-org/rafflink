@@ -465,6 +465,9 @@ Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
 - The room commits from its alarm right after the close and again at the draw if the alarm has not run; `close()`
   stays synchronous. The draw never uses local randomness: while the round is missing it answers `round-pending`
   (409) or `beacon-unavailable` (503) and draws nothing.
+- No auto-draw (owner decision): the streamer's snapshot carries `drawAvailableAt`, the instant the committed round is
+  published. The live page counts down to it and keeps Draw disabled until then; a `round-pending` answer starts
+  the same countdown from its `availableAt`.
 - Leaf = SHA-256(`platform|platformUserId|tickets|` + salt), tree leaf = SHA-256(0x00 + leaf + tickets as 8
   bytes, big-endian), node = SHA-256(0x01 + left + right), an odd node moves up unchanged. The drand signature is
   not verified with BLS on the Worker (10 ms CPU limit); the Worker pins the chain hash in the request path and

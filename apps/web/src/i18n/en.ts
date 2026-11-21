@@ -468,6 +468,7 @@ export const en = {
   "live.draw.label": "Draw winners",
   "live.draw.detail": "The winners are picked at random. You cannot undo this.",
   "live.draw.confirm": "Yes, draw winners",
+  "live.draw.waiting": "Waiting for the public random number (drand). Drawing opens in {clock}.",
   "live.winners.title": "Winners",
   "live.winners.pageOrChat":
     "Each winner has a limited time to claim the prize. They claim on the giveaway page or by typing in your chat.",

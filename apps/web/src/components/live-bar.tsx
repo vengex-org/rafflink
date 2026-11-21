@@ -8,6 +8,7 @@ import {
   setWinnerCount,
 } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
+import { formatClock, useMsUntil } from "../lib/use-remaining.ts"
 import { overlayUrl } from "../lib/links.ts"
 import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
 import type { useAction } from "../lib/use-action.ts"
@@ -68,6 +69,7 @@ export function LiveBar({
           run={run}
           entrantCount={snapshot.entrantCount}
           winnerCount={snapshot.winnerCount}
+          drawAvailableAt={snapshot.drawAvailableAt}
         />
       ) : null}
       {snapshot.status === "open" ? (
@@ -263,17 +265,27 @@ function DrawStep({
   run,
   entrantCount,
   winnerCount,
-}: Doing & { readonly entrantCount: number; readonly winnerCount: number }) {
+  drawAvailableAt,
+}: Doing & {
+  readonly entrantCount: number
+  readonly winnerCount: number
+  readonly drawAvailableAt: number | null
+}) {
   const i18n = useI18n()
   const { t } = i18n
+  // A round-pending answer carries the same instant; it covers a snapshot older than the commit.
+  const [pendingUntil, setPendingUntil] = useState<number | null>(null)
+  const waitMs = useMsUntil(drawAvailableAt ?? pendingUntil)
   const blocked = entrantCount === 0 ? t("live.draw.nobody") : null
   return (
     <>
       <p id="draw-help" className="live-draw-help">
         {blocked
-          ?? (winnerCount > entrantCount
-            ? t("live.draw.fewer", { count: i18n.number(entrantCount) })
-            : t("live.draw.random"))}{" "}
+          ?? (waitMs > 0
+            ? t("live.draw.waiting", { clock: formatClock(waitMs) })
+            : winnerCount > entrantCount
+              ? t("live.draw.fewer", { count: i18n.number(entrantCount) })
+              : t("live.draw.random"))}{" "}
         {t("live.draw.fixed", { count: i18n.number(winnerCount) })}
       </p>
       <ConfirmAction
@@ -283,12 +295,16 @@ function DrawStep({
         detail={t("live.draw.detail")}
         confirmLabel={t("live.draw.confirm")}
         busy={busy}
-        disabled={blocked !== null}
+        disabled={blocked !== null || waitMs > 0}
         className="live-btn primary"
         shortcut="d"
         onConfirm={() =>
           void run(
-            () => drawWinners(id),
+            async () => {
+              const answer = await drawWinners(id)
+              if (answer.kind === "round-pending") setPendingUntil(answer.availableAt)
+              return answer.kind
+            },
             (outcome) => `drawResult.${outcome}`,
           )
         }
