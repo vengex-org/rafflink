@@ -292,8 +292,10 @@ describe("live page: drawing", () => {
 
     const view = renderApp("/live/gid-1")
     expect(await view.findByRole("heading", { name: "Entries are closed" })).toBeTruthy()
-    expect(view.getByText("3 people entered. Draw the winner when you are ready.")).toBeTruthy()
-    fireEvent.click(view.getByRole("button", { name: "Draw winner" }))
+    expect(
+      await view.findByText("3 people entered. Draw the winner when you are ready."),
+    ).toBeTruthy()
+    fireEvent.click(await view.findByRole("button", { name: "Draw winner" }))
 
     expect(await view.findByText("Winner drawn.")).toBeTruthy()
     expect(view.queryByRole("dialog")).toBeNull()
@@ -626,13 +628,19 @@ describe("live page: winners", () => {
     expect(within(side).getByText(text).className).toBe("sr-only")
   })
 
-  it("shows no controls toolbar once the winner on the plate claimed, since nothing is left to do", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winners: drawn.winners.slice(1, 2) }) })
+  it("keeps only Draw next winner in the toolbar once the winner on the plate claimed", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () =>
+        ok({ ...drawn, entrantCount: 9, winners: drawn.winners.slice(1, 2) }),
+    })
 
     const view = renderApp("/live/gid-1")
 
     expect(await view.findByText("Bob claimed the prize.")).toBeTruthy()
-    expect(view.queryByRole("toolbar", { name: "Giveaway controls" })).toBeNull()
+    const toolbar = within(view.getByRole("toolbar", { name: "Giveaway controls" }))
+    expect(toolbar.getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Draw next winnerD",
+    ])
   })
 
   it("asks before it picks another winner and names who loses the prize", async () => {

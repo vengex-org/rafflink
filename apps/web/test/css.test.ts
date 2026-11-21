@@ -81,6 +81,17 @@ describe("stylesheet", () => {
     expect(others.flatMap(({ text }) => [...text.matchAll(/var\(--/g)]).length).toBeGreaterThan(0)
   })
 
+  it("lets the claim status chip of the live stage wrap inside its column instead of overflowing it", () => {
+    const live = sheet(join(stylesDir, "pages/live.css")).text
+    const chip = blocksOf(live, ".live-timer .status-chip {")[0] ?? ""
+    const timer = blocksOf(live, ".live-timer {")[0] ?? ""
+
+    expect(chip).toMatch(/white-space:\s*normal/)
+    expect(chip).toMatch(/max-width:\s*100%/)
+    expect(timer).toMatch(/min-width:\s*0/)
+    expect(live).toMatch(/\.live-reveal \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/)
+  })
+
   it("switches off animation and transition under reduced motion", () => {
     const blocks = everySheet.flatMap(({ text }) =>
       blocksOf(text, "@media (prefers-reduced-motion: reduce)"),
