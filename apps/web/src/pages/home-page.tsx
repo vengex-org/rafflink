@@ -94,8 +94,13 @@ export function HomePage() {
 
 /** Ko-fi is named on the link; any other support page gets the generic wording. */
 function isKoFi(url: string): boolean {
-  const host = URL.parse(url)?.hostname
-  return host === "ko-fi.com" || host?.endsWith(".ko-fi.com") === true
+  let host: string
+  try {
+    host = new URL(url).hostname
+  } catch {
+    return false
+  }
+  return host === "ko-fi.com" || host.endsWith(".ko-fi.com")
 }
 
 // The streamer sign-in callback redirects here with `?signin=` when it fails.
