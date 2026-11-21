@@ -182,7 +182,7 @@ function DrawnStage({
                 lines={snapshot.winnerChat}
                 hint={
                   snapshot.winnerChatOpen ? (
-                    <ChatHint facts={facts} waiting={current.claim.state === "waiting"} />
+                    <ChatHint waiting={current.claim.state === "waiting"} />
                   ) : null
                 }
               />
@@ -285,21 +285,10 @@ function ClaimHint({
     : rich("live.claimHint.keyword", { name: who, keyword: <strong>{keyword}</strong> })
 }
 
-/** What the winner chat box will show once the winner writes, and, while the claim is open, whether a message claims the prize. */
-function ChatHint({
-  facts,
-  waiting,
-}: {
-  readonly facts: GiveawayView | null
-  readonly waiting: boolean
-}) {
-  const { t, rich } = useI18n()
-  if (!waiting) return t("live.chat.hint.settled")
-  if (facts === null) return t("live.chat.hint")
-  const keyword = facts.rules.claimKeyword
-  return keyword === null
-    ? t("live.chat.hint.anyChat")
-    : rich("live.chat.hint.keyword", { keyword: <strong>{keyword}</strong> })
+/** What the winner chat box will show once the winner writes. The claim rule stays in the winner instruction above. */
+function ChatHint({ waiting }: { readonly waiting: boolean }) {
+  const { t } = useI18n()
+  return t(waiting ? "live.chat.hint" : "live.chat.hint.settled")
 }
 
 function tierText(entrant: Entrant, t: I18n["t"]): string {

@@ -137,21 +137,6 @@
   margin-inline-start: auto;
 }
 
-/* The settings popover hangs under its button: the app bar's fixed offset does not fit this bar, whose height changes
-   with the window. Without anchor positioning it keeps that offset. */
-@supports (anchor-name: --live-settings) {
-  .live-top-end {
-    anchor-name: --live-settings;
-  }
-
-  .live-top .settings-panel:popover-open {
-    position-anchor: --live-settings;
-    inset: auto;
-    top: anchor(bottom);
-    right: anchor(right);
-    margin-top: var(--space-1);
-  }
-}
 .live-top .pill {
   min-height: 2.75rem;
   padding-inline: 1rem;

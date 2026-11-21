@@ -330,10 +330,13 @@ describe("demo views", () => {
     expect(view.getByText(/type/i, { selector: ".viewer-alt" })).toBeTruthy()
   })
 
-  it("shows the chat hint with the keyword while the winner's chat is watched, and the settled hint after the claim", () => {
+  it("shows the chat hint without the keyword while the winner's chat is watched, and no hint after the claim", () => {
     const view = renderApp("/demo?view=streamer")
     advanceInSlices(3000 + 1500 + 5000 + 1500 + 2500 + 3000)
-    expect(view.container.querySelector(".winner-chat-hint strong")?.textContent).toBe("!claim")
+    expect(view.container.querySelector(".winner-chat-hint")?.textContent).toBe(
+      "The winner's chat messages show here.",
+    )
+    expect(view.container.querySelector(".live-claim-hint")?.textContent).toContain("!claim")
 
     fireEvent.click(view.getByRole("radio", { name: "Viewer" }))
     fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))
@@ -341,7 +344,7 @@ describe("demo views", () => {
 
     advanceInSlices(300)
 
-    expect(view.container.querySelector(".winner-chat-hint strong")).toBeNull()
+    expect(view.container.querySelector(".winner-chat-hint")).toBeNull()
   })
 
   it("shows a later pick as out of time once its claim clock ends", () => {

@@ -486,10 +486,6 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.clean.show": "Zobraziť ovládanie",
   "live.chat.title": "Chat",
   "live.chat.hint": "Správy výhercu z chatu sa ukážu tu.",
-  "live.chat.hint.anyChat":
-    "Keď výherca napíše do chatu, jeho správy sa ukážu tu a výhra sa označí ako prevzatá.",
-  "live.chat.hint.keyword":
-    "Správy výhercu z chatu sa ukážu tu. Výhra sa označí ako prevzatá, keď napíše {keyword}.",
   "live.chat.hint.settled": "Ak výherca napíše do chatu, uvidíš to tu.",
   "live.chip": "LIVE",
   "live.gives": "{streamer} rozdáva {prize}",

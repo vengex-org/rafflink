@@ -39,7 +39,7 @@ export function SettingsMenu({ children }: { readonly children?: ReactNode | und
     <>
       <button
         type="button"
-        className="icon-button"
+        className="icon-button settings-button"
         popoverTarget={panelId}
         aria-label={t("settings.label")}
       >
