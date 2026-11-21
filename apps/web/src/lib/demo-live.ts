@@ -53,6 +53,8 @@ export function demoLive(
       lastNames: entrants.slice(-3).map((entrant) => entrant.displayName),
       winners,
       winnerChat: demoChatLines(state, chatText),
+      winnerChatOpen:
+        status === "drawn" && winners.some((winner) => winner.claim.state === "waiting"),
       rerollOpen: status === "drawn" && unsettled,
       rerollBlocked: null,
       roleRefreshFailures: 0,
