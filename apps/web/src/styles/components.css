@@ -1,14 +1,43 @@
-/* Page container: the app bar and the page content share one width and gutter, so their left edges line up. */
+/* Page frame: the app bar, the page and the footer share one width and gutter, so their edges line up on every route. */
 
 .container {
   width: 100%;
-  max-width: calc(var(--column) + 2 * var(--gutter));
+  max-width: calc(var(--page-wide) + 2 * var(--gutter));
   margin: 0 auto;
   padding-inline: var(--gutter);
 }
 
 main.container {
-  padding-block: var(--space-3) var(--space-5);
+  padding-block: var(--space-4) var(--space-5);
+}
+
+/* One page column inside the frame (the Page component): wide fills it, text and compact narrow it in the middle. */
+.page {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.page[data-width="text"] {
+  max-width: var(--page-text);
+}
+
+.page[data-width="compact"] {
+  max-width: var(--page-compact);
+}
+
+/* The h1 row of an app page, with the page's main action at the end when it has one. */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.page-head h1,
+.page-head p {
+  margin: 0;
 }
 
 .toggle {
@@ -108,8 +137,25 @@ main.container {
   font-size: var(--fs-sm);
 }
 
+/* Text buttons sit closer together than filled ones, so the demo link, the streamer's name and Log out read as one group. */
+.app-bar .button {
+  white-space: nowrap;
+}
+
 .app-bar .button.text {
-  padding-inline: 1.125rem;
+  padding-inline: 0.75rem;
+}
+
+/* A signed-in phone bar holds the name and Log out next to the settings, so the brand keeps only its mark. */
+@media (max-width: 29.99rem) {
+  .app-bar-inner:has(.app-bar-end > .button.text ~ .button.text) .brand {
+    gap: 0;
+    font-size: 0;
+  }
+
+  .app-bar .button.text {
+    padding-inline: var(--space-1);
+  }
 }
 
 @media (hover: hover) {
@@ -327,23 +373,6 @@ main.container {
     opacity: 0;
     transform: translateY(16px) scale(0.97);
   }
-}
-
-.page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-1) var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.page-head h1 {
-  margin: 0;
-}
-
-.page-head p {
-  margin: 0;
 }
 
 .facts {
@@ -978,13 +1007,14 @@ legend {
   }
 }
 
-/* Not found: the status code on a lime plate, like a winner's name, then what to do. */
+/* Not found: the status code on a lime plate, like a winner's name, then what to do; centred like every other state screen. */
 
 .not-found {
   display: grid;
-  justify-items: start;
+  justify-items: center;
   gap: var(--space-1);
   padding-block: var(--space-4);
+  text-align: center;
 }
 
 .not-found h1,

@@ -11,7 +11,6 @@ export function GiveawayState({
   tone,
   title,
   icon,
-  line,
   aside,
   children,
 }: {
@@ -19,8 +18,6 @@ export function GiveawayState({
   readonly title: string
   /** The round icon before the title; a win block has none. */
   readonly icon?: ReactNode
-  /** A line under the title, such as the prize. */
-  readonly line?: string
   /** What sits at the end of the title row, such as the claim clock. */
   readonly aside?: ReactNode
   readonly children: ReactNode
@@ -31,7 +28,6 @@ export function GiveawayState({
         {icon === undefined ? null : <span className="viewer-state-icon">{icon}</span>}
         <div className="viewer-state-title">
           <h2>{title}</h2>
-          {line === undefined ? null : <p>{line}</p>}
         </div>
         {aside}
       </div>

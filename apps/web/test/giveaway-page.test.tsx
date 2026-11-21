@@ -135,16 +135,15 @@ describe("giveaway landing", () => {
     expect(view.getByText(/Some viewers get extra tickets/)).toBeTruthy()
   })
 
-  it("explains the two steps and offers one Enter with Twitch button", async () => {
+  it("offers one Enter with Twitch button and no step count before the sign-in starts", async () => {
     mockFetch(giveawayRoute)
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText("Step 1 of 2: Sign in")).toBeTruthy()
-    expect(view.getByRole("list", { name: "Steps" }).textContent).toContain("Get your ticket")
-    expect(view.getByRole("link", { name: "Enter with Twitch" }).getAttribute("href")).toBe(
-      "/auth/twitch/viewer/start?giveaway=ABCDE",
-    )
+    expect(
+      (await view.findByRole("link", { name: "Enter with Twitch" })).getAttribute("href"),
+    ).toBe("/auth/twitch/viewer/start?giveaway=ABCDE")
+    expect(view.queryByRole("list", { name: "Steps" })).toBeNull()
   })
 
   it("answers not found for an unknown code", async () => {

@@ -4,6 +4,7 @@ import { ClaimPanel } from "../components/giveaway-claim.tsx"
 import { EntryPanel } from "../components/giveaway-entry.tsx"
 import { GiveawayFacts, GiveawayRules } from "../components/giveaway-facts.tsx"
 import { GiveawayHead, GiveawayPhase } from "../components/giveaway-head.tsx"
+import { Page } from "../components/page.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { WinnerPlate } from "../components/winner-plate.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -69,7 +70,7 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
   }
 
   return (
-    <article className="viewer demo">
+    <Page width="compact" as="article" className="viewer demo">
       <div className="demo-bar">
         <StatusChip tone="info">{t("demo.label")}</StatusChip>
         <p>{t("demo.note")}</p>
@@ -96,13 +97,15 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
           />
         )}
       </div>
-      {step === "entered" || step === "rising" ? (
-        <ClosingFacts giveaway={giveaway} />
-      ) : (
-        <GiveawayFacts kind={drawn ? "pool" : "entry"} giveaway={giveaway} />
-      )}
-      <GiveawayRules giveaway={giveaway} />
-    </article>
+      <div className="viewer-details">
+        {step === "entered" || step === "rising" ? (
+          <ClosingFacts giveaway={giveaway} />
+        ) : (
+          <GiveawayFacts kind={drawn ? "pool" : "entry"} giveaway={giveaway} />
+        )}
+        <GiveawayRules giveaway={giveaway} />
+      </div>
+    </Page>
   )
 }
 

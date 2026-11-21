@@ -1,8 +1,7 @@
 /* The viewer's giveaway page, drawn for a phone: the prize header, one state block, the detail rows and the rules.
-   On a wider window the same column stays 30rem wide in the middle. */
+   On a wider window the same compact column (Page width="compact") stays in the middle of the frame. */
 
 main.container:has(> .viewer) {
-  max-width: 30rem;
   padding-block: 1.25rem 0;
 }
 
@@ -203,6 +202,8 @@ main.container:has(> .viewer) {
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: var(--bg);
+  /* Its own ink, so the figure stays readable inside the lime win block in the dark theme. */
+  color: var(--ink);
 }
 
 .viewer-tickets strong {
@@ -252,14 +253,6 @@ main.container:has(> .viewer) {
 .viewer-state-head:has(.claim-ring) h2 {
   font-size: 3.25rem;
   white-space: nowrap;
-}
-
-.viewer-state[data-tone="win"] .viewer-state-title p {
-  margin-top: 0.625rem;
-  font-size: 1.1875rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  line-height: 1.25;
 }
 
 .viewer-state[data-tone="win"] .viewer-note {
@@ -372,15 +365,21 @@ main.container:has(> .viewer) {
 
 /* Detail rows */
 
-.viewer-facts {
-  padding: 0;
+/* The details card: the fact rows and the rules row in one card, so the page shows one block of details, not two. */
+
+.viewer-details {
+  border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: var(--shadow);
 }
 
-:root[data-theme="dark"] .viewer-facts {
-  box-shadow: 0 0 0 1px var(--line);
+.viewer-facts {
+  margin: 0;
+  padding: 0;
+}
+
+.viewer-facts + .viewer-rules {
+  border-top: 1px solid var(--line);
 }
 
 .viewer-facts > div {
@@ -410,8 +409,17 @@ main.container:has(> .viewer) {
   text-align: right;
 }
 
+/* A sentence reads from the left under its label instead of wrapping against the right edge. */
+.viewer-facts > div:has(> dd[data-format="text"]) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.125rem;
+  padding-block: 0.75rem;
+}
+
 .viewer-facts dd[data-format="text"] {
   font-weight: 500;
+  text-align: left;
 }
 
 .viewer-facts dd[data-format="mono"] {
@@ -420,22 +428,20 @@ main.container:has(> .viewer) {
 
 /* Rules: a row that opens the list */
 
-.viewer-rules {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
 .viewer-rules summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: 3.25rem;
   padding: 0 var(--space-2);
-  border-radius: var(--r-lg);
   font-size: var(--fs-sm);
   font-weight: 600;
   list-style: none;
+}
+
+.viewer-rules summary:focus-visible {
+  border-radius: var(--r-lg);
+  outline-offset: -2px;
 }
 
 .viewer-rules summary::-webkit-details-marker {

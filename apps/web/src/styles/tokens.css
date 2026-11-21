@@ -71,7 +71,14 @@
   --space-5: 3rem;
   --target: 44px;
   --target-lg: 56px;
-  --column: 64rem;
+  /*
+   * Page widths: the app bar, the footer and every page share --page-wide and --gutter, so their edges line up
+   * on every route. A page narrows its own column to --page-text (reading and forms) or --page-compact (the
+   * phone-sized viewer card) through the Page component; nothing else sets a page width.
+   */
+  --page-wide: 72rem;
+  --page-text: 44rem;
+  --page-compact: 30rem;
   --gutter: 1rem;
 
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
@@ -82,6 +89,8 @@
   --fs-lg: 1.125rem;
   --fs-title: 1.5rem;
   --fs-display: clamp(1.875rem, 1.3rem + 2.4vw, 2.75rem);
+  /* The h1 of every app page; the home hero and the viewer's prize keep their own larger sizes. */
+  --fs-page-title: clamp(1.75rem, 1.45rem + 1.2vw, 2.25rem);
 
   /* One pixel of the 1920px stream canvas the live page is drawn on; it shrinks with the window down to about half. */
   --u: clamp(0.55px, calc(100vw / 1920), 1px);

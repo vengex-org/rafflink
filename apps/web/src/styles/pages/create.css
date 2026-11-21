@@ -1,10 +1,5 @@
 /* Create flow: one card in the middle of the page with the steps on top, the fields of the step, and the actions under a rule. */
 
-.create {
-  max-width: 46rem;
-  margin-inline: auto;
-}
-
 .wizard {
   margin: 0;
   padding: var(--space-3);

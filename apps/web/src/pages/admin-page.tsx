@@ -12,6 +12,7 @@ import {
 } from "../components/icons.tsx"
 import { Stat } from "../components/live-parts.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
+import { Page } from "../components/page.tsx"
 import { StateCard } from "../components/state-card.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useLoad } from "../lib/use-load.ts"
@@ -28,15 +29,17 @@ export function AdminPage() {
       if (result.value === "unauthorized") return <SignIn why="signIn.why.admin" />
       if (result.value === "forbidden") {
         return (
-          <StateCard
-            tone="warning"
-            align="center"
-            icon={<LockIcon />}
-            title={t("admin.only.title")}
-            level={1}
-          >
-            <p>{t("admin.only.text")}</p>
-          </StateCard>
+          <Page width="text">
+            <StateCard
+              tone="warning"
+              align="center"
+              icon={<LockIcon />}
+              title={t("admin.only.title")}
+              level={1}
+            >
+              <p>{t("admin.only.text")}</p>
+            </StateCard>
+          </Page>
         )
       }
       return <Report report={result.value} />
@@ -49,7 +52,9 @@ function Report({ report }: { readonly report: AdminUsage }) {
   const { queue } = report
   return (
     <>
-      <h1 className="admin-title">{t("admin.title")}</h1>
+      <div className="page-head">
+        <h1>{t("admin.title")}</h1>
+      </div>
       <div className="card-grid">
         <section className="card" aria-labelledby="usage">
           <h2 id="usage">{t("admin.usage.title")}</h2>

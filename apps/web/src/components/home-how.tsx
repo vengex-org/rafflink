@@ -1,5 +1,4 @@
 import type { ReactNode } from "react"
-import { Link } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { claimPresets, initialValues } from "../pages/create-values.ts"
@@ -21,7 +20,7 @@ const exampleChat = [
   { name: "nightjar_77", tickets: 1 },
 ] as const
 
-/** The "three moves" section: the headline and demo link on the left, the steps with their small previews on the right. */
+/** The "three moves" section: the headline on the left, the steps with their small previews on the right. */
 export function HomeHow() {
   const { t, plural } = useI18n()
   return (
@@ -30,9 +29,6 @@ export function HomeHow() {
         <div>
           <h2 id="home-how-title">{t("home.how.title")}</h2>
           <p className="home-lede">{t("home.how.lede")}</p>
-          <Link className="button outlined home-demo" to="/demo">
-            {t("home.how.demo")}
-          </Link>
         </div>
         <ol className="home-steps" aria-label={t("home.how.list")}>
           <Step

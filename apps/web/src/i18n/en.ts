@@ -70,7 +70,6 @@ export const en = {
   "home.how.title": "From chat to winner in three moves.",
   "home.how.lede":
     "Set it up before the stream, share one link, draw on camera. Everything your viewers see updates live.",
-  "home.how.demo": "Open the demo giveaway",
   "home.how.list": "How it works",
   "home.how.create.title": "Create the giveaway",
   "home.how.create.text":

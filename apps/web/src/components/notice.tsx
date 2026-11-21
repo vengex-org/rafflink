@@ -3,6 +3,7 @@ import { Link } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { AlertIcon, ArrowLeftIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
+import { Page } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
 
 export function Loading() {
@@ -18,26 +19,28 @@ export function Loading() {
 export function Failed() {
   const { t } = useI18n()
   return (
-    <StateCard
-      tone="danger"
-      align="center"
-      icon={<AlertIcon />}
-      title={t("failed.title")}
-      level={1}
-    >
-      <p role="alert">{t("failed.text")}</p>
-      <button type="button" className="button" onClick={() => window.location.reload()}>
-        <RefreshIcon />
-        {t("common.reloadPage")}
-      </button>
-    </StateCard>
+    <Page width="text">
+      <StateCard
+        tone="danger"
+        align="center"
+        icon={<AlertIcon />}
+        title={t("failed.title")}
+        level={1}
+      >
+        <p role="alert">{t("failed.text")}</p>
+        <button type="button" className="button" onClick={() => window.location.reload()}>
+          <RefreshIcon />
+          {t("common.reloadPage")}
+        </button>
+      </StateCard>
+    </Page>
   )
 }
 
 export function NotFound({ title }: { readonly title: MessageKey }) {
   const { t } = useI18n()
   return (
-    <section className="not-found">
+    <Page width="text" as="section" className="not-found">
       <p className="not-found-code" aria-hidden="true">
         <span>404</span>
       </p>
@@ -47,7 +50,7 @@ export function NotFound({ title }: { readonly title: MessageKey }) {
         <ArrowLeftIcon />
         {t("notFound.home")}
       </Link>
-    </section>
+    </Page>
   )
 }
 
@@ -85,12 +88,14 @@ export function Status({ children }: { readonly children: ReactNode }) {
 export function SignIn({ why }: { readonly why: MessageKey }) {
   const { t } = useI18n()
   return (
-    <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
-      <p>{t(why)}</p>
-      <a className="button block" href="/auth/twitch/streamer/start">
-        <LogInIcon />
-        {t("signIn.button")}
-      </a>
-    </StateCard>
+    <Page width="text">
+      <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
+        <p>{t(why)}</p>
+        <a className="button block" href="/auth/twitch/streamer/start">
+          <LogInIcon />
+          {t("signIn.button")}
+        </a>
+      </StateCard>
+    </Page>
   )
 }

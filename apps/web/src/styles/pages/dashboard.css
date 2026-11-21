@@ -102,10 +102,6 @@
   margin: 0;
 }
 
-.dash-title {
-  margin-bottom: var(--space-2);
-}
-
 /* Empty dashboard: the pitch and the one button on the left, the three moves on the right. */
 .dash-empty {
   display: grid;

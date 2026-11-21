@@ -12,6 +12,7 @@ import {
   ShuffleIcon,
 } from "../components/icons.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
+import { Page } from "../components/page.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { useLoad } from "../lib/use-load.ts"
 import { verifyDraw, type Commitment, type OwnEntry, type Verdict } from "../lib/verify-draw.ts"
@@ -43,7 +44,7 @@ function Verify({ code, load }: { readonly code: string; readonly load: VerifyLo
   const { verify, leaves, mine } = load
   const { commitment } = verify
   return (
-    <article className="verify">
+    <Page width="text" as="article" className="verify">
       <header>
         <Link className="button text small" to={`/g/${code}`}>
           <ArrowLeftIcon />
@@ -60,7 +61,7 @@ function Verify({ code, load }: { readonly code: string; readonly load: VerifyLo
           <Checker load={load} commitment={commitment} leaves={leaves} mine={mine} code={code} />
         </>
       )}
-    </article>
+    </Page>
   )
 }
 
