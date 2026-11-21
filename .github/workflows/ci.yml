@@ -14,12 +14,41 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Pushes and pull requests from this repository run on the owner's self-hosted runner. Pull requests from
+    # forks stay on a GitHub runner, so code from outside never runs on that machine.
+    runs-on: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","gaming-pc"]') || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
-      - run: bun run check
+      - name: Pick the checks for the changed files
+        id: scope
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # A push to master always runs everything; a pull request runs what its changed files need.
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then echo "scope=full" >> "$GITHUB_OUTPUT"; exit 0; fi
+          scope=docs
+          for file in $(git diff --name-only "$BASE"...HEAD); do
+            case "$file" in
+              *.md | docs/*) ;;
+              apps/web/src/i18n/*) [ "$scope" = docs ] && scope=text ;;
+              *) scope=full ;;
+            esac
+          done
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+          echo "Check scope: $scope"
+      # docs: Markdown only. text: also translation strings, whose keys are typed. full: everything.
+      - run: bun run format:check
+      - run: bun run lint
+        if: steps.scope.outputs.scope != 'docs'
+      - run: bun run typecheck
+        if: steps.scope.outputs.scope != 'docs'
+      - run: bun run test
+        if: steps.scope.outputs.scope == 'full'
       - run: bun run build
+        if: steps.scope.outputs.scope == 'full'
