@@ -33,15 +33,20 @@ describe("wrangler.jsonc", () => {
     expect(crons).toEqual([hours === 1 ? "0 * * * *" : `0 */${hours} * * *`])
   })
 
-  it("sets the entry rate limits to the config defaults per minute", async () => {
+  it("sets the rate limits to the config defaults per minute", async () => {
     const { rateLimits } = await readWranglerConfig()
-    const { entryUserLimitPerMinute, entryIpLimitPerMinute } = resolveConfig(required)
+    const { entryUserLimitPerMinute, entryIpLimitPerMinute, leavesIpLimitPerMinute } =
+      resolveConfig(required)
 
     expect(rateLimits.ENTRY_USER_LIMITER).toMatchObject({
       limit: entryUserLimitPerMinute,
       period: 60,
     })
     expect(rateLimits.ENTRY_IP_LIMITER).toMatchObject({ limit: entryIpLimitPerMinute, period: 60 })
+    expect(rateLimits.LEAVES_IP_LIMITER).toMatchObject({
+      limit: leavesIpLimitPerMinute,
+      period: 60,
+    })
   })
 
   // Wrangler appends its own INSERT to the file text, so a last statement without `;` runs into it.

@@ -9,6 +9,7 @@ import {
   giveawaysOfStreamerSql,
   insertGiveawaySql,
   ownedGiveawaySql,
+  recordRetentionFailureSql,
   replaceStreamerTokenSql,
   setRetentionArmedSql,
   setStatusSql,
@@ -188,10 +189,19 @@ export class AccountStore {
     await this.sql.run(setStatusSql, [status, giveawayId])
   }
 
-  /** Ids of up to `limit` giveaways that are no longer open and whose room the retention sweep has not woken. */
-  async listUnarmedRetention(limit: number): Promise<string[]> {
-    const rows = await this.sql.all(unarmedRetentionSql, [limit])
+  /**
+   * Ids of up to `limit` giveaways that are no longer open and whose room the retention sweep has not
+   * woken, those with the fewest failed sweeps first; a giveaway with `maxAttempts` failed sweeps is left out.
+   */
+  async listUnarmedRetention(limit: number, maxAttempts: number): Promise<string[]> {
+    const rows = await this.sql.all(unarmedRetentionSql, [maxAttempts, limit])
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
+  }
+
+  /** Counts a failed sweep of the giveaway and returns how many have failed so far. */
+  async recordRetentionFailure(giveawayId: string): Promise<number> {
+    const [row] = await this.sql.all(recordRetentionFailureSql, [giveawayId])
+    return row === undefined ? 0 : new RowReader("giveaways", row).int("retention_attempts")
   }
 
   /** Idempotent: the sweep never lists the giveaway again. */

@@ -92,6 +92,7 @@ describe("applyAccountsMigrations", () => {
       "0001_init.sql",
       "0002_retention_armed.sql",
       "0003_winner_count.sql",
+      "0004_retention_attempts.sql",
     ])
     expect(tables()).toEqual(["giveaways", "schema_migrations", "streamer_tokens", "streamers"])
   })

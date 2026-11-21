@@ -21,6 +21,7 @@ export interface AppDeps {
   readonly admins: AdminDirectory
   readonly entryUserLimiter: RateLimiter
   readonly entryIpLimiter: RateLimiter
+  readonly leavesIpLimiter: RateLimiter
   /** The address of the client behind a request as this target's edge reports it, or null when it reports none. */
   readonly clientAddress: (request: Request) => string | null
 }

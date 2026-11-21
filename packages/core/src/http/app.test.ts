@@ -1927,6 +1927,52 @@ describe("draw commitment", () => {
     expect(leaves.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
   })
 
+  it("serves a repeat download of the leaves from the cache without reading the account store or waking the room", async () => {
+    const { code } = await committedGiveaway()
+    const first = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const lookup = spyOn(harness.deps.accounts, "findGiveawayByCode")
+    const wake = spyOn(harness.deps.rooms, "get")
+
+    const second = await new Browser(harness).request(`/api/g/${code}/leaves`)
+
+    expect(await second.text()).toBe(await first.text())
+    expect(second.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
+    expect(lookup).not.toHaveBeenCalled()
+    expect(wake).not.toHaveBeenCalled()
+  })
+
+  it("does not cache the answer of a room that has not committed", async () => {
+    const { code, id } = await createGiveaway(harness)
+    const early = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    expect(early.status).toBe(409)
+    harness.rooms.roomFor(id).close()
+    await harness.rooms.roomFor(id).commit()
+
+    const later = await new Browser(harness).request(`/api/g/${code}/leaves`)
+
+    expect(later.status).toBe(200)
+  })
+
+  it("refuses a download beyond the limit from one address before waking the room, and lets another address in", async () => {
+    await restart({ LEAVES_CACHE_SECONDS: "0", LEAVES_IP_LIMIT_PER_MINUTE: "1" })
+    const { code } = await committedGiveaway()
+    const from = (address: string) =>
+      new Browser(harness).request(`/api/g/${code}/leaves`, {
+        headers: { [testAddressHeader]: address },
+      })
+    expect((await from("203.0.113.7")).status).toBe(200)
+    const wake = spyOn(harness.deps.rooms, "get")
+
+    const refused = await from("203.0.113.7")
+    const otherAddress = await from("203.0.113.8")
+
+    expect(refused.status).toBe(429)
+    expect(await refused.json()).toEqual({ error: "rate-limited" })
+    expect(refused.headers.get("cache-control")).toBe("no-store")
+    expect(otherAddress.status).toBe(200)
+    expect(wake).toHaveBeenCalledTimes(1)
+  })
+
   it("gives the salt to the entrant's browser only, and keeps it out of the public answers", async () => {
     const { code, viewer } = await committedGiveaway()
     const stranger = new Browser(harness)

@@ -321,6 +321,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, 60_000),
+    leavesIpLimiter: new MemoryRateLimiter(clock, config.leavesIpLimitPerMinute, 60_000),
     clientAddress: (request) => request.headers.get(testAddressHeader),
   }
   return {

@@ -80,6 +80,7 @@ export type RoomConfig = Pick<
   | "drandPeriodSeconds"
   | "drandLeadSeconds"
   | "commitRetrySeconds"
+  | "commitMaxAttempts"
   | "drandPublishMarginSeconds"
 >
   & ChatWatcherConfig
@@ -327,8 +328,10 @@ export class GiveawayRoom {
   // Lost with the object; the first outcome after that is pushed again.
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
-  // Lost with the object; the first alarm after that commits at once.
+  // Lost with the object; the first alarm after that commits at once and counts its attempts again.
   private commitRetryAt: Instant | null = null
+  private commitAttempts = 0
+  private commitGaveUp = false
   // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
   private winnerChat: readonly ChatterLine[] = []
   private winnerChatSeq = 0
@@ -529,14 +532,30 @@ export class GiveawayRoom {
     }
     const mirrorDue = state.mirrorPending && now >= (this.mirrorRetryAt ?? now)
     if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
-    const commitDue = awaitsCommit(state) && now >= (this.commitRetryAt ?? now)
-    if (commitDue) this.commitRetryAt = now + this.config.commitRetrySeconds * 1000
+    const commitDue = this.commitDue(state, now)
     this.guarded("chat", () => {
       this.syncChat()
       this.chat.onAlarm()
     })
     this.guarded("alarm", () => this.rearm())
     return { refreshRoles, mirrorStatus: mirrorDue ? state.status : null, commit: commitDue }
+  }
+
+  // Each alarm that asks for a commit is an attempt and waits twice as long as the one before. The wake after the last
+  // attempt finds the limit reached, logs it and arms nothing more; `draw` still commits when someone draws.
+  private commitDue(state: RoomState, now: Instant): boolean {
+    if (!awaitsCommit(state) || this.commitGaveUp || now < (this.commitRetryAt ?? now)) return false
+    if (this.commitAttempts >= this.config.commitMaxAttempts) {
+      this.commitGaveUp = true
+      console.error("room commit gave up", {
+        giveawayId: state.giveawayId,
+        attempts: this.commitAttempts,
+      })
+      return false
+    }
+    this.commitRetryAt = now + this.config.commitRetrySeconds * 1000 * 2 ** this.commitAttempts
+    this.commitAttempts++
+    return true
   }
 
   /** Clears the pending mirror once `status` reached the account store; a newer status stays pending. */
@@ -1100,7 +1119,7 @@ export class GiveawayRoom {
       open ? state.rolesRefreshAt : null,
       this.pushDueAt,
       state.mirrorPending ? (this.mirrorRetryAt ?? this.clock.now()) : null,
-      awaitsCommit(state) ? (this.commitRetryAt ?? this.clock.now()) : null,
+      awaitsCommit(state) && !this.commitGaveUp ? (this.commitRetryAt ?? this.clock.now()) : null,
       // One past the inclusive deadline, so the alarm finds the claim time over and pushes the viewers.
       claimDeadline === null ? null : claimDeadline + 1,
       this.rerollWindowWake(state),

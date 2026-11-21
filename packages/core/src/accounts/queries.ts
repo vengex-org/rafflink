@@ -24,9 +24,13 @@ export const insertGiveawaySql = `INSERT INTO giveaways
 /** Parameters: status, giveaway id. */
 export const setStatusSql = "UPDATE giveaways SET status = ? WHERE id = ?"
 
-/** Ids of giveaways the room reported as no longer open and the retention sweep has not woken yet, oldest first (parameter 1 is how many). */
+/** Ids of giveaways the room reported as no longer open and the retention sweep has not woken yet, fewest failed sweeps first, then oldest. Parameters: attempts below which a giveaway is tried, how many. */
 export const unarmedRetentionSql =
-  "SELECT id FROM giveaways WHERE retention_armed = 0 AND status != 'open' ORDER BY created_at, id LIMIT ?"
+  "SELECT id FROM giveaways WHERE retention_armed = 0 AND status != 'open' AND retention_attempts < ? ORDER BY retention_attempts, created_at, id LIMIT ?"
+
+/** Parameters: giveaway id. Returns the new count of failed sweeps. */
+export const recordRetentionFailureSql =
+  "UPDATE giveaways SET retention_attempts = retention_attempts + 1 WHERE id = ? RETURNING retention_attempts"
 
 /** A giveaway id (parameter 1). */
 export const setRetentionArmedSql = "UPDATE giveaways SET retention_armed = 1 WHERE id = ?"

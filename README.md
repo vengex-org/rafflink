@@ -286,7 +286,9 @@ You need a Cloudflare account with Workers and D1. Run the `wrangler` commands i
 A cron trigger (`0 * * * *`, in `wrangler.jsonc`) validates every stored streamer token once an hour, as
 Twitch requires. If you change `VALIDATE_PERIOD_SECONDS`, change the cron to match; a test checks that they
 agree. The same cron wakes the rooms of closed giveaways once, up to `ENTRY_RETENTION_SWEEP_BATCH` per
-run, so each arms the alarm that deletes the entrants' data `ENTRY_RETENTION_SECONDS` after the close.
+run, so each arms the alarm that deletes the entrants' data `ENTRY_RETENTION_SECONDS` after the close. A room
+that fails sorts behind the others and is given up, with an error log, after `ENTRY_RETENTION_SWEEP_MAX_ATTEMPTS`
+failed runs.
 
 Optional usage meter: the Cloudflare free plan allows 100,000 Worker requests a day. To show the day's use on
 the admin page and warn streamers when fewer than 25,000 are left, add `CLOUDFLARE_ACCOUNT_ID` as a var and
@@ -300,6 +302,11 @@ refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache 
 seconds old.
 The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
 `/api/g/<code>` request when it shows winners, to read the prize; the giveaway and demo pages make no session request.
+
+The leaf list of a committed giveaway (`/api/g/CODE/leaves`, up to a megabyte) is kept in the same cache for
+`LEAVES_CACHE_SECONDS`. A download that misses the cache wakes the giveaway's room, so each client address may make
+`LEAVES_IP_LIMIT_PER_MINUTE` of them (the `LEAVES_IP_LIMITER` binding on Cloudflare, whose limit comes from
+`wrangler.jsonc`). On a `workers.dev` address the cache stores nothing, so the limit is the only guard there.
 
 ### What a viewer costs
 

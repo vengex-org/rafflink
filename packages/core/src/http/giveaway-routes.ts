@@ -39,7 +39,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     const session = await readViewerSession(c, deps)
     const key = `${deps.config.publicUrl}/api/g/${encodeURIComponent(code)}`
     if (session === null) {
-      const cached = await readPublicCache(deps, key)
+      const cached = await readPublicCache(deps, key, deps.config.publicGiveawayCacheSeconds)
       if (cached !== null) return jsonText(c, withViewer(cached, { kind: "signed-out" }))
     }
     const giveaway = await deps.accounts.findGiveawayByCode(code)
@@ -48,7 +48,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     const summary = await room.summary()
     const publicText = JSON.stringify(publicGiveaway(deps, giveaway, summary))
     if (session === null) {
-      await writePublicCache(deps, key, publicText)
+      await writePublicCache(deps, key, publicText, deps.config.publicGiveawayCacheSeconds)
       return jsonText(c, withViewer(publicText, { kind: "signed-out" }))
     }
     const me = await viewerState(deps, giveaway, session, summary)
@@ -97,20 +97,29 @@ export function giveawayRoutes(deps: AppDeps): Hono {
   })
 
   app.get("/api/g/:code/leaves", async (c) => {
-    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    const code = c.req.param("code")
+    const key = `${deps.config.publicUrl}/api/g/${encodeURIComponent(code)}/leaves`
+    const cached = await readPublicCache(deps, key, deps.config.leavesCacheSeconds)
+    if (cached !== null) return immutableJson(c, cached)
+    const address = deps.clientAddress(c.req.raw)
+    if (address !== null && !(await deps.leavesIpLimiter.allow(address))) {
+      c.header("Cache-Control", "no-store")
+      return c.json({ error: "rate-limited" }, 429)
+    }
+    const giveaway = await deps.accounts.findGiveawayByCode(code)
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const leaves = await deps.rooms.get(giveaway.id).leaves()
     if (leaves === null) {
       c.header("Cache-Control", "no-store")
       return c.json({ error: "not-committed" }, 409)
     }
-    // The list never changes once the room committed.
-    c.header("Cache-Control", "public, max-age=31536000, immutable")
     const body: LeavesJson = {
       hashes: leaves.map((leaf) => toHex(leaf.hash)),
       tickets: leaves.map((leaf) => leaf.tickets),
     }
-    return c.json(body)
+    const text = JSON.stringify(body)
+    await writePublicCache(deps, key, text, deps.config.leavesCacheSeconds)
+    return immutableJson(c, text)
   })
 
   // The salt is the entrant's secret: only the browser that holds the viewer cookie of that entry gets it.
@@ -199,9 +208,13 @@ function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: PublicSummar
   }
 }
 
-// A cache that fails is a cache that missed: the page still loads from the account store and the room.
-async function readPublicCache(deps: AppDeps, key: string): Promise<string | null> {
-  if (deps.config.publicGiveawayCacheSeconds === 0) return null
+// A cache that fails is a cache that missed: the answer still comes from the account store and the room.
+async function readPublicCache(
+  deps: AppDeps,
+  key: string,
+  ttlSeconds: number,
+): Promise<string | null> {
+  if (ttlSeconds === 0) return null
   try {
     return await deps.publicCache.read(key)
   } catch (error) {
@@ -210,10 +223,15 @@ async function readPublicCache(deps: AppDeps, key: string): Promise<string | nul
   }
 }
 
-async function writePublicCache(deps: AppDeps, key: string, text: string): Promise<void> {
-  if (deps.config.publicGiveawayCacheSeconds === 0) return
+async function writePublicCache(
+  deps: AppDeps,
+  key: string,
+  text: string,
+  ttlSeconds: number,
+): Promise<void> {
+  if (ttlSeconds === 0) return
   try {
-    await deps.publicCache.write(key, text, deps.config.publicGiveawayCacheSeconds)
+    await deps.publicCache.write(key, text, ttlSeconds)
   } catch (error) {
     console.warn("public cache write failed", { errorClass: errorClass(error) })
   }
@@ -226,6 +244,12 @@ function withViewer(publicText: string, me: ViewerState): string {
 
 function jsonText(c: Context, text: string): Response {
   return c.body(text, 200, { "Content-Type": "application/json" })
+}
+
+// Only for a body that never changes, such as the leaves of a committed room.
+function immutableJson(c: Context, text: string): Response {
+  c.header("Cache-Control", "public, max-age=31536000, immutable")
+  return jsonText(c, text)
 }
 
 async function viewerState(

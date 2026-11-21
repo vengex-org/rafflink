@@ -48,6 +48,7 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     publicCache: new CacheApiPublicCache(caches.default),
     admins: new AdminDirectory(runtime.config, runtime.twitch),
     entryIpLimiter: new RateLimitBindingLimiter(env.ENTRY_IP_LIMITER),
+    leavesIpLimiter: new RateLimitBindingLimiter(env.LEAVES_IP_LIMITER),
     clientAddress: connectingAddress,
   }
   return createWorkerApp({ api: createApp(deps, null), rooms: env.ROOMS })
@@ -70,6 +71,7 @@ async function armRetention(env: WorkerEnv): Promise<void> {
       accounts,
       new DurableObjectRoomDirectory(env.ROOMS),
       config.entryRetentionSweepBatch,
+      config.entryRetentionSweepMaxAttempts,
     )
     console.info("retention sweep", { woken })
   } catch (error) {
