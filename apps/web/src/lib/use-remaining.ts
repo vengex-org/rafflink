@@ -4,11 +4,14 @@ import { useEffect, useState } from "react"
 export function useRemainingMs(initialMs: number): number {
   const [startedAt] = useState(() => Date.now())
   const [now, setNow] = useState(startedAt)
+  const remaining = Math.max(0, initialMs - (now - startedAt))
+  const over = remaining === 0
   useEffect(() => {
+    if (over) return
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
-  }, [])
-  return Math.max(0, initialMs - (now - startedAt))
+  }, [over])
+  return remaining
 }
 
 export function formatClock(ms: number): string {

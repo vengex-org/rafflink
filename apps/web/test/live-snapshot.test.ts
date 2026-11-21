@@ -88,3 +88,18 @@ describe("parseOverlaySnapshot", () => {
     )
   })
 })
+
+describe("snapshot drawAvailableAt", () => {
+  it("keeps the instant the committed round is published, or null", () => {
+    expect(parseLiveSnapshot({ ...liveSnapshot, drawAvailableAt: 5 }).drawAvailableAt).toBe(5)
+    expect(
+      parseOverlaySnapshot({ ...liveSnapshot, drawAvailableAt: null }).drawAvailableAt,
+    ).toBeNull()
+  })
+
+  it("rejects a snapshot without it", () => {
+    const { drawAvailableAt: _omitted, ...without } = liveSnapshot
+
+    expect(() => parseLiveSnapshot(without)).toThrow(ApiShapeError)
+  })
+})

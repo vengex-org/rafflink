@@ -472,6 +472,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.draw.label": "Vylosovat vítěze",
   "live.draw.detail": "Vítězové se vyberou náhodně. Nejde to vrátit zpět.",
   "live.draw.confirm": "Ano, vylosovat",
+  "live.draw.waiting": "Čeká se na veřejné náhodné číslo (drand). Losování se otevře za {clock}.",
   "live.winners.title": "Vítězové",
   "live.winners.pageOrChat":
     "Každý vítěz má na převzetí výhry omezený čas. Převezme ji na stránce soutěže nebo napsáním do tvého chatu.",
@@ -709,6 +710,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "terms.contact.p1": "Dotazy k těmto podmínkám: {contactEmail}.",
   "drawResult.round-pending":
     "Náhodné číslo pro toto losování ještě není zveřejněné. Zkus to znovu za pár sekund.",
+  "drawResult.round-due": "Náhodné číslo pro toto losování už letí. Zkus to znovu za chvíli.",
   "drawResult.beacon-unavailable":
     "Zdroj náhody (drand) se nepodařilo zastihnout. Nic se nevylosovalo. Zkus to znovu.",
   "giveaway.verify.link": "Ověřit toto losování",
