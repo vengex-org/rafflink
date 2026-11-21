@@ -31,6 +31,11 @@ function mockLive(routes: Readonly<Record<string, () => Reply>>) {
   })
 }
 
+/** The newest request to `route`. A page refetch (entrants, session) can land after the call a test asserts on, so `requests.at(-1)` is not that call. */
+function lastRequest(requests: ReturnType<typeof mockLive>, route: string) {
+  return requests.findLast((request) => request.route === route)
+}
+
 const drawn: LiveSnapshot = {
   ...liveSnapshot,
   status: "drawn",
@@ -270,7 +275,7 @@ describe("live page: collecting entries", () => {
     fireEvent.click(view.getByRole("button", { name: "Yes, close entries" }))
 
     expect(await view.findByText("Entries closed.")).toBeTruthy()
-    expect(requests.at(-1)?.route).toBe("POST /api/dash/giveaways/gid-1/close")
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/close")).toBeDefined()
   })
 
   it("moves the keyboard focus between the question and the button", async () => {
@@ -326,11 +331,11 @@ describe("live page: drawing", () => {
     ).toBeTruthy()
     fireEvent.click(await view.findByRole("button", { name: "Draw winner" }))
 
-    await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
+    await waitFor(() => expect(lastRequest(requests, drawPath)?.route).toBe(drawPath))
     await effectsRun()
     expect(view.container.querySelector(".toast")).toBeNull()
     expect(view.queryByRole("dialog")).toBeNull()
-    expect(requests.at(-1)).toEqual({ route: drawPath, body: {} })
+    expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: {} })
   })
 
   it("is there while entries are open, and asks before it closes them", async () => {
@@ -351,7 +356,7 @@ describe("live page: drawing", () => {
         "Entries are closed. The winner is drawn by itself when the random number is ready.",
       ),
     ).toBeTruthy()
-    expect(requests.at(-1)).toEqual({ route: drawPath, body: {} })
+    expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: {} })
   })
 
   it("keeps the button for the next winner after a draw and shows the progress against the plan", async () => {
@@ -366,10 +371,10 @@ describe("live page: drawing", () => {
     ).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Draw next winner" }))
 
-    await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
+    await waitFor(() => expect(lastRequest(requests, drawPath)?.route).toBe(drawPath))
     await effectsRun()
     expect(view.container.querySelector(".toast")).toBeNull()
-    expect(requests.at(-1)?.route).toBe(drawPath)
+    expect(lastRequest(requests, drawPath)?.route).toBe(drawPath)
   })
 
   it("draws with the d key and shows the key on the button", async () => {
@@ -385,10 +390,10 @@ describe("live page: drawing", () => {
 
     expect(draw.getAttribute("aria-keyshortcuts")).toBe("d")
     expect(draw.querySelector("kbd")?.textContent).toBe("D")
-    await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
+    await waitFor(() => expect(lastRequest(requests, drawPath)?.route).toBe(drawPath))
     await effectsRun()
     expect(view.container.querySelector(".toast")).toBeNull()
-    expect(requests.at(-1)?.route).toBe(drawPath)
+    expect(lastRequest(requests, drawPath)?.route).toBe(drawPath)
   })
 
   it.each([
@@ -432,7 +437,9 @@ describe("live page: drawing", () => {
     fireEvent.click(view.getByRole("button", { name: "Save" }))
 
     expect(await view.findByText("Winner count saved.")).toBeTruthy()
-    expect(requests.at(-1)?.body).toEqual({ count: 4 })
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/winners")?.body).toEqual({
+      count: 4,
+    })
   })
 
   it.each([
@@ -560,7 +567,7 @@ describe("live page: waiting for the drand round", () => {
     fireEvent.click(await view.findByRole("button", { name: "Draw winner" }))
 
     expect(await view.findAllByText(drawsIn("0:12"))).not.toHaveLength(0)
-    expect(requests.at(-1)?.route).toBe("POST /api/dash/giveaways/gid-1/draw")
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/draw")).toBeDefined()
   })
 
   it("counts from the server clock when the browser clock is behind", async () => {
@@ -729,7 +736,7 @@ describe("live page: winners", () => {
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
 
     expect(await view.findByText("Another winner was picked.")).toBeTruthy()
-    expect(requests.at(-1)).toEqual({
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/reroll")).toEqual({
       route: "POST /api/dash/giveaways/gid-1/reroll",
       body: { n: 2 },
     })
@@ -823,7 +830,7 @@ describe("live page: winners", () => {
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
 
     expect(await view.findByText("Another winner was picked.")).toBeTruthy()
-    expect(requests.at(-1)).toEqual({
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/reroll")).toEqual({
       route: "POST /api/dash/giveaways/gid-1/reroll",
       body: { n: 0 },
     })
@@ -938,7 +945,7 @@ describe("live page: winners", () => {
     expect(view.getByText(/Chat claim unavailable/)).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Mark as claimed for Wanda" }))
     expect(await view.findByText("Marked as claimed.")).toBeTruthy()
-    expect(requests.at(-1)).toEqual({
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/claim")).toEqual({
       route: "POST /api/dash/giveaways/gid-1/claim",
       body: { n: 0 },
     })
@@ -961,7 +968,7 @@ describe("live page: winners", () => {
       within(await pickRow(view, "Eve")).getByRole("button", { name: "Mark as claimed for Eve" }),
     )
     expect(await view.findByText("Marked as claimed.")).toBeTruthy()
-    expect(requests.at(-1)).toEqual({
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/claim")).toEqual({
       route: "POST /api/dash/giveaways/gid-1/claim",
       body: { n: 2 },
     })
@@ -1162,8 +1169,7 @@ describe("live page: winners' chat", () => {
     expect(view.queryByRole("list", { name: "Chat" })).toBeNull()
   })
 
-  const anyChatHint =
-    "When the winner writes in chat, their messages show here and the prize is marked as claimed."
+  const anyChatHint = "The winner's chat messages show here."
 
   it("says what the box will show while the winner on the plate has not written, and gives way to the first line", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
@@ -1177,7 +1183,7 @@ describe("live page: winners' chat", () => {
     expect(view.queryByText(anyChatHint)).toBeNull()
   })
 
-  it("names the claim word in the hint when the giveaway has one", async () => {
+  it("leaves the claim word to the winner instruction and does not repeat it in the chat hint", async () => {
     mockLive({
       "GET /api/live/gid-1": () => ok(drawn),
       "GET /api/g/ABCDE": () =>
@@ -1186,11 +1192,12 @@ describe("live page: winners' chat", () => {
 
     const view = renderApp("/live/gid-1")
 
-    const hint = await view.findByText(/once they write/)
-    expect(hint.textContent).toBe(
-      "The winner's chat messages show here. The prize is marked as claimed once they write mine.",
+    expect(await view.findByText(anyChatHint)).toBeTruthy()
+    await view.findByText("mine")
+    expect(view.container.querySelector(".live-claim-hint strong + strong")?.textContent).toBe(
+      "mine",
     )
-    expect(hint.querySelector("strong")?.textContent).toBe("mine")
+    expect(view.container.querySelector(".winner-chat-hint")?.textContent).toBe(anyChatHint)
   })
 
   it("keeps the chat box in a settled state: a hint before the first line, the lines after", async () => {

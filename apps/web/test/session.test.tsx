@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { setTimeout } from "node:timers/promises"
-import { cleanup, fireEvent, waitFor, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import { installFakeSocket } from "./fake-socket.ts"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
@@ -199,6 +199,8 @@ describe("header session", () => {
     const view = renderApp("/dashboard")
 
     await view.findByRole("button", { name: "Streamy" })
+    // The header listens for the lost session in an effect; a 401 before it ran would go unheard.
+    await act(async () => {})
     headerShowsStreamer.resolve()
     expect(await view.findByRole("link", { name: "Log in" })).toBeTruthy()
     expect(view.queryByRole("button", { name: "Streamy" })).toBeNull()

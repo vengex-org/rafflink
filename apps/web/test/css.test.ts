@@ -49,6 +49,17 @@ const namedColors = new Set(
 )
 
 describe("stylesheet", () => {
+  it("anchors the settings popover under its button for every menu", () => {
+    const block = everySheet.flatMap(({ text }) =>
+      blocksOf(text, "@supports (anchor-name: --settings-button)"),
+    )
+    expect(block).toHaveLength(1)
+    expect(block[0]).toContain("anchor-name: --settings-button")
+    expect(block[0]).toContain("position-anchor: --settings-button")
+    expect(block[0]).toContain("top: anchor(bottom)")
+    expect(block[0]).toContain("right: anchor(right)")
+  })
+
   it("imports the token, base, component and page sheets in one layer order", () => {
     expect(index.text).toContain("@layer tokens, base, components, pages;")
     const imported = [...index.text.matchAll(/@import "\.\/styles\/([^"]+)" layer\((\w+)\)/g)].map(

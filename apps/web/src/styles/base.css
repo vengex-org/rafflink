@@ -314,6 +314,22 @@ button:disabled {
   color: var(--ink);
 }
 
+/* The popover hangs under its button, right edges aligned, wherever the centered header column puts the button. Without
+   anchor positioning it sits at the viewport's right edge under the bar. One menu per page, so one anchor name. */
+@supports (anchor-name: --settings-button) {
+  .settings-button {
+    anchor-name: --settings-button;
+  }
+
+  .settings-panel:popover-open {
+    position-anchor: --settings-button;
+    inset: auto;
+    top: anchor(bottom);
+    right: anchor(right);
+    margin-top: var(--space-1);
+  }
+}
+
 @media (min-width: 48rem) {
   .app-nav {
     display: flex;

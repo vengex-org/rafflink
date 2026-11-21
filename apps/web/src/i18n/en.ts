@@ -481,11 +481,7 @@ export const en = {
   "live.clean.hide": "Hide controls",
   "live.clean.show": "Show controls",
   "live.chat.title": "Chat",
-  "live.chat.hint": "Messages from the winner in chat will show here.",
-  "live.chat.hint.anyChat":
-    "When the winner writes in chat, their messages show here and the prize is marked as claimed.",
-  "live.chat.hint.keyword":
-    "The winner's chat messages show here. The prize is marked as claimed once they write {keyword}.",
+  "live.chat.hint": "The winner's chat messages show here.",
   "live.chat.hint.settled": "If the winner writes in chat, you will see it here.",
   "live.chip": "LIVE",
   "live.gives": "{streamer} gives away {prize}",
