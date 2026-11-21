@@ -652,12 +652,16 @@ afterEach(() => {
 
 describe("chat claim", () => {
   it("a message from the winner claims via chat", async () => {
-    const { room, socket, winner, subscriptions } = await connectedRoom()
+    const { room, socket, winner, subscriptions, clock } = await connectedRoom()
 
     socket?.receive(chat(winner, "here I am"))
 
     expect(subscriptions.sessions).toEqual(["session-1"])
-    expect(room.liveSnapshot().winners[0]?.claim).toEqual({ state: "claimed", via: "chat" })
+    expect(room.liveSnapshot().winners[0]?.claim).toEqual({
+      state: "claimed",
+      via: "chat",
+      at: clock.now(),
+    })
   })
 
   it("messages from others are not stored", async () => {
@@ -685,20 +689,30 @@ describe("chat claim", () => {
   })
 
   it("accepts the keyword in any case, inside a longer message and around spaces", async () => {
-    const { room, socket, winner } = await connectedRoom({ claimKeyword: " !Claim " })
+    const { room, socket, winner, clock } = await connectedRoom({ claimKeyword: " !Claim " })
 
     socket?.receive(chat(winner, "  well !CLAIM it  "))
 
-    expect(room.liveSnapshot().winners[0]?.claim).toEqual({ state: "claimed", via: "chat" })
+    expect(room.liveSnapshot().winners[0]?.claim).toEqual({
+      state: "claimed",
+      via: "chat",
+      at: clock.now(),
+    })
   })
 
   it("does not let the chat overwrite a claim that was already made", async () => {
-    const { room, socket, winner } = await connectedRoom()
+    const { room, socket, winner, clock } = await connectedRoom()
     room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    const claimedAt = clock.now()
+    clock.advance(1)
 
     socket?.receive(chat(winner, "claim"))
 
-    expect(room.liveSnapshot().winners[0]?.claim).toEqual({ state: "claimed", via: "manual" })
+    expect(room.liveSnapshot().winners[0]?.claim).toEqual({
+      state: "claimed",
+      via: "manual",
+      at: claimedAt,
+    })
   })
 })
 
@@ -899,7 +913,7 @@ describe("chat claim unavailable", () => {
   })
 
   it("claims through the fresh watch after a reroll", async () => {
-    const { room, connector, subscriptions } = await drawnRoom()
+    const { room, connector, subscriptions, clock } = await drawnRoom()
     spyOn(console, "warn").mockImplementation(() => {})
     subscriptions.refusal = new Error("refused")
     connector.sockets[0]?.receive(welcome("session-1"))
@@ -912,7 +926,11 @@ describe("chat claim unavailable", () => {
     const next = room.picks()[1]?.platformUserId ?? ""
     connector.sockets[1]?.receive(chat(next, "here"))
 
-    expect(room.liveSnapshot().winners[1]?.claim).toEqual({ state: "claimed", via: "chat" })
+    expect(room.liveSnapshot().winners[1]?.claim).toEqual({
+      state: "claimed",
+      via: "chat",
+      at: clock.now(),
+    })
   })
 
   it("counts a revoked subscription as an EventSub failure", async () => {

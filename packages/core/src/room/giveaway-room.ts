@@ -144,7 +144,7 @@ export interface PublicSummary extends RoomSummary {
 
 /** A winner's claim as the live page shows it. */
 export type WinnerClaim =
-  | { readonly state: "claimed"; readonly via: ClaimedVia }
+  | { readonly state: "claimed"; readonly at: Instant; readonly via: ClaimedVia }
   | { readonly state: "waiting" | "expired" | "rerolled" }
 
 export interface LiveWinner {
@@ -964,7 +964,9 @@ function liveWinner(row: SqlRow, now: Instant): LiveWinner {
 }
 
 function winnerClaim(draw: DrawRow, now: Instant): WinnerClaim {
-  if (draw.claim.state === "claimed") return { state: "claimed", via: draw.claim.via }
+  if (draw.claim.state === "claimed") {
+    return { state: "claimed", at: draw.claim.at, via: draw.claim.via }
+  }
   if (draw.rerolled) return { state: "rerolled" }
   return { state: now > draw.claimUntil ? "expired" : "waiting" }
 }

@@ -3,6 +3,7 @@ import type { Giveaway } from "../accounts/account-store.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import type { Instant } from "../ports.ts"
 import type { LiveSnapshot, WinnerClaim } from "../room/giveaway-room.ts"
+import type { Group } from "../domain/groups.ts"
 import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
@@ -39,6 +40,9 @@ export type ViewerState =
       readonly kind: "won"
       readonly userId: string
       readonly n: number
+      /** The winner's own entry, so the won screen can show what the draw was weighted by. */
+      readonly tickets: number
+      readonly group: Group
       /** Computed by the server, so a wrong clock on the viewer's device does not change it. */
       readonly claimRemainingMs: number
       readonly claim: WinnerClaim
@@ -46,6 +50,11 @@ export type ViewerState =
       readonly chatClaimAvailable: boolean
     }
   | { readonly kind: "not-won"; readonly userId: string }
+
+/** Who the streamer cookie belongs to; `null` when there is no valid session. */
+export interface SessionJson {
+  readonly streamer: { readonly displayName: string; readonly login: string } | null
+}
 
 /** The streamer's own view of a giveaway, with the overlay token. */
 export interface DashboardGiveaway {

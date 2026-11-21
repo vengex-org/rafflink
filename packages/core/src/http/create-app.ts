@@ -5,6 +5,7 @@ import { authRoutes, type Cooldown } from "./auth-routes.ts"
 import { dashboardRoutes } from "./dashboard-routes.ts"
 import type { AppDeps } from "./deps.ts"
 import { giveawayRoutes } from "./giveaway-routes.ts"
+import { sessionRoutes } from "./session-routes.ts"
 import { securityHeadersMiddleware } from "./security-headers.ts"
 import { spaRoutes, type SpaTemplateLoader } from "./spa-routes.ts"
 
@@ -20,6 +21,7 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   app.use(securityHeadersMiddleware(deps.config))
   app.route("/", authRoutes(deps, cooldown))
   app.route("/", giveawayRoutes(deps))
+  app.route("/", sessionRoutes(deps))
   app.route("/", dashboardRoutes(deps))
   if (spaTemplate !== null) app.route("/", spaRoutes(deps, spaTemplate))
 
