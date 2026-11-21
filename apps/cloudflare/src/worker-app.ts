@@ -1,11 +1,11 @@
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type MiddlewareHandler } from "hono"
-import type { GiveawayRoomDO } from "./durable-objects/giveaway-room-do.ts"
+import type { GiveawayRoomObject } from "./durable-objects/giveaway-room-do.ts"
 
 export interface WorkerAppOptions {
   /** The HTTP app of core. */
   readonly api: Hono
-  readonly rooms: DurableObjectNamespace<GiveawayRoomDO>
+  readonly rooms: DurableObjectNamespace<GiveawayRoomObject>
 }
 
 /** Everything the Worker answers: WebSocket upgrades of the live, overlay and viewer routes, and the API of core. */

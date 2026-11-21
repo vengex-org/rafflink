@@ -4,11 +4,11 @@ import {
   type RoomDirectory,
   type RoomStub,
 } from "@rafflink/core/room/room-directory"
-import type { GiveawayRoomDO } from "../durable-objects/giveaway-room-do.ts"
+import type { GiveawayRoomObject } from "../durable-objects/giveaway-room-do.ts"
 
 /** Rooms as Durable Objects named by the giveaway id. */
 export class DurableObjectRoomDirectory implements RoomDirectory {
-  constructor(private readonly namespace: DurableObjectNamespace<GiveawayRoomDO>) {}
+  constructor(private readonly namespace: DurableObjectNamespace<GiveawayRoomObject>) {}
 
   // The stub is made per call of `get`: it belongs to the request that asked for the room.
   get(giveawayId: string): RoomStub {
@@ -18,7 +18,7 @@ export class DurableObjectRoomDirectory implements RoomDirectory {
 
 /** The room's methods as RPC calls; an overloaded or retryable object is transient, anything else is not. */
 class DurableObjectRoomStub implements RoomStub {
-  constructor(private readonly stub: DurableObjectStub<GiveawayRoomDO>) {}
+  constructor(private readonly stub: DurableObjectStub<GiveawayRoomObject>) {}
 
   init(...args: Parameters<GiveawayRoom["init"]>) {
     return inRoom(() => this.stub.init(...args))

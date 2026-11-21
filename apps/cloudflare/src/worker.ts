@@ -13,7 +13,7 @@ import type { WorkerEnv } from "./env.ts"
 import { runtimeOf } from "./runtime.ts"
 import { createWorkerApp } from "./worker-app.ts"
 
-export { GiveawayRoomDO } from "./durable-objects/giveaway-room-do.ts"
+export { GiveawayRoomObject } from "./durable-objects/giveaway-room-do.ts"
 export { TokenQueueDO } from "./durable-objects/token-queue-do.ts"
 
 const apps = new WeakMap<WorkerEnv, Promise<Hono>>()

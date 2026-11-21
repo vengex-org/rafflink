@@ -21,7 +21,7 @@ export const startWorker: StartTarget = async (env, webDir) => {
     compatibilityFlags: [...wrangler.compatibilityFlags],
     d1Databases: [d1Binding],
     durableObjects: {
-      ROOMS: { className: "GiveawayRoomDO", useSQLite: true },
+      ROOMS: { className: "GiveawayRoomObject", useSQLite: true },
       QUEUE: { className: "TokenQueueDO", useSQLite: true },
     },
     // The assets and the paths that run the Worker first are the ones of wrangler.jsonc; `_headers` is read from the folder.
