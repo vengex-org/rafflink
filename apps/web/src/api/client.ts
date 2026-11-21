@@ -163,6 +163,7 @@ export async function getSession(): Promise<SessionJson> {
       login: text(streamer, "login"),
       profileImageUrl: nullableText(streamer, "profileImageUrl"),
     },
+    donateUrl: nullableText(source, "donateUrl"),
   }
 }
 

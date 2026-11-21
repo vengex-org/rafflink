@@ -93,13 +93,17 @@ export interface MyLeafJson {
 }
 
 /** Who the streamer cookie belongs to; `null` when there is no valid session. */
-export interface SessionJson {
-  readonly streamer: {
-    readonly displayName: string
-    readonly login: string
-    readonly profileImageUrl: string | null
-  } | null
-}
+/** Who is signed in; only a signed-in streamer gets the deployment's support link (`DONATE_URL`, null when unset). */
+export type SessionJson =
+  | { readonly streamer: null }
+  | {
+      readonly streamer: {
+        readonly displayName: string
+        readonly login: string
+        readonly profileImageUrl: string | null
+      }
+      readonly donateUrl: string | null
+    }
 
 /** The streamer's own view of a giveaway, with the overlay token. */
 export interface DashboardGiveaway {

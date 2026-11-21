@@ -305,6 +305,22 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("leaves the support link null when unset or blank and accepts only an https URL", () => {
+    expect(resolveConfig(required).donateUrl).toBeNull()
+    expect(resolveConfig({ ...required, DONATE_URL: "  " }).donateUrl).toBeNull()
+    expect(
+      resolveConfig({ ...required, DONATE_URL: " https://ko-fi.com/rafflink " }).donateUrl,
+    ).toBe("https://ko-fi.com/rafflink")
+    expect(failure({ ...required, DONATE_URL: "http://ko-fi.com/rafflink" })).toMatchObject({
+      env: "DONATE_URL",
+      reason: "not-an-https-url",
+    })
+    expect(failure({ ...required, DONATE_URL: "ko-fi.com/rafflink" })).toMatchObject({
+      env: "DONATE_URL",
+      reason: "not-a-url",
+    })
+  })
+
   it("defaults the drand settings to the quicknet beacon and a lead of 6 seconds", () => {
     const config = resolveConfig(required)
 

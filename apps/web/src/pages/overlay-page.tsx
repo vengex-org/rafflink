@@ -9,7 +9,7 @@ import { DrawShuffle } from "../components/draw-shuffle.tsx"
 import { QrCode } from "../components/qr-code.tsx"
 import { WinnerPlate } from "../components/winner-plate.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
-import { shareUrl } from "../lib/links.ts"
+import { shareUrl, siteHost } from "../lib/links.ts"
 import { giveawayDisplayName, giveawayName } from "../lib/messages.ts"
 import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
 import { useLive } from "../lib/use-live.ts"
@@ -96,6 +96,7 @@ function Overlay({
       <main className="overlay">
         {heading}
         <ShufflePlate names={shuffle.names} waitMs={waitMs} />
+        <PoweredBy />
       </main>
     )
   }
@@ -105,6 +106,7 @@ function Overlay({
         {heading}
         <FetchedWinnerPlates snapshot={snapshot} standing={standing} />
         {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
+        <PoweredBy />
       </main>
     )
   }
@@ -120,7 +122,21 @@ function Overlay({
     <main className="overlay">
       {heading}
       <EntryPlate snapshot={snapshot} qr={qr} />
+      {/* Before the draw the entry plate already shows the host. */}
+      {snapshot.status === "drawn" ? <PoweredBy /> : null}
     </main>
+  )
+}
+
+/** The deployment's host and mark under the plates once the entry link is gone from the stream. */
+function PoweredBy() {
+  return (
+    <p className="overlay-plate overlay-mark">
+      <span className="brand-mark" aria-hidden="true">
+        R
+      </span>
+      {siteHost()}
+    </p>
   )
 }
 
@@ -174,7 +190,7 @@ export function EntryPlate({
             </span>
           ) : (
             <span className="overlay-url">
-              {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
+              {siteHost()}/<em>{snapshot.code}</em>
             </span>
           )}
         </div>

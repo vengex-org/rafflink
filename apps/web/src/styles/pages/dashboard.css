@@ -59,6 +59,26 @@
   margin-bottom: var(--space-2);
 }
 
+/* The support line sits outside the cards, in the muted ink of a footnote. */
+.support-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.support-note .icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.support-note a {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
 .giveaways.rows {
   grid-template-columns: 1fr;
   gap: 0;

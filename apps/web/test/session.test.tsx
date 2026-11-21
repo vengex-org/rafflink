@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { setTimeout } from "node:timers/promises"
 import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import { installFakeSocket } from "./fake-socket.ts"
-import { giveaway } from "./fixtures.ts"
+import { donateUrl, giveaway, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -13,7 +13,10 @@ afterEach(() => {
 
 const signedIn = {
   "GET /api/session": () =>
-    ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null } }),
+    ok({
+      streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+      donateUrl: null,
+    }),
 }
 
 describe("header session", () => {
@@ -40,7 +43,10 @@ describe("header session", () => {
     const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/streamy.png"
     mockFetch({
       "GET /api/session": () =>
-        ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: picture } }),
+        ok({
+          streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: picture },
+          donateUrl: null,
+        }),
     })
     const withPicture = renderApp("/")
     await withPicture.findByRole("button", { name: "Streamy" })
@@ -55,6 +61,28 @@ describe("header session", () => {
     await without.findByRole("button", { name: "Streamy" })
     expect(without.container.querySelector(".account-avatar img")).toBeNull()
     expect(without.container.querySelector(".account-avatar")?.textContent).toBe("ST")
+  })
+
+  it("lists the configured support page in the account menu, opening in a new tab", async () => {
+    mockFetch({ "GET /api/session": () => ok(supportedSession) })
+
+    const view = renderApp("/")
+
+    fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
+    const link = view.getByRole("link", { name: "Support Rafflink" })
+    expect(link.getAttribute("href")).toBe(donateUrl)
+    expect(link.getAttribute("target")).toBe("_blank")
+    expect(link.getAttribute("rel")).toBe("noopener")
+  })
+
+  it("leaves the support entry out of the account menu when no page is configured", async () => {
+    mockFetch(signedIn)
+
+    const view = renderApp("/")
+
+    fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
+    expect(view.getByRole("button", { name: "Log out" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: "Support Rafflink" })).toBeNull()
   })
 
   it("shows Log in when nobody is signed in", async () => {
@@ -83,11 +111,7 @@ describe("header session", () => {
     let signedInNow = true
     const requests = mockFetch({
       "GET /api/session": () =>
-        ok({
-          streamer: signedInNow
-            ? { displayName: "Streamy", login: "streamy", profileImageUrl: null }
-            : null,
-        }),
+        ok(signedInNow ? { ...supportedSession, donateUrl: null } : { streamer: null }),
       "POST /auth/logout": () => {
         signedInNow = false
         return { status: 204, body: null }
@@ -113,7 +137,10 @@ describe("header session", () => {
       "GET /api/session": () => {
         sessionCalls += 1
         return sessionCalls === 1
-          ? ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null } })
+          ? ok({
+              streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+              donateUrl: null,
+            })
           : { status: 500, body: { error: "unavailable" } }
       },
       "POST /auth/logout": () => ({ status: 204, body: null }),
@@ -183,12 +210,9 @@ describe("header session", () => {
     mockFetch({
       "GET /api/session": () => {
         sessionCalls += 1
-        return ok({
-          streamer:
-            sessionCalls === 1
-              ? { displayName: "Streamy", login: "streamy", profileImageUrl: null }
-              : null,
-        })
+        return ok(
+          sessionCalls === 1 ? { ...supportedSession, donateUrl: null } : { streamer: null },
+        )
       },
       "GET /api/dash/giveaways": async () => {
         await headerShowsStreamer.promise

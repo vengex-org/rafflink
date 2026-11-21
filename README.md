@@ -137,6 +137,10 @@ Every other setting has a default; see [.env.example](.env.example).
 Both targets need your own Twitch app (see above) and the required settings listed there. Every setting is in
 [.env.example](.env.example), which `bun run env:example` generates from the config schema.
 
+Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Sponsors and the like) and signed-in
+streamers see a quiet "Support" link above their drawn giveaways on the dashboard and in the account menu. Viewer
+pages and the OBS overlay never show it. Left blank, no link appears anywhere.
+
 ### Docker (any server)
 
 [apps/server/compose.yaml](apps/server/compose.yaml) runs the Bun server and a Caddy proxy that gets a
@@ -370,7 +374,9 @@ and streamer name in the title, Open Graph and Twitter tags, so a pasted link pr
 noindex rule. `/robots.txt` is a static file in `apps/web/public` for both targets; there is no sitemap.
 
 The OBS overlay is a browser source that opens `/overlay/...` as a top-level page, so
-`frame-ancestors 'none'` does not affect it. Do not embed the overlay in an iframe on another site.
+`frame-ancestors 'none'` does not affect it. Once the entry link leaves the stream (while a draw runs and after
+it), a small plate under the winners names the host the overlay is served from, so a self-hosted overlay shows its
+own domain. Do not embed the overlay in an iframe on another site.
 
 After changing the gift icon or the colors, run `bun run icons` in `apps/web` and commit the files in
 `apps/web/public`.

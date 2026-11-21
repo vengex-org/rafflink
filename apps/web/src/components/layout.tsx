@@ -85,13 +85,13 @@ export function Layout({
 /** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. The way out and the dashboard link sit in one account button. */
 function Account() {
   const { t } = useI18n()
-  const { streamer, busy, message, signOut } = useStreamerSession()
+  const { streamer, donateUrl, busy, message, signOut } = useStreamerSession()
   return (
     <>
       {streamer === null ? (
         <LoginLink />
       ) : (
-        <AccountMenu streamer={streamer} busy={busy} onSignOut={signOut} />
+        <AccountMenu streamer={streamer} donateUrl={donateUrl} busy={busy} onSignOut={signOut} />
       )}
       {message === null ? null : <Status>{t(message)}</Status>}
     </>
@@ -107,15 +107,18 @@ function StreamerAvatar({ streamer }: { readonly streamer: SignedInStreamer }) {
 }
 
 /**
- * The account button (picture and name) that shows a short list: the dashboard and Log out. Escape and a click or
+ * The account button (picture and name) that shows a short list: the dashboard, the support page when the deployment
+ * names one, and Log out. Escape and a click or
  * focus outside close it, Escape returning focus to the button.
  */
 function AccountMenu({
   streamer,
+  donateUrl,
   busy,
   onSignOut,
 }: {
   readonly streamer: SignedInStreamer
+  readonly donateUrl: string | null
   readonly busy: boolean
   readonly onSignOut: () => void
 }) {
@@ -165,6 +168,13 @@ function AccountMenu({
               {t("nav.myGiveaways")}
             </Link>
           </li>
+          {donateUrl === null ? null : (
+            <li>
+              <a href={donateUrl} target="_blank" rel="noopener" onClick={() => setOpen(false)}>
+                {t("nav.support")}
+              </a>
+            </li>
+          )}
           <li>
             <button
               type="button"

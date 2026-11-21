@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { installFakeSocket } from "./fake-socket.ts"
-import { claimedAt, claimedAtText, giveaway } from "./fixtures.ts"
+import { claimedAt, claimedAtText, giveaway, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -35,6 +35,19 @@ const wonRoute = (
         chatClaimAvailable,
       },
     }),
+})
+
+it("never offers the support page to a viewer, even after a draw", async () => {
+  const requests = mockFetch({
+    ...wonRoute(60_000, { state: "claimed", at: claimedAt, via: "chat" }),
+    "GET /api/session": () => ok(supportedSession),
+  })
+
+  const view = renderApp("/g/ABCDE")
+
+  await view.findByRole("heading", { level: 1 })
+  expect(view.queryByRole("link", { name: /Support/ })).toBeNull()
+  expect(requests.some((request) => request.route === "GET /api/session")).toBe(false)
 })
 
 describe("giveaway landing", () => {

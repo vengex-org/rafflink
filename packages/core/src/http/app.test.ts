@@ -90,7 +90,20 @@ describe("session", () => {
         login: users.streamerA.login,
         profileImageUrl: users.streamerA.profileImageUrl,
       },
+      donateUrl: null,
     })
+  })
+
+  it("gives the configured support link to a signed-in streamer only", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { DONATE_URL: "https://ko-fi.com/rafflink" } })
+    const browser = new Browser(harness)
+    expect(await (await browser.request("/api/session")).json()).toEqual({ streamer: null })
+
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const session: { donateUrl: unknown } = await (await browser.request("/api/session")).json()
+    expect(session.donateUrl).toBe("https://ko-fi.com/rafflink")
   })
 
   it("answers null for a deleted streamer and deletes the cookie", async () => {

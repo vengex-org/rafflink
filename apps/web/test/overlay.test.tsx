@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, mock, spyOn } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { act, cleanup, waitFor } from "@testing-library/react"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { encode } from "uqr"
@@ -364,6 +364,58 @@ it("draws the QR code with qr=1 in winner mode before a draw", async () => {
   expect(
     await view.findByRole("img", { name: "QR code with the link to enter the giveaway" }),
   ).toBeTruthy()
+})
+
+const mark = (view: ReturnType<typeof renderApp>) => view.container.querySelector(".overlay-mark")
+
+describe("host mark", () => {
+  it("stays off while the entry plate shows the host", async () => {
+    for (const snapshot of [liveSnapshot, { ...liveSnapshot, status: "closed" as const }]) {
+      routeSnapshot(snapshot)
+      const view = renderApp("/overlay/gid-1/tok-1")
+      expect(await view.findByText("ABCDE")).toBeTruthy()
+      expect(mark(view)).toBeNull()
+      cleanup()
+      mock.restore()
+    }
+  })
+
+  it("stays off the blank winner-mode overlay before a draw", async () => {
+    routeSnapshot(liveSnapshot)
+
+    const view = renderApp("/overlay/gid-1/tok-1?mode=winner")
+
+    expect(await view.findByRole("heading", { level: 1, name: "Summer giveaway" })).toBeTruthy()
+    expect(mark(view)).toBeNull()
+  })
+
+  it("names the deployment's host under the shuffle while a draw is pending", async () => {
+    routeSnapshot({
+      ...liveSnapshot,
+      status: "closed",
+      drawRequested: true,
+      drawAvailableAt: liveSnapshot.now + 5000,
+      shuffleNames: ["Ann", "Bo"],
+    })
+
+    const view = renderApp("/overlay/gid-1/tok-1")
+
+    expect(await view.findAllByText("Drawing the winner…")).not.toHaveLength(0)
+    expect(mark(view)?.textContent).toBe("Rrafflink.test")
+    expect(mark(view)?.previousElementSibling?.className).toBe("overlay-winners")
+  })
+
+  it("names the deployment's host under a claimed winner, in every mode", async () => {
+    for (const mode of ["auto", "winner", "compact"]) {
+      routeSnapshot(drawn)
+      const view = renderApp(`/overlay/gid-1/tok-1?mode=${mode}`)
+      expect(await view.findByText("Bob")).toBeTruthy()
+      expect(mark(view)?.textContent).toBe("Rrafflink.test")
+      expect(view.container.querySelector("main")?.lastElementChild).toBe(mark(view))
+      cleanup()
+      mock.restore()
+    }
+  })
 })
 
 it("shows not found for an invalid token and opens no socket", async () => {

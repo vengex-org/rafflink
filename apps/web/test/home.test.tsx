@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, within } from "@testing-library/react"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
+import { donateUrl, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { languageStorageKey } from "../src/i18n/language.ts"
 import { renderApp } from "./render-app.tsx"
@@ -124,7 +125,10 @@ describe("home page", () => {
   it("offers My giveaways instead of logging in when the streamer is signed in, from one session call", async () => {
     const requests = mockFetch({
       "GET /api/session": () =>
-        ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null } }),
+        ok({
+          streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+          donateUrl: null,
+        }),
     })
     const view = renderApp("/")
 
@@ -191,6 +195,19 @@ describe("home page", () => {
       advance(5000)
       expect(currentLabel(view)).toBe("Entries open")
       expect(preview.getByText("Enter at")).toBeTruthy()
+    })
+
+    it("keeps the overlay host mark and the support link out of every step", () => {
+      mock.restore()
+      mockFetch({ "GET /api/session": () => ok(supportedSession) })
+      const view = renderApp("/")
+      const preview = view.getByRole("region", { name: "Example of a draw" })
+
+      for (const ms of [0, 5000, 4000, 6000]) {
+        advance(ms)
+        expect(preview.querySelector(".overlay-mark")).toBeNull()
+        expect(preview.querySelector(`a[href="${donateUrl}"]`)).toBeNull()
+      }
     })
 
     it("waits while the tab is hidden and goes on when it is shown", () => {
