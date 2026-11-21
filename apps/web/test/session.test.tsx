@@ -119,4 +119,40 @@ describe("header session", () => {
     expect(view.getByRole("button", { name: "Log out" })).toBeTruthy()
     expect(await view.findByText("Something went wrong. Try again.")).toBeTruthy()
   })
+
+  it("shows Log in when a dashboard call answers 401 after the session expired", async () => {
+    let sessionCalls = 0
+    mockFetch({
+      "GET /api/session": () => {
+        sessionCalls += 1
+        return ok({
+          streamer: sessionCalls === 1 ? { displayName: "Streamy", login: "streamy" } : null,
+        })
+      },
+      "GET /api/dash/giveaways": () => ({ status: 401, body: { error: "unauthorized" } }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("link", { name: "Log in" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: "Streamy" })).toBeNull()
+    expect(sessionCalls).toBe(2)
+  })
+
+  it("does not ask for the session again when the session call itself answers 401", async () => {
+    let sessionCalls = 0
+    mockFetch({
+      "GET /api/session": () => {
+        sessionCalls += 1
+        return { status: 401, body: { error: "unauthorized" } }
+      },
+    })
+    const logged = spyOn(console, "error").mockImplementation(() => {})
+
+    const view = renderApp("/")
+
+    await waitFor(() => expect(logged).toHaveBeenCalled())
+    expect(view.getByRole("link", { name: "Log in" })).toBeTruthy()
+    expect(sessionCalls).toBe(1)
+  })
 })

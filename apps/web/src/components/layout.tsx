@@ -1,6 +1,6 @@
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router"
-import { getSession, logout } from "../api/client.ts"
+import { getSession, logout, sessionLost } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl } from "../lib/links.ts"
 import { useAction } from "../lib/use-action.ts"
@@ -76,11 +76,16 @@ export function Layout({ account }: { readonly account: boolean }) {
 /** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. */
 function Account() {
   const { t } = useI18n()
-  const { result } = useLoad(getSession)
+  const { result, reload } = useLoad(getSession)
   const { message, busy, run } = useAction()
   const navigate = useNavigate()
   const [loggedOut, setLoggedOut] = useState(false)
   const streamer = result.state === "ready" && !loggedOut ? result.value.streamer : null
+
+  useEffect(() => {
+    window.addEventListener(sessionLost, reload)
+    return () => window.removeEventListener(sessionLost, reload)
+  }, [reload])
 
   async function signOut() {
     const outcome = await run(logout, () => "nav.loggedOut")

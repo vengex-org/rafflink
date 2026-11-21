@@ -155,12 +155,12 @@ export function claimIcon(winner: LiveWinner): ReactNode {
   }
 }
 
-export function claimLabel(winner: LiveWinner, { t, time }: I18n): string {
+export function claimLabel(winner: LiveWinner, { t, dateTime }: I18n): string {
   switch (winner.claim.state) {
     case "claimed":
       return t("claim.at", {
         label: t(`claim.claimed.${winner.claim.via}`),
-        time: time(winner.claim.at),
+        time: dateTime(winner.claim.at),
       })
     case "waiting":
       return t("claim.waiting")

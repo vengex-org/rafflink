@@ -143,9 +143,14 @@ export const overlaySnapshotPath = (id: string, token: string) =>
 
 export const viewerSocketPath = (code: string) => `/api/g/${encodeURIComponent(code)}/live`
 
+const sessionPath = "/api/session"
+
+/** Fired on `window` when an API call other than the session call answers 401, so the header can ask who is signed in again. */
+export const sessionLost = "rafflink:session-lost"
+
 /** Who the streamer cookie belongs to; a signed-out visitor is an answer, not an error. */
 export async function getSession(): Promise<SessionJson> {
-  const { status, body } = await send("/api/session")
+  const { status, body } = await send(sessionPath)
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "session")
   if (source.streamer === null) return { streamer: null }
@@ -494,6 +499,7 @@ interface Answer {
 
 async function send(path: string, init?: RequestInit): Promise<Answer> {
   const response = await fetch(path, init)
+  if (response.status === 401 && path !== sessionPath) window.dispatchEvent(new Event(sessionLost))
   try {
     return { status: response.status, body: await response.json() }
   } catch (error) {
