@@ -53,7 +53,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "home.title": "Férové Twitch soutěže, {highlight} na streamu.",
   "home.title.highlight": "losované živě",
   "home.text":
-    "Diváci se zapojí z telefonu. Ty losuješ na streamu. Sub-ové dostanou víc losů a pravidla řeknou kolik.",
+    "Diváci se přihlásí jedním klikem, ty losuješ před chatem. Bez Nightbota, bez čekání.",
   "home.login": "Přihlásit se přes Twitch",
   "home.demo": "Vyzkoušej ukázku",
   "home.reads": "Čteme jen tvé jméno, VIP, moderátory a chat.",
