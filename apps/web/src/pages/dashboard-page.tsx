@@ -186,24 +186,30 @@ function GiveawayList({
         </button>
       </div>
       {pinned.length === 0 ? null : (
-        <ul className="giveaways pinned">
-          {pinned.map((giveaway) => (
-            <GiveawayItem key={giveaway.id} giveaway={giveaway} pinned onCreate={onCreate} />
-          ))}
-        </ul>
+        <section className="dash-section" aria-labelledby="dash-running">
+          <h2 id="dash-running">{t("dash.section.running")}</h2>
+          <ul className="giveaways pinned">
+            {pinned.map((giveaway) => (
+              <GiveawayItem key={giveaway.id} giveaway={giveaway} pinned onCreate={onCreate} />
+            ))}
+          </ul>
+        </section>
       )}
       {rest.length === 0 || donateUrl === null ? null : <SupportNote url={donateUrl} />}
       {rest.length === 0 ? null : (
-        <ul className="giveaways rows">
-          {rest.map((giveaway) => (
-            <GiveawayItem
-              key={giveaway.id}
-              giveaway={giveaway}
-              pinned={false}
-              onCreate={onCreate}
-            />
-          ))}
-        </ul>
+        <section className="dash-section" aria-labelledby="dash-drawn">
+          <h2 id="dash-drawn">{t("dash.section.drawn")}</h2>
+          <ul className="giveaways drawn">
+            {rest.map((giveaway) => (
+              <GiveawayItem
+                key={giveaway.id}
+                giveaway={giveaway}
+                pinned={false}
+                onCreate={onCreate}
+              />
+            ))}
+          </ul>
+        </section>
       )}
     </>
   )
@@ -220,7 +226,7 @@ function SupportNote({ url }: { readonly url: string }) {
   )
 }
 
-/** A giveaway still running is a card on top; a drawn one is a dense row below. */
+/** A giveaway still running is a card with filled buttons; a drawn one is a quieter card with text buttons. */
 function GiveawayItem({
   giveaway,
   pinned,
@@ -236,9 +242,9 @@ function GiveawayItem({
   // An untitled giveaway is already named by its prize, so the prize line would repeat it.
   const prizeLine = giveaway.title === null ? null : giveaway.prize
   return (
-    <li className={pinned ? "card" : "row"} data-status={giveaway.status}>
+    <li className="card" data-status={giveaway.status}>
       <div className="giveaway-head">
-        <h2>{name}</h2>
+        <h3>{name}</h3>
         <StatusChip tone={statusTone(giveaway.status)}>{t(`status.${giveaway.status}`)}</StatusChip>
       </div>
       {prizeLine === null ? null : <p>{t("dash.prize", { prize: prizeLine })}</p>}

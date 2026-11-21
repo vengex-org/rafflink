@@ -181,7 +181,9 @@ describe("dashboard", () => {
       expect(link.getAttribute("target")).toBe("_blank")
       expect(link.getAttribute("rel")).toBe("noopener")
       expect(link.closest(".support-note")?.textContent).toContain(supportText)
-      expect(link.closest(".support-note")?.nextElementSibling?.className).toBe("giveaways rows")
+      expect(link.closest(".support-note")?.nextElementSibling).toBe(
+        view.getByRole("region", { name: "Finished" }),
+      )
     })
 
     it("stays away while nothing is drawn yet", async () => {
@@ -208,7 +210,7 @@ describe("dashboard", () => {
     })
   })
 
-  it("pins the open giveaway above the others", async () => {
+  it("pins the open giveaway above the others, each group under its own heading", async () => {
     mockFetch({
       "GET /api/dash/giveaways": () =>
         ok({
@@ -221,8 +223,25 @@ describe("dashboard", () => {
 
     const view = renderApp("/dashboard")
 
-    const names = (await view.findAllByRole("heading", { level: 2 })).map((h) => h.textContent)
+    const names = (await view.findAllByRole("heading", { level: 3 })).map((h) => h.textContent)
     expect(names).toEqual(["Current one", "Old one"])
+    const sections = view.getAllByRole("region").map((region) => ({
+      heading: region.querySelector("h2")?.textContent,
+      giveaways: Array.from(region.querySelectorAll("h3"), (h) => h.textContent),
+    }))
+    expect(sections).toEqual([
+      { heading: "Running", giveaways: ["Current one"] },
+      { heading: "Finished", giveaways: ["Old one"] },
+    ])
+  })
+
+  it("leaves out the heading of a group with no giveaways", async () => {
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("region", { name: "Running" })).toBeTruthy()
+    expect(view.queryByRole("region", { name: "Finished" })).toBeNull()
   })
 
   it("opens the create form prefilled from a giveaway with entries ending left open", async () => {
