@@ -37,6 +37,7 @@ function LegalPage({
   const placeholders: Readonly<Record<string, ReactNode>> = {
     operatorName: operator.name,
     operatorAddress: operator.address,
+    operatorId: operator.id,
     contactEmail: operator.contactEmail,
     repository: <a href={repositoryUrl}>{repositoryUrl}</a>,
   }

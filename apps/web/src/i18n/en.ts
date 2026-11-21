@@ -585,7 +585,7 @@ export const en = {
     "Rafflink draws winners of Twitch giveaways. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
   "privacy.controller.h": "Who is responsible",
   "privacy.controller.p1":
-    "For the hosted service at this address the controller of your personal data is {operatorName}, {operatorAddress}. Contact: {contactEmail}.",
+    "For the hosted service at this address the controller of your personal data is {operatorName}, business ID (IČO) {operatorId}, {operatorAddress}. Contact: {contactEmail}.",
   "privacy.controller.p2":
     "Rafflink is open source and anyone can run their own copy. On a self-hosted instance the person who runs it is the controller, and this text only describes what the software does. The Rafflink project receives no data from self-hosted instances.",
   "privacy.data.h": "What data is processed",
@@ -658,7 +658,7 @@ export const en = {
     "By signing in or entering a giveaway on Rafflink you accept these terms. If you do not accept them, do not use the service.",
   "terms.service.h": "The service",
   "terms.service.p1":
-    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. The hosted service is run by {operatorName}, {operatorAddress}.",
+    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. The hosted service is run by {operatorName}, business ID (IČO) {operatorId}, {operatorAddress}, a sole trader registered in the Czech Trade Register kept by the Prague 4 Municipal District Office.",
   "terms.service.p2":
     "The service is provided as is and as available, without any warranty. It may change, be limited or be stopped at any time, and it has no uptime guarantee. On a self-hosted instance the person who runs it sets the terms.",
   "terms.source.h": "Open source",

@@ -588,7 +588,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Rafflink žrebuje výhercov giveawayov na Twitchi. Tieto zásady vysvetľujú, aké osobné údaje spracúva, prečo, ako dlho a aké práva máš. Sú zámerne stručné.",
   "privacy.controller.h": "Kto je zodpovedný",
   "privacy.controller.p1":
-    "Pri hostovanej službe na tejto adrese je prevádzkovateľom tvojich osobných údajov {operatorName}, {operatorAddress}. Kontakt: {contactEmail}.",
+    "Pri hostovanej službe na tejto adrese je prevádzkovateľom tvojich osobných údajov {operatorName}, IČO {operatorId}, {operatorAddress}. Kontakt: {contactEmail}.",
   "privacy.controller.p2":
     "Rafflink je open source a každý si môže spustiť vlastnú kópiu. Pri samostatne hostovanej inštancii je prevádzkovateľom ten, kto ju prevádzkuje, a tento text len popisuje, čo robí softvér. Projekt Rafflink z takýchto inštancií nedostáva žiadne údaje.",
   "privacy.data.h": "Aké údaje sa spracúvajú",
@@ -661,7 +661,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Prihlásením alebo zapojením do giveawayu na Rafflinku tieto podmienky prijímaš. Ak s nimi nesúhlasíš, službu nepoužívaj.",
   "terms.service.h": "Služba",
   "terms.service.p1":
-    "Rafflink umožňuje streamerovi na Twitchi vytvoriť giveaway, zbierať zapojenia a žrebovať výhercov naživo. Hostovanú službu prevádzkuje {operatorName}, {operatorAddress}.",
+    "Rafflink umožňuje streamerovi na Twitchi vytvoriť giveaway, zbierať zapojenia a žrebovať výhercov naživo. Hostovanú službu prevádzkuje {operatorName}, IČO {operatorId}, {operatorAddress}, podnikateľ zapísaný v českom živnostenskom registri, ktorý vedie Úrad mestskej časti Praha 4.",
   "terms.service.p2":
     "Služba sa poskytuje tak, ako je, a tak, ako je dostupná, bez akejkoľvek záruky. Môže sa kedykoľvek zmeniť, obmedziť alebo ukončiť a nemá garantovanú dostupnosť. Pri samostatne hostovanej inštancii určuje podmienky ten, kto ju prevádzkuje.",
   "terms.source.h": "Open source",
