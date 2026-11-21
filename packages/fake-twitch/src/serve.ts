@@ -28,6 +28,9 @@ export const devFakeTwitchUsers: readonly FakeUser[] = [
   },
 ]
 
+/** `main.ts` seeds its users from this id up, so a client can sign them in with `login_hint`. */
+export const seededUsersFirstId = 100_000
+
 export function serveFakeTwitch(port: number, options: FakeTwitchOptions = devFakeTwitchOptions) {
   const { app, control } = createFakeTwitch(options)
   for (const user of devFakeTwitchUsers) control.addUser(user)
