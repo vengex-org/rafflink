@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { Browser, createHarness, users, validRules, type Harness } from "../../test/app-fixture.ts"
+import { UsageUnavailable } from "../lib/usage-unavailable.ts"
 import type { Usage } from "../ports.ts"
 
 let harness: Harness
@@ -78,7 +79,19 @@ describe("usage warning at giveaway creation", () => {
     harness.usage.failure = new Error("analytics down")
 
     expect(await createWarnings()).toEqual([])
-    expect(warn).toHaveBeenCalledWith("usage unavailable", { errorClass: "Error" })
+    expect(warn).toHaveBeenCalledWith("usage unavailable", { errorClass: "Error", reason: null })
+    warn.mockRestore()
+  })
+
+  it("logs the reason of an unavailable usage source and nothing else from the request", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    harness.usage.failure = new UsageUnavailable("Analytics answered 403")
+
+    expect(await createWarnings()).toEqual([])
+    expect(warn).toHaveBeenCalledWith("usage unavailable", {
+      errorClass: "UsageUnavailable",
+      reason: "Analytics answered 403",
+    })
     warn.mockRestore()
   })
 })

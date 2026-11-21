@@ -5,6 +5,7 @@ import type { Giveaway, NewGiveaway } from "../accounts/account-store.ts"
 import { generateCode } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
+import { UsageUnavailable } from "../lib/usage-unavailable.ts"
 import type { Usage } from "../ports.ts"
 import { overlaySnapshot, type RerollOutcome, type ClaimOutcome } from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
@@ -287,7 +288,7 @@ async function adminUsage(deps: AppDeps): Promise<Usage | null | "unavailable"> 
   try {
     return await deps.usage.today()
   } catch (error) {
-    console.warn("usage unavailable", { errorClass: errorClass(error) })
+    warnUsageUnavailable(error)
     return "unavailable"
   }
 }
@@ -301,9 +302,16 @@ async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
       ? [{ kind: "worker-requests-low", remaining }]
       : []
   } catch (error) {
-    console.warn("usage unavailable", { errorClass: errorClass(error) })
+    warnUsageUnavailable(error)
     return []
   }
+}
+
+function warnUsageUnavailable(error: unknown): void {
+  console.warn("usage unavailable", {
+    errorClass: errorClass(error),
+    reason: error instanceof UsageUnavailable ? error.reason : null,
+  })
 }
 
 function integerField(body: unknown, field: string, min: number): number | null {
