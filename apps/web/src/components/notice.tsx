@@ -3,7 +3,7 @@ import { Link } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { AlertIcon, ArrowLeftIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
-import { Page } from "./page.tsx"
+import { StateColumn } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
 
 export function Loading() {
@@ -19,7 +19,7 @@ export function Loading() {
 export function Failed() {
   const { t } = useI18n()
   return (
-    <Page width="text">
+    <StateColumn>
       <StateCard
         tone="danger"
         align="center"
@@ -33,14 +33,14 @@ export function Failed() {
           {t("common.reloadPage")}
         </button>
       </StateCard>
-    </Page>
+    </StateColumn>
   )
 }
 
 export function NotFound({ title }: { readonly title: MessageKey }) {
   const { t } = useI18n()
   return (
-    <Page width="text" as="section" className="not-found">
+    <StateColumn as="section" className="not-found">
       <p className="not-found-code" aria-hidden="true">
         <span>404</span>
       </p>
@@ -50,7 +50,7 @@ export function NotFound({ title }: { readonly title: MessageKey }) {
         <ArrowLeftIcon />
         {t("notFound.home")}
       </Link>
-    </Page>
+    </StateColumn>
   )
 }
 
@@ -88,7 +88,7 @@ export function Status({ children }: { readonly children: ReactNode }) {
 export function SignIn({ why }: { readonly why: MessageKey }) {
   const { t } = useI18n()
   return (
-    <Page width="text">
+    <StateColumn>
       <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
         <p>{t(why)}</p>
         <a className="button block" href="/auth/twitch/streamer/start">
@@ -96,6 +96,6 @@ export function SignIn({ why }: { readonly why: MessageKey }) {
           {t("signIn.button")}
         </a>
       </StateCard>
-    </Page>
+    </StateColumn>
   )
 }

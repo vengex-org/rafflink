@@ -475,7 +475,9 @@ describe("winner claim", () => {
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByRole("heading", { name: "You won" })).toBeTruthy()
+    const heading = await view.findByRole("heading", { name: "You won" })
+    // The page heading shows the prize; the win announcement says it for screen readers only.
+    expect(heading.parentElement?.querySelector(".sr-only")?.textContent).toBe("A gaming chair")
     expect(view.getByRole("timer").textContent).toMatch(/^1:(29|30)$/)
     expect(view.getByText("left to claim")).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))

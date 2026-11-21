@@ -11,6 +11,7 @@ export function GiveawayState({
   tone,
   title,
   icon,
+  spokenLine,
   aside,
   children,
 }: {
@@ -18,6 +19,8 @@ export function GiveawayState({
   readonly title: string
   /** The round icon before the title; a win block has none. */
   readonly icon?: ReactNode
+  /** A line under the title only screen readers hear, such as the prize the page heading already shows. */
+  readonly spokenLine?: string
   /** What sits at the end of the title row, such as the claim clock. */
   readonly aside?: ReactNode
   readonly children: ReactNode
@@ -28,6 +31,7 @@ export function GiveawayState({
         {icon === undefined ? null : <span className="viewer-state-icon">{icon}</span>}
         <div className="viewer-state-title">
           <h2>{title}</h2>
+          {spokenLine === undefined ? null : <p className="sr-only">{spokenLine}</p>}
         </div>
         {aside}
       </div>

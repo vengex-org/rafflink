@@ -6,7 +6,8 @@ main.container:has(> .home) {
   padding: 0;
 }
 
-main.container:has(> .home) > .state-card {
+/* The home page has no gutter of its own, so a sign-in error above it keeps one. */
+main.container:has(> .home) > .oauth-error {
   width: min(var(--page-text), 100% - 2 * var(--gutter));
   margin: var(--space-3) auto 0;
 }

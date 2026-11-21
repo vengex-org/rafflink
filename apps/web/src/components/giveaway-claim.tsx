@@ -1,6 +1,7 @@
 import { claimPrize, type GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { forgetStoredGiveaway } from "../lib/stored-giveaway.ts"
+import { giveawayName } from "../lib/messages.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useRemainingMs } from "../lib/use-remaining.ts"
 import type { WonView } from "../lib/viewer-outcome.ts"
@@ -27,6 +28,8 @@ export function ClaimPanel({
   const remaining = useRemainingMs(win.claimRemainingMs)
   const { message, busy, run } = useAction()
   const keyword = giveaway.rules.claimKeyword
+  // The page heading shows the prize; the live region still says it, so a win is announced with what was won.
+  const prize = giveaway.prize ?? giveawayName(i18n, giveaway.title, code)
 
   if (win.claim.state === "rerolled") {
     return (
@@ -38,7 +41,7 @@ export function ClaimPanel({
   const claimed = win.claim.state === "claimed" || message === "viewerClaim.claimed"
   if (claimed) {
     return (
-      <GiveawayState tone="win" title={t("win.claimed.title")}>
+      <GiveawayState tone="win" title={t("win.claimed.title")} spokenLine={prize}>
         {win.entry === null ? null : <TicketBox tickets={win.entry} />}
         {win.claim.state === "claimed" ? (
           <p className="viewer-note">{t("win.claimedAt", { at: i18n.dateTime(win.claim.at) })}</p>
@@ -61,6 +64,7 @@ export function ClaimPanel({
     <GiveawayState
       tone="win"
       title={t("win.title")}
+      spokenLine={prize}
       aside={
         <ClaimRing
           remainingMs={remaining}

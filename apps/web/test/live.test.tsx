@@ -93,12 +93,25 @@ describe("live page: collecting entries", () => {
     expect(enteredCount(view)).toBe("9")
   })
 
-  it("names the giveaway by its code when the title is missing", async () => {
+  it("names an untitled giveaway by its prize, as the dashboard does", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, title: null }) })
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByRole("heading", { level: 1, name: "Giveaway ABCDE" })).toBeTruthy()
+    expect(await view.findByRole("heading", { level: 1, name: "A gaming chair" })).toBeTruthy()
+  })
+
+  it("names the giveaway by its code when it has neither a title nor a prize", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, title: null }),
+      "GET /api/g/ABCDE": () => ok({ ...giveaway, title: null, prize: null }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    await waitFor(() =>
+      expect(view.getByRole("heading", { level: 1 }).textContent).toBe("Giveaway ABCDE"),
+    )
   })
 
   it("says nobody has entered yet when the list is empty", async () => {
@@ -1107,6 +1120,8 @@ describe("live page: its own frame", () => {
     expect(await view.findByText("Giveaway not found")).toBeTruthy()
     expect(view.container.querySelectorAll("main#main")).toHaveLength(1)
     expect(view.getByRole("banner").textContent).toContain("Rafflink")
+    // The app frame's text column belongs to the app layout, not to the live page's own grid.
+    expect(view.container.querySelector(".page")).toBeNull()
   })
 
   it("shows the entry link with the code, the count and the LIVE chip in the top bar", async () => {

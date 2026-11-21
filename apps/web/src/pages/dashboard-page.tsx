@@ -19,7 +19,7 @@ import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import type { Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
-import { giveawayName } from "../lib/messages.ts"
+import { giveawayDisplayName } from "../lib/messages.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { CreateForm } from "./create-form.tsx"
 import { initialValues, valuesFrom, type Values } from "./create-values.ts"
@@ -217,11 +217,8 @@ function GiveawayItem({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  // An untitled giveaway is named by its prize, as the viewer page does; "Giveaway CODE" would repeat the code line.
-  const name =
-    giveaway.title === null && giveaway.prize !== null
-      ? giveaway.prize
-      : giveawayName(i18n, giveaway.title, giveaway.code)
+  const name = giveawayDisplayName(i18n, giveaway)
+  // An untitled giveaway is already named by its prize, so the prize line would repeat it.
   const prizeLine = giveaway.title === null ? null : giveaway.prize
   return (
     <li className={pinned ? "card" : "row"} data-status={giveaway.status}>
