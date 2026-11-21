@@ -68,16 +68,19 @@ This applies to the Cloudflare target only. The VPS target has no daily request 
 4. Watches a live page: entrant count, entries per second, latest names. OBS has no Twitch session, so the
    page has a second, read-only overlay link with an unguessable token that works as a browser source.
 5. Closes entries, draws one or more winners and announces them on stream.
-6. Sees on the live page whether each winner has claimed, and how (button or chat). Rerolls a winner who did
+6. Sees on the live page whether each winner has claimed, and how (button, chat or by hand). Rerolls a winner who did
    not claim within the claim time.
 
-**Claim.** A winner claims in one of two ways:
+**Claim.** A winner claims in one of three ways:
 
 - **In Rafflink:** the giveaway page shows the winner a "Claim" button after they sign in. Claim time is a
   giveaway setting (default 5 minutes after the draw). The page shows the remaining time.
 - **In chat:** the winner writes in the streamer's chat and Rafflink marks the claim automatically. By default
   any message from the winner's account counts; the streamer can require a keyword instead (for example
   `!claim`). The match is on the Twitch user id, not the display name, so a look-alike name cannot claim.
+- **By the streamer:** when the winner confirms elsewhere (Discord, voice), the streamer presses "Mark as
+  claimed" on the live page. It works for any pick that is neither claimed nor rerolled, also after the claim
+  time, and is recorded as `manual`.
 
 **Chat watch.** Rafflink reads chat from the draw until the giveaway is finished: the reroll window
 (`REROLL_WINDOW_SECONDS`, default one hour) after the latest claim time of a pick that is not rerolled. Claims
@@ -99,7 +102,7 @@ happen only in the claim window; the rest of the watch shows the winners' newest
   (the 5-minute claim time plus up to 3600 s of reroll window, at 128 MB), so the free 13,000 GB-s per day cover
   about 25 such giveaways. To confirm against Cloudflare's billing docs.
 - If the WebSocket cannot connect (token revoked, Twitch down), the live page says "Chat claim unavailable"
-  and the streamer can mark a chat claim by hand as a fallback.
+  and the streamer marks the claim by hand.
 - Known limits of EventSub over WebSocket:
   - Twitch allows at most 3 WebSocket connections per user token. A streamer with more than 3 giveaways that
     are being watched at the same time gets "Chat claim unavailable" on the extra ones.
@@ -359,7 +362,7 @@ no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Pl
   drawn before 0003 holds 32 random bytes and no root; the verify page reports it as unverifiable).
 
 - `draws.claimed_via`: `rafflink` (the winner pressed Claim), `chat` (the chat watch saw a message) or
-  `manual` (the streamer marked it while the chat watch was down).
+  `manual` (the streamer marked it by hand, at any time after the draw).
 - `giveaways.rules_json` also holds the claim keyword (empty = any message counts). A row with
   `rerolled` set keeps its place, so the draw history stays checkable.
 

@@ -594,17 +594,28 @@ describe("live page: winners", () => {
       route: "POST /api/dash/giveaways/gid-1/claim",
       body: { n: 0 },
     })
-    expect(view.getAllByRole("button", { name: /Mark as claimed/ })).toHaveLength(1)
+    expect(view.getAllByRole("button", { name: /Mark as claimed/ })).toHaveLength(2)
   })
 
-  it("offers no manual claim and no banner while chat watch works", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
+  it("offers a manual claim for every unclaimed pick while chat watch works", async () => {
+    const requests = mockLive({
+      "GET /api/live/gid-1": () => ok(drawn),
+      "POST /api/dash/giveaways/gid-1/claim": () => ok({ kind: "claimed" }),
+    })
 
     const view = renderApp("/live/gid-1")
     await view.findByText(/^Claimed in chat at /)
+    await view.findByRole("heading", { name: "The list is empty" })
 
     expect(view.queryByRole("heading", { name: "Chat watch is off" })).toBeNull()
-    expect(view.queryByRole("button", { name: /Mark as claimed/ })).toBeNull()
+    expect(view.queryByRole("button", { name: "Mark as claimed for Bob" })).toBeNull()
+    expect(view.getAllByRole("button", { name: /Mark as claimed/ })).toHaveLength(2)
+    fireEvent.click(view.getByRole("button", { name: "Mark as claimed for Eve" }))
+    expect(await view.findByText("Marked as claimed.")).toBeTruthy()
+    expect(requests.at(-1)).toEqual({
+      route: "POST /api/dash/giveaways/gid-1/claim",
+      body: { n: 2 },
+    })
   })
 })
 
