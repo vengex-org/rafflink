@@ -359,10 +359,11 @@ main.container:has(> .home) > .oauth-error {
   list-style: none;
 }
 
+/* Each step's text starts level with the top of its preview, however tall the preview is. */
 .home-step {
   display: grid;
   gap: var(--space-3);
-  align-items: center;
+  align-items: start;
   padding-block: 2.25rem;
 }
 
@@ -628,8 +629,7 @@ main.container:has(> .home) > .oauth-error {
   }
 
   .home-how-grid {
-    grid-template-columns: 23.75rem 1fr;
-    gap: 5rem;
+    gap: 3.5rem;
   }
 
   .home-how h2 {
@@ -637,8 +637,8 @@ main.container:has(> .home) > .oauth-error {
   }
 
   .home-step {
-    grid-template-columns: 1fr 25rem;
-    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1fr) 28rem;
+    gap: 5rem;
   }
 
   .home-cards-grid {

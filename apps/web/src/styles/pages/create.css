@@ -41,7 +41,7 @@
 
 .ticket-table .field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 5.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.25rem var(--space-2);
   margin: 0;
@@ -54,14 +54,6 @@
 
 .ticket-table .field-error {
   grid-column: 1 / -1;
-}
-
-.ticket-table input {
-  min-height: var(--target);
-  background: var(--surface);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
 }
 
 .odds {

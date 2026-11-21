@@ -1,6 +1,11 @@
 import type { Dispatch, SetStateAction } from "react"
 import { groups, type Group } from "@rafflink/core/domain/groups"
-import { Segmented, TextField, type SegmentOption } from "../components/form-fields.tsx"
+import {
+  Segmented,
+  StepperField,
+  TextField,
+  type SegmentOption,
+} from "../components/form-fields.tsx"
 import { ClockIcon, HeartIcon, LockIcon, StarIcon, UsersIcon } from "../components/icons.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { claimTimeText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
@@ -191,12 +196,10 @@ export function TicketsField({
       <p className="help">{t("wizard.tickets.help")}</p>
       <div className="ticket-table">
         {shown.map((group) => (
-          <TextField
+          <StepperField
             key={group}
             name={`tickets.${group}`}
             label={t(`group.${group}`)}
-            help={null}
-            type="number"
             min={0}
             value={values.tickets[group]}
             error={errorOf(i18n, issue, `tickets.${group}`)}
@@ -206,6 +209,8 @@ export function TicketsField({
                 tickets: { ...current.tickets, [group]: count },
               }))
             }
+            decreaseLabel={t("wizard.tickets.fewer", { group: t(`group.${group}`) })}
+            increaseLabel={t("wizard.tickets.more", { group: t(`group.${group}`) })}
           />
         ))}
       </div>

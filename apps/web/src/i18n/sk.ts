@@ -539,6 +539,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.tickets.legend": "Lístky podľa skupiny",
   "wizard.tickets.help":
     "Každá skupina dostane 1 lístok. Viac lístkov znamená väčšiu šancu vyhrať, napríklad 3 pre predplatiteľov. Nechaj to tak, ak majú mať všetci rovnakú šancu.",
+  "wizard.tickets.fewer": "Menej lístkov: {group}",
+  "wizard.tickets.more": "Viac lístkov: {group}",
   "odds.same": "Všetci majú rovnakú šancu vyhrať.",
   "odds.viewersOut": "Diváci nedostanú žiadne lístky a nemôžu vyhrať.",
   "odds.noBetter": "Žiadna skupina nemá lepšie šance ako divák.",
