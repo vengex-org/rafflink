@@ -601,15 +601,17 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i2":
     "Streameři: Twitch refresh token, uložený šifrovaně. Díky němu Rafflink během giveawaye čte seznam VIP a moderátorů kanálu a chat.",
   "privacy.data.i3":
-    "Účastníci: Twitch user ID, přihlašovací jméno, zobrazované jméno, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů, čas zapojení a náhodná hodnota, díky které je losování ověřitelné. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
+    "Účastníci: Twitch user ID, přihlašovací jméno, zobrazované jméno, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů a čas zapojení. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
   "privacy.data.i4": "Výherci: výsledek losování a to, zda a jak byla výhra převzata.",
   "privacy.data.i5":
     "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují.",
   "privacy.data.i6":
-    "Technické údaje: hostitel zpracovává tvou IP adresu a údaje o požadavku, aby stránku doručil a ochránil ji před zneužitím, například omezením rychlosti zapojování z jedné adresy.",
+    "Technické údaje: hostitel zpracovává tvou IP adresu a údaje o požadavku, aby stránku doručil a ochránil ji před zneužitím, například omezeními rychlosti.",
+  "privacy.data.i7":
+    "Místnosti giveawayů: Twitch user ID VIP a moderátorů kanálu, uložená k uplatnění pravidel tiketů. Mažou se spolu se zapojeními giveawaye.",
   "privacy.purposes.h": "Proč a na jakém právním základě",
   "privacy.purposes.i1":
-    "K provozu giveawayů, které streameři vytvářejí, a k zapojování diváků včetně losování a převzetí výhry: plnění služby, o kterou jsi požádal (čl. 6 odst. 1 písm. b) GDPR).",
+    "K provozu giveawayů, které streameři vytvářejí, a k zapojování diváků včetně losování a převzetí výhry: plnění smlouvy s tebou, tedy služby, o kterou jsi požádal (čl. 6 odst. 1 písm. b) GDPR).",
   "privacy.purposes.i2":
     "K bezpečnosti a férovosti služby: jedna účast na účet, omezení rychlosti, hodinová kontrola tokenů streamerů. Náš oprávněný zájem (čl. 6 odst. 1 písm. f) GDPR).",
   "privacy.purposes.i3":
@@ -618,22 +620,18 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.retention.i1":
     "Zapojení (jména, skupiny, tikety, časy zapojení) se mažou 30 dní po uzavření giveawaye.",
   "privacy.retention.i2":
-    "Seznam výherců, Merkleův kořen a seznam listů bez jmen zůstávají u giveawaye, aby losování mohl později ověřit kdokoli.",
-  "privacy.retention.i3":
-    "Účet streamera, jeho giveawaye a jeho šifrovaný token zůstávají, dokud streamer nepožádá o výmaz nebo neodebere Rafflinku přístup na Twitchi.",
-  "privacy.retention.i4": "Přihlašovací kódy čekající ve frontě se po několika minutách zahodí.",
-  "privacy.retention.i5":
+    "Když streamer odebere Rafflinku přístup na Twitchi, smaže se jen uložený Twitch token. Účet a giveawaye zůstávají, dokud streamer nepožádá provozovatele o jejich smazání (viz kontakt výše).",
+  "privacy.retention.i3": "Přihlašovací kódy čekající ve frontě se po několika minutách zahodí.",
+  "privacy.retention.i4":
     "Logy hostitele se uchovávají tak dlouho, jak je podle vlastních podmínek uchovává Cloudflare.",
   "privacy.recipients.h": "Kdo další údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje neprodává. Údaje jdou jen těmto stranám.",
   "privacy.recipients.i1":
     "Cloudflare hostuje službu (Workers, Durable Objects, D1) jako náš zpracovatel a může údaje zpracovávat i mimo Evropský hospodářský prostor na základě standardních smluvních doložek.",
   "privacy.recipients.i2":
-    "Twitch je poskytovatel identity. Dostává tvé přihlášení a je samostatným správcem podle vlastních zásad ochrany soukromí.",
+    "Twitch je poskytovatel identity. Dostává tvé přihlášení a během giveawaye také volání API ke kontrole follow, předplatného a rolí a odběr chatu, kterým se rozpoznává převzetí výhry. Twitch je samostatný správce podle vlastních zásad ochrany soukromí.",
   "privacy.recipients.i3":
     "Streamer, který giveaway vede, vidí jeho účastníky a výherce. Jména účastníků a výherců se zobrazují na živé stránce giveawaye a v overlayi.",
-  "privacy.recipients.i4":
-    "Při losování se čte veřejný maják náhodnosti drand. Neposílají se mu žádné osobní údaje.",
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",
@@ -643,22 +641,21 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.cookies.i3":
     "rl_oauth_streamer_* a rl_oauth_viewer_*: chrání přihlášení před zfalšováním, 10 minut.",
   "privacy.cookies.i4":
-    "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, několik minut.",
+    "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, 10 minut.",
   "privacy.cookies.i5":
-    "Lokální úložiště prohlížeče si pamatuje tvůj výběr jazyka a motivu. Zařízení nikdy neopouští.",
+    "Lokální úložiště prohlížeče si pamatuje tvůj výběr jazyka a motivu a čistý režim živé stránky. Úložiště relace drží přibližně 30 sekund kopii načtené stránky giveawaye včetně tvého stavu v ní. Zařízení neopouští ani jedno.",
   "privacy.rights.h": "Tvá práva",
   "privacy.rights.p1":
-    "Můžeš požádat o přístup ke svým údajům, opravu, výmaz, omezení zpracování a kopii v přenositelném formátu a můžeš vznést námitku proti zpracování na základě oprávněného zájmu. Napiš na {contactEmail}. Odpovíme do jednoho měsíce.",
+    "Máš práva uvedená níže. Napiš na {contactEmail}. Odpovíme do jednoho měsíce.",
   "privacy.rights.p2":
     "Přístup Rafflinku můžeš kdykoli odebrat také v nastavení Twitche v části Connections.",
-  "privacy.rights.i1": "Přístup k údajům, jejich oprava a přenositelnost.",
+  "privacy.rights.i1": "Přístup k údajům, jejich oprava, omezení zpracování a přenositelnost.",
   "privacy.rights.i2": "Výmaz, například záznamu o výherci, který po giveawayi zůstává.",
   "privacy.rights.i3": "Námitka proti zpracování na základě našeho oprávněného zájmu.",
   "privacy.rights.i4":
     "Stížnost u dozorového úřadu pro ochranu osobních údajů v zemi, kde žiješ nebo pracuješ, nebo kde se domníváš, že byla porušena tvá práva. V Česku je to Úřad pro ochranu osobních údajů.",
   "privacy.changes.h": "Změny",
-  "privacy.changes.p1":
-    "Když se tyto zásady změní, změní se i datum na začátku. Podstatné změny oznámíme na domovské stránce.",
+  "privacy.changes.p1": "Když se tyto zásady změní, změní se i datum na začátku.",
 
   "terms.title": "Podmínky používání",
   "terms.intro":
@@ -693,7 +690,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "terms.use.p1": "Zavazuješ se, že nebudeš:",
   "terms.use.i1": "používat boty, skripty ani jinou automatizaci k zapojení nebo převzetí výhry,",
   "terms.use.i2": "zapojovat se z více než jednoho účtu ani používat cizí účet,",
-  "terms.use.i3": "obcházet pravidla zapojení, omezení rychlosti ani jiné ochrany a rušit službu,",
+  "terms.use.i3":
+    "obcházet pravidla zapojení, omezení rychlosti ani jiné ochrany ani rušit službu,",
   "terms.use.i4":
     "vést nezákonné giveawaye ani dávat do názvu či textu výhry nezákonný nebo urážlivý obsah.",
   "terms.liability.h": "Odpovědnost",

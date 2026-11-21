@@ -59,12 +59,25 @@ describe("legal pages", () => {
     }
   })
 
-  it("keep the operator placeholders out of the dictionaries", () => {
+  it("keep the operator placeholders as markers in the dictionaries, never as values", () => {
+    const markers = ["{operatorName}", "{operatorAddress}", "{contactEmail}"]
     for (const language of languages) {
       const texts = Object.values(dictionaries[language]).join("\n")
-      expect(texts).not.toContain(operator.name)
-      expect(texts).not.toContain(operator.address)
-      expect(texts).not.toContain(operator.contactEmail)
+      for (const marker of markers) expect(texts).toContain(marker)
+      expect(texts).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/)
+    }
+  })
+
+  it("show the update date on the same day in a zone behind UTC", () => {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    process.env.TZ = "America/Los_Angeles"
+    try {
+      browserLanguage("en-US")
+      const view = renderApp("/privacy")
+
+      expect(view.getByRole("article").textContent).toContain("Nov 21, 2026")
+    } finally {
+      process.env.TZ = zone
     }
   })
 
@@ -98,6 +111,13 @@ describe("legal pages", () => {
 
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(titles.cs.privacy)
     expect(document.documentElement.lang).toBe("cs")
+  })
+
+  it("keep the routes case sensitive so a giveaway code like TERMS opens the giveaway page", () => {
+    const view = renderApp("/TERMS")
+
+    expect(view.queryByRole("article")).toBeNull()
+    expect(view.queryByRole("heading", { name: "Terms of use" })).toBeNull()
   })
 
   it("link to each other", () => {

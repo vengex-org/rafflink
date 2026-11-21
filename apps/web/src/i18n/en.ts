@@ -596,15 +596,17 @@ export const en = {
   "privacy.data.i2":
     "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway.",
   "privacy.data.i3":
-    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value used to make the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
+    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets and time of entry. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4": "Winners: the draw result and whether and how the prize was claimed.",
   "privacy.data.i5":
     "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
   "privacy.data.i6":
-    "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example by limiting how fast one address can enter.",
+    "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example with rate limits.",
+  "privacy.data.i7":
+    "Giveaway rooms: the Twitch user IDs of the channel's VIPs and moderators, stored to apply the ticket rules. They are deleted with the giveaway's entries.",
   "privacy.purposes.h": "Why and on what legal basis",
   "privacy.purposes.i1":
-    "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of the service you asked for (GDPR Article 6(1)(b)).",
+    "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of a contract with you, the service you asked for (GDPR Article 6(1)(b)).",
   "privacy.purposes.i2":
     "To keep the service secure and fair: one entry per account, rate limits, hourly validation of streamer tokens. Our legitimate interest (Article 6(1)(f)).",
   "privacy.purposes.i3":
@@ -613,22 +615,18 @@ export const en = {
   "privacy.retention.i1":
     "Entries (names, groups, tickets, entry times) are deleted 30 days after the giveaway closes.",
   "privacy.retention.i2":
-    "The winner list, the Merkle root and the list of leaves without names stay with the giveaway, so anyone can check the draw later.",
-  "privacy.retention.i3":
-    "A streamer account, its giveaways and its encrypted token stay until the streamer asks for erasure or removes Rafflink's access on Twitch.",
-  "privacy.retention.i4": "Sign-in codes waiting in the queue are dropped after a few minutes.",
-  "privacy.retention.i5":
+    "When a streamer removes Rafflink's access on Twitch, only the stored Twitch token is deleted. The account and its giveaways stay until the streamer asks the operator to delete them (see the contact above).",
+  "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
+  "privacy.retention.i4":
     "Host logs are kept as long as Cloudflare keeps them under its own terms.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":
     "Cloudflare hosts the service (Workers, Durable Objects, D1) as our processor and may process data outside the European Economic Area under its standard contractual clauses.",
   "privacy.recipients.i2":
-    "Twitch is the identity provider. It receives your sign-in and is an independent controller under its own privacy notice.",
+    "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. Twitch is an independent controller under its own privacy notice.",
   "privacy.recipients.i3":
     "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay.",
-  "privacy.recipients.i4":
-    "The public drand randomness beacon is read for the draw. No personal data is sent to it.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",
@@ -638,22 +636,22 @@ export const en = {
   "privacy.cookies.i3":
     "rl_oauth_streamer_* and rl_oauth_viewer_*: protect a sign-in against forgery, 10 minutes.",
   "privacy.cookies.i4":
-    "rl_pending_*: lets the browser that queued an entry collect its result, a few minutes.",
+    "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes.",
   "privacy.cookies.i5":
-    "Your browser's local storage keeps your language and theme choice. It never leaves your device.",
+    "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
   "privacy.rights.h": "Your rights",
   "privacy.rights.p1":
-    "You can ask for access to your data, correction, erasure, restriction of processing and a copy in a portable format, and you can object to processing based on legitimate interest. Write to {contactEmail}. We answer within one month.",
+    "You have the rights listed below. Write to {contactEmail}. We answer within one month.",
   "privacy.rights.p2":
     "You can also remove Rafflink's access at any time in your Twitch settings under Connections.",
-  "privacy.rights.i1": "Access, correction and portability of your data.",
+  "privacy.rights.i1":
+    "Access, correction, restriction of processing and portability of your data.",
   "privacy.rights.i2": "Erasure, for example of a winner entry that stays after the giveaway.",
   "privacy.rights.i3": "Objection to processing based on our legitimate interest.",
   "privacy.rights.i4":
     "A complaint to the data protection authority of the country where you live or work, or where you think your rights were violated.",
   "privacy.changes.h": "Changes",
-  "privacy.changes.p1":
-    "When this policy changes, the date at the top changes with it. Material changes are announced on the home page.",
+  "privacy.changes.p1": "When this policy changes, the date at the top changes with it.",
 
   "terms.title": "Terms of use",
   "terms.intro":

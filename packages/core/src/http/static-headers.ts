@@ -1,8 +1,5 @@
-/** `X-Robots-Tag` of every page and file except the {@link indexablePaths}. */
+/** `X-Robots-Tag` of every page and file except the home page. */
 export const noindex = "noindex, nofollow"
-
-/** The pages search engines may index: the home page and the two legal pages. */
-export const indexablePaths: readonly string[] = ["/", "/privacy", "/terms"]
 
 const immutable = "public, max-age=31536000, immutable"
 const revalidate = "no-cache"
@@ -17,8 +14,7 @@ export function staticCacheControl(pathname: string): string {
 
 /**
  * The `_headers` file of Cloudflare static assets, which are answered without the Worker: the security
- * headers, the cache rules of {@link staticCacheControl} and {@link noindex} for every path but the
- * {@link indexablePaths}.
+ * headers, the cache rules of {@link staticCacheControl} and {@link noindex} for every path but the home page.
  */
 export function headersFile(security: Readonly<Record<string, string>>): string {
   const everything = [...Object.entries(security), ["Cache-Control", revalidate]]
@@ -32,9 +28,6 @@ export function headersFile(security: Readonly<Record<string, string>>): string 
     ...["/:segment", "/g/*", "/live/*", "/overlay/*"].map(
       (pattern) => `${pattern}\n  X-Robots-Tag: ${noindex}`,
     ),
-    // `/:segment` also matches the legal pages, so they detach it. Unlike the home page this has not been
-    // checked on Cloudflare; a deployed legal page that still answers noindex points here.
-    ...indexablePaths.filter((path) => path !== "/").map((path) => `${path}\n  ! X-Robots-Tag`),
     ...hashed,
     "",
   ].join("\n")

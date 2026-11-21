@@ -25,8 +25,8 @@ export function AppRoutes() {
         </Route>
         <Route element={<Layout account={false} />}>
           <Route path="demo" element={<DemoPage />} />
-          <Route path="privacy" element={<PrivacyPage />} />
-          <Route path="terms" element={<TermsPage />} />
+          <Route path="privacy" caseSensitive element={<PrivacyPage />} />
+          <Route path="terms" caseSensitive element={<TermsPage />} />
           <Route path="g/:code" element={<GiveawayPage />} />
           <Route path=":code" element={<GiveawayPage />} />
         </Route>

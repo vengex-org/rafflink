@@ -19,7 +19,7 @@ describe("staticCacheControl", () => {
 })
 
 describe("headersFile", () => {
-  it("lists the headers for every file, sets noindex on each page below the home page except the legal pages and detaches no-cache from the hashed bundles and the fonts", () => {
+  it("lists the headers for every file, sets noindex on each page below the home page and detaches no-cache from the hashed bundles and the fonts", () => {
     expect(headersFile({ "X-Test": "1" })).toBe(
       [
         "/*",
@@ -33,10 +33,6 @@ describe("headersFile", () => {
         "  X-Robots-Tag: noindex, nofollow",
         "/overlay/*",
         "  X-Robots-Tag: noindex, nofollow",
-        "/privacy",
-        "  ! X-Robots-Tag",
-        "/terms",
-        "  ! X-Robots-Tag",
         "/index-*.js",
         "  ! Cache-Control",
         "  Cache-Control: public, max-age=31536000, immutable",

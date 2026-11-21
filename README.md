@@ -338,8 +338,8 @@ no manual step; a test fails if the built page has a second inline script.
 
 On Cloudflare the pages are static: the headers above come from `apps/web/dist/_headers`, which the web build
 writes (with the hash of the inline script), and `X-Robots-Tag: noindex, nofollow` covers every path except
-the home page and the `/privacy` and `/terms` pages. A pasted giveaway link shows the generic preview of the
-home page there. The Bun server answers each page itself and gives the page of a giveaway link (`/<code>` and `/g/<code>`) its title, prize
+the home page. A pasted giveaway link shows the generic preview of the home page there. The Bun server
+answers each page itself and gives the page of a giveaway link (`/<code>` and `/g/<code>`) its title, prize
 and streamer name in the title, Open Graph and Twitter tags, so a pasted link previews well; it sends the same
 noindex rule. `/robots.txt` is a static file in `apps/web/public` for both targets; there is no sitemap.
 

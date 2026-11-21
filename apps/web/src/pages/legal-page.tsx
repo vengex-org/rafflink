@@ -1,5 +1,3 @@
-// DRAFT: the privacy policy and the terms have not been reviewed by a lawyer yet. The owner decides when
-// they are final; until then this is a comment only and the pages say nothing about it.
 import type { ReactNode } from "react"
 import { Link } from "react-router"
 import type { MessageKey } from "../i18n/dictionaries.ts"
@@ -46,7 +44,7 @@ function LegalPage({
     <article className="legal">
       <h1>{t(document.title)}</h1>
       <p className="legal-updated">
-        {t("legal.updated", { date: date(Date.parse(legalUpdated)) })}
+        {t("legal.updated", { date: date(Date.parse(`${legalUpdated}T00:00`)) })}
       </p>
       <p>{rich(document.intro, placeholders)}</p>
       {document.sections.map((section) => (
@@ -90,6 +88,7 @@ const privacy: LegalDocument = {
         "privacy.data.i4",
         "privacy.data.i5",
         "privacy.data.i6",
+        "privacy.data.i7",
       ],
     },
     {
@@ -105,18 +104,12 @@ const privacy: LegalDocument = {
         "privacy.retention.i2",
         "privacy.retention.i3",
         "privacy.retention.i4",
-        "privacy.retention.i5",
       ],
     },
     {
       heading: "privacy.recipients.h",
       paragraphs: ["privacy.recipients.p1"],
-      items: [
-        "privacy.recipients.i1",
-        "privacy.recipients.i2",
-        "privacy.recipients.i3",
-        "privacy.recipients.i4",
-      ],
+      items: ["privacy.recipients.i1", "privacy.recipients.i2", "privacy.recipients.i3"],
     },
     {
       heading: "privacy.cookies.h",

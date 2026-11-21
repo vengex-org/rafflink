@@ -48,16 +48,12 @@ describe("page routes", () => {
     expect(await response.text()).toContain("<title>Rafflink home</title>")
   })
 
-  it("leaves the home page and the legal pages indexable and every other page not", async () => {
+  it("leaves the home page indexable and every other page not", async () => {
     const home = await app.request("/")
-    const privacy = await app.request("/privacy")
-    const terms = await app.request("/terms")
     const dashboard = await app.request("/dashboard")
     const demo = await app.request("/demo")
 
     expect(home.headers.get("x-robots-tag")).toBeNull()
-    expect(privacy.headers.get("x-robots-tag")).toBeNull()
-    expect(terms.headers.get("x-robots-tag")).toBeNull()
     expect(dashboard.headers.get("x-robots-tag")).toBe("noindex, nofollow")
     expect(demo.headers.get("x-robots-tag")).toBe("noindex, nofollow")
   })
