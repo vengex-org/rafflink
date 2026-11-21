@@ -483,7 +483,7 @@ export const en = {
   "live.bar.unclaimed": "Nobody has claimed the prize yet.",
   "live.clean.hide": "Hide controls",
   "live.clean.show": "Show controls",
-  "live.chat.title": "Winner chat",
+  "live.chat.title": "Chat",
   "live.chat.hint": "Messages from the winner in chat will show here.",
   "live.chat.hint.anyChat":
     "When the winner writes in chat, their messages show here and the prize is marked as claimed.",
@@ -506,6 +506,7 @@ export const en = {
   "live.entries.open": "Open",
   "live.entries.closed": "Closed",
   "live.reroll.bar": "Reroll {name}",
+  "live.reroll.label": "Reroll",
   "live.overlay.link": "Overlay link",
 
   "wizard.step.basics": "Basics",

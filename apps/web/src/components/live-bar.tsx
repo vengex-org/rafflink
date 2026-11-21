@@ -73,7 +73,14 @@ export function LiveActions({
             run={run}
             snapshot={snapshot}
             winner={current}
-            label={t("live.reroll.bar", { name: nameOf(current, t) })}
+            label={
+              <>
+                <span aria-hidden="true">{t("live.reroll.label")}</span>
+                <span className="sr-only">
+                  {t("live.reroll.bar", { name: nameOf(current, t) })}
+                </span>
+              </>
+            }
             className="live-btn secondary"
             shortcut="r"
           />

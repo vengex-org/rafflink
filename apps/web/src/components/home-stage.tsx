@@ -32,7 +32,7 @@ function ExampleDraw() {
   const [{ state, snapshot, facts }] = useState(() => exampleDraw(Date.now()))
   return (
     <>
-      <div className="stage-stream">
+      <div className="stage-stream" inert aria-hidden="true">
         <StreamScene />
         <div className="stage-tags">
           <span className="stage-live">{t("home.stage.live")}</span>

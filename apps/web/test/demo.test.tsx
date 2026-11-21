@@ -316,11 +316,11 @@ describe("demo views", () => {
   it("shows the winner's chat in the streamer's view after the scripted delay and offers the chat claim to the viewer", () => {
     const view = renderApp("/demo?view=streamer")
     advanceInSlices(3000 + 1500 + 5000 + 1500 + 2500 + 1600)
-    expect(view.queryByText("Winner chat")).toBeNull()
+    expect(view.queryByText("Chat")).toBeNull()
 
     advanceInSlices(4000 + 5000)
 
-    const chat = within(view.getByRole("region", { name: "Winner chat" }))
+    const chat = within(view.getByRole("region", { name: "Chat" }))
     expect(chat.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
       "mira_vexthank you so much!!",
       "mira_vexI will message you on discord",

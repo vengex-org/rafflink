@@ -487,7 +487,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.bar.unclaimed": "Cenu zatiaľ nikto neprevzal.",
   "live.clean.hide": "Skryť ovládanie",
   "live.clean.show": "Zobraziť ovládanie",
-  "live.chat.title": "Chat víťazov",
+  "live.chat.title": "Chat",
   "live.chat.hint": "Správy výhercu z chatu sa ukážu tu.",
   "live.chat.hint.anyChat":
     "Keď výherca napíše do chatu, jeho správy sa ukážu tu a výhra sa označí ako prevzatá.",
@@ -510,6 +510,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.entries.open": "Otvorený",
   "live.entries.closed": "Uzavretý",
   "live.reroll.bar": "Žrebovať znova: {name}",
+  "live.reroll.label": "Žrebovať znova",
   "live.overlay.link": "Odkaz na overlay",
 
   "wizard.step.basics": "Základ",
