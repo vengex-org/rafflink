@@ -5,7 +5,7 @@ import { codeAlphabet, codeLength } from "../lib/codes.ts"
 import { inlineScriptHashes, renderSpaHtml, type PageMeta } from "../lib/spa-html.ts"
 import { isApiPath } from "./api-paths.ts"
 import { contentSecurityPolicy } from "./security-headers.ts"
-import { noindex } from "./static-headers.ts"
+import { indexablePaths, noindex } from "./static-headers.ts"
 
 /** The built `index.html`, or null when no web app is deployed next to this server. */
 export type SpaTemplateLoader = () => Promise<string | null>
@@ -19,7 +19,7 @@ const giveawayPath = new RegExp(`^/(?:g/)?([${codeAlphabet}]{${codeLength}})$`)
 
 /**
  * The page of every path that is not an API path: the built `index.html` with the link preview of its
- * giveaway, and a CSP that allows its inline scripts by hash. Everything but the home page is `noindex`.
+ * giveaway, and a CSP that allows its inline scripts by hash. Everything but the {@link indexablePaths} is `noindex`.
  */
 export function spaRoutes(deps: SpaDeps, loadTemplate: SpaTemplateLoader): Hono {
   const { publicUrl } = deps.config
@@ -52,7 +52,7 @@ export function spaRoutes(deps: SpaDeps, loadTemplate: SpaTemplateLoader): Hono 
     return c.html(renderSpaHtml(template, meta), 200, {
       "Content-Security-Policy": contentSecurityPolicy(scriptHashes),
       "Cache-Control": "no-cache",
-      ...(pathname === "/" ? {} : { "X-Robots-Tag": noindex }),
+      ...(indexablePaths.includes(pathname) ? {} : { "X-Robots-Tag": noindex }),
     })
   })
 

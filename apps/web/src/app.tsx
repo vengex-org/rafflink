@@ -7,6 +7,7 @@ import { DashboardPage } from "./pages/dashboard-page.tsx"
 import { DemoPage } from "./pages/demo-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
 import { HomePage } from "./pages/home-page.tsx"
+import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
 import { OverlayPage } from "./pages/overlay-page.tsx"
 
@@ -24,6 +25,8 @@ export function AppRoutes() {
         </Route>
         <Route element={<Layout account={false} />}>
           <Route path="demo" element={<DemoPage />} />
+          <Route path="privacy" element={<PrivacyPage />} />
+          <Route path="terms" element={<TermsPage />} />
           <Route path="g/:code" element={<GiveawayPage />} />
           <Route path=":code" element={<GiveawayPage />} />
         </Route>

@@ -1,5 +1,5 @@
 import { useId, useState } from "react"
-import { Link, Outlet, useNavigate } from "react-router"
+import { Link, Outlet, useLocation, useNavigate } from "react-router"
 import { getSession, logout } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl } from "../lib/links.ts"
@@ -17,6 +17,8 @@ import { SlidersIcon, TwitchIcon } from "./icons.tsx"
 export function Layout({ account }: { readonly account: boolean }) {
   const { t } = useI18n()
   const settingsId = useId()
+  // The home page ends with its own footer.
+  const showFooter = useLocation().pathname !== "/"
   return (
     <div className="layout">
       <a href="#main" className="skip-link">
@@ -59,6 +61,14 @@ export function Layout({ account }: { readonly account: boolean }) {
         <OAuthErrorCard />
         <Outlet />
       </main>
+      {showFooter ? (
+        <footer className="site-footer">
+          <nav aria-label={t("legal.footerLabel")} className="container">
+            <Link to="/privacy">{t("legal.privacy")}</Link>
+            <Link to="/terms">{t("legal.terms")}</Link>
+          </nav>
+        </footer>
+      ) : null}
     </div>
   )
 }

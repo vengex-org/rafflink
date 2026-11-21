@@ -577,4 +577,134 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Platí aj akákoľvek správa víťaza v chate.",
   "review.keywordChat": "Víťaz môže napísať aj „{keyword}“ do tvojho chatu.",
+
+  "legal.privacy": "Ochrana súkromia",
+  "legal.terms": "Podmienky",
+  "legal.footerLabel": "Právne informácie",
+  "legal.updated": "Posledná aktualizácia: {date}",
+
+  "privacy.title": "Zásady ochrany osobných údajov",
+  "privacy.intro":
+    "Rafflink losuje výhercov giveawayov na Twitchi. Tieto zásady vysvetľujú, aké osobné údaje spracúva, prečo, ako dlho a aké práva máš. Sú zámerne stručné.",
+  "privacy.controller.h": "Kto je zodpovedný",
+  "privacy.controller.p1":
+    "Pri hostovanej službe na tejto adrese je prevádzkovateľom tvojich osobných údajov {operatorName}, {operatorAddress}. Kontakt: {contactEmail}.",
+  "privacy.controller.p2":
+    "Rafflink je open source a každý si môže spustiť vlastnú kópiu. Pri samostatne hostovanej inštancii je prevádzkovateľom ten, kto ju prevádzkuje, a tento text len popisuje, čo robí softvér. Projekt Rafflink z takýchto inštancií nedostáva žiadne údaje.",
+  "privacy.data.h": "Aké údaje sa spracúvajú",
+  "privacy.data.p1":
+    "Všetko pochádza z Twitchu, keď sa ním prihlásiš. Rafflink žiada iba prístup na čítanie a nikdy nepíše do chatu.",
+  "privacy.data.i1":
+    "Streameri: Twitch user ID, prihlasovacie meno, zobrazované meno a čas prvého prihlásenia, ďalej giveawaye, ktoré vytvoria (názov, text výhry, pravidlá, kód odkazu, časy) a ich výsledky.",
+  "privacy.data.i2":
+    "Streameri: Twitch refresh token, uložený šifrovane. Vďaka nemu Rafflink počas giveawayu číta zoznam VIP a moderátorov kanála a chat.",
+  "privacy.data.i3":
+    "Účastníci: Twitch user ID, prihlasovacie meno, zobrazované meno, skupina, ktorá dala tikety (divák, follower, úroveň predplatiteľa, VIP alebo moderátor), počet tiketov, čas zapojenia a náhodná hodnota, vďaka ktorej je žrebovanie overiteľné. Kontrola follow a predplatného použije tvoj Twitch token jedenkrát a token sa neukladá.",
+  "privacy.data.i4": "Výhercovia: výsledok žrebovania a to, či a ako bola výhra prevzatá.",
+  "privacy.data.i5":
+    "Správy z chatu: čítajú sa len v pamäti, aby sa rozpoznalo prevzatie výhry a aby sa na živej stránke ukázali správy výhercu. Nikdy sa neukladajú ani nelogujú.",
+  "privacy.data.i6":
+    "Technické údaje: hostiteľ spracúva tvoju IP adresu a údaje o požiadavke, aby stránku doručil a ochránil pred zneužitím, napríklad obmedzením rýchlosti zapájania z jednej adresy.",
+  "privacy.purposes.h": "Prečo a na akom právnom základe",
+  "privacy.purposes.i1":
+    "Na prevádzku giveawayov, ktoré streameri vytvárajú, a na zapájanie divákov vrátane žrebovania a prevzatia výhry: plnenie služby, o ktorú si požiadal (čl. 6 ods. 1 písm. b) GDPR).",
+  "privacy.purposes.i2":
+    "Na bezpečnosť a férovosť služby: jedna účasť na účet, obmedzenia rýchlosti, hodinová kontrola tokenov streamerov. Náš oprávnený záujem (čl. 6 ods. 1 písm. f) GDPR).",
+  "privacy.purposes.i3":
+    "Na udržanie prihlásenia cez cookies, ktoré sú na to nevyhnutné. Rafflink nepoužíva reklamu, analytiku ani sledovanie a údaje nepredáva ani neposkytuje na marketing.",
+  "privacy.retention.h": "Ako dlho sa údaje uchovávajú",
+  "privacy.retention.i1":
+    "Zapojenia (mená, skupiny, tikety, časy zapojenia) sa mažú 30 dní po uzavretí giveawayu.",
+  "privacy.retention.i2":
+    "Zoznam výhercov, Merkleho koreň a zoznam listov bez mien zostávajú pri giveawayi, aby si žrebovanie mohol neskôr overiť ktokoľvek.",
+  "privacy.retention.i3":
+    "Účet streamera, jeho giveawaye a jeho šifrovaný token zostávajú, kým streamer nepožiada o vymazanie alebo neodoberie Rafflinku prístup na Twitchi.",
+  "privacy.retention.i4":
+    "Prihlasovacie kódy čakajúce vo fronte sa po niekoľkých minútach zahodia.",
+  "privacy.retention.i5":
+    "Logy hostiteľa sa uchovávajú tak dlho, ako ich podľa vlastných podmienok uchováva Cloudflare.",
+  "privacy.recipients.h": "Kto ďalší údaje vidí",
+  "privacy.recipients.p1": "Rafflink údaje nepredáva. Údaje idú len týmto stranám.",
+  "privacy.recipients.i1":
+    "Cloudflare hostuje službu (Workers, Durable Objects, D1) ako náš sprostredkovateľ a môže údaje spracúvať aj mimo Európskeho hospodárskeho priestoru na základe štandardných zmluvných doložiek.",
+  "privacy.recipients.i2":
+    "Twitch je poskytovateľ identity. Dostáva tvoje prihlásenie a je samostatným prevádzkovateľom podľa vlastných zásad ochrany súkromia.",
+  "privacy.recipients.i3":
+    "Streamer, ktorý giveaway vedie, vidí jeho účastníkov a výhercov. Mená účastníkov a výhercov sa zobrazujú na živej stránke giveawayu a v overlayi.",
+  "privacy.recipients.i4":
+    "Pri žrebovaní sa číta verejný maják náhodnosti drand. Neposielajú sa mu žiadne osobné údaje.",
+  "privacy.cookies.h": "Cookies a lokálne úložisko",
+  "privacy.cookies.p1":
+    "Rafflink nastavuje iba nevyhnutne potrebné cookies, preto sa nezobrazuje žiadny súhlasový banner. Všetky sú HTTP-only a nepoužívajú sa na nič iné.",
+  "privacy.cookies.i1": "rl_streamer: drží streamera prihláseného, 7 dní.",
+  "privacy.cookies.i2":
+    "rl_viewer: umožní vracajúcemu sa divákovi vidieť výsledok bez nového prihlásenia, 30 dní.",
+  "privacy.cookies.i3":
+    "rl_oauth_streamer_* a rl_oauth_viewer_*: chránia prihlásenie pred sfalšovaním, 10 minút.",
+  "privacy.cookies.i4":
+    "rl_pending_*: umožní prehliadaču, ktorý zaradil zapojenie do fronty, vyzdvihnúť jeho výsledok, niekoľko minút.",
+  "privacy.cookies.i5":
+    "Lokálne úložisko prehliadača si pamätá tvoj výber jazyka a témy. Zariadenie nikdy neopúšťa.",
+  "privacy.rights.h": "Tvoje práva",
+  "privacy.rights.p1":
+    "Môžeš požiadať o prístup k svojim údajom, opravu, vymazanie, obmedzenie spracúvania a kópiu v prenosnom formáte a môžeš namietať proti spracúvaniu na základe oprávneného záujmu. Napíš na {contactEmail}. Odpovieme do jedného mesiaca.",
+  "privacy.rights.p2":
+    "Prístup Rafflinku môžeš kedykoľvek odobrať aj v nastaveniach Twitchu v časti Connections.",
+  "privacy.rights.i1": "Prístup k údajom, ich oprava a prenosnosť.",
+  "privacy.rights.i2": "Vymazanie, napríklad záznamu o výhercovi, ktorý po giveawayi zostáva.",
+  "privacy.rights.i3": "Námietka proti spracúvaniu na základe nášho oprávneného záujmu.",
+  "privacy.rights.i4":
+    "Sťažnosť dozornému orgánu na ochranu osobných údajov v krajine, kde žiješ alebo pracuješ, alebo kde si myslíš, že boli porušené tvoje práva. Na Slovensku je to Úrad na ochranu osobných údajov SR.",
+  "privacy.changes.h": "Zmeny",
+  "privacy.changes.p1":
+    "Keď sa tieto zásady zmenia, zmení sa aj dátum na začiatku. Podstatné zmeny oznámime na domovskej stránke.",
+
+  "terms.title": "Podmienky používania",
+  "terms.intro":
+    "Prihlásením alebo zapojením do giveawayu na Rafflinku tieto podmienky prijímaš. Ak s nimi nesúhlasíš, službu nepoužívaj.",
+  "terms.service.h": "Služba",
+  "terms.service.p1":
+    "Rafflink umožňuje streamerovi na Twitchi vytvoriť giveaway, zbierať zapojenia a losovať výhercov naživo. Hostovanú službu prevádzkuje {operatorName}, {operatorAddress}.",
+  "terms.service.p2":
+    "Služba sa poskytuje tak, ako je, a tak, ako je dostupná, bez akejkoľvek záruky. Môže sa kedykoľvek zmeniť, obmedziť alebo ukončiť a nemá garantovanú dostupnosť. Pri samostatne hostovanej inštancii určuje podmienky ten, kto ju prevádzkuje.",
+  "terms.source.h": "Open source",
+  "terms.source.p1":
+    "Zdrojový kód je licencovaný pod GNU AGPL-3.0 a je dostupný na {repository}. Licencia sa vzťahuje na kód. Tieto podmienky sa vzťahujú na hostovanú službu.",
+  "terms.streamers.h": "Streameri",
+  "terms.streamers.p1": "Giveaway vedieš ty, nie Rafflink. Rafflink iba losuje.",
+  "terms.streamers.i1": "Zodpovedáš za výhru, jej odovzdanie a svoje pravidlá.",
+  "terms.streamers.i2":
+    "Zodpovedáš za to, aby bol giveaway zákonný vo tvojej jurisdikcii aj v krajinách, kde žijú tvoji diváci, vrátane pravidiel o hazardných hrách, lóteriách, propagačných súťažiach a daniach.",
+  "terms.streamers.i3":
+    "Zapojenie musí zostať pre divákov zadarmo. Tikety navyše pre predplatiteľov alebo followerov sú tvoje rozhodnutie a musíš si overiť, že je to tam, kde giveaway vedieš, dovolené.",
+  "terms.streamers.i4":
+    "Zodpovedáš za to, ako použiješ údaje účastníkov, ktoré vidíš, podľa predpisov o ochrane osobných údajov, ktoré sa na teba vzťahujú.",
+  "terms.viewers.h": "Diváci",
+  "terms.viewers.i1": "Zapojenie je zadarmo a vyžaduje účet na Twitchi.",
+  "terms.viewers.i2":
+    "Výhru poskytuje streamer, nie Rafflink. Rafflink nie je stranou giveawayu a nesľubuje výhru ani jej doručenie.",
+  "terms.viewers.i3":
+    "Výhru treba prevziať v čase, ktorý streamer určil. Potom môže streamer losovať znova.",
+  "terms.twitch.h": "Twitch",
+  "terms.twitch.p1":
+    "Na tvoje používanie Twitchu cez Rafflink sa vzťahujú Terms of Service, Community Guidelines a Developer Services Agreement spoločnosti Twitch. Rafflink nie je s Twitchom prepojený ani ním podporovaný.",
+  "terms.use.h": "Prijateľné používanie",
+  "terms.use.p1": "Zaväzuješ sa, že nebudeš:",
+  "terms.use.i1":
+    "používať botov, skripty ani inú automatizáciu na zapojenie alebo prevzatie výhry,",
+  "terms.use.i2": "zapájať sa z viac ako jedného účtu ani používať cudzí účet,",
+  "terms.use.i3":
+    "obchádzať pravidlá zapojenia, obmedzenia rýchlosti ani iné ochrany a rušiť službu,",
+  "terms.use.i4":
+    "viesť nezákonné giveawaye ani dávať do názvu či textu výhry nezákonný alebo urážlivý obsah.",
+  "terms.liability.h": "Zodpovednosť",
+  "terms.liability.p1":
+    "V rozsahu, ktorý zákon dovoľuje, nezodpovedáme za nepriamu ani následnú škodu, za giveaway, výhru ani spor medzi streamerom a divákom, ani za výpadok Rafflinku alebo Twitchu. Naša celková zodpovednosť je obmedzená sumou, ktorú si nám za službu zaplatil, čo je pri bezplatnom účte nula.",
+  "terms.liability.p2":
+    "Nič z toho neobmedzuje zodpovednosť, ktorú zákon obmedziť nedovoľuje, napríklad zodpovednosť za úmysel alebo za ujmu na zdraví, ani tvoje práva spotrebiteľa.",
+  "terms.changes.h": "Zmeny",
+  "terms.changes.p1":
+    "Tieto podmienky môžeme zmeniť. Dátum na začiatku ukazuje aktuálnu verziu a používaním služby po zmene ju prijímaš. Giveaway môžeme odstrániť a účet zablokovať, ak porušuje tieto podmienky.",
+  "terms.contact.h": "Kontakt",
+  "terms.contact.p1": "Otázky k týmto podmienkam: {contactEmail}.",
 }

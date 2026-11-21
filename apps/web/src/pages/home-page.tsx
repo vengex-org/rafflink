@@ -72,6 +72,8 @@ export function HomePage() {
           <nav aria-label={t("home.footer.label")}>
             <a href={repositoryUrl}>{t("nav.github")}</a>
             <a href={setupGuideUrl}>{t("home.footer.guide")}</a>
+            <Link to="/privacy">{t("legal.privacy")}</Link>
+            <Link to="/terms">{t("legal.terms")}</Link>
           </nav>
         </div>
       </footer>
