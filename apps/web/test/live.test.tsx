@@ -1616,14 +1616,6 @@ describe("live page: the winner on the stage", () => {
     expect(await view.findByText("Picked from 622 tickets")).toBeTruthy()
   })
 
-  it("shows the claim window of the giveaway under the ring", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
-
-    const view = renderApp("/live/gid-1")
-
-    expect(await view.findByText("Claim window 300 s")).toBeTruthy()
-  })
-
   it("empties the ring with the share of the claim window that is left", async () => {
     const waiting: LiveSnapshot = {
       ...drawn,
@@ -1641,14 +1633,16 @@ describe("live page: the winner on the stage", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(waiting) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText("Claim window 300 s")
+    await view.findByText("left to claim")
 
     // 120 s of the 300 s window are left, so 60% of the ring is empty.
-    const bar = view.container.querySelector(".live-ring-bar")
-    expect(Number(bar?.getAttribute("stroke-dashoffset"))).toBeCloseTo(2 * Math.PI * 52 * 0.6, 0)
+    await waitFor(() => {
+      const bar = view.container.querySelector(".live-ring-bar")
+      expect(Number(bar?.getAttribute("stroke-dashoffset"))).toBeCloseTo(2 * Math.PI * 52 * 0.6, 0)
+    })
   })
 
-  it("starts the ring full and names no claim window while the giveaway is not known", async () => {
+  it("starts the ring full while the giveaway is not known", async () => {
     spyOn(console, "error").mockImplementation(() => {})
     mockFetch({
       "GET /api/live/gid-1": () => ok(drawn),
@@ -1660,7 +1654,6 @@ describe("live page: the winner on the stage", () => {
 
     const bar = view.container.querySelector(".live-ring-bar")
     expect(Number(bar?.getAttribute("stroke-dashoffset"))).toBe(0)
-    expect(view.queryByText(/Claim window/)).toBeNull()
   })
 
   it("tells the urgency in words and in the ring when the claim time is nearly over", async () => {

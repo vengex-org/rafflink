@@ -195,9 +195,6 @@ function DrawnStage({
                 until={current.claimUntil}
                 windowMs={facts === null ? null : facts.claimSeconds * 1000}
               />
-              {facts === null ? null : (
-                <p>{t("live.claimWindow", { seconds: i18n.number(facts.claimSeconds) })}</p>
-              )}
             </div>
           ) : null}
         </div>

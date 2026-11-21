@@ -509,7 +509,6 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.claimHint.keyword":
     "{name}, napíš {keyword} do chatu alebo stlač Prevziať výhru na stránke giveawayu.",
   "live.claimHint.page": "{name}, stlač Prevziať výhru na stránke giveawayu.",
-  "live.claimWindow": "Čas na prevzatie {seconds} s",
   "live.entries.label": "Zápis",
   "live.entries.open": "Otvorený",
   "live.entries.closed": "Uzavretý",

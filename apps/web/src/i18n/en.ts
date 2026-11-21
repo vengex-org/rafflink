@@ -505,7 +505,6 @@ export const en = {
   "live.claimHint.keyword":
     "{name}, type {keyword} in chat or press Claim my prize on your giveaway page.",
   "live.claimHint.page": "{name}, press Claim my prize on your giveaway page.",
-  "live.claimWindow": "Claim window {seconds} s",
   "live.entries.label": "Entries",
   "live.entries.open": "Open",
   "live.entries.closed": "Closed",
