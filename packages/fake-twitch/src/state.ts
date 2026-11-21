@@ -6,6 +6,8 @@ export interface FakeUser {
   displayName: string
   /** ISO 8601 account creation time, returned by `GET /helix/users`. */
   createdAt: string
+  /** Returned by `GET /helix/users` as `profile_image_url`. */
+  profileImageUrl: string
 }
 
 export interface FakeTwitchOptions {
@@ -32,6 +34,7 @@ export type FailableEndpoint =
   | "users"
   | "vips"
   | "moderators"
+  | "badges"
   | "eventsub"
 export type FailureStatus = 429 | 500 | 502 | 503 | 504
 /** How the next id_token is made wrong: signed by a key `/oauth2/keys` does not serve, issued by another party, or already expired. */
@@ -77,6 +80,8 @@ export interface FakeState {
   readonly follows: Set<string>
   /** Role holders per broadcaster, in the order they were added. */
   readonly roles: Record<Role, Map<string, Set<string>>>
+  /** Subscriber badge image per tier a channel set, keyed by broadcaster id; a channel without an entry has no badges of its own. */
+  readonly channelSubscriberBadges: Map<string, Partial<Record<Tier, string>>>
   readonly codes: Map<string, AuthorizationCode>
   readonly accessTokens: Map<string, AccessToken>
   readonly refreshTokens: Map<string, RefreshToken>
@@ -96,6 +101,7 @@ export function createState(options: FakeTwitchOptions): FakeState {
     subscriptions: new Map(),
     follows: new Set(),
     roles: { vip: new Map(), moderator: new Map() },
+    channelSubscriberBadges: new Map(),
     codes: new Map(),
     accessTokens: new Map(),
     refreshTokens: new Map(),

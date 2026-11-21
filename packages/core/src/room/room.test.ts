@@ -123,6 +123,7 @@ function viewer(id: string, overrides: Partial<RoomViewer> = {}): RoomViewer {
     platformUserId: id,
     login: `login${id}`,
     displayName: `Name${id}`,
+    profileImageUrl: null,
     isFollower: false,
     subTier: null,
     accountAgeDays: 100,
@@ -968,10 +969,53 @@ describe("GiveawayRoom entrants", () => {
     room.enter(viewer("20", { isFollower: true }))
 
     expect(room.entrants({ afterSeq: 0, limit: 10 })).toEqual([
-      { seq: 1, login: "login30", displayName: "Name30", tickets: 3, group: "sub_t1" },
-      { seq: 2, login: "login10", displayName: "Name10", tickets: 1, group: "viewer" },
-      { seq: 3, login: "login20", displayName: "Name20", tickets: 2, group: "follower" },
+      {
+        seq: 1,
+        login: "login30",
+        displayName: "Name30",
+        tickets: 3,
+        group: "sub_t1",
+        profileImageUrl: null,
+      },
+      {
+        seq: 2,
+        login: "login10",
+        displayName: "Name10",
+        tickets: 1,
+        group: "viewer",
+        profileImageUrl: null,
+      },
+      {
+        seq: 3,
+        login: "login20",
+        displayName: "Name20",
+        tickets: 2,
+        group: "follower",
+        profileImageUrl: null,
+      },
     ])
+  })
+
+  it("lists the profile picture each entrant had at entry, none for an entrant without one", () => {
+    const { room } = setup()
+    const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/login1.png"
+    room.enter(viewer("1", { profileImageUrl: picture }))
+    room.enter(viewer("2"))
+
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((row) => row.profileImageUrl)).toEqual([
+      picture,
+      null,
+    ])
+  })
+
+  it("carries the winner's profile picture in the live snapshot", async () => {
+    const { room } = setup()
+    const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/login1.png"
+    room.enter(viewer("1", { profileImageUrl: picture }))
+    room.close()
+    await room.draw()
+
+    expect(room.liveSnapshot().winners.map((winner) => winner.profileImageUrl)).toEqual([picture])
   })
 
   it("pages by the last sequence number seen", () => {
@@ -1032,7 +1076,16 @@ describe("GiveawayRoom live push of entrants", () => {
     expect(first).toEqual({ fromSeq: 1, rows: [], truncated: false })
     expect(second).toEqual({
       fromSeq: 1,
-      rows: [{ seq: 2, login: "login2", displayName: "Name2", tickets: 1, group: "viewer" }],
+      rows: [
+        {
+          seq: 2,
+          login: "login2",
+          displayName: "Name2",
+          tickets: 1,
+          group: "viewer",
+          profileImageUrl: null,
+        },
+      ],
       truncated: false,
     })
     expect(third).toMatchObject({ fromSeq: 2, truncated: false })
@@ -1683,7 +1736,13 @@ describe("GiveawayRoom retention", () => {
 
     expect(room.summary()).toMatchObject({ status: "drawn", entrantCount: 3, ticketTotal: 3 })
     expect(room.picks()).toMatchObject([
-      { n: 0, platformUserId: winner.platformUserId, entrySeq: null, displayName: null },
+      {
+        n: 0,
+        platformUserId: winner.platformUserId,
+        entrySeq: null,
+        displayName: null,
+        profileImageUrl: null,
+      },
     ])
     expect(room.entryOf(winner)).toBeNull()
     expect(room.liveSnapshot().lastNames).toEqual([])

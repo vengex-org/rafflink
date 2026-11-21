@@ -44,6 +44,18 @@ describe("legal pages", () => {
     })
   }
 
+  it("list the Twitch profile picture URL among the data of streamers and of entrants in every language", () => {
+    const pictureWords: Readonly<Record<Language, string>> = {
+      en: "profile picture",
+      sk: "profilového obrázka",
+      cs: "profilového obrázku",
+    }
+    for (const language of languages) {
+      expect(dictionaries[language]["privacy.data.i1"]).toContain(pictureWords[language])
+      expect(dictionaries[language]["privacy.data.i3"]).toContain(pictureWords[language])
+    }
+  })
+
   it("fill the operator, address and contact from the one config in every language", () => {
     for (const language of languages) {
       browserLanguage(language)

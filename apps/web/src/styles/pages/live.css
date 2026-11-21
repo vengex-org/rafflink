@@ -350,6 +350,7 @@
 .live-avatar {
   display: grid;
   flex: none;
+  overflow: hidden;
   place-items: center;
   width: 2.5rem;
   height: 2.5rem;
@@ -358,6 +359,12 @@
   color: var(--ink-2);
   font-size: 0.9375rem;
   font-weight: 800;
+}
+
+.live-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .live-who .live-avatar {
@@ -1111,6 +1118,23 @@ td:nth-child(2) > .entrants-cell {
   font-size: var(--fs-sm);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.entrants-badge {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.entrants-tier-chip {
+  flex: none;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .entrants-tickets {

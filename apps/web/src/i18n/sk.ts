@@ -605,11 +605,11 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.data.p1":
     "Všetko pochádza z Twitchu, keď sa ním prihlásiš. Rafflink žiada iba prístup na čítanie a nikdy nepíše do chatu.",
   "privacy.data.i1":
-    "Streameri: Twitch user ID, prihlasovacie meno, zobrazované meno a čas prvého prihlásenia, ďalej giveawaye, ktoré vytvoria (názov, text výhry, pravidlá, kód odkazu, časy) a ich výsledky.",
+    "Streameri: Twitch user ID, prihlasovacie meno, zobrazované meno, URL profilového obrázka na Twitchi a čas prvého prihlásenia, ďalej giveawaye, ktoré vytvoria (názov, text výhry, pravidlá, kód odkazu, časy) a ich výsledky.",
   "privacy.data.i2":
     "Streameri: Twitch refresh token, uložený šifrovane. Vďaka nemu Rafflink počas giveawayu číta zoznam VIP a moderátorov kanála a chat.",
   "privacy.data.i3":
-    "Účastníci: Twitch user ID, prihlasovacie meno, zobrazované meno, skupina, ktorá dala tikety (divák, follower, úroveň predplatiteľa, VIP alebo moderátor), počet tiketov, čas zapojenia a náhodná hodnota (salt), vďaka ktorej je žrebovanie overiteľné. Kontrola follow a predplatného použije tvoj Twitch token jedenkrát a token sa neukladá.",
+    "Účastníci: Twitch user ID, prihlasovacie meno, zobrazované meno, URL profilového obrázka na Twitchi, skupina, ktorá dala tikety (divák, follower, úroveň predplatiteľa, VIP alebo moderátor), počet tiketov, čas zapojenia a náhodná hodnota (salt), vďaka ktorej je žrebovanie overiteľné. Kontrola follow a predplatného použije tvoj Twitch token jedenkrát a token sa neukladá.",
   "privacy.data.i4": "Výhercovia: výsledok žrebovania a to, či a ako bola výhra prevzatá.",
   "privacy.data.i5":
     "Správy z chatu: čítajú sa len v pamäti, aby sa rozpoznalo prevzatie výhry a aby sa na živej stránke ukázali správy výhercu. Nikdy sa neukladajú ani nelogujú.",
@@ -626,7 +626,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Na udržanie prihlásenia cez cookies, ktoré sú na to nevyhnutné. Rafflink nepoužíva reklamu, analytiku ani sledovanie a údaje nepredáva ani neposkytuje na marketing.",
   "privacy.retention.h": "Ako dlho sa údaje uchovávajú",
   "privacy.retention.i1":
-    "Zapojenia (mená, skupiny, tikety, časy zapojenia) sa mažú 30 dní po uzavretí giveawayu.",
+    "Zapojenia (mená, URL obrázkov, skupiny, tikety, časy zapojenia) sa mažú 30 dní po uzavretí giveawayu.",
   "privacy.retention.i2":
     "Keď streamer odoberie Rafflinku prístup na Twitchi, vymaže sa iba uložený Twitch token. Účet a giveawaye zostávajú, kým streamer nepožiada prevádzkovateľa o ich vymazanie (pozri kontakt vyššie).",
   "privacy.retention.i3":
@@ -640,9 +640,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.recipients.i1":
     "Cloudflare hostuje službu (Workers, Durable Objects, D1) ako náš sprostredkovateľ a môže údaje spracúvať aj mimo Európskeho hospodárskeho priestoru na základe štandardných zmluvných doložiek.",
   "privacy.recipients.i2":
-    "Twitch je poskytovateľ identity. Dostáva tvoje prihlásenie a počas giveawayu aj volania API na kontrolu follow, predplatného a rolí a odber chatu, ktorým sa rozpoznáva prevzatie výhry. Twitch je samostatný prevádzkovateľ podľa vlastných zásad ochrany súkromia.",
+    "Twitch je poskytovateľ identity. Dostáva tvoje prihlásenie a počas giveawayu aj volania API na kontrolu follow, predplatného a rolí a odber chatu, ktorým sa rozpoznáva prevzatie výhry. Prehliadač streamera navyše načítava profilové obrázky a odznaky predplatiteľov z obrazových serverov Twitchu. Twitch je samostatný prevádzkovateľ podľa vlastných zásad ochrany súkromia.",
   "privacy.recipients.i3":
-    "Streamer, ktorý giveaway vedie, vidí jeho účastníkov a výhercov. Mená účastníkov a výhercov sa zobrazujú na živej stránke giveawayu a v overlayi.",
+    "Streamer, ktorý giveaway vedie, vidí jeho účastníkov a výhercov. Mená účastníkov a výhercov sa zobrazujú na živej stránke giveawayu a v overlayi, ich profilové obrázky na živej stránke.",
   "privacy.recipients.i4":
     "Pri žrebovaní sa číta verejný maják náhodnosti drand. Neposielajú sa mu žiadne osobné údaje.",
   "privacy.cookies.h": "Cookies a lokálne úložisko",

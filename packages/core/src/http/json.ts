@@ -10,6 +10,7 @@ import type {
   WinnerClaim,
 } from "../room/giveaway-room.ts"
 import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
+import type { SubscriberBadges } from "../twitch/channel-badges.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
 /**
@@ -93,7 +94,11 @@ export interface MyLeafJson {
 
 /** Who the streamer cookie belongs to; `null` when there is no valid session. */
 export interface SessionJson {
-  readonly streamer: { readonly displayName: string; readonly login: string } | null
+  readonly streamer: {
+    readonly displayName: string
+    readonly login: string
+    readonly profileImageUrl: string | null
+  } | null
 }
 
 /** The streamer's own view of a giveaway, with the overlay token. */
@@ -109,6 +114,9 @@ export interface DashboardGiveaway {
   readonly overlayToken: string
   readonly createdAt: Instant
 }
+
+/** The subscriber badge image of each ticket group a subscriber can be in; `null` when none is known and the page shows a tier chip. */
+export type BadgesJson = SubscriberBadges
 
 /** The live snapshot the streamer's own page loads first; the overlay token lets it show the OBS link. */
 export type OwnerLiveSnapshot = LiveSnapshot & { readonly overlayToken: string }

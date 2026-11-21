@@ -43,6 +43,7 @@ function signIn(overrides: Partial<StreamerSignIn> = {}): StreamerSignIn {
     platformUserId: "200",
     login: "streamer",
     displayName: "Streamer",
+    profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
     sealedRefreshToken: "sealed-1",
     scopes: "openid",
     now: 1000,
@@ -86,6 +87,7 @@ describe("AccountStore streamers", () => {
       platformUserId: "200",
       login: "streamer",
       displayName: "Streamer",
+      profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
     })
     expect(
       sqlRows(db, "SELECT streamer_id, refresh_token_enc, scopes FROM streamer_tokens"),
@@ -101,6 +103,7 @@ describe("AccountStore streamers", () => {
       platformUserId: "201",
       login: "other",
       displayName: "Streamer",
+      profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
     })
     expect(await store.findStreamer("missing")).toBeNull()
   })
@@ -123,6 +126,19 @@ describe("AccountStore streamers", () => {
     expect(sqlRows(db, "SELECT refresh_token_enc, validated_at FROM streamer_tokens")).toEqual([
       { refresh_token_enc: "sealed-2", validated_at: 2000 },
     ])
+  })
+
+  it("replaces the profile picture on a second sign-in, also with none", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn())
+
+    const changed = await store.signInStreamer(
+      signIn({ profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/new.png" }),
+    )
+    const removed = await store.signInStreamer(signIn({ profileImageUrl: null }))
+
+    expect(changed.profileImageUrl).toBe("https://static-cdn.jtvnw.net/jtv_user_pictures/new.png")
+    expect(removed.profileImageUrl).toBeNull()
   })
 
   it("keeps the streamers of two platforms with the same user id apart", async () => {

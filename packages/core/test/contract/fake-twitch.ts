@@ -1,4 +1,10 @@
-import { createFakeTwitch, websocket, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
+import {
+  createFakeTwitch,
+  profileImageUrlOf,
+  websocket,
+  type FakeTwitch,
+  type FakeUser,
+} from "@rafflink/fake-twitch"
 
 export const users = {
   streamer: user("200"),
@@ -10,7 +16,14 @@ export const users = {
 } as const
 
 function user(id: string): FakeUser {
-  return { id, login: `user_${id}`, displayName: `User_${id}`, createdAt: "2019-01-01T00:00:00Z" }
+  const login = `user_${id}`
+  return {
+    id,
+    login,
+    displayName: `User_${id}`,
+    createdAt: "2019-01-01T00:00:00Z",
+    profileImageUrl: profileImageUrlOf(login),
+  }
 }
 
 /** The app credentials the fake accepts; a target gets them as `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`. */

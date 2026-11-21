@@ -40,6 +40,7 @@ const drawn: LiveSnapshot = {
       n: 0,
       entrySeq: 1,
       displayName: "Wanda",
+      profileImageUrl: null,
       claimUntil: Date.now() + 120_000,
       claim: { state: "waiting" },
     },
@@ -47,10 +48,18 @@ const drawn: LiveSnapshot = {
       n: 1,
       entrySeq: 2,
       displayName: "Bob",
+      profileImageUrl: null,
       claimUntil: 1,
       claim: { state: "claimed", at: claimedAt, via: "chat" },
     },
-    { n: 2, entrySeq: 3, displayName: "Eve", claimUntil: 1, claim: { state: "expired" } },
+    {
+      n: 2,
+      entrySeq: 3,
+      displayName: "Eve",
+      profileImageUrl: null,
+      claimUntil: 1,
+      claim: { state: "expired" },
+    },
   ],
 }
 
@@ -209,6 +218,7 @@ describe("live page: collecting entries", () => {
     expect(view.getByRole("button", { name: "Closed" })).toBeTruthy()
     expect(requests.map((request) => request.route)).toEqual([
       "GET /api/live/gid-1",
+      "GET /api/live/gid-1/badges",
       "GET /api/g/ABCDE",
       "GET /api/live/gid-1/entrants?after=0",
     ])
@@ -225,6 +235,7 @@ describe("live page: collecting entries", () => {
     expect(view.queryByRole("dialog")).toBeNull()
     expect(requests.map((request) => request.route)).toEqual([
       "GET /api/live/gid-1",
+      "GET /api/live/gid-1/badges",
       "GET /api/g/ABCDE",
       "GET /api/live/gid-1/entrants?after=0",
     ])
@@ -591,6 +602,7 @@ describe("live page: winners", () => {
               n: 0,
               entrySeq: 1,
               displayName: "Wanda",
+              profileImageUrl: null,
               claimUntil: Date.now() + 120_000,
               claim: { state: "waiting" },
             },
@@ -598,6 +610,7 @@ describe("live page: winners", () => {
               n: 1,
               entrySeq: 2,
               displayName: "Cy",
+              profileImageUrl: null,
               claimUntil: Date.now() + 60_000,
               claim: { state: "waiting" },
             },
@@ -659,6 +672,7 @@ describe("live page: winners", () => {
     expect(view.getByText("Eve loses the prize. This cannot be undone.")).toBeTruthy()
     expect(requests.map((request) => request.route)).toEqual([
       "GET /api/live/gid-1",
+      "GET /api/live/gid-1/badges",
       "GET /api/g/ABCDE",
       "GET /api/live/gid-1/entrants?after=0",
     ])
@@ -717,6 +731,7 @@ describe("live page: winners", () => {
           n: 0,
           entrySeq: 2,
           displayName: "Bob",
+          profileImageUrl: null,
           claimUntil: 1,
           claim: { state: "claimed", at: 1, via: "chat" },
         },
@@ -1267,7 +1282,14 @@ describe("live page: its own frame", () => {
 
 describe("live page: the winner on the stage", () => {
   const entrantRows = [
-    { seq: 1, login: "wanda", displayName: "Wanda", tickets: 4, group: "sub_t2" },
+    {
+      seq: 1,
+      login: "wanda",
+      displayName: "Wanda",
+      tickets: 4,
+      group: "sub_t2",
+      profileImageUrl: null,
+    },
   ]
 
   it("shows the tier and the tickets of the winner once the list has them", async () => {
@@ -1283,6 +1305,47 @@ describe("live page: the winner on the stage", () => {
     )
     expect(view.container.querySelector(".live-stub")?.textContent).toBe("4 tickets")
     expect(view.container.querySelector(".live-who .live-avatar")?.textContent).toBe("WA")
+  })
+
+  it("shows the winner's profile picture on the stage and in the earlier picks, initials when it fails to load", async () => {
+    const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/wanda.png"
+    const withPicture: LiveSnapshot = {
+      ...drawn,
+      winners: drawn.winners.map((winner) =>
+        winner.displayName === "Bob" ? { ...winner, profileImageUrl: picture } : winner,
+      ),
+    }
+    mockLive({ "GET /api/live/gid-1": () => ok(withPicture) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("left to claim")
+
+    const earlier = view.container.querySelector(".live-hist .live-avatar img")
+    expect(earlier?.getAttribute("src")).toBe(picture)
+    expect(view.container.querySelector(".live-who .live-avatar img")).toBeNull()
+    expect(view.container.querySelector(".live-who .live-avatar")?.textContent).toBe("WA")
+    if (earlier !== null) fireEvent.error(earlier)
+    await waitFor(() =>
+      expect(view.container.querySelector(".live-hist .live-avatar img")).toBeNull(),
+    )
+  })
+
+  it("shows the current winner's profile picture on the stage", async () => {
+    const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/wanda.png"
+    const withPicture: LiveSnapshot = {
+      ...drawn,
+      winners: drawn.winners.map((winner) =>
+        winner.displayName === "Wanda" ? { ...winner, profileImageUrl: picture } : winner,
+      ),
+    }
+    mockLive({ "GET /api/live/gid-1": () => ok(withPicture) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("left to claim")
+
+    expect(view.container.querySelector(".live-who .live-avatar img")?.getAttribute("src")).toBe(
+      picture,
+    )
   })
 
   it("shows no tier or tickets while the winner is not in the list", async () => {
@@ -1315,11 +1378,19 @@ describe("live page: the winner on the stage", () => {
     const replaced: LiveSnapshot = {
       ...drawn,
       winners: [
-        { n: 0, entrySeq: 3, displayName: "Eve", claimUntil: 1, claim: { state: "rerolled" } },
+        {
+          n: 0,
+          entrySeq: 3,
+          displayName: "Eve",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "rerolled" },
+        },
         {
           n: 1,
           entrySeq: 1,
           displayName: "Wanda",
+          profileImageUrl: null,
           claimUntil: Date.now() + 120_000,
           claim: { state: "waiting" },
         },
@@ -1357,6 +1428,7 @@ describe("live page: the winner on the stage", () => {
           n: 0,
           entrySeq: 1,
           displayName: "Wanda",
+          profileImageUrl: null,
           claimUntil: Date.now() + 120_000,
           claim: { state: "waiting" },
         },
@@ -1395,6 +1467,7 @@ describe("live page: the winner on the stage", () => {
           n: 0,
           entrySeq: 1,
           displayName: "Wanda",
+          profileImageUrl: null,
           claimUntil: Date.now() + 10_000,
           claim: { state: "waiting" },
         },

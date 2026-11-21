@@ -14,9 +14,16 @@ import {
   type RerollOutcome,
 } from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
+import { ChannelBadges } from "../twitch/channel-badges.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
-import { dashboardGiveaway, readJson, type EntrantsPage, type OwnerLiveSnapshot } from "./json.ts"
+import {
+  dashboardGiveaway,
+  readJson,
+  type BadgesJson,
+  type EntrantsPage,
+  type OwnerLiveSnapshot,
+} from "./json.ts"
 import type { StreamerSession } from "./session.ts"
 import { currentStreamer } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
@@ -25,6 +32,7 @@ type Env = { Variables: { streamer: StreamerSession } }
 
 export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   const app = new Hono<Env>()
+  const badges = new ChannelBadges(deps.twitch, deps.clock, deps.config)
 
   app.use("/api/live/:id", webSocketOrigin(deps.config, { allowMissing: false }))
   app.use("/api/overlay/:id/:token", webSocketOrigin(deps.config, { allowMissing: true }))
@@ -183,6 +191,14 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       // One row more than the page tells whether another page follows.
       const rows = await deps.rooms.get(giveaway.id).entrants({ afterSeq, limit: limit + 1 })
       const body: EntrantsPage = { rows: rows.slice(0, limit), more: rows.length > limit }
+      c.header("Cache-Control", "no-store")
+      return c.json(body)
+    }),
+  )
+
+  app.get("/api/live/:id/badges", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const body: BadgesJson = await badges.of(giveaway.broadcasterId)
       c.header("Cache-Control", "no-store")
       return c.json(body)
     }),

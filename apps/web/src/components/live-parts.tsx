@@ -67,11 +67,29 @@ export function EntrantNames({ names }: { readonly names: readonly string[] }) {
   )
 }
 
-/** A round badge with the initials of a name; the name is always written beside it, so it is hidden from screen readers. */
-export function Avatar({ name }: { readonly name: string }) {
+/** A round badge with the Twitch profile picture, or the initials of a name when there is no picture or it does not load; the name is always written beside it, so it is hidden from screen readers. */
+export function Avatar({
+  name,
+  imageUrl,
+}: {
+  readonly name: string
+  readonly imageUrl: string | null
+}) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
   return (
     <span className="live-avatar" aria-hidden="true">
-      {initialsOf(name)}
+      {imageUrl === null || imageUrl === failedUrl ? (
+        initialsOf(name)
+      ) : (
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFailedUrl(imageUrl)}
+        />
+      )}
     </span>
   )
 }
@@ -95,7 +113,7 @@ export function EarlierPicks({
         const name = winner.displayName ?? t("winner.removed")
         return (
           <li key={winner.n} className="live-hist" data-claim={winner.claim.state}>
-            <Avatar name={name} />
+            <Avatar name={name} imageUrl={winner.profileImageUrl} />
             <span className="live-hist-name">{name}</span>
             <span className="live-hist-status">
               {winner.claim.state === "waiting" ? (

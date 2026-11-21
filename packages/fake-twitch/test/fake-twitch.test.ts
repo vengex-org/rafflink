@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import {
+  profileImageUrlOf,
   seededLogin,
   serveFakeTwitch,
   type FakeTwitchOptions,
@@ -16,6 +17,7 @@ const options: FakeTwitchOptions = {
     login: "viewer",
     displayName: "Viewer",
     createdAt: "2021-03-04T05:06:07Z",
+    profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/viewer.png",
   },
   subscribeWindowMs: 300,
   keepaliveTimeoutSeconds: 0.2,
@@ -25,6 +27,7 @@ const streamer: FakeUser = {
   login: "streamer",
   displayName: "Streamer",
   createdAt: "2019-01-01T00:00:00Z",
+  profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
 }
 const redirectUri = "http://localhost/callback"
 
@@ -320,6 +323,61 @@ describe("id service", () => {
   })
 })
 
+describe("chat badges", () => {
+  test("serves a channel's own subscriber badges by tier and none for a channel without", async () => {
+    const appToken = await clientCredentials()
+    fake.control.setChannelSubscriberBadges("200", {
+      "1000": "https://static-cdn.jtvnw.net/badges/v1/t1/1",
+      "3000": "https://static-cdn.jtvnw.net/badges/v1/t3/1",
+    })
+
+    const own = await (await helix("/helix/chat/badges?broadcaster_id=200", appToken)).json()
+    const other = await (await helix("/helix/chat/badges?broadcaster_id=100", appToken)).json()
+
+    expect(own).toMatchObject({
+      data: [
+        {
+          set_id: "subscriber",
+          versions: [
+            { id: "0", image_url_1x: "https://static-cdn.jtvnw.net/badges/v1/t1/1" },
+            { id: "3000", image_url_1x: "https://static-cdn.jtvnw.net/badges/v1/t3/1" },
+          ],
+        },
+      ],
+    })
+    expect(other).toEqual({ data: [] })
+  })
+
+  test("stops serving a channel's badges when they are removed", async () => {
+    const appToken = await clientCredentials()
+    fake.control.setChannelSubscriberBadges("200", { "1000": "https://static-cdn.jtvnw.net/x/1" })
+    fake.control.setChannelSubscriberBadges("200", null)
+
+    const body = await (await helix("/helix/chat/badges?broadcaster_id=200", appToken)).json()
+
+    expect(body).toEqual({ data: [] })
+  })
+
+  test("serves the global subscriber badge and answers a scripted failure", async () => {
+    const appToken = await clientCredentials()
+    fake.control.failNext("badges", 503, 1)
+
+    const down = await helix("/helix/chat/badges/global", appToken)
+    const global = await (await helix("/helix/chat/badges/global", appToken)).json()
+
+    expect(down.status).toBe(503)
+    expect(global).toMatchObject({
+      data: [{ set_id: "subscriber", versions: [{ id: "0" }] }],
+    })
+  })
+
+  test("refuses a channel request without broadcaster_id", async () => {
+    const response = await helix("/helix/chat/badges", await clientCredentials())
+
+    expect(response.status).toBe(400)
+  })
+})
+
 describe("bulk users", () => {
   test("seedUsers adds consecutive ids that sign in with login_hint", async () => {
     fake.control.seedUsers(3, 5000)
@@ -394,6 +452,20 @@ describe("helix", () => {
     })
   })
 
+  test("returns profile_image_url for the requested users and for the token's user by default", async () => {
+    const tokens = await signIn("openid")
+
+    const byId = await helix("/helix/users?id=200", tokens.access_token)
+    const self = await helix("/helix/users", tokens.access_token)
+
+    expect(await byId.json()).toMatchObject({
+      data: [{ profile_image_url: streamer.profileImageUrl }],
+    })
+    expect(await self.json()).toMatchObject({
+      data: [{ profile_image_url: options.defaultUser.profileImageUrl }],
+    })
+  })
+
   test("looks users up by login case-insensitively with an app access token", async () => {
     const appToken = await clientCredentials()
 
@@ -442,6 +514,7 @@ describe("helix", () => {
         login: `vip${id}`,
         displayName: `Vip${id}`,
         createdAt: "2020-01-01T00:00:00Z",
+        profileImageUrl: profileImageUrlOf(`vip${id}`),
       })
       fake.control.setRole("200", `v${id}`, "vip", true)
     }

@@ -1,6 +1,11 @@
 import { Database } from "bun:sqlite"
 import { readdirSync } from "node:fs"
-import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
+import {
+  createFakeTwitch,
+  profileImageUrlOf,
+  type FakeTwitch,
+  type FakeUser,
+} from "@rafflink/fake-twitch"
 import type { Hono } from "hono"
 import { AdminDirectory } from "../src/admin/admin-directory.ts"
 import { AccountStore } from "../src/accounts/account-store.ts"
@@ -225,6 +230,7 @@ function user(id: string, login: string): FakeUser {
     login,
     displayName: `Display_${login}`,
     createdAt: "2019-01-01T00:00:00Z",
+    profileImageUrl: profileImageUrlOf(login),
   }
 }
 

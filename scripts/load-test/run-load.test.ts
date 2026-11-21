@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import {
   createFakeTwitch,
+  profileImageUrlOf,
   websocket,
   type FakeTwitch,
 } from "../../packages/fake-twitch/src/index.ts"
@@ -137,6 +138,7 @@ function fakeTwitch(limits: { tokenLimitPerSecond?: number }): FakeTwitch {
       login: "streamer",
       displayName: "Streamer",
       createdAt: "2019-01-01T00:00:00Z",
+      profileImageUrl: profileImageUrlOf("streamer"),
     },
     subscribeWindowMs: 300,
     keepaliveTimeoutSeconds: 10,

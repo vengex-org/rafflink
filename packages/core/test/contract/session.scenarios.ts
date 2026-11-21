@@ -22,7 +22,11 @@ export function sessionScenarios(context: ContractContext): void {
 
     expect(response.headers.get("cache-control")).toBe("no-store")
     expect(await response.json()).toEqual({
-      streamer: { displayName: users.streamer.displayName, login: users.streamer.login },
+      streamer: {
+        displayName: users.streamer.displayName,
+        login: users.streamer.login,
+        profileImageUrl: users.streamer.profileImageUrl,
+      },
     })
   })
 

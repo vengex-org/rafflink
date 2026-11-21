@@ -70,6 +70,7 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
       platformUserId: signIn.userId,
       login: signIn.login,
       displayName: signIn.displayName,
+      profileImageUrl: signIn.profileImageUrl,
       sealedRefreshToken: await sealSecret(
         deps.keyRing,
         signIn.refreshToken,
@@ -150,6 +151,7 @@ interface StreamerGrant {
   readonly userId: string
   readonly login: string
   readonly displayName: string
+  readonly profileImageUrl: string | null
   readonly refreshToken: string
 }
 
@@ -169,6 +171,7 @@ async function exchangeStreamer(
     userId,
     login: profile.login,
     displayName: profile.displayName,
+    profileImageUrl: profile.profileImageUrl,
     refreshToken: tokens.refreshToken,
   }
 }

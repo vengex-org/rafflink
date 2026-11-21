@@ -28,6 +28,8 @@ export interface StreamerRecord {
   readonly platformUserId: string
   readonly login: string
   readonly displayName: string
+  /** Null when the streamer has no picture on Twitch's image host. */
+  readonly profileImageUrl: string | null
 }
 
 /** What a streamer sign-in stores: the streamer and their sealed refresh token, written together. */
@@ -38,6 +40,7 @@ export interface StreamerSignIn {
   readonly platformUserId: string
   readonly login: string
   readonly displayName: string
+  readonly profileImageUrl: string | null
   readonly sealedRefreshToken: string
   readonly scopes: string
   readonly now: Instant
@@ -95,6 +98,7 @@ export class AccountStore {
           input.platformUserId,
           input.login,
           input.displayName,
+          input.profileImageUrl,
           input.now,
         ],
       },
@@ -246,6 +250,7 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     platformUserId: reader.text("platform_user_id"),
     login: reader.text("login"),
     displayName: reader.text("display_name"),
+    profileImageUrl: reader.nullableText("profile_image_url"),
   }
 }
 

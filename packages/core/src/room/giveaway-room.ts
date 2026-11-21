@@ -113,6 +113,8 @@ export type RoomViewer = Omit<ViewerFacts, "userId" | "isVip" | "isModerator"> &
   readonly platformUserId: string
   readonly login: string
   readonly displayName: string
+  /** Null when the viewer has no picture on Twitch's image host. */
+  readonly profileImageUrl: string | null
 }
 
 export type EnterOutcome =
@@ -208,6 +210,8 @@ export interface LiveWinner {
   readonly entrySeq: number | null
   /** Null when the entry is gone. */
   readonly displayName: string | null
+  /** Null when the entry is gone or has no picture. */
+  readonly profileImageUrl: string | null
   readonly claimUntil: Instant
   readonly claim: WinnerClaim
 }
@@ -417,13 +421,14 @@ export class GiveawayRoom {
 
       // `entrant_count` only grows and moves in the same transaction, so the next `seq` never repeats.
       this.sql.exec(
-        `INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at, salt)
-         VALUES ((SELECT entrant_count + 1 FROM room_state WHERE id = 1), ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO entries (seq, platform, platform_user_id, login, display_name, profile_image_url, group_name, tickets, entered_at, salt)
+         VALUES ((SELECT entrant_count + 1 FROM room_state WHERE id = 1), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           state.platform,
           viewer.platformUserId,
           viewer.login,
           viewer.displayName,
+          viewer.profileImageUrl,
           eligibility.group,
           eligibility.tickets,
           now,
@@ -938,7 +943,7 @@ export class GiveawayRoom {
 
   private readPickRows(): SqlRow[] {
     return this.sql.exec(
-      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, e.display_name, e.seq
+      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, e.display_name, e.profile_image_url, e.seq
        FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
        ORDER BY d.n`,
       [],
@@ -1430,6 +1435,7 @@ function liveWinner(row: SqlRow, now: Instant): LiveWinner {
     n: draw.n,
     entrySeq: new RowReader("entries", row).nullableInt("seq"),
     displayName: new RowReader("entries", row).nullableText("display_name"),
+    profileImageUrl: new RowReader("entries", row).nullableText("profile_image_url"),
     claimUntil: draw.claimUntil,
     claim: winnerClaim(draw, now),
   }

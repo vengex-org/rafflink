@@ -85,7 +85,11 @@ describe("session", () => {
 
     expect(response.headers.get("cache-control")).toBe("no-store")
     expect(await response.json()).toEqual({
-      streamer: { displayName: users.streamerA.displayName, login: users.streamerA.login },
+      streamer: {
+        displayName: users.streamerA.displayName,
+        login: users.streamerA.login,
+        profileImageUrl: users.streamerA.profileImageUrl,
+      },
     })
   })
 
@@ -1538,6 +1542,7 @@ interface EntrantsBody {
     displayName: string
     tickets: number
     group: string
+    profileImageUrl: string | null
   }[]
   readonly more: boolean
 }
@@ -1554,6 +1559,7 @@ async function giveawayWithEntrants(count: number) {
       platformUserId: String(index),
       login: `login${index}`,
       displayName: `Name${index}`,
+      profileImageUrl: null,
       isFollower: index === 2,
       subTier: null,
       accountAgeDays: 100,
@@ -1574,9 +1580,30 @@ describe("entrants of the live page", () => {
     expect(body).toEqual({
       more: false,
       rows: [
-        { seq: 1, login: "login1", displayName: "Name1", tickets: 1, group: "viewer" },
-        { seq: 2, login: "login2", displayName: "Name2", tickets: 2, group: "follower" },
-        { seq: 3, login: "login3", displayName: "Name3", tickets: 1, group: "viewer" },
+        {
+          seq: 1,
+          login: "login1",
+          displayName: "Name1",
+          tickets: 1,
+          group: "viewer",
+          profileImageUrl: null,
+        },
+        {
+          seq: 2,
+          login: "login2",
+          displayName: "Name2",
+          tickets: 2,
+          group: "follower",
+          profileImageUrl: null,
+        },
+        {
+          seq: 3,
+          login: "login3",
+          displayName: "Name3",
+          tickets: 1,
+          group: "viewer",
+          profileImageUrl: null,
+        },
       ],
     })
   })

@@ -222,6 +222,55 @@ button:disabled {
       no-repeat;
 }
 
+.account-avatar {
+  display: inline-flex;
+}
+
+.account-avatar .live-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.625rem;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-menu-panel {
+  position: absolute;
+  inset: calc(100% + var(--space-1)) 0 auto auto;
+  z-index: 10;
+  display: flex;
+  min-width: 11rem;
+  flex-direction: column;
+  padding: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+}
+
+.account-menu-panel a,
+.account-menu-panel button {
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.account-menu-panel a:hover,
+.account-menu-panel button:hover:not(:disabled),
+.account-menu-panel a:focus-visible,
+.account-menu-panel button:focus-visible {
+  background: var(--surface-2);
+}
+
 .app-nav {
   display: none;
   gap: 1.75rem;

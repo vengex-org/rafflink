@@ -13,6 +13,7 @@ import {
   parseFollowed,
   parseAppToken,
   parseRolePage,
+  parseSubscriberBadgeImages,
   parseSubscriptionCreated,
   parseTier,
   parseTokenResponse,
@@ -151,6 +152,37 @@ export class TwitchClient {
   /** Login, display name and creation time of the account the token belongs to. */
   async userProfile(accessToken: string): Promise<UserProfile> {
     return this.helix("users", "/helix/users", {}, accessToken, parseUserProfile)
+  }
+
+  /** The badge image of each subscription tier in the channel's own badge set (an app token is enough); `null` for a tier the channel set no badge for. */
+  async channelSubscriberBadges(
+    appToken: string,
+    broadcasterId: string,
+  ): Promise<Readonly<Record<SubscriptionGroup, string | null>>> {
+    const images = await this.helix(
+      "badges",
+      "/helix/chat/badges",
+      { broadcaster_id: broadcasterId },
+      appToken,
+      parseSubscriberBadgeImages,
+    )
+    return {
+      sub_t1: images.get(baseBadgeVersions.sub_t1) ?? null,
+      sub_t2: images.get(baseBadgeVersions.sub_t2) ?? null,
+      sub_t3: images.get(baseBadgeVersions.sub_t3) ?? null,
+    }
+  }
+
+  /** The subscriber badge every channel without its own set shows; `null` when Twitch lists none. */
+  async globalSubscriberBadge(appToken: string): Promise<string | null> {
+    const images = await this.helix(
+      "badges",
+      "/helix/chat/badges/global",
+      {},
+      appToken,
+      parseSubscriberBadgeImages,
+    )
+    return images.get(globalBadgeVersion) ?? null
   }
 
   /** Login to user id of the accounts that exist; Twitch answers 100 logins per call, so a longer list is sent in chunks. A login without an account is absent from the result. */
@@ -372,6 +404,15 @@ const idTokenIssuer = "https://id.twitch.tv/oauth2"
 
 /** Twitch caps `first` at 100 on its paginated endpoints. */
 const helixMaxPageSize = 100
+
+// Twitch names the first badge version of a tier by the tier: "0" for tier 1, "2000" and "3000" above it; later versions count months.
+const baseBadgeVersions: Readonly<Record<SubscriptionGroup, string>> = {
+  sub_t1: "0",
+  sub_t2: "2000",
+  sub_t3: "3000",
+}
+
+const globalBadgeVersion = "0"
 
 const tierGroups: Readonly<Record<Tier, SubscriptionGroup>> = {
   "1000": "sub_t1",

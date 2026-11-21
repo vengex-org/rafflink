@@ -144,6 +144,12 @@ export const configSchema = {
     "5000",
     "Most entrants one entrants request returns, so 12,000 entrants load in three requests; starting guess, about 500 KB of JSON per page",
   ),
+  channelBadgesTtlSeconds: withDefault(
+    "CHANNEL_BADGES_TTL_SECONDS",
+    int(1),
+    "3600",
+    "How long a process keeps a channel's subscriber badge images before it asks Twitch again; a channel changes its badges rarely and one read costs two Helix calls, so starting guess, one hour",
+  ),
   queuePollSeconds: withDefault(
     "QUEUE_POLL_SECONDS",
     int(1),
@@ -364,7 +370,7 @@ export const configSchema = {
     "ENTRY_RETENTION_SECONDS",
     int(1, maxEntryRetentionSeconds),
     "2592000",
-    "How long after a giveaway closes its entrants' personal data (login, display name, group, tickets, channel role lists) is kept before the room alarm deletes it; spec Privacy promises 30 days, so more than that is rejected; it must not be below CLAIM_SECONDS_MAX plus REROLL_WINDOW_SECONDS, or a winner could still be claimed or rerolled after the entrants are gone",
+    "How long after a giveaway closes its entrants' personal data (login, display name, profile picture URL, group, tickets, channel role lists) is kept before the room alarm deletes it; spec Privacy promises 30 days, so more than that is rejected; it must not be below CLAIM_SECONDS_MAX plus REROLL_WINDOW_SECONDS, or a winner could still be claimed or rerolled after the entrants are gone",
   ),
   entryRetentionSweepBatch: withDefault(
     "ENTRY_RETENTION_SWEEP_BATCH",
@@ -553,6 +559,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     liveEntrantsPerPush: read(env, configSchema.liveEntrantsPerPush),
     liveWinnerChatMax: read(env, configSchema.liveWinnerChatMax),
     entrantsPageMax: read(env, configSchema.entrantsPageMax),
+    channelBadgesTtlSeconds: read(env, configSchema.channelBadgesTtlSeconds),
     queuePollSeconds: read(env, configSchema.queuePollSeconds),
     queuePollMaxSeconds: read(env, configSchema.queuePollMaxSeconds),
     queueCodeMaxAgeSeconds: read(env, configSchema.queueCodeMaxAgeSeconds),

@@ -33,6 +33,7 @@ export async function seedStreamer(
     platformUserId: userId,
     login: `user_${userId}`,
     displayName: `User_${userId}`,
+    profileImageUrl: null,
     sealedRefreshToken: await sealSecret(
       keyRing,
       tokens.refreshToken,

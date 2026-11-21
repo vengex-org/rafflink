@@ -22,6 +22,11 @@ export function seededLogin(userId: string): string {
   return `seeded_${userId}`
 }
 
+/** The picture URL of a fake user, shaped like the ones Twitch serves from its CDN. */
+export function profileImageUrlOf(login: string): string {
+  return `https://static-cdn.jtvnw.net/jtv_user_pictures/${login}-profile_image-300x300.png`
+}
+
 export interface FakeTwitchControl {
   addUser(user: FakeUser): void
   /** Adds `count` users with ids `firstId`, `firstId + 1`, ... and the logins from {@link seededLogin}. */
@@ -32,6 +37,11 @@ export interface FakeTwitchControl {
   setSubscription(userId: string, broadcasterId: string, tier: Tier | null): void
   setFollowing(userId: string, broadcasterId: string, following: boolean): void
   setRole(broadcasterId: string, userId: string, role: Role, enabled: boolean): void
+  /** The subscriber badge images of the channel's own badge set; `null` removes it, so the channel serves none. */
+  setChannelSubscriberBadges(
+    broadcasterId: string,
+    images: Partial<Record<Tier, string>> | null,
+  ): void
   /** The next `count` requests to `endpoint` answer `status`. */
   failNext(endpoint: FailableEndpoint, status: FailureStatus, count: number): void
   /** The next id_token the token endpoint signs is wrong in the way `fault` says. */
@@ -86,6 +96,7 @@ export function createFakeTwitch(options: FakeTwitchOptions): FakeTwitch {
           login: seededLogin(userId),
           displayName: seededLogin(userId),
           createdAt: seededCreatedAt,
+          profileImageUrl: profileImageUrlOf(seededLogin(userId)),
         })
       }
     },
@@ -110,6 +121,11 @@ export function createFakeTwitch(options: FakeTwitchOptions): FakeTwitch {
       if (enabled) holders.add(userId)
       else holders.delete(userId)
       state.roles[role].set(broadcasterId, holders)
+    },
+    setChannelSubscriberBadges(broadcasterId, images) {
+      requireUser(state, broadcasterId)
+      if (images === null) state.channelSubscriberBadges.delete(broadcasterId)
+      else state.channelSubscriberBadges.set(broadcasterId, images)
     },
     failNext(endpoint, status, count) {
       const queue = state.failures.get(endpoint) ?? []

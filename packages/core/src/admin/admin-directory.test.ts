@@ -1,11 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
-import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
+import {
+  createFakeTwitch,
+  profileImageUrlOf,
+  type FakeTwitch,
+  type FakeUser,
+} from "@rafflink/fake-twitch"
 import { resolveConfig } from "../config.ts"
 import { TwitchClient } from "../twitch/twitch-client.ts"
 import { AdminDirectory } from "./admin-directory.ts"
 
 function user(id: string, login: string): FakeUser {
-  return { id, login, displayName: login, createdAt: "2020-01-01T00:00:00Z" }
+  return {
+    id,
+    login,
+    displayName: login,
+    createdAt: "2020-01-01T00:00:00Z",
+    profileImageUrl: profileImageUrlOf(login),
+  }
 }
 
 let fake: FakeTwitch
