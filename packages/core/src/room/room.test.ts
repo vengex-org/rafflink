@@ -2383,7 +2383,7 @@ describe("GiveawayRoom shuffle names", () => {
     expect(room.liveSnapshot().shuffleNames).toEqual([])
   })
 
-  it("sends a bounded sample of entrant names once the room is committed, and none after the draw", async () => {
+  it("sends a bounded sample of entrant names once the room is committed", async () => {
     const { room } = setup(giveaway, random, { LIVE_SHUFFLE_NAMES: "3" })
     enterMany(room, ids)
     room.close()
@@ -2395,8 +2395,19 @@ describe("GiveawayRoom shuffle names", () => {
     expect(sample).toHaveLength(3)
     expect(new Set(sample).size).toBe(3)
     expect(sample.every((name) => entrantNames.includes(name))).toBe(true)
+  })
+
+  it("keeps sending the sample after the draw, so a next draw or reroll can shuffle", async () => {
+    const { room } = setup(giveaway, random, { LIVE_SHUFFLE_NAMES: "3" })
+    enterMany(room, ids)
+    room.close()
+    await room.commit()
     await room.draw()
-    expect(room.liveSnapshot().shuffleNames).toEqual([])
+
+    const sample = room.liveSnapshot().shuffleNames
+
+    expect(sample).toHaveLength(3)
+    expect(sample.every((name) => entrantNames.includes(name))).toBe(true)
   })
 
   it("sends the sample as soon as the draw is requested", () => {

@@ -251,7 +251,7 @@ export type OverlaySnapshot = RoomSummary
     readonly drawAvailableAt: Instant | null
     /** The streamer pressed Draw before the round was published; the room draws by itself once it is. */
     readonly drawRequested: boolean
-    /** Random entrant names for the shuffle animation while a draw is pending; empty otherwise. They say nothing about who will be picked. */
+    /** Random entrant names for the shuffle animation while a draw is pending and after a draw, for the next pick; empty otherwise. They say nothing about who will be picked. */
     readonly shuffleNames: readonly string[]
     /** The room's clock when the snapshot was taken, so a page measures `drawAvailableAt` without trusting its own clock. */
     readonly now: Instant
@@ -928,13 +928,12 @@ export class GiveawayRoom {
     }
   }
 
-  // Pending: closed and either asked to draw or committed to a round, so the animation can run before the pick exists.
+  // Closed and either asked to draw or committed to a round, so the animation can run before the pick exists; and drawn, where the next draw or a reroll brings its pick with no earlier pending state.
   private shuffleNames(state: RoomState): string[] {
-    const pending =
-      state.status === "closed"
-      && !state.entriesDeleted
-      && (this.drawStillPossible(state) || state.commitment !== null)
-    if (!pending) return []
+    const shuffleable =
+      state.status === "drawn"
+      || (state.status === "closed" && (this.drawStillPossible(state) || state.commitment !== null))
+    if (!shuffleable || state.entriesDeleted) return []
     return this.sql
       .exec(shuffleNamesSql, [this.config.liveShuffleNames])
       .map((row) => new RowReader("entries", row).text("display_name"))
