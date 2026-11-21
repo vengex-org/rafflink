@@ -4,7 +4,6 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   CheckCircleIcon,
-  ClockIcon,
   CloseIcon,
   GiftIcon,
   PlayIcon,
@@ -13,37 +12,35 @@ import {
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "@rafflink/core/lib/error-class"
-import { AudienceStep, GiveawayStep, ReviewStep, TimingStep } from "./create-steps.tsx"
+import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
-  initialValues,
   stepIssue,
   stepOfField,
   toBody,
   type Issue,
   type Step,
+  type Values,
 } from "./create-values.ts"
 
 type Created = Extract<CreateResult, { kind: "created" }>
 
-const stepNames = [
-  "wizard.step.give",
-  "wizard.step.audience",
-  "wizard.step.ending",
-  "wizard.step.review",
-] as const
+const stepNames = ["wizard.step.basics", "wizard.step.rules", "wizard.step.review"] as const
 
-/** Creates a giveaway in four steps; each step is checked before the next, and the server's complaint sends the streamer back to its step. */
+/** Creates a giveaway in three steps; each step is checked before the next, and the server's complaint sends the streamer back to its step. */
 export function CreateForm({
+  seed,
   onCreated,
   onUnauthorized,
   onCancel,
 }: {
+  /** The answers the form starts with. */
+  readonly seed: Values
   readonly onCreated: (created: Created) => void
   readonly onUnauthorized: () => void
   readonly onCancel: () => void
 }) {
   const { t } = useI18n()
-  const [values, setValues] = useState(initialValues)
+  const [values, setValues] = useState(seed)
   const [step, setStep] = useState<Step>(1)
   const [issue, setIssue] = useState<Issue | null>(null)
   const [busy, setBusy] = useState(false)
@@ -51,7 +48,7 @@ export function CreateForm({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (step !== 4) {
+    if (step !== 3) {
       const problem = stepIssue(step, values, Date.now())
       setIssue(problem)
       if (problem === null) setStep(following(step))
@@ -97,11 +94,10 @@ export function CreateForm({
             {t("wizard.fix")}
           </p>
         )}
-        {step === 1 ? <GiveawayStep values={values} setValues={setValues} issue={issue} /> : null}
-        {step === 2 ? <AudienceStep values={values} setValues={setValues} issue={issue} /> : null}
-        {step === 3 ? <TimingStep values={values} setValues={setValues} issue={issue} /> : null}
-        {step === 4 ? <ReviewStep values={values} /> : null}
-        {step === 4 && issue !== null ? <p className="field-error">{t(issue.message)}</p> : null}
+        {step === 1 ? <BasicsStep values={values} setValues={setValues} issue={issue} /> : null}
+        {step === 2 ? <RulesStep values={values} setValues={setValues} issue={issue} /> : null}
+        {step === 3 ? <ReviewStep values={values} /> : null}
+        {step === 3 && issue !== null ? <p className="field-error">{t(issue.message)}</p> : null}
         {failed ? (
           <p role="alert" className="form-alert">
             {t("action.failed")}
@@ -127,13 +123,13 @@ export function CreateForm({
               {t("common.back")}
             </button>
           )}
-          {step === 4 ? (
-            <button key="start" type="submit" className="button" disabled={busy}>
+          {step === 3 ? (
+            <button key="start" type="submit" className="button large" disabled={busy}>
               <PlayIcon />
               {busy ? t("wizard.starting") : t("wizard.start")}
             </button>
           ) : (
-            <button key="next" type="submit" className="button">
+            <button key="next" type="submit" className="button large">
               {t("common.next")}
               <ArrowRightIcon />
             </button>
@@ -161,12 +157,10 @@ function StepHeading({ icon, text }: { readonly icon: ReactNode; readonly text: 
 function stepQuestion(step: Step) {
   switch (step) {
     case 1:
-      return "wizard.q.give"
+      return "wizard.q.basics"
     case 2:
-      return "wizard.q.audience"
+      return "wizard.q.rules"
     case 3:
-      return "wizard.q.ending"
-    case 4:
       return "wizard.q.review"
   }
 }
@@ -178,20 +172,16 @@ function stepIcon(step: Step): ReactNode {
     case 2:
       return <UsersIcon />
     case 3:
-      return <ClockIcon />
-    case 4:
       return <CheckCircleIcon />
   }
 }
 
-function following(step: Exclude<Step, 4>): Step {
+function following(step: Exclude<Step, 3>): Step {
   switch (step) {
     case 1:
       return 2
     case 2:
       return 3
-    case 3:
-      return 4
   }
 }
 
@@ -201,7 +191,5 @@ function previous(step: Exclude<Step, 1>): Step {
       return 1
     case 3:
       return 2
-    case 4:
-      return 3
   }
 }

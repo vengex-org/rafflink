@@ -49,7 +49,7 @@ function Report({ report }: { readonly report: AdminUsage }) {
   const { queue } = report
   return (
     <>
-      <h1>{t("admin.title")}</h1>
+      <h1 className="admin-title">{t("admin.title")}</h1>
       <div className="card-grid">
         <section className="card" aria-labelledby="usage">
           <h2 id="usage">{t("admin.usage.title")}</h2>
@@ -141,7 +141,9 @@ function Bar({
         <strong>{label}</strong>
       </p>
       <progress value={used} max={limit} aria-label={label} />
-      <p>{t("admin.usageText", { used: number(used), limit: number(limit) })}</p>
+      <p className="usage-text">
+        {t("admin.usageText", { used: number(used), limit: number(limit) })}
+      </p>
     </div>
   )
 }

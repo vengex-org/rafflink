@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers"
 import { errorClass } from "@rafflink/core/lib/error-class"
-import { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
+import { GiveawayRoom, overlaySnapshot } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
 import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
@@ -16,8 +16,9 @@ interface OpenRoom {
   readonly runtime: Runtime
 }
 
-// Tags of the hibernating sockets: the streamer's live and overlay pages, and the viewers' giveaway pages.
+// Tags of the hibernating sockets: the streamer's live page, the OBS overlay, and the viewers' giveaway pages.
 const liveTag = "live"
+const overlayTag = "overlay"
 const viewerTag = "viewer"
 
 /**
@@ -69,16 +70,24 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
     return (await this.opened).room.liveSnapshot()
   }
 
-  /** Accepts a page's WebSocket and sends it the current snapshot, or for a viewer's page the current outcome; the Worker has already checked who may connect. */
+  /** Accepts a page's WebSocket and sends it the current snapshot (without the winner chat for the overlay), or for a viewer's page the current outcome; the Worker has already checked who may connect. */
   override async fetch(request: Request): Promise<Response> {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
       return new Response("expected a WebSocket upgrade", { status: 426 })
     }
     const { room } = await this.opened
     const pair = new WebSocketPair()
-    const viewer = new URL(request.url).pathname.startsWith("/api/g/")
-    this.ctx.acceptWebSocket(pair[1], [viewer ? viewerTag : liveTag])
-    pair[1].send(JSON.stringify(viewer ? room.viewerPush() : room.liveSnapshot()))
+    const { pathname } = new URL(request.url)
+    if (pathname.startsWith("/api/g/")) {
+      this.ctx.acceptWebSocket(pair[1], [viewerTag])
+      pair[1].send(JSON.stringify(room.viewerPush()))
+    } else if (pathname.startsWith("/api/overlay/")) {
+      this.ctx.acceptWebSocket(pair[1], [overlayTag])
+      pair[1].send(JSON.stringify(overlaySnapshot(room.liveSnapshot())))
+    } else {
+      this.ctx.acceptWebSocket(pair[1], [liveTag])
+      pair[1].send(JSON.stringify(room.liveSnapshot()))
+    }
     return new Response(null, { status: 101, webSocket: pair[0] })
   }
 
@@ -108,6 +117,7 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
       alarm: new DurableObjectAlarm(this.ctx.storage),
       live: {
         broadcast: (json) => this.broadcast(json, liveTag),
+        broadcastOverlay: (json) => this.broadcast(json, overlayTag),
         broadcastViewers: (json) => this.broadcast(json, viewerTag),
       },
       clock: runtime.clock,

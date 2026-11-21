@@ -1,14 +1,14 @@
-import { groups, type Group } from "@rafflink/core/domain/groups"
+import { bestGroup, groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
+import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { CreateGiveawayBody } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 
-export type Step = 1 | 2 | 3 | 4
+export type Step = 1 | 2 | 3
 export type Audience = "everyone" | "followers" | "subscribers"
 export type Ending = "never" | "at-time"
 
-/** The seconds a winner gets to claim, as the streamer picks them. */
+/** The claim times offered as buttons, in seconds. */
 export const claimPresets = [120, 300, 600] as const
-export type ClaimPreset = (typeof claimPresets)[number]
 
 export interface Values {
   title: string
@@ -18,7 +18,7 @@ export interface Values {
   minAccountAgeDays: string
   ending: Ending
   closesAt: string
-  claimSeconds: ClaimPreset
+  claimSeconds: number
   claimKeyword: string
 }
 
@@ -47,12 +47,40 @@ export const initialValues: Values = {
   claimKeyword: "",
 }
 
+/** The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. */
+export function valuesFrom(giveaway: DashboardGiveaway): Values {
+  const { rules } = giveaway
+  return {
+    ...initialValues,
+    title: giveaway.title ?? "",
+    prize: giveaway.prize ?? "",
+    audience: rules.subsOnly ? "subscribers" : rules.followersOnly ? "followers" : "everyone",
+    tickets: {
+      viewer: String(rules.tickets.viewer),
+      follower: String(rules.tickets.follower),
+      sub_t1: String(rules.tickets.sub_t1),
+      sub_t2: String(rules.tickets.sub_t2),
+      sub_t3: String(rules.tickets.sub_t3),
+      vip: String(rules.tickets.vip),
+      moderator: String(rules.tickets.moderator),
+    },
+    minAccountAgeDays: rules.minAccountAgeDays === null ? "" : String(rules.minAccountAgeDays),
+    claimSeconds: giveaway.claimSeconds,
+    claimKeyword: rules.claimKeyword ?? "",
+  }
+}
+
 /** The first thing wrong with the answers of one step, or null; the server checks everything again. */
 export function stepIssue(step: Step, values: Values, now: number): Issue | null {
   switch (step) {
-    case 1:
-    case 4:
-      return null
+    case 1: {
+      if (values.ending === "never") return null
+      const end = new Date(values.closesAt).getTime()
+      if (Number.isNaN(end)) {
+        return { field: "closesAt", message: "issue.pickEnd" }
+      }
+      return end > now ? null : { field: "closesAt", message: "issue.future" }
+    }
     case 2: {
       for (const group of groups) {
         if (!isWholeNumber(values.tickets[group])) {
@@ -67,23 +95,45 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
       }
       return null
     }
-    case 3: {
-      if (values.ending === "never") return null
-      const end = new Date(values.closesAt).getTime()
-      if (Number.isNaN(end)) {
-        return { field: "closesAt", message: "issue.pickEnd" }
-      }
-      return end > now ? null : { field: "closesAt", message: "issue.future" }
-    }
+    case 3:
+      return null
   }
 }
 
 /** Which step asks for the field the server complained about; the review step for a field no step owns. */
 export function stepOfField(field: string): Step {
-  if (field === "title" || field === "prize") return 1
-  if (field.startsWith("tickets.") || field === "minAccountAgeDays") return 2
-  if (field === "closesAt" || field === "claimSeconds" || field === "claimKeyword") return 3
-  return 4
+  if (field === "title" || field === "prize" || field === "closesAt") return 1
+  if (
+    field.startsWith("tickets.")
+    || field === "minAccountAgeDays"
+    || field === "claimSeconds"
+    || field === "claimKeyword"
+  ) {
+    return 2
+  }
+  return 3
+}
+
+/** How a viewer's chance compares with the best-off group, from the ticket counts as typed. */
+export type Odds =
+  | { readonly kind: "same" }
+  | { readonly kind: "viewersOut" }
+  | { readonly kind: "noBetter" }
+  | { readonly kind: "times"; readonly group: Exclude<Group, "viewer">; readonly times: number }
+
+/** The odds the ticket counts give, or null while a count is not a whole number. */
+export function oddsOf(typed: Values["tickets"]): Odds | null {
+  if (!groups.every((group) => isWholeNumber(typed[group]))) return null
+  const tickets = ticketCounts(typed)
+  if (tickets.viewer === 0) return { kind: "viewersOut" }
+  if (groups.every((group) => tickets[group] === tickets.viewer)) return { kind: "same" }
+  const best = bestGroup(tickets, groups)
+  if (best.group === "viewer" || best.tickets === tickets.viewer) return { kind: "noBetter" }
+  return {
+    kind: "times",
+    group: best.group,
+    times: Math.round((best.tickets / tickets.viewer) * 10) / 10,
+  }
 }
 
 export function toBody(values: Values): CreateGiveawayBody {
@@ -91,15 +141,7 @@ export function toBody(values: Values): CreateGiveawayBody {
     title: values.title,
     prize: values.prize,
     rules: {
-      tickets: {
-        viewer: Number(values.tickets.viewer),
-        follower: Number(values.tickets.follower),
-        sub_t1: Number(values.tickets.sub_t1),
-        sub_t2: Number(values.tickets.sub_t2),
-        sub_t3: Number(values.tickets.sub_t3),
-        vip: Number(values.tickets.vip),
-        moderator: Number(values.tickets.moderator),
-      },
+      tickets: ticketCounts(values.tickets),
       subsOnly: values.audience === "subscribers",
       followersOnly: values.audience === "followers",
       minAccountAgeDays:
@@ -108,6 +150,18 @@ export function toBody(values: Values): CreateGiveawayBody {
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
     claimSeconds: values.claimSeconds,
+  }
+}
+
+function ticketCounts(typed: Values["tickets"]): Tickets {
+  return {
+    viewer: Number(typed.viewer),
+    follower: Number(typed.follower),
+    sub_t1: Number(typed.sub_t1),
+    sub_t2: Number(typed.sub_t2),
+    sub_t3: Number(typed.sub_t3),
+    vip: Number(typed.vip),
+    moderator: Number(typed.moderator),
   }
 }
 

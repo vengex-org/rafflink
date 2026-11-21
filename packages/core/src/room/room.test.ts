@@ -39,6 +39,8 @@ const config = resolveConfig({
   ROLE_REFRESH_SECONDS: "300",
   MIRROR_RETRY_SECONDS: "30",
   REROLL_WINDOW_SECONDS: "600",
+  // The chat sockets of these tests never answer; the subscribe window must not wake the alarm.
+  EVENTSUB_SUBSCRIBE_SECONDS: "100000",
 })
 
 const rules: GiveawayRules = {
@@ -82,9 +84,13 @@ class TestAlarm implements Alarm {
 
 class TestHub implements LiveHub {
   readonly messages: string[] = []
+  readonly overlayMessages: string[] = []
   readonly viewerMessages: string[] = []
   broadcast(json: string): void {
     this.messages.push(json)
+  }
+  broadcastOverlay(json: string): void {
+    this.overlayMessages.push(json)
   }
   broadcastViewers(json: string): void {
     this.viewerMessages.push(json)
@@ -1086,6 +1092,10 @@ describe("public summary", () => {
 
     expect(room.summary().finished).toBe(true)
     expect(lastViewerPush(hub).finished).toBe(true)
+    // The chat watch of the claimed winner runs to the end of the reroll window.
+    expect(alarm.at).toBe(900_001)
+    clock.advance(600_000)
+    room.onAlarm()
     expect(alarm.at).toBeNull()
   })
 
@@ -1196,6 +1206,55 @@ describe("public summary", () => {
       false,
       false,
     ])
+  })
+
+  it("tells the live snapshot nobody is left to reroll while the window is still open", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    await room.draw(1)
+    clock.advance(300_001)
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "nobody-left" })
+  })
+
+  it("tells the live snapshot the window is over", async () => {
+    const { room, clock } = await drawnRoom()
+    clock.advance(900_001)
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "window-over" })
+  })
+
+  it("names the window as the reason when it is over and nobody is left", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    await room.draw(1)
+    clock.advance(900_001)
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "window-over" })
+  })
+
+  it("gives no reroll reason before the draw or once every pick is claimed", async () => {
+    const open = setup()
+    const claimed = await drawnRoom()
+    claimed.room.claim(0, claimed.winner, "chat")
+
+    expect(
+      [open.room, claimed.room].map((room) => {
+        const { rerollOpen, rerollBlocked } = room.liveSnapshot()
+        return { rerollOpen, rerollBlocked }
+      }),
+    ).toEqual([
+      { rerollOpen: false, rerollBlocked: null },
+      { rerollOpen: false, rerollBlocked: null },
+    ])
+  })
+
+  it("gives no reroll reason while the reroll is open", async () => {
+    const { room } = await drawnRoom()
+
+    expect(room.liveSnapshot()).toMatchObject({ rerollOpen: true, rerollBlocked: null })
   })
 
   it("rerolls up to the end of the reroll window and refuses after it", async () => {

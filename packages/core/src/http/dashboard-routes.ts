@@ -6,12 +6,12 @@ import { generateCode } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
 import type { Usage } from "../ports.ts"
-import type { RerollOutcome, ClaimOutcome } from "../room/giveaway-room.ts"
+import { overlaySnapshot, type RerollOutcome, type ClaimOutcome } from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
 import { parseCreateGiveaway } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import { dashboardGiveaway, readJson, type EntrantsPage, type OwnerLiveSnapshot } from "./json.ts"
-import { readStreamerSession, type StreamerSession } from "./session.ts"
+import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 
 type Env = { Variables: { streamer: StreamerSession } }
@@ -161,7 +161,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     ) {
       return c.json({ error: "not-found" }, 404)
     }
-    return c.json(await deps.rooms.get(giveaway.id).liveSnapshot())
+    return c.json(overlaySnapshot(await deps.rooms.get(giveaway.id).liveSnapshot()))
   })
 
   return app
@@ -190,6 +190,10 @@ function requireStreamer(deps: AppDeps): MiddlewareHandler<Env> {
   return async (c, next) => {
     const session = await readStreamerSession(c, deps)
     if (session === null) return c.json({ error: "unauthorized" }, 401)
+    if ((await deps.accounts.findStreamer(session.streamerId)) === null) {
+      endStreamerSession(c)
+      return c.json({ error: "unauthorized" }, 401)
+    }
     c.set("streamer", session)
     return next()
   }

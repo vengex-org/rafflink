@@ -14,9 +14,9 @@ export function AppRoutes() {
     <I18nProvider>
       <Routes>
         <Route path="/overlay/:id/:token" element={<OverlayPage />} />
+        <Route path="live/:id" element={<LivePage />} />
         <Route element={<Layout />}>
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="live/:id" element={<LivePage />} />
           <Route path="admin" element={<AdminPage />} />
           <Route index element={<HomePage />} />
           <Route path="g/:code" element={<GiveawayPage />} />

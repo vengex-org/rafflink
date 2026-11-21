@@ -62,6 +62,13 @@ async function meOf(browser: Browser, code: string): Promise<unknown> {
   return page.me
 }
 
+async function deletedStreamerBrowser(): Promise<Browser> {
+  const browser = new Browser(harness)
+  await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+  harness.accountsDb.run("DELETE FROM streamers")
+  return browser
+}
+
 describe("streamer sign-in", () => {
   it("stores the refresh token sealed and starts a session", async () => {
     const browser = new Browser(harness)
@@ -111,6 +118,33 @@ describe("streamer sign-in", () => {
     harness.clock.advance((harness.config.sessionTtlSeconds + 1) * 1000)
 
     expect((await browser.request("/api/dash/giveaways")).status).toBe(401)
+  })
+
+  describe("when the signed-in streamer no longer exists", () => {
+    it("refuses creating a giveaway, clears the cookie and writes nothing", async () => {
+      const browser = await deletedStreamerBrowser()
+
+      const response = await browser.postJson("/api/dash/giveaways", {
+        title: "T",
+        prize: "P",
+        rules: validRules,
+      })
+
+      expect(response.status).toBe(401)
+      expect(await response.json()).toEqual({ error: "unauthorized" })
+      expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
+      expect(browser.cookie("rl_streamer")).toBeUndefined()
+      expect(sqlRows(harness.accountsDb, "SELECT id FROM giveaways")).toHaveLength(0)
+    })
+
+    it("refuses reading the giveaway list", async () => {
+      const browser = await deletedStreamerBrowser()
+
+      const response = await browser.request("/api/dash/giveaways")
+
+      expect(response.status).toBe(401)
+      expect(browser.cookie("rl_streamer")).toBeUndefined()
+    })
   })
 
   it("writes nothing for a forged streamer state", async () => {

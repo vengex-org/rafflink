@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
+import { useShortcut } from "../lib/use-shortcut.ts"
 import { CloseIcon } from "./icons.tsx"
 
 /** A button for something that cannot be undone: it first asks in a dialog, in plain words, what will happen. */
@@ -11,7 +12,8 @@ export function ConfirmAction({
   confirmLabel,
   busy,
   disabled,
-  quiet,
+  className,
+  shortcut,
   onConfirm,
 }: {
   readonly icon: ReactNode
@@ -21,8 +23,10 @@ export function ConfirmAction({
   readonly confirmLabel: string
   readonly busy: boolean
   readonly disabled: boolean
-  /** A smaller, outlined button for an action that is not the screen's main step. */
-  readonly quiet: boolean
+  /** The classes of the button that opens the question. */
+  readonly className: string
+  /** A key that opens the question like a click does, shown beside the label; null for none. */
+  readonly shortcut: string | null
   readonly onConfirm: () => void
 }) {
   const { t } = useI18n()
@@ -32,6 +36,10 @@ export function ConfirmAction({
   const dialog = useRef<HTMLDialogElement>(null)
   const cancel = useRef<HTMLButtonElement>(null)
   const wasAsking = useRef(false)
+  const ask = useCallback(() => {
+    if (!busy && !disabled) setAsking(true)
+  }, [busy, disabled])
+  useShortcut(shortcut, ask)
 
   useEffect(() => {
     if (asking) {
@@ -46,12 +54,14 @@ export function ConfirmAction({
       <button
         ref={trigger}
         type="button"
-        className={quiet ? "button outlined small" : "button"}
+        className={className}
         disabled={busy || disabled}
+        aria-keyshortcuts={shortcut ?? undefined}
         onClick={() => setAsking(true)}
       >
         {icon}
         {label}
+        {shortcut === null ? null : <kbd aria-hidden="true">{shortcut.toUpperCase()}</kbd>}
       </button>
       {asking ? (
         <dialog

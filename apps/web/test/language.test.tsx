@@ -35,7 +35,9 @@ describe("language", () => {
 
     const view = renderApp("/")
 
-    expect(view.getByRole("heading", { name: "Giveaways for your Twitch chat" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
+    ).toBeTruthy()
     expect(document.documentElement.lang).toBe("en")
   })
 
@@ -44,7 +46,9 @@ describe("language", () => {
 
     const view = renderApp("/")
 
-    expect(view.getByRole("heading", { name: "Súťaže pre tvoj Twitch chat" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Férové Twitch súťaže, žrebované naživo na streame." }),
+    ).toBeTruthy()
     expect(document.documentElement.lang).toBe("sk")
   })
 
@@ -53,7 +57,9 @@ describe("language", () => {
 
     const view = renderApp("/")
 
-    expect(view.getByRole("heading", { name: "Soutěže pro tvůj Twitch chat" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Férové Twitch soutěže, losované živě na streamu." }),
+    ).toBeTruthy()
     expect(document.documentElement.lang).toBe("cs")
   })
 
@@ -63,14 +69,18 @@ describe("language", () => {
 
     fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
 
-    expect(view.getByRole("heading", { name: "Súťaže pre tvoj Twitch chat" })).toBeTruthy()
-    expect(view.getByRole("link", { name: "Moje súťaže" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Férové Twitch súťaže, žrebované naživo na streame." }),
+    ).toBeTruthy()
+    expect(view.getByRole("link", { name: "Prihlásiť sa" })).toBeTruthy()
     expect(document.documentElement.lang).toBe("sk")
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
 
     view.unmount()
     const again = renderApp("/")
-    expect(again.getByRole("heading", { name: "Súťaže pre tvoj Twitch chat" })).toBeTruthy()
+    expect(
+      again.getByRole("heading", { name: "Férové Twitch súťaže, žrebované naživo na streame." }),
+    ).toBeTruthy()
   })
 
   it("prefers the remembered choice over the browser language", () => {
@@ -79,7 +89,9 @@ describe("language", () => {
 
     const view = renderApp("/")
 
-    expect(view.getByRole("heading", { name: "Soutěže pro tvůj Twitch chat" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Férové Twitch soutěže, losované živě na streamu." }),
+    ).toBeTruthy()
   })
 
   it("ignores a remembered value that is not a language", () => {
@@ -88,7 +100,9 @@ describe("language", () => {
 
     const view = renderApp("/")
 
-    expect(view.getByRole("heading", { name: "Giveaways for your Twitch chat" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
+    ).toBeTruthy()
   })
 
   it("works when the browser refuses storage", () => {
@@ -102,10 +116,14 @@ describe("language", () => {
     })
     const view = renderApp("/")
 
-    expect(view.getByRole("heading", { name: "Giveaways for your Twitch chat" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
+    ).toBeTruthy()
     fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
 
-    expect(view.getByRole("heading", { name: "Soutěže pro tvůj Twitch chat" })).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Férové Twitch soutěže, losované živě na streamu." }),
+    ).toBeTruthy()
   })
 
   it("counts people with the plural form of the language", async () => {

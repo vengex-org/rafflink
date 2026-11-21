@@ -1,0 +1,269 @@
+/*
+ * OBS overlay: a transparent page, and every piece of text on a dark plate that keeps its colors in both
+ * themes. Sizes are for a 1920x1080 canvas, 2.2 times the plate of the home page picture, and stay readable at 1280x720.
+ */
+
+/* A dark color-scheme makes the canvas opaque in some embedders; the overlay looks the same in both themes. */
+[data-surface="overlay"] {
+  color-scheme: light;
+  background: transparent;
+}
+
+[data-surface="overlay"] body {
+  background: transparent;
+}
+
+.overlay {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  font-weight: 600;
+}
+
+.overlay-plate {
+  border: 3px solid var(--overlay-edge);
+  border-radius: 1.5rem;
+  background: var(--overlay-plate);
+  color: var(--overlay-ink);
+}
+
+h1.overlay-plate {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: 2rem;
+}
+
+/* The entry plate: where to enter, how many did, who entered last. */
+.overlay-open {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: 1.5rem 2rem;
+}
+
+.overlay-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.overlay-chip {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.overlay-chip-label {
+  color: var(--overlay-muted);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.overlay-url {
+  font-family: var(--font-mono);
+  font-size: 3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.overlay-winner-line {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.overlay-url em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+/* The QR code keeps its own dark-on-white colors so a phone can scan it from the stream. */
+.qr {
+  flex: none;
+  width: 11rem;
+  height: 11rem;
+  border-radius: var(--r);
+  background: var(--overlay-ink);
+}
+
+/* A QR code beside the winner plates or alone: its own plate, so it never covers a winner. */
+.overlay-qr {
+  padding: var(--space-2);
+}
+
+.qr rect {
+  fill: var(--accent-ink);
+}
+
+.overlay-open .stats {
+  display: flex;
+  margin: 0;
+}
+
+.overlay-open .stat {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 0;
+  background: transparent;
+}
+
+.overlay-open .stat dt {
+  color: var(--overlay-muted);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.overlay-open .stat dd {
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.overlay-open .names {
+  margin: 0;
+}
+
+.overlay-open .names li {
+  border-color: var(--overlay-edge);
+  border-radius: var(--r);
+  font-size: 1.5rem;
+  line-height: 3rem;
+}
+
+.overlay-open .empty {
+  margin: 0;
+  color: var(--overlay-muted);
+  font-size: 1.5rem;
+}
+
+/* The winner plate: label, the name on lime, the prize line, and the claim clock after a rule. */
+.overlay-winners {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overlay-winner {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.75rem 2rem 1.75rem 1.75rem;
+}
+
+.overlay-winner p {
+  margin: 0;
+}
+
+.overlay-label {
+  color: var(--overlay-muted);
+  font-size: 1.625rem;
+  font-weight: 700;
+}
+
+.overlay-prize {
+  margin-top: 0.25rem;
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+.overlay-winner .winner-plate {
+  display: block;
+  width: fit-content;
+  margin: 0.5rem 0;
+  padding: 0.25rem 1.5rem 0.75rem;
+  border-radius: var(--r-lg);
+  box-shadow: none;
+}
+
+.overlay-winner .winner-plate-name {
+  font-size: 5.25rem;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.overlay-timer {
+  display: grid;
+  gap: 0.5rem;
+  padding-left: 2rem;
+  border-left: 2px solid var(--overlay-edge);
+  text-align: center;
+}
+
+.overlay-timer strong {
+  font-size: 4.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.overlay-timer span {
+  color: var(--overlay-muted);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* The OBS steps suggest an 800 pixel wide source. */
+@media (max-width: 56rem) {
+  .overlay-winner {
+    gap: 1.25rem;
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+
+  .overlay-winner > div:first-child {
+    min-width: 0;
+  }
+
+  .overlay-winner .winner-plate-name {
+    font-size: 3.5rem;
+  }
+
+  .overlay-timer {
+    padding-left: 1.25rem;
+  }
+
+  .overlay-timer strong {
+    font-size: 3.25rem;
+  }
+
+  .overlay-url,
+  .overlay-winner-line {
+    font-size: 2rem;
+  }
+
+  .overlay-open {
+    padding: 1.25rem;
+  }
+
+  .overlay-open .stat dd {
+    font-size: 3rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .overlay-winner {
+    flex-wrap: wrap;
+  }
+
+  .overlay-winner .winner-plate-name {
+    font-size: 2.5rem;
+  }
+
+  .overlay-timer {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .qr {
+    width: 7rem;
+    height: 7rem;
+  }
+}

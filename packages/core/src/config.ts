@@ -118,6 +118,12 @@ export const configSchema = {
     "200",
     "Most new entrants one live push carries; a bigger backlog makes the page fetch the gap over HTTP; starting guess, about 20 KB of JSON per push at 100 bytes per entrant",
   ),
+  liveWinnerChatMax: withDefault(
+    "LIVE_WINNER_CHAT_MAX",
+    int(1),
+    "20",
+    "Newest chat messages of the winners the live page shows; starting guess: 20 messages of at most 500 characters is about 10 KB per push, throttled by LIVE_INTERVAL_MS",
+  ),
   entrantsPageMax: withDefault(
     "ENTRANTS_PAGE_MAX",
     int(1),
@@ -410,6 +416,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     liveIntervalMs: read(env, configSchema.liveIntervalMs),
     liveLastNames: read(env, configSchema.liveLastNames),
     liveEntrantsPerPush: read(env, configSchema.liveEntrantsPerPush),
+    liveWinnerChatMax: read(env, configSchema.liveWinnerChatMax),
     entrantsPageMax: read(env, configSchema.entrantsPageMax),
     queuePollSeconds: read(env, configSchema.queuePollSeconds),
     queuePollMaxSeconds: read(env, configSchema.queuePollMaxSeconds),

@@ -1,0 +1,1019 @@
+/* Page container: the app bar and the page content share one width and gutter, so their left edges line up. */
+
+.container {
+  width: 100%;
+  max-width: calc(var(--column) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+
+main.container {
+  padding-block: var(--space-3) var(--space-5);
+}
+
+.toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.toggle legend {
+  margin-bottom: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.toggle .segment label {
+  min-height: var(--target);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-xs);
+}
+
+/* Buttons: ink (default), tonal, outlined, text */
+
+.button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--target);
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  background-color: var(--ink);
+  color: var(--on-ink);
+  font: inherit;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    transform var(--dur) var(--ease),
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.button:active:not(:disabled),
+.icon-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    background-color: var(--ink-hover);
+  }
+
+  .button.tonal:hover:not(:disabled),
+  .button.outlined:hover:not(:disabled),
+  .button.text:hover:not(:disabled),
+  .icon-button:hover:not(:disabled) {
+    background-color: var(--surface-2);
+  }
+
+  input:not([type="radio"]):hover {
+    border-color: var(--ink);
+  }
+}
+
+.button.tonal {
+  border-color: var(--line);
+  background-color: var(--surface-2);
+  color: var(--ink);
+}
+
+.button.outlined {
+  border-color: var(--line-strong);
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+.button.text {
+  padding: 0 var(--space-2);
+  background-color: transparent;
+  color: var(--ink-2);
+}
+
+/* The app bar's buttons are one step smaller than a page's own. */
+.app-bar .button {
+  gap: 0.625rem;
+  padding-inline: 1.125rem;
+  font-size: var(--fs-sm);
+}
+
+.app-bar .button.text {
+  padding-inline: 1.125rem;
+}
+
+@media (hover: hover) {
+  .app-bar .button.text:hover:not(:disabled) {
+    color: var(--ink);
+  }
+}
+
+.app-bar .app-demo {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .app-bar .app-demo {
+    display: inline-flex;
+  }
+}
+
+.button.small {
+  padding: 0 var(--space-2);
+}
+
+.button.large {
+  min-height: var(--target-lg);
+  padding: 0 var(--space-3);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.button.block {
+  display: flex;
+  width: 100%;
+  min-height: var(--target-lg);
+  margin-top: var(--space-2);
+  font-size: var(--fs-lg);
+}
+
+.icon-button {
+  width: var(--target);
+  padding: 0;
+  background-color: transparent;
+  color: var(--ink-2);
+}
+
+@media (min-width: 40rem) {
+  /* A flex box fills its line even with width auto; fit-content keeps the button as wide as its label. */
+  .button.block {
+    width: fit-content;
+    min-width: 16rem;
+  }
+
+  [data-align="center"] > .button.block {
+    margin-inline: auto;
+  }
+}
+
+.button:disabled {
+  opacity: 0.4;
+}
+
+/* Cards: a 1px line in both themes, a soft shadow in light only */
+
+.card {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card[data-tone="win"] {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.card.next {
+  border-color: var(--ink);
+}
+
+/* Cards fill the page column so their edges line up with the page heading; a short outcome centers its
+   content inside the card, a card with fields or lists stays left-aligned. */
+
+.state-card[data-align="center"] {
+  text-align: center;
+}
+
+.state-card[data-align="center"] p {
+  margin-inline: auto;
+}
+
+.state-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+[data-align="center"] > .state-icon {
+  margin-inline: auto;
+}
+
+[data-tone="success"] > .state-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+[data-tone="win"] > .state-icon {
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
+[data-tone="warning"] > .state-icon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+[data-tone="danger"] > .state-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.state-card h1,
+.state-card h2 {
+  font-size: var(--fs-title);
+}
+
+.pill,
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem var(--space-1);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill[data-status="open"],
+.status-chip[data-tone="success"] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.pill[data-status="closed"],
+.status-chip[data-tone="warning"] {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.status-chip[data-tone="danger"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.status-chip[data-tone="win"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.status-chip-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* The claim clock: the words carry the urgency, the color only repeats it. */
+
+.countdown {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.countdown[data-tone="warning"] {
+  color: var(--warning);
+}
+
+.countdown[data-tone="danger"] {
+  color: var(--danger);
+}
+
+/* The winner reveal: the one orchestrated moment of the app. */
+
+.winner-plate {
+  display: inline-block;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  border-radius: var(--r-lg);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-pop);
+  animation: reveal var(--dur-reveal) var(--ease) both;
+}
+
+.winner-plate-name {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: clamp(2rem, 1rem + 6vw, 5rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.page-head h1 {
+  margin: 0;
+}
+
+.page-head p {
+  margin: 0;
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.facts .icon {
+  margin-top: 0.125rem;
+  color: var(--ink-2);
+}
+
+/* Steps: a numbered square per step in one row, joined by a line; the current one is lime, a done one is ink. */
+
+.steps {
+  margin-bottom: var(--space-4);
+}
+
+.step-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.steps ol {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.steps li + li {
+  flex: 1;
+}
+
+.steps li + li::before {
+  flex: 1;
+  min-width: 1rem;
+  height: 1px;
+  margin-inline: var(--space-1);
+  background: var(--line-2);
+  content: "";
+}
+
+.steps li[data-state="current"] {
+  color: var(--ink);
+}
+
+.step-marker {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.step-marker .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.steps li[data-state="current"] .step-marker {
+  border-color: var(--accent-line);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.steps li[data-state="done"] .step-marker {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.step-name {
+  white-space: nowrap;
+}
+
+@media (max-width: 30rem) {
+  .steps li:not([data-state="current"]) .step-name {
+    display: none;
+  }
+}
+
+/* Forms: label above the input, error below */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+input:not([type="radio"]) {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  transition: border-color var(--dur) var(--ease);
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+input:not([type="radio"]):focus-visible {
+  border-color: var(--focus);
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+input[readonly] {
+  background: var(--surface-2);
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.segmented {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+}
+
+.segment {
+  position: relative;
+  flex: 1;
+}
+
+.segment + .segment {
+  border-left: 1px solid var(--line-strong);
+}
+
+.segment input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+}
+
+.segment label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--target);
+  padding: var(--space-1);
+  background: transparent;
+  color: var(--ink-2);
+  font-weight: 500;
+  text-align: center;
+  transition: background-color var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .segment:hover label {
+    background: var(--surface-2);
+  }
+}
+
+.segment input:checked + label {
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 600;
+}
+
+.segment input:focus-visible + label {
+  outline: 2px solid var(--focus);
+  outline-offset: -4px;
+}
+
+.field-error,
+.form-alert {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Chips: the choices of a form field as a row of small buttons; the chosen one is ink. */
+
+.field .segmented {
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.field .segment {
+  flex: 0 1 auto;
+}
+
+.field .segment + .segment {
+  border-left: 0;
+}
+
+.field .segment label {
+  min-height: var(--target);
+  padding: 0 0.875rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .field .segment:hover label {
+    background: var(--surface-2);
+  }
+}
+
+.field .segment input:checked + label {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.field .segment input:focus-visible + label {
+  outline-offset: 2px;
+}
+
+/* Copy field: the value in a 56px box with an ink Copy button at its end. */
+
+.copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 3.5rem;
+  padding: 0.375rem 0.375rem 0.375rem 0.875rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.copy-row:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.copy-value {
+  position: relative;
+  flex: 1 1 13rem;
+  min-width: 0;
+}
+
+.copy-value input,
+.copy-value input:hover,
+.copy-value input:focus-visible {
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.copy-value[data-marked="true"] input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.copy-row[data-state="failed"] .copy-value[data-marked="true"] input {
+  opacity: 1;
+}
+
+.copy-value code {
+  display: block;
+  overflow: hidden;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 2.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-value em {
+  padding: 0 0.25rem;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-style: normal;
+}
+
+.copy-row .button {
+  flex: none;
+  padding: 0 0.875rem;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+@media (max-width: 30rem) {
+  .copy-row .button {
+    flex: 1 0 100%;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* Disclosure: a row that opens a section */
+
+.extra {
+  margin: var(--space-2) 0 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.extra[open] {
+  padding-bottom: var(--space-2);
+}
+
+.extra > :not(summary) {
+  margin-inline: var(--space-2);
+}
+
+.extra summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--target);
+  padding: 0 var(--space-2);
+  border-radius: var(--r);
+  font-weight: 600;
+  list-style: none;
+}
+
+.extra summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary-text {
+  flex: 1;
+}
+
+.chevron {
+  display: inline-flex;
+  transition: transform var(--dur) var(--ease);
+}
+
+.extra[open] > summary .chevron {
+  transform: rotate(180deg);
+}
+
+.card > .extra {
+  margin-top: var(--space-2);
+}
+
+.review {
+  margin: 0 0 var(--space-3);
+  padding: 0.25rem var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg);
+}
+
+.review div {
+  display: grid;
+  gap: 0.125rem var(--space-2);
+  padding: 0.75rem 0;
+}
+
+.review div + div {
+  border-top: 1px solid var(--line);
+}
+
+.review dt {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.review dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 40rem) {
+  .review div {
+    grid-template-columns: 9rem minmax(0, 1fr);
+    align-items: baseline;
+  }
+}
+
+/* Toasts: the result of an action, floating above the page and gone after a few seconds */
+
+.toast,
+.snackbar {
+  position: fixed;
+  bottom: var(--space-3);
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: calc(100vw - 2 * var(--space-2));
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--ink);
+  box-shadow: var(--shadow-pop);
+  color: var(--on-ink);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transform: translateX(-50%);
+  animation: toast-in var(--dur) var(--ease) both;
+}
+
+.snackbar {
+  padding-right: var(--space-2);
+}
+
+.toast .icon-button {
+  color: inherit;
+}
+
+.toast:empty,
+.snackbar:empty {
+  display: none;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+/* Dialog: native modal; the page behind it is inert and does not scroll */
+
+.dialog {
+  width: min(28rem, calc(100vw - 2 * var(--space-2)));
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.dialog:modal {
+  overscroll-behavior: contain;
+}
+
+.dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: var(--scrim);
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* Live data */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: var(--space-2);
+  border-radius: var(--r);
+  background: var(--surface-2);
+}
+
+.stat dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.stat dd {
+  margin: 0;
+  font-size: var(--fs-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.names li {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  font-size: var(--fs-sm);
+  line-height: 2rem;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ink-2);
+}
+
+.claim-clock {
+  font-variant-numeric: tabular-nums;
+}
+
+.banner[data-tone="warning"] {
+  border-color: transparent;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.banner .state-icon {
+  background: var(--warning);
+  color: var(--bg);
+}
+
+.status {
+  display: block;
+  margin: var(--space-2) 0;
+  font-weight: 600;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-5) 0;
+  color: var(--ink-2);
+}
+
+.spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--line-strong);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Not found: the status code on a lime plate, like a winner's name, then what to do. */
+
+.not-found {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  padding-block: var(--space-4);
+}
+
+.not-found h1,
+.not-found p {
+  margin: 0;
+}
+
+.not-found > p:not(.not-found-code) {
+  color: var(--ink-2);
+  font-size: var(--fs-lg);
+}
+
+.not-found .button {
+  margin-top: var(--space-2);
+}
+
+.not-found-code span {
+  display: inline-block;
+  padding: 0.25rem 1.5rem 0.75rem;
+  border-radius: var(--r-lg);
+  background: var(--accent);
+  box-shadow: var(--shadow-plate);
+  color: var(--accent-ink);
+  font-size: clamp(4rem, 2rem + 10vw, 9rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.not-found .not-found-code {
+  margin-bottom: var(--space-2);
+}

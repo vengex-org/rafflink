@@ -31,6 +31,12 @@ export const waitingPickOfChatterSql = `SELECT n FROM draws
   WHERE platform = (SELECT platform FROM room_state WHERE id = 1)
     AND platform_user_id = ? AND claimed_at IS NULL AND rerolled = 0 AND claim_until >= ?`
 
+/** The entry name (`display_name`) of a chatter (parameter 1) who holds a pick that is not rerolled; no row for anyone else. */
+export const winnerChatNameSql = `SELECT e.display_name FROM draws d
+  JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
+  WHERE d.platform = (SELECT platform FROM room_state WHERE id = 1)
+    AND d.platform_user_id = ? AND d.rerolled = 0`
+
 /** Entrants after a sequence number (parameter 1), oldest first (parameter 2 is how many). */
 export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, tickets FROM entries
   WHERE seq > ? ORDER BY seq LIMIT ?`

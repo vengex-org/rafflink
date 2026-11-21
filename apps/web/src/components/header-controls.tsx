@@ -9,7 +9,7 @@ import {
   themes,
   type Theme,
 } from "../theme/theme.ts"
-import { GlobeIcon, TvIcon, MoonIcon, SunIcon } from "./icons.tsx"
+import { TvIcon, MoonIcon, SunIcon } from "./icons.tsx"
 import { SegmentRow } from "./segment-row.tsx"
 
 const languageNames: Readonly<Record<Language, string>> = {
@@ -39,7 +39,7 @@ export function ThemeSwitch() {
   }))
   return (
     <fieldset className="toggle">
-      <legend className="sr-only">{t("theme.legend")}</legend>
+      <legend>{t("theme.legend")}</legend>
       <SegmentRow
         name="theme"
         options={options}
@@ -63,8 +63,7 @@ export function LanguageSwitch() {
   }))
   return (
     <fieldset className="toggle">
-      <legend className="sr-only">{t("language.legend")}</legend>
-      <GlobeIcon />
+      <legend>{t("language.legend")}</legend>
       <SegmentRow
         name="language"
         options={options}

@@ -37,6 +37,7 @@ export function TextField({
         id={id}
         name={name}
         type={type}
+        autoComplete="off"
         min={min ?? undefined}
         value={value}
         aria-invalid={error !== null}

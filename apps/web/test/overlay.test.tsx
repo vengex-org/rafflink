@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, expect, it, mock } from "bun:test"
 import { act, cleanup } from "@testing-library/react"
+import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
+import { encode } from "uqr"
+import { shareUrl } from "../src/lib/links.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { liveSnapshot } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
@@ -15,6 +18,24 @@ afterEach(() => {
   restoreSocket()
 })
 
+const drawn: LiveSnapshot = {
+  ...liveSnapshot,
+  status: "drawn",
+  winners: [
+    {
+      n: 0,
+      entrySeq: 1,
+      displayName: "Bob",
+      claimUntil: 1,
+      claim: { state: "claimed", via: "chat" },
+    },
+  ],
+}
+
+function routeSnapshot(snapshot: LiveSnapshot) {
+  mockFetch({ "GET /api/overlay/gid-1/tok-1": () => ok(snapshot) })
+}
+
 it("shows the live view read-only on the overlay socket without a session", async () => {
   mockFetch({
     "GET /api/overlay/gid-1/tok-1": () =>
@@ -25,7 +46,7 @@ it("shows the live view read-only on the overlay socket without a session", asyn
 
   expect(await view.findByText("Ada")).toBeTruthy()
   expect(view.getByText("Summer giveaway")).toBeTruthy()
-  expect(view.getByText(/Code ABCDE/)).toBeTruthy()
+  expect(view.getByText("ABCDE")).toBeTruthy()
   expect(view.getByText("people entered")).toBeTruthy()
   expect(FakeSocket.opened[0]?.url).toBe("ws://rafflink.test/api/overlay/gid-1/tok-1")
   act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 11 }))
@@ -45,28 +66,179 @@ it("names the giveaway by its code when the title is missing", async () => {
   expect(await view.findByRole("heading", { level: 1, name: "Giveaway ABCDE" })).toBeTruthy()
 })
 
-it("shows the winners with how their claim stands", async () => {
-  mockFetch({
-    "GET /api/overlay/gid-1/tok-1": () =>
-      ok({
-        ...liveSnapshot,
-        status: "drawn",
-        winners: [
-          {
-            n: 0,
-            entrySeq: 1,
-            displayName: "Bob",
-            claimUntil: 1,
-            claim: { state: "claimed", via: "chat" },
-          },
-        ],
-      }),
+it("shows the winner on a plate after a draw", async () => {
+  routeSnapshot(drawn)
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Bob")).toBeTruthy()
+  expect(view.container.querySelectorAll(".winner-plate")).toHaveLength(1)
+  expect(view.queryByText("people entered")).toBeNull()
+})
+
+it("labels each standing winner by place and counts down the claim only for a waiting one", async () => {
+  routeSnapshot({
+    ...drawn,
+    winners: [
+      {
+        n: 0,
+        entrySeq: 1,
+        displayName: "Bob",
+        claimUntil: 1,
+        claim: { state: "claimed", via: "chat" },
+      },
+      {
+        n: 1,
+        entrySeq: 2,
+        displayName: "Cy",
+        claimUntil: Date.now() + 90_000,
+        claim: { state: "waiting" },
+      },
+    ],
   })
 
   const view = renderApp("/overlay/gid-1/tok-1")
 
-  expect(await view.findByText("1. Bob")).toBeTruthy()
-  expect(view.getByText("Claimed in chat")).toBeTruthy()
+  expect(await view.findByText("Winner 1 of 2")).toBeTruthy()
+  expect(view.getByText("Winner 2 of 2")).toBeTruthy()
+  expect(view.getAllByText("Summer giveaway")).toHaveLength(3)
+  expect(view.getAllByRole("timer")).toHaveLength(1)
+  expect(view.getByRole("timer").textContent).toBe("1:30")
+  expect(view.getByText("to claim")).toBeTruthy()
+})
+
+it("keeps a replaced winner off the overlay", async () => {
+  routeSnapshot({
+    ...drawn,
+    winners: [
+      { n: 0, entrySeq: 1, displayName: "Bob", claimUntil: 1, claim: { state: "rerolled" } },
+      { n: 1, entrySeq: 2, displayName: "Cy", claimUntil: 1, claim: { state: "waiting" } },
+    ],
+  })
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Cy")).toBeTruthy()
+  expect(view.queryByText("Bob")).toBeNull()
+})
+
+it("shows the code, the count and the newest names in compact mode while open", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=compact")
+
+  expect(await view.findByText("ABCDE")).toBeTruthy()
+  expect(view.getByText("3")).toBeTruthy()
+  expect(view.getByText("Ada")).toBeTruthy()
+  expect(view.container.querySelector(".winner-plate")).toBeNull()
+})
+
+it("keeps the corner badge small after a draw and names the standing winner on it", async () => {
+  routeSnapshot({
+    ...drawn,
+    winners: [
+      { n: 0, entrySeq: 1, displayName: "Bob", claimUntil: 1, claim: { state: "rerolled" } },
+      { n: 1, entrySeq: 2, displayName: "Cy", claimUntil: 1, claim: { state: "waiting" } },
+    ],
+  })
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=compact")
+
+  expect(await view.findByText("Cy")).toBeTruthy()
+  expect(view.getByText("Winners")).toBeTruthy()
+  expect(view.queryByText("Bob")).toBeNull()
+  expect(view.container.querySelector(".winner-plate")).toBeNull()
+  expect(view.queryByText("ABCDE")).toBeNull()
+  expect(view.queryByText("people entered")).toBeNull()
+})
+
+it("says the entries are closed on the chip once they close", async () => {
+  routeSnapshot({ ...liveSnapshot, status: "closed" })
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Entries closed")).toBeTruthy()
+  expect(view.queryByText("Enter at")).toBeNull()
+})
+
+it("treats an unknown mode like auto", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=sideways")
+
+  expect(await view.findByText("ABCDE")).toBeTruthy()
+  expect(view.getByText("Ada")).toBeTruthy()
+})
+
+it("shows only the winner plate in winner mode after a draw", async () => {
+  routeSnapshot(drawn)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=winner")
+
+  expect(await view.findByText("Bob")).toBeTruthy()
+  expect(view.queryByText("ABCDE")).toBeNull()
+  expect(view.queryByRole("img")).toBeNull()
+})
+
+it("shows nothing before a draw in winner mode", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=winner")
+
+  expect(await view.findByRole("heading", { level: 1, name: "Summer giveaway" })).toBeTruthy()
+  expect(view.queryByText("Ada")).toBeNull()
+  expect(view.queryByText("ABCDE")).toBeNull()
+  expect(view.queryByText("people entered")).toBeNull()
+  expect(view.queryByRole("img")).toBeNull()
+  expect(view.container.querySelector(".winner-plate")).toBeNull()
+})
+
+it("draws a QR code of the viewer link beside the code with qr=1", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1?qr=1")
+
+  const qr = await view.findByRole("img", { name: "QR code with the link to enter the giveaway" })
+  const { data, size } = encode(shareUrl("ABCDE"), { ecc: "M", border: 4 })
+  expect(qr.getAttribute("viewBox")).toBe(`0 0 ${size} ${size}`)
+  const dark = [...qr.querySelectorAll("rect")].map(
+    (rect) => `${rect.getAttribute("x")},${rect.getAttribute("y")}`,
+  )
+  const expected = data.flatMap((row, y) => row.flatMap((on, x) => (on ? [`${x},${y}`] : [])))
+  expect(dark).toEqual(expected)
+  expect(qr.querySelector("[style]")).toBeNull()
+})
+
+it("draws no QR code unless qr is 1", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1?qr=true")
+
+  expect(await view.findByText("ABCDE")).toBeTruthy()
+  expect(view.queryByRole("img")).toBeNull()
+})
+
+it.each(["auto", "compact", "winner"])(
+  "draws the QR code with qr=1 after a draw in %s mode, outside the winner plate",
+  async (mode) => {
+    routeSnapshot(drawn)
+
+    const view = renderApp(`/overlay/gid-1/tok-1?mode=${mode}&qr=1`)
+
+    expect(await view.findByText("Bob")).toBeTruthy()
+    const qr = view.getByRole("img", { name: "QR code with the link to enter the giveaway" })
+    expect(qr.closest(".overlay-winner")).toBeNull()
+  },
+)
+
+it("draws the QR code with qr=1 in winner mode before a draw", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=winner&qr=1")
+
+  expect(
+    await view.findByRole("img", { name: "QR code with the link to enter the giveaway" }),
+  ).toBeTruthy()
 })
 
 it("shows not found for an invalid token and opens no socket", async () => {
@@ -74,6 +246,7 @@ it("shows not found for an invalid token and opens no socket", async () => {
 
   const view = renderApp("/overlay/gid-1/bad")
 
-  expect(await view.findByText("Not found")).toBeTruthy()
+  expect(await view.findByRole("heading", { level: 1, name: "Not found" })).toBeTruthy()
+  expect(view.queryAllByRole("link")).toHaveLength(0)
   expect(FakeSocket.opened).toHaveLength(0)
 })

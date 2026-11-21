@@ -16,9 +16,12 @@ import type {
   EntrantsDelta,
   LiveSnapshot,
   LiveWinner,
+  OverlaySnapshot,
   RerollOutcome,
+  RerollState,
   ViewerPush,
   ViewerWinner,
+  WinnerChatLine,
   WinnerClaim,
 } from "@rafflink/core/room/giveaway-room"
 import {
@@ -59,9 +62,9 @@ export interface GiveawayLoad {
   readonly me: ViewerState
 }
 
-/** The live page's first answer: the snapshot and, on the streamer's own route, the overlay token. */
-export interface LiveLoad {
-  readonly snapshot: LiveSnapshot
+/** The first answer of a live route: the snapshot of its audience and, on the streamer's own route, the overlay token. */
+export interface LiveLoad<Snapshot> {
+  readonly snapshot: Snapshot
   readonly overlayToken: string | null
 }
 
@@ -273,14 +276,17 @@ export async function getEntrants(id: string, afterSeq: number): Promise<Entrant
   return { rows: list(source, "rows", parseEntrant), more: bool(source, "more") }
 }
 
-export async function getLive(path: string): Promise<LiveLoad | "unauthorized" | "not-found"> {
+export async function getLive<Snapshot>(
+  path: string,
+  parseSnapshot: (source: Json) => Snapshot,
+): Promise<LiveLoad<Snapshot> | "unauthorized" | "not-found"> {
   const { status, body } = await send(path)
   if (status === 401) return "unauthorized"
   if (status === 404) return "not-found"
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "live")
   return {
-    snapshot: parseLiveSnapshot(source),
+    snapshot: parseSnapshot(source),
     overlayToken: source.overlayToken === undefined ? null : text(source, "overlayToken"),
   }
 }
@@ -467,12 +473,15 @@ function parseDashboardGiveaway(source: Json): DashboardGiveaway {
 }
 
 /** A message of the live socket: the snapshot, and after a write the entrants added since the last push. */
-export function parseLivePush(source: Json): {
-  readonly snapshot: LiveSnapshot
+export function parseLivePush<Snapshot>(
+  source: Json,
+  parseSnapshot: (source: Json) => Snapshot,
+): {
+  readonly snapshot: Snapshot
   readonly entrantsAfter: EntrantsDelta | null
 } {
   return {
-    snapshot: parseLiveSnapshot(source),
+    snapshot: parseSnapshot(source),
     entrantsAfter: Object.hasOwn(source, "entrantsAfter")
       ? parseEntrantsDelta(child(source, "entrantsAfter"))
       : null,
@@ -497,8 +506,21 @@ function parseEntrant(source: Json): Entrant {
   }
 }
 
-/** The snapshot a GET returns. */
+/** The snapshot of the streamer's live page. */
 export function parseLiveSnapshot(source: Json): LiveSnapshot {
+  return {
+    ...parseSharedSnapshotFields(source),
+    winnerChat: list(source, "winnerChat", parseChatLine),
+    ...parseRerollState(source),
+  }
+}
+
+/** The snapshot of the OBS overlay, which never carries winner chat. */
+export function parseOverlaySnapshot(source: Json): OverlaySnapshot {
+  return { ...parseSharedSnapshotFields(source), ...parseRerollState(source) }
+}
+
+function parseSharedSnapshotFields(source: Json) {
   return {
     title: nullableText(source, "title"),
     code: text(source, "code"),
@@ -509,10 +531,31 @@ export function parseLiveSnapshot(source: Json): LiveSnapshot {
     entriesPerSecond: num(source, "entriesPerSecond"),
     lastNames: textList(source, "lastNames"),
     winners: list(source, "winners", parseWinner),
-    rerollOpen: bool(source, "rerollOpen"),
     roleRefreshFailures: num(source, "roleRefreshFailures"),
     eventSubFailures: num(source, "eventSubFailures"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
+  }
+}
+
+function parseRerollState(source: Json): RerollState {
+  const open = bool(source, "rerollOpen")
+  const blocked =
+    source.rerollBlocked === null
+      ? null
+      : oneOf(source, "rerollBlocked", ["window-over", "nobody-left"])
+  if (open) {
+    if (blocked !== null) throw new ApiShapeError("rerollBlocked")
+    return { rerollOpen: true, rerollBlocked: null }
+  }
+  return { rerollOpen: false, rerollBlocked: blocked }
+}
+
+function parseChatLine(source: Json): WinnerChatLine {
+  return {
+    id: num(source, "id"),
+    name: text(source, "name"),
+    text: text(source, "text"),
+    at: num(source, "at"),
   }
 }
 

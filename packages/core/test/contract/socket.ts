@@ -1,7 +1,10 @@
-import type { EntrantsDelta, LiveSnapshot } from "../../src/room/giveaway-room.ts"
+import type { EntrantsDelta, LiveSnapshot, OverlaySnapshot } from "../../src/room/giveaway-room.ts"
 
 /** A snapshot, with the new entrants when it is a push after a write. */
 export type LiveMessage = LiveSnapshot & { readonly entrantsAfter?: EntrantsDelta }
+
+/** What the overlay route sends: the live message without the winner chat. */
+export type OverlayMessage = OverlaySnapshot & { readonly entrantsAfter?: EntrantsDelta }
 
 /** A WebSocket to a live route that keeps every message it receives. */
 export function openSocket<Message = LiveMessage>(url: URL, headers: Record<string, string> = {}) {

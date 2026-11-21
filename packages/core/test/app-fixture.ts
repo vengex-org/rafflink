@@ -56,7 +56,11 @@ export class TestAlarm implements Alarm {
   }
 }
 
-const silentHub: LiveHub = { broadcast: () => {}, broadcastViewers: () => {} }
+const silentHub: LiveHub = {
+  broadcast: () => {},
+  broadcastOverlay: () => {},
+  broadcastViewers: () => {},
+}
 
 export const secureRandom: Random = {
   bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),

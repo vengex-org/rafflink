@@ -1,0 +1,99 @@
+/* Create flow: one card in the middle of the page with the steps on top, the fields of the step, and the actions under a rule. */
+
+.create {
+  max-width: 46rem;
+  margin-inline: auto;
+}
+
+.wizard {
+  margin: 0;
+  padding: var(--space-3);
+}
+
+.wizard-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: var(--space-3);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.wizard-heading .icon {
+  box-sizing: content-box;
+  padding: 0.4rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  color: var(--ink-2);
+}
+
+.wizard-actions {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+/* The ticket counts as the table of the home page: a label and a number per row. */
+.ticket-table {
+  padding: 0.25rem var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg);
+}
+
+.ticket-table .field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.5rem;
+  align-items: center;
+  gap: 0.25rem var(--space-2);
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+.ticket-table .field + .field {
+  border-top: 1px solid var(--line);
+}
+
+.ticket-table .field-error {
+  grid-column: 1 / -1;
+}
+
+.ticket-table input {
+  min-height: var(--target);
+  background: var(--surface);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.odds {
+  margin: var(--space-2) 0 0;
+  padding: 0.75rem var(--space-2);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r);
+  background: var(--accent-soft);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+@media (max-width: 39.99rem) {
+  .wizard {
+    padding: var(--space-2);
+  }
+
+  .wizard-heading {
+    font-size: 1.5rem;
+  }
+
+  .wizard-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .wizard-actions .button {
+    width: 100%;
+  }
+}

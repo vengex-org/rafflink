@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { installFakeSocket } from "./fake-socket.ts"
 import { giveaway } from "./fixtures.ts"
@@ -43,7 +43,7 @@ describe("giveaway landing", () => {
     const view = renderApp("/ABCDE")
 
     expect(await view.findByRole("heading", { level: 1, name: "A gaming chair" })).toBeTruthy()
-    expect(view.getByText("Summer giveaway")).toBeTruthy()
+    expect(view.getByText("Streamy, Summer giveaway")).toBeTruthy()
     expect(view.getByText("1,204 people entered")).toBeTruthy()
     expect(view.getByText(/Only followers can enter\./)).toBeTruthy()
     expect(view.getByText("Entries stay open until the streamer closes them.")).toBeTruthy()
@@ -66,7 +66,7 @@ describe("giveaway landing", () => {
     const view = renderApp("/ABCDE")
 
     expect(await view.findByRole("heading", { level: 1, name: "A gaming chair" })).toBeTruthy()
-    expect(view.getByText("Giveaway ABCDE")).toBeTruthy()
+    expect(view.getByText("Streamy, Giveaway ABCDE")).toBeTruthy()
   })
 
   it("says one person entered in the singular", async () => {
@@ -179,12 +179,13 @@ const meRoute = (state: unknown, status = "open") => ({
 })
 
 describe("returning viewer", () => {
-  it("names the streamer under the headline", async () => {
+  it("names the streamer above the headline", async () => {
     mockFetch(giveawayRoute)
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText("by Streamy")).toBeTruthy()
+    expect(await view.findByText("Streamy, Summer giveaway")).toBeTruthy()
+    expect(view.getByText("ST")).toBeTruthy()
   })
 
   it("shows You are in with the tickets and the group without a new sign-in", async () => {
@@ -460,7 +461,7 @@ describe("winner claim", () => {
 
     expect(await view.findByRole("heading", { name: "You won" })).toBeTruthy()
     expect(view.getByRole("timer").textContent).toMatch(/^1:(29|30)$/)
-    expect(view.getByText(/min left to claim/)).toBeTruthy()
+    expect(view.getByText("left to claim")).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))
     expect(await view.findByText("Claimed! The streamer will contact you.")).toBeTruthy()
     expect(view.queryByRole("button", { name: "Claim my prize" })).toBeNull()
@@ -548,5 +549,205 @@ describe("winner claim", () => {
 
     expect(await view.findByText("Claimed! The streamer will contact you.")).toBeTruthy()
     expect(view.queryByRole("button", { name: "Claim my prize" })).toBeNull()
+  })
+})
+
+async function expectOnlyScreen(path: string, heading: string) {
+  const view = renderApp(path)
+  await view.findByRole("heading", { level: 2, name: heading })
+  expect(view.getAllByRole("heading", { level: 2 }).map((node) => node.textContent)).toEqual([
+    heading,
+  ])
+  return view
+}
+
+describe("state screens", () => {
+  const entered = {
+    kind: "entered",
+    userId: "u1",
+    entry: { group: "viewer", tickets: 1, enteredAt: 1 },
+  }
+
+  it("asks a signed-out viewer to sign in to enter", async () => {
+    mockFetch(giveawayRoute)
+
+    await expectOnlyScreen("/ABCDE", "Sign in to enter")
+  })
+
+  it("invites a signed-in viewer who has not entered to enter", async () => {
+    mockFetch(meRoute({ kind: "not-entered", userId: "u1" }))
+
+    await expectOnlyScreen("/ABCDE", "Ready to enter?")
+  })
+
+  it("confirms an entry with the ticket count", async () => {
+    mockFetch(meRoute({ ...entered, entry: { group: "sub_t1", tickets: 3, enteredAt: 1 } }))
+
+    const view = await expectOnlyScreen("/ABCDE", "You are in")
+
+    expect(view.getByText("3").textContent).toBe("3")
+  })
+
+  it("tells an entered viewer that the draw is next once entries closed", async () => {
+    mockFetch(meRoute(entered, "closed"))
+
+    const view = await expectOnlyScreen("/ABCDE", "Waiting for the draw")
+
+    expect(view.getByText("Your entry: 1 ticket as a viewer.")).toBeTruthy()
+  })
+
+  it("shows a winner the claim screen", async () => {
+    mockFetch(wonRoute(90_000, { state: "waiting" }))
+
+    const view = await expectOnlyScreen("/ABCDE", "You won")
+
+    expect(view.getByRole("button", { name: "Claim my prize" })).toBeTruthy()
+  })
+
+  it("shows a winner who claimed the prize a done screen", async () => {
+    mockFetch(wonRoute(5000, { state: "claimed", via: "chat" }))
+
+    await expectOnlyScreen("/ABCDE", "Prize claimed")
+  })
+
+  it("tells an entrant that someone else won", async () => {
+    mockFetch(meRoute({ kind: "not-won", userId: "u1" }, "drawn"))
+
+    await expectOnlyScreen("/ABCDE", "Not this time")
+  })
+
+  it("tells a winner that the claim time is over", async () => {
+    mockFetch(wonRoute(0, { state: "waiting" }))
+
+    await expectOnlyScreen("/ABCDE", "Time is up")
+  })
+
+  it("says a closed giveaway is closed", async () => {
+    mockFetch(meRoute({ kind: "signed-out" }, "closed"))
+
+    await expectOnlyScreen("/ABCDE", "Sorry, giveaway closed.")
+  })
+
+  it("shows the prize, the streamer, the entrants and the rules before sign-in", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { level: 1, name: "A gaming chair" })).toBeTruthy()
+    expect(view.getByText("Streamy, Summer giveaway")).toBeTruthy()
+    expect(view.getByText("42 people entered")).toBeTruthy()
+    expect(view.getByText("Rules and tickets")).toBeTruthy()
+    expect(view.getByRole("link", { name: "Enter with Twitch" })).toBeTruthy()
+  })
+})
+
+async function clockAt(startMs: number, laterMs: number, label: string) {
+  const clock = { now: 1_000_000 }
+  spyOn(Date, "now").mockImplementation(() => clock.now)
+  mockFetch(wonRoute(startMs, { state: "waiting" }))
+  const view = renderApp("/ABCDE")
+  await view.findByText("left to claim")
+  clock.now += laterMs
+  expect(await view.findByText(label, {}, { timeout: 2500 })).toBeTruthy()
+  return view
+}
+
+describe("claim timer tone", () => {
+  it("says to hurry below 15 seconds", async () => {
+    const view = await clockAt(15_500, 1000, "left, hurry up")
+
+    expect(view.getByRole("timer").textContent).toBe("0:15")
+    expect(view.container.querySelector(".claim-ring")?.getAttribute("data-tone")).toBe("warning")
+  })
+
+  it("says to claim now below 5 seconds", async () => {
+    const view = await clockAt(15_500, 11_000, "left, claim now")
+
+    expect(view.getByRole("timer").textContent).toBe("0:05")
+    expect(view.container.querySelector(".claim-ring")?.getAttribute("data-tone")).toBe("danger")
+  })
+})
+
+describe("viewer page frame", () => {
+  const entered = {
+    kind: "entered",
+    userId: "u1",
+    entry: { group: "sub_t1", tickets: 3, enteredAt: 1 },
+  }
+
+  it.each([
+    ["open", "Entries open"],
+    ["closed", "Entries closed"],
+    ["drawn", "Winners drawn"],
+  ])("says in the phase bar that the giveaway is %s", async (status, text) => {
+    mockFetch(meRoute({ kind: "signed-out" }, status))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText(text)).toBeTruthy()
+    expect(view.getByText("42 people entered")).toBeTruthy()
+  })
+
+  it("lists who can enter, when entries end and the code before sign-in", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Who can enter")).toBeTruthy()
+    expect(view.getByText("Entries")).toBeTruthy()
+    expect(view.getByText("Code")).toBeTruthy()
+    expect(view.getByText("ABCDE")).toBeTruthy()
+  })
+
+  it("leaves the entries row out once entries are closed", async () => {
+    mockFetch(meRoute({ kind: "signed-out" }, "closed"))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Who can enter")).toBeTruthy()
+    expect(view.queryByText("Entries")).toBeNull()
+  })
+
+  it("shows a returning entrant the ticket box and a link to the stream without a step count", async () => {
+    mockFetch(meRoute(entered))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { level: 2, name: "You are in" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "Watch Streamy on Twitch" }).getAttribute("href")).toBe(
+      "https://www.twitch.tv/streamy",
+    )
+    expect(view.queryByRole("list", { name: "Steps" })).toBeNull()
+  })
+
+  it("offers no stream link when the streamer name is not a Twitch login", async () => {
+    mockFetch({
+      "GET /api/g/ABCDE": () => ok({ ...giveaway, streamerName: "Streamy 配信", me: entered }),
+    })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { level: 2, name: "You are in" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: /Watch/ })).toBeNull()
+  })
+
+  it("offers no stream link to a viewer who has not entered", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("link", { name: "Enter with Twitch" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: /Watch/ })).toBeNull()
+  })
+
+  it("names the prize and the pool the winner was drawn from", async () => {
+    mockFetch(wonRoute(90_000, { state: "waiting" }))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { level: 2, name: "You won" })).toBeTruthy()
+    expect(view.getByText("Drawn from")).toBeTruthy()
+    expect(view.getByText("42 people entered")).toBeTruthy()
+    expect(view.queryByText("Entries open")).toBeNull()
   })
 })

@@ -11,6 +11,7 @@ import { giveawayInit, tempDir, testConfig } from "../test/fixtures.ts"
 import {
   LocalRoomDirectory,
   liveTopic,
+  overlayTopic,
   viewerTopic,
   type LocalRoomDirectoryDeps,
 } from "./local-room-directory.ts"
@@ -101,9 +102,14 @@ describe("LocalRoomDirectory", () => {
 
     await directory.get(id).enter(viewer)
 
-    expect(published).toHaveLength(1)
-    expect(published[0]?.topic).toBe(liveTopic(id))
-    expect(JSON.parse(published[0]?.message ?? "")).toMatchObject({ entrantCount: 1 })
+    expect(published.map((item) => item.topic).toSorted()).toEqual(
+      [liveTopic(id), overlayTopic(id)].toSorted(),
+    )
+    const liveMessage = published.find((item) => item.topic === liveTopic(id))?.message
+    const overlayMessage = published.find((item) => item.topic === overlayTopic(id))?.message
+    expect(JSON.parse(liveMessage ?? "")).toMatchObject({ entrantCount: 1, winnerChat: [] })
+    expect(JSON.parse(overlayMessage ?? "")).toMatchObject({ entrantCount: 1 })
+    expect(overlayMessage).not.toContain("winnerChat")
   })
 
   it("publishes the outcome to the viewers' topic, apart from the live topic, and hands a new socket the same text", async () => {
@@ -116,7 +122,7 @@ describe("LocalRoomDirectory", () => {
     await directory.get(id).close()
 
     expect(published.map((item) => item.topic).toSorted()).toEqual(
-      [liveTopic(id), viewerTopic(id)].toSorted(),
+      [liveTopic(id), overlayTopic(id), viewerTopic(id)].toSorted(),
     )
     const viewerMessage = published.find((item) => item.topic === viewerTopic(id))?.message
     expect(JSON.parse(viewerMessage ?? "")).toMatchObject({ status: "closed", winners: [] })
