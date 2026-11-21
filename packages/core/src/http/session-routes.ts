@@ -9,6 +9,7 @@ export function sessionRoutes(deps: AppDeps): Hono {
   const app = new Hono()
 
   app.get("/api/session", async (c) => {
+    c.header("Cache-Control", "no-store")
     const current = await currentStreamer(c, deps)
     const body: SessionJson = {
       streamer:

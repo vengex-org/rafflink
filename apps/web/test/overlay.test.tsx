@@ -107,7 +107,8 @@ it("labels each standing winner by place and counts down the claim only for a wa
 
   expect(await view.findByText("Winner 1 of 2")).toBeTruthy()
   expect(view.getByText("Winner 2 of 2")).toBeTruthy()
-  expect(view.getAllByText("Summer giveaway")).toHaveLength(3)
+  // The plates show the title once the prize answer says there is none.
+  await waitFor(() => expect(view.getAllByText("Summer giveaway")).toHaveLength(3))
   expect(view.getAllByRole("timer")).toHaveLength(1)
   expect(view.getByRole("timer").textContent).toBe("1:30")
   expect(view.getByText("to claim")).toBeTruthy()

@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, jest, spyOn } from "bun:test"
 import { act, cleanup, fireEvent } from "@testing-library/react"
-import { demoReducer, demoSteps, initialDemoState, type DemoState } from "../src/lib/demo-script.ts"
+import {
+  demoClaimMs,
+  demoReducer,
+  demoSteps,
+  initialDemoState,
+  type DemoState,
+} from "../src/lib/demo-script.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { claimedAt, claimedAtText } from "./fixtures.ts"
 import { renderApp } from "./render-app.tsx"
@@ -110,6 +116,17 @@ describe("demo page", () => {
     fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))
 
     expect(view.getByText(`Claimed at ${claimedAtText}.`)).toBeTruthy()
+  })
+
+  it("claims by itself when the visitor outwaits the claim window", () => {
+    const view = renderApp("/demo")
+    for (const ms of [3000, 1500, 5000, 1500, 2500]) advance(ms)
+    expect(view.getByRole("button", { name: "Claim my prize" })).toBeTruthy()
+
+    advance(demoClaimMs + 1000)
+
+    expect(view.getByText("Prize claimed")).toBeTruthy()
+    expect(view.queryByText("Time is up")).toBeNull()
   })
 
   it("enters by itself when the visitor does nothing", () => {

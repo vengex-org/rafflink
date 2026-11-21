@@ -30,14 +30,19 @@ export const initialDemoState: DemoState = { step: "open", entrants: 41, claimed
 const enteredMs = 1500
 const risingMs = 5000
 
-/** How long a step lasts before the script moves on by itself; null waits for the visitor. */
+export const demoClaimMs = 60_000
+
+/**
+ * How long a step lasts before the script moves on by itself; null waits for the visitor.
+ * `won` ends a second before the claim countdown would reach 0, so the demo never shows "time is up".
+ */
 export const demoStepMs: Readonly<Record<DemoStep, number | null>> = {
   open: 3000,
   entered: enteredMs,
   rising: risingMs,
   closed: 1500,
   drawing: 2500,
-  won: null,
+  won: demoClaimMs - 1000,
   claimed: null,
 }
 
@@ -45,8 +50,6 @@ export const demoStepMs: Readonly<Record<DemoStep, number | null>> = {
 export const demoClosesInMs = enteredMs + risingMs
 
 export const demoJoinEveryMs = 700
-
-export const demoClaimMs = 60_000
 
 export const demoViewerName = "mira_vex"
 

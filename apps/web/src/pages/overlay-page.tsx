@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router"
 import type { LiveWinner, OverlaySnapshot } from "@rafflink/core/room/giveaway-room"
-import { getGiveaway, overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
+import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
 import { UsersIcon } from "../components/icons.tsx"
 import { EntrantNames, msUntil, Stat } from "../components/live-parts.tsx"
 import { Failed, Loading } from "../components/notice.tsx"
@@ -12,7 +12,7 @@ import { shareUrl } from "../lib/links.ts"
 import { giveawayName } from "../lib/messages.ts"
 import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
 import { useLive } from "../lib/use-live.ts"
-import { useLoad } from "../lib/use-load.ts"
+import { useGiveawayFacts } from "../lib/use-giveaway-facts.ts"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 
@@ -151,16 +151,14 @@ function WinnerPlates({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const loadGiveaway = useCallback(() => getGiveaway(snapshot.code), [snapshot.code])
-  const { result } = useLoad(loadGiveaway)
-  const named = result.state === "ready" ? result.value?.giveaway.prize : null
+  const { facts, pending } = useGiveawayFacts(snapshot.code)
+  const named = facts?.prize
   const fallback = giveawayName(i18n, snapshot.title, snapshot.code)
-  const prize =
-    result.state === "loading"
-      ? ""
-      : named === null || named === undefined || named.trim() === ""
-        ? fallback
-        : named
+  const prize = pending
+    ? ""
+    : named === null || named === undefined || named.trim() === ""
+      ? fallback
+      : named
   return (
     <>
       <h2 className="sr-only">{t("overlay.winners")}</h2>

@@ -95,7 +95,7 @@ function Controls({
   const { t } = useI18n()
   const { message, busy, run } = useAction()
   const [clean, toggleClean] = useCleanMode()
-  const facts = useGiveawayFacts(snapshot.code)
+  const { facts } = useGiveawayFacts(snapshot.code)
   const entrants = useEntrants(id, { connected, entrantsAfter })
   const rerollOver = rerollOverText(snapshot)
   const current = currentWinner(snapshot.winners)

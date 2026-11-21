@@ -83,6 +83,7 @@ describe("session", () => {
 
     const response = await browser.request("/api/session")
 
+    expect(response.headers.get("cache-control")).toBe("no-store")
     expect(await response.json()).toEqual({
       streamer: { displayName: users.streamerA.displayName, login: users.streamerA.login },
     })
