@@ -1,6 +1,6 @@
 const maxReasonLength = 300
 
-/** The usage source did not answer with the day's numbers. `reason` is safe to log: it never holds a credential or an account id. */
+/** The usage source did not answer with the day's numbers. `reason` is the failure text the source built, cut to 300 characters; the source removes any credential or account id before it builds it. */
 export class UsageUnavailable extends Error {
   readonly reason: string
 

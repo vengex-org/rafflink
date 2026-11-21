@@ -45,7 +45,7 @@ export function createUsageMeter(
     today: async () => {
       const now = clock.now()
       const response = await send(now)
-      const counts = parseCounts(await readBody(response))
+      const counts = parseCounts(await readBody(response, [accountId, apiToken]))
       if (counts === null) throw new UsageUnavailable("Analytics answer has no usage numbers")
       return {
         workerRequests: { used: counts.workerRequests, limit: config.workerRequestLimit },
@@ -77,7 +77,7 @@ export function createUsageMeter(
   }
 }
 
-async function readBody(response: Response): Promise<unknown> {
+async function readBody(response: Response, secrets: readonly string[]): Promise<unknown> {
   if (!response.ok) throw new UsageUnavailable(`Analytics answered ${response.status}`)
   let body: unknown
   try {
@@ -87,16 +87,24 @@ async function readBody(response: Response): Promise<unknown> {
   }
   const messages = errorMessages(body)
   if (messages.length > 0)
-    throw new UsageUnavailable(`Analytics answered errors: ${messages.join("; ")}`)
+    throw new UsageUnavailable(`Analytics answered errors: ${redact(messages.join("; "), secrets)}`)
   return body
 }
 
 // GraphQL reports an error with status 200: `errors` is a non-empty list, and `data` is then null or partial.
 function errorMessages(body: unknown): string[] {
   if (!isRecord(body) || !Array.isArray(body.errors)) return []
-  return body.errors.map((error) =>
-    isRecord(error) && typeof error.message === "string" ? error.message : "unknown error",
-  )
+  return body.errors.map((error) => {
+    if (!isRecord(error)) return "unknown error"
+    const message = typeof error.message === "string" ? error.message : "unknown error"
+    const code = isRecord(error.extensions) ? error.extensions.code : undefined
+    return typeof code === "string" ? `${message} [${code}]` : message
+  })
+}
+
+// Cloudflare echoes request values such as the account tag in its error messages.
+function redact(text: string, secrets: readonly string[]): string {
+  return secrets.reduce((result, secret) => result.replaceAll(secret, "[redacted]"), text)
 }
 
 interface Counts {

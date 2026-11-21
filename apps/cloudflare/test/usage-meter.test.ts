@@ -158,6 +158,28 @@ describe("usage meter on the Cloudflare Analytics API", () => {
     expect(reason).not.toContain("account-1")
   })
 
+  it("redacts the account id and the token in GraphQL messages and keeps the error code", async () => {
+    const endpoint = fakeAnalytics(() =>
+      Response.json({
+        data: null,
+        errors: [
+          {
+            message: "account tag account-1 not found for token-1, retry account-1",
+            extensions: { code: "authz" },
+          },
+        ],
+      }),
+    )
+
+    const reason = await reasonOf(meterFor(endpoint))
+
+    expect(reason).toBe(
+      "Analytics answered errors: account tag [redacted] not found for [redacted], retry [redacted] [authz]",
+    )
+    expect(reason).not.toContain("account-1")
+    expect(reason).not.toContain("token-1")
+  })
+
   it("says the numbers are missing when the answer has no account", async () => {
     const endpoint = fakeAnalytics(() =>
       Response.json({ data: { viewer: { accounts: [] } }, errors: null }),
