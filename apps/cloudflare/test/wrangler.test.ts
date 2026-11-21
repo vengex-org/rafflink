@@ -4,6 +4,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { resolveConfig } from "@rafflink/core/config"
 import { apiPrefixes } from "@rafflink/core/http/api-paths"
+import { indexablePaths } from "@rafflink/core/http/static-headers"
 import { readWranglerConfig } from "./wrangler-config.ts"
 
 const required = {
@@ -16,12 +17,16 @@ const required = {
 }
 
 describe("wrangler.jsonc", () => {
-  // A page or file that reaches the Worker first is a billed request, and the Worker no longer answers pages.
-  it("runs the Worker first only for the API and sign-in paths and serves pages from the assets with the SPA fallback", async () => {
-    const { runWorkerFirst, notFoundHandling } = await readWranglerConfig()
+  // A page or file that reaches the Worker first is a billed request; only the indexable pages need their absolute URLs.
+  it("runs the Worker first only for the API, sign-in and indexable paths and serves the rest from the assets with the SPA fallback", async () => {
+    const { runWorkerFirst, notFoundHandling, assetsBinding } = await readWranglerConfig()
 
-    expect(runWorkerFirst).toEqual(apiPrefixes.map((prefix) => `${prefix}*`))
+    expect(runWorkerFirst).toEqual([
+      ...apiPrefixes.map((prefix) => `${prefix}*`),
+      ...indexablePaths,
+    ])
     expect(notFoundHandling).toBe("single-page-application")
+    expect(assetsBinding).toBe("ASSETS")
   })
 
   it("cron string matches config validate period", async () => {

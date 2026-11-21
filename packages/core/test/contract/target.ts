@@ -12,7 +12,10 @@ export interface ContractTarget {
  */
 export type StartTarget = (env: Record<string, string>, webDir: string) => Promise<ContractTarget>
 
-/** How a target answers page requests: the server injects each giveaway's link preview, a static host serves the built page and its `_headers`. */
+/**
+ * How a target answers page requests: the server injects each giveaway's link preview, a static host serves
+ * the built page and its `_headers`. Both write PUBLIC_URL into the indexable pages.
+ */
 export type PageServing = "injected-previews" | "static"
 
 export interface ContractContext {

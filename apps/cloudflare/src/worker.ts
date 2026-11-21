@@ -1,7 +1,7 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
-import { createApp, type AppDeps } from "@rafflink/core/http/create-app"
+import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { armRetentionAlarms } from "@rafflink/core/room/arm-retention"
 import type { Hono } from "hono"
 import { CacheApiPublicCache } from "./adapters/cache-api-public-cache.ts"
@@ -51,7 +51,20 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     leavesIpLimiter: new RateLimitBindingLimiter(env.LEAVES_IP_LIMITER),
     clientAddress: connectingAddress,
   }
-  return createWorkerApp({ api: createApp(deps, null), rooms: env.ROOMS })
+  return createWorkerApp({
+    api: createApp(deps, indexTemplateOf(env.ASSETS, runtime.config.publicUrl)),
+    rooms: env.ROOMS,
+  })
+}
+
+/** The built `index.html` of the assets, for the pages `run_worker_first` sends to the Worker. */
+function indexTemplateOf(assets: Fetcher, publicUrl: string): SpaTemplateLoader {
+  return async () => {
+    const response = await assets.fetch(new URL("/", publicUrl))
+    if (!response.ok)
+      throw new Error("the assets answered no index.html", { cause: response.status })
+    return response.text()
+  }
 }
 
 async function validateTokens(env: WorkerEnv): Promise<void> {

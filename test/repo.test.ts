@@ -50,6 +50,8 @@ describe("repository", () => {
     for (const name of [
       "favicon.svg",
       "favicon-32.png",
+      "favicon.ico",
+      "og.png",
       "apple-touch-icon.png",
       "icon-192.png",
       "icon-512.png",
@@ -119,13 +121,13 @@ describe("repository", () => {
 
     const rendered = renderSpaHtml(html, {
       url: "https://example.test/ABCDE",
-      image: "https://example.test/icon-512.png",
+      image: "https://example.test/og.png",
       text: { title: 'T<&>"1', description: 'D<&>"2' },
     })
 
     expect(rendered.match(/T&lt;&amp;&gt;&quot;1/g)).toHaveLength(3)
     expect(rendered.match(/D&lt;&amp;&gt;&quot;2/g)).toHaveLength(3)
     expect(rendered.match(/https:\/\/example\.test\/ABCDE/g)).toHaveLength(2)
-    expect(rendered.match(/https:\/\/example\.test\/icon-512\.png/g)).toHaveLength(2)
+    expect(rendered.match(/https:\/\/example\.test\/og\.png/g)).toHaveLength(2)
   }, 60_000)
 })

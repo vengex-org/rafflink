@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { inlineScript, spaTemplate } from "../../test/contract/spa-fixture.ts"
 import { inlineScriptHashes, renderSpaHtml } from "./spa-html.ts"
 
-const meta = { url: "https://example.test/ABCDE", image: "https://example.test/icon-512.png" }
+const meta = { url: "https://example.test/ABCDE", image: "https://example.test/og.png" }
 
 describe("renderSpaHtml", () => {
   it("writes the title and description into every tag that carries them", () => {
@@ -46,12 +46,8 @@ describe("renderSpaHtml", () => {
     expect(html).toContain("<title>Rafflink home</title>")
     expect(html).toContain(`<link rel="canonical" href="https://example.test/ABCDE" />`)
     expect(html).toContain(`<meta property="og:url" content="https://example.test/ABCDE" />`)
-    expect(html).toContain(
-      `<meta property="og:image" content="https://example.test/icon-512.png" />`,
-    )
-    expect(html).toContain(
-      `<meta name="twitter:image" content="https://example.test/icon-512.png" />`,
-    )
+    expect(html).toContain(`<meta property="og:image" content="https://example.test/og.png" />`)
+    expect(html).toContain(`<meta name="twitter:image" content="https://example.test/og.png" />`)
   })
 })
 
