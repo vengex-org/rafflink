@@ -328,7 +328,9 @@ describe("live page: drawing", () => {
     ).toBeTruthy()
     fireEvent.click(await view.findByRole("button", { name: "Draw winner" }))
 
-    expect(await view.findByText("Winner drawn.")).toBeTruthy()
+    await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
+    await effectsRun()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(view.queryByRole("dialog")).toBeNull()
     expect(requests.at(-1)).toEqual({ route: drawPath, body: {} })
   })
@@ -366,7 +368,9 @@ describe("live page: drawing", () => {
     ).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Draw next winner" }))
 
-    expect(await view.findByText("Winner drawn.")).toBeTruthy()
+    await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
+    await effectsRun()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(requests.at(-1)?.route).toBe(drawPath)
   })
 
@@ -383,7 +387,9 @@ describe("live page: drawing", () => {
 
     expect(draw.getAttribute("aria-keyshortcuts")).toBe("d")
     expect(draw.querySelector("kbd")?.textContent).toBe("D")
-    expect(await view.findByText("Winner drawn.")).toBeTruthy()
+    await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
+    await effectsRun()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(requests.at(-1)?.route).toBe(drawPath)
   })
 
@@ -1722,7 +1728,9 @@ describe("live page: the controls bar", () => {
     expect(drawRequests()).toHaveLength(0)
     fireEvent.keyDown(document.body, { key: "d" })
 
-    expect(await view.findByText("Winner drawn.")).toBeTruthy()
+    await waitFor(() => expect(drawRequests()).toHaveLength(1))
+    await effectsRun()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(drawRequests()).toHaveLength(1)
   })
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, within } from "@testing-library/react"
-import { mockFetch } from "./mock-fetch.ts"
+import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 beforeEach(() => {
@@ -38,6 +38,21 @@ describe("home page", () => {
     const login = view.getByRole("link", { name: "Log in with Twitch" })
 
     expect(login.getAttribute("href")).toBe("/dashboard")
+  })
+
+  it("offers My giveaways instead of logging in when the streamer is signed in, from one session call", async () => {
+    const requests = mockFetch({
+      "GET /api/session": () =>
+        ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null } }),
+    })
+    const view = renderApp("/")
+
+    await view.findByRole("button", { name: "Streamy" })
+
+    const cta = view.getByRole("link", { name: "My giveaways" })
+    expect(cta.getAttribute("href")).toBe("/dashboard")
+    expect(view.queryByRole("link", { name: "Log in with Twitch" })).toBeNull()
+    expect(requests.filter((request) => request.route === "GET /api/session")).toHaveLength(1)
   })
 
   it("explains the flow in three steps", () => {
@@ -97,14 +112,16 @@ describe("home page", () => {
     expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
   })
 
-  it("opens the demo from the header and the hero only", () => {
+  it("opens the demo from the hero only, not from the header", () => {
     const view = renderApp("/")
 
-    const links = ["Demo giveaway", "Try the demo"].map((name) =>
-      view.getByRole("link", { name }).getAttribute("href"),
-    )
+    const header = within(view.getByRole("banner"))
+    const demoLinks = view
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("href") === "/demo")
 
-    expect(links).toEqual(["/demo", "/demo"])
+    expect(header.queryByRole("link", { name: "Demo giveaway" })).toBeNull()
+    expect(demoLinks.map((link) => link.textContent)).toEqual(["Try the demo"])
     expect(view.queryByRole("link", { name: "Open the demo giveaway" })).toBeNull()
   })
 

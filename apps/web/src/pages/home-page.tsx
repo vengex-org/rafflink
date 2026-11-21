@@ -4,6 +4,7 @@ import { HomeHow } from "../components/home-how.tsx"
 import { HomeStage } from "../components/home-stage.tsx"
 import { AlertIcon, CloudIcon, GithubIcon, LockIcon, TwitchIcon } from "../components/icons.tsx"
 import { StateCard } from "../components/state-card.tsx"
+import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl, setupGuideUrl } from "../lib/links.ts"
@@ -12,6 +13,7 @@ export function HomePage() {
   const { t, rich } = useI18n()
   const [query] = useSearchParams()
   const problem = signInProblem(query.get("signin"))
+  const { streamer } = useStreamerSession()
   return (
     <div className="home">
       <section className="home-hero">
@@ -32,8 +34,8 @@ export function HomePage() {
               <p className="home-sub">{t("home.text")}</p>
               <div className="home-actions">
                 <Link className="button home-cta" to="/dashboard">
-                  <TwitchIcon />
-                  {t("home.login")}
+                  {streamer === null ? <TwitchIcon /> : null}
+                  {t(streamer === null ? "home.login" : "nav.myGiveaways")}
                 </Link>
                 <Link className="button outlined home-cta" to="/demo">
                   {t("home.demo")}
@@ -72,6 +74,7 @@ export function HomePage() {
           <nav aria-label={t("home.footer.label")}>
             <a href={repositoryUrl}>{t("nav.github")}</a>
             <a href={setupGuideUrl}>{t("home.footer.guide")}</a>
+            <Link to="/verify">{t("nav.verify")}</Link>
             <Link to="/privacy">{t("legal.privacy")}</Link>
             <Link to="/terms">{t("legal.terms")}</Link>
           </nav>

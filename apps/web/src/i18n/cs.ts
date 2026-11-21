@@ -6,8 +6,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "nav.myGiveaways": "Moje soutěže",
   "nav.howItWorks": "Jak to funguje",
   "nav.selfHost": "Vlastní hosting",
+  "nav.verify": "Ověřit losování",
   "nav.github": "GitHub",
-  "nav.demo": "Ukázková soutěž",
   "nav.login": "Přihlásit se",
   "nav.logout": "Odhlásit se",
   "nav.loggedOut": "Odhlášeno.",
@@ -15,6 +15,11 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "demo.note": "Nacvičená soutěž s vymyšlenými jmény. Nic se nikam neposílá.",
   "demo.replay": "Přehrát znovu",
   "demo.drawing": "Losuje se vítěz…",
+  "demo.chat.thanks": "děkuju moc!!",
+  "demo.chat.discord": "napíšu ti na discord",
+  "demo.view.label": "Pohled",
+  "demo.view.streamer": "Streamer",
+  "demo.view.viewer": "Divák",
   "theme.legend": "Vzhled",
   "theme.system": "Podle systému",
   "theme.light": "Světlý",
@@ -228,7 +233,6 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "closeResult.not-open": "Přihlašování už bylo uzavřené.",
   "closeResult.rejected":
     "Přihlašování se nepodařilo uzavřít. Načti stránku znovu a zkus to ještě jednou.",
-  "drawResult.drawn": "Vítěz je vylosovaný.",
   "drawResult.entries-deleted":
     "Údaje účastníků se už po uchovávací lhotě smazaly, vítěze už nelze vylosovat.",
   "drawResult.rejected": "Vítěze se nepodařilo vylosovat.",
@@ -731,6 +735,12 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "verify.title": "Ověření losování",
   "verify.intro":
     "Ve svém prohlížeči zkontroluj, že vítězové vycházejí ze seznamu přihlášek a z veřejného náhodného čísla, které tu nikdo neovládá.",
+  "verifyLookup.title": "Ověřit losování",
+  "verifyLookup.label": "Kód nebo odkaz giveaway",
+  "verifyLookup.help":
+    "Kód má 5 písmen a číslic, například YNX9N. Můžeš vložit i odkaz, který používají diváci.",
+  "verifyLookup.invalid": "Tohle není kód ani odkaz giveaway.",
+  "verifyLookup.submit": "Otevřít ověření",
   "verify.back": "Zpět na giveaway",
   "verify.open": "Přihlašování ještě běží. Seznam přihlášek se uzamkne, až se přihlašování uzavře.",
   "verify.closed.pending":

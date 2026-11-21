@@ -6,8 +6,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "nav.myGiveaways": "Moje súťaže",
   "nav.howItWorks": "Ako to funguje",
   "nav.selfHost": "Vlastný hosting",
+  "nav.verify": "Overiť losovanie",
   "nav.github": "GitHub",
-  "nav.demo": "Ukážková súťaž",
   "nav.login": "Prihlásiť sa",
   "nav.logout": "Odhlásiť sa",
   "nav.loggedOut": "Odhlásený.",
@@ -15,6 +15,11 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "demo.note": "Nacvičená súťaž s vymyslenými menami. Nič sa nikam neposiela.",
   "demo.replay": "Prehrať znova",
   "demo.drawing": "Losuje sa víťaz…",
+  "demo.chat.thanks": "ďakujem veľmi pekne!!",
+  "demo.chat.discord": "napíšem ti na discord",
+  "demo.view.label": "Pohľad",
+  "demo.view.streamer": "Streamer",
+  "demo.view.viewer": "Divák",
   "theme.legend": "Vzhľad",
   "theme.system": "Podľa systému",
   "theme.light": "Svetlý",
@@ -227,7 +232,6 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "closeResult.closed": "Zápis je uzavretý.",
   "closeResult.not-open": "Zápis už bol uzavretý.",
   "closeResult.rejected": "Zápis sa nepodarilo uzavrieť. Načítaj stránku znova a skús to ešte raz.",
-  "drawResult.drawn": "Víťaz je vyžrebovaný.",
   "drawResult.entries-deleted":
     "Údaje účastníkov sa už po uchovávacej lehote zmazali, víťazov už nie je možné vyžrebovať.",
   "drawResult.rejected": "Víťaza sa nepodarilo vyžrebovať.",
@@ -730,6 +734,12 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "verify.title": "Overenie žrebovania",
   "verify.intro":
     "Vo svojom prehliadači skontroluj, že víťazi vychádzajú zo zoznamu zápisov a z verejného náhodného čísla, ktoré tu nikto neovláda.",
+  "verifyLookup.title": "Overiť losovanie",
+  "verifyLookup.label": "Kód alebo odkaz giveawayu",
+  "verifyLookup.help":
+    "Kód má 5 písmen a číslic, napríklad YNX9N. Môžeš vložiť aj odkaz, ktorý používajú diváci.",
+  "verifyLookup.invalid": "Toto nie je kód ani odkaz giveawayu.",
+  "verifyLookup.submit": "Otvoriť overenie",
   "verify.back": "Späť na giveaway",
   "verify.open": "Zápis ešte beží. Zoznam zápisov sa uzamkne, keď sa zápis uzavrie.",
   "verify.closed.pending":

@@ -10,6 +10,7 @@ import { HomePage } from "./pages/home-page.tsx"
 import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
 import { OverlayPage } from "./pages/overlay-page.tsx"
+import { VerifyLookupPage } from "./pages/verify-lookup-page.tsx"
 import { VerifyPage } from "./pages/verify-page.tsx"
 
 export function AppRoutes() {
@@ -21,13 +22,14 @@ export function AppRoutes() {
         <Route element={<Layout account />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="admin" element={<AdminPage />} />
+          <Route path="privacy" caseSensitive element={<PrivacyPage />} />
+          <Route path="terms" caseSensitive element={<TermsPage />} />
+          <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
           <Route index element={<HomePage />} />
           <Route path="*" element={<NotFound title="notFound.page" />} />
         </Route>
+        <Route path="demo" element={<DemoPage />} />
         <Route element={<Layout account={false} />}>
-          <Route path="demo" element={<DemoPage />} />
-          <Route path="privacy" caseSensitive element={<PrivacyPage />} />
-          <Route path="terms" caseSensitive element={<TermsPage />} />
           <Route path="g/:code" element={<GiveawayPage />} />
           <Route path="g/:code/verify" element={<VerifyPage />} />
           <Route path=":code" element={<GiveawayPage />} />

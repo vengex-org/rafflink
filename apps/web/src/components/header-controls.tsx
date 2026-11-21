@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import { languages, type Language } from "../i18n/language.ts"
 import {
@@ -18,10 +19,22 @@ const languageNames: Readonly<Record<Language, string>> = {
   cs: "Čeština",
 }
 
-/** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. */
-export function SettingsMenu() {
+/** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. `children` come first in the popover. */
+export function SettingsMenu({ children }: { readonly children?: ReactNode | undefined }) {
   const { t } = useI18n()
   const panelId = useId()
+  const panel = useRef<HTMLDivElement>(null)
+  const { pathname } = useLocation()
+
+  // The bar stays mounted across pages, so a link in the open panel would leave it covering the page it opens.
+  const shownPath = useRef(pathname)
+  useEffect(() => {
+    if (shownPath.current === pathname) return
+    shownPath.current = pathname
+    const element = panel.current
+    if (element !== null && element.matches(":popover-open")) element.hidePopover()
+  }, [pathname])
+
   return (
     <>
       <button
@@ -32,7 +45,8 @@ export function SettingsMenu() {
       >
         <SlidersIcon />
       </button>
-      <div id={panelId} popover="auto" className="settings-panel">
+      <div id={panelId} ref={panel} popover="auto" className="settings-panel">
+        {children}
         <ThemeSwitch />
         <LanguageSwitch />
       </div>

@@ -1,14 +1,8 @@
 import { useCallback, useId, useState, type ReactNode } from "react"
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
-import {
-  closeEntries,
-  drawWinners,
-  markClaimed,
-  rerollWinner,
-  setWinnerCount,
-} from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
+import { useLiveApi } from "../lib/live-api.ts"
 import { overlayUrl } from "../lib/links.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { useShortcut } from "../lib/use-shortcut.ts"
@@ -180,6 +174,7 @@ function MarkClaimed({
   readonly className: string
 }) {
   const { t } = useI18n()
+  const { markClaimed } = useLiveApi()
   if (!isUnsettled(winner)) return null
   return (
     <button
@@ -217,6 +212,7 @@ function RerollPick({
   readonly shortcut: string | null
 }) {
   const { t } = useI18n()
+  const { rerollWinner } = useLiveApi()
   if (!canReroll(winner, snapshot)) return null
   const name = nameOf(winner, t)
   return (
@@ -248,6 +244,7 @@ function EntriesSwitch({
   status,
 }: Doing & { readonly status: LiveSnapshot["status"] }) {
   const { t } = useI18n()
+  const { closeEntries } = useLiveApi()
   const labelId = useId()
   const open = status === "open"
   return (
@@ -323,6 +320,7 @@ function DrawControls({
 }) {
   const i18n = useI18n()
   const { t } = i18n
+  const { drawWinners } = useLiveApi()
   const remainingMs = useRemainingMs(waitMs)
   const { status, drawRequested, entrantCount } = snapshot
   const blocked = blockedText(snapshot, t)
@@ -335,7 +333,8 @@ function DrawControls({
         onPending(Math.max(0, pendingMs))
         return pendingMs > 0 ? answer.kind : "round-due"
       },
-      (outcome) => `drawResult.${outcome}`,
+      // The winner appears on the stage after the shuffle; a toast now would announce it early.
+      (outcome) => (outcome === "drawn" ? null : `drawResult.${outcome}`),
     )
   return (
     <>
@@ -446,6 +445,7 @@ function WinnerCountControl({
   winnerCount,
 }: Doing & { readonly winnerCount: number }) {
   const { t } = useI18n()
+  const { setWinnerCount } = useLiveApi()
   const [count, setCount] = useState(String(winnerCount))
   const winners = Number(count)
   const valid = count.trim() !== "" && Number.isInteger(winners) && winners >= 1

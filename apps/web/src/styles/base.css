@@ -182,7 +182,7 @@ button:disabled {
   height: 1rem;
 }
 
-/* App bar: brand, anchors, demo and log-in on one 68px row; the theme and language switches sit in one settings popover. */
+/* App bar: brand, anchors and log-in on one 68px row; the theme and language switches sit in one settings popover. */
 .app-bar-inner {
   display: flex;
   align-items: center;
