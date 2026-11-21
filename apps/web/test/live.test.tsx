@@ -5,7 +5,7 @@ import type { Entrant } from "@rafflink/core/room/rows"
 import { reconnectDelayMs } from "../src/lib/use-live.ts"
 import { stubClipboard } from "./clipboard.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
-import { claimedAt, claimedAtText, giveaway, liveSnapshot } from "./fixtures.ts"
+import { claimedAt, claimedAtText, donateUrl, giveaway, liveSnapshot } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -1366,6 +1366,39 @@ describe("reconnect delay", () => {
     expect([0, 1, 2, 5, 6, 50].map(reconnectDelayMs)).toEqual([
       1000, 2000, 4000, 30_000, 30_000, 30_000,
     ])
+  })
+})
+
+describe("live page: support link", () => {
+  it("links the configured support page in the settings panel, opening in a new tab", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, donateUrl }) })
+
+    const view = renderApp("/live/gid-1")
+
+    const settings = within(await view.findByRole("region", { name: "Giveaway settings" }))
+    const link = settings.getByRole("link", { name: "Support" })
+    expect(link.getAttribute("href")).toBe(donateUrl)
+    expect(link.getAttribute("target")).toBe("_blank")
+    expect(link.getAttribute("rel")).toBe("noopener")
+  })
+
+  it("hides the support link with the controls", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, donateUrl }) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByRole("link", { name: "Support" })
+    fireEvent.click(view.getByRole("button", { name: "Hide controls" }))
+
+    expect(view.queryByRole("link", { name: "Support" })).toBeNull()
+  })
+
+  it("shows no support link when no page is configured", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, donateUrl: null }) })
+
+    const view = renderApp("/live/gid-1")
+
+    await view.findByRole("region", { name: "Giveaway settings" })
+    expect(view.queryByRole("link", { name: "Support" })).toBeNull()
   })
 })
 

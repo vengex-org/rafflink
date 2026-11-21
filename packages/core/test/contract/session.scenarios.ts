@@ -11,7 +11,8 @@ export function sessionScenarios(context: ContractContext): void {
     const response = await new Browser(target.url).request("/api/session")
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ streamer: null })
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(await response.json()).toEqual({ streamer: null, donateUrl: null })
   })
 
   scenario(context, "the session names the signed-in streamer", async (world) => {
@@ -42,7 +43,10 @@ export function sessionScenarios(context: ContractContext): void {
 
     expect(response.status).toBe(204)
     expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
-    expect(await (await streamer.request("/api/session")).json()).toEqual({ streamer: null })
+    expect(await (await streamer.request("/api/session")).json()).toEqual({
+      streamer: null,
+      donateUrl: null,
+    })
   })
 
   scenario(

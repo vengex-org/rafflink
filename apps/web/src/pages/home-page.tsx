@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from "react-router"
+import { DonateLink } from "../components/donate-link.tsx"
 import { HomeCards } from "../components/home-cards.tsx"
 import { HomeHow } from "../components/home-how.tsx"
 import { HomeStage } from "../components/home-stage.tsx"
@@ -13,7 +14,7 @@ export function HomePage() {
   const { t, rich } = useI18n()
   const [query] = useSearchParams()
   const problem = signInProblem(query.get("signin"))
-  const { streamer } = useStreamerSession()
+  const { streamer, donateUrl } = useStreamerSession()
   return (
     <div className="home">
       <section className="home-hero">
@@ -58,6 +59,13 @@ export function HomePage() {
               <LockIcon />
               {t("home.trust.noTracking")}
             </li>
+            {donateUrl === null ? null : (
+              <li>
+                <DonateLink url={donateUrl}>
+                  {t(isKoFi(donateUrl) ? "home.trust.supportKoFi" : "home.trust.support")}
+                </DonateLink>
+              </li>
+            )}
           </ul>
         </div>
       </section>
@@ -82,6 +90,17 @@ export function HomePage() {
       </footer>
     </div>
   )
+}
+
+/** Ko-fi is named on the link; any other support page gets the generic wording. */
+function isKoFi(url: string): boolean {
+  let host: string
+  try {
+    host = new URL(url).hostname
+  } catch {
+    return false
+  }
+  return host === "ko-fi.com" || host.endsWith(".ko-fi.com")
 }
 
 // The streamer sign-in callback redirects here with `?signin=` when it fails.

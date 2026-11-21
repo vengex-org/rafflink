@@ -137,9 +137,10 @@ Every other setting has a default; see [.env.example](.env.example).
 Both targets need your own Twitch app (see above) and the required settings listed there. Every setting is in
 [.env.example](.env.example), which `bun run env:example` generates from the config schema.
 
-Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Sponsors and the like) and signed-in
-streamers see a quiet "Support" link above their drawn giveaways on the dashboard and in the account menu. Viewer
-pages and the OBS overlay never show it. Left blank, no link appears anywhere.
+Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Sponsors and the like) and a quiet
+"Support" link appears in the home page trust row, above the drawn giveaways on the dashboard, in the account menu
+and in the settings panel of the streamer's live page. Viewer pages and the OBS overlay never show it. Left blank,
+no link appears anywhere.
 
 ### Docker (any server)
 

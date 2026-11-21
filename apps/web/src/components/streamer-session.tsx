@@ -12,7 +12,7 @@ export type SignedInStreamer = NonNullable<SessionJson["streamer"]>
 export interface StreamerSession {
   /** Null while the session is unknown, when nobody is signed in and after logging out. */
   readonly streamer: SignedInStreamer | null
-  /** The deployment's support page; null while nobody is signed in or when `DONATE_URL` is unset. */
+  /** The deployment's support page, signed in or not; null while the session is unknown or when `DONATE_URL` is unset. */
   readonly donateUrl: string | null
   readonly busy: boolean
   readonly message: MessageKey | null
@@ -39,7 +39,8 @@ export function StreamerSessionProvider({ children }: { readonly children: React
   const [loggedOut, setLoggedOut] = useState(false)
   const session = result.state === "ready" && !loggedOut ? result.value : null
   const streamer = session?.streamer ?? null
-  const donateUrl = session !== null && session.streamer !== null ? session.donateUrl : null
+  // A deployment fact, so it outlives a logout.
+  const donateUrl = result.state === "ready" ? result.value.donateUrl : null
 
   // A signed-out header has nothing to correct, and a call still in flight already asks the server.
   const signedIn = streamer !== null

@@ -4,12 +4,12 @@ import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { RoomStatus } from "@rafflink/core/room/rows"
 import { listGiveaways, type CreateResult } from "../api/client.ts"
 import { Disclosure } from "../components/disclosure.tsx"
+import { DonateLink } from "../components/donate-link.tsx"
 import {
   ActivityIcon,
   ArrowLeftIcon,
   CheckIcon,
   CopyIcon,
-  HeartIcon,
   LinkIcon,
   PlusIcon,
   TvIcon,
@@ -214,13 +214,8 @@ function SupportNote({ url }: { readonly url: string }) {
   const { t } = useI18n()
   return (
     <p className="support-note">
-      <HeartIcon />
-      <span>
-        {t("dash.support.text")}{" "}
-        <a href={url} target="_blank" rel="noopener">
-          {t("dash.support.link")}
-        </a>
-      </span>
+      {t("dash.support.text")}
+      <DonateLink url={url}>{t("dash.support.link")}</DonateLink>
     </p>
   )
 }

@@ -5,7 +5,7 @@ export interface Reply {
   readonly body: unknown
 }
 
-const signedOut: Reply = { status: 200, body: { streamer: null } }
+const signedOut: Reply = { status: 200, body: { streamer: null, donateUrl: null } }
 const noBadges: Reply = { status: 200, body: { sub_t1: null, sub_t2: null, sub_t3: null } }
 
 /** Answers `fetch(path, init)` by "METHOD /path", after the route's promise when it returns one; a request nobody listed fails the test that made it. The header's session call is answered signed-out and the live page's badges call with no badges unless a route says otherwise. */

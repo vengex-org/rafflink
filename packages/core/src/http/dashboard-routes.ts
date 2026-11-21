@@ -176,6 +176,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       const body: OwnerLiveSnapshot = {
         ...(await deps.rooms.get(giveaway.id).liveSnapshot()),
         overlayToken: giveaway.overlayToken,
+        donateUrl: deps.config.donateUrl,
       }
       return c.json(body)
     }),

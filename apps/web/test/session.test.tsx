@@ -111,7 +111,11 @@ describe("header session", () => {
     let signedInNow = true
     const requests = mockFetch({
       "GET /api/session": () =>
-        ok(signedInNow ? { ...supportedSession, donateUrl: null } : { streamer: null }),
+        ok(
+          signedInNow
+            ? { ...supportedSession, donateUrl: null }
+            : { streamer: null, donateUrl: null },
+        ),
       "POST /auth/logout": () => {
         signedInNow = false
         return { status: 204, body: null }
@@ -128,6 +132,21 @@ describe("header session", () => {
       await view.findByRole("heading", { level: 1, name: /Fair Twitch giveaways/ }),
     ).toBeTruthy()
     expect(requests.map((request) => request.route)).toContain("POST /auth/logout")
+  })
+
+  it("keeps the support link on the home page after logging out", async () => {
+    mockFetch({
+      "GET /api/session": () => ok(supportedSession),
+      "POST /auth/logout": () => ({ status: 204, body: null }),
+      "GET /api/dash/giveaways": () => ok({ giveaways: [] }),
+    })
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
+    fireEvent.click(view.getByRole("button", { name: "Log out" }))
+
+    expect(await view.findByRole("link", { name: "Log in" })).toBeTruthy()
+    const link = await view.findByRole("link", { name: "Support on Ko-fi" })
+    expect(link.getAttribute("href")).toBe(donateUrl)
   })
 
   it("shows Log in after the logout even when a later session call would fail", async () => {
@@ -211,7 +230,9 @@ describe("header session", () => {
       "GET /api/session": () => {
         sessionCalls += 1
         return ok(
-          sessionCalls === 1 ? { ...supportedSession, donateUrl: null } : { streamer: null },
+          sessionCalls === 1
+            ? { ...supportedSession, donateUrl: null }
+            : { streamer: null, donateUrl: null },
         )
       },
       "GET /api/dash/giveaways": async () => {
@@ -236,7 +257,7 @@ describe("header session", () => {
     mockFetch({
       "GET /api/session": () => {
         sessionCalls += 1
-        return ok({ streamer: null })
+        return ok({ streamer: null, donateUrl: null })
       },
       "GET /api/dash/giveaways": async () => {
         await setTimeout(0)

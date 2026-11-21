@@ -4,7 +4,7 @@ import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { encode } from "uqr"
 import { shareUrl } from "../src/lib/links.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
-import { giveaway, liveSnapshot } from "./fixtures.ts"
+import { donateUrl, giveaway, liveSnapshot } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -63,6 +63,15 @@ it("shows the live view read-only on the overlay socket without a session", asyn
   expect(view.queryByText(/Chat watch is off/)).toBeNull()
   expect(view.queryByRole("heading", { name: "Problems" })).toBeNull()
   expect(document.documentElement.dataset.surface).toBe("overlay")
+})
+
+it("never shows a support link, even when the answer carries one", async () => {
+  mockFetch({ "GET /api/overlay/gid-1/tok-1": () => ok({ ...liveSnapshot, donateUrl }) })
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Ada")).toBeTruthy()
+  expect(view.queryAllByRole("link")).toHaveLength(0)
 })
 
 it("names the giveaway by its code when the title is missing", async () => {

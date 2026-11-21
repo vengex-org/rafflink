@@ -73,6 +73,7 @@ function Loaded({ id }: { readonly id: string }) {
           connected={live.connected}
           entrantsAfter={live.entrantsAfter}
           overlayToken={live.overlayToken}
+          donateUrl={live.donateUrl}
         />
       )
   }
@@ -85,12 +86,14 @@ function Connected({
   connected,
   entrantsAfter,
   overlayToken,
+  donateUrl,
 }: {
   readonly id: string
   readonly snapshot: LiveSnapshot
   readonly connected: boolean
   readonly entrantsAfter: EntrantsDelta | null
   readonly overlayToken: string | null
+  readonly donateUrl: string | null
 }) {
   const { facts } = useGiveawayFacts(snapshot.code)
   const entrants = useEntrants(id, { connected, entrantsAfter })
@@ -100,6 +103,7 @@ function Connected({
       snapshot={snapshot}
       connected={connected}
       overlayToken={overlayToken}
+      donateUrl={donateUrl}
       cleanModeKey={liveCleanModeKey}
       facts={facts}
       entrants={entrants}
@@ -113,6 +117,7 @@ export function LiveControls({
   snapshot,
   connected,
   overlayToken,
+  donateUrl,
   cleanModeKey,
   facts,
   entrants,
@@ -121,6 +126,7 @@ export function LiveControls({
   readonly snapshot: LiveSnapshot
   readonly connected: boolean
   readonly overlayToken: string | null
+  readonly donateUrl: string | null
   /** Where the clean-mode choice is stored, so the demo does not share it with the real page. */
   readonly cleanModeKey: string
   readonly facts: GiveawayView | null
@@ -194,6 +200,7 @@ export function LiveControls({
               run={run}
               snapshot={snapshot}
               overlayToken={overlayToken}
+              donateUrl={donateUrl}
               onHide={toggleClean}
             />
           )}

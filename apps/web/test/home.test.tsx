@@ -140,6 +140,48 @@ describe("home page", () => {
     expect(requests.filter((request) => request.route === "GET /api/session")).toHaveLength(1)
   })
 
+  it("links the configured Ko-fi page in the trust row for a signed-out visitor, opening in a new tab", async () => {
+    mockFetch({ "GET /api/session": () => ok({ streamer: null, donateUrl }) })
+    const view = renderApp("/")
+
+    const link = await view.findByRole("link", { name: "Support on Ko-fi" })
+
+    expect(link.getAttribute("href")).toBe(donateUrl)
+    expect(link.getAttribute("target")).toBe("_blank")
+    expect(link.getAttribute("rel")).toBe("noopener")
+    expect(link.closest(".home-trust")).not.toBeNull()
+  })
+
+  it("links the configured support page in the trust row for a signed-in streamer", async () => {
+    mockFetch({ "GET /api/session": () => ok(supportedSession) })
+    const view = renderApp("/")
+
+    await view.findByRole("button", { name: "Streamy" })
+
+    const link = view.getByRole("link", { name: "Support on Ko-fi" })
+    expect(link.getAttribute("href")).toBe(donateUrl)
+    expect(link.closest(".home-trust")).not.toBeNull()
+  })
+
+  it("names no platform on a support page other than Ko-fi", async () => {
+    const sponsors = "https://github.com/sponsors/rafflink"
+    mockFetch({ "GET /api/session": () => ok({ streamer: null, donateUrl: sponsors }) })
+    const view = renderApp("/")
+
+    const link = await view.findByRole("link", { name: "Support Rafflink" })
+
+    expect(link.getAttribute("href")).toBe(sponsors)
+  })
+
+  it("shows no support link when no page is configured", async () => {
+    mockFetch({ "GET /api/session": () => ok({ ...supportedSession, donateUrl: null }) })
+    const view = renderApp("/")
+
+    await view.findByRole("button", { name: "Streamy" })
+
+    expect(view.container.querySelector(".donate-link")).toBeNull()
+  })
+
   it("explains the flow in three steps", () => {
     const view = renderApp("/")
 

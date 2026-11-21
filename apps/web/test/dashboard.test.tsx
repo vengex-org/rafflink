@@ -169,7 +169,7 @@ describe("dashboard", () => {
           ],
         }),
     }
-    const supportText = "The draw is done. If Rafflink saved you time, you can support it."
+    const supportText = "If Rafflink saved you time, you can support it."
 
     it("links the configured support page in a new tab above the drawn giveaways", async () => {
       mockFetch({ ...withDrawn, "GET /api/session": () => ok(supportedSession) })

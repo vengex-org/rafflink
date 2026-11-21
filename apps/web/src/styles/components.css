@@ -227,6 +227,20 @@ main.container {
   opacity: 0.4;
 }
 
+/* The support link (DonateLink): a heart before the words, in the color of the text around it. */
+.donate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: inherit;
+}
+
+.donate-link .icon {
+  flex: none;
+  width: 1em;
+  height: 1em;
+}
+
 /* Cards: a 1px line in both themes, a soft shadow in light only */
 
 .card {

@@ -10,6 +10,7 @@ import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overl
 import type { useAction } from "../lib/use-action.ts"
 import { ConfirmAction } from "./confirm-action.tsx"
 import { CopyLink } from "./copy-field.tsx"
+import { DonateLink } from "./donate-link.tsx"
 import { Segmented, type SegmentOption } from "./form-fields.tsx"
 import {
   CheckCircleIcon,
@@ -97,10 +98,12 @@ export function LiveSettings({
   run,
   snapshot,
   overlayToken,
+  donateUrl,
   onHide,
 }: Doing & {
   readonly snapshot: LiveSnapshot
   readonly overlayToken: string | null
+  readonly donateUrl: string | null
   readonly onHide: () => void
 }) {
   const { t } = useI18n()
@@ -116,6 +119,7 @@ export function LiveSettings({
           <EyeOffIcon />
           {t("live.clean.hide")}
         </button>
+        {donateUrl === null ? null : <DonateLink url={donateUrl}>{t("live.support")}</DonateLink>}
       </span>
     </section>
   )
