@@ -110,7 +110,7 @@ function Overlay({
     return (
       <main className="overlay">
         {heading}
-        <WinnerPlates snapshot={snapshot} standing={standing} />
+        <FetchedWinnerPlates snapshot={snapshot} standing={standing} />
         {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
       </main>
     )
@@ -167,7 +167,7 @@ function Overlay({
 }
 
 /** The prize is not in the snapshot, so it is fetched when the plates show; until then its line stays empty. */
-function WinnerPlates({
+function FetchedWinnerPlates({
   snapshot,
   standing,
 }: {
@@ -175,7 +175,6 @@ function WinnerPlates({
   readonly standing: readonly LiveWinner[]
 }) {
   const i18n = useI18n()
-  const { t } = i18n
   const { facts, pending } = useGiveawayFacts(snapshot.code)
   const named = facts?.prize
   const fallback = giveawayName(i18n, snapshot.title, snapshot.code)
@@ -184,6 +183,19 @@ function WinnerPlates({
     : named === null || named === undefined || named.trim() === ""
       ? fallback
       : named
+  return <WinnerPlates standing={standing} prize={prize} />
+}
+
+/** One plate per standing winner with the prize line and, while the claim is open, its clock. */
+export function WinnerPlates({
+  standing,
+  prize,
+}: {
+  readonly standing: readonly LiveWinner[]
+  readonly prize: string
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
   return (
     <>
       <h2 className="sr-only">{t("overlay.winners")}</h2>

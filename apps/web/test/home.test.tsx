@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, within } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, jest, mock } from "bun:test"
+import { act, cleanup, within } from "@testing-library/react"
+import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -65,15 +66,53 @@ describe("home page", () => {
     ).toEqual(["Create the giveaway", "Share one short link", "Draw live"])
   })
 
-  it("previews the draw on stream and on the winner's phone", () => {
+  it("previews the draw with the real overlay plate and the real claim panel of the example winner", () => {
     const view = renderApp("/")
 
     const preview = within(view.getByRole("region", { name: "Example of a draw" }))
 
-    expect(preview.getByText("Winner 2 of 3")).toBeTruthy()
-    expect(preview.getAllByText("mira_vex").length).toBeGreaterThan(0)
+    expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
+    expect(preview.getByText("A gaming chair", { selector: ".overlay-prize" })).toBeTruthy()
+    expect(preview.getByRole("img", { name: /QR code/ })).toBeTruthy()
+    expect(preview.getAllByText("mira_vex")).toHaveLength(2)
     expect(preview.getAllByText("0:42")).toHaveLength(2)
     expect(preview.getByText("You won")).toBeTruthy()
+    expect(preview.getByText("Claim my prize")).toBeTruthy()
+  })
+
+  it("keeps the phone preview out of the tab order and the accessibility tree, with one h1 on the page", () => {
+    const view = renderApp("/")
+
+    const phone = view.container.querySelector(".stage-phone")
+
+    expect(phone?.getAttribute("aria-hidden")).toBe("true")
+    expect(phone?.querySelector("[inert] button")).not.toBeNull()
+    expect(view.container.querySelectorAll("h1")).toHaveLength(1)
+  })
+
+  it("shows the example claim clock from the start again before it runs out", () => {
+    jest.useFakeTimers()
+    const view = renderApp("/")
+    const stage = within(view.getByRole("region", { name: "Example of a draw" }))
+
+    act(() => jest.advanceTimersByTime(29_000))
+    expect(stage.queryAllByText("0:42")).toHaveLength(0)
+
+    act(() => jest.advanceTimersByTime(1000))
+    expect(stage.getAllByText("0:42")).toHaveLength(2)
+    jest.useRealTimers()
+  })
+
+  it("sends no request and opens no socket for the previews", () => {
+    const restoreSocket = installFakeSocket()
+    FakeSocket.opened.length = 0
+    const requests = mockFetch({})
+
+    renderApp("/")
+
+    expect(requests.filter((request) => request.route !== "GET /api/session")).toEqual([])
+    expect(FakeSocket.opened).toHaveLength(0)
+    restoreSocket()
   })
 
   it("explains how tickets work without promising that viewers see their odds", () => {

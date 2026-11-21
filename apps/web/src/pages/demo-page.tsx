@@ -206,7 +206,7 @@ function ViewerDemo({
   return (
     <Page width="compact" as="article" className="viewer demo">
       {bar}
-      <GiveawayHead giveaway={giveaway} />
+      <GiveawayHead giveaway={giveaway} as="h1" />
       {drawn ? null : <GiveawayPhase giveaway={giveaway} />}
       {step === "drawing" ? <output className="demo-drawing">{t("demo.drawing")}</output> : null}
       {drawn && !state.firstRerolled ? <WinnerPlate name={demoViewerName} /> : null}
@@ -234,7 +234,7 @@ function ViewerDemo({
 }
 
 /** Mounts when the visitor is drawn, so the claim clock it shows starts at what is left of the window then. */
-function DemoClaim({
+export function DemoClaim({
   state,
   giveaway,
 }: {

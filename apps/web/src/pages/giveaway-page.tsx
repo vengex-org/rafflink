@@ -80,7 +80,7 @@ function GiveawayDetails({
 
   return (
     <Page width="compact" as="article" className="viewer">
-      <GiveawayHead giveaway={giveaway} />
+      <GiveawayHead giveaway={giveaway} as="h1" />
       {isWinner ? null : <GiveawayPhase giveaway={giveaway} />}
       <div aria-live="polite" className="viewer-outcome">
         {me.kind === "won" ? (

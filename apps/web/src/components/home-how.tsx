@@ -1,28 +1,49 @@
 import type { ReactNode } from "react"
+import type { Group } from "@rafflink/core/domain/groups"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { claimPresets, initialValues } from "../pages/create-values.ts"
-import { exampleClock, exampleWinner } from "./home-stage.tsx"
-import { CopyIcon, LinkIcon, PlusIcon, ShuffleIcon } from "./icons.tsx"
+import { demoRules, demoViewerName, initialDemoState } from "../lib/demo-script.ts"
+import { demoFacts } from "../lib/demo-live.ts"
+import { exampleClaimLeftMs } from "../lib/home-example.ts"
+import { initialValues, type Values } from "../pages/create-values.ts"
+import { TicketsField } from "../pages/create-steps.tsx"
+import { Countdown } from "./countdown.tsx"
+import { LinkIcon, PlusIcon, ShuffleIcon } from "./icons.tsx"
+import { Replay } from "./replay.tsx"
+import { ShareLinks } from "./share-panel.tsx"
+import { WinnerPlate } from "./winner-plate.tsx"
 
-/** Example ticket counts per group; the streamer sets the real ones for each giveaway. */
+/** Example ticket counts per group, the ones of the demo giveaway; the streamer sets the real ones for each giveaway. */
 export const exampleTiers: readonly { readonly label: MessageKey; readonly tickets: number }[] = [
-  { label: "home.group.viewer", tickets: 1 },
-  { label: "home.group.t1", tickets: 2 },
-  { label: "home.group.t2", tickets: 3 },
-  { label: "home.group.t3", tickets: 5 },
+  { label: "home.group.viewer", tickets: demoRules.tickets.viewer },
+  { label: "home.group.t1", tickets: demoRules.tickets.sub_t1 },
+  { label: "home.group.t2", tickets: demoRules.tickets.sub_t2 },
+  { label: "home.group.t3", tickets: demoRules.tickets.sub_t3 },
 ]
 
-const exampleCode = "K7HQ2"
-const exampleChat = [
-  { name: "lenka_hra", tickets: 5 },
-  { name: "pixelbara", tickets: 2 },
-  { name: "nightjar_77", tickets: 1 },
-] as const
+/** The groups the step 1 preview lists; the others stay at 1 ticket, so the odds line names only a listed group. */
+const shownGroups: readonly Group[] = ["viewer", "follower", "sub_t1", "sub_t2"]
+
+const exampleValues: Values = {
+  ...initialValues,
+  tickets: {
+    viewer: String(demoRules.tickets.viewer),
+    follower: String(demoRules.tickets.follower),
+    sub_t1: String(demoRules.tickets.sub_t1),
+    sub_t2: String(demoRules.tickets.sub_t2),
+    sub_t3: "1",
+    vip: "1",
+    moderator: "1",
+  },
+}
+
+const exampleCode = demoFacts(initialDemoState).code
+
+const noChange = () => {}
 
 /** The "three moves" section: the headline on the left, the steps with their small previews on the right. */
 export function HomeHow() {
-  const { t, plural } = useI18n()
+  const { t } = useI18n()
   return (
     <section className="home-how" id="how" aria-labelledby="home-how-title">
       <div className="home-wrap home-how-grid">
@@ -36,77 +57,31 @@ export function HomeHow() {
             title={t("home.how.create.title")}
             text={t("home.how.create.text")}
           >
-            <table className="step-tickets">
-              <thead>
-                <tr>
-                  <th>{t("home.how.who")}</th>
-                  <th>{t("home.how.tickets")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {exampleTiers.map(({ label, tickets }) => (
-                  <tr key={label}>
-                    <td>{t(label)}</td>
-                    <td>{tickets}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="step-chips">
-              {t("home.how.claimTime")}
-              {claimPresets.map((seconds) => (
-                <span
-                  key={seconds}
-                  className="step-chip"
-                  data-on={seconds === initialValues.claimSeconds}
-                >
-                  {t("home.how.minutes", { count: seconds / 60 })}
-                </span>
-              ))}
-            </div>
+            <TicketsField
+              values={exampleValues}
+              setValues={noChange}
+              issue={null}
+              shown={shownGroups}
+            />
           </Step>
           <Step
             icon={<LinkIcon />}
             title={t("home.how.share.title")}
             text={t("home.how.share.text")}
           >
-            <div className="step-url">
-              <code>
-                rafflink.app/g/<em>{exampleCode}</em>
-              </code>
-              <span className="step-copy">
-                <CopyIcon />
-                {t("home.how.copy")}
-              </span>
-            </div>
-            <div className="step-chat">
-              {exampleChat.map(({ name, tickets }) => (
-                <div key={name}>
-                  <b>{name}</b> {t("home.how.entered", { tickets: plural("ticket", tickets) })}
-                </div>
-              ))}
-            </div>
+            <ShareLinks code={exampleCode} />
           </Step>
           <Step
             icon={<ShuffleIcon />}
             title={t("home.how.draw.title")}
             text={t("home.how.draw.text")}
           >
-            <div className="step-draw">
-              <div>
-                <div className="step-draw-label">{t("home.preview.winner")}</div>
-                <span className="step-draw-name">{exampleWinner}</span>
+            <Replay>
+              <div className="step-draw">
+                <WinnerPlate name={demoViewerName} />
+                <Countdown initialMs={exampleClaimLeftMs} />
               </div>
-              <div className="step-draw-clock">
-                <strong>{exampleClock}</strong>
-                <span>{t("home.stage.toClaim")}</span>
-              </div>
-              <div className="step-draw-bar">
-                <span data-on="true">{t("home.how.drawWinner")}</span>
-                <span>{t("home.how.reroll")}</span>
-                <span>{t("home.how.entriesClosed")}</span>
-              </div>
-            </div>
+            </Replay>
           </Step>
         </ol>
       </div>
@@ -134,7 +109,9 @@ function Step({
         </h3>
         <p>{text}</p>
       </div>
-      <div className="step-preview">{children}</div>
+      <div className="step-preview" inert aria-hidden="true">
+        {children}
+      </div>
     </li>
   )
 }
