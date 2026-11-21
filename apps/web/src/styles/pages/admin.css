@@ -1,10 +1,12 @@
+/* Admin: today's usage as bars, the entry line as a grid of figures with a rule between them. */
+
 .admin-title {
   margin-bottom: var(--space-3);
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
   gap: var(--space-2);
   align-items: start;
   margin: 0;
@@ -14,19 +16,18 @@
 
 .card-grid .card {
   margin: 0;
+  padding: var(--space-3);
 }
 
 .card-grid h2 {
-  margin-bottom: var(--space-1);
-  font-size: var(--fs-lg);
+  margin-bottom: 0.25rem;
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
 .usage {
-  margin-bottom: var(--space-3);
-}
-
-.usage:last-child {
-  margin-bottom: 0;
+  margin-top: var(--space-3);
 }
 
 .usage-label {
@@ -43,10 +44,10 @@
 .usage progress {
   display: block;
   width: 100%;
-  height: 8px;
+  height: 0.75rem;
   margin: var(--space-1) 0;
   border: 0;
-  border-radius: var(--r-sm);
+  border-radius: 6px;
   appearance: none;
   background: var(--surface-2);
   overflow: hidden;
@@ -57,12 +58,12 @@
 }
 
 .usage progress::-webkit-progress-value {
-  border-radius: var(--r-sm);
+  border-radius: 6px;
   background: var(--ink);
 }
 
 .usage progress::-moz-progress-bar {
-  border-radius: var(--r-sm);
+  border-radius: 6px;
   background: var(--ink);
 }
 
@@ -75,26 +76,34 @@
 }
 
 .card-grid .stats {
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  margin: var(--space-2) 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: var(--space-3) 0 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--line);
+  overflow: hidden;
 }
 
 .card-grid .stat {
+  flex-direction: column;
   justify-content: space-between;
-  gap: var(--space-1);
-  border: 1px solid var(--line);
+  gap: 0.25rem;
+  padding: 0.875rem var(--space-2);
+  border-radius: 0;
+  background: var(--surface);
 }
 
 .card-grid .stat dt {
   align-items: flex-start;
-  color: var(--muted);
+  color: var(--ink-2);
   font-size: var(--fs-xs);
+  font-weight: 600;
 }
 
 .card-grid .stat dd {
-  font-family: var(--font-mono);
-  font-size: var(--fs-title);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   white-space: nowrap;
 }

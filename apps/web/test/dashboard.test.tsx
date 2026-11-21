@@ -51,7 +51,9 @@ describe("dashboard", () => {
     expect(await view.findByRole("heading", { name: "Summer giveaway" })).toBeTruthy()
     expect(view.getByText("Prize: A gaming chair")).toBeTruthy()
     expect(view.getByText("Entries open")).toBeTruthy()
-    expect(view.getByText(/Code ABCDE/)).toBeTruthy()
+    const meta = view.container.querySelector(".giveaway-meta")
+    expect(meta?.textContent).toStartWith("Code ABCDE, created ")
+    expect(meta?.querySelector(".code-tag")?.textContent).toBe("ABCDE")
     expect(view.getByRole("link", { name: "Open live page" }).getAttribute("href")).toBe(
       "/live/gid-1",
     )
@@ -87,6 +89,22 @@ describe("dashboard", () => {
     expect(copied).toEqual(["Enter the giveaway: http://rafflink.test/ABCDE"])
   })
 
+  it("shows the link without its protocol and the code marked, and copies the whole link", async () => {
+    const copied = stubClipboard(false)
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard")
+    await view.findByText("Link and OBS overlay")
+
+    const shown = view.container.querySelector(".copy-value code")
+    expect(shown?.textContent).toBe("rafflink.test/ABCDE")
+    expect(shown?.querySelector("em")?.textContent).toBe("ABCDE")
+    expect(shown?.getAttribute("aria-hidden")).toBe("true")
+    fireEvent.click(view.getByRole("button", { name: "Copy link" }))
+    expect(await view.findByText("Copied!")).toBeTruthy()
+    expect(copied).toEqual(["http://rafflink.test/ABCDE"])
+  })
+
   it("says how to copy by hand when the clipboard is refused", async () => {
     stubClipboard(true)
     spyOn(console, "error").mockImplementation(() => {})
@@ -97,6 +115,7 @@ describe("dashboard", () => {
     fireEvent.click(view.getByRole("button", { name: "Copy link" }))
 
     expect(await view.findByText(/Could not copy/)).toBeTruthy()
+    expect(view.container.querySelector(".copy-row")?.getAttribute("data-state")).toBe("failed")
   })
 
   it("shows each status as a chip with its words", async () => {

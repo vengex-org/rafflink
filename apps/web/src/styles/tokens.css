@@ -12,15 +12,23 @@
   --surface-2: #efeff1;
   --ink: #18181b;
   --on-ink: #fafafa;
+  --on-ink-2: rgb(250 250 250 / 0.7);
+  --on-ink-wash: rgb(250 250 250 / 0.08);
+  --on-ink-edge: rgb(250 250 250 / 0.2);
   --ink-hover: #27272a;
   --ink-2: #52525b;
   --muted: #66666f;
   --line: #e4e4e7;
   --line-strong: #87878f;
+  --line-2: #d4d4d8;
 
   --accent: #a8dd2c;
   --accent-ink: #18181b;
+  --on-accent-ink: #fafafa;
+  --accent-ink-hover: #27272a;
+  --accent-ink-track: rgb(24 24 27 / 0.14);
   --accent-soft: #eef7d6;
+  --accent-line: #8cbf1a;
   --focus: #4d7c0f;
 
   --success: #0f766e;
@@ -30,16 +38,27 @@
   --danger: #b91c1c;
   --danger-soft: #fbe6e6;
   --live: #dc2626;
+  --on-live: #fafafa;
+  --on-live-edge: rgb(250 250 250 / 0.3);
+  --live-halo: rgb(220 38 38 / 0.18);
 
   --scrim: rgb(9 9 11 / 0.5);
   --shadow-ink: rgb(24 24 27 / 0.1);
   --shadow: 0 1px 2px var(--shadow-ink), 0 20px 40px -15px var(--shadow-ink);
   --shadow-pop: 0 2px 6px var(--shadow-ink), 0 24px 48px -12px var(--shadow-ink);
+  --shadow-plate: 0 2px 0 rgb(24 24 27 / 0.9), 0 24px 48px -20px rgb(24 24 27 / 0.28);
 
   /* The OBS overlay sits on gameplay, so it keeps light text and a dark plate in both themes. */
   --overlay-ink: #fafafa;
   --overlay-plate: #111113;
-  --overlay-line: rgb(250 250 250 / 0.6);
+  --overlay-muted: #a1a1aa;
+  --overlay-edge: rgb(250 250 250 / 0.14);
+  --overlay-scrim: rgb(9 9 11 / 0.8);
+
+  /* The phone frame of the home page illustration is dark in both themes. */
+  --device: #18181b;
+  --shadow-stage: 0 1px 2px rgb(24 24 27 / 0.06), 0 40px 80px -30px rgb(24 24 27 / 0.35);
+  --shadow-device: 0 50px 90px -30px rgb(24 24 27 / 0.5), 0 0 0 1px rgb(24 24 27 / 0.4);
 
   --r-sm: 6px;
   --r: 8px;
@@ -64,6 +83,9 @@
   --fs-title: 1.5rem;
   --fs-display: clamp(1.875rem, 1.3rem + 2.4vw, 2.75rem);
 
+  /* One pixel of the 1920px stream canvas the live page is drawn on; it shrinks with the window down to about half. */
+  --u: clamp(0.55px, calc(100vw / 1920), 1px);
+
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --dur: 180ms;
   --dur-reveal: 640ms;
@@ -77,13 +99,18 @@
   --surface-2: #18181b;
   --ink: #fafafa;
   --on-ink: #18181b;
+  --on-ink-2: rgb(24 24 27 / 0.7);
+  --on-ink-wash: rgb(24 24 27 / 0.08);
+  --on-ink-edge: rgb(24 24 27 / 0.2);
   --ink-hover: #e4e4e7;
   --ink-2: #a1a1aa;
   --muted: #8b8b94;
   --line: rgb(250 250 250 / 0.1);
   --line-strong: rgb(250 250 250 / 0.38);
+  --line-2: rgb(250 250 250 / 0.14);
 
   --accent-soft: rgb(168 221 44 / 0.14);
+  --accent-line: #a8dd2c;
   --focus: #a8dd2c;
 
   --success: #2dd4bf;
@@ -93,9 +120,13 @@
   --danger: #f87171;
   --danger-soft: rgb(248 113 113 / 0.14);
   --live: #ef4444;
+  --live-halo: rgb(239 68 68 / 0.18);
 
   --scrim: rgb(0 0 0 / 0.62);
   --shadow-ink: transparent;
+  --shadow-plate: 0 2px 0 rgb(0 0 0 / 0.9), 0 30px 60px -24px rgb(0 0 0 / 0.8);
+  --shadow-stage: 0 40px 80px -30px rgb(0 0 0 / 0.8);
+  --shadow-device: 0 50px 90px -30px rgb(0 0 0 / 0.8), 0 0 0 1px var(--line-2);
 }
 
 @media (min-width: 48rem) {

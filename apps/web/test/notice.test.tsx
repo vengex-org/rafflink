@@ -56,4 +56,11 @@ describe("not found page", () => {
     expect(view.getByRole("heading", { level: 1, name: "Page not found" })).toBeTruthy()
     expect(view.getByRole("link", { name: "Go to the home page" }).getAttribute("href")).toBe("/")
   })
+
+  it("shows the status code as decoration that screen readers skip", () => {
+    const view = renderApp("/no/such/page")
+
+    const code = view.getByText("404")
+    expect(code.closest("[aria-hidden]")?.getAttribute("aria-hidden")).toBe("true")
+  })
 })

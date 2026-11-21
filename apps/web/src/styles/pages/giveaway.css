@@ -1,59 +1,503 @@
-.hero h1 {
-  margin-top: var(--space-1);
-  font-size: var(--fs-display);
+/* The viewer's giveaway page, drawn for a phone: the prize header, one state block, the detail rows and the rules.
+   On a wider window the same column stays 30rem wide in the middle. */
+
+main.container:has(> .viewer) {
+  max-width: 30rem;
+  padding-block: 1.25rem 0;
+}
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: calc(100dvh - 4.25rem - 1px - 1.25rem);
+  line-height: normal;
+}
+
+.viewer p,
+.viewer h1,
+.viewer h2,
+.viewer dl,
+.viewer dd {
+  margin: 0;
+}
+
+/* Header: avatar, streamer and title, prize */
+
+.viewer-head {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.viewer-host {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: var(--fs-body);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+}
+
+.viewer-head > div {
+  min-width: 0;
+}
+
+.viewer-head p {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.viewer-head h1 {
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   text-wrap: balance;
 }
 
-.ticket-count {
-  display: block;
-  margin-bottom: var(--space-1);
+/* Phase bar: is the giveaway open, and how many people are in */
+
+.viewer-phase {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: var(--target);
+  padding: 0 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.viewer-phase-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.viewer-phase-status .icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--ink-2);
+}
+
+.viewer-phase > span:last-child {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.viewer-live-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 4px var(--live-halo);
+}
+
+/* State block: a neutral card, or the lime block of a win */
+
+.viewer-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.viewer-outcome .steps {
+  margin: 0;
+}
+
+.viewer-state {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  padding: 1.25rem;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+:root[data-theme="dark"] .viewer-state {
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.viewer-state-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.viewer-state-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.viewer-state h2 {
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.viewer-state-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.viewer-state-icon .icon {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.viewer-state[data-tone="success"] .viewer-state-icon {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.viewer-state[data-tone="success"] .viewer-state-icon .icon {
+  stroke-width: 2.6;
+}
+
+.viewer-state[data-tone="warning"] .viewer-state-icon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.viewer-state[data-tone="danger"] .viewer-state-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.viewer-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.viewer-note {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+
+.viewer-tickets {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg);
+}
+
+.viewer-tickets strong {
   font-size: 3.5rem;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   letter-spacing: -0.05em;
-  line-height: 1;
+  line-height: 0.9;
 }
 
-/* The win moment: the one card that carries the accent. */
+.viewer-tickets p {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.45;
+}
 
-.outcome .state-card[data-tone="win"] {
+.viewer .button.block {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--target-lg);
+  margin: 0;
+  gap: 0.625rem;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.viewer-state[data-tone="win"] {
+  padding: 1.375rem 1.25rem 1.25rem;
+  background: var(--accent);
+  box-shadow: var(--shadow-plate);
+  color: var(--accent-ink);
   animation: reveal var(--dur-reveal) var(--ease) both;
 }
 
-.outcome .state-card[data-tone="win"] h2 {
-  font-size: var(--fs-display);
+.viewer-state[data-tone="win"] .viewer-state-head {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.viewer-state[data-tone="win"] h2 {
+  font-size: 2.5rem;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.viewer-state-head:has(.claim-ring) h2 {
+  font-size: 3.25rem;
+  white-space: nowrap;
+}
+
+.viewer-state[data-tone="win"] .viewer-state-title p {
+  margin-top: 0.625rem;
+  font-size: 1.1875rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.viewer-state[data-tone="win"] .viewer-note {
+  color: inherit;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.viewer-state[data-tone="win"] .button {
+  background-color: var(--accent-ink);
+  color: var(--on-accent-ink);
+}
+
+@media (hover: hover) {
+  .viewer-state[data-tone="win"] .button:hover:not(:disabled) {
+    background-color: var(--accent-ink-hover);
+  }
+}
+
+.viewer-state[data-tone="win"] :focus-visible {
+  outline-color: var(--accent-ink);
+}
+
+.viewer-alt {
+  margin-top: -0.375rem;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* The claim clock as a ring that empties with the time left. Under 15 s and under 5 s the ring turns into a
+   light disc so the warning and danger colors stay readable on the lime. */
+
+.claim-ring {
+  position: relative;
+  flex: none;
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+}
+
+.claim-ring svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-width: 10;
+  transform: rotate(-90deg);
+}
+
+.claim-ring-track {
+  stroke: var(--accent-ink-track);
+}
+
+.claim-ring-bar {
+  stroke: var(--accent-ink);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.claim-ring .countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  color: var(--accent-ink);
+  text-align: center;
+}
+
+.claim-ring [role="timer"] {
+  font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
 }
 
-.outcome .state-card[data-tone="win"] .muted {
-  color: inherit;
-}
-
-/* The plate keeps the clock readable on the accent in both themes, so its tone can use the warning and danger colors. */
-.claim-clock {
-  display: inline-block;
-  min-width: 10rem;
-  margin-block: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--r);
-  background: var(--surface);
-  color: var(--ink);
-}
-
-.claim-clock [role="timer"] {
-  display: block;
-  font-size: 3rem;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-}
-
-.claim-clock .countdown-label {
-  display: block;
-  font-size: var(--fs-sm);
+.claim-ring .countdown-label {
+  max-width: 4.5rem;
+  margin: 0.1875rem auto 0;
+  font-size: 0.6875rem;
   font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.claim-ring[data-tone="warning"],
+.claim-ring[data-tone="danger"] {
+  background: var(--surface);
+}
+
+.claim-ring[data-tone="warning"] .claim-ring-track,
+.claim-ring[data-tone="danger"] .claim-ring-track {
+  stroke: var(--surface-2);
+}
+
+.claim-ring[data-tone="warning"] .claim-ring-bar {
+  stroke: var(--warning);
+}
+
+.claim-ring[data-tone="danger"] .claim-ring-bar {
+  stroke: var(--danger);
+}
+
+.claim-ring[data-tone="warning"] .countdown {
+  color: var(--warning);
+}
+
+.claim-ring[data-tone="danger"] .countdown {
+  color: var(--danger);
+}
+
+/* Detail rows */
+
+.viewer-facts {
+  padding: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+:root[data-theme="dark"] .viewer-facts {
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.viewer-facts > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 3.25rem;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+.viewer-facts > div + div {
+  border-top: 1px solid var(--line);
+}
+
+.viewer-facts dt {
+  flex: none;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.viewer-facts dd {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.viewer-facts dd[data-format="text"] {
+  font-weight: 500;
+}
+
+.viewer-facts dd[data-format="mono"] {
+  font-family: var(--font-mono);
+}
+
+/* Rules: a row that opens the list */
+
+.viewer-rules {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.viewer-rules summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.25rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--r-lg);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  list-style: none;
+}
+
+.viewer-rules summary::-webkit-details-marker {
+  display: none;
+}
+
+.viewer-rules summary .icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--ink-2);
+  transition: transform var(--dur) var(--ease);
+}
+
+.viewer-rules[open] summary .icon {
+  transform: rotate(180deg);
+}
+
+.viewer-rules-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-2) var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.viewer-rules-body ul {
+  margin: 0;
+  padding-left: var(--space-3);
+}
+
+/* The way on for a viewer who is in sits at the foot of the phone screen */
+
+.viewer-dock {
+  position: sticky;
+  bottom: 0;
+  margin: auto calc(-1 * var(--gutter)) 0;
+  padding: 0.75rem var(--gutter) var(--space-3);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+@media (max-width: 22.5rem) {
+  .viewer-state-head:has(.claim-ring) h2 {
+    font-size: 2.5rem;
+  }
+}
+
+@media (min-width: 40rem) {
+  main.container:has(> .viewer) {
+    padding-block: var(--space-4) var(--space-5);
+  }
+
+  .viewer {
+    min-height: 0;
+  }
+
+  .viewer-dock {
+    position: static;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
 }

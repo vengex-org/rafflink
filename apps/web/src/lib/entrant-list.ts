@@ -10,14 +10,16 @@ export interface ListedEntrant {
   readonly displayName: Match | null
 }
 
-/** Winners first by place, then everyone else, newest first. `entrants` come in the order they entered. */
+/** Winners first, then everyone else, newest first: the winners whose claim is open on top, the settled ones after, each group by place. `entrants` come in the order they entered. */
 export function orderEntrants(
   entrants: readonly Entrant[],
   winners: readonly LiveWinner[],
 ): ListedEntrant[] {
   const picked = new Set<number>()
   const winnerRows: ListedEntrant[] = []
-  for (const winner of winners.toSorted((a, b) => a.n - b.n)) {
+  for (const winner of winners.toSorted(
+    (a, b) => claimOpenRank(a) - claimOpenRank(b) || a.n - b.n,
+  )) {
     const entrant = winner.entrySeq === null ? undefined : findBySeq(entrants, winner.entrySeq)
     if (entrant === undefined) continue
     picked.add(entrant.seq)
@@ -32,6 +34,8 @@ export function orderEntrants(
   }
   return [...winnerRows, ...others]
 }
+
+const claimOpenRank = (winner: LiveWinner) => (winner.claim.state === "waiting" ? 0 : 1)
 
 /** The rows whose login or display name match `query`, best match first and the given order among equals. A blank query keeps every row. */
 export function searchEntrants(rows: readonly ListedEntrant[], query: string): ListedEntrant[] {
@@ -48,8 +52,8 @@ export function searchEntrants(rows: readonly ListedEntrant[], query: string): L
   return hits.toSorted((a, b) => b.score - a.score).map((hit) => hit.row)
 }
 
-// Binary search: `entrants` are sorted by `seq`.
-function findBySeq(entrants: readonly Entrant[], seq: number): Entrant | undefined {
+/** The entrant with `seq`, by binary search: `entrants` are sorted by `seq`. */
+export function findBySeq(entrants: readonly Entrant[], seq: number): Entrant | undefined {
   let low = 0
   let high = entrants.length - 1
   while (low <= high) {

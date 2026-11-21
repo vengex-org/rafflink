@@ -124,12 +124,12 @@ export function CreateForm({
             </button>
           )}
           {step === 3 ? (
-            <button key="start" type="submit" className="button" disabled={busy}>
+            <button key="start" type="submit" className="button large" disabled={busy}>
               <PlayIcon />
               {busy ? t("wizard.starting") : t("wizard.start")}
             </button>
           ) : (
-            <button key="next" type="submit" className="button">
+            <button key="next" type="submit" className="button large">
               {t("common.next")}
               <ArrowRightIcon />
             </button>

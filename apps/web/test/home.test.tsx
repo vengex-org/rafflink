@@ -43,23 +43,65 @@ describe("home page", () => {
     ).toEqual(["Create the giveaway", "Share one short link", "Draw live"])
   })
 
-  it("previews the winner plate, the entry state and the claim clock", () => {
+  it("previews the draw on stream and on the winner's phone", () => {
     const view = renderApp("/")
 
     const preview = within(view.getByRole("region", { name: "Example of a draw" }))
 
-    expect(preview.getByText("mira_vex")).toBeTruthy()
-    expect(preview.getByText("Entries open")).toBeTruthy()
-    expect(preview.getByRole("timer").textContent).toBe("0:42")
+    expect(preview.getByText("Winner 2 of 3")).toBeTruthy()
+    expect(preview.getAllByText("mira_vex").length).toBeGreaterThan(0)
+    expect(preview.getAllByText("0:42")).toHaveLength(2)
+    expect(preview.getByText("You won")).toBeTruthy()
+  })
+
+  it("explains how tickets work without promising that viewers see their odds", () => {
+    const view = renderApp("/")
+
+    const tickets = within(view.getByRole("region", { name: "How tickets work." }))
+
+    expect(tickets.getByText("1 ticket")).toBeTruthy()
+    expect(tickets.getByText("5 tickets")).toBeTruthy()
+    expect(view.queryByText(/everyone sees the odds/i)).toBeNull()
   })
 
   it("says Rafflink is open source under the AGPL and links the setup guide", () => {
     const view = renderApp("/")
 
-    expect(view.getByText(/open source/i).textContent).toContain("AGPL-3.0")
-    expect(view.getByRole("link", { name: "Setup guide on GitHub" }).getAttribute("href")).toBe(
+    const selfHost = within(view.getByRole("region", { name: "Yours to run." }))
+
+    expect(selfHost.getByText(/AGPL-3\.0 licensed/).textContent).not.toContain("MIT")
+    expect(selfHost.getByText(/bunx wrangler deploy/)).toBeTruthy()
+    expect(selfHost.getByRole("link", { name: "Read the setup guide" }).getAttribute("href")).toBe(
       "https://github.com/vengex-org/rafflink#twitch-app-registration",
     )
+  })
+
+  it("puts the nav anchors and the log-in button in the app header", () => {
+    const view = renderApp("/")
+
+    const nav = within(view.getByRole("navigation", { name: "Main" }))
+
+    expect(nav.getByRole("link", { name: "How it works" }).getAttribute("href")).toBe("/#how")
+    expect(nav.getByRole("link", { name: "Self-host" }).getAttribute("href")).toBe("/#self-host")
+    expect(nav.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe(
+      "https://github.com/vengex-org/rafflink",
+    )
+    expect(nav.queryByRole("link", { name: "Fair odds" })).toBeNull()
+    expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
+    expect(view.getByRole("link", { name: "Demo giveaway" })).toBeTruthy()
+  })
+
+  it("keeps the theme and language switches inside one settings button", () => {
+    const view = renderApp("/")
+
+    const button = view.getByRole("button", { name: "Settings" })
+    const panel = view.container.querySelector("[popover]")
+
+    expect(panel).not.toBeNull()
+    expect(button.getAttribute("popovertarget")).toBe(panel?.id ?? "no panel")
+    const inPanel = within(panel instanceof HTMLElement ? panel : document.body)
+    expect(inPanel.getByRole("radio", { name: "Dark" })).toBeTruthy()
+    expect(inPanel.getByRole("radio", { name: "Slovenčina" })).toBeTruthy()
   })
 
   it("shows why a failed sign-in came back to the home page", () => {

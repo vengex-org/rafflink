@@ -9,14 +9,13 @@ import {
   ArrowLeftIcon,
   CheckIcon,
   CopyIcon,
-  GiftIcon,
   LinkIcon,
   PlusIcon,
   TvIcon,
 } from "../components/icons.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
-import { StateCard, type Tone } from "../components/state-card.tsx"
+import type { Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { giveawayName } from "../lib/messages.ts"
@@ -48,8 +47,8 @@ export function DashboardPage() {
       switch (view.kind) {
         case "create":
           return (
-            <>
-              <h1>{t("dash.new.title")}</h1>
+            <div className="create">
+              <h1 className="dash-title">{t("dash.new.title")}</h1>
               <CreateForm
                 seed={view.seed}
                 onCreated={(created) => {
@@ -59,7 +58,7 @@ export function DashboardPage() {
                 onUnauthorized={() => setSignedOut(true)}
                 onCancel={() => setView({ kind: "list" })}
               />
-            </>
+            </div>
           )
         case "created":
           return <CreatedScreen created={view.created} onDone={() => setView({ kind: "list" })} />
@@ -84,27 +83,44 @@ function CreatedScreen({
   const { t, rich, plural } = useI18n()
   const { giveaway } = created
   return (
-    <div>
-      <StateCard tone="success" align="start" icon={<CheckIcon />} title={t("dash.created.title")}>
-        {created.usageLow === null ? null : (
-          <p role="alert">{plural("usageLow", created.usageLow.remaining)}</p>
-        )}
-        {created.roomReady ? null : <p role="alert">{t("dash.roomNotReady")}</p>}
-        <p>{rich("dash.next", { code: <strong>{giveaway.code}</strong> })}</p>
-        <ShareLinks code={giveaway.code} />
-        <Link className="button block" to={`/live/${giveaway.id}`}>
-          <ActivityIcon />
-          {t("dash.openLive")}
-        </Link>
-      </StateCard>
-      <section className="card" aria-labelledby="obs-title">
-        <span className="state-icon">
-          <TvIcon />
+    <div className="created">
+      <div className="created-head">
+        <span className="created-mark" aria-hidden="true">
+          <CheckIcon />
         </span>
-        <h2 id="obs-title">{t("dash.obs.title")}</h2>
-        <p>{t("dash.obs.text")}</p>
-        <ObsSteps giveaway={giveaway} />
-      </section>
+        <h1>{t("dash.created.title")}</h1>
+      </div>
+      {created.usageLow === null ? null : (
+        <p role="alert" className="form-alert">
+          {plural("usageLow", created.usageLow.remaining)}
+        </p>
+      )}
+      {created.roomReady ? null : (
+        <p role="alert" className="form-alert">
+          {t("dash.roomNotReady")}
+        </p>
+      )}
+      <div className="created-grid">
+        <section className="card" aria-labelledby="share-title">
+          <h2 id="share-title" className="sr-only">
+            {t("live.share.title")}
+          </h2>
+          <p>{rich("dash.next", { code: <strong>{giveaway.code}</strong> })}</p>
+          <ShareLinks code={giveaway.code} />
+          <Link className="button large" to={`/live/${giveaway.id}`}>
+            <ActivityIcon />
+            {t("dash.openLive")}
+          </Link>
+        </section>
+        <section className="card" aria-labelledby="obs-title">
+          <span className="state-icon">
+            <TvIcon />
+          </span>
+          <h2 id="obs-title">{t("dash.obs.title")}</h2>
+          <p>{t("dash.obs.text")}</p>
+          <ObsSteps giveaway={giveaway} />
+        </section>
+      </div>
       <button type="button" className="button outlined" onClick={onDone}>
         <ArrowLeftIcon />
         {t("dash.back")}
@@ -125,9 +141,16 @@ function GiveawayList({
   if (giveaways.length === 0) {
     return (
       <>
-        <h1>{t("dash.title")}</h1>
-        <StateCard tone="info" align="start" icon={<GiftIcon />} title={t("dash.empty.title")}>
-          <p>{t("dash.empty.text")}</p>
+        <h1 className="dash-title">{t("dash.title")}</h1>
+        <section className="card dash-empty" aria-labelledby="empty-title">
+          <div>
+            <h2 id="empty-title">{t("dash.empty.title")}</h2>
+            <p>{t("dash.empty.text")}</p>
+            <button type="button" className="button large" onClick={() => onCreate(initialValues)}>
+              <PlusIcon />
+              {t("dash.empty.button")}
+            </button>
+          </div>
           <ol className="explainer">
             <li>
               <strong>{t("dash.empty.create.lead")}</strong> {t("dash.empty.create.rest")}
@@ -139,11 +162,7 @@ function GiveawayList({
               <strong>{t("dash.empty.draw.lead")}</strong> {t("dash.empty.draw.rest")}
             </li>
           </ol>
-          <button type="button" className="button block" onClick={() => onCreate(initialValues)}>
-            <PlusIcon />
-            {t("dash.empty.button")}
-          </button>
-        </StateCard>
+        </section>
       </>
     )
   }
@@ -201,17 +220,20 @@ function GiveawayItem({
         <StatusChip tone={statusTone(giveaway.status)}>{t(`status.${giveaway.status}`)}</StatusChip>
       </div>
       {giveaway.prize === null ? null : <p>{t("dash.prize", { prize: giveaway.prize })}</p>}
-      <p className="muted">
-        {t("dash.codeCreated", { code: giveaway.code, date: i18n.date(giveaway.createdAt) })}
+      <p className="muted giveaway-meta">
+        {i18n.rich("dash.codeCreated", {
+          code: <span className="code-tag">{giveaway.code}</span>,
+          date: i18n.date(giveaway.createdAt),
+        })}
       </p>
       <div className="actions">
-        <Link className={pinned ? "button tonal" : "button text"} to={`/live/${giveaway.id}`}>
+        <Link className={pinned ? "button" : "button text"} to={`/live/${giveaway.id}`}>
           <ActivityIcon />
           {t("dash.openLive")}
         </Link>
         <button
           type="button"
-          className="button text"
+          className={pinned ? "button outlined" : "button text"}
           aria-label={t("dash.duplicate.label", { name })}
           onClick={() => onCreate(valuesFrom(giveaway))}
         >

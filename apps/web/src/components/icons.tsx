@@ -150,12 +150,6 @@ export const ActivityIcon = () => (
   </Icon>
 )
 
-export const ListIcon = () => (
-  <Icon>
-    <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-  </Icon>
-)
-
 export const LinkIcon = () => (
   <Icon>
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
@@ -200,13 +194,6 @@ export const MoonIcon = () => (
   </Icon>
 )
 
-export const GlobeIcon = () => (
-  <Icon>
-    <circle cx="12" cy="12" r="10" />
-    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </Icon>
-)
-
 export const ServerIcon = () => (
   <Icon>
     <rect x="2" y="2" width="20" height="8" rx="2" />
@@ -225,6 +212,31 @@ export const DatabaseIcon = () => (
 export const ChevronDownIcon = () => (
   <Icon>
     <path d="m6 9 6 6 6-6" />
+  </Icon>
+)
+
+export const SearchIcon = () => (
+  <Icon>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-3.5-3.5" />
+  </Icon>
+)
+
+export const EyeOffIcon = () => (
+  <Icon>
+    <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A9.8 9.8 0 0 1 12 5c5 0 9 5 9 7a8.6 8.6 0 0 1-2.2 3.2M6.6 6.6C4.4 8 3 10.3 3 12c0 2 4 7 9 7a9.6 9.6 0 0 0 4.4-1.1" />
+  </Icon>
+)
+
+export const GithubIcon = () => (
+  <Icon>
+    <path d="M9 19c-4 1.5-4-2-6-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" />
+  </Icon>
+)
+
+export const CloudIcon = () => (
+  <Icon>
+    <path d="M7 18a4.6 4.4 0 0 1 0-9 5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7z" />
   </Icon>
 )
 

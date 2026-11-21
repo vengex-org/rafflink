@@ -53,7 +53,7 @@ describe("sign-in error card", () => {
 
     expect(await view.findByText("Twitch could not sign you in.")).toBeTruthy()
     expect(view.getByText("Error code: server_error")).toBeTruthy()
-    expect(view.container.querySelector("b")).toBeNull()
+    expect(view.getByRole("alert").closest("section")?.querySelector("b")).toBeNull()
     expect(view.queryByText(/boom/)).toBeNull()
   })
 

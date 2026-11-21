@@ -37,13 +37,17 @@ export function Failed() {
 export function NotFound({ title }: { readonly title: MessageKey }) {
   const { t } = useI18n()
   return (
-    <StateCard tone="warning" align="center" icon={<AlertIcon />} title={t(title)} level={1}>
+    <section className="not-found">
+      <p className="not-found-code" aria-hidden="true">
+        <span>404</span>
+      </p>
+      <h1>{t(title)}</h1>
       <p>{t("notFound.hint")}</p>
-      <Link className="button block" to="/">
+      <Link className="button large" to="/">
         <ArrowLeftIcon />
         {t("notFound.home")}
       </Link>
-    </StateCard>
+    </section>
   )
 }
 

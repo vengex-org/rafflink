@@ -146,7 +146,7 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
       <fieldset className="field">
         <legend>{t("wizard.tickets.legend")}</legend>
         <p className="help">{t("wizard.tickets.help")}</p>
-        <div className="ticket-grid">
+        <div className="ticket-table">
           {groups.map((group) => (
             <TextField
               key={group}

@@ -1,9 +1,10 @@
 import { useId } from "react"
 import { Link, Outlet } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
+import { repositoryUrl } from "../lib/links.ts"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
-import { GiftIcon, ListIcon, SlidersIcon } from "./icons.tsx"
+import { SlidersIcon, TwitchIcon } from "./icons.tsx"
 
 /** The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages. */
 export function Layout() {
@@ -17,26 +18,36 @@ export function Layout() {
       <header className="app-bar">
         <div className="container app-bar-inner">
           <Link to="/" className="brand">
-            <GiftIcon />
+            <span className="brand-mark" aria-hidden="true">
+              R
+            </span>
             Rafflink
           </Link>
-          <nav aria-label={t("nav.main")}>
-            <Link to="/dashboard" className="button text">
-              <ListIcon />
-              {t("nav.myGiveaways")}
-            </Link>
+          <nav aria-label={t("nav.main")} className="app-nav">
+            <a href="/#how">{t("nav.howItWorks")}</a>
+            <a href="/#self-host">{t("nav.selfHost")}</a>
+            <a href={repositoryUrl}>{t("nav.github")}</a>
           </nav>
-          <button
-            type="button"
-            className="icon-button settings-button"
-            popoverTarget={settingsId}
-            aria-label={t("settings.label")}
-          >
-            <SlidersIcon />
-          </button>
-          <div id={settingsId} popover="auto" className="settings-panel">
-            <ThemeSwitch />
-            <LanguageSwitch />
+          <div className="app-bar-end">
+            <a className="button text app-demo" href="/#how">
+              {t("nav.demo")}
+            </a>
+            <Link className="button" to="/dashboard">
+              <TwitchIcon />
+              {t("nav.login")}
+            </Link>
+            <button
+              type="button"
+              className="icon-button"
+              popoverTarget={settingsId}
+              aria-label={t("settings.label")}
+            >
+              <SlidersIcon />
+            </button>
+            <div id={settingsId} popover="auto" className="settings-panel">
+              <ThemeSwitch />
+              <LanguageSwitch />
+            </div>
           </div>
         </div>
       </header>

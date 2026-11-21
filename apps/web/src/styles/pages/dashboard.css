@@ -1,6 +1,8 @@
+/* Dashboard: the running giveaways as cards with their actions under a rule, the drawn ones as rows of one card. */
+
 .giveaways {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -8,6 +10,13 @@
 }
 
 .giveaways .card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.giveaways p {
   margin: 0;
 }
 
@@ -17,57 +26,74 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
+  margin-bottom: 0.25rem;
 }
 
 .giveaway-head h2 {
   margin: 0;
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
-.explainer,
-.how-to {
-  display: grid;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 0;
-  padding-left: var(--space-3);
+.giveaway-meta {
+  font-size: var(--fs-sm);
 }
 
-.explainer li::marker,
-.how-to li::marker {
-  color: var(--ink);
-  font-weight: 700;
+.code-tag {
+  padding: 0 0.375rem;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.giveaways .card > .actions {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
 }
 
 .giveaways.pinned {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .giveaways.rows {
   grid-template-columns: 1fr;
   gap: 0;
-  border-top: 1px solid var(--line);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .giveaways .row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-1) var(--space-2);
+  gap: 0.25rem var(--space-2);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--line);
+}
+
+.giveaways .row + .row {
+  border-top: 1px solid var(--line);
 }
 
 .giveaways .row > .giveaway-head {
   justify-content: flex-start;
+  margin: 0;
 }
 
 .giveaways .row > .giveaway-head h2 {
   font-size: var(--fs-lg);
+  font-weight: 700;
 }
 
 .giveaways .row > p,
 .giveaways .row > details {
   grid-column: 1 / -1;
-  margin: 0;
 }
 
 .giveaways .row > .actions {
@@ -76,7 +102,146 @@
   margin: 0;
 }
 
+.dash-title {
+  margin-bottom: var(--space-2);
+}
+
+/* Empty dashboard: the pitch and the one button on the left, the three moves on the right. */
+.dash-empty {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-3);
+}
+
+.dash-empty h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.dash-empty p {
+  margin-bottom: var(--space-3);
+  color: var(--ink-2);
+}
+
+.explainer,
+.how-to {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  counter-reset: move;
+  list-style: none;
+}
+
+.explainer li,
+.how-to li {
+  position: relative;
+  min-height: 2rem;
+  padding-top: 0.25rem;
+  padding-left: 2.75rem;
+  counter-increment: move;
+}
+
+.explainer li::before,
+.how-to li::before {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  content: counter(move);
+}
+
+.explainer {
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg);
+}
+
+.how-to {
+  margin-block: var(--space-2);
+}
+
+/* Created: the success head, then the share card and the OBS card side by side. */
+.created-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: var(--space-3);
+}
+
+.created-head h1 {
+  margin: 0;
+}
+
+.created-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.created .form-alert {
+  max-width: none;
+  margin-bottom: var(--space-2);
+  padding: 0.75rem var(--space-2);
+  border-radius: var(--r);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.created .card > p {
+  margin-bottom: var(--space-2);
+}
+
+.created-grid {
+  display: grid;
+  gap: var(--space-2);
+  align-items: start;
+  margin-bottom: var(--space-3);
+}
+
+.created-grid .card {
+  margin: 0;
+}
+
+.created-grid .large {
+  display: flex;
+  margin-top: var(--space-2);
+}
+
+@media (min-width: 48rem) {
+  .dash-empty {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    padding: var(--space-4);
+  }
+
+  .created-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 40rem) {
+  .giveaways.rows {
+    padding: 0 var(--space-2);
+  }
+
   .giveaways .row > .actions {
     grid-column: 1 / -1;
     grid-row: auto;

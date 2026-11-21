@@ -76,6 +76,37 @@ it("shows the winner on a plate after a draw", async () => {
   expect(view.queryByText("people entered")).toBeNull()
 })
 
+it("labels each standing winner by place and counts down the claim only for a waiting one", async () => {
+  routeSnapshot({
+    ...drawn,
+    winners: [
+      {
+        n: 0,
+        entrySeq: 1,
+        displayName: "Bob",
+        claimUntil: 1,
+        claim: { state: "claimed", via: "chat" },
+      },
+      {
+        n: 1,
+        entrySeq: 2,
+        displayName: "Cy",
+        claimUntil: Date.now() + 90_000,
+        claim: { state: "waiting" },
+      },
+    ],
+  })
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Winner 1 of 2")).toBeTruthy()
+  expect(view.getByText("Winner 2 of 2")).toBeTruthy()
+  expect(view.getAllByText("Summer giveaway")).toHaveLength(3)
+  expect(view.getAllByRole("timer")).toHaveLength(1)
+  expect(view.getByRole("timer").textContent).toBe("1:30")
+  expect(view.getByText("to claim")).toBeTruthy()
+})
+
 it("keeps a replaced winner off the overlay", async () => {
   routeSnapshot({
     ...drawn,

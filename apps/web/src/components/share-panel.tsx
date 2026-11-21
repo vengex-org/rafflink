@@ -8,7 +8,12 @@ export function ShareLinks({ code }: { readonly code: string }) {
   const { t } = useI18n()
   return (
     <>
-      <CopyField label={t("share.link")} value={shareUrl(code)} buttonLabel={t("share.copyLink")} />
+      <CopyField
+        label={t("share.link")}
+        value={shareUrl(code)}
+        buttonLabel={t("share.copyLink")}
+        code={code}
+      />
       <CopyField
         label={t("share.chat")}
         value={t("share.chatMessage", { url: shareUrl(code) })}

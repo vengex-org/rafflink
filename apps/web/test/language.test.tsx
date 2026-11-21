@@ -72,7 +72,7 @@ describe("language", () => {
     expect(
       view.getByRole("heading", { name: "Férové Twitch súťaže, žrebované naživo na streame." }),
     ).toBeTruthy()
-    expect(view.getByRole("link", { name: "Moje súťaže" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "Prihlásiť sa" })).toBeTruthy()
     expect(document.documentElement.lang).toBe("sk")
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
 
