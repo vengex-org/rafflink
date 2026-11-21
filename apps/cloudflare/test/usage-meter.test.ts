@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { resolveConfig } from "@rafflink/core/config"
 import type { Clock } from "@rafflink/core/ports"
-import { createUsageMeter, UsageUnavailable } from "../src/adapters/cloudflare-usage-meter.ts"
+import { UsageUnavailable } from "@rafflink/core/lib/usage-unavailable"
+import { createUsageMeter } from "../src/adapters/cloudflare-usage-meter.ts"
 
 const clock: Clock = { now: () => Date.parse("2026-11-20T13:45:30.000Z") }
 
@@ -57,6 +58,15 @@ function meterFor(endpoint: FakeAnalytics, env: Record<string, string> = {}) {
     ...env,
   })
   return createUsageMeter(config, clock, fetch)
+}
+
+async function reasonOf(meter: ReturnType<typeof meterFor>): Promise<string> {
+  const error: unknown = await meter.today().then(
+    () => null,
+    (thrown: unknown) => thrown,
+  )
+  if (!(error instanceof UsageUnavailable)) throw new Error("expected UsageUnavailable")
+  return error.reason
 }
 
 describe("usage meter on the Cloudflare Analytics API", () => {
@@ -124,6 +134,58 @@ describe("usage meter on the Cloudflare Analytics API", () => {
     )
 
     await expect(meterFor(endpoint).today()).rejects.toBeInstanceOf(UsageUnavailable)
+  })
+
+  it("names the HTTP status when Analytics answers one that is not OK", async () => {
+    const endpoint = fakeAnalytics(() => new Response("down", { status: 403 }))
+
+    expect(await reasonOf(meterFor(endpoint))).toBe("Analytics answered 403")
+  })
+
+  it("carries the GraphQL error messages, cut to 300 characters, and never the token", async () => {
+    const endpoint = fakeAnalytics(() =>
+      Response.json({
+        data: null,
+        errors: [{ message: "not authorized" }, { code: 7 }, { message: "x".repeat(400) }],
+      }),
+    )
+
+    const reason = await reasonOf(meterFor(endpoint))
+
+    expect(reason).toStartWith("Analytics answered errors: not authorized; unknown error; xxx")
+    expect(reason).toHaveLength(300)
+    expect(reason).not.toContain("token-1")
+    expect(reason).not.toContain("account-1")
+  })
+
+  it("redacts the account id and the token in GraphQL messages and keeps the error code", async () => {
+    const endpoint = fakeAnalytics(() =>
+      Response.json({
+        data: null,
+        errors: [
+          {
+            message: "account tag account-1 not found for token-1, retry account-1",
+            extensions: { code: "authz" },
+          },
+        ],
+      }),
+    )
+
+    const reason = await reasonOf(meterFor(endpoint))
+
+    expect(reason).toBe(
+      "Analytics answered errors: account tag [redacted] not found for [redacted], retry [redacted] [authz]",
+    )
+    expect(reason).not.toContain("account-1")
+    expect(reason).not.toContain("token-1")
+  })
+
+  it("says the numbers are missing when the answer has no account", async () => {
+    const endpoint = fakeAnalytics(() =>
+      Response.json({ data: { viewer: { accounts: [] } }, errors: null }),
+    )
+
+    expect(await reasonOf(meterFor(endpoint))).toBe("Analytics answer has no usage numbers")
   })
 
   it("gives up when Analytics does not answer within the timeout", async () => {

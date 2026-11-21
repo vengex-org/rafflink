@@ -1,5 +1,7 @@
 import type { ResolvedConfig } from "@rafflink/core/config"
+import { errorClass } from "@rafflink/core/lib/error-class"
 import type { Clock, UsageMeter } from "@rafflink/core/ports"
+import { UsageUnavailable } from "@rafflink/core/lib/usage-unavailable"
 
 export type UsageMeterConfig = Pick<
   ResolvedConfig,
@@ -13,9 +15,6 @@ export type UsageMeterConfig = Pick<
 
 /** The `fetch` the meter sends its call through; the global `fetch` fits. */
 export type UsageFetch = (input: string, init?: RequestInit) => Promise<Response>
-
-/** The Analytics API did not answer with the day's numbers: it failed, timed out or answered an error. */
-export class UsageUnavailable extends Error {}
 
 const usageQuery = `query Usage($accountTag: String!, $since: Time!, $until: Time!) {
   viewer {
@@ -46,7 +45,7 @@ export function createUsageMeter(
     today: async () => {
       const now = clock.now()
       const response = await send(now)
-      const counts = parseCounts(await readBody(response))
+      const counts = parseCounts(await readBody(response, [accountId, apiToken]))
       if (counts === null) throw new UsageUnavailable("Analytics answer has no usage numbers")
       return {
         workerRequests: { used: counts.workerRequests, limit: config.workerRequestLimit },
@@ -73,18 +72,39 @@ export function createUsageMeter(
         signal: AbortSignal.timeout(config.cloudflareUsageTimeoutMs),
       })
     } catch (error) {
-      throw new UsageUnavailable("Analytics request failed", { cause: error })
+      throw new UsageUnavailable(`Analytics request failed: ${errorClass(error)}`, { cause: error })
     }
   }
 }
 
-async function readBody(response: Response): Promise<unknown> {
+async function readBody(response: Response, secrets: readonly string[]): Promise<unknown> {
   if (!response.ok) throw new UsageUnavailable(`Analytics answered ${response.status}`)
+  let body: unknown
   try {
-    return await response.json()
+    body = await response.json()
   } catch (error) {
     throw new UsageUnavailable("Analytics answer is not JSON", { cause: error })
   }
+  const messages = errorMessages(body)
+  if (messages.length > 0)
+    throw new UsageUnavailable(`Analytics answered errors: ${redact(messages.join("; "), secrets)}`)
+  return body
+}
+
+// GraphQL reports an error with status 200: `errors` is a non-empty list, and `data` is then null or partial.
+function errorMessages(body: unknown): string[] {
+  if (!isRecord(body) || !Array.isArray(body.errors)) return []
+  return body.errors.map((error) => {
+    if (!isRecord(error)) return "unknown error"
+    const message = typeof error.message === "string" ? error.message : "unknown error"
+    const code = isRecord(error.extensions) ? error.extensions.code : undefined
+    return typeof code === "string" ? `${message} [${code}]` : message
+  })
+}
+
+// Cloudflare echoes request values such as the account tag in its error messages.
+function redact(text: string, secrets: readonly string[]): string {
+  return secrets.reduce((result, secret) => result.replaceAll(secret, "[redacted]"), text)
 }
 
 interface Counts {
@@ -92,10 +112,8 @@ interface Counts {
   readonly durableObjectRequests: number
 }
 
-// GraphQL reports an error with status 200: `errors` is a non-empty list, and `data` is then null or partial.
 function parseCounts(body: unknown): Counts | null {
   if (!isRecord(body)) return null
-  if (Array.isArray(body.errors) && body.errors.length > 0) return null
   const account = firstOf(isRecord(body.data) ? body.data.viewer : null, "accounts")
   if (!isRecord(account)) return null
   const workers = requestsOf(account.workers)
