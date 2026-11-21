@@ -5,6 +5,7 @@ import { demoNames, type DemoLive } from "../lib/demo-live.ts"
 import { exampleDraw, restingStageStep, stageSteps, type StageStep } from "../lib/home-example.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { useDragScroll } from "../lib/use-drag-scroll.ts"
+import { PauseIcon, PlayIcon } from "./icons.tsx"
 import { Replay } from "./replay.tsx"
 import { EntryPlate, ShufflePlate, WinnerPlates } from "../pages/overlay-page.tsx"
 
@@ -15,71 +16,141 @@ const holdAfterScrollMs = 4000
 /**
  * The home page's picture of the product: a stream with the real overlay plates over it and the real viewer page
  * of the winner beside it, both fed by the demo giveaway. They play its story in a loop: entries open, drawing,
- * winner, claimed. The pieces send no request and take no input.
+ * winner, claimed. A thin bar above shows how far the loop is, with a play/pause button at its end, and the step
+ * labels below jump to their step. The pictured pieces send no request and take no input.
+ *
+ * Under reduced motion the stage starts paused on the winner and plays only when the visitor presses play; the step
+ * labels still switch steps, since a jump is not motion, and the bar shows the step without filling.
  */
 export function HomeStage() {
   const { t } = useI18n()
   const [calm] = useState(() => window.matchMedia(reducedMotion).matches)
   const dragging = useRef(false)
+  const [held, hold] = usePhoneHold(dragging)
+  const { index, round, paused, running, togglePause, goTo } = useStageLoop(calm, held)
+  const scene = (
+    <ExampleStep
+      key={round}
+      step={stageSteps[index]?.step ?? restingStageStep}
+      dragging={dragging}
+      onPhoneScroll={hold}
+    />
+  )
   return (
     <section className="home-stage" aria-label={t("home.preview.label")}>
-      {calm ? (
-        <Replay>
-          <ExampleStep step={restingStageStep} dragging={dragging} onPhoneScroll={() => {}} />
-        </Replay>
-      ) : (
-        <PlayingStage />
-      )}
+      <div className="stage-controls">
+        <div
+          key={round}
+          className="stage-progress"
+          data-paused={running ? undefined : ""}
+          aria-hidden="true"
+        >
+          {stageSteps.map(({ step, ms }, position) => (
+            <span
+              key={step}
+              data-state={segmentState(position, index)}
+              style={{ flexGrow: ms, animationDuration: `${ms}ms` }}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          className="icon-button stage-toggle"
+          aria-label={t(paused ? "home.stage.play" : "home.stage.pause")}
+          onClick={togglePause}
+        >
+          {paused ? <PlayIcon /> : <PauseIcon />}
+        </button>
+      </div>
+      {calm ? <Replay>{scene}</Replay> : scene}
+      <ol className="stage-steps">
+        {stageSteps.map(({ step }, position) => (
+          <li key={step}>
+            <button
+              type="button"
+              aria-current={position === index ? "step" : undefined}
+              onClick={() => goTo(position)}
+            >
+              {t(`home.stage.step.${step}`)}
+            </button>
+          </li>
+        ))}
+      </ol>
     </section>
   )
 }
 
-function PlayingStage() {
-  const { t } = useI18n()
-  const heldUntil = useRef(0)
-  const dragging = useRef(false)
-  const index = useStageIndex(heldUntil, dragging)
-  return (
-    <>
-      <ExampleStep
-        key={index}
-        step={stageSteps[index]?.step ?? restingStageStep}
-        dragging={dragging}
-        onPhoneScroll={() => {
-          heldUntil.current = Date.now() + holdAfterScrollMs
-        }}
-      />
-      <ol className="stage-steps" aria-hidden="true">
-        {stageSteps.map(({ step }, position) => (
-          <li key={step} aria-current={position === index ? "step" : undefined}>
-            {t(`home.stage.step.${step}`)}
-          </li>
-        ))}
-      </ol>
-    </>
-  )
+function segmentState(position: number, index: number): "done" | "current" | undefined {
+  if (position < index) return "done"
+  return position === index ? "current" : undefined
 }
 
-/** The position in {@link stageSteps}; the loop waits while the tab is hidden, while `dragging` and until `heldUntil` has passed. */
-function useStageIndex(heldUntil: RefObject<number>, dragging: RefObject<boolean>): number {
-  const [index, setIndex] = useState(0)
+/**
+ * True while the visitor drags the phone and until {@link holdAfterScrollMs} after they last scrolled it; `hold`
+ * starts or extends it.
+ */
+function usePhoneHold(dragging: RefObject<boolean>): readonly [boolean, () => void] {
+  const heldUntil = useRef(0)
+  const [held, setHeld] = useState(false)
+  useEffect(() => {
+    if (!held) return
+    const release = () => {
+      const left = dragging.current ? holdAfterScrollMs : heldUntil.current - Date.now()
+      if (left > 0) timer = setTimeout(release, left)
+      else setHeld(false)
+    }
+    let timer = setTimeout(release, heldUntil.current - Date.now())
+    return () => clearTimeout(timer)
+  }, [held, dragging])
+  const hold = () => {
+    heldUntil.current = Date.now() + holdAfterScrollMs
+    setHeld(true)
+  }
+  return [held, hold]
+}
+
+/**
+ * The position in {@link stageSteps} and its `round`, which grows on every step change, also a jump to the step
+ * already shown. The step's timer runs only while the loop is `running`: not paused by the visitor, the tab
+ * visible and the phone not `held`. Stopping keeps the time the step has left; a new round starts it full.
+ */
+function useStageLoop(calm: boolean, held: boolean) {
+  const first = calm ? stageSteps.findIndex(({ step }) => step === restingStageStep) : 0
+  const [position, setPosition] = useState({ index: first, round: 0 })
+  const [paused, setPaused] = useState(calm)
   const [visible, setVisible] = useState(() => document.visibilityState === "visible")
+  const running = visible && !paused && !held
+  const left = useRef({ round: 0, ms: stepMs(first) })
   useEffect(() => {
     const onChange = () => setVisible(document.visibilityState === "visible")
     document.addEventListener("visibilitychange", onChange)
     return () => document.removeEventListener("visibilitychange", onChange)
   }, [])
   useEffect(() => {
-    if (!visible) return
-    const next = () => {
-      const hold = dragging.current ? holdAfterScrollMs : heldUntil.current - Date.now()
-      if (hold > 0) timer = setTimeout(next, hold)
-      else setIndex((current) => (current + 1) % stageSteps.length)
+    if (!running) return
+    const { index, round } = position
+    if (left.current.round !== round) left.current = { round, ms: stepMs(index) }
+    const startedAt = Date.now()
+    const timer = setTimeout(
+      () => setPosition({ index: (index + 1) % stageSteps.length, round: round + 1 }),
+      left.current.ms,
+    )
+    return () => {
+      clearTimeout(timer)
+      left.current = { round, ms: left.current.ms - (Date.now() - startedAt) }
     }
-    let timer = setTimeout(next, stageSteps[index]?.ms)
-    return () => clearTimeout(timer)
-  }, [index, visible, heldUntil, dragging])
-  return index
+  }, [running, position])
+  return {
+    ...position,
+    paused,
+    running,
+    togglePause: () => setPaused((current) => !current),
+    goTo: (index: number) => setPosition(({ round }) => ({ index, round: round + 1 })),
+  }
+}
+
+function stepMs(index: number): number {
+  return stageSteps[index]?.ms ?? 0
 }
 
 /** Mounts again per step, so the claim clock, the entrance animations and the phone's scroll start with it. */

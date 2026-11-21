@@ -66,6 +66,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "home.stage.step.drawing": "Žrebovanie",
   "home.stage.step.won": "Víťaz vyžrebovaný",
   "home.stage.step.claimed": "Prevzaté",
+  "home.stage.pause": "Pozastaviť ukážku",
+  "home.stage.play": "Prehrať ukážku",
   "home.trust.openSource": "Open source, AGPL-3.0",
   "home.trust.cloudflare": "Vlastný hosting na Cloudflare",
   "home.trust.noTracking": "Bez reklám a sledovania",

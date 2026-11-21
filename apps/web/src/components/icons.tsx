@@ -149,6 +149,12 @@ export const PlayIcon = () => (
   </Icon>
 )
 
+export const PauseIcon = () => (
+  <Icon>
+    <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+  </Icon>
+)
+
 export const ActivityIcon = () => (
   <Icon>
     <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
