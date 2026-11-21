@@ -97,37 +97,51 @@ export function giveawayScenarios(context: ContractContext): void {
     expect(await world.live(giveaway)).toMatchObject({ entrantCount: 0 })
   })
 
-  scenario(context, "drawing while entries are open is refused", async (world) => {
-    const target = await world.start()
-    const giveaway = await world.createGiveaway(target)
-    await world.enter(target, giveaway.code, users.viewer.id)
+  scenario(
+    context,
+    "pressing Draw while entries are open closes them and the room draws the first winner once the round is published",
+    async (world) => {
+      const target = await world.start({ DRAND_LEAD_SECONDS: "3" })
+      const giveaway = await world.createGiveaway(target)
+      for (const viewer of [users.viewer, users.viewer2, users.viewer3]) {
+        await world.enter(target, giveaway.code, viewer.id)
+      }
 
-    const response = await world.drawWinners(giveaway)
+      const requested = await world.drawWinners(giveaway)
+      const closed = await world.live(giveaway)
+      await world.waitFor(
+        async () => (await world.live(giveaway)).winners.length === 1,
+        "the room to draw by itself",
+      )
 
-    expect(response.status).toBe(409)
-    expect(await response.json()).toEqual({ kind: "not-closed" })
-  })
+      expect(requested.status).toBe(202)
+      expect(await requested.json()).toEqual({ kind: "requested" })
+      expect(closed).toMatchObject({ status: "closed", drawRequested: true })
+      expect(await world.live(giveaway)).toMatchObject({ status: "drawn", drawRequested: false })
+    },
+  )
 
   scenario(
     context,
-    "drawing picks distinct entrants and a second draw is refused",
+    "each press of Draw adds one distinct winner, past the planned count, until nobody is left",
     async (world) => {
       const target = await world.start()
-      const giveaway = await world.createGiveaway(target, { winnerCount: 2 })
-      const entered = [users.viewer, users.viewer2, users.viewer3]
+      const giveaway = await world.createGiveaway(target, { winnerCount: 1 })
+      const entered = [users.viewer, users.viewer2]
       for (const viewer of entered) await world.enter(target, giveaway.code, viewer.id)
       await world.closeGiveaway(giveaway)
 
-      const drawn = await world.drawWinners(giveaway)
-      const again = await world.drawWinners(giveaway)
+      const first = await world.drawWinners(giveaway)
+      const second = await world.drawWinners(giveaway)
+      const third = await world.drawWinners(giveaway)
 
-      expect(drawn.status).toBe(200)
-      expect(await drawn.json()).toEqual({ kind: "drawn", winners: [0, 1] })
+      expect(await first.json()).toEqual({ kind: "drawn", n: 0 })
+      expect(await second.json()).toEqual({ kind: "drawn", n: 1 })
       const winners = (await world.live(giveaway)).winners.map((winner) => winner.displayName)
       expect(new Set(winners).size).toBe(2)
       expect(entered.map((viewer) => viewer.displayName)).toEqual(expect.arrayContaining(winners))
-      expect(again.status).toBe(409)
-      expect(await again.json()).toEqual({ kind: "already-drawn" })
+      expect(third.status).toBe(409)
+      expect(await third.json()).toEqual({ kind: "no-entrants-left" })
     },
   )
 

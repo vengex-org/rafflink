@@ -227,12 +227,10 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "closeResult.closed": "Zápis je uzavretý.",
   "closeResult.not-open": "Zápis už bol uzavretý.",
   "closeResult.rejected": "Zápis sa nepodarilo uzavrieť. Načítaj stránku znova a skús to ešte raz.",
-  "drawResult.drawn": "Víťazi sú vyžrebovaní.",
-  "drawResult.not-closed": "Pred žrebovaním uzavri zápis.",
-  "drawResult.already-drawn": "Víťazi už sú vyžrebovaní. Vyber radšej iného víťaza.",
+  "drawResult.drawn": "Víťaz je vyžrebovaný.",
   "drawResult.entries-deleted":
     "Údaje účastníkov sa už po uchovávacej lehote zmazali, víťazov už nie je možné vyžrebovať.",
-  "drawResult.rejected": "Žrebovanie sa nepodarilo. Zadaj celé číslo víťazov, aspoň 1.",
+  "drawResult.rejected": "Víťaza sa nepodarilo vyžrebovať.",
   "rerollResult.rerolled": "Vybraný bol iný víťaz.",
   "rerollResult.already-rerolled": "Na toto miesto už bol vybraný iný víťaz.",
   "rerollResult.already-claimed": "Tento víťaz už výhru prevzal.",
@@ -279,9 +277,6 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "entered.one": "Zapísal sa {count} človek",
   "entered.few": "Zapísali sa {count} ľudia",
   "entered.other": "Zapísalo sa {count} ľudí",
-  "drawQuestion.one": "Vyžrebovať teraz {count} víťaza?",
-  "drawQuestion.few": "Vyžrebovať teraz {count} víťazov?",
-  "drawQuestion.other": "Vyžrebovať teraz {count} víťazov?",
   "usageLow.one":
     "Pozor: server má na dnes už len {count} požiadavku. Keď sa minú, zápisy môžu prestať fungovať.",
   "usageLow.few":
@@ -461,15 +456,30 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.overlay.qr.on": "Zobraziť",
   "live.overlay.qr.off": "Skryť",
   "live.draw.title": "Zápis je uzavretý",
-  "live.draw.text": "{people}. Teraz vyžrebuj víťazov.",
-  "live.draw.count": "Koľko víťazov?",
+  "live.draw.text": "{people}. Vyžrebuj víťaza, keď budeš pripravený.",
+  "live.draw.count": "Plánovaný počet víťazov",
   "live.draw.nobody": "Nikto sa nezapísal, nie je koho žrebovať.",
-  "live.draw.fewer": "Zapísalo sa len {count}, takže víťazov môže byť menej.",
-  "live.draw.random": "Víťazi sa vyberú náhodne spomedzi všetkých zapísaných.",
-  "live.draw.label": "Vyžrebovať víťazov",
-  "live.draw.detail": "Víťazi sa vyberú náhodne. Nedá sa to vrátiť späť.",
-  "live.draw.confirm": "Áno, vyžrebovať",
-  "live.draw.waiting": "Čaká sa na verejné náhodné číslo (drand). Žrebovanie sa otvorí o {clock}.",
+  "live.draw.random": "Víťaz sa vyberie náhodne spomedzi všetkých zapísaných.",
+  "live.draw.label": "Vyžrebovať víťaza",
+  "drawResult.requested":
+    "Zápis je uzavretý. Víťaz sa vyžrebuje sám, keď bude náhodné číslo pripravené.",
+  "drawResult.not-open": "Žrebovanie sa zmenilo, kým si stlačil Vyžrebovať víťaza. Stlač ho znova.",
+  "drawResult.no-entrants-left": "Vyžrebovaní sú všetci, ktorí sa zapísali.",
+  "drawResult.pick-limit":
+    "Toto žrebovanie už drží najviac víťazov, koľko môže. Ďalší sa vyžrebovať nedá.",
+  "drawResult.try-again":
+    "V tej istej chvíli prebehlo iné žrebovanie. Stlač Vyžrebovať víťaza znova.",
+  "live.draw.next": "Vyžrebovať ďalšieho víťaza",
+  "live.draw.question": "Uzavrieť zápis a vyžrebovať víťaza?",
+  "live.draw.open":
+    "Vyžrebovať víťaza uzavrie zápis a potom vyžrebuje prvého víťaza, keď bude pripravené verejné náhodné číslo (drand).",
+  "live.draw.due": "Žrebuje sa víťaz…",
+  "live.draw.nobodyLeft": "Vyžrebovaní sú všetci, ktorí sa zapísali.",
+  "live.draw.detail":
+    "Zápis sa uzavrie a nedá sa znova otvoriť. Prvý víťaz sa vyžrebuje hneď, ako bude pripravené verejné náhodné číslo (drand), aj keď túto stránku zavrieš.",
+  "live.draw.confirm": "Áno, uzavrieť zápis a vyžrebovať",
+  "live.draw.waiting":
+    "Čaká sa na verejné náhodné číslo (drand). Víťaz sa vyžrebuje sám o {clock}.",
   "live.winners.title": "Víťazi",
   "live.winners.pageOrChat":
     "Každý víťaz má na prevzatie výhry obmedzený čas. Preberie ju na stránke súťaže alebo napísaním do tvojho chatu.",
@@ -709,8 +719,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Otázky k týmto podmienkam: {contactEmail}.",
   "drawResult.round-pending":
-    "Náhodné číslo pre toto žrebovanie ešte nie je zverejnené. Skús to znova o pár sekúnd.",
-  "drawResult.round-due": "Náhodné číslo pre toto žrebovanie už letí. Skús znova o chvíľu.",
+    "Náhodné číslo ešte nie je zverejnené. Víťaz sa vyžrebuje sám, hneď ako bude.",
+  "drawResult.round-due": "Náhodné číslo už letí. Víťaz sa vyžrebuje sám o chvíľu.",
   "drawResult.beacon-unavailable":
     "Zdroj náhody (drand) sa nepodarilo zastihnúť. Nič sa nevyžrebovalo. Skús to znova.",
   "giveaway.verify.link": "Overiť toto žrebovanie",
@@ -750,22 +760,22 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "verify.winners.title": "Víťazi",
   "verify.winner.entry": "Výber {n} je zápis {leaf} zo zoznamu.",
   "verify.winner.rerolled": "(vyžrebovaný znova)",
-  "live.draw.fixed": "Počet víťazov na vyžrebovanie: {count}. Nastavený pred uzavretím zápisu.",
+  "live.draw.fixed":
+    "Vyžrebovaní víťazi: {drawn} z {planned} plánovaných. Vyžrebuj ďalších, koľko potrebuješ.",
   "live.winners.save": "Uložiť",
   "winnersResult.set": "Počet víťazov je uložený.",
-  "winnersResult.not-open": "Zápis je uzavretý, takže počet víťazov sa už nedá zmeniť.",
   "winnersResult.rejected": "Uloženie sa nepodarilo. Zadaj celé číslo víťazov, aspoň 1.",
   "wizard.winners.label": "Koľko víťazov?",
   "wizard.winners.help":
-    "Nastavuje sa pred žrebovaním. Môžeš ho zmeniť, kým nezavrieš zápis, potom už nie.",
+    "Koľko víťazov plánuješ vyžrebovať. Neskôr môžeš vyžrebovať viac alebo menej.",
   "review.winners": "Víťazi",
   "verify.check.timing.match": "Kolo drand bolo zverejnené po uzamknutí zoznamu.",
   "verify.check.timing.mismatch":
     "Kolo drand bolo zverejnené pred uzamknutím zoznamu, takže žrebovaniu sa nedá veriť.",
-  "verify.facts.winners": "Víťazov na vyžrebovanie",
+  "verify.facts.winners": "Plánovaný počet víťazov",
   "verify.facts.committed": "Zoznam uzamknutý",
   "verify.rerolls.note":
-    "Streamer môže znova vyžrebovať víťaza, ktorý nesplnil podmienky giveawayu. Každé nové žrebovanie ostáva v tomto zozname.",
+    "Streamer môže znova vyžrebovať víťaza, ktorý nesplnil podmienky giveawayu. Streamer môže vyžrebovať aj viac víťazov, než plánoval, jedného po druhom. Každý výber a každé nové žrebovanie ostáva v tomto zozname.",
   "verify.rerolls.count": "Znova vyžrebované výbery: {count}.",
   "verify.winner.before": "Pred ním bolo znova vyžrebovaných výberov: {count}.",
   "verify.mine.title": "Tvoj zápis",

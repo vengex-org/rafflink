@@ -195,6 +195,9 @@ class LocalRoomStub implements RoomStub {
   close() {
     return inRoom(() => this.room.close())
   }
+  requestDraw() {
+    return inRoom(() => this.room.requestDraw())
+  }
   draw(...args: Parameters<GiveawayRoom["draw"]>) {
     return inRoom(() => this.room.draw(...args))
   }

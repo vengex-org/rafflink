@@ -94,12 +94,10 @@ async function checkBeacon(
   if (!(await verifyBeaconSignature(commitment.chainHash, beacon))) {
     return { signature: "invalid", winners: "mismatch" }
   }
-  // The first picks are the draw itself: as many as the giveaway's winner count, or everyone who entered.
-  const drawn = Math.min(verify.winnerCount, leaves.tickets.length)
+  // Every pick, whether drawn one by one or added by a reroll, is the next of the same seeded order.
   const replay = await drawLeafPicks(beacon.randomness, leaves.tickets, verify.picks.length)
   const winners = matches(
-    verify.picks.length >= drawn
-      && replay.length === verify.picks.length
+    replay.length === verify.picks.length
       && replay.every(
         (pick, index) =>
           pick.n === verify.picks[index]?.n && pick.leafIndex === verify.picks[index]?.leafIndex,

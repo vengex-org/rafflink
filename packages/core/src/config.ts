@@ -304,7 +304,7 @@ export const configSchema = {
     "DRAW_MAX_WINNERS",
     int(1),
     "100",
-    "Most winners one draw picks; starting guess, a draw signs once per winner",
+    "Most picks one giveaway holds, rerolled ones included, and the most planned winners a streamer can set; starting guess, every pick is a row the verify page replays",
   ),
   publicGiveawayCacheSeconds: withDefault(
     "PUBLIC_GIVEAWAY_CACHE_SECONDS",
@@ -441,8 +441,8 @@ export const configSchema = {
   drandLeadSeconds: withDefault(
     "DRAND_LEAD_SECONDS",
     int(0),
-    "30",
-    "A giveaway commits to the first drand round at least this long after entries close, so nobody knows its value yet; spec The draw",
+    "6",
+    "A giveaway commits to the first drand round at least this long after the commit, so nobody knows its value yet; two quicknet periods, a starting guess; spec The draw",
   ),
   drandPublishMarginSeconds: withDefault(
     "DRAND_PUBLISH_MARGIN_SECONDS",

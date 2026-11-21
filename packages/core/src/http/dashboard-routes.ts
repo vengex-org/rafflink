@@ -84,34 +84,29 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
           : null
       const count = parseWinnerCount(named, deps.config)
       if (!count.ok) return c.json({ error: "invalid-input", field: "count" }, 400)
-      const outcome = await deps.rooms.get(giveaway.id).setWinnerCount(count.value)
-      switch (outcome.kind) {
-        case "set":
-          return c.json({ kind: "set" })
-        case "not-open":
-          return c.json({ kind: "not-open", status: outcome.status }, 409)
-      }
+      await deps.rooms.get(giveaway.id).setWinnerCount(count.value)
+      return c.json({ kind: "set" })
     }),
   )
 
-  // The count is the giveaway's own setting, fixed before the round is known. A body that names another
-  // count is refused instead of ignored, so a stale client cannot believe it chose.
+  // Draws the next winner. While entries are open the press closes them and asks the room to draw the
+  // first winner itself once the committed drand round is published.
   app.post("/api/dash/giveaways/:id/draw", (c) =>
     withOwnedRoom(c, deps, async (giveaway) => {
       const room = deps.rooms.get(giveaway.id)
-      const body = await readJson(c)
-      const named =
-        typeof body === "object" && body !== null && Object.hasOwn(body, "count")
-          ? Reflect.get(body, "count")
-          : undefined
-      if (named !== undefined && named !== (await room.summary()).winnerCount) {
-        return c.json({ error: "invalid-input", field: "count" }, 400)
-      }
       const outcome = await room.draw()
       switch (outcome.kind) {
         case "drawn":
-          await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "drawn")
-          return c.json({ kind: "drawn", winners: outcome.winners.map((winner) => winner.n) })
+          await mirrorStatus(room, deps.accounts, giveaway.id, "drawn")
+          return c.json({ kind: "drawn", n: outcome.winner.n })
+        case "not-closed": {
+          const requested = await room.requestDraw()
+          if (requested.kind === "not-open") {
+            return c.json({ kind: requested.kind, status: requested.status }, 409)
+          }
+          await mirrorStatus(room, deps.accounts, giveaway.id, "closed")
+          return c.json({ kind: requested.kind }, 202)
+        }
         case "round-pending":
           return c.json(
             { kind: outcome.kind, availableAt: outcome.availableAt, now: outcome.now },
@@ -119,9 +114,10 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
           )
         case "beacon-unavailable":
           return c.json({ kind: outcome.kind }, 503)
-        case "not-closed":
-        case "already-drawn":
         case "entries-deleted":
+        case "no-entrants-left":
+        case "pick-limit":
+        case "try-again":
           return c.json({ kind: outcome.kind }, 409)
       }
     }),

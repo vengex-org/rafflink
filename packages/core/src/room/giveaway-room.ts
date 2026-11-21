@@ -5,14 +5,7 @@ import {
   type IneligibleReason,
   type ViewerFacts,
 } from "../domain/rules.ts"
-import {
-  drawWinners,
-  pickWinner,
-  sortEntries,
-  type DrawEntry,
-  type Identity,
-  type Winner,
-} from "../lib/draw.ts"
+import { pickWinner, sortEntries, type DrawEntry, type Identity, type Winner } from "../lib/draw.ts"
 import { drandChain, roundAtOrAfter, roundTime } from "../lib/drand.ts"
 import { leafHash, merkleRoot, type LeafPreimage } from "../lib/merkle.ts"
 import type {
@@ -82,6 +75,7 @@ export type RoomConfig = Pick<
   | "commitRetrySeconds"
   | "commitMaxAttempts"
   | "drandPublishMarginSeconds"
+  | "drawMaxWinners"
 >
   & ChatWatcherConfig
 
@@ -108,7 +102,7 @@ export interface GiveawayInit {
   readonly rules: GiveawayRules
   readonly claimSeconds: number
   readonly closesAt: Instant | null
-  /** How many winners the draw picks. */
+  /** How many winners the streamer plans to draw; the draw does not stop there. */
   readonly winnerCount: number
 }
 
@@ -129,19 +123,28 @@ export type CloseOutcome =
   | { readonly kind: "closed" }
   | { readonly kind: "not-open"; readonly status: RoomStatus }
 
-export type SetWinnerCountOutcome =
-  | { readonly kind: "set" }
+export interface SetWinnerCountOutcome {
+  readonly kind: "set"
+}
+
+export type RequestDrawOutcome =
+  | { readonly kind: "requested" }
   | { readonly kind: "not-open"; readonly status: RoomStatus }
 
 export type DrawOutcome =
-  | { readonly kind: "drawn"; readonly winners: readonly Winner[] }
-  /** The committed drand round is not published yet; nothing was drawn and a later call may draw. */
+  | { readonly kind: "drawn"; readonly winner: Winner }
+  /** The committed drand round is not published yet; nothing was drawn and the alarm draws once it is. */
   | { readonly kind: "round-pending"; readonly availableAt: Instant; readonly now: Instant }
   /** The beacon failed after its retries; nothing was drawn and a later call may draw. */
   | { readonly kind: "beacon-unavailable" }
   | { readonly kind: "not-closed" }
-  | { readonly kind: "already-drawn" }
   | { readonly kind: "entries-deleted" }
+  /** Every entrant is already picked. The first draw of a room nobody entered still moves it to drawn. */
+  | { readonly kind: "no-entrants-left" }
+  /** The room holds as many picks as `DRAW_MAX_WINNERS` allows. */
+  | { readonly kind: "pick-limit" }
+  /** Another draw wrote its pick first; nothing was drawn and a repeat draws the next one. */
+  | { readonly kind: "try-again" }
 
 export type RerollOutcome =
   | { readonly kind: "rerolled"; readonly replaced: number; readonly winner: Winner }
@@ -169,6 +172,8 @@ export interface AlarmDuties {
   readonly mirrorStatus: RoomStatus | null
   /** Call `commit`: the room is closed and has no commitment yet. */
   readonly commit: boolean
+  /** Call `draw`: the streamer asked for it and the committed drand round is published. */
+  readonly draw: boolean
 }
 
 export type FailureKind = "role-refresh" | "eventsub"
@@ -178,7 +183,7 @@ export interface RoomSummary {
   readonly closesAt: Instant | null
   readonly entrantCount: number
   readonly ticketTotal: number
-  /** How many winners the draw picks. */
+  /** How many winners the streamer plans to draw; the draw does not stop there. */
   readonly winnerCount: number
   /** No chat claim is possible: the chat watch gave up, so a winner can only claim on the page or by the streamer's hand. */
   readonly chatClaimUnavailable: boolean
@@ -238,6 +243,8 @@ export type OverlaySnapshot = RoomSummary
     readonly eventSubFailures: number
     /** When the committed drand round is published and a draw can start; null before the room has committed. */
     readonly drawAvailableAt: Instant | null
+    /** The streamer pressed Draw before the round was published; the room draws by itself once it is. */
+    readonly drawRequested: boolean
     /** The room's clock when the snapshot was taken, so a page measures `drawAvailableAt` without trusting its own clock. */
     readonly now: Instant
   }
@@ -377,13 +384,9 @@ export class GiveawayRoom {
     this.reconcile()
   }
 
-  /** Changes how many winners the draw picks, while entries are open only: once the room closed the count is part of what was committed. */
+  /** Changes how many winners the streamer plans; the draw never reads it. */
   setWinnerCount(count: number): SetWinnerCountOutcome {
-    const changed = this.sql.exec(
-      "UPDATE room_state SET winner_count = ? WHERE id = 1 AND status = 'open' RETURNING id",
-      [count],
-    )
-    if (changed.length === 0) return { kind: "not-open", status: this.readState().status }
+    this.sql.exec("UPDATE room_state SET winner_count = ? WHERE id = 1", [count])
     this.afterWrite()
     return { kind: "set" }
   }
@@ -504,6 +507,19 @@ export class GiveawayRoom {
     return { kind: "closed" }
   }
 
+  /** Closes an open room and has the alarm draw the first winner once the committed drand round is published. */
+  requestDraw(): RequestDrawOutcome {
+    const closed = this.sql.transaction(() => {
+      if (!this.closeOpenRoom()) return false
+      this.sql.exec("UPDATE room_state SET draw_requested = 1 WHERE id = 1", [])
+      return true
+    })
+    if (!closed) return { kind: "not-open", status: this.readState().status }
+    this.mirrorRetryAt = this.clock.now() + this.config.mirrorRetrySeconds * 1000
+    this.afterOutcomeWrite()
+    return { kind: "requested" }
+  }
+
   /** Arms the alarm from the stored state; a room that was never initialised arms nothing. */
   armAlarm(): void {
     if (this.sql.exec("SELECT 1 FROM room_state WHERE id = 1", []).length === 0) return
@@ -533,12 +549,51 @@ export class GiveawayRoom {
     const mirrorDue = state.mirrorPending && now >= (this.mirrorRetryAt ?? now)
     if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
     const commitDue = this.commitDue(state, now)
+    const drawDue = this.drawDue(state, now)
     this.guarded("chat", () => {
       this.syncChat()
       this.chat.onAlarm()
     })
     this.guarded("alarm", () => this.rearm())
-    return { refreshRoles, mirrorStatus: mirrorDue ? state.status : null, commit: commitDue }
+    return {
+      refreshRoles,
+      mirrorStatus: mirrorDue ? state.status : null,
+      commit: commitDue,
+      draw: drawDue,
+    }
+  }
+
+  // A requested draw is due from the time of its round; a round still missing after the publish margin is a broken beacon, so the request ends and the streamer presses Draw again.
+  private drawDue(state: RoomState, now: Instant): boolean {
+    const window = this.requestedDrawWindow(state)
+    if (window === null || now < window.from) return false
+    if (now <= window.until) return true
+    this.sql.exec("UPDATE room_state SET draw_requested = 0 WHERE id = 1", [])
+    console.warn("requested draw gave up", { giveawayId: state.giveawayId })
+    return false
+  }
+
+  private requestedDrawWindow(state: RoomState): { from: Instant; until: Instant } | null {
+    if (
+      !state.drawRequested
+      || state.status !== "closed"
+      || state.commitment === null
+      || state.entriesDeleted
+    ) {
+      return null
+    }
+    const from = roundTime(state.commitment.chain, state.commitment.drandRound)
+    return { from, until: from + this.config.drandPublishMarginSeconds * 1000 }
+  }
+
+  // The round time, then one try per drand period until the margin is over; one more wake after it ends the request.
+  private drawWake(state: RoomState): Instant | null {
+    const window = this.requestedDrawWindow(state)
+    if (window === null || state.commitment === null) return null
+    const now = this.clock.now()
+    if (now < window.from) return window.from
+    if (now > window.until) return now
+    return Math.min(now + state.commitment.chain.periodSeconds * 1000, window.until + 1)
   }
 
   // Each alarm that asks for a commit is an attempt and waits twice as long as the one before. The wake after the last
@@ -605,16 +660,24 @@ export class GiveawayRoom {
   }
 
   /**
-   * Picks `count` winners from a closed room, once, with the randomness of the drand round the room
-   * committed to. While that round is missing it draws nothing and uses no other randomness.
+   * Draws the next winner. A closed room commits if it has not, then draws pick 0 with the randomness of
+   * the drand round it committed to; a drawn room adds the next pick of the same seeded order, skipping
+   * every earlier pick. While the round is missing it draws nothing, uses no other randomness and has
+   * the alarm draw once the round is published.
    */
   async draw(): Promise<DrawOutcome> {
-    const early = drawRefusal(this.readState())
-    if (early !== null) return early
+    const state = this.readState()
+    const refusal = drawRefusal(state)
+    if (refusal !== null) return refusal
+    return state.status === "drawn" ? this.drawNext(state.seed) : this.drawFirst()
+  }
+
+  private async drawFirst(): Promise<DrawOutcome> {
     await this.commit()
     const state = this.readState()
     const refusal = drawRefusal(state)
     if (refusal !== null) return refusal
+    if (state.status !== "closed") return { kind: "try-again" }
     if (state.commitment === null) throw new Error("a closed room has no commitment after commit")
     const { drandRound, chain } = state.commitment
     const answer = await this.beacon.fetchRound(chain.chainHash, drandRound)
@@ -625,6 +688,11 @@ export class GiveawayRoom {
         if (this.clock.now() > availableAt + this.config.drandPublishMarginSeconds * 1000) {
           return { kind: "beacon-unavailable" }
         }
+        this.sql.exec(
+          "UPDATE room_state SET draw_requested = 1 WHERE id = 1 AND status = 'closed'",
+          [],
+        )
+        this.afterWrite()
         return { kind: "round-pending", availableAt, now: this.clock.now() }
       }
       case "unavailable":
@@ -633,21 +701,46 @@ export class GiveawayRoom {
         break
     }
     const seed = answer.round.randomness
-    const winners = await drawWinners(seed, this.readDrawEntries(), state.winnerCount)
+    const first = await pickWinner(seed, 0, this.readDrawEntries(), [])
     const now = this.clock.now()
+    let flipped = false
     const outcome = this.sql.transaction((): DrawOutcome => {
-      const flipped = this.sql.exec(
-        "UPDATE room_state SET status = 'drawn', seed = ?, mirror_pending = 1 WHERE id = 1 AND status = 'closed' AND entries_deleted = 0 RETURNING id",
+      const moved = this.sql.exec(
+        "UPDATE room_state SET status = 'drawn', seed = ?, draw_requested = 0, mirror_pending = 1 WHERE id = 1 AND status = 'closed' AND entries_deleted = 0 RETURNING id",
         [seed],
       )
-      if (flipped.length === 0) return drawRefusal(this.readState()) ?? { kind: "not-closed" }
-      for (const winner of winners) this.insertPick(winner, now, state.claimSeconds)
-      return { kind: "drawn", winners }
+      if (moved.length === 0) return drawRefusal(this.readState()) ?? { kind: "try-again" }
+      flipped = true
+      if (first === null) return { kind: "no-entrants-left" }
+      this.insertPick(first, now, state.claimSeconds)
+      return { kind: "drawn", winner: first }
     })
-    if (outcome.kind === "drawn") {
+    if (flipped) {
       this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
       this.afterOutcomeWrite()
     }
+    return outcome
+  }
+
+  private async drawNext(seed: Uint8Array<ArrayBuffer>): Promise<DrawOutcome> {
+    const draws = this.readDraws()
+    if (draws.length >= this.config.drawMaxWinners) return { kind: "pick-limit" }
+    const next = nextPickNumber(draws)
+    const picked = await pickWinner(seed, next, this.readDrawEntries(), draws)
+    if (picked === null) return { kind: "no-entrants-left" }
+    const now = this.clock.now()
+    const { claimSeconds } = this.readState()
+    const outcome = this.sql.transaction((): DrawOutcome => {
+      if (this.readState().entriesDeleted) return { kind: "entries-deleted" }
+      if (this.sql.exec("SELECT n FROM draws WHERE n = ?", [next]).length > 0) {
+        return { kind: "try-again" }
+      }
+      this.insertPick(picked, now, claimSeconds)
+      // A new waiting winner gets a fresh chat watch even when the last one gave up.
+      this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
+      return { kind: "drawn", winner: picked }
+    })
+    if (outcome.kind === "drawn") this.afterOutcomeWrite()
     return outcome
   }
 
@@ -661,7 +754,7 @@ export class GiveawayRoom {
     if (refusal !== null) return refusal
     if (this.rerollWindowOver()) return { kind: "reroll-window-over" }
 
-    const next = draws.reduce((highest, draw) => Math.max(highest, draw.n), -1) + 1
+    const next = nextPickNumber(draws)
     const picked = await pickWinner(state.seed, next, this.readDrawEntries(), draws)
     if (picked === null) return { kind: "no-entrants-left" }
     const winner = picked
@@ -785,6 +878,7 @@ export class GiveawayRoom {
         state.commitment === null
           ? null
           : roundTime(state.commitment.chain, state.commitment.drandRound),
+      drawRequested: state.drawRequested,
     }
   }
 
@@ -1132,6 +1226,7 @@ export class GiveawayRoom {
       this.pushDueAt,
       state.mirrorPending ? (this.mirrorRetryAt ?? this.clock.now()) : null,
       awaitsCommit(state) && !state.commitGaveUp ? (state.commitRetryAt ?? this.clock.now()) : null,
+      this.drawWake(state),
       // One past the inclusive deadline, so the alarm finds the claim time over and pushes the viewers.
       claimDeadline === null ? null : claimDeadline + 1,
       this.rerollWindowWake(state),
@@ -1248,11 +1343,14 @@ function drawRefusal(state: RoomState): DrawOutcome | null {
   switch (state.status) {
     case "open":
       return { kind: "not-closed" }
-    case "drawn":
-      return { kind: "already-drawn" }
     case "closed":
+    case "drawn":
       return state.entriesDeleted ? { kind: "entries-deleted" } : null
   }
+}
+
+function nextPickNumber(draws: readonly DrawRow[]): number {
+  return draws.reduce((highest, draw) => Math.max(highest, draw.n), -1) + 1
 }
 
 function rerollRefusal(target: DrawRow | null): RerollOutcome | null {

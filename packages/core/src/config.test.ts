@@ -305,7 +305,7 @@ describe("resolveConfig", () => {
     })
   })
 
-  it("defaults the drand settings to the quicknet beacon and a lead of 30 seconds", () => {
+  it("defaults the drand settings to the quicknet beacon and a lead of 6 seconds", () => {
     const config = resolveConfig(required)
 
     expect(config).toMatchObject({
@@ -313,7 +313,7 @@ describe("resolveConfig", () => {
       drandChainHash: "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
       drandGenesisSeconds: 1_692_803_367,
       drandPeriodSeconds: 3,
-      drandLeadSeconds: 30,
+      drandLeadSeconds: 6,
       drandRetryDelaysMs: [200, 500, 1000],
       commitRetrySeconds: 30,
       commitMaxAttempts: 6,

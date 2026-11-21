@@ -228,12 +228,10 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "closeResult.not-open": "Přihlašování už bylo uzavřené.",
   "closeResult.rejected":
     "Přihlašování se nepodařilo uzavřít. Načti stránku znovu a zkus to ještě jednou.",
-  "drawResult.drawn": "Vítězové jsou vylosovaní.",
-  "drawResult.not-closed": "Před losováním uzavři přihlašování.",
-  "drawResult.already-drawn": "Vítězové už jsou vylosovaní. Vyber raději jiného vítěze.",
+  "drawResult.drawn": "Vítěz je vylosovaný.",
   "drawResult.entries-deleted":
     "Údaje účastníků se už po uchovávací lhotě smazaly, vítěze už nelze vylosovat.",
-  "drawResult.rejected": "Losování se nepovedlo. Zadej celé číslo vítězů, alespoň 1.",
+  "drawResult.rejected": "Vítěze se nepodařilo vylosovat.",
   "rerollResult.rerolled": "Byl vybrán jiný vítěz.",
   "rerollResult.already-rerolled": "Na toto místo už byl vybrán jiný vítěz.",
   "rerollResult.already-claimed": "Tento vítěz už výhru převzal.",
@@ -280,9 +278,6 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "entered.one": "Přihlásil se {count} člověk",
   "entered.few": "Přihlásili se {count} lidé",
   "entered.other": "Přihlásilo se {count} lidí",
-  "drawQuestion.one": "Vylosovat teď {count} vítěze?",
-  "drawQuestion.few": "Vylosovat teď {count} vítěze?",
-  "drawQuestion.other": "Vylosovat teď {count} vítězů?",
   "usageLow.one":
     "Pozor: server má na dnes už jen {count} požadavek. Až dojdou, přihlašování může přestat fungovat.",
   "usageLow.few":
@@ -462,15 +457,31 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.overlay.qr.on": "Zobrazit",
   "live.overlay.qr.off": "Skrýt",
   "live.draw.title": "Přihlašování je uzavřené",
-  "live.draw.text": "{people}. Teď vylosuj vítěze.",
-  "live.draw.count": "Kolik vítězů?",
+  "live.draw.text": "{people}. Vylosuj vítěze, až budeš připravený.",
+  "live.draw.count": "Plánovaný počet vítězů",
   "live.draw.nobody": "Nikdo se nepřihlásil, není koho losovat.",
-  "live.draw.fewer": "Přihlásilo se jen {count}, takže vítězů může být méně.",
-  "live.draw.random": "Vítězové se vyberou náhodně ze všech přihlášených.",
+  "live.draw.random": "Vítěz se vybere náhodně ze všech přihlášených.",
   "live.draw.label": "Vylosovat vítěze",
-  "live.draw.detail": "Vítězové se vyberou náhodně. Nejde to vrátit zpět.",
-  "live.draw.confirm": "Ano, vylosovat",
-  "live.draw.waiting": "Čeká se na veřejné náhodné číslo (drand). Losování se otevře za {clock}.",
+  "drawResult.requested":
+    "Přihlašování je uzavřené. Vítěz se vylosuje sám, až bude náhodné číslo připravené.",
+  "drawResult.not-open":
+    "Losování se změnilo, zatímco jsi stiskl Vylosovat vítěze. Stiskni ho znovu.",
+  "drawResult.no-entrants-left": "Vylosovaní jsou všichni, kdo se přihlásili.",
+  "drawResult.pick-limit":
+    "Toto losování už drží nejvíc vítězů, kolik může. Další se vylosovat nedá.",
+  "drawResult.try-again":
+    "Ve stejnou chvíli proběhlo jiné losování. Stiskni Vylosovat vítěze znovu.",
+  "live.draw.next": "Vylosovat dalšího vítěze",
+  "live.draw.question": "Uzavřít přihlašování a vylosovat vítěze?",
+  "live.draw.open":
+    "Vylosovat vítěze uzavře přihlašování a potom vylosuje prvního vítěze, až bude připravené veřejné náhodné číslo (drand).",
+  "live.draw.due": "Losuje se vítěz…",
+  "live.draw.nobodyLeft": "Vylosovaní jsou všichni, kdo se přihlásili.",
+  "live.draw.detail":
+    "Přihlašování se uzavře a nejde znovu otevřít. První vítěz se vylosuje hned, jak bude připravené veřejné náhodné číslo (drand), i když tuto stránku zavřeš.",
+  "live.draw.confirm": "Ano, uzavřít přihlašování a vylosovat",
+  "live.draw.waiting":
+    "Čeká se na veřejné náhodné číslo (drand). Vítěz se vylosuje sám za {clock}.",
   "live.winners.title": "Vítězové",
   "live.winners.pageOrChat":
     "Každý vítěz má na převzetí výhry omezený čas. Převezme ji na stránce soutěže nebo napsáním do tvého chatu.",
@@ -709,8 +720,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Dotazy k těmto podmínkám: {contactEmail}.",
   "drawResult.round-pending":
-    "Náhodné číslo pro toto losování ještě není zveřejněné. Zkus to znovu za pár sekund.",
-  "drawResult.round-due": "Náhodné číslo pro toto losování už letí. Zkus to znovu za chvíli.",
+    "Náhodné číslo ještě není zveřejněné. Vítěz se vylosuje sám, hned jak bude.",
+  "drawResult.round-due": "Náhodné číslo už letí. Vítěz se vylosuje sám za chvíli.",
   "drawResult.beacon-unavailable":
     "Zdroj náhody (drand) se nepodařilo zastihnout. Nic se nevylosovalo. Zkus to znovu.",
   "giveaway.verify.link": "Ověřit toto losování",
@@ -750,22 +761,21 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "verify.winners.title": "Vítězové",
   "verify.winner.entry": "Výběr {n} je přihláška {leaf} ze seznamu.",
   "verify.winner.rerolled": "(vylosovaný znovu)",
-  "live.draw.fixed": "Počet vítězů k vylosování: {count}. Nastavený před uzavřením přihlašování.",
+  "live.draw.fixed":
+    "Vylosovaní vítězové: {drawn} z {planned} plánovaných. Vylosuj další, kolik potřebuješ.",
   "live.winners.save": "Uložit",
   "winnersResult.set": "Počet vítězů je uložený.",
-  "winnersResult.not-open": "Přihlašování je uzavřené, takže počet vítězů už nejde změnit.",
   "winnersResult.rejected": "Uložení se nepovedlo. Zadej celé číslo vítězů, alespoň 1.",
   "wizard.winners.label": "Kolik vítězů?",
-  "wizard.winners.help":
-    "Nastavuje se před losováním. Můžeš ho změnit, dokud nezavřeš přihlašování, potom už ne.",
+  "wizard.winners.help": "Kolik vítězů plánuješ vylosovat. Později můžeš vylosovat víc nebo méně.",
   "review.winners": "Vítězové",
   "verify.check.timing.match": "Kolo drand bylo zveřejněné po uzamčení seznamu.",
   "verify.check.timing.mismatch":
     "Kolo drand bylo zveřejněné před uzamčením seznamu, takže losování nejde věřit.",
-  "verify.facts.winners": "Vítězů k vylosování",
+  "verify.facts.winners": "Plánovaný počet vítězů",
   "verify.facts.committed": "Seznam uzamčený",
   "verify.rerolls.note":
-    "Streamer může znovu vylosovat vítěze, který nesplnil podmínky giveaway. Každé nové losování zůstává v tomto seznamu.",
+    "Streamer může znovu vylosovat vítěze, který nesplnil podmínky giveaway. Streamer může vylosovat i víc vítězů, než plánoval, jednoho po druhém. Každý výběr a každé nové losování zůstává v tomto seznamu.",
   "verify.rerolls.count": "Znovu vylosované výběry: {count}.",
   "verify.winner.before": "Před ním bylo znovu vylosovaných výběrů: {count}.",
   "verify.mine.title": "Tvoje přihláška",

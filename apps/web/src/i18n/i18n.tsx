@@ -15,7 +15,6 @@ export type PluralBase =
   | "minute"
   | "day"
   | "entered"
-  | "drawQuestion"
   | "usageLow"
   | "roleFailures"
   | "chatFailures"

@@ -21,6 +21,7 @@ import type {
   LiveSnapshot,
   LiveWinner,
   OverlaySnapshot,
+  RequestDrawOutcome,
   RerollOutcome,
   RerollState,
   SetWinnerCountOutcome,
@@ -92,7 +93,7 @@ export type EntryResult =
 
 export type CloseKind = CloseOutcome["kind"]
 export type SetWinnerCountKind = SetWinnerCountOutcome["kind"]
-export type DrawKind = DrawOutcome["kind"]
+export type DrawKind = Exclude<DrawOutcome["kind"], "not-closed"> | RequestDrawOutcome["kind"]
 export type RerollKind = RerollOutcome["kind"]
 export type ClaimKind = ClaimOutcome["kind"]
 
@@ -411,7 +412,7 @@ export type DrawAnswer =
   | { readonly kind: Exclude<DrawKind, "round-pending"> | Rejected }
   | { readonly kind: "round-pending"; readonly availableAt: number; readonly now: number }
 
-/** The count is the giveaway's own setting, so the draw sends none. */
+/** Draws the next winner; while entries are open it closes them and the room draws the first winner itself once the round is published. */
 export async function drawWinners(id: string): Promise<DrawAnswer> {
   const source = await post(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, {})
   const kind = answerKind(source, drawKinds)
@@ -442,14 +443,17 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
-const setWinnerKinds = ["set", "not-open"] as const satisfies readonly SetWinnerCountKind[]
+const setWinnerKinds = ["set"] as const satisfies readonly SetWinnerCountKind[]
 const drawKinds = [
   "drawn",
+  "requested",
   "round-pending",
   "beacon-unavailable",
-  "not-closed",
-  "already-drawn",
+  "not-open",
   "entries-deleted",
+  "no-entrants-left",
+  "pick-limit",
+  "try-again",
 ] as const satisfies readonly DrawKind[]
 const rerollKinds = [
   "rerolled",
@@ -683,6 +687,7 @@ function parseSharedSnapshotFields(source: Json) {
     roleRefreshFailures: num(source, "roleRefreshFailures"),
     eventSubFailures: num(source, "eventSubFailures"),
     drawAvailableAt: nullableNum(source, "drawAvailableAt"),
+    drawRequested: bool(source, "drawRequested"),
     now: num(source, "now"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
   }
