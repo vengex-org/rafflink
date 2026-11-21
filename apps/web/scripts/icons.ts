@@ -1,7 +1,6 @@
 import { Resvg } from "@resvg/resvg-js"
 import { create } from "fontkit"
 import { decompress } from "wawoff2"
-import { decompress } from "wawoff2"
 
 // Rerun with `bun run icons` after changing the brand mark or its tokens, and commit the files in public/.
 const publicDir = new URL("../public/", import.meta.url)
@@ -26,10 +25,14 @@ for (const { file, size, maskable } of png) {
 }
 console.info("icons written", { count: png.length + 1 })
 
-/** The first declaration of a custom property in tokens.css, which is the light `:root` block. */
+/** A custom property of the first `:root` block of tokens.css, the light theme; it must be a hex color. */
 function readToken(css: string, name: string): string {
-  const value = css.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})\\b`))?.[1]
-  if (value === undefined) throw new Error(`${name} is not a hex color in tokens.css`)
+  const root = css.match(/:root\s*\{([^}]*)\}/)?.[1]
+  if (root === undefined) throw new Error("tokens.css has no :root block")
+  const value = root.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]?.trim()
+  if (value === undefined || !/^#[0-9a-fA-F]{6}$/.test(value)) {
+    throw new Error(`${name} in the light :root of tokens.css is not a hex color`)
+  }
   return value
 }
 
