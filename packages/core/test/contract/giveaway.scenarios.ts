@@ -2,7 +2,7 @@ import { expect } from "bun:test"
 import { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
-import { scenario, type CreatedGiveaway } from "./world.ts"
+import { publicOrigin, scenario, type CreatedGiveaway } from "./world.ts"
 
 export function giveawayScenarios(context: ContractContext): void {
   scenario(
@@ -106,18 +106,26 @@ export function giveawayScenarios(context: ContractContext): void {
       for (const viewer of [users.viewer, users.viewer2, users.viewer3]) {
         await world.enter(target, giveaway.code, viewer.id)
       }
+      // The socket carries every state change, so the scenario waits for pushes instead of polling the room.
+      const { messages } = world.openSocket(new URL(`/api/live/${giveaway.id}`, target.url), {
+        cookie: giveaway.streamer.cookieHeader(),
+        origin: publicOrigin,
+      })
+      await world.waitFor(() => messages.length >= 1, "the first snapshot")
 
       const requested = await world.drawWinners(giveaway)
-      const closed = await world.live(giveaway)
       await world.waitFor(
-        async () => (await world.live(giveaway)).winners.length === 1,
+        () =>
+          messages.some((message) => message.status === "drawn" && message.winners.length === 1),
         "the room to draw by itself",
       )
 
       expect(requested.status).toBe(202)
       expect(await requested.json()).toEqual({ kind: "requested" })
-      expect(closed).toMatchObject({ status: "closed", drawRequested: true })
-      expect(await world.live(giveaway)).toMatchObject({ status: "drawn", drawRequested: false })
+      expect(messages.find((message) => message.status === "closed")).toMatchObject({
+        drawRequested: true,
+      })
+      expect(messages.at(-1)).toMatchObject({ status: "drawn", drawRequested: false })
     },
   )
 

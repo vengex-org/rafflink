@@ -439,7 +439,7 @@ describe("GiveawayRoom requested draw", () => {
     enterMany(room, ["1", "2"])
     room.requestDraw()
     await room.commit()
-    clock.advance(roundTimeOf(room) - clock.now())
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
 
     expect(room.onAlarm()).toMatchObject({ draw: true })
     expect((await room.draw()).kind).toBe("drawn")
@@ -455,15 +455,34 @@ describe("GiveawayRoom requested draw", () => {
     enterMany(room, ["1"])
     room.requestDraw()
     await room.commit()
-    clock.advance(roundTimeOf(room) - clock.now())
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
 
     expect(room.onAlarm().draw).toBe(true)
-    expect(alarm.at).toBe(roundTimeOf(room) + 500)
+    expect(alarm.at).toBe(roundTimeOf(room) + 500 + config.drandPeriodSeconds * 1000)
 
     clock.advance(config.drandPublishMarginSeconds * 1000 + 1)
     expect(room.onAlarm().draw).toBe(false)
     expect(room.liveSnapshot().drawRequested).toBe(false)
     expect(room.summary().status).toBe("closed")
+  })
+
+  it("keeps the next try where it was when other writes rearm the alarm in between", async () => {
+    const { room, clock, alarm } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
+    room.onAlarm()
+    const nextTry = alarm.at
+
+    clock.advance(1000)
+    room.init(giveaway)
+    room.setWinnerCount(2)
+
+    expect(alarm.at).toBe(nextTry)
+    clock.advance((nextTry ?? 0) - clock.now())
+    expect(room.onAlarm().draw).toBe(true)
   })
 
   it("pushes the live page when it gives up on a late round", async () => {

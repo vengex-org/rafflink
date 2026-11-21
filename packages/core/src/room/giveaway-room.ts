@@ -578,9 +578,15 @@ export class GiveawayRoom {
   // A requested draw is due from the time of its round; a round still missing after the publish margin is a broken beacon, so the request ends and the streamer presses Draw again.
   private drawDue(state: RoomState, now: Instant): boolean {
     const window = this.requestedDrawWindow(state)
-    if (window === null || now < window.from) return false
-    if (now <= window.until) return true
-    this.sql.exec("UPDATE room_state SET draw_requested = 0 WHERE id = 1", [])
+    if (window === null || now < (state.drawRetryAt ?? window.from + drawLagMs)) return false
+    if (now <= window.until) {
+      // The next try is stored, so a rewrite of the alarm by another write cannot push it back.
+      this.sql.exec("UPDATE room_state SET draw_retry_at = ? WHERE id = 1", [
+        now + this.periodMs(state),
+      ])
+      return true
+    }
+    this.sql.exec("UPDATE room_state SET draw_requested = 0, draw_retry_at = NULL WHERE id = 1", [])
     console.warn("requested draw gave up", { giveawayId: state.giveawayId })
     this.givenUp = true
     return false
@@ -611,10 +617,13 @@ export class GiveawayRoom {
   private drawWake(state: RoomState): Instant | null {
     const window = this.requestedDrawWindow(state)
     if (window === null || state.commitment === null) return null
-    const now = this.clock.now()
-    if (now < window.from + drawLagMs) return window.from + drawLagMs
-    if (now > window.until) return now
-    return Math.min(now + state.commitment.chain.periodSeconds * 1000, window.until + 1)
+    if (this.clock.now() > window.until) return this.clock.now()
+    return Math.min(state.drawRetryAt ?? window.from + drawLagMs, window.until + 1)
+  }
+
+  private periodMs(state: RoomState): number {
+    if (state.commitment === null) throw new Error("a draw is due only after the commit")
+    return state.commitment.chain.periodSeconds * 1000
   }
 
   // Each alarm that asks for a commit is an attempt and waits twice as long as the one before. The wake after the last
@@ -624,7 +633,10 @@ export class GiveawayRoom {
       return false
     }
     if (state.commitAttempts >= this.config.commitMaxAttempts) {
-      this.sql.exec("UPDATE room_state SET commit_gave_up = 1, draw_requested = 0 WHERE id = 1", [])
+      this.sql.exec(
+        "UPDATE room_state SET commit_gave_up = 1, draw_requested = 0, draw_retry_at = NULL WHERE id = 1",
+        [],
+      )
       this.givenUp = true
       console.error("room commit gave up", {
         giveawayId: state.giveawayId,
@@ -729,7 +741,7 @@ export class GiveawayRoom {
     let flipped = false
     const outcome = this.sql.transaction((): DrawOutcome => {
       const moved = this.sql.exec(
-        "UPDATE room_state SET status = 'drawn', seed = ?, draw_requested = 0, mirror_pending = 1 WHERE id = 1 AND status = 'closed' AND entries_deleted = 0 RETURNING id",
+        "UPDATE room_state SET status = 'drawn', seed = ?, draw_requested = 0, draw_retry_at = NULL, mirror_pending = 1 WHERE id = 1 AND status = 'closed' AND entries_deleted = 0 RETURNING id",
         [seed],
       )
       if (moved.length === 0) return drawRefusal(this.readState()) ?? { kind: "try-again" }
