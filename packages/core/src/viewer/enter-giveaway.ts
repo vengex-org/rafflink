@@ -29,7 +29,7 @@ export interface EntryDeps {
   readonly twitch: TwitchClient
   readonly accounts: AccountStore
   readonly rooms: RoomDirectory
-  /** Limits verified sign-ins per platform user, so a viewer's retries cannot flood the Twitch calls and the room. */
+  /** Limits verified sign-ins per platform user, so a viewer's retries cannot flood the room; it runs after the code exchange and the ID-token check, so those Twitch calls are not saved. */
   readonly entryUserLimiter: RateLimiter
 }
 

@@ -338,7 +338,12 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
-const drawKinds = ["drawn", "not-closed", "already-drawn"] as const satisfies readonly DrawKind[]
+const drawKinds = [
+  "drawn",
+  "not-closed",
+  "already-drawn",
+  "entries-deleted",
+] as const satisfies readonly DrawKind[]
 const rerollKinds = [
   "rerolled",
   "already-rerolled",
@@ -346,6 +351,7 @@ const rerollKinds = [
   "unknown-pick",
   "not-drawn",
   "no-entrants-left",
+  "entries-deleted",
   "reroll-window-over",
   "try-again",
 ] as const satisfies readonly RerollKind[]

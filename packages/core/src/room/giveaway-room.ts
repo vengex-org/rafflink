@@ -101,6 +101,7 @@ export type DrawOutcome =
   | { readonly kind: "drawn"; readonly winners: readonly Winner[] }
   | { readonly kind: "not-closed" }
   | { readonly kind: "already-drawn" }
+  | { readonly kind: "entries-deleted" }
 
 export type RerollOutcome =
   | { readonly kind: "rerolled"; readonly replaced: number; readonly winner: Winner }
@@ -109,6 +110,7 @@ export type RerollOutcome =
   | { readonly kind: "unknown-pick" }
   | { readonly kind: "not-drawn" }
   | { readonly kind: "no-entrants-left" }
+  | { readonly kind: "entries-deleted" }
   | { readonly kind: "reroll-window-over" }
   | { readonly kind: "try-again" }
 
@@ -370,6 +372,12 @@ export class GiveawayRoom {
     return { kind: "closed" }
   }
 
+  /** Arms the alarm from the stored state; a room that was never initialised arms nothing. */
+  armAlarm(): void {
+    if (this.sql.exec("SELECT 1 FROM room_state WHERE id = 1", []).length === 0) return
+    this.guarded("alarm", () => this.rearm())
+  }
+
   /** Runs when the alarm fires: closes at the end time, pushes a held live update, reports what is left to the caller. */
   onAlarm(): AlarmDuties {
     const now = this.clock.now()
@@ -409,18 +417,17 @@ export class GiveawayRoom {
   /** Picks `count` winners from a closed room, once. */
   async draw(count: number): Promise<DrawOutcome> {
     const state = this.readState()
-    const refusal = drawRefusal(state.status)
+    const refusal = drawRefusal(state)
     if (refusal !== null) return refusal
     const seed = new Uint8Array(this.random.bytes(seedBytes))
     const winners = await drawWinners(seed, this.readDrawEntries(), count)
     const now = this.clock.now()
     const outcome = this.sql.transaction((): DrawOutcome => {
       const flipped = this.sql.exec(
-        "UPDATE room_state SET status = 'drawn', seed = ?, mirror_pending = 1 WHERE id = 1 AND status = 'closed' RETURNING id",
+        "UPDATE room_state SET status = 'drawn', seed = ?, mirror_pending = 1 WHERE id = 1 AND status = 'closed' AND entries_deleted = 0 RETURNING id",
         [seed],
       )
-      if (flipped.length === 0)
-        return drawRefusal(this.readState().status) ?? { kind: "not-closed" }
+      if (flipped.length === 0) return drawRefusal(this.readState()) ?? { kind: "not-closed" }
       for (const winner of winners) this.insertPick(winner, now, state.claimSeconds)
       return { kind: "drawn", winners }
     })
@@ -435,6 +442,7 @@ export class GiveawayRoom {
   async reroll(n: number): Promise<RerollOutcome> {
     const state = this.readState()
     if (state.status !== "drawn") return { kind: "not-drawn" }
+    if (state.entriesDeleted) return { kind: "entries-deleted" }
     const draws = this.readDraws()
     const refusal = rerollRefusal(draws.find((draw) => draw.n === n) ?? null)
     if (refusal !== null) return refusal
@@ -448,6 +456,7 @@ export class GiveawayRoom {
     const outcome = this.sql.transaction((): RerollOutcome => {
       const current = rerollRefusal(this.readDraw(n))
       if (current !== null) return current
+      if (this.readState().entriesDeleted) return { kind: "entries-deleted" }
       if (this.rerollWindowOver()) return { kind: "reroll-window-over" }
       if (this.sql.exec("SELECT n FROM draws WHERE n = ?", [next]).length > 0) {
         return { kind: "try-again" }
@@ -637,6 +646,7 @@ export class GiveawayRoom {
     this.sql.transaction(() => {
       this.sql.exec("DELETE FROM entries", [])
       this.sql.exec("DELETE FROM channel_roles", [])
+      this.sql.exec("UPDATE room_state SET entries_deleted = 1 WHERE id = 1", [])
     })
     console.info("room entries deleted", {
       giveawayId: state.giveawayId,
@@ -946,14 +956,14 @@ function summarize(state: RoomState): RoomSummary {
   }
 }
 
-function drawRefusal(status: RoomStatus): DrawOutcome | null {
-  switch (status) {
+function drawRefusal(state: RoomState): DrawOutcome | null {
+  switch (state.status) {
     case "open":
       return { kind: "not-closed" }
     case "drawn":
       return { kind: "already-drawn" }
     case "closed":
-      return null
+      return state.entriesDeleted ? { kind: "entries-deleted" } : null
   }
 }
 

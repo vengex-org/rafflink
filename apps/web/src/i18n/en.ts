@@ -230,6 +230,8 @@ export const en = {
   "drawResult.drawn": "Winners drawn.",
   "drawResult.not-closed": "Close entries before drawing.",
   "drawResult.already-drawn": "Winners are already drawn. Pick another winner instead.",
+  "drawResult.entries-deleted":
+    "Entrants were already deleted after the retention time, so winners can no longer be drawn.",
   "drawResult.rejected": "Could not draw. Enter a whole number of winners, at least 1.",
   "rerollResult.rerolled": "Another winner was picked.",
   "rerollResult.already-rerolled": "Another winner was already picked for this place.",
@@ -237,6 +239,8 @@ export const en = {
   "rerollResult.unknown-pick": "There is no such winner.",
   "rerollResult.not-drawn": "Draw winners first.",
   "rerollResult.no-entrants-left": "No entrants are left to pick.",
+  "rerollResult.entries-deleted":
+    "Entrants were already deleted after the retention time, so no other winner can be picked.",
   "rerollResult.reroll-window-over":
     "The time to pick another winner is over. Contact the winner yourself or start a new giveaway.",
   "rerollResult.try-again": "That did not work. Try again.",

@@ -85,6 +85,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
           return c.json({ kind: "drawn", winners: outcome.winners.map((winner) => winner.n) })
         case "not-closed":
         case "already-drawn":
+        case "entries-deleted":
           return c.json({ kind: outcome.kind }, 409)
       }
     }),
@@ -175,6 +176,7 @@ const rerollStatus: Readonly<Record<RerollOutcome["kind"], ContentfulStatusCode>
   "already-claimed": 409,
   "not-drawn": 409,
   "no-entrants-left": 409,
+  "entries-deleted": 409,
   "reroll-window-over": 409,
   "try-again": 409,
 }

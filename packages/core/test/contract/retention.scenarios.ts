@@ -3,12 +3,19 @@ import { users } from "./fake-twitch.ts"
 import type { ContractContext } from "./target.ts"
 import { scenario } from "./world.ts"
 
+// The retention time must cover the claim and reroll windows, so these shrink with it.
+const shortRetention = {
+  ENTRY_RETENTION_SECONDS: "3",
+  CLAIM_SECONDS_MAX: "1",
+  REROLL_WINDOW_SECONDS: "1",
+}
+
 export function retentionScenarios(context: ContractContext): void {
   scenario(
     context,
     "the entrants' data is deleted after the retention time while the counts and the winner stay",
     async (world) => {
-      const target = await world.start({ ENTRY_RETENTION_SECONDS: "3" })
+      const target = await world.start(shortRetention)
       const giveaway = await world.createGiveaway(target)
       const { viewer } = await world.enter(target, giveaway.code, users.viewer.id)
       await world.closeGiveaway(giveaway)
@@ -34,6 +41,30 @@ export function retentionScenarios(context: ContractContext): void {
       })
       const entrants = await giveaway.streamer.request(`/api/live/${giveaway.id}/entrants?after=0`)
       expect(await entrants.json()).toEqual({ rows: [], more: false })
+    },
+  )
+
+  scenario(
+    context,
+    "a closed giveaway whose entrants were deleted refuses to draw and stays closed",
+    async (world) => {
+      const target = await world.start(shortRetention)
+      const giveaway = await world.createGiveaway(target)
+      await world.enter(target, giveaway.code, users.viewer.id)
+      await world.closeGiveaway(giveaway)
+      await world.waitFor(async () => {
+        const entrants = await giveaway.streamer.request(
+          `/api/live/${giveaway.id}/entrants?after=0`,
+        )
+        const page: { rows: unknown[] } = await entrants.json()
+        return page.rows.length === 0
+      }, "the entries to be deleted")
+
+      const draw = await world.drawWinners(giveaway, 1)
+
+      expect(draw.status).toBe(409)
+      expect(await draw.json()).toEqual({ kind: "entries-deleted" })
+      expect(await world.live(giveaway)).toMatchObject({ status: "closed", entrantCount: 1 })
     },
   )
 

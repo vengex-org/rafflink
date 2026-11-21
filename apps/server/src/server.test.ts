@@ -217,6 +217,51 @@ describe("routes", () => {
   })
 })
 
+async function callbackEntries(
+  server: RunningServer,
+  code: string,
+  forwardedFor: readonly string[],
+): Promise<(string | null)[]> {
+  const entries: (string | null)[] = []
+  for (const [index, address] of forwardedFor.entries()) {
+    const response = await new Browser(server.url).signInAs(
+      index === 0 ? users.viewer.id : users.viewer2.id,
+      `/auth/twitch/viewer/start?giveaway=${code}`,
+      twitch.fake.control,
+      { "x-forwarded-for": address },
+    )
+    entries.push(
+      new URL(response.headers.get("location") ?? "", "http://localhost").searchParams.get("entry"),
+    )
+  }
+  return entries
+}
+
+describe("client address limit", () => {
+  it("counts by the address of the connection when no header is configured, so a forged header does not help", async () => {
+    const server = await launch({ ENTRY_IP_LIMIT_PER_MINUTE: "1" })
+    const { code } = await createGiveaway(server)
+
+    expect(await callbackEntries(server, code, ["203.0.113.1", "203.0.113.2"])).toEqual([
+      "entered",
+      "rate-limited",
+    ])
+  })
+
+  it("counts by the configured header when one is set", async () => {
+    const server = await launch({
+      ENTRY_IP_LIMIT_PER_MINUTE: "1",
+      CLIENT_IP_HEADER: "X-Forwarded-For",
+    })
+    const { code } = await createGiveaway(server)
+
+    expect(await callbackEntries(server, code, ["203.0.113.1", "203.0.113.2"])).toEqual([
+      "entered",
+      "entered",
+    ])
+  })
+})
+
 describe("live pages", () => {
   it("a live WebSocket subscriber receives a snapshot after an entry", async () => {
     const server = await launch()

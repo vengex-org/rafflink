@@ -10,11 +10,13 @@ import {
   insertGiveawaySql,
   ownedGiveawaySql,
   replaceStreamerTokenSql,
+  setRetentionArmedSql,
   setStatusSql,
   streamerByIdSql,
   streamerByPlatformUserSql,
   streamerTokenSql,
   streamerTokensSql,
+  unarmedRetentionSql,
   upsertStreamerSql,
   upsertStreamerTokenSql,
 } from "./queries.ts"
@@ -181,6 +183,17 @@ export class AccountStore {
   /** Idempotent mirror of the room's status. */
   async setStatus(giveawayId: string, status: RoomStatus): Promise<void> {
     await this.sql.run(setStatusSql, [status, giveawayId])
+  }
+
+  /** Ids of up to `limit` giveaways that are no longer open and whose room the retention sweep has not woken. */
+  async listUnarmedRetention(limit: number): Promise<string[]> {
+    const rows = await this.sql.all(unarmedRetentionSql, [limit])
+    return rows.map((row) => new RowReader("giveaways", row).text("id"))
+  }
+
+  /** Idempotent: the sweep never lists the giveaway again. */
+  async markRetentionArmed(giveawayId: string): Promise<void> {
+    await this.sql.run(setRetentionArmedSql, [giveawayId])
   }
 
   private async findOne(sql: string, params: readonly string[]): Promise<Giveaway | null> {

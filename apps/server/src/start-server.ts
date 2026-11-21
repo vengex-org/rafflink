@@ -23,8 +23,8 @@ import type { Hono } from "hono"
 import { existsSync, mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { BunSocketConnector } from "./bun-socket-connector.ts"
+import { clientAddress } from "./client-address.ts"
 import { openDatabase } from "./database.ts"
-import { forwardedAddress } from "./forwarded-address.ts"
 import { LocalRoomDirectory } from "./local-room-directory.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
 import { createServerApp } from "./server-app.ts"
@@ -115,7 +115,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     keyRing,
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, rateWindowMs),
-    clientAddress: forwardedAddress,
+    clientAddress: (request) => clientAddress(request, server, config.clientIpHeader),
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null

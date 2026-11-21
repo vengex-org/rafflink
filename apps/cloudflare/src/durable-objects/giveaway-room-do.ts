@@ -128,6 +128,7 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
         subscribe: (sessionId) => subscribeChat(runtime, this.giveawayId(), sessionId),
       },
     })
+    room.armAlarm()
     return { room, runtime }
   }
 

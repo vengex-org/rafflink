@@ -36,6 +36,8 @@ export type RoomState = {
   readonly chatUnavailable: boolean
   readonly rolesRefreshAt: Instant | null
   readonly mirrorPending: boolean
+  /** The retention alarm deleted the entrants' data. */
+  readonly entriesDeleted: boolean
 } & (
   | { readonly status: "open"; readonly seed: null; readonly closedAt: null }
   | { readonly status: "closed"; readonly seed: null; readonly closedAt: Instant }
@@ -86,6 +88,7 @@ export function parseState(
     chatUnavailable: reader.int("chat_unavailable") === 1,
     rolesRefreshAt: reader.nullableInt("roles_refresh_at"),
     mirrorPending: reader.int("mirror_pending") === 1,
+    entriesDeleted: reader.int("entries_deleted") === 1,
   }
   const status = reader.oneOf("status", roomStatuses)
   const seed = reader.nullableBlob("seed")

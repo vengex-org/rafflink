@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite"
+import { readdirSync } from "node:fs"
 import { createFakeTwitch, type FakeTwitch, type FakeUser } from "@rafflink/fake-twitch"
 import type { Hono } from "hono"
 import { AdminDirectory } from "../src/admin/admin-directory.ts"
@@ -33,9 +34,15 @@ import { TwitchClient } from "../src/twitch/twitch-client.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
 import { idleChat } from "./idle-chat.ts"
 
-export const accountsSchema = await Bun.file(
-  new URL("../schema/accounts/0001_init.sql", import.meta.url),
-).text()
+const accountsSchemaDir = new URL("../schema/accounts/", import.meta.url)
+
+export const accountsSchema = (
+  await Promise.all(
+    readdirSync(accountsSchemaDir)
+      .toSorted()
+      .map((name) => Bun.file(new URL(name, accountsSchemaDir)).text()),
+  )
+).join("\n")
 
 export class TestClock implements Clock {
   constructor(private at: Instant) {}

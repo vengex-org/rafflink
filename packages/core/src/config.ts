@@ -8,10 +8,12 @@ export type ConfigReason =
   | "not-an-integer"
   | "out-of-range"
   | "not-a-url"
+  | "not-a-header-name"
   | "not-an-admin-entry"
   | "not-below-queue-code-max-age"
   | "not-below-eventsub-connection-max"
   | "not-above-queued-entry-twitch-time"
+  | "below-claim-and-reroll-windows"
   | "fake-twitch-needs-local-public-url"
 
 /** Why a setting failed; a list entry that is not a secret also names itself. */
@@ -60,6 +62,9 @@ export type ResolvedConfig = {
     ? T
     : never
 }
+
+// Spec Privacy promises deletion within 30 days.
+const maxEntryRetentionSeconds = 2_592_000
 
 type Env = Readonly<Record<string, string | undefined>>
 
@@ -342,9 +347,15 @@ export const configSchema = {
   ),
   entryRetentionSeconds: withDefault(
     "ENTRY_RETENTION_SECONDS",
-    int(1),
+    int(1, maxEntryRetentionSeconds),
     "2592000",
-    "How long after a giveaway closes its entrants' personal data (login, display name, group, tickets, channel role lists) is kept before the room alarm deletes it; spec Privacy promises 30 days, so lowering it is allowed and raising it breaks the promise",
+    "How long after a giveaway closes its entrants' personal data (login, display name, group, tickets, channel role lists) is kept before the room alarm deletes it; spec Privacy promises 30 days, so more than that is rejected; it must not be below CLAIM_SECONDS_MAX plus REROLL_WINDOW_SECONDS, or a winner could still be claimed or rerolled after the entrants are gone",
+  ),
+  entryRetentionSweepBatch: withDefault(
+    "ENTRY_RETENTION_SWEEP_BATCH",
+    int(1),
+    "100",
+    "Most closed giveaways the hourly Cloudflare cron wakes to arm their retention deletion; each costs one Durable Object request; starting guess, a backlog of 1000 closed giveaways clears in ten runs",
   ),
   entryUserLimitPerMinute: withDefault(
     "ENTRY_USER_LIMIT_PER_MINUTE",
@@ -357,6 +368,12 @@ export const configSchema = {
     int(1),
     "60",
     "Viewer sign-in callbacks one client address may make per minute; a loose backstop because mobile networks put many viewers behind one address (spec Abuse); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
+  ),
+  clientIpHeader: withDefault(
+    "CLIENT_IP_HEADER",
+    optional(headerName),
+    "",
+    "Request header in which the reverse proxy in front of the Bun server puts the client address, such as CF-Connecting-IP behind Cloudflare or X-Forwarded-For behind Caddy; when the value lists several addresses the last one counts, which is the one the nearest proxy appended; blank uses the address of the connection, right when nothing sits in front of the server, and behind a proxy it is the proxy's address, so every viewer shares one ENTRY_IP_LIMIT_PER_MINUTE; set it only when a proxy overwrites that header, or a client can write its own address; the Cloudflare target ignores it",
   ),
   titleMaxLength: withDefault(
     "TITLE_MAX_LENGTH",
@@ -472,8 +489,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
     mirrorRetrySeconds: read(env, configSchema.mirrorRetrySeconds),
     rerollWindowSeconds: read(env, configSchema.rerollWindowSeconds),
     entryRetentionSeconds: read(env, configSchema.entryRetentionSeconds),
+    entryRetentionSweepBatch: read(env, configSchema.entryRetentionSweepBatch),
     entryUserLimitPerMinute: read(env, configSchema.entryUserLimitPerMinute),
     entryIpLimitPerMinute: read(env, configSchema.entryIpLimitPerMinute),
+    clientIpHeader: read(env, configSchema.clientIpHeader),
     titleMaxLength: read(env, configSchema.titleMaxLength),
     prizeMaxLength: read(env, configSchema.prizeMaxLength),
     dataDir: read(env, configSchema.dataDir),
@@ -505,6 +524,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
       configSchema.queueProcessingTimeoutSeconds.env,
       "not-above-queued-entry-twitch-time",
     )
+  }
+  // Entrants' data must outlive every window in which a winner can still be claimed or rerolled.
+  if (config.entryRetentionSeconds < config.claimSecondsMax + config.rerollWindowSeconds) {
+    throw new ConfigError(configSchema.entryRetentionSeconds.env, "below-claim-and-reroll-windows")
   }
   // The fake Twitch signs in anyone, so it must never run behind a public origin.
   if (config.devFakeTwitch && !isLocalOrigin(config.publicUrl)) {
@@ -580,6 +603,12 @@ function url(raw: string): Parsed<string, ConfigReason> {
   const parsed = new URL(value)
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fail("not-a-url")
   return ok(parsed.origin)
+}
+
+/** A header name is an HTTP token; names are case-insensitive, so it is kept in lower case. */
+function headerName(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  return /^[A-Za-z0-9-]+$/.test(value) ? ok(value.toLowerCase()) : fail("not-a-header-name")
 }
 
 function endpoint(raw: string): Parsed<string, ConfigReason> {

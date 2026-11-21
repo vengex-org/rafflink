@@ -25,7 +25,12 @@ afterEach(() => {
 
 defineContract("bun", "injected-previews", async (env, webDir) => {
   const dir = tempDir()
-  const config = resolveConfig({ ...env, DATA_DIR: dir.path, PORT: "0" })
+  const config = resolveConfig({
+    ...env,
+    CLIENT_IP_HEADER: "x-forwarded-for",
+    DATA_DIR: dir.path,
+    PORT: "0",
+  })
   const server = await startServer({ config, staticDir: webDir, devSpa: null, devPublicDir: null })
 
   // A second connection to the accounts file, so the job runs on demand beside the server's own timer.

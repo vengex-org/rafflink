@@ -91,6 +91,16 @@ describe("applyMigrations", () => {
       expect(closedAt(roomBefore("closed", 5000, "NULL"))).toBe(5000)
     })
 
+    it("caps a planned end time in the future at now, for a room the streamer closed early", () => {
+      const before = Date.now()
+      const farFuture = 4_102_444_800_000
+
+      const result = closedAt(roomBefore("closed", farFuture, "NULL"))
+
+      expect(result).toBeGreaterThanOrEqual(before - 1000)
+      expect(result).toBeLessThanOrEqual(Date.now() + 1000)
+    })
+
     it("takes the latest entry for a closed room without an end time", () => {
       const sql = roomBefore("closed", null, "NULL")
       sql.exec(

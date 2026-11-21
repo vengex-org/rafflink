@@ -232,6 +232,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "drawResult.drawn": "Víťazi sú vyžrebovaní.",
   "drawResult.not-closed": "Pred žrebovaním uzavri zápis.",
   "drawResult.already-drawn": "Víťazi už sú vyžrebovaní. Vyber radšej iného víťaza.",
+  "drawResult.entries-deleted":
+    "Údaje účastníkov sa už po uchovávacej lehote zmazali, víťazov už nie je možné vyžrebovať.",
   "drawResult.rejected": "Žrebovanie sa nepodarilo. Zadaj celé číslo víťazov, aspoň 1.",
   "rerollResult.rerolled": "Vybraný bol iný víťaz.",
   "rerollResult.already-rerolled": "Na toto miesto už bol vybraný iný víťaz.",
@@ -239,6 +241,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rerollResult.unknown-pick": "Taký víťaz neexistuje.",
   "rerollResult.not-drawn": "Najprv vyžrebuj víťazov.",
   "rerollResult.no-entrants-left": "Nezostal nikto, koho by sa dalo vybrať.",
+  "rerollResult.entries-deleted":
+    "Údaje účastníkov sa už po uchovávacej lehote zmazali, ďalšieho víťaza už nie je možné vybrať.",
   "rerollResult.reroll-window-over":
     "Čas na výber iného víťaza uplynul. Kontaktuj víťaza sám alebo spusti nový giveaway.",
   "rerollResult.try-again": "Nepodarilo sa. Skús to znova.",
