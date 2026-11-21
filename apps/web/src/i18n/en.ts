@@ -5,6 +5,7 @@ export const en = {
   "nav.myGiveaways": "My giveaways",
   "nav.howItWorks": "How it works",
   "nav.selfHost": "Self-host",
+  "nav.verify": "Verify a draw",
   "nav.github": "GitHub",
   "nav.login": "Log in",
   "nav.logout": "Log out",
@@ -728,6 +729,12 @@ export const en = {
   "verify.title": "Verify this draw",
   "verify.intro":
     "Check in your browser that the winners follow from the list of entries and from a public random number that nobody here controls.",
+  "verifyLookup.title": "Verify a draw",
+  "verifyLookup.label": "Giveaway code or link",
+  "verifyLookup.help":
+    "A code has 5 letters and digits, like YNX9N. You can also paste the link viewers use.",
+  "verifyLookup.invalid": "That is not a giveaway code or link.",
+  "verifyLookup.submit": "Open the verification",
   "verify.back": "Back to the giveaway",
   "verify.open": "Entries are still open. The list of entries is fixed when they close.",
   "verify.closed.pending": "Entries are closed and the list is being fixed. Reload in a moment.",

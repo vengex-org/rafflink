@@ -22,6 +22,8 @@ export interface DemoPick {
   readonly claimUntil: number
   readonly claimedAt: number | null
   readonly rerolled: boolean
+  /** The claim time ran out before anyone claimed. */
+  readonly expired: boolean
 }
 
 /** What the visitor's winner types in chat; `claim` is the line that carries the claim keyword. */
@@ -70,6 +72,8 @@ export type DemoAction =
   | { readonly type: "mark"; readonly n: number; readonly now: number }
   | { readonly type: "reroll"; readonly n: number; readonly now: number }
   | { readonly type: "winnerCount"; readonly count: number }
+  /** The clock reached the claim time of picks that nobody claimed. */
+  | { readonly type: "expire"; readonly now: number }
   /** The visitor's winner writes the next line of {@link demoChatScript}. */
   | { readonly type: "chat"; readonly now: number }
 
@@ -157,6 +161,13 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
       return { ...state, winnerCount: action.count }
     case "chat":
       return writeChat(state, action.now)
+    case "expire":
+      return {
+        ...state,
+        laterPicks: state.laterPicks.map((pick) =>
+          waitingPick(pick) && pick.claimUntil <= action.now ? { ...pick, expired: true } : pick,
+        ),
+      }
   }
 }
 
@@ -192,6 +203,7 @@ function addPick(state: DemoState, now: number): DemoState {
     claimUntil: now + demoClaimMs,
     claimedAt: null,
     rerolled: false,
+    expired: false,
   }
   return { ...state, laterPicks: [...state.laterPicks, pick] }
 }
@@ -239,3 +251,7 @@ function writeChat(state: DemoState, now: number): DemoState {
     ? { ...state, chat, step: "claimed", claimedAt: now, claimedVia: "chat" }
     : { ...state, chat }
 }
+
+/** A pick whose claim clock runs: not claimed, replaced or out of time. */
+export const waitingPick = (pick: DemoPick) =>
+  pick.claimedAt === null && !pick.rerolled && !pick.expired

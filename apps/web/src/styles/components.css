@@ -164,6 +164,27 @@ main.container {
   }
 }
 
+/* On a phone the link sits in the settings popover, where the bar has no room for it. */
+.app-bar .app-verify {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .app-bar .app-verify {
+    display: inline-flex;
+  }
+
+  .settings-verify {
+    display: none;
+  }
+}
+
+.settings-verify {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .button.small {
   padding: 0 var(--space-2);
 }

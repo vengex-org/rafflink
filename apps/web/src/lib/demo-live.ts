@@ -35,7 +35,9 @@ export function demoLive(
   const entrants = demoEntrants(state.entrants)
   const winners = demoWinners(state, entrants)
   const status = demoStatus(state.step)
-  const unsettled = winners.some((winner) => winner.claim.state === "waiting")
+  const unsettled = winners.some(
+    (winner) => winner.claim.state === "waiting" || winner.claim.state === "expired",
+  )
   return {
     entrants,
     facts: demoFacts(state),
@@ -228,7 +230,12 @@ function demoWinners(state: DemoState, entrants: readonly Entrant[]): LiveWinner
             displayName: demoViewerName,
             profileImageUrl: null,
             claimUntil: state.drawnAt + demoClaimMs,
-            claim: pickClaim(state.firstRerolled, state.claimedAt, state.claimedVia ?? "rafflink"),
+            claim: pickClaim(
+              state.firstRerolled,
+              state.claimedAt,
+              state.claimedVia ?? "rafflink",
+              false,
+            ),
           },
         ]
   const later = state.laterPicks.map((pick) => ({
@@ -237,12 +244,18 @@ function demoWinners(state: DemoState, entrants: readonly Entrant[]): LiveWinner
     displayName: entrants[pick.seq - 1]?.displayName ?? null,
     profileImageUrl: null,
     claimUntil: pick.claimUntil,
-    claim: pickClaim(pick.rerolled, pick.claimedAt, "manual"),
+    claim: pickClaim(pick.rerolled, pick.claimedAt, "manual", pick.expired),
   }))
   return [...visitor, ...later]
 }
 
-function pickClaim(rerolled: boolean, claimedAt: number | null, via: ClaimedVia): WinnerClaim {
+function pickClaim(
+  rerolled: boolean,
+  claimedAt: number | null,
+  via: ClaimedVia,
+  expired: boolean,
+): WinnerClaim {
   if (rerolled) return { state: "rerolled" }
-  return claimedAt === null ? { state: "waiting" } : { state: "claimed", at: claimedAt, via }
+  if (claimedAt !== null) return { state: "claimed", at: claimedAt, via }
+  return { state: expired ? "expired" : "waiting" }
 }

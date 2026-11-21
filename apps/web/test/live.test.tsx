@@ -330,7 +330,7 @@ describe("live page: drawing", () => {
 
     await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
     await effectsRun()
-    expect(view.queryByText("Winner drawn.")).toBeNull()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(view.queryByRole("dialog")).toBeNull()
     expect(requests.at(-1)).toEqual({ route: drawPath, body: {} })
   })
@@ -370,7 +370,7 @@ describe("live page: drawing", () => {
 
     await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
     await effectsRun()
-    expect(view.queryByText("Winner drawn.")).toBeNull()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(requests.at(-1)?.route).toBe(drawPath)
   })
 
@@ -389,7 +389,7 @@ describe("live page: drawing", () => {
     expect(draw.querySelector("kbd")?.textContent).toBe("D")
     await waitFor(() => expect(requests.at(-1)?.route).toBe(drawPath))
     await effectsRun()
-    expect(view.queryByText("Winner drawn.")).toBeNull()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(requests.at(-1)?.route).toBe(drawPath)
   })
 
@@ -1730,7 +1730,7 @@ describe("live page: the controls bar", () => {
 
     await waitFor(() => expect(drawRequests()).toHaveLength(1))
     await effectsRun()
-    expect(view.queryByText("Winner drawn.")).toBeNull()
+    expect(view.container.querySelector(".toast")).toBeNull()
     expect(drawRequests()).toHaveLength(1)
   })
 

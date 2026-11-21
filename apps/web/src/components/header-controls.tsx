@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useState, type ReactNode } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
 import { languages, type Language } from "../i18n/language.ts"
 import {
@@ -18,8 +18,8 @@ const languageNames: Readonly<Record<Language, string>> = {
   cs: "Čeština",
 }
 
-/** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. */
-export function SettingsMenu() {
+/** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. `children` come first in the popover. */
+export function SettingsMenu({ children }: { readonly children?: ReactNode | undefined }) {
   const { t } = useI18n()
   const panelId = useId()
   return (
@@ -33,6 +33,7 @@ export function SettingsMenu() {
         <SlidersIcon />
       </button>
       <div id={panelId} popover="auto" className="settings-panel">
+        {children}
         <ThemeSwitch />
         <LanguageSwitch />
       </div>

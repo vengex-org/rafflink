@@ -31,6 +31,7 @@ import {
   demoStepMs,
   demoViewerName,
   initialDemoState,
+  waitingPick,
   type DemoAction,
   type DemoChatKey,
   type DemoState,
@@ -63,6 +64,21 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
     const timer = setTimeout(() => dispatch({ type: "advance", now: Date.now() }), delay)
     return () => clearTimeout(timer)
   }, [step])
+
+  const deadline = state.laterPicks
+    .filter(waitingPick)
+    .reduce<number | null>(
+      (soonest, pick) => (soonest === null ? pick.claimUntil : Math.min(soonest, pick.claimUntil)),
+      null,
+    )
+  useEffect(() => {
+    if (deadline === null) return
+    const timer = setTimeout(
+      () => dispatch({ type: "expire", now: Date.now() }),
+      Math.max(0, deadline - Date.now()),
+    )
+    return () => clearTimeout(timer)
+  }, [deadline])
 
   const nextChat = demoChatScript[state.chat.length]
   useEffect(() => {
@@ -155,6 +171,7 @@ function StreamerDemo({
           snapshot={snapshot}
           connected
           overlayToken={null}
+          cleanModeKey="rafflink-demo-clean"
           facts={facts}
           entrants={{ rows: entrants, phase: "ready", retry: noRetry }}
         />
@@ -192,7 +209,7 @@ function ViewerDemo({
       <GiveawayHead giveaway={giveaway} />
       {drawn ? null : <GiveawayPhase giveaway={giveaway} />}
       {step === "drawing" ? <output className="demo-drawing">{t("demo.drawing")}</output> : null}
-      {drawn ? <WinnerPlate name={demoViewerName} /> : null}
+      {drawn && !state.firstRerolled ? <WinnerPlate name={demoViewerName} /> : null}
       <div aria-live="polite" className="viewer-outcome" onClickCapture={driveScript}>
         {drawn ? (
           <DemoClaim state={state} giveaway={giveaway} />

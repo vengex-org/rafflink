@@ -100,6 +100,7 @@ function Connected({
       snapshot={snapshot}
       connected={connected}
       overlayToken={overlayToken}
+      cleanModeKey={liveCleanModeKey}
       facts={facts}
       entrants={entrants}
     />
@@ -112,6 +113,7 @@ export function LiveControls({
   snapshot,
   connected,
   overlayToken,
+  cleanModeKey,
   facts,
   entrants,
 }: {
@@ -119,12 +121,14 @@ export function LiveControls({
   readonly snapshot: LiveSnapshot
   readonly connected: boolean
   readonly overlayToken: string | null
+  /** Where the clean-mode choice is stored, so the demo does not share it with the real page. */
+  readonly cleanModeKey: string
   readonly facts: GiveawayView | null
   readonly entrants: ReturnType<typeof useEntrants>
 }) {
   const { t } = useI18n()
   const { message, busy, run } = useAction()
-  const [clean, toggleClean] = useCleanMode()
+  const [clean, toggleClean] = useCleanMode(cleanModeKey)
   const rerollOver = rerollOverText(snapshot)
   const current = currentWinner(snapshot.winners)
   const currentEntrant =
@@ -247,15 +251,15 @@ function Problems({ snapshot }: { readonly snapshot: LiveSnapshot }) {
   )
 }
 
-const cleanModeKey = "rafflink-live-clean"
+const liveCleanModeKey = "rafflink-live-clean"
 
 /** Clean mode hides the controls for the stream. The choice is stored; the c key flips it unless the streamer is typing or a question is open. */
-function useCleanMode(): readonly [boolean, () => void] {
-  const [clean, setClean] = useState(() => readStored(cleanModeKey) === "1")
+function useCleanMode(storageKey: string): readonly [boolean, () => void] {
+  const [clean, setClean] = useState(() => readStored(storageKey) === "1")
   const toggle = useCallback(() => {
-    writeStored(cleanModeKey, clean ? "0" : "1")
+    writeStored(storageKey, clean ? "0" : "1")
     setClean(!clean)
-  }, [clean])
+  }, [clean, storageKey])
   useShortcut("c", toggle)
   return [clean, toggle]
 }

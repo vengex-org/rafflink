@@ -17,15 +17,23 @@ const signedIn = {
 }
 
 describe("header session", () => {
-  it("shows the streamer's name linking to the dashboard and a Log out button", async () => {
+  it("shows the streamer's name as an account button on the home page, with no inline Log out or demo link", async () => {
     mockFetch(signedIn)
 
     const view = renderApp("/")
 
-    const name = await view.findByRole("link", { name: "Streamy" })
-    expect(name.getAttribute("href")).toBe("/dashboard")
-    expect(view.getByRole("button", { name: "Log out" })).toBeTruthy()
+    const name = await view.findByRole("button", { name: "Streamy" })
+    expect(view.queryByRole("link", { name: "Streamy" })).toBeNull()
+    expect(view.queryByRole("button", { name: "Log out" })).toBeNull()
     expect(view.queryByRole("link", { name: "Log in" })).toBeNull()
+    expect(view.queryByRole("link", { name: "Demo giveaway" })).toBeNull()
+
+    fireEvent.click(name)
+
+    // The hero button and the menu entry both lead to the dashboard.
+    const links = view.getAllByRole("link", { name: "My giveaways" })
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/dashboard", "/dashboard"])
+    expect(view.getByRole("button", { name: "Log out" })).toBeTruthy()
   })
 
   it("shows the streamer's profile picture in front of the name, the initials without one", async () => {
@@ -35,7 +43,7 @@ describe("header session", () => {
         ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: picture } }),
     })
     const withPicture = renderApp("/")
-    await withPicture.findByRole("link", { name: "Streamy" })
+    await withPicture.findByRole("button", { name: "Streamy" })
     expect(withPicture.container.querySelector(".account-avatar img")?.getAttribute("src")).toBe(
       picture,
     )
@@ -44,7 +52,7 @@ describe("header session", () => {
 
     mockFetch(signedIn)
     const without = renderApp("/")
-    await without.findByRole("link", { name: "Streamy" })
+    await without.findByRole("button", { name: "Streamy" })
     expect(without.container.querySelector(".account-avatar img")).toBeNull()
     expect(without.container.querySelector(".account-avatar")?.textContent).toBe("ST")
   })
@@ -111,10 +119,11 @@ describe("header session", () => {
       "POST /auth/logout": () => ({ status: 204, body: null }),
     })
     const view = renderApp("/")
-    fireEvent.click(await view.findByRole("button", { name: "Log out" }))
+    fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
+    fireEvent.click(view.getByRole("button", { name: "Log out" }))
 
     expect(await view.findByRole("link", { name: "Log in" })).toBeTruthy()
-    expect(view.queryByRole("link", { name: "Streamy" })).toBeNull()
+    expect(view.queryByRole("button", { name: "Streamy" })).toBeNull()
     expect(sessionCalls).toBe(1)
     expect(logged).not.toHaveBeenCalled()
   })
@@ -131,6 +140,19 @@ describe("header session", () => {
     restoreSocket()
   })
 
+  it.each(["/verify", "/privacy", "/terms"])(
+    "asks for the session once on %s and shows the account menu signed in",
+    async (path) => {
+      const requests = mockFetch(signedIn)
+
+      const view = renderApp(path)
+
+      await view.findByRole("button", { name: "Streamy" })
+      expect(view.queryByRole("link", { name: "Log in" })).toBeNull()
+      expect(requests.filter((request) => request.route === "GET /api/session")).toHaveLength(1)
+    },
+  )
+
   it("keeps the name and logs when the logout fails", async () => {
     const logged = spyOn(console, "error").mockImplementation(() => {})
     mockFetch({
@@ -138,13 +160,14 @@ describe("header session", () => {
       "POST /auth/logout": () => ({ status: 403, body: { error: "forbidden" } }),
     })
     const view = renderApp("/")
-    fireEvent.click(await view.findByRole("button", { name: "Log out" }))
+    fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
+    fireEvent.click(view.getByRole("button", { name: "Log out" }))
 
     await waitFor(() =>
       expect(logged).toHaveBeenCalledWith("action failed", { errorClass: "ApiError" }),
     )
-    expect(view.getByRole("link", { name: "Streamy" })).toBeTruthy()
-    expect(view.getByRole("button", { name: "Log out" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "Streamy" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: "Log in" })).toBeNull()
     expect(await view.findByText("Something went wrong. Try again.")).toBeTruthy()
   })
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, within } from "@testing-library/react"
-import { mockFetch } from "./mock-fetch.ts"
+import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 beforeEach(() => {
@@ -38,6 +38,21 @@ describe("home page", () => {
     const login = view.getByRole("link", { name: "Log in with Twitch" })
 
     expect(login.getAttribute("href")).toBe("/dashboard")
+  })
+
+  it("offers My giveaways instead of logging in when the streamer is signed in, from one session call", async () => {
+    const requests = mockFetch({
+      "GET /api/session": () =>
+        ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null } }),
+    })
+    const view = renderApp("/")
+
+    await view.findByRole("button", { name: "Streamy" })
+
+    const cta = view.getByRole("link", { name: "My giveaways" })
+    expect(cta.getAttribute("href")).toBe("/dashboard")
+    expect(view.queryByRole("link", { name: "Log in with Twitch" })).toBeNull()
+    expect(requests.filter((request) => request.route === "GET /api/session")).toHaveLength(1)
   })
 
   it("explains the flow in three steps", () => {

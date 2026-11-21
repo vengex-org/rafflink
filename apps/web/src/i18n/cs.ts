@@ -6,6 +6,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "nav.myGiveaways": "Moje soutěže",
   "nav.howItWorks": "Jak to funguje",
   "nav.selfHost": "Vlastní hosting",
+  "nav.verify": "Ověřit losování",
   "nav.github": "GitHub",
   "nav.login": "Přihlásit se",
   "nav.logout": "Odhlásit se",
@@ -734,6 +735,12 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "verify.title": "Ověření losování",
   "verify.intro":
     "Ve svém prohlížeči zkontroluj, že vítězové vycházejí ze seznamu přihlášek a z veřejného náhodného čísla, které tu nikdo neovládá.",
+  "verifyLookup.title": "Ověřit losování",
+  "verifyLookup.label": "Kód nebo odkaz giveaway",
+  "verifyLookup.help":
+    "Kód má 5 písmen a číslic, například YNX9N. Můžeš vložit i odkaz, který používají diváci.",
+  "verifyLookup.invalid": "Tohle není kód ani odkaz giveaway.",
+  "verifyLookup.submit": "Otevřít ověření",
   "verify.back": "Zpět na giveaway",
   "verify.open": "Přihlašování ještě běží. Seznam přihlášek se uzamkne, až se přihlašování uzavře.",
   "verify.closed.pending":

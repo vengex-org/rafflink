@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, jest, spyOn } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, within } from "@testing-library/react"
 import {
   demoClaimMs,
@@ -64,6 +64,7 @@ describe("demo page", () => {
   })
   afterEach(() => {
     cleanup()
+    mock.restore()
     jest.useRealTimers()
     restoreSocket()
   })
@@ -198,6 +199,23 @@ describe("demo script, streamer actions", () => {
     expect(demoReducer(rerolled, { type: "chat", now: 3000 })).toEqual(rerolled)
   })
 
+  it("lets a later pick expire when its claim time passes, and only if nobody claimed it", () => {
+    const next = demoReducer(drawn(), { type: "draw", now: 2000 })
+    const [pick] = next.laterPicks
+
+    const early = demoReducer(next, { type: "expire", now: 2000 + demoClaimMs - 1 })
+    const late = demoReducer(next, { type: "expire", now: 2000 + demoClaimMs })
+    const claimed = demoReducer(demoReducer(next, { type: "mark", n: 1, now: 3000 }), {
+      type: "expire",
+      now: 2000 + demoClaimMs,
+    })
+
+    expect(pick?.expired).toBe(false)
+    expect(early.laterPicks[0]?.expired).toBe(false)
+    expect(late.laterPicks[0]?.expired).toBe(true)
+    expect(claimed.laterPicks[0]?.expired).toBe(false)
+  })
+
   it("keeps the planned winner count the streamer sets", () => {
     expect(demoReducer(initialDemoState, { type: "winnerCount", count: 3 }).winnerCount).toBe(3)
   })
@@ -245,9 +263,27 @@ describe("demo views", () => {
   })
   afterEach(() => {
     cleanup()
+    mock.restore()
     jest.useRealTimers()
     restoreSocket()
     window.localStorage.clear()
+  })
+
+  it("falls back to the viewer's view for an unknown view in the address", () => {
+    const view = renderApp("/demo?view=foo")
+
+    expect(view.getByRole("radio", { name: "Viewer" })).toHaveProperty("checked", true)
+    expect(view.getByText("Ready to enter?")).toBeTruthy()
+  })
+
+  it("keeps the clean-mode choice of the demo apart from the real live page", () => {
+    const view = renderApp("/demo?view=streamer")
+
+    fireEvent.click(view.getByRole("button", { name: "Hide controls" }))
+
+    advanceInSlices(300)
+    expect(window.localStorage.getItem("rafflink-demo-clean")).toBe("1")
+    expect(window.localStorage.getItem("rafflink-live-clean")).toBeNull()
   })
 
   it("opens on the viewer's view", () => {
@@ -294,6 +330,15 @@ describe("demo views", () => {
     expect(view.getByText(/type/i, { selector: ".viewer-alt" })).toBeTruthy()
   })
 
+  it("shows a later pick as out of time once its claim clock ends", async () => {
+    const view = renderApp("/demo?view=streamer")
+    advanceInSlices(3000 + 1500 + 5000 + 1500 + 2500 + 3000)
+    fireEvent.click(view.getByRole("button", { name: "Draw next winner" }))
+    advanceInSlices(demoClaimMs + 3000)
+
+    expect(view.getAllByText("Claim time ran out").length).toBeGreaterThan(0)
+  })
+
   it("lets the streamer mark the visitor's claim and the viewer sees it", () => {
     const view = renderApp("/demo?view=streamer")
     expect(view.getByRole("radio", { name: "Streamer" })).toHaveProperty("checked", true)
@@ -322,6 +367,7 @@ describe("demo views", () => {
     fireEvent.click(view.getByRole("radio", { name: "Viewer" }))
 
     expect(view.getByText("Another winner was picked")).toBeTruthy()
+    expect(view.queryByText("mira_vex")).toBeNull()
   })
 
   it("sends no request and opens no socket from the streamer's view", async () => {

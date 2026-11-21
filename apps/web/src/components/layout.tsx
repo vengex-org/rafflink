@@ -1,17 +1,18 @@
-import type { SessionJson } from "@rafflink/core/http/json"
 import { useEffect, useId, useRef, useState, type ReactNode } from "react"
-import { Link, Outlet, useLocation, useNavigate } from "react-router"
-import { getSession, logout, sessionLost } from "../api/client.ts"
+import { Link, Outlet, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl } from "../lib/links.ts"
-import { useAction } from "../lib/use-action.ts"
-import { useLoad } from "../lib/use-load.ts"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { AppFrame } from "./page.tsx"
 import { SettingsMenu } from "./header-controls.tsx"
 import { TwitchIcon } from "./icons.tsx"
 import { Avatar } from "./live-parts.tsx"
+import {
+  StreamerSessionProvider,
+  useStreamerSession,
+  type SignedInStreamer,
+} from "./streamer-session.tsx"
 
 /**
  * The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages.
@@ -29,7 +30,7 @@ export function Layout({
   // The home page ends with its own footer and keeps the marketing links in its bar.
   const isHome = useLocation().pathname === "/"
   const showFooter = !isHome
-  return (
+  const page = (
     <div className="layout">
       <a href="#main" className="skip-link">
         {t("nav.skip")}
@@ -50,8 +51,15 @@ export function Layout({
             </nav>
           ) : null}
           <div className="app-bar-end">
-            {account ? <Account menu={!isHome} /> : <LoginLink />}
-            <SettingsMenu />
+            <Link className="button text app-verify" to="/verify">
+              {t("nav.verify")}
+            </Link>
+            {account ? <Account /> : <LoginLink />}
+            <SettingsMenu>
+              <Link className="settings-verify" to="/verify">
+                {t("nav.verify")}
+              </Link>
+            </SettingsMenu>
           </div>
         </div>
       </header>
@@ -71,60 +79,24 @@ export function Layout({
       ) : null}
     </div>
   )
+  return account ? <StreamerSessionProvider>{page}</StreamerSessionProvider> : page
 }
 
-/** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. `menu` folds the way out and the dashboard link into one account button. */
-function Account({ menu }: { readonly menu: boolean }) {
+/** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. The way out and the dashboard link sit in one account button. */
+function Account() {
   const { t } = useI18n()
-  const { result, reload } = useLoad(getSession)
-  const { message, busy, run } = useAction()
-  const navigate = useNavigate()
-  const [loggedOut, setLoggedOut] = useState(false)
-  const streamer = result.state === "ready" && !loggedOut ? result.value.streamer : null
-
-  // A signed-out header has nothing to correct, and a call still in flight already asks the server.
-  const signedIn = streamer !== null
-  useEffect(() => {
-    if (!signedIn) return
-    window.addEventListener(sessionLost, reload)
-    return () => window.removeEventListener(sessionLost, reload)
-  }, [signedIn, reload])
-
-  async function signOut() {
-    const outcome = await run(logout, () => "nav.loggedOut")
-    if (outcome === "failed") return
-    setLoggedOut(true)
-    navigate("/")
-  }
-
+  const { streamer, busy, message, signOut } = useStreamerSession()
   return (
     <>
       {streamer === null ? (
         <LoginLink />
-      ) : menu ? (
-        <AccountMenu streamer={streamer} busy={busy} onSignOut={() => void signOut()} />
       ) : (
-        <>
-          <Link className="button text" to="/dashboard">
-            <StreamerAvatar streamer={streamer} />
-            {streamer.displayName}
-          </Link>
-          <button
-            type="button"
-            className="button text"
-            disabled={busy}
-            onClick={() => void signOut()}
-          >
-            {t("nav.logout")}
-          </button>
-        </>
+        <AccountMenu streamer={streamer} busy={busy} onSignOut={signOut} />
       )}
       {message === null ? null : <Status>{t(message)}</Status>}
     </>
   )
 }
-
-type SignedInStreamer = NonNullable<SessionJson["streamer"]>
 
 function StreamerAvatar({ streamer }: { readonly streamer: SignedInStreamer }) {
   return (
