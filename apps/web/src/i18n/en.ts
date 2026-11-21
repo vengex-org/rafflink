@@ -574,6 +574,132 @@ export const en = {
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Any chat message from the winner also counts.",
   "review.keywordChat": 'The winner can also type "{keyword}" in your chat.',
+
+  "legal.privacy": "Privacy",
+  "legal.terms": "Terms",
+  "legal.footerLabel": "Legal",
+  "legal.updated": "Last updated: {date}",
+
+  "privacy.title": "Privacy policy",
+  "privacy.intro":
+    "Rafflink draws winners of Twitch giveaways. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
+  "privacy.controller.h": "Who is responsible",
+  "privacy.controller.p1":
+    "For the hosted service at this address the controller of your personal data is {operatorName}, {operatorAddress}. Contact: {contactEmail}.",
+  "privacy.controller.p2":
+    "Rafflink is open source and anyone can run their own copy. On a self-hosted instance the person who runs it is the controller, and this text only describes what the software does. The Rafflink project receives no data from self-hosted instances.",
+  "privacy.data.h": "What data is processed",
+  "privacy.data.p1":
+    "Everything comes from Twitch when you sign in with it. Rafflink asks for read access only and never posts to chat.",
+  "privacy.data.i1":
+    "Streamers: Twitch user ID, login name, display name and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
+  "privacy.data.i2":
+    "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway.",
+  "privacy.data.i3":
+    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets and time of entry. The follow and subscription check uses your Twitch token once and the token is not stored.",
+  "privacy.data.i4": "Winners: the draw result and whether and how the prize was claimed.",
+  "privacy.data.i5":
+    "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
+  "privacy.data.i6":
+    "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example with rate limits.",
+  "privacy.data.i7":
+    "Giveaway rooms: the Twitch user IDs of the channel's VIPs and moderators, stored to apply the ticket rules. They are deleted with the giveaway's entries.",
+  "privacy.purposes.h": "Why and on what legal basis",
+  "privacy.purposes.i1":
+    "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of a contract with you, the service you asked for (GDPR Article 6(1)(b)).",
+  "privacy.purposes.i2":
+    "To keep the service secure and fair: one entry per account, rate limits, hourly validation of streamer tokens. Our legitimate interest (Article 6(1)(f)).",
+  "privacy.purposes.i3":
+    "To keep you signed in with cookies that are strictly necessary for that. Rafflink uses no advertising, no analytics and no tracking, and it does not sell or share data for marketing.",
+  "privacy.retention.h": "How long data is kept",
+  "privacy.retention.i1":
+    "Entries (names, groups, tickets, entry times) are deleted 30 days after the giveaway closes.",
+  "privacy.retention.i2":
+    "When a streamer removes Rafflink's access on Twitch, only the stored Twitch token is deleted. The account and its giveaways stay until the streamer asks the operator to delete them (see the contact above).",
+  "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
+  "privacy.retention.i4":
+    "Host logs are kept as long as Cloudflare keeps them under its own terms.",
+  "privacy.recipients.h": "Who else sees the data",
+  "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
+  "privacy.recipients.i1":
+    "Cloudflare hosts the service (Workers, Durable Objects, D1) as our processor and may process data outside the European Economic Area under its standard contractual clauses.",
+  "privacy.recipients.i2":
+    "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. Twitch is an independent controller under its own privacy notice.",
+  "privacy.recipients.i3":
+    "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay.",
+  "privacy.cookies.h": "Cookies and local storage",
+  "privacy.cookies.p1":
+    "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",
+  "privacy.cookies.i1": "rl_streamer: keeps a streamer signed in, 7 days.",
+  "privacy.cookies.i2":
+    "rl_viewer: lets a returning viewer see their result without signing in again, 30 days.",
+  "privacy.cookies.i3":
+    "rl_oauth_streamer_* and rl_oauth_viewer_*: protect a sign-in against forgery, 10 minutes.",
+  "privacy.cookies.i4":
+    "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes.",
+  "privacy.cookies.i5":
+    "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
+  "privacy.rights.h": "Your rights",
+  "privacy.rights.p1":
+    "You have the rights listed below. Write to {contactEmail}. We answer within one month.",
+  "privacy.rights.p2":
+    "You can also remove Rafflink's access at any time in your Twitch settings under Connections.",
+  "privacy.rights.i1":
+    "Access, correction, restriction of processing and portability of your data.",
+  "privacy.rights.i2": "Erasure, for example of a winner entry that stays after the giveaway.",
+  "privacy.rights.i3": "Objection to processing based on our legitimate interest.",
+  "privacy.rights.i4":
+    "A complaint to the data protection authority of the country where you live or work, or where you think your rights were violated.",
+  "privacy.changes.h": "Changes",
+  "privacy.changes.p1": "When this policy changes, the date at the top changes with it.",
+
+  "terms.title": "Terms of use",
+  "terms.intro":
+    "By signing in or entering a giveaway on Rafflink you accept these terms. If you do not accept them, do not use the service.",
+  "terms.service.h": "The service",
+  "terms.service.p1":
+    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. The hosted service is run by {operatorName}, {operatorAddress}.",
+  "terms.service.p2":
+    "The service is provided as is and as available, without any warranty. It may change, be limited or be stopped at any time, and it has no uptime guarantee. On a self-hosted instance the person who runs it sets the terms.",
+  "terms.source.h": "Open source",
+  "terms.source.p1":
+    "The source code is licensed under the GNU AGPL-3.0 and is available at {repository}. The licence applies to the code. These terms apply to the hosted service.",
+  "terms.streamers.h": "Streamers",
+  "terms.streamers.p1": "You run your giveaway, not Rafflink. Rafflink only draws.",
+  "terms.streamers.i1": "You are responsible for the prize, for delivering it and for your rules.",
+  "terms.streamers.i2":
+    "You are responsible for the giveaway being legal in your jurisdiction and in the places your viewers live, including gambling, lottery, promotion and tax rules.",
+  "terms.streamers.i3":
+    "Entering must stay free for viewers. Extra tickets for subscribers or followers are your choice, and you must check that this is allowed where you run the giveaway.",
+  "terms.streamers.i4":
+    "You are responsible for how you use the entrants' data that you see, under the privacy law that applies to you.",
+  "terms.viewers.h": "Viewers",
+  "terms.viewers.i1": "Entering is free and needs a Twitch account.",
+  "terms.viewers.i2":
+    "The prize comes from the streamer, not from Rafflink. Rafflink is not a party to the giveaway and does not promise a prize or its delivery.",
+  "terms.viewers.i3":
+    "A win must be claimed within the time the streamer set. After that the streamer may draw again.",
+  "terms.twitch.h": "Twitch",
+  "terms.twitch.p1":
+    "Twitch's Terms of Service, Community Guidelines and Developer Services Agreement apply to your use of Twitch through Rafflink. Rafflink is not affiliated with or endorsed by Twitch.",
+  "terms.use.h": "Acceptable use",
+  "terms.use.p1": "You agree not to:",
+  "terms.use.i1": "use bots, scripts or other automation to enter or to claim,",
+  "terms.use.i2": "enter with more than one account or use someone else's account,",
+  "terms.use.i3":
+    "get around entry rules, rate limits or other protections, or disturb the service,",
+  "terms.use.i4":
+    "run unlawful giveaways or put unlawful or abusive content into a title or prize text.",
+  "terms.liability.h": "Liability",
+  "terms.liability.p1":
+    "As far as the law allows, we are not liable for indirect or consequential loss, for a giveaway, a prize or a dispute between a streamer and a viewer, or for an outage of Rafflink or Twitch. Our total liability is limited to the amount you paid us for the service, which is nothing for a free account.",
+  "terms.liability.p2":
+    "Nothing here limits liability that cannot be limited by law, such as liability for intent or for injury, or your rights as a consumer.",
+  "terms.changes.h": "Changes",
+  "terms.changes.p1":
+    "We may change these terms. The date at the top shows the current version, and using the service after a change means you accept it. We may remove a giveaway or block an account that breaks these terms.",
+  "terms.contact.h": "Contact",
+  "terms.contact.p1": "Questions about these terms: {contactEmail}.",
 } as const satisfies Record<string, string>
 
 export type MessageKey = keyof typeof en

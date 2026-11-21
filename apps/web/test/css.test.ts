@@ -19,7 +19,7 @@ const others = cssFiles(stylesDir)
 const index = sheet(join(src, "styles.css"))
 const everySheet = [index, tokens, ...others]
 
-const pages = ["home", "dashboard", "create", "giveaway", "live", "overlay", "admin"]
+const pages = ["home", "dashboard", "create", "giveaway", "live", "overlay", "admin", "legal"]
 
 const namedColors = new Set(
   `aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood

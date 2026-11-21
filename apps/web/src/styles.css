@@ -10,3 +10,4 @@
 @import "./styles/pages/live.css" layer(pages);
 @import "./styles/pages/overlay.css" layer(pages);
 @import "./styles/pages/admin.css" layer(pages);
+@import "./styles/pages/legal.css" layer(pages);
