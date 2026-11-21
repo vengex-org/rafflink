@@ -1388,11 +1388,12 @@ describe("GiveawayRoom retention", () => {
     expect(count(sql, "entries")).toBe(0)
   })
 
-  it("sets the alarm to the deadline while data remains and to nothing once it is deleted", () => {
+  it("sets the alarm to the deadline while data remains and to nothing once it is deleted", async () => {
     const { room, alarm, clock } = setup()
     room.enter(viewer("1"))
     clock.advance(1000)
     room.close()
+    await room.commit()
     room.markMirrored("closed")
     expect(alarm.at).toBe(1000 + retentionMs)
 
@@ -1402,7 +1403,7 @@ describe("GiveawayRoom retention", () => {
     expect(alarm.at).toBeNull()
   })
 
-  it("arms the retention alarm of a room that was closed before the schema change and gets no further write", () => {
+  it("arms the retention alarm of a room that was closed before the schema change and gets no further write", async () => {
     const sql = new BunSqliteSyncSql(new Database(":memory:"))
     applyMigrations(sql, roomMigrations.slice(0, 1))
     sql.exec(
@@ -1428,6 +1429,7 @@ describe("GiveawayRoom retention", () => {
       beacon: new FakeBeacon(),
     })
 
+    await room.commit()
     room.armAlarm()
     expect(alarm.at).toBe(1000 + retentionMs)
 
@@ -1484,6 +1486,37 @@ describe("GiveawayRoom retention", () => {
 
     expect(await room.reroll(0)).toEqual({ kind: "entries-deleted" })
     expect(room.picks()).toHaveLength(1)
+  })
+
+  it("keeps the root, the round and the leaves after the entries are deleted, and does not commit then", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    await room.commit()
+    const before = { commitment: room.verification().commitment, leaves: room.leaves() }
+
+    clock.advance(retentionMs)
+    room.onAlarm()
+    await room.commit()
+
+    expect(room.leafOf(twitch("1"))).toBeNull()
+    expect(room.verification().commitment).toEqual(before.commitment)
+    expect(room.leaves()).toEqual(before.leaves)
+    expect(before.leaves).toHaveLength(1)
+  })
+
+  it("does not commit a closed room whose entries were deleted before it committed", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    await room.commit()
+
+    expect(room.verification().commitment).toBeNull()
+    expect(room.onAlarm().commit).toBe(false)
+    expect(await room.draw(1)).toEqual({ kind: "entries-deleted" })
   })
 
   it("never deletes the entries of an open room", () => {
