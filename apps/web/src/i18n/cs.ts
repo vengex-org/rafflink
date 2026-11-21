@@ -601,7 +601,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i2":
     "Streameři: Twitch refresh token, uložený šifrovaně. Díky němu Rafflink během giveawaye čte seznam VIP a moderátorů kanálu a chat.",
   "privacy.data.i3":
-    "Účastníci: Twitch user ID, přihlašovací jméno, zobrazované jméno, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů a čas zapojení. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
+    "Účastníci: Twitch user ID, přihlašovací jméno, zobrazované jméno, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů, čas zapojení a náhodná hodnota (salt), díky které je losování ověřitelné. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
   "privacy.data.i4": "Výherci: výsledek losování a to, zda a jak byla výhra převzata.",
   "privacy.data.i5":
     "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují.",
@@ -624,6 +624,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.retention.i3": "Přihlašovací kódy čekající ve frontě se po několika minutách zahodí.",
   "privacy.retention.i4":
     "Logy hostitele se uchovávají tak dlouho, jak je podle vlastních podmínek uchovává Cloudflare.",
+  "privacy.retention.i5":
+    "Seznam výherců, Merkleův kořen seznamu zapojení a seznam jeho listů (hashe a počty tiketů, bez jmen) zůstávají u giveawaye, aby losování mohl později ověřit kdokoli.",
   "privacy.recipients.h": "Kdo další údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje neprodává. Údaje jdou jen těmto stranám.",
   "privacy.recipients.i1":
@@ -632,6 +634,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Twitch je poskytovatel identity. Dostává tvé přihlášení a během giveawaye také volání API ke kontrole follow, předplatného a rolí a odběr chatu, kterým se rozpoznává převzetí výhry. Twitch je samostatný správce podle vlastních zásad ochrany soukromí.",
   "privacy.recipients.i3":
     "Streamer, který giveaway vede, vidí jeho účastníky a výherce. Jména účastníků a výherců se zobrazují na živé stránce giveawaye a v overlayi.",
+  "privacy.recipients.i4":
+    "Při losování se čte veřejný maják náhodnosti drand. Neposílají se mu žádné osobní údaje.",
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",

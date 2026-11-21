@@ -596,7 +596,7 @@ export const en = {
   "privacy.data.i2":
     "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway.",
   "privacy.data.i3":
-    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets and time of entry. The follow and subscription check uses your Twitch token once and the token is not stored.",
+    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4": "Winners: the draw result and whether and how the prize was claimed.",
   "privacy.data.i5":
     "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
@@ -619,6 +619,8 @@ export const en = {
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
   "privacy.retention.i4":
     "Host logs are kept as long as Cloudflare keeps them under its own terms.",
+  "privacy.retention.i5":
+    "The winner list, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay with the giveaway, so anyone can check the draw later.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":
@@ -627,6 +629,8 @@ export const en = {
     "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. Twitch is an independent controller under its own privacy notice.",
   "privacy.recipients.i3":
     "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay.",
+  "privacy.recipients.i4":
+    "The public drand randomness beacon is read for the draw. No personal data is sent to it.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",
