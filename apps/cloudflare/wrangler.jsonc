@@ -43,12 +43,10 @@
   ],
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["GiveawayRoomDO", "TokenQueueDO"] },
-    // v2 drops every room stored before 2026-11-21 (rapid development, no data kept) and starts a new class.
-    {
-      "tag": "v2",
-      "new_sqlite_classes": ["GiveawayRoomObject"],
-      "deleted_classes": ["GiveawayRoomDO"],
-    },
+    // v2 and v3 drop every room stored before 2026-11-21 (rapid development, no data kept). Cloudflare refuses
+    // to delete a class in the deploy that moves its binding away, so v2 adds the new class and v3 deletes the old.
+    { "tag": "v2", "new_sqlite_classes": ["GiveawayRoomObject"] },
+    { "tag": "v3", "deleted_classes": ["GiveawayRoomDO"] },
   ],
   "triggers": { "crons": ["0 * * * *"] },
   "observability": { "enabled": true },
