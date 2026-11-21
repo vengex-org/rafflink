@@ -411,6 +411,8 @@ export const en = {
   "dash.linkObs": "Link and OBS overlay",
   "dash.duplicate": "Duplicate",
   "dash.duplicate.label": "Duplicate {name}",
+  "dash.section.running": "Running",
+  "dash.section.drawn": "Finished",
 
   "share.link": "Your link",
   "share.copyLink": "Copy link",

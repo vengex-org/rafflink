@@ -1,9 +1,31 @@
-/* Dashboard: the running giveaways as cards with their actions under a rule, the drawn ones as rows of one card. */
+/* Dashboard: running giveaways, then drawn ones, each under a section label and each giveaway its own card. */
 
+/* The section label of the live page cards: small caps in the second ink. */
+.dash-section > h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dash-section + .dash-section,
+.dash-section + .support-note {
+  margin-top: var(--space-5);
+}
+
+.support-note + .dash-section {
+  margin-top: var(--space-3);
+}
+
+/* Both lists share one column track so their cards line up; a card keeps its own height, so opening one
+   card's links does not stretch its neighbour. */
 .giveaways {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
-  gap: var(--space-2);
+  align-items: start;
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -29,7 +51,7 @@
   margin-bottom: 0.25rem;
 }
 
-.giveaway-head h2 {
+.giveaway-head h3 {
   margin: 0;
   font-size: 1.375rem;
   font-weight: 800;
@@ -55,10 +77,6 @@
   border-top: 1px solid var(--line);
 }
 
-.giveaways.pinned {
-  margin-bottom: var(--space-2);
-}
-
 /* The support line sits outside the cards, in the muted ink of a footnote. */
 .support-note {
   display: flex;
@@ -79,47 +97,43 @@
   font-weight: 600;
 }
 
-.giveaways.rows {
-  grid-template-columns: 1fr;
-  gap: 0;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-
-.giveaways .row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.25rem var(--space-2);
-  padding: var(--space-2) 0;
-}
-
-.giveaways .row + .row {
-  border-top: 1px solid var(--line);
-}
-
-.giveaways .row > .giveaway-head {
-  justify-content: flex-start;
-  margin: 0;
-}
-
-.giveaways .row > .giveaway-head h2 {
+/* A drawn giveaway is done: a smaller title, narrow text buttons pulled flush with the text, and the links
+   folded into a borderless footer row instead of a boxed panel. */
+.giveaways.drawn .giveaway-head h3 {
   font-size: var(--fs-lg);
   font-weight: 700;
 }
 
-.giveaways .row > p,
-.giveaways .row > details {
-  grid-column: 1 / -1;
+.giveaways.drawn .card > .actions {
+  gap: 0;
+  margin: var(--space-1) 0 0 calc(-1 * var(--space-1));
+  padding-top: 0;
+  border-top: 0;
 }
 
-.giveaways .row > .actions {
-  grid-column: 2;
-  grid-row: 1;
-  margin: 0;
+.giveaways.drawn .actions .button {
+  padding-inline: var(--space-1);
+}
+
+.giveaways.drawn .extra {
+  margin-top: var(--space-1);
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.giveaways.drawn .extra > summary {
+  padding-inline: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.giveaways.drawn .extra > :not(summary) {
+  margin-inline: 0;
+}
+
+.giveaways.drawn .extra[open] {
+  padding-bottom: 0;
 }
 
 /* Empty dashboard: the pitch and the one button on the left, the three moves on the right. */
@@ -250,16 +264,5 @@
 
   .created-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 40rem) {
-  .giveaways.rows {
-    padding: 0 var(--space-2);
-  }
-
-  .giveaways .row > .actions {
-    grid-column: 1 / -1;
-    grid-row: auto;
   }
 }
