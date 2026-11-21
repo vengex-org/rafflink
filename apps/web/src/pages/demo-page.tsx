@@ -1,5 +1,4 @@
 import { useEffect, useReducer, useState, type MouseEvent } from "react"
-import type { ViewerState } from "@rafflink/core/http/json"
 import type { GiveawayView } from "../api/client.ts"
 import { ClaimPanel } from "../components/giveaway-claim.tsx"
 import { EntryPanel } from "../components/giveaway-entry.tsx"
@@ -20,6 +19,7 @@ import {
   initialDemoState,
   type DemoState,
 } from "../lib/demo-script.ts"
+import type { WonView } from "../lib/viewer-outcome.ts"
 
 /** A giveaway that plays itself in the browser with made-up names; nothing leaves the page. */
 export function DemoPage() {
@@ -30,13 +30,12 @@ export function DemoPage() {
 function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(demoReducer, initialDemoState)
-  const [startedAt] = useState(() => Date.now())
   const { step } = state
 
   useEffect(() => {
     const delay = demoStepMs[step]
     if (delay === null) return
-    const timer = setTimeout(() => dispatch({ type: "advance" }), delay)
+    const timer = setTimeout(() => dispatch({ type: "advance", now: Date.now() }), delay)
     return () => clearTimeout(timer)
   }, [step])
 
@@ -51,22 +50,21 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
     if (!(event.target instanceof Element) || event.target.closest("a, button") === null) return
     event.preventDefault()
     event.stopPropagation()
-    if (step === "open" || step === "won") dispatch({ type: "advance" })
+    if (step === "open" || step === "won") dispatch({ type: "advance", now: Date.now() })
   }
 
   const giveaway = demoGiveaway(state)
   const drawn = giveaway.status === "drawn"
-  const win: Extract<ViewerState, { kind: "won" }> = {
+  const win: WonView = {
     kind: "won",
     userId: "demo",
     n: 0,
-    tickets: demoEntry.tickets,
-    group: demoEntry.group,
+    entry: demoEntry,
     claimRemainingMs: demoClaimMs,
     claim:
-      step === "claimed"
-        ? { state: "claimed", at: startedAt, via: "rafflink" }
-        : { state: "waiting" },
+      state.claimedAt === null
+        ? { state: "waiting" }
+        : { state: "claimed", at: state.claimedAt, via: "rafflink" },
     chatClaimAvailable: false,
   }
 

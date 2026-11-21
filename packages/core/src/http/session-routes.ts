@@ -3,7 +3,7 @@ import type { StreamerRecord } from "../accounts/account-store.ts"
 import type { AppDeps } from "./deps.ts"
 import type { SessionJson } from "./json.ts"
 import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
-import { sameOrigin } from "./websocket-origin.ts"
+import { sameOrigin } from "./origin.ts"
 
 export function sessionRoutes(deps: AppDeps): Hono {
   const app = new Hono()

@@ -7,7 +7,7 @@ import {
   minViewerSocketGiveUpMs,
 } from "../src/lib/use-viewer-push.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
-import { giveaway } from "./fixtures.ts"
+import { claimedAt, claimedAtText, giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -157,24 +157,8 @@ describe("viewer page: push", () => {
     expect(view.getByText("Your entry: 2 tickets as a moderator.")).toBeTruthy()
   })
 
-  it("loads the page again when a reroll makes a viewer the page loaded as not-won the winner", async () => {
-    const answers = [
-      { kind: "not-won", userId: "u1" },
-      {
-        kind: "won",
-        userId: "u1",
-        n: 1,
-        tickets: 3,
-        group: "vip",
-        claimRemainingMs: 90_000,
-        claim: { state: "waiting" },
-        chatClaimAvailable: true,
-      },
-    ]
-    const requests = mockFetch({
-      "GET /api/g/ABCDE": () =>
-        ok({ ...giveaway, me: answers[Math.min(pageLoads(requests) - 1, 1)] }),
-    })
+  it("shows a reroll winner the page held as not-won the win from the push alone, without a ticket box", async () => {
+    const requests = mockFetch(pageRoute({ kind: "not-won", userId: "u1" }))
     const view = renderApp("/ABCDE")
     await view.findByText("The winner was drawn. It was not you this time.")
 
@@ -182,8 +166,25 @@ describe("viewer page: push", () => {
     act(() => socket.push(push({ status: "drawn", winners: [waitingWinner("u1", 1)] })))
 
     expect(await view.findByRole("heading", { name: "You won" })).toBeTruthy()
-    expect(view.getByText("Your entry: 3 tickets as a VIP.")).toBeTruthy()
-    expect(pageLoads(requests)).toBe(2)
+    expect(view.getByRole("button", { name: "Claim my prize" })).toBeTruthy()
+    expect(view.queryByText(/Your entry:/)).toBeNull()
+    expect(pageLoads(requests)).toBe(1)
+  })
+
+  it("shows a claimed reroll winner the claim time without a ticket box", async () => {
+    mockFetch(pageRoute({ kind: "not-won", userId: "u1" }))
+    const view = renderApp("/ABCDE")
+    await view.findByText("The winner was drawn. It was not you this time.")
+
+    const socket = await connected()
+    const claimed = {
+      ...waitingWinner("u1", 1),
+      claim: { state: "claimed" as const, at: claimedAt, via: "chat" as const },
+    }
+    act(() => socket.push(push({ status: "drawn", winners: [claimed] })))
+
+    expect(await view.findByText(`Claimed at ${claimedAtText}.`)).toBeTruthy()
+    expect(view.queryByText(/Your entry:/)).toBeNull()
   })
 
   it("says it was not them when the winners are other users", async () => {

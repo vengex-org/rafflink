@@ -16,11 +16,16 @@ export type DemoStep = (typeof demoSteps)[number]
 export interface DemoState {
   readonly step: DemoStep
   readonly entrants: number
+  /** When the visitor claimed, as the clock read at that step; null before. */
+  readonly claimedAt: number | null
 }
 
-export type DemoAction = { readonly type: "advance" } | { readonly type: "join" }
+/** `advance` carries the clock reading, so the reducer stays pure and the claim time is the moment of the step. */
+export type DemoAction =
+  | { readonly type: "advance"; readonly now: number }
+  | { readonly type: "join" }
 
-export const initialDemoState: DemoState = { step: "open", entrants: 41 }
+export const initialDemoState: DemoState = { step: "open", entrants: 41, claimedAt: null }
 
 const enteredMs = 1500
 const risingMs = 5000
@@ -60,7 +65,11 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
     case "advance": {
       const next = demoSteps[demoSteps.indexOf(state.step) + 1]
       if (next === undefined) return state
-      return { step: next, entrants: state.step === "open" ? state.entrants + 1 : state.entrants }
+      return {
+        step: next,
+        entrants: state.step === "open" ? state.entrants + 1 : state.entrants,
+        claimedAt: next === "claimed" ? action.now : state.claimedAt,
+      }
     }
     case "join":
       return state.step === "rising" ? { ...state, entrants: state.entrants + 1 } : state

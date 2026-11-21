@@ -34,9 +34,9 @@ const drawn: LiveSnapshot = {
 
 function routeSnapshot(
   snapshot: LiveSnapshot,
-  giveawayReply: () => Reply = () => ok({ ...giveaway, prize: null }),
+  giveawayReply: () => Reply | Promise<Reply> = () => ok({ ...giveaway, prize: null }),
 ) {
-  mockFetch({
+  return mockFetch({
     "GET /api/overlay/gid-1/tok-1": () => ok(snapshot),
     "GET /api/g/ABCDE": giveawayReply,
   })
@@ -129,6 +129,34 @@ it("shows the prize on each winner plate", async () => {
 
   expect(await view.findAllByText("A gaming chair")).toHaveLength(2)
   expect(view.getAllByText("Summer giveaway")).toHaveLength(1)
+})
+
+it("leaves the prize line empty while the prize loads, so the title never flashes first", async () => {
+  routeSnapshot(drawn, () => new Promise<Reply>(() => {}))
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("Bob")).toBeTruthy()
+  expect(view.container.querySelector(".overlay-prize")?.textContent).toBe("")
+  expect(view.getAllByText("Summer giveaway")).toHaveLength(1)
+})
+
+it("does not load the prize in compact mode, which shows no prize", async () => {
+  const requests = routeSnapshot(drawn)
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=compact")
+  await view.findByRole("heading", { level: 1, hidden: true })
+
+  expect(requests.map((request) => request.route)).toEqual(["GET /api/overlay/gid-1/tok-1"])
+})
+
+it("does not load the prize while the giveaway is open", async () => {
+  const requests = routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+  await view.findByRole("heading", { level: 1, hidden: true })
+
+  expect(requests.map((request) => request.route)).toEqual(["GET /api/overlay/gid-1/tok-1"])
 })
 
 it.each([

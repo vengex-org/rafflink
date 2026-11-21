@@ -1,34 +1,53 @@
+import type { ViewerState } from "@rafflink/core/http/json"
 import type { ViewerPush } from "@rafflink/core/room/giveaway-room"
-import type { GiveawayLoad } from "../api/client.ts"
+import type { EntrySummary } from "@rafflink/core/room/rows"
+import type { GiveawayLoad, GiveawayView } from "../api/client.ts"
+
+/** A winner as the page shows them; `entry` is null when only a push named them and the page never saw their entry. */
+export type WonView = Omit<Extract<ViewerState, { kind: "won" }>, "tickets" | "group"> & {
+  readonly entry: Pick<EntrySummary, "tickets" | "group"> | null
+}
+
+/** The viewer's state on the page: the loaded {@link ViewerState} with the winner's entry made optional. */
+export type ViewerView = Exclude<ViewerState, { kind: "won" }> | WonView
+
+export interface GiveawayPageState {
+  readonly giveaway: GiveawayView
+  readonly me: ViewerView
+}
 
 /**
  * The page as the last push says it stands. The page compares the winners with its own viewer's id, so
  * the push can carry everyone's outcome and no viewer has to ask the server for theirs.
  */
-export function applyViewerPush(load: GiveawayLoad, push: ViewerPush | null): GiveawayLoad {
-  if (push === null) return load
-  const { me } = load
+export function applyViewerPush(load: GiveawayLoad, push: ViewerPush | null): GiveawayPageState {
+  const me = viewOf(load.me)
+  if (push === null) return { giveaway: load.giveaway, me }
   const giveaway = { ...load.giveaway, status: push.status, finished: push.finished }
   if (push.status !== "drawn" || me.kind === "signed-out" || me.kind === "not-entered") {
     return { giveaway, me }
   }
   const winner = push.winners.find((candidate) => candidate.platformUserId === me.userId)
   if (winner === undefined) return { giveaway, me: { kind: "not-won", userId: me.userId } }
-  // The push names winners only, so their own entry comes from the page's earlier answer. A viewer
-  // the page loaded as not-won has none; the page loads again for them (giveaway-page.tsx).
-  const entry = me.kind === "won" ? me : me.kind === "entered" ? me.entry : null
-  if (entry === null) return { giveaway, me }
+  // The push names winners without their entry, so it is kept from the page's earlier answer when the
+  // viewer was a winner or entered, and unknown when a reroll makes a viewer the page held as not-won the winner.
+  const entry = me.kind === "won" || me.kind === "entered" ? me.entry : null
   return {
     giveaway,
     me: {
       kind: "won",
       userId: me.userId,
       n: winner.n,
-      tickets: entry.tickets,
-      group: entry.group,
+      entry,
       claimRemainingMs: Math.max(0, winner.claimUntil - push.now),
       claim: winner.claim,
       chatClaimAvailable: push.chatClaimAvailable,
     },
   }
+}
+
+function viewOf(me: ViewerState): ViewerView {
+  if (me.kind !== "won") return me
+  const { tickets, group, ...rest } = me
+  return { ...rest, entry: { tickets, group } }
 }

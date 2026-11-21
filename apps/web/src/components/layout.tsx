@@ -1,4 +1,4 @@
-import { useId } from "react"
+import { useId, useState } from "react"
 import { Link, Outlet, useNavigate } from "react-router"
 import { getSession, logout } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -10,8 +10,11 @@ import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
 import { SlidersIcon, TwitchIcon } from "./icons.tsx"
 
-/** The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages. */
-export function Layout() {
+/**
+ * The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages.
+ * `account` asks the server who the streamer is, which only the streamer's pages need.
+ */
+export function Layout({ account }: { readonly account: boolean }) {
   const { t } = useI18n()
   const settingsId = useId()
   return (
@@ -36,7 +39,7 @@ export function Layout() {
             <Link className="button text app-demo" to="/demo">
               {t("nav.demo")}
             </Link>
-            <Account />
+            {account ? <Account /> : <LoginLink />}
             <button
               type="button"
               className="icon-button"
@@ -63,25 +66,23 @@ export function Layout() {
 /** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. */
 function Account() {
   const { t } = useI18n()
-  const { result, reload } = useLoad(getSession)
+  const { result } = useLoad(getSession)
   const { message, busy, run } = useAction()
   const navigate = useNavigate()
-  const streamer = result.state === "ready" ? result.value.streamer : null
+  const [loggedOut, setLoggedOut] = useState(false)
+  const streamer = result.state === "ready" && !loggedOut ? result.value.streamer : null
 
   async function signOut() {
     const outcome = await run(logout, () => "nav.loggedOut")
     if (outcome === "failed") return
-    reload()
+    setLoggedOut(true)
     navigate("/")
   }
 
   return (
     <>
       {streamer === null ? (
-        <Link className="button" to="/dashboard">
-          <TwitchIcon />
-          {t("nav.login")}
-        </Link>
+        <LoginLink />
       ) : (
         <>
           <Link className="button text" to="/dashboard">
@@ -99,5 +100,15 @@ function Account() {
       )}
       {message === null ? null : <Status>{t(message)}</Status>}
     </>
+  )
+}
+
+function LoginLink() {
+  const { t } = useI18n()
+  return (
+    <Link className="button" to="/dashboard">
+      <TwitchIcon />
+      {t("nav.login")}
+    </Link>
   )
 }

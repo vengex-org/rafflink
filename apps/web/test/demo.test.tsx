@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, jest, spyOn } from "bun:test"
 import { act, cleanup, fireEvent } from "@testing-library/react"
 import { demoReducer, demoSteps, initialDemoState, type DemoState } from "../src/lib/demo-script.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
-import { mockFetch } from "./mock-fetch.ts"
+import { claimedAt, claimedAtText } from "./fixtures.ts"
 import { renderApp } from "./render-app.tsx"
 
 describe("demo timeline", () => {
@@ -10,7 +10,7 @@ describe("demo timeline", () => {
     const seen: string[] = [initialDemoState.step]
     let state: DemoState = initialDemoState
     for (let index = 0; index < demoSteps.length + 1; index += 1) {
-      state = demoReducer(state, { type: "advance" })
+      state = demoReducer(state, { type: "advance", now: 0 })
       seen.push(state.step)
     }
 
@@ -18,9 +18,18 @@ describe("demo timeline", () => {
     expect(seen.at(-1)).toBe("claimed")
   })
 
+  it("records the clock reading of the step that claims, and only that step", () => {
+    const won = { ...initialDemoState, step: "won" } as const
+    const claimed = demoReducer(won, { type: "advance", now: 5000 })
+
+    expect(demoReducer(initialDemoState, { type: "advance", now: 9 }).claimedAt).toBeNull()
+    expect(claimed.claimedAt).toBe(5000)
+    expect(demoReducer(claimed, { type: "advance", now: 9000 }).claimedAt).toBe(5000)
+  })
+
   it("counts the visitor on entering and other people only while entries rise", () => {
-    const entered = demoReducer(initialDemoState, { type: "advance" })
-    const rising = demoReducer(entered, { type: "advance" })
+    const entered = demoReducer(initialDemoState, { type: "advance", now: 0 })
+    const rising = demoReducer(entered, { type: "advance", now: 0 })
 
     expect(entered.entrants).toBe(initialDemoState.entrants + 1)
     expect(demoReducer(initialDemoState, { type: "join" })).toEqual(initialDemoState)
@@ -29,10 +38,8 @@ describe("demo timeline", () => {
   })
 })
 
-// The header asks for the session on every page; the demo itself must not call anything else.
-const answerSessionOnly = (input: string | URL | Request) => {
-  if (input !== "/api/session") throw new Error("the demo must not call fetch")
-  return Promise.resolve(Response.json({ streamer: null }))
+const refuseFetch = () => {
+  throw new Error("the demo must not call fetch")
 }
 const advance = (ms: number) => act(() => jest.advanceTimersByTime(ms))
 
@@ -43,11 +50,9 @@ describe("demo page", () => {
     jest.useFakeTimers()
     restoreSocket = installFakeSocket()
     FakeSocket.opened.length = 0
-    mockFetch({})
   })
   afterEach(() => {
     cleanup()
-    mock.restore()
     jest.useRealTimers()
     restoreSocket()
   })
@@ -55,7 +60,7 @@ describe("demo page", () => {
   it("plays a giveaway from entering to the claim without a request, and plays again", () => {
     // lib.dom's fetch type has no `preconnect`, Bun's has; the demo never calls it.
     const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
-      Object.assign(answerSessionOnly, { preconnect: () => {} }),
+      Object.assign(refuseFetch, { preconnect: () => {} }),
     )
     const view = renderApp("/demo")
 
@@ -92,8 +97,19 @@ describe("demo page", () => {
     expect(view.getByText("41 people entered")).toBeTruthy()
     expect(view.queryByText("mira_vex")).toBeNull()
 
-    expect(fetchSpy.mock.calls.map(([input]) => input)).toEqual(["/api/session"])
+    expect(fetchSpy).not.toHaveBeenCalled()
     expect(FakeSocket.opened).toHaveLength(0)
+  })
+
+  it("shows the moment of the claim, not the moment the demo started", () => {
+    jest.setSystemTime(claimedAt - 30 * 60_000)
+    const view = renderApp("/demo")
+    for (const ms of [3000, 1500, 5000, 1500, 2500]) advance(ms)
+    jest.setSystemTime(claimedAt)
+
+    fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))
+
+    expect(view.getByText(`Claimed at ${claimedAtText}.`)).toBeTruthy()
   })
 
   it("enters by itself when the visitor does nothing", () => {

@@ -1,10 +1,10 @@
-import type { ViewerState } from "@rafflink/core/http/json"
 import { claimPrize, type GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { forgetStoredGiveaway } from "../lib/stored-giveaway.ts"
 import { useAction } from "../lib/use-action.ts"
 import { giveawayName } from "../lib/messages.ts"
 import { useRemainingMs } from "../lib/use-remaining.ts"
+import type { WonView } from "../lib/viewer-outcome.ts"
 import { claimTone, Countdown } from "./countdown.tsx"
 import { AlertIcon, CheckIcon, ClockIcon } from "./icons.tsx"
 import { GiveawayState, TicketBox } from "./giveaway-state.tsx"
@@ -20,7 +20,7 @@ export function ClaimPanel({
   giveaway,
 }: {
   readonly code: string
-  readonly win: Extract<ViewerState, { kind: "won" }>
+  readonly win: WonView
   readonly giveaway: GiveawayView
 }) {
   const i18n = useI18n()
@@ -41,7 +41,7 @@ export function ClaimPanel({
   if (claimed) {
     return (
       <GiveawayState tone="win" title={t("win.claimed.title")} line={prize}>
-        <TicketBox tickets={win} />
+        {win.entry === null ? null : <TicketBox tickets={win.entry} />}
         {win.claim.state === "claimed" ? (
           <p className="viewer-note">{t("win.claimedAt", { time: i18n.time(win.claim.at) })}</p>
         ) : null}
@@ -72,7 +72,7 @@ export function ClaimPanel({
         />
       }
     >
-      <TicketBox tickets={win} />
+      {win.entry === null ? null : <TicketBox tickets={win.entry} />}
       <p className="viewer-note">{t("win.press")}</p>
       <button
         type="button"

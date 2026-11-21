@@ -1277,6 +1277,25 @@ describe("viewer state", () => {
     })
   })
 
+  it("answers 500 without details when a winner has no entry row", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const { code, id, winnerBrowser } = await drawnGiveaway()
+    spyOn(harness.rooms.roomFor(id), "entryOf").mockReturnValue(null)
+
+    const response = await winnerBrowser.request(`/api/g/${code}`)
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({
+      error: "internal",
+      requestId: expect.stringMatching(/\S/),
+    })
+    expect(error).toHaveBeenCalledWith("request failed", {
+      requestId: expect.stringMatching(/\S/),
+      errorClass: "Error",
+    })
+    error.mockRestore()
+  })
+
   it("says the giveaway is finished once the draw is done and every pick is claimed", async () => {
     const { code, winnerBrowser } = await drawnGiveaway()
 
