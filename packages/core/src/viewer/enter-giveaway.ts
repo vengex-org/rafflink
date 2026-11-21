@@ -1,6 +1,7 @@
 import { setTimeout } from "node:timers/promises"
 import type { AccountStore, Giveaway } from "../accounts/account-store.ts"
 import type { ResolvedConfig } from "../config.ts"
+import { jitteredDelay } from "../lib/jittered-delay.ts"
 import type { Clock, RateLimiter, Random } from "../ports.ts"
 import type { QueuedCode } from "../queue/token-queue.ts"
 import type { RoomViewer } from "../room/giveaway-room.ts"
@@ -158,13 +159,7 @@ async function enterWithRetry(
         console.warn("room write retries exhausted", { giveawayId, attempts: attempt + 1 })
         return { kind: "try-again" }
       }
-      await setTimeout(jittered(deps, delay))
+      await setTimeout(jitteredDelay(deps.random, deps.config.entryWriteJitterPercent, delay))
     }
   }
-}
-
-function jittered(deps: EntryDeps, delayMs: number): number {
-  const unit = (deps.random.bytes(1)[0] ?? 0) / 255
-  const spread = (unit * 2 - 1) * (deps.config.entryWriteJitterPercent / 100)
-  return Math.round(delayMs * (1 + spread))
 }

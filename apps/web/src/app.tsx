@@ -10,6 +10,7 @@ import { HomePage } from "./pages/home-page.tsx"
 import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
 import { OverlayPage } from "./pages/overlay-page.tsx"
+import { VerifyPage } from "./pages/verify-page.tsx"
 
 export function AppRoutes() {
   return (
@@ -28,6 +29,7 @@ export function AppRoutes() {
           <Route path="privacy" caseSensitive element={<PrivacyPage />} />
           <Route path="terms" caseSensitive element={<TermsPage />} />
           <Route path="g/:code" element={<GiveawayPage />} />
+          <Route path="g/:code/verify" element={<VerifyPage />} />
           <Route path=":code" element={<GiveawayPage />} />
         </Route>
       </Routes>

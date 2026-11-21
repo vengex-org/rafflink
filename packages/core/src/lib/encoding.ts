@@ -18,3 +18,11 @@ export function fromBase64(text: string): Uint8Array<ArrayBuffer> | null {
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
   return toBase64(bytes) === text ? bytes : null
 }
+
+/** Lower-case hex of even length only: text `toHex` would not produce gives null. */
+export function fromHex(text: string): Uint8Array<ArrayBuffer> | null {
+  if (text.length % 2 !== 0 || !/^[0-9a-f]*$/.test(text)) return null
+  return Uint8Array.from({ length: text.length / 2 }, (_, i) =>
+    Number.parseInt(text.slice(i * 2, i * 2 + 2), 16),
+  )
+}

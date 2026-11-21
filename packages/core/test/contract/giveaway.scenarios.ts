@@ -102,7 +102,7 @@ export function giveawayScenarios(context: ContractContext): void {
     const giveaway = await world.createGiveaway(target)
     await world.enter(target, giveaway.code, users.viewer.id)
 
-    const response = await world.drawWinners(giveaway, 1)
+    const response = await world.drawWinners(giveaway)
 
     expect(response.status).toBe(409)
     expect(await response.json()).toEqual({ kind: "not-closed" })
@@ -113,13 +113,13 @@ export function giveawayScenarios(context: ContractContext): void {
     "drawing picks distinct entrants and a second draw is refused",
     async (world) => {
       const target = await world.start()
-      const giveaway = await world.createGiveaway(target)
+      const giveaway = await world.createGiveaway(target, { winnerCount: 2 })
       const entered = [users.viewer, users.viewer2, users.viewer3]
       for (const viewer of entered) await world.enter(target, giveaway.code, viewer.id)
       await world.closeGiveaway(giveaway)
 
-      const drawn = await world.drawWinners(giveaway, 2)
-      const again = await world.drawWinners(giveaway, 1)
+      const drawn = await world.drawWinners(giveaway)
+      const again = await world.drawWinners(giveaway)
 
       expect(drawn.status).toBe(200)
       expect(await drawn.json()).toEqual({ kind: "drawn", winners: [0, 1] })
@@ -138,7 +138,7 @@ export function giveawayScenarios(context: ContractContext): void {
       await world.enter(target, giveaway.code, viewer.id)
     }
     await world.closeGiveaway(giveaway)
-    await world.drawWinners(giveaway, 1)
+    await world.drawWinners(giveaway)
 
     const rerolled = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/reroll`, {
       n: 0,
@@ -157,7 +157,7 @@ export function giveawayScenarios(context: ContractContext): void {
     const giveaway = await world.createGiveaway(target, { claimSeconds: 120 })
     const entered = await world.enter(target, giveaway.code, users.viewer.id)
     await world.closeGiveaway(giveaway)
-    await world.drawWinners(giveaway, 1)
+    await world.drawWinners(giveaway)
 
     const { me }: { me: { claimRemainingMs: number } } = await (
       await entered.viewer.request(`/api/g/${giveaway.code}`)
@@ -201,7 +201,7 @@ export function giveawayScenarios(context: ContractContext): void {
       const entered = await meOf(winner.viewer)
       const signedOut = await meOf(stranger)
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       const results = [await meOf(winner.viewer), await meOf(loser.viewer)]
 
       expect(entered).toMatchObject({ kind: "entered", entry: { group: "viewer", tickets: 1 } })
@@ -215,7 +215,7 @@ export function giveawayScenarios(context: ContractContext): void {
     const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
     const entered = await world.enter(target, giveaway.code, users.viewer.id)
     await world.closeGiveaway(giveaway)
-    await world.drawWinners(giveaway, 1)
+    await world.drawWinners(giveaway)
 
     await world.waitFor(
       async () => (await world.live(giveaway)).winners[0]?.claim.state === "expired",
@@ -232,7 +232,7 @@ export function giveawayScenarios(context: ContractContext): void {
     const giveaway = await world.createGiveaway(target)
     await world.enter(target, giveaway.code, users.viewer.id)
     await world.closeGiveaway(giveaway)
-    await world.drawWinners(giveaway, 1)
+    await world.drawWinners(giveaway)
 
     const marked = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/claim`, {
       n: 0,

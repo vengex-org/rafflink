@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-import { useParams, useSearchParams } from "react-router"
+import { Link, useParams, useSearchParams } from "react-router"
 import type { ViewerState } from "@rafflink/core/http/json"
 import { entryFromQuery, type GiveawayView } from "../api/client.ts"
 import { ClaimPanel } from "../components/giveaway-claim.tsx"
@@ -98,6 +98,11 @@ function GiveawayDetails({
       </div>
       {isIn ? null : <GiveawayFacts kind={isWinner ? "pool" : "entry"} giveaway={giveaway} />}
       <GiveawayRules giveaway={giveaway} />
+      {giveaway.status === "drawn" ? (
+        <Link className="button text" to={`/g/${code}/verify`}>
+          {t("giveaway.verify.link")}
+        </Link>
+      ) : null}
       {isIn && channelUrl !== null ? (
         <div className="viewer-dock">
           <a className="button outlined block" href={channelUrl}>

@@ -5,8 +5,27 @@ import {
   type IneligibleReason,
   type ViewerFacts,
 } from "../domain/rules.ts"
-import { drawWinners, pickWinner, type DrawEntry, type Identity, type Winner } from "../lib/draw.ts"
-import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql } from "../ports.ts"
+import {
+  drawWinners,
+  pickWinner,
+  sortEntries,
+  type DrawEntry,
+  type Identity,
+  type Winner,
+} from "../lib/draw.ts"
+import { drandChain, roundAtOrAfter, roundTime } from "../lib/drand.ts"
+import { leafHash, merkleRoot, type LeafPreimage } from "../lib/merkle.ts"
+import type {
+  Alarm,
+  Clock,
+  Instant,
+  LiveHub,
+  Random,
+  RandomnessBeacon,
+  SqlRow,
+  SqlValue,
+  SyncSql,
+} from "../ports.ts"
 import {
   ChatWatcher,
   type ChatLink,
@@ -32,8 +51,10 @@ import {
   parseEntrant,
   parseEntry,
   parseState,
+  RoomRowError,
   RowReader,
   type ClaimedVia,
+  type Commitment,
   type DrawRow,
   type Entrant,
   type EntrySummary,
@@ -54,6 +75,12 @@ export type RoomConfig = Pick<
   | "mirrorRetrySeconds"
   | "rerollWindowSeconds"
   | "entryRetentionSeconds"
+  | "drandChainHash"
+  | "drandGenesisSeconds"
+  | "drandPeriodSeconds"
+  | "drandLeadSeconds"
+  | "commitRetrySeconds"
+  | "drandPublishMarginSeconds"
 >
   & ChatWatcherConfig
 
@@ -66,6 +93,8 @@ export interface RoomDeps {
   readonly config: RoomConfig
   /** How this target reaches Twitch chat while the room watches its winners. */
   readonly chat: ChatLink
+  /** Where the draw reads the round it committed to at close. */
+  readonly beacon: RandomnessBeacon
 }
 
 /** What the room is created from: the giveaway as the account store holds it. */
@@ -78,6 +107,8 @@ export interface GiveawayInit {
   readonly rules: GiveawayRules
   readonly claimSeconds: number
   readonly closesAt: Instant | null
+  /** How many winners the draw picks. */
+  readonly winnerCount: number
 }
 
 /** A viewer entering: who they are on the giveaway's platform and what the platform said about them. */
@@ -97,8 +128,16 @@ export type CloseOutcome =
   | { readonly kind: "closed" }
   | { readonly kind: "not-open"; readonly status: RoomStatus }
 
+export type SetWinnerCountOutcome =
+  | { readonly kind: "set" }
+  | { readonly kind: "not-open"; readonly status: RoomStatus }
+
 export type DrawOutcome =
   | { readonly kind: "drawn"; readonly winners: readonly Winner[] }
+  /** The committed drand round is not published yet; nothing was drawn and a later call may draw. */
+  | { readonly kind: "round-pending"; readonly availableAt: Instant }
+  /** The beacon failed after its retries; nothing was drawn and a later call may draw. */
+  | { readonly kind: "beacon-unavailable" }
   | { readonly kind: "not-closed" }
   | { readonly kind: "already-drawn" }
   | { readonly kind: "entries-deleted" }
@@ -127,6 +166,8 @@ export interface AlarmDuties {
   readonly refreshRoles: boolean
   /** Mirror this status to the account store, then call `markMirrored`. Null when nothing is pending. */
   readonly mirrorStatus: RoomStatus | null
+  /** Call `commit`: the room is closed and has no commitment yet. */
+  readonly commit: boolean
 }
 
 export type FailureKind = "role-refresh" | "eventsub"
@@ -136,6 +177,8 @@ export interface RoomSummary {
   readonly closesAt: Instant | null
   readonly entrantCount: number
   readonly ticketTotal: number
+  /** How many winners the draw picks. */
+  readonly winnerCount: number
   /** No chat claim is possible: the chat watch gave up, so a winner can only claim on the page or by the streamer's hand. */
   readonly chatClaimUnavailable: boolean
 }
@@ -236,6 +279,34 @@ export type LivePush = LiveSnapshot & { readonly entrantsAfter: EntrantsDelta }
 /** {@link LivePush} for the overlay. */
 export type OverlayPush = OverlaySnapshot & { readonly entrantsAfter: EntrantsDelta }
 
+/** One published leaf: the hash of an entry and its tickets, with no name. */
+export interface Leaf {
+  readonly hash: Uint8Array<ArrayBuffer>
+  readonly tickets: number
+}
+
+/** A leaf preimage as its entrant may see it; `salt` is null for an entry written before salts existed and not yet committed. */
+export type EntryLeaf = Omit<LeafPreimage, "salt"> & {
+  readonly salt: Uint8Array<ArrayBuffer> | null
+}
+
+/** A pick as the verify page checks it; `leafIndex` is null for a pick drawn before commitments existed. */
+export interface VerifiedPick {
+  readonly n: number
+  readonly leafIndex: number | null
+  readonly rerolled: boolean
+}
+
+/** What anyone may check about a draw. `commitment` is null before the commit and for a room drawn before commitments existed. */
+export interface Verification {
+  readonly status: RoomStatus
+  readonly entrantCount: number
+  readonly ticketTotal: number
+  readonly winnerCount: number
+  readonly commitment: Commitment | null
+  readonly picks: readonly VerifiedPick[]
+}
+
 /**
  * The state and rules of one giveaway over its own SQLite database. The room owns the giveaway's
  * status: the caller mirrors it to the account store through {@link GiveawayRoom.onAlarm}.
@@ -247,6 +318,7 @@ export class GiveawayRoom {
   private readonly clock: Clock
   private readonly random: Random
   private readonly config: RoomConfig
+  private readonly beacon: RandomnessBeacon
   private readonly chat: ChatWatcher
   private lastPushAt: Instant | null = null
   // Lost with the object; the first push after that carries no rows and the page fetches the gap.
@@ -255,6 +327,8 @@ export class GiveawayRoom {
   // Lost with the object; the first outcome after that is pushed again.
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
+  // Lost with the object; the first alarm after that commits at once.
+  private commitRetryAt: Instant | null = null
   // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
   private winnerChat: readonly ChatterLine[] = []
   private winnerChatSeq = 0
@@ -266,6 +340,7 @@ export class GiveawayRoom {
     this.clock = deps.clock
     this.random = deps.random
     this.config = deps.config
+    this.beacon = deps.beacon
     this.chat = new ChatWatcher({
       ...deps.chat,
       clock: deps.clock,
@@ -280,8 +355,8 @@ export class GiveawayRoom {
   init(giveaway: GiveawayInit): void {
     this.sql.exec(
       `INSERT INTO room_state
-         (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, closes_at, roles_refresh_at)
-       VALUES (1, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
+         (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, closes_at, roles_refresh_at, winner_count)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
        ON CONFLICT (id) DO NOTHING`,
       [
         giveaway.platform,
@@ -293,9 +368,21 @@ export class GiveawayRoom {
         giveaway.claimSeconds,
         giveaway.closesAt,
         this.clock.now(),
+        giveaway.winnerCount,
       ],
     )
     this.reconcile()
+  }
+
+  /** Changes how many winners the draw picks, while entries are open only: once the room closed the count is part of what was committed. */
+  setWinnerCount(count: number): SetWinnerCountOutcome {
+    const changed = this.sql.exec(
+      "UPDATE room_state SET winner_count = ? WHERE id = 1 AND status = 'open' RETURNING id",
+      [count],
+    )
+    if (changed.length === 0) return { kind: "not-open", status: this.readState().status }
+    this.afterWrite()
+    return { kind: "set" }
   }
 
   /** One entry per account: a repeat returns the first entry and changes nothing. */
@@ -318,8 +405,8 @@ export class GiveawayRoom {
 
       // `entrant_count` only grows and moves in the same transaction, so the next `seq` never repeats.
       this.sql.exec(
-        `INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at)
-         VALUES ((SELECT entrant_count + 1 FROM room_state WHERE id = 1), ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at, salt)
+         VALUES ((SELECT entrant_count + 1 FROM room_state WHERE id = 1), ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           state.platform,
           viewer.platformUserId,
@@ -328,6 +415,7 @@ export class GiveawayRoom {
           eligibility.group,
           eligibility.tickets,
           now,
+          this.random.bytes(saltBytes),
         ],
       )
       this.sql.exec(
@@ -357,6 +445,47 @@ export class GiveawayRoom {
   entryOf(viewer: Identity): EntrySummary | null {
     const row = this.sql.exec(entryOfSql, [viewer.platform, viewer.platformUserId])[0]
     return row === undefined ? null : parseEntry(row)
+  }
+
+  /** The entry behind the viewer's leaf with the salt only they may see, `null` when they did not enter. */
+  leafOf(viewer: Identity): EntryLeaf | null {
+    const row = this.sql.exec(
+      "SELECT tickets, salt FROM entries WHERE platform = ? AND platform_user_id = ?",
+      [viewer.platform, viewer.platformUserId],
+    )[0]
+    if (row === undefined) return null
+    const reader = new RowReader("entries", row)
+    return {
+      platform: viewer.platform,
+      platformUserId: viewer.platformUserId,
+      tickets: reader.int("tickets"),
+      salt: reader.nullableBlob("salt"),
+    }
+  }
+
+  /** What anyone may check about the draw, without the leaf list. */
+  verification(): Verification {
+    const state = this.readState()
+    return {
+      status: state.status,
+      entrantCount: state.entrantCount,
+      ticketTotal: state.ticketTotal,
+      winnerCount: state.winnerCount,
+      commitment: state.commitment,
+      picks: this.readDraws().map((draw) => ({
+        n: draw.n,
+        leafIndex: draw.leafIndex,
+        rerolled: draw.rerolled,
+      })),
+    }
+  }
+
+  /** The published leaves in leaf order; `null` until the room has committed. */
+  leaves(): readonly Leaf[] | null {
+    if (this.readState().commitment === null) return null
+    return this.sql
+      .exec("SELECT data FROM leaves ORDER BY chunk", [])
+      .flatMap((row) => decodeLeaves(new RowReader("leaves", row).blob("data")))
   }
 
   /** Up to `limit` entrants with a sequence number above `afterSeq`, oldest first. */
@@ -400,12 +529,14 @@ export class GiveawayRoom {
     }
     const mirrorDue = state.mirrorPending && now >= (this.mirrorRetryAt ?? now)
     if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+    const commitDue = awaitsCommit(state) && now >= (this.commitRetryAt ?? now)
+    if (commitDue) this.commitRetryAt = now + this.config.commitRetrySeconds * 1000
     this.guarded("chat", () => {
       this.syncChat()
       this.chat.onAlarm()
     })
     this.guarded("alarm", () => this.rearm())
-    return { refreshRoles, mirrorStatus: mirrorDue ? state.status : null }
+    return { refreshRoles, mirrorStatus: mirrorDue ? state.status : null, commit: commitDue }
   }
 
   /** Clears the pending mirror once `status` reached the account store; a newer status stays pending. */
@@ -414,13 +545,69 @@ export class GiveawayRoom {
     this.guarded("alarm", () => this.rearm())
   }
 
-  /** Picks `count` winners from a closed room, once. */
-  async draw(count: number): Promise<DrawOutcome> {
+  /**
+   * Commits a closed room to its entrants and to a drand round: salts every entry that has none (one
+   * written before salts existed), then stores the Merkle root over the sorted leaves, the round and the
+   * leaf list. Leaves an open, a committed and a drawn room alone; two calls at once commit once.
+   */
+  async commit(): Promise<void> {
+    if (!awaitsCommit(this.readState())) return
+    const entries = this.saltedEntries()
+    const leaves = await Promise.all(
+      entries.map(async (entry) => ({ hash: await leafHash(entry), tickets: entry.tickets })),
+    )
+    const root = await merkleRoot(leaves)
+    const chain = drandChain(this.config)
+    const now = this.clock.now()
+    const round = roundAtOrAfter(chain, now + this.config.drandLeadSeconds * 1000)
+    this.sql.transaction(() => {
+      const stored = this.sql.exec(
+        `UPDATE room_state SET merkle_root = ?, drand_round = ?, committed_at = ?, drand_chain_hash = ?,
+           drand_genesis_seconds = ?, drand_period_seconds = ?
+         WHERE id = 1 AND status = 'closed' AND merkle_root IS NULL RETURNING id`,
+        [root, round, now, chain.chainHash, chain.genesisSeconds, chain.periodSeconds],
+      )
+      if (stored.length === 0) return
+      for (let from = 0; from < leaves.length; from += leavesPerChunk) {
+        this.sql.exec("INSERT INTO leaves (chunk, data) VALUES (?, ?)", [
+          from / leavesPerChunk,
+          encodeLeaves(leaves.slice(from, from + leavesPerChunk)),
+        ])
+      }
+    })
+    this.guarded("alarm", () => this.rearm())
+  }
+
+  /**
+   * Picks `count` winners from a closed room, once, with the randomness of the drand round the room
+   * committed to. While that round is missing it draws nothing and uses no other randomness.
+   */
+  async draw(): Promise<DrawOutcome> {
+    const early = drawRefusal(this.readState())
+    if (early !== null) return early
+    await this.commit()
     const state = this.readState()
     const refusal = drawRefusal(state)
     if (refusal !== null) return refusal
-    const seed = new Uint8Array(this.random.bytes(seedBytes))
-    const winners = await drawWinners(seed, this.readDrawEntries(), count)
+    if (state.commitment === null) throw new Error("a closed room has no commitment after commit")
+    const { drandRound, chain } = state.commitment
+    const answer = await this.beacon.fetchRound(chain.chainHash, drandRound)
+    switch (answer.kind) {
+      case "not-yet": {
+        const availableAt = roundTime(chain, drandRound)
+        // A round still missing long after its time is a broken beacon, not an early draw.
+        if (this.clock.now() > availableAt + this.config.drandPublishMarginSeconds * 1000) {
+          return { kind: "beacon-unavailable" }
+        }
+        return { kind: "round-pending", availableAt }
+      }
+      case "unavailable":
+        return { kind: "beacon-unavailable" }
+      case "round":
+        break
+    }
+    const seed = answer.round.randomness
+    const winners = await drawWinners(seed, this.readDrawEntries(), state.winnerCount)
     const now = this.clock.now()
     const outcome = this.sql.transaction((): DrawOutcome => {
       const flipped = this.sql.exec(
@@ -451,7 +638,7 @@ export class GiveawayRoom {
     const next = draws.reduce((highest, draw) => Math.max(highest, draw.n), -1) + 1
     const picked = await pickWinner(state.seed, next, this.readDrawEntries(), draws)
     if (picked === null) return { kind: "no-entrants-left" }
-    const winner: Winner = { n: next, ...picked }
+    const winner = picked
     const now = this.clock.now()
     const outcome = this.sql.transaction((): RerollOutcome => {
       const current = rerollRefusal(this.readDraw(n))
@@ -578,7 +765,7 @@ export class GiveawayRoom {
 
   private readPickRows(): SqlRow[] {
     return this.sql.exec(
-      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, e.display_name, e.seq
+      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, e.display_name, e.seq
        FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
        ORDER BY d.n`,
       [],
@@ -592,6 +779,33 @@ export class GiveawayRoom {
   private readDraw(n: number): DrawRow | null {
     const row = this.sql.exec("SELECT * FROM draws WHERE n = ?", [n])[0]
     return row === undefined ? null : parseDraw(row)
+  }
+
+  // Every entry as a leaf preimage in leaf order. An entry without a salt is given one in the same
+  // synchronous step, so two commits at once read the same salts.
+  private saltedEntries(): LeafPreimage[] {
+    const rows = this.sql.exec("SELECT platform, platform_user_id, tickets, salt FROM entries", [])
+    return this.sql.transaction(() =>
+      sortEntries(
+        rows.map((row) => {
+          const reader = new RowReader("entries", row)
+          const platform = reader.text("platform")
+          const platformUserId = reader.text("platform_user_id")
+          const salt = reader.nullableBlob("salt") ?? this.writeSalt({ platform, platformUserId })
+          return { platform, platformUserId, tickets: reader.int("tickets"), salt }
+        }),
+      ),
+    )
+  }
+
+  private writeSalt(entry: Identity): Uint8Array {
+    const salt = this.random.bytes(saltBytes)
+    this.sql.exec("UPDATE entries SET salt = ? WHERE platform = ? AND platform_user_id = ?", [
+      salt,
+      entry.platform,
+      entry.platformUserId,
+    ])
+    return salt
   }
 
   private readDrawEntries(): DrawEntry[] {
@@ -626,8 +840,15 @@ export class GiveawayRoom {
 
   private insertPick(winner: Winner, now: Instant, claimSeconds: number): void {
     this.sql.exec(
-      "INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until) VALUES (?, ?, ?, ?, ?)",
-      [winner.n, winner.platform, winner.platformUserId, now, now + claimSeconds * 1000],
+      "INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until, leaf_index) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        winner.n,
+        winner.platform,
+        winner.platformUserId,
+        now,
+        now + claimSeconds * 1000,
+        winner.leafIndex,
+      ],
     )
   }
 
@@ -879,6 +1100,7 @@ export class GiveawayRoom {
       open ? state.rolesRefreshAt : null,
       this.pushDueAt,
       state.mirrorPending ? (this.mirrorRetryAt ?? this.clock.now()) : null,
+      awaitsCommit(state) ? (this.commitRetryAt ?? this.clock.now()) : null,
       // One past the inclusive deadline, so the alarm finds the claim time over and pushes the viewers.
       claimDeadline === null ? null : claimDeadline + 1,
       this.rerollWindowWake(state),
@@ -925,8 +1147,15 @@ interface ChatterLine {
   readonly line: WinnerChatLine
 }
 
-// 256 bits, the HMAC-SHA256 key size.
-const seedBytes = 32
+// 128 bits, enough that a published leaf cannot be matched to an id by trying ids.
+const saltBytes = 16
+
+// A chunk of 1000 leaves is 40 KB, far inside the 2 MB value limit of a Durable Object, and a giveaway
+// of 12,000 entrants writes 12 rows (spec Load budget) instead of one per entrant.
+const leavesPerChunk = 1000
+const hashBytes = 32
+const ticketBytes = 8
+const leafRecordBytes = hashBytes + ticketBytes
 
 // The smallest bound-parameter limit among the targets (D1).
 const maxBoundParameters = 100
@@ -952,8 +1181,36 @@ function summarize(state: RoomState): RoomSummary {
     closesAt: state.closesAt,
     entrantCount: state.entrantCount,
     ticketTotal: state.ticketTotal,
+    winnerCount: state.winnerCount,
     chatClaimUnavailable: state.chatUnavailable,
   }
+}
+
+// Closed, with nothing committed yet. A room drawn before commitments existed never commits, and one whose
+// entries the retention alarm deleted has nothing left to commit to.
+function awaitsCommit(state: RoomState): boolean {
+  return state.status === "closed" && state.commitment === null && !state.entriesDeleted
+}
+
+function encodeLeaves(leaves: readonly Leaf[]): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(leaves.length * leafRecordBytes)
+  const view = new DataView(bytes.buffer)
+  for (const [index, leaf] of leaves.entries()) {
+    bytes.set(leaf.hash, index * leafRecordBytes)
+    view.setBigUint64(index * leafRecordBytes + hashBytes, BigInt(leaf.tickets))
+  }
+  return bytes
+}
+
+function decodeLeaves(data: Uint8Array<ArrayBuffer>): Leaf[] {
+  if (data.length % leafRecordBytes !== 0) throw new RoomRowError("leaves", "data")
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
+  return Array.from({ length: data.length / leafRecordBytes }, (_, index) => {
+    const at = index * leafRecordBytes
+    const tickets = Number(view.getBigUint64(at + hashBytes))
+    if (!Number.isSafeInteger(tickets)) throw new RoomRowError("leaves", "data")
+    return { hash: data.slice(at, at + hashBytes), tickets }
+  })
 }
 
 function drawRefusal(state: RoomState): DrawOutcome | null {

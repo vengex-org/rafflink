@@ -216,7 +216,7 @@ export function chatClaimScenarios(context: ContractContext): void {
         await world.enter(target, giveaway.code, viewer.id)
       }
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       await world.waitFor(
         async () => (await world.live(giveaway)).chatClaimUnavailable,
         "the chat claim to become unavailable",
@@ -255,7 +255,7 @@ async function drawnWithOneWinner(
   const giveaway = await world.createGiveaway(target, options)
   const { viewer } = await world.enter(target, giveaway.code, users.viewer.id)
   await world.closeGiveaway(giveaway)
-  const drawn = await world.drawWinners(giveaway, 1)
+  const drawn = await world.drawWinners(giveaway)
   expect(drawn.status).toBe(200)
   return { giveaway, viewer }
 }

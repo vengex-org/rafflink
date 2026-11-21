@@ -12,6 +12,7 @@ import {
   type Harness,
 } from "../../test/app-fixture.ts"
 import { codeAlphabet, codeLength } from "../lib/codes.ts"
+import { drandChain, roundTime } from "../lib/drand.ts"
 import { openSecret } from "../lib/seal.ts"
 import { RoomTransientError } from "../room/room-directory.ts"
 import { oauthStatesPerFlow } from "./session.ts"
@@ -1072,28 +1073,84 @@ describe("winners", () => {
     expect(await response.json()).toEqual({ kind: "not-closed" })
   })
 
-  it("refuses a draw count that is not a positive integer", async () => {
+  it("refuses a draw body that names a count other than the giveaway's own", async () => {
     const { browser, id } = await createGiveaway(harness)
     await browser.postJson(`/api/dash/giveaways/${id}/close`, {})
 
-    for (const count of [0, -1, 1.5, "2", null]) {
+    for (const count of [0, 2, -1, 1.5, "1", null]) {
       const response = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count })
       expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({ error: "invalid-input", field: "count" })
     }
+    expect((await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })).status).toBe(
+      200,
+    )
   })
 
-  it("refuses a draw count above the configured maximum and accepts the maximum", async () => {
-    await harness.stop()
-    harness = await createHarness({ env: { DRAW_MAX_WINNERS: "2" } })
-    const { browser, id } = await createGiveaway(harness)
+  it("draws the winner count set at creation and ignores any other source", async () => {
+    const { browser, id, code } = await createGiveaway(harness, users.streamerA.id, {
+      winnerCount: 2,
+    })
+    for (const user of [users.viewer, users.viewer2, users.viewer3]) {
+      await viewerSignIn(user.id, code)
+    }
     await browser.postJson(`/api/dash/giveaways/${id}/close`, {})
 
-    const above = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 3 })
-    const atMax = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 2 })
+    const response = await browser.postJson(`/api/dash/giveaways/${id}/draw`, {})
 
-    expect(above.status).toBe(400)
-    expect(await above.json()).toEqual({ error: "invalid-input", field: "count" })
-    expect(await atMax.json()).toEqual({ kind: "drawn", winners: [] })
+    expect(await response.json()).toEqual({ kind: "drawn", winners: [0, 1] })
+  })
+
+  it("refuses a winner count at creation that is not a whole number from 1 to the maximum", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { DRAW_MAX_WINNERS: "2" } })
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    for (const winnerCount of [0, -1, 1.5, "2", null, 3]) {
+      const response = await browser.postJson("/api/dash/giveaways", {
+        title: "Giveaway",
+        rules: validRules,
+        winnerCount,
+      })
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ field: "winnerCount" })
+    }
+    const atMax = await browser.postJson("/api/dash/giveaways", {
+      title: "Giveaway",
+      rules: validRules,
+      winnerCount: 2,
+    })
+    expect(atMax.status).toBe(201)
+  })
+
+  it("changes the winner count while entries are open and refuses it once they are closed", async () => {
+    const { browser, id, code } = await createGiveaway(harness)
+    const set = (count: unknown) => browser.postJson(`/api/dash/giveaways/${id}/winners`, { count })
+
+    const bad = await Promise.all([0, 1.5, "2", null, 101].map(set))
+    const ok = await set(3)
+    const snapshot = await (await browser.request(`/api/live/${id}`)).json()
+    await browser.postJson(`/api/dash/giveaways/${id}/close`, {})
+    const late = await set(2)
+    const publicVerify = await (await new Browser(harness).request(`/api/g/${code}/verify`)).json()
+
+    expect(bad.map((response) => response.status)).toEqual([400, 400, 400, 400, 400])
+    expect(await ok.json()).toEqual({ kind: "set" })
+    expect(snapshot).toMatchObject({ winnerCount: 3 })
+    expect(late.status).toBe(409)
+    expect(await late.json()).toEqual({ kind: "not-open", status: "closed" })
+    expect(publicVerify).toMatchObject({ winnerCount: 3 })
+  })
+
+  it("answers 404 to another streamer who changes the winner count", async () => {
+    const { id } = await createGiveaway(harness)
+    const other = new Browser(harness)
+    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+
+    const response = await other.postJson(`/api/dash/giveaways/${id}/winners`, { count: 2 })
+
+    expect(response.status).toBe(404)
   })
 
   it("lets the winner claim once", async () => {
@@ -1795,5 +1852,115 @@ describe("viewer socket route", () => {
 
     expect(response.status).toBe(426)
     expect(response.headers.get("x-rafflink-room")).toBeNull()
+  })
+})
+
+async function committedGiveaway() {
+  const created = await createGiveaway(harness)
+  const viewer = new Browser(harness)
+  await viewerSignIn(users.viewer.id, created.code, viewer)
+  await created.browser.postJson(`/api/dash/giveaways/${created.id}/close`, {})
+  await harness.rooms.roomFor(created.id).commit()
+  return { ...created, viewer }
+}
+
+describe("draw commitment", () => {
+  it("answers 404 for a code that does not exist, on every verification route", async () => {
+    const browser = new Browser(harness)
+    await viewerSignIn(users.viewer.id, (await createGiveaway(harness)).code, browser)
+
+    for (const path of ["verify", "leaves", "my-leaf"]) {
+      const response = await browser.request(`/api/g/NOPE0/${path}`)
+      expect(response.status).toBe(404)
+    }
+  })
+
+  it("shows an open giveaway without a commitment and refuses its leaves", async () => {
+    const { code } = await createGiveaway(harness)
+
+    const verify = await new Browser(harness).request(`/api/g/${code}/verify`)
+    const leaves = await new Browser(harness).request(`/api/g/${code}/leaves`)
+
+    expect(await verify.json()).toEqual({
+      status: "open",
+      entrantCount: 0,
+      ticketTotal: 0,
+      winnerCount: 1,
+      commitment: null,
+      picks: [],
+    })
+    expect(leaves.status).toBe(409)
+    expect(await leaves.json()).toEqual({ error: "not-committed" })
+    expect(leaves.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("publishes the root, the chain and the round, and the leaves for good", async () => {
+    const { code } = await committedGiveaway()
+
+    const verify = await new Browser(harness).request(`/api/g/${code}/verify`)
+    const leaves = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const body: { commitment: { merkleRoot: string; chainHash: string; round: number } } =
+      await verify.json()
+    const list: { hashes: string[]; tickets: number[] } = await leaves.json()
+
+    expect(body.commitment.merkleRoot).toMatch(/^[0-9a-f]{64}$/)
+    expect(body.commitment.chainHash).toBe(harness.config.drandChainHash)
+    expect(body.commitment.round).toBeGreaterThan(0)
+    expect(verify.headers.get("cache-control")).toBe("no-store")
+    expect(list.hashes).toHaveLength(1)
+    expect(list.tickets).toEqual([1])
+    expect(leaves.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
+  })
+
+  it("gives the salt to the entrant's browser only, and keeps it out of the public answers", async () => {
+    const { code, viewer } = await committedGiveaway()
+    const stranger = new Browser(harness)
+    await viewerSignIn(users.viewer2.id, code, stranger)
+
+    const mine = await viewer.request(`/api/g/${code}/my-leaf`)
+    const theirs = await stranger.request(`/api/g/${code}/my-leaf`)
+    const anonymous = await new Browser(harness).request(`/api/g/${code}/my-leaf`)
+    const body: { salt: string } = await mine.json()
+    const publicText =
+      (await (await new Browser(harness).request(`/api/g/${code}/verify`)).text())
+      + (await (await new Browser(harness).request(`/api/g/${code}/leaves`)).text())
+      + JSON.stringify(await pageOf(undefined, code))
+
+    expect(mine.status).toBe(200)
+    expect(mine.headers.get("cache-control")).toBe("no-store")
+    expect(body).toMatchObject({ platform: "twitch", platformUserId: users.viewer.id, tickets: 1 })
+    expect(body.salt).toMatch(/^[0-9a-f]{32}$/)
+    expect(theirs.status).toBe(404)
+    expect(await theirs.json()).toEqual({ error: "not-entered" })
+    expect(anonymous.status).toBe(401)
+    expect(publicText).not.toContain(body.salt)
+  })
+
+  it("answers a draw before the round is published with 409 and the time, and draws on a repeat", async () => {
+    const { id, browser } = await committedGiveaway()
+    harness.rooms.beacon.answer = "not-yet"
+
+    const early = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
+    harness.rooms.beacon.answer = "round"
+    const drawn = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
+
+    const round = harness.rooms.roomFor(id).verification().commitment?.drandRound ?? 0
+    expect(early.status).toBe(409)
+    expect(await early.json()).toEqual({
+      kind: "round-pending",
+      availableAt: roundTime(drandChain(harness.config), round),
+    })
+    expect(await drawn.json()).toEqual({ kind: "drawn", winners: [0] })
+  })
+
+  it("answers a draw while the beacon fails with 503 and keeps the giveaway closed", async () => {
+    const { id, code, browser } = await committedGiveaway()
+    harness.rooms.beacon.answer = "unavailable"
+
+    const response = await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({ kind: "beacon-unavailable" })
+    expect(await pageOf(undefined, code)).toMatchObject({ status: "closed" })
   })
 })

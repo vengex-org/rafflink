@@ -9,10 +9,14 @@ export interface Identity {
   readonly platformUserId: string
 }
 
-/** The entrant picked as winner `n`. */
-export interface Winner extends Identity {
+/** Where a pick sits in the entrants sorted by `(platform, platformUserId)`, which is the order of the Merkle leaves. */
+export interface LeafPick {
   readonly n: number
+  readonly leafIndex: number
 }
+
+/** The entrant picked as winner `n`. */
+export interface Winner extends Identity, LeafPick {}
 
 /** Picks winners 0..count-1; stops early when no tickets remain (fewer entrants than `count`). */
 export async function drawWinners(
@@ -20,14 +24,36 @@ export async function drawWinners(
   entries: readonly DrawEntry[],
   count: number,
 ): Promise<Winner[]> {
+  const sorted = sortEntries(entries)
+  const picks = await drawLeafPicks(
+    seed,
+    sorted.map((entry) => entry.tickets),
+    count,
+  )
+  return picks.map((leafPick) => {
+    const entry = sorted[leafPick.leafIndex]
+    if (entry === undefined) throw new Error("leaf index outside the entrants")
+    return { ...leafPick, platform: entry.platform, platformUserId: entry.platformUserId }
+  })
+}
+
+/**
+ * {@link drawWinners} over the tickets of the sorted entrants alone, which is all a verifier of the
+ * published leaf list has: the same seed and tickets give the same picks.
+ */
+export async function drawLeafPicks(
+  seed: Uint8Array<ArrayBuffer>,
+  tickets: readonly number[],
+  count: number,
+): Promise<LeafPick[]> {
   if (!Number.isSafeInteger(count) || count < 0) {
     throw new RangeError("count must be a non-negative safe integer")
   }
   const key = await importSeed(seed)
-  // Sorted and totalled once; each pick leaves the list and the total, so a pick costs one pass, not a rebuild.
-  const candidates = sortEntries(entries)
+  // Totalled once; each pick leaves the list and the total, so a pick costs one pass, not a rebuild.
+  const candidates = tickets.map((ticketCount, leafIndex) => ({ tickets: ticketCount, leafIndex }))
   let total = ticketTotal(candidates)
-  const winners: Winner[] = []
+  const picks: LeafPick[] = []
   for (let n = 0; n < count && total > 0n; n++) {
     const index = await sampleIndex(key, n, total)
     const position = candidateAt(candidates, index)
@@ -36,9 +62,9 @@ export async function drawWinners(
     const [taken] = candidates.splice(position, 1)
     if (taken === undefined) throw new Error("ticket index outside the ticket total")
     total -= BigInt(taken.tickets)
-    winners.push({ n, platform: taken.platform, platformUserId: taken.platformUserId })
+    picks.push({ n, leafIndex: taken.leafIndex })
   }
-  return winners
+  return picks
 }
 
 /**
@@ -50,8 +76,16 @@ export async function pickWinner(
   n: number,
   entries: readonly DrawEntry[],
   excluded: readonly Identity[],
-): Promise<Identity | null> {
+): Promise<Winner | null> {
   return pick(await importSeed(seed), n, sortEntries(entries), excluded)
+}
+
+/** The entrants in the order of the draw and of the Merkle leaves: by `(platform, platformUserId)`. */
+export function sortEntries<T extends Identity>(entries: readonly T[]): T[] {
+  return entries.toSorted(
+    (a, b) =>
+      compareText(a.platform, b.platform) || compareText(a.platformUserId, b.platformUserId),
+  )
 }
 
 /**
@@ -76,13 +110,6 @@ function importSeed(seed: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", seed, { name: "HMAC", hash: "SHA-256" }, false, ["sign"])
 }
 
-function sortEntries(entries: readonly DrawEntry[]): DrawEntry[] {
-  return entries.toSorted(
-    (a, b) =>
-      compareText(a.platform, b.platform) || compareText(a.platformUserId, b.platformUserId),
-  )
-}
-
 // Code-unit order, not localeCompare: the order must not depend on the host locale.
 function compareText(a: string, b: string): number {
   if (a < b) return -1
@@ -94,7 +121,7 @@ async function pick(
   n: number,
   sorted: readonly DrawEntry[],
   excluded: readonly Identity[],
-): Promise<Identity | null> {
+): Promise<Winner | null> {
   const taken = new Set(excluded.map(identityKey))
   const candidates = sorted.filter((entry) => !taken.has(identityKey(entry)))
   const total = ticketTotal(candidates)
@@ -102,15 +129,16 @@ async function pick(
 
   const candidate = candidates[candidateAt(candidates, await sampleIndex(key, n, total))]
   if (candidate === undefined) throw new Error("ticket index outside the ticket total")
-  return { platform: candidate.platform, platformUserId: candidate.platformUserId }
+  const leafIndex = sorted.indexOf(candidate)
+  return { n, leafIndex, platform: candidate.platform, platformUserId: candidate.platformUserId }
 }
 
-function ticketTotal(candidates: readonly DrawEntry[]): bigint {
+function ticketTotal(candidates: readonly { readonly tickets: number }[]): bigint {
   return candidates.reduce((sum, entry) => sum + BigInt(entry.tickets), 0n)
 }
 
 // The position of the candidate whose run of tickets holds `index`; -1 when the index is past the total.
-function candidateAt(candidates: readonly DrawEntry[], index: bigint): number {
+function candidateAt(candidates: readonly { readonly tickets: number }[], index: bigint): number {
   let upTo = 0n
   for (const [position, candidate] of candidates.entries()) {
     upTo += BigInt(candidate.tickets)

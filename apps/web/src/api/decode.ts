@@ -69,3 +69,13 @@ export function textList(source: Json, key: string): string[] {
     return entry
   })
 }
+
+/** A list of finite numbers; an entry that is not one fails the whole read. */
+export function numList(source: Json, key: string): number[] {
+  const value = field(source, key)
+  if (!Array.isArray(value)) throw new ApiShapeError(key)
+  return value.map((entry) => {
+    if (typeof entry !== "number" || !Number.isFinite(entry)) throw new ApiShapeError(key)
+    return entry
+  })
+}

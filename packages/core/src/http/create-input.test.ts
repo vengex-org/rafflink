@@ -26,6 +26,34 @@ function issue(body: unknown): CreateIssue | null {
 
 const claimSecondsIssue: CreateIssue = { field: "claimSeconds", code: "not-a-positive-integer" }
 
+const winnerIssue = (code: CreateIssue["code"]): CreateIssue => ({ field: "winnerCount", code })
+
+describe("winner count", () => {
+  it("is one when absent and the number given otherwise, up to the draw maximum", () => {
+    const value = (winnerCount: unknown) => {
+      const parsed = parseCreateGiveaway({ ...valid, winnerCount }, now, config)
+      return parsed.ok ? parsed.value.winnerCount : null
+    }
+
+    expect(value(undefined)).toBe(1)
+    expect(value(3)).toBe(3)
+    expect(value(config.drawMaxWinners)).toBe(config.drawMaxWinners)
+  })
+
+  it.each([0, -1, 1.5, Number.NaN, Infinity, "2", null, true])(
+    "refuses %p as a winner count",
+    (winnerCount) => {
+      expect(issue({ ...valid, winnerCount })).toEqual(winnerIssue("not-a-positive-integer"))
+    },
+  )
+
+  it("refuses a count above the draw maximum", () => {
+    expect(issue({ ...valid, winnerCount: config.drawMaxWinners + 1 })).toEqual(
+      winnerIssue("too-large"),
+    )
+  })
+})
+
 describe("parseCreateGiveaway", () => {
   it("accepts a body with only the required fields and defaults the claim time", () => {
     expect(parseCreateGiveaway(valid, now, config)).toEqual({
@@ -36,6 +64,7 @@ describe("parseCreateGiveaway", () => {
         rules: validRules,
         claimSeconds: 300,
         closesAt: null,
+        winnerCount: 1,
       },
     })
   })

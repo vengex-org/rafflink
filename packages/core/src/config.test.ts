@@ -305,6 +305,43 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("defaults the drand settings to the quicknet beacon and a lead of 30 seconds", () => {
+    const config = resolveConfig(required)
+
+    expect(config).toMatchObject({
+      drandUrl: "https://api.drand.sh",
+      drandChainHash: "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+      drandGenesisSeconds: 1_692_803_367,
+      drandPeriodSeconds: 3,
+      drandLeadSeconds: 30,
+      drandRetryDelaysMs: [200, 500, 1000],
+      commitRetrySeconds: 30,
+    })
+  })
+
+  it("rejects a drand chain hash that is not 64 lower-case hex characters", () => {
+    for (const hash of [
+      "abc",
+      "G".repeat(64),
+      "A".repeat(64),
+      `${"a".repeat(63)} `,
+      "a".repeat(65),
+    ]) {
+      const error = failure({ ...required, DRAND_CHAIN_HASH: hash })
+      expect([error.env, error.reason]).toEqual(["DRAND_CHAIN_HASH", "not-a-chain-hash"])
+    }
+  })
+
+  it("rejects a drand period of 0 and a lead shorter than one period, and accepts a lead of one period", () => {
+    expect(failure({ ...required, DRAND_PERIOD_SECONDS: "0" }).reason).toBe("out-of-range")
+    const short = failure({ ...required, DRAND_LEAD_SECONDS: "2", DRAND_PERIOD_SECONDS: "3" })
+    expect([short.env, short.reason]).toEqual(["DRAND_LEAD_SECONDS", "not-at-least-drand-period"])
+    expect(
+      resolveConfig({ ...required, DRAND_LEAD_SECONDS: "3", DRAND_PERIOD_SECONDS: "3" })
+        .drandLeadSeconds,
+    ).toBe(3)
+  })
+
   it("rejects a poll maximum equal to or above the code maximum age", () => {
     for (const poll of ["300", "301"]) {
       expect(failure({ ...required, QUEUE_POLL_MAX_SECONDS: poll })).toMatchObject({

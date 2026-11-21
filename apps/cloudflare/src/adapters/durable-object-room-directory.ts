@@ -35,11 +35,23 @@ class DurableObjectRoomStub implements RoomStub {
   entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
     return inRoom(() => this.stub.entrants(...args))
   }
+  leafOf(...args: Parameters<GiveawayRoom["leafOf"]>) {
+    return inRoom(() => this.stub.leafOf(...args))
+  }
+  verification() {
+    return inRoom(() => this.stub.verification())
+  }
+  leaves() {
+    return inRoom(() => this.stub.leaves())
+  }
   close() {
     return inRoom(() => this.stub.close())
   }
   draw(...args: Parameters<GiveawayRoom["draw"]>) {
     return inRoom(() => this.stub.draw(...args))
+  }
+  setWinnerCount(...args: Parameters<GiveawayRoom["setWinnerCount"]>) {
+    return inRoom(() => this.stub.setWinnerCount(...args))
   }
   reroll(...args: Parameters<GiveawayRoom["reroll"]>) {
     return inRoom(() => this.stub.reroll(...args))

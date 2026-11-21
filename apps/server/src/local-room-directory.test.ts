@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
-import { idleChat } from "@rafflink/core/test/contract"
+import { FakeBeacon, idleChat } from "@rafflink/core/test/contract"
 import type { SocketConnector } from "@rafflink/core/ports"
 import type { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
 import { RoomTransientError } from "@rafflink/core/room/room-directory"
@@ -46,6 +46,7 @@ function directoryWith(overrides: Partial<LocalRoomDirectoryDeps> = {}): LocalRo
     config: testConfig({ LIVE_INTERVAL_MS: "1" }),
     clock: systemClock,
     random: systemRandom,
+    beacon: new FakeBeacon(),
     publish: () => {},
     onAlarm: async () => {},
     connector: idleChat.connector,
@@ -221,7 +222,7 @@ describe("LocalRoomDirectory", () => {
     await room.init(giveawayInit(id))
     await room.enter(viewer)
     await room.close()
-    await room.draw(1)
+    await room.draw()
     expect({ opened, closed }).toEqual({ opened: 1, closed: 0 })
 
     await directory.close()

@@ -1,0 +1,138 @@
+/* The verify page: the facts a draw committed to, the button that recomputes them in the browser, and the viewer's own entry. */
+
+main.container:has(> .verify) {
+  max-width: 40rem;
+  padding-block: 1.25rem;
+}
+
+.verify {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  line-height: normal;
+}
+
+.verify output {
+  display: block;
+}
+
+.verify h1,
+.verify h2,
+.verify p,
+.verify dl,
+.verify dd,
+.verify ol,
+.verify ul {
+  margin: 0;
+}
+
+.verify h1 {
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.verify h2 {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.verify header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.verify header p {
+  color: var(--ink-2);
+}
+
+.verify-facts {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.verify-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+.verify-facts > div + div {
+  border-top: 1px solid var(--line);
+}
+
+.verify-facts dt {
+  flex: none;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.verify-facts dd {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.verify-facts dd[data-format="mono"] {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.verify-run {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.verify-picks {
+  padding-left: var(--space-3);
+}
+
+.verify-checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  list-style: none;
+}
+
+.verify-checks li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.verify-checks .icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.verify-checks li[data-outcome="match"] {
+  color: var(--success);
+}
+
+.verify-checks li[data-outcome="mismatch"] {
+  color: var(--danger);
+}
+
+.verify-checks li[data-outcome="unavailable"],
+.verify-checks li[data-outcome="none"] {
+  color: var(--ink-2);
+}
+
+.verify-mine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

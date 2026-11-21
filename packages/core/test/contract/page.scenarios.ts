@@ -19,7 +19,7 @@ export function pageScenarios(context: ContractContext): void {
 
       expect(response.status).toBe(200)
       expect(response.headers.get("content-security-policy")).toBe(
-        `default-src 'self'; script-src 'self' ${inlineScriptSource}; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
+        `default-src 'self'; script-src 'self' ${inlineScriptSource}; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.drand.sh https://drand.cloudflare.com; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
       )
       expect(response.headers.get("x-content-type-options")).toBe("nosniff")
       expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin")

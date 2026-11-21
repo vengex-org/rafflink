@@ -4,8 +4,11 @@ import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
   DashboardGiveaway,
   EntrantsPage,
+  LeavesJson,
+  MyLeafJson,
   PublicGiveaway,
   SessionJson,
+  VerifyJson,
   ViewerState,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
@@ -20,6 +23,7 @@ import type {
   OverlaySnapshot,
   RerollOutcome,
   RerollState,
+  SetWinnerCountOutcome,
   ViewerPush,
   ViewerWinner,
   WinnerChatLine,
@@ -40,6 +44,7 @@ import {
   nullableNum,
   nullableText,
   num,
+  numList,
   oneOf,
   record,
   text,
@@ -86,6 +91,7 @@ export type EntryResult =
   | { readonly kind: "pending"; readonly ticket: string }
 
 export type CloseKind = CloseOutcome["kind"]
+export type SetWinnerCountKind = SetWinnerCountOutcome["kind"]
 export type DrawKind = DrawOutcome["kind"]
 export type RerollKind = RerollOutcome["kind"]
 export type ClaimKind = ClaimOutcome["kind"]
@@ -105,6 +111,7 @@ export interface CreateGiveawayBody {
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
+  readonly winnerCount: number
 }
 
 export type CreateResult =
@@ -121,6 +128,13 @@ export interface AdminUsage {
   /** Null: the target has no daily limit. "unavailable": the usage source did not answer. */
   readonly usage: Usage | null | "unavailable"
   readonly queue: QueueStats
+}
+
+/** What the verify page reads: the public facts, the leaf list once the room committed, and the viewer's own leaf when they entered. */
+export interface VerifyLoad {
+  readonly verify: VerifyJson
+  readonly leaves: LeavesJson | null
+  readonly mine: MyLeafJson | null
 }
 
 export const liveSnapshotPath = (id: string) => `/api/live/${encodeURIComponent(id)}`
@@ -146,6 +160,77 @@ export async function logout(): Promise<"logged-out"> {
   const response = await fetch("/auth/logout", { method: "POST" })
   if (response.status !== 204) throw new ApiError(response.status)
   return "logged-out"
+}
+
+export async function getVerifyLoad(code: string): Promise<VerifyLoad | null> {
+  const base = `/api/g/${encodeURIComponent(code)}`
+  const { status, body } = await send(`${base}/verify`)
+  if (status === 404) return null
+  if (status !== 200) throw new ApiError(status)
+  const verify = parseVerify(record(body, "verify"))
+  const [leaves, mine] = await Promise.all([
+    verify.commitment === null ? null : getLeaves(base),
+    getMyLeaf(base),
+  ])
+  return { verify, leaves, mine }
+}
+
+// 409 is a room that has not committed yet.
+async function getLeaves(base: string): Promise<LeavesJson | null> {
+  const { status, body } = await send(`${base}/leaves`)
+  if (status === 409) return null
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "leaves")
+  const hashes = textList(source, "hashes")
+  const tickets = numList(source, "tickets")
+  if (
+    hashes.length !== tickets.length
+    || !hashes.every((hash) => /^[0-9a-f]{64}$/.test(hash))
+    || !tickets.every((count) => Number.isSafeInteger(count) && count >= 0)
+  ) {
+    throw new ApiShapeError("leaves")
+  }
+  return { hashes, tickets }
+}
+
+// 401 is no viewer cookie and 404 a viewer who did not enter; both mean there is no own leaf to show.
+async function getMyLeaf(base: string): Promise<MyLeafJson | null> {
+  const { status, body } = await send(`${base}/my-leaf`)
+  if (status === 401 || status === 404) return null
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "my-leaf")
+  return {
+    platform: text(source, "platform"),
+    platformUserId: text(source, "platformUserId"),
+    tickets: num(source, "tickets"),
+    salt: nullableText(source, "salt"),
+  }
+}
+
+function parseVerify(source: Json): VerifyJson {
+  const commitment = source.commitment === null ? null : child(source, "commitment")
+  return {
+    status: oneOf(source, "status", roomStatuses),
+    entrantCount: num(source, "entrantCount"),
+    ticketTotal: num(source, "ticketTotal"),
+    winnerCount: num(source, "winnerCount"),
+    commitment:
+      commitment === null
+        ? null
+        : {
+            merkleRoot: text(commitment, "merkleRoot"),
+            chainHash: text(commitment, "chainHash"),
+            genesisSeconds: num(commitment, "genesisSeconds"),
+            periodSeconds: num(commitment, "periodSeconds"),
+            round: num(commitment, "round"),
+            committedAt: num(commitment, "committedAt"),
+          },
+    picks: list(source, "picks", (pick) => ({
+      n: num(pick, "n"),
+      leafIndex: nullableNum(pick, "leafIndex"),
+      rerolled: bool(pick, "rerolled"),
+    })),
+  }
 }
 
 export async function getGiveaway(code: string): Promise<GiveawayLoad | null> {
@@ -316,8 +401,13 @@ export function closeEntries(id: string): Promise<CloseKind | Rejected> {
   return act(`/api/dash/giveaways/${encodeURIComponent(id)}/close`, {}, closeKinds)
 }
 
-export function drawWinners(id: string, count: number): Promise<DrawKind | Rejected> {
-  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, { count }, drawKinds)
+/** The count is the giveaway's own setting, so the draw sends none. */
+export function drawWinners(id: string): Promise<DrawKind | Rejected> {
+  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, {}, drawKinds)
+}
+
+export function setWinnerCount(id: string, count: number): Promise<SetWinnerCountKind | Rejected> {
+  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/winners`, { count }, setWinnerKinds)
 }
 
 export function rerollWinner(id: string, n: number): Promise<RerollKind | Rejected> {
@@ -338,8 +428,11 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
+const setWinnerKinds = ["set", "not-open"] as const satisfies readonly SetWinnerCountKind[]
 const drawKinds = [
   "drawn",
+  "round-pending",
+  "beacon-unavailable",
   "not-closed",
   "already-drawn",
   "entries-deleted",
@@ -561,6 +654,7 @@ function parseSharedSnapshotFields(source: Json) {
     closesAt: nullableNum(source, "closesAt"),
     entrantCount: num(source, "entrantCount"),
     ticketTotal: num(source, "ticketTotal"),
+    winnerCount: num(source, "winnerCount"),
     entriesPerSecond: num(source, "entriesPerSecond"),
     lastNames: textList(source, "lastNames"),
     winners: list(source, "winners", parseWinner),

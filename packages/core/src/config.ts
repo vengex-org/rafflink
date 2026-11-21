@@ -1,3 +1,4 @@
+import { publicDrandUrls, quicknet } from "./lib/drand.ts"
 import type { Parsed } from "./lib/parsed.ts"
 import { queuedEntryTwitchRequests } from "./twitch/queued-entry-requests.ts"
 
@@ -9,6 +10,8 @@ export type ConfigReason =
   | "out-of-range"
   | "not-a-url"
   | "not-a-header-name"
+  | "not-a-chain-hash"
+  | "not-at-least-drand-period"
   | "not-an-admin-entry"
   | "not-below-queue-code-max-age"
   | "not-below-eventsub-connection-max"
@@ -387,6 +390,66 @@ export const configSchema = {
     "200",
     "Longest giveaway prize in characters; starting guess, a sentence",
   ),
+  drandUrl: withDefault(
+    "DRAND_URL",
+    url,
+    publicDrandUrls[0],
+    "Origin of the drand HTTP API the draw reads its round from; only tests change it",
+  ),
+  drandChainHash: withDefault(
+    "DRAND_CHAIN_HASH",
+    chainHash,
+    quicknet.chainHash,
+    "Hash of the drand chain the draw trusts, which is also the path of every round request; the default is the quicknet beacon",
+  ),
+  drandGenesisSeconds: withDefault(
+    "DRAND_GENESIS_SECONDS",
+    int(0),
+    String(quicknet.genesisSeconds),
+    "Unix time of round 1 of DRAND_CHAIN_HASH; the default is the quicknet beacon, read from its /info",
+  ),
+  drandPeriodSeconds: withDefault(
+    "DRAND_PERIOD_SECONDS",
+    int(1),
+    String(quicknet.periodSeconds),
+    "Seconds between rounds of DRAND_CHAIN_HASH; the default is the quicknet beacon, read from its /info",
+  ),
+  drandLeadSeconds: withDefault(
+    "DRAND_LEAD_SECONDS",
+    int(0),
+    "30",
+    "A giveaway commits to the first drand round at least this long after entries close, so nobody knows its value yet; spec The draw",
+  ),
+  drandPublishMarginSeconds: withDefault(
+    "DRAND_PUBLISH_MARGIN_SECONDS",
+    int(0),
+    "30",
+    "A drand round still missing this long after its time counts as a failed beacon, not as an early draw; ten rounds of quicknet, a starting guess",
+  ),
+  drandRetryDelaysMs: withDefault(
+    "DRAND_RETRY_DELAYS_MS",
+    list(int(0)),
+    "200,500,1000",
+    "Delay before each retry of a drand round that failed or is not published yet, so also the retry count; same shape as the entry write retry, spec Retry",
+  ),
+  drandRetryJitterPercent: withDefault(
+    "DRAND_RETRY_JITTER_PERCENT",
+    int(0, 100),
+    "50",
+    "Random share added to or removed from each drand retry delay; starting guess",
+  ),
+  drandTimeoutMs: withDefault(
+    "DRAND_TIMEOUT_MS",
+    int(1),
+    "5000",
+    "Timeout of every drand request; starting guess",
+  ),
+  commitRetrySeconds: withDefault(
+    "COMMIT_RETRY_SECONDS",
+    int(1),
+    "30",
+    "Wait before the room alarm retries a commitment (Merkle root and drand round) that failed; starting guess",
+  ),
   dataDir: withDefault(
     "DATA_DIR",
     text,
@@ -495,6 +558,16 @@ export function resolveConfig(env: Env): ResolvedConfig {
     clientIpHeader: read(env, configSchema.clientIpHeader),
     titleMaxLength: read(env, configSchema.titleMaxLength),
     prizeMaxLength: read(env, configSchema.prizeMaxLength),
+    drandUrl: read(env, configSchema.drandUrl),
+    drandChainHash: read(env, configSchema.drandChainHash),
+    drandGenesisSeconds: read(env, configSchema.drandGenesisSeconds),
+    drandPeriodSeconds: read(env, configSchema.drandPeriodSeconds),
+    drandLeadSeconds: read(env, configSchema.drandLeadSeconds),
+    drandPublishMarginSeconds: read(env, configSchema.drandPublishMarginSeconds),
+    drandRetryDelaysMs: read(env, configSchema.drandRetryDelaysMs),
+    drandRetryJitterPercent: read(env, configSchema.drandRetryJitterPercent),
+    drandTimeoutMs: read(env, configSchema.drandTimeoutMs),
+    commitRetrySeconds: read(env, configSchema.commitRetrySeconds),
     dataDir: read(env, configSchema.dataDir),
     port: read(env, configSchema.port),
     cloudflareAccountId: read(env, configSchema.cloudflareAccountId),
@@ -528,6 +601,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
   // Entrants' data must outlive every window in which a winner can still be claimed or rerolled.
   if (config.entryRetentionSeconds < config.claimSecondsMax + config.rerollWindowSeconds) {
     throw new ConfigError(configSchema.entryRetentionSeconds.env, "below-claim-and-reroll-windows")
+  }
+  // A lead shorter than one round could pick a round that is already known when the room commits.
+  if (config.drandLeadSeconds < config.drandPeriodSeconds) {
+    throw new ConfigError(configSchema.drandLeadSeconds.env, "not-at-least-drand-period")
   }
   // The fake Twitch signs in anyone, so it must never run behind a public origin.
   if (config.devFakeTwitch && !isLocalOrigin(config.publicUrl)) {
@@ -609,6 +686,11 @@ function url(raw: string): Parsed<string, ConfigReason> {
 function headerName(raw: string): Parsed<string, ConfigReason> {
   const value = raw.trim()
   return /^[A-Za-z0-9-]+$/.test(value) ? ok(value.toLowerCase()) : fail("not-a-header-name")
+}
+
+function chainHash(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  return /^[0-9a-f]{64}$/.test(value) ? ok(value) : fail("not-a-chain-hash")
 }
 
 function endpoint(raw: string): Parsed<string, ConfigReason> {

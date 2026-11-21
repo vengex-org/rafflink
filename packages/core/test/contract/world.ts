@@ -4,6 +4,7 @@ import { toBase64 } from "../../src/lib/encoding.ts"
 import type { QueueStats } from "../../src/queue/token-queue.ts"
 import type { LiveSnapshot } from "../../src/room/giveaway-room.ts"
 import { Browser } from "./browser.ts"
+import { startFakeDrand, type RunningFakeDrand } from "./fake-drand.ts"
 import { clientCredentials, startFakeTwitch, users, type RunningFakeTwitch } from "./fake-twitch.ts"
 import { openSocket, type LiveMessage } from "./socket.ts"
 import { webFixture } from "./spa-fixture.ts"
@@ -30,6 +31,7 @@ export interface GiveawayOptions {
   readonly rules?: Partial<GiveawayRules>
   readonly closesAt?: Date
   readonly claimSeconds?: number
+  readonly winnerCount?: number
   readonly streamer?: Browser
   /** Creates the giveaway without a title and a prize. */
   readonly unnamed?: boolean
@@ -78,6 +80,7 @@ export function scenario(
 
 export class World {
   readonly twitch: RunningFakeTwitch = startFakeTwitch()
+  readonly drand: RunningFakeDrand = startFakeDrand()
   private readonly targets: ContractTarget[] = []
   private readonly sockets: WebSocket[] = []
   private readonly web = webFixture()
@@ -98,6 +101,7 @@ export class World {
     for (const socket of this.sockets) socket.close()
     for (const target of this.targets) await target.stop()
     await this.twitch.stop()
+    await this.drand.stop()
     this.web.remove()
   }
 
@@ -131,6 +135,7 @@ export class World {
       rules: { ...defaultRules, ...options.rules },
       closesAt: options.closesAt?.toISOString(),
       claimSeconds: options.claimSeconds,
+      winnerCount: options.winnerCount,
     })
     expect(response.status).toBe(201)
     const body: { giveaway: { id: string; code: string; overlayToken: string } } =
@@ -206,8 +211,8 @@ export class World {
     return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/close`, {})
   }
 
-  drawWinners(giveaway: CreatedGiveaway, count: number): Promise<Response> {
-    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, { count })
+  drawWinners(giveaway: CreatedGiveaway): Promise<Response> {
+    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, {})
   }
 
   /** Requests the fake Twitch has received on `path`. */
@@ -226,6 +231,8 @@ export class World {
       TWITCH_ID_BASE_URL: this.twitch.origin,
       TWITCH_HELIX_BASE_URL: this.twitch.origin,
       EVENTSUB_URL: `${this.twitch.origin.replace(/^http/, "ws")}${eventSubPath}`,
+      DRAND_URL: this.drand.origin,
+      DRAND_RETRY_DELAYS_MS: "0",
       TWITCH_TIMEOUT_MS: "2000",
       HELIX_RETRY_DELAY_MS: "0",
       ENTRY_WRITE_RETRY_DELAYS_MS: "0",

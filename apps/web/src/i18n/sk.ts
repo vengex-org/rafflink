@@ -463,10 +463,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.overlay.qr.on": "Zobraziť",
   "live.overlay.qr.off": "Skryť",
   "live.draw.title": "Zápis je uzavretý",
-  "live.draw.text": "{people}. Teraz vyber, koľko víťazov chceš, a vyžrebuj ich.",
+  "live.draw.text": "{people}. Teraz vyžrebuj víťazov.",
   "live.draw.count": "Koľko víťazov?",
   "live.draw.nobody": "Nikto sa nezapísal, nie je koho žrebovať.",
-  "live.draw.invalid": "Zadaj celé číslo víťazov, aspoň 1.",
   "live.draw.fewer": "Zapísalo sa len {count}, takže víťazov môže byť menej.",
   "live.draw.random": "Víťazi sa vyberú náhodne spomedzi všetkých zapísaných.",
   "live.draw.label": "Vyžrebovať víťazov",
@@ -599,7 +598,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i2":
     "Streameri: Twitch refresh token, uložený šifrovane. Vďaka nemu Rafflink počas giveawayu číta zoznam VIP a moderátorov kanála a chat.",
   "privacy.data.i3":
-    "Účastníci: Twitch user ID, prihlasovacie meno, zobrazované meno, skupina, ktorá dala tikety (divák, follower, úroveň predplatiteľa, VIP alebo moderátor), počet tiketov a čas zapojenia. Kontrola follow a predplatného použije tvoj Twitch token jedenkrát a token sa neukladá.",
+    "Účastníci: Twitch user ID, prihlasovacie meno, zobrazované meno, skupina, ktorá dala tikety (divák, follower, úroveň predplatiteľa, VIP alebo moderátor), počet tiketov, čas zapojenia a náhodná hodnota (salt), vďaka ktorej je žrebovanie overiteľné. Kontrola follow a predplatného použije tvoj Twitch token jedenkrát a token sa neukladá.",
   "privacy.data.i4": "Výhercovia: výsledok žrebovania a to, či a ako bola výhra prevzatá.",
   "privacy.data.i5":
     "Správy z chatu: čítajú sa len v pamäti, aby sa rozpoznalo prevzatie výhry a aby sa na živej stránke ukázali správy výhercu. Nikdy sa neukladajú ani nelogujú.",
@@ -623,6 +622,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Prihlasovacie kódy čakajúce vo fronte sa po niekoľkých minútach zahodia.",
   "privacy.retention.i4":
     "Logy hostiteľa sa uchovávajú tak dlho, ako ich podľa vlastných podmienok uchováva Cloudflare.",
+  "privacy.retention.i5":
+    "Zoznam výhercov, Merkleho koreň zoznamu zapojení a zoznam jeho listov (hashe a počty tiketov, bez mien) zostávajú pri giveawayi, aby si žrebovanie mohol neskôr overiť ktokoľvek.",
   "privacy.recipients.h": "Kto ďalší údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje nepredáva. Údaje idú len týmto stranám.",
   "privacy.recipients.i1":
@@ -631,6 +632,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Twitch je poskytovateľ identity. Dostáva tvoje prihlásenie a počas giveawayu aj volania API na kontrolu follow, predplatného a rolí a odber chatu, ktorým sa rozpoznáva prevzatie výhry. Twitch je samostatný prevádzkovateľ podľa vlastných zásad ochrany súkromia.",
   "privacy.recipients.i3":
     "Streamer, ktorý giveaway vedie, vidí jeho účastníkov a výhercov. Mená účastníkov a výhercov sa zobrazujú na živej stránke giveawayu a v overlayi.",
+  "privacy.recipients.i4":
+    "Pri žrebovaní sa číta verejný maják náhodnosti drand. Neposielajú sa mu žiadne osobné údaje.",
   "privacy.cookies.h": "Cookies a lokálne úložisko",
   "privacy.cookies.p1":
     "Rafflink nastavuje iba nevyhnutne potrebné cookies, preto sa nezobrazuje žiadny súhlasový banner. Všetky sú HTTP-only a nepoužívajú sa na nič iné.",
@@ -704,4 +707,76 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Tieto podmienky môžeme zmeniť. Dátum na začiatku ukazuje aktuálnu verziu a používaním služby po zmene ju prijímaš. Giveaway môžeme odstrániť a účet zablokovať, ak porušuje tieto podmienky.",
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Otázky k týmto podmienkam: {contactEmail}.",
+  "drawResult.round-pending":
+    "Náhodné číslo pre toto žrebovanie ešte nie je zverejnené. Skús to znova o pár sekúnd.",
+  "drawResult.beacon-unavailable":
+    "Zdroj náhody (drand) sa nepodarilo zastihnúť. Nič sa nevyžrebovalo. Skús to znova.",
+  "giveaway.verify.link": "Overiť toto žrebovanie",
+  "verify.title": "Overenie žrebovania",
+  "verify.intro":
+    "Vo svojom prehliadači skontroluj, že víťazi vychádzajú zo zoznamu zápisov a z verejného náhodného čísla, ktoré tu nikto neovláda.",
+  "verify.back": "Späť na giveaway",
+  "verify.open": "Zápis ešte beží. Zoznam zápisov sa uzamkne, keď sa zápis uzavrie.",
+  "verify.closed.pending":
+    "Zápis je uzavretý a zoznam sa práve uzamyká. Za chvíľu stránku načítaj znova.",
+  "verify.unverifiable":
+    "Toto žrebovanie prebehlo skôr, než sa dali žrebovania overovať, takže nie je čo kontrolovať.",
+  "verify.facts.entrants": "Zapísaní",
+  "verify.facts.tickets": "Tikety",
+  "verify.facts.root": "Merkle root",
+  "verify.facts.chain": "Reťazec drand",
+  "verify.facts.round": "Kolo drand",
+  "verify.facts.leaves": "Zoznam zápisov",
+  "verify.facts.leavesLink": "Otvoriť zoznam zápisov",
+  "verify.run": "Overiť",
+  "verify.running": "Kontrolujem…",
+  "verify.check.counts.match": "Zoznam má toľko zápisov a tiketov, koľko sa oznámilo.",
+  "verify.check.counts.mismatch": "Zoznam nemá oznámený počet zápisov a tiketov.",
+  "verify.check.root.match": "Merkle root zoznamu je zverejnený root.",
+  "verify.check.root.mismatch": "Merkle root zoznamu nie je zverejnený root.",
+  "verify.check.signature.valid": "Podpis kola drand {round} je platný.",
+  "verify.check.signature.invalid":
+    "Podpis kola drand {round} nie je platný, takže nižšie uvedenému sa nedá veriť.",
+  "verify.check.signature.unavailable": "Podpis kola drand {round} sa nepodarilo skontrolovať.",
+  "verify.check.signature.none": "Zatiaľ nie je potrebné žiadne kolo, takže nie je čo kontrolovať.",
+  "verify.check.winners.match":
+    "Víťazi vychádzajú zo zoznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.mismatch":
+    "Víťazi nevychádzajú zo zoznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.unavailable": "Kolo drand {round} sa nepodarilo prečítať. Skús to neskôr.",
+  "verify.check.winners.none": "Zatiaľ nie sú vyžrebovaní žiadni víťazi, takže nie je čo porovnať.",
+  "verify.winners.title": "Víťazi",
+  "verify.winner.entry": "Výber {n} je zápis {leaf} zo zoznamu.",
+  "verify.winner.rerolled": "(vyžrebovaný znova)",
+  "live.draw.fixed": "Počet víťazov na vyžrebovanie: {count}. Nastavený pred uzavretím zápisu.",
+  "live.winners.save": "Uložiť",
+  "winnersResult.set": "Počet víťazov je uložený.",
+  "winnersResult.not-open": "Zápis je uzavretý, takže počet víťazov sa už nedá zmeniť.",
+  "winnersResult.rejected": "Uloženie sa nepodarilo. Zadaj celé číslo víťazov, aspoň 1.",
+  "wizard.winners.label": "Koľko víťazov?",
+  "wizard.winners.help":
+    "Nastavuje sa pred žrebovaním. Môžeš ho zmeniť, kým nezavrieš zápis, potom už nie.",
+  "review.winners": "Víťazi",
+  "verify.check.timing.match": "Kolo drand bolo zverejnené po uzamknutí zoznamu.",
+  "verify.check.timing.mismatch":
+    "Kolo drand bolo zverejnené pred uzamknutím zoznamu, takže žrebovaniu sa nedá veriť.",
+  "verify.facts.winners": "Víťazov na vyžrebovanie",
+  "verify.facts.committed": "Zoznam uzamknutý",
+  "verify.rerolls.note":
+    "Streamer môže znova vyžrebovať víťaza, ktorý nesplnil podmienky giveawayu. Každé nové žrebovanie ostáva v tomto zozname.",
+  "verify.rerolls.count": "Znova vyžrebované výbery: {count}.",
+  "verify.winner.before": "Pred ním bolo znova vyžrebovaných výberov: {count}.",
+  "verify.mine.title": "Tvoj zápis",
+  "verify.mine.signedOut":
+    "Prihlás sa na stránke giveawayu rovnakým účtom ako pri zápise a skontroluj svoj zápis.",
+  "verify.mine.hint":
+    "Tvoj zápis sa hashuje z týchto hodnôt a tvojej súkromnej soli. Soľ nezdieľaj.",
+  "verify.mine.platform": "Platforma",
+  "verify.mine.user": "ID používateľa",
+  "verify.mine.salt": "Soľ (súkromná)",
+  "verify.mine.noSalt":
+    "Tvoj zápis zatiaľ nemá soľ. Dostane ju, keď sa zápis uzavrie. Načítaj stránku neskôr.",
+  "verify.mine.found": "Tvoj zápis je zápis {leaf} zo zoznamu, s {tickets} tiketmi.",
+  "verify.mine.won": "Si výber {n}.",
+  "verify.mine.missing": "Tvoj zápis nie je v zozname.",
 }

@@ -32,6 +32,7 @@ import type { RoomDirectory, RoomStub } from "../src/room/room-directory.ts"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "../src/sqlite-bun.ts"
 import { TwitchClient } from "../src/twitch/twitch-client.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
+import { FakeBeacon } from "./fake-beacon.ts"
 import { idleChat } from "./idle-chat.ts"
 
 const accountsSchemaDir = new URL("../schema/accounts/", import.meta.url)
@@ -106,6 +107,7 @@ export interface RoomHooks {
 /** Rooms of one test, each over its own in-memory database, behind the async stub the app expects. */
 export class InProcessRooms implements RoomDirectory {
   readonly hooks: RoomHooks = { beforeInit: () => {}, beforeEnter: () => {} }
+  readonly beacon = new FakeBeacon()
   private readonly rooms = new Map<string, GiveawayRoom>()
 
   constructor(
@@ -131,6 +133,7 @@ export class InProcessRooms implements RoomDirectory {
       random: secureRandom,
       config: this.config,
       chat: idleChat,
+      beacon: this.beacon,
     })
     this.rooms.set(giveawayId, room)
     return room
@@ -161,11 +164,23 @@ class InProcessRoomStub implements RoomStub {
   async entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
     return this.room.entrants(...args)
   }
+  async leafOf(...args: Parameters<GiveawayRoom["leafOf"]>) {
+    return this.room.leafOf(...args)
+  }
+  async verification() {
+    return this.room.verification()
+  }
+  async leaves() {
+    return this.room.leaves()
+  }
   async close() {
     return this.room.close()
   }
-  async draw(count: number) {
-    return this.room.draw(count)
+  async draw() {
+    return this.room.draw()
+  }
+  async setWinnerCount(count: number) {
+    return this.room.setWinnerCount(count)
   }
   async reroll(n: number) {
     return this.room.reroll(n)

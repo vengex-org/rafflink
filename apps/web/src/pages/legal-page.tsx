@@ -105,12 +105,18 @@ const privacy: LegalDocument = {
         "privacy.retention.i2",
         "privacy.retention.i3",
         "privacy.retention.i4",
+        "privacy.retention.i5",
       ],
     },
     {
       heading: "privacy.recipients.h",
       paragraphs: ["privacy.recipients.p1"],
-      items: ["privacy.recipients.i1", "privacy.recipients.i2", "privacy.recipients.i3"],
+      items: [
+        "privacy.recipients.i1",
+        "privacy.recipients.i2",
+        "privacy.recipients.i3",
+        "privacy.recipients.i4",
+      ],
     },
     {
       heading: "privacy.cookies.h",

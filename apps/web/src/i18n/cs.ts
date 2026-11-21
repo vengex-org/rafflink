@@ -464,10 +464,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.overlay.qr.on": "Zobrazit",
   "live.overlay.qr.off": "Skrýt",
   "live.draw.title": "Přihlašování je uzavřené",
-  "live.draw.text": "{people}. Teď vyber, kolik vítězů chceš, a vylosuj je.",
+  "live.draw.text": "{people}. Teď vylosuj vítěze.",
   "live.draw.count": "Kolik vítězů?",
   "live.draw.nobody": "Nikdo se nepřihlásil, není koho losovat.",
-  "live.draw.invalid": "Zadej celé číslo vítězů, alespoň 1.",
   "live.draw.fewer": "Přihlásilo se jen {count}, takže vítězů může být méně.",
   "live.draw.random": "Vítězové se vyberou náhodně ze všech přihlášených.",
   "live.draw.label": "Vylosovat vítěze",
@@ -601,7 +600,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i2":
     "Streameři: Twitch refresh token, uložený šifrovaně. Díky němu Rafflink během giveawaye čte seznam VIP a moderátorů kanálu a chat.",
   "privacy.data.i3":
-    "Účastníci: Twitch user ID, přihlašovací jméno, zobrazované jméno, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů a čas zapojení. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
+    "Účastníci: Twitch user ID, přihlašovací jméno, zobrazované jméno, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů, čas zapojení a náhodná hodnota (salt), díky které je losování ověřitelné. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
   "privacy.data.i4": "Výherci: výsledek losování a to, zda a jak byla výhra převzata.",
   "privacy.data.i5":
     "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují.",
@@ -624,6 +623,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.retention.i3": "Přihlašovací kódy čekající ve frontě se po několika minutách zahodí.",
   "privacy.retention.i4":
     "Logy hostitele se uchovávají tak dlouho, jak je podle vlastních podmínek uchovává Cloudflare.",
+  "privacy.retention.i5":
+    "Seznam výherců, Merkleův kořen seznamu zapojení a seznam jeho listů (hashe a počty tiketů, bez jmen) zůstávají u giveawaye, aby losování mohl později ověřit kdokoli.",
   "privacy.recipients.h": "Kdo další údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje neprodává. Údaje jdou jen těmto stranám.",
   "privacy.recipients.i1":
@@ -632,6 +633,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Twitch je poskytovatel identity. Dostává tvé přihlášení a během giveawaye také volání API ke kontrole follow, předplatného a rolí a odběr chatu, kterým se rozpoznává převzetí výhry. Twitch je samostatný správce podle vlastních zásad ochrany soukromí.",
   "privacy.recipients.i3":
     "Streamer, který giveaway vede, vidí jeho účastníky a výherce. Jména účastníků a výherců se zobrazují na živé stránce giveawaye a v overlayi.",
+  "privacy.recipients.i4":
+    "Při losování se čte veřejný maják náhodnosti drand. Neposílají se mu žádné osobní údaje.",
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",
@@ -704,4 +707,76 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Tyto podmínky můžeme změnit. Datum na začátku ukazuje aktuální verzi a používáním služby po změně ji přijímáš. Giveaway můžeme odstranit a účet zablokovat, pokud porušuje tyto podmínky.",
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Dotazy k těmto podmínkám: {contactEmail}.",
+  "drawResult.round-pending":
+    "Náhodné číslo pro toto losování ještě není zveřejněné. Zkus to znovu za pár sekund.",
+  "drawResult.beacon-unavailable":
+    "Zdroj náhody (drand) se nepodařilo zastihnout. Nic se nevylosovalo. Zkus to znovu.",
+  "giveaway.verify.link": "Ověřit toto losování",
+  "verify.title": "Ověření losování",
+  "verify.intro":
+    "Ve svém prohlížeči zkontroluj, že vítězové vycházejí ze seznamu přihlášek a z veřejného náhodného čísla, které tu nikdo neovládá.",
+  "verify.back": "Zpět na giveaway",
+  "verify.open": "Přihlašování ještě běží. Seznam přihlášek se uzamkne, až se přihlašování uzavře.",
+  "verify.closed.pending":
+    "Přihlašování je uzavřené a seznam se právě uzamyká. Za chvíli stránku načti znovu.",
+  "verify.unverifiable":
+    "Toto losování proběhlo dřív, než šla losování ověřovat, takže není co kontrolovat.",
+  "verify.facts.entrants": "Přihlášení",
+  "verify.facts.tickets": "Tikety",
+  "verify.facts.root": "Merkle root",
+  "verify.facts.chain": "Řetězec drand",
+  "verify.facts.round": "Kolo drand",
+  "verify.facts.leaves": "Seznam přihlášek",
+  "verify.facts.leavesLink": "Otevřít seznam přihlášek",
+  "verify.run": "Ověřit",
+  "verify.running": "Kontroluji…",
+  "verify.check.counts.match": "Seznam má tolik přihlášek a tiketů, kolik se oznámilo.",
+  "verify.check.counts.mismatch": "Seznam nemá oznámený počet přihlášek a tiketů.",
+  "verify.check.root.match": "Merkle root seznamu je zveřejněný root.",
+  "verify.check.root.mismatch": "Merkle root seznamu není zveřejněný root.",
+  "verify.check.signature.valid": "Podpis kola drand {round} je platný.",
+  "verify.check.signature.invalid":
+    "Podpis kola drand {round} není platný, takže výsledku níže se nedá věřit.",
+  "verify.check.signature.unavailable": "Podpis kola drand {round} se nepodařilo zkontrolovat.",
+  "verify.check.signature.none": "Zatím není potřeba žádné kolo, takže není co kontrolovat.",
+  "verify.check.winners.match":
+    "Vítězové vycházejí ze seznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.mismatch":
+    "Vítězové nevycházejí ze seznamu a z náhodného čísla kola drand {round}.",
+  "verify.check.winners.unavailable": "Kolo drand {round} se nepodařilo přečíst. Zkus to později.",
+  "verify.check.winners.none": "Zatím nejsou vylosovaní žádní vítězové, takže není co porovnat.",
+  "verify.winners.title": "Vítězové",
+  "verify.winner.entry": "Výběr {n} je přihláška {leaf} ze seznamu.",
+  "verify.winner.rerolled": "(vylosovaný znovu)",
+  "live.draw.fixed": "Počet vítězů k vylosování: {count}. Nastavený před uzavřením přihlašování.",
+  "live.winners.save": "Uložit",
+  "winnersResult.set": "Počet vítězů je uložený.",
+  "winnersResult.not-open": "Přihlašování je uzavřené, takže počet vítězů už nejde změnit.",
+  "winnersResult.rejected": "Uložení se nepovedlo. Zadej celé číslo vítězů, alespoň 1.",
+  "wizard.winners.label": "Kolik vítězů?",
+  "wizard.winners.help":
+    "Nastavuje se před losováním. Můžeš ho změnit, dokud nezavřeš přihlašování, potom už ne.",
+  "review.winners": "Vítězové",
+  "verify.check.timing.match": "Kolo drand bylo zveřejněné po uzamčení seznamu.",
+  "verify.check.timing.mismatch":
+    "Kolo drand bylo zveřejněné před uzamčením seznamu, takže losování nejde věřit.",
+  "verify.facts.winners": "Vítězů k vylosování",
+  "verify.facts.committed": "Seznam uzamčený",
+  "verify.rerolls.note":
+    "Streamer může znovu vylosovat vítěze, který nesplnil podmínky giveaway. Každé nové losování zůstává v tomto seznamu.",
+  "verify.rerolls.count": "Znovu vylosované výběry: {count}.",
+  "verify.winner.before": "Před ním bylo znovu vylosovaných výběrů: {count}.",
+  "verify.mine.title": "Tvoje přihláška",
+  "verify.mine.signedOut":
+    "Přihlas se na stránce giveaway stejným účtem jako při přihlášení do losování a zkontroluj svou přihlášku.",
+  "verify.mine.hint":
+    "Tvoje přihláška se hashuje z těchto hodnot a tvé soukromé soli. Sůl nesdílej.",
+  "verify.mine.platform": "Platforma",
+  "verify.mine.user": "ID uživatele",
+  "verify.mine.salt": "Sůl (soukromá)",
+  "verify.mine.noSalt":
+    "Tvoje přihláška zatím nemá sůl. Dostane ji, až se přihlašování uzavře. Načti stránku později.",
+  "verify.mine.found": "Tvoje přihláška je přihláška {leaf} ze seznamu, s {tickets} tikety.",
+  "verify.mine.won": "Jsi výběr {n}.",
+  "verify.mine.missing": "Tvoje přihláška není v seznamu.",
 }

@@ -20,6 +20,7 @@ export interface Values {
   closesAt: string
   claimSeconds: number
   claimKeyword: string
+  winnerCount: string
 }
 
 export interface Issue {
@@ -45,6 +46,7 @@ export const initialValues: Values = {
   closesAt: "",
   claimSeconds: 300,
   claimKeyword: "",
+  winnerCount: "1",
 }
 
 /** The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. */
@@ -93,6 +95,9 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
           message: "issue.wholeDays",
         }
       }
+      if (!isWholeNumber(values.winnerCount) || Number(values.winnerCount) < 1) {
+        return { field: "winnerCount", message: "issue.not-a-positive-integer" }
+      }
       return null
     }
     case 3:
@@ -108,6 +113,7 @@ export function stepOfField(field: string): Step {
     || field === "minAccountAgeDays"
     || field === "claimSeconds"
     || field === "claimKeyword"
+    || field === "winnerCount"
   ) {
     return 2
   }
@@ -150,6 +156,7 @@ export function toBody(values: Values): CreateGiveawayBody {
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
     claimSeconds: values.claimSeconds,
+    winnerCount: Number(values.winnerCount),
   }
 }
 

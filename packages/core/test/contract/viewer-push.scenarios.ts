@@ -45,7 +45,7 @@ export function viewerPushScenarios(context: ContractContext): void {
       await world.waitFor(() => messages.length >= 1, "the first outcome")
 
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       await world.waitFor(
         () => messages.some((message) => message.status === "drawn"),
         "the draw outcome",
@@ -79,7 +79,7 @@ export function viewerPushScenarios(context: ContractContext): void {
       await world.enter(target, giveaway.code, users.viewer.id)
       await world.enter(target, giveaway.code, users.viewer2.id)
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       const early = openViewerSocket(world, target.url, giveaway)
       await world.waitFor(() => early.messages.length >= 1, "the first outcome")
 
@@ -108,7 +108,7 @@ export function viewerPushScenarios(context: ContractContext): void {
       await world.enter(target, giveaway.code, users.viewer.id)
       await world.enter(target, giveaway.code, users.viewer2.id)
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       const { messages } = openViewerSocket(world, target.url, giveaway)
       await world.waitFor(
         () => messages.some((message) => message.winners[0]?.claim.state === "expired"),
@@ -135,7 +135,7 @@ export function viewerPushScenarios(context: ContractContext): void {
       const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
       await world.enter(target, giveaway.code, users.viewer.id)
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       const { messages } = openViewerSocket(world, target.url, giveaway)
 
       await world.waitFor(
@@ -160,7 +160,7 @@ export function viewerPushScenarios(context: ContractContext): void {
       await world.enter(target, giveaway.code, users.viewer.id)
       await world.enter(target, giveaway.code, users.viewer2.id)
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       const { messages } = openViewerSocket(world, target.url, giveaway)
 
       await world.waitFor(
@@ -208,7 +208,7 @@ export function viewerPushScenarios(context: ContractContext): void {
       )
 
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       await world.waitFor(
         () => viewerSocket.messages.some((message) => message.status === "drawn"),
         "the draw outcome",

@@ -2,9 +2,13 @@ import { Database } from "bun:sqlite"
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { resolveConfig } from "../config.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
-import { drawWinners } from "../lib/draw.ts"
+import { drawLeafPicks, drawWinners } from "../lib/draw.ts"
+import { quicknet, roundTime } from "../lib/drand.ts"
+import { toHex } from "../lib/encoding.ts"
+import { leafHash, merkleRoot } from "../lib/merkle.ts"
 import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql } from "../ports.ts"
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
+import { FakeBeacon, fakeRandomness } from "../../test/fake-beacon.ts"
 import { idleChat } from "../../test/idle-chat.ts"
 import {
   GiveawayRoom,
@@ -60,6 +64,7 @@ const giveaway: GiveawayInit = {
   code: "ABCDE",
   rules,
   claimSeconds: 300,
+  winnerCount: 1,
   closesAt: null,
 }
 
@@ -124,16 +129,26 @@ function viewer(id: string, overrides: Partial<RoomViewer> = {}): RoomViewer {
   }
 }
 
-function setup(init: GiveawayInit = giveaway) {
+function setup(init: GiveawayInit = giveaway, rng: Random = random) {
   const db = new Database(":memory:")
   const sql = new RecordingSql(new BunSqliteSyncSql(db))
   applyMigrations(sql, roomMigrations)
   const clock = new TestClock(0)
   const alarm = new TestAlarm()
   const hub = new TestHub()
-  const room = new GiveawayRoom({ sql, alarm, live: hub, clock, random, config, chat: idleChat })
+  const beacon = new FakeBeacon()
+  const room = new GiveawayRoom({
+    sql,
+    alarm,
+    live: hub,
+    clock,
+    random: rng,
+    config,
+    chat: idleChat,
+    beacon,
+  })
   room.init(init)
-  return { room, sql, clock, alarm, hub }
+  return { room, sql, clock, alarm, hub, beacon }
 }
 
 function enterMany(room: GiveawayRoom, ids: readonly string[]): void {
@@ -152,7 +167,7 @@ async function drawnRoom() {
   const context = setup()
   enterMany(context.room, ["1", "2", "3"])
   context.room.close()
-  await context.room.draw(1)
+  await context.room.draw()
   const winner = twitch(String(picks(context.sql)[0]?.platform_user_id))
   return { ...context, winner }
 }
@@ -261,9 +276,10 @@ describe("GiveawayRoom draw", () => {
   it("stores the seed and the picks the seed produces", async () => {
     const { room, sql } = setup()
     enterMany(room, ["1", "2", "3"])
+    room.setWinnerCount(5)
     room.close()
 
-    const outcome = await room.draw(5)
+    const outcome = await room.draw()
 
     expect(outcome.kind).toBe("drawn")
     const stored = sql.exec("SELECT seed, status FROM room_state", [])[0]
@@ -281,7 +297,7 @@ describe("GiveawayRoom draw", () => {
   it("refuses a draw before the room is closed", async () => {
     const { room, sql } = setup()
     enterMany(room, ["1"])
-    expect(await room.draw(1)).toEqual({ kind: "not-closed" })
+    expect(await room.draw()).toEqual({ kind: "not-closed" })
     expect(picks(sql)).toEqual([])
     expect(room.summary().status).toBe("open")
   })
@@ -290,19 +306,20 @@ describe("GiveawayRoom draw", () => {
     const { room, sql } = setup()
     enterMany(room, ["1", "2", "3"])
     room.close()
-    await room.draw(1)
+    await room.draw()
     const before = picks(sql)
 
-    expect(await room.draw(2)).toEqual({ kind: "already-drawn" })
+    expect(await room.draw()).toEqual({ kind: "already-drawn" })
     expect(picks(sql)).toEqual(before)
   })
 
   it("lets only one of two simultaneous draws through", async () => {
     const { room, sql } = setup()
     enterMany(room, ["1", "2", "3"])
+    room.setWinnerCount(2)
     room.close()
 
-    const outcomes = await Promise.all([room.draw(1), room.draw(2)])
+    const outcomes = await Promise.all([room.draw(), room.draw()])
 
     expect(outcomes.map((outcome) => outcome.kind).toSorted()).toEqual(["already-drawn", "drawn"])
     const drawn = outcomes.find((outcome) => outcome.kind === "drawn")
@@ -496,7 +513,7 @@ describe("GiveawayRoom roles", () => {
 describe("GiveawayRoom alarm", () => {
   it("closes the room at the end time and asks for a status mirror", () => {
     const { room, clock, alarm } = setup({ ...giveaway, closesAt: 5000 })
-    expect(room.onAlarm()).toEqual({ refreshRoles: true, mirrorStatus: null })
+    expect(room.onAlarm()).toEqual({ refreshRoles: true, mirrorStatus: null, commit: false })
     room.replaceRoles([], [])
     expect(alarm.at).toBe(5000)
 
@@ -504,7 +521,7 @@ describe("GiveawayRoom alarm", () => {
     const duties = room.onAlarm()
 
     expect(room.summary().status).toBe("closed")
-    expect(duties).toEqual({ refreshRoles: false, mirrorStatus: "closed" })
+    expect(duties).toEqual({ refreshRoles: false, mirrorStatus: "closed", commit: true })
     expect(room.enter(viewer("1"))).toEqual({ kind: "closed" })
   })
 
@@ -532,10 +549,11 @@ describe("GiveawayRoom alarm", () => {
     expect(room.onAlarm().refreshRoles).toBe(false)
   })
 
-  it("retries a pending mirror after the retry delay until it is marked", () => {
+  it("retries a pending mirror after the retry delay until it is marked", async () => {
     const { room, clock, alarm } = setup()
     room.replaceRoles([], [])
     room.close()
+    await room.commit()
     expect(room.onAlarm().mirrorStatus).toBeNull()
     expect(alarm.at).toBe(30_000)
 
@@ -551,7 +569,7 @@ describe("GiveawayRoom alarm", () => {
     const { room, clock } = setup()
     enterMany(room, ["1"])
     room.close()
-    await room.draw(1)
+    await room.draw()
 
     room.markMirrored("closed")
     clock.advance(30_000)
@@ -617,7 +635,7 @@ describe("GiveawayRoom live push", () => {
     room.recordFailure("role-refresh", new Error("helix 503"))
     room.recordFailure("eventsub", new Error("socket closed"))
     room.close()
-    await room.draw(1)
+    await room.draw()
 
     const snapshot = room.liveSnapshot()
 
@@ -641,7 +659,7 @@ describe("GiveawayRoom live push", () => {
     const { room, sql, clock } = setup()
     enterMany(room, ["1", "2", "3"])
     room.close()
-    await room.draw(1)
+    await room.draw()
     await room.reroll(0)
     clock.advance(1234)
     room.claim(1, twitch(String(picks(sql)[1]?.platform_user_id)), "chat")
@@ -705,8 +723,9 @@ describe("GiveawayRoom entrants", () => {
   it("names the entry of each winner by its sequence number", async () => {
     const { room, sql } = setup()
     enterMany(room, ["1", "2", "3"])
+    room.setWinnerCount(2)
     room.close()
-    await room.draw(2)
+    await room.draw()
     const pickedIds = picks(sql).map((pick) => String(pick.platform_user_id))
 
     const winners = room.liveSnapshot().winners.map((winner) => winner.entrySeq)
@@ -1020,6 +1039,7 @@ describe("viewer push", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
     const before = hub.viewerMessages.length
 
@@ -1084,7 +1104,7 @@ describe("public summary", () => {
     const { room, clock, alarm, hub } = setup()
     room.enter(viewer("1"))
     room.close()
-    await room.draw(1)
+    await room.draw()
     room.markMirrored("drawn")
     expect(room.summary().finished).toBe(false)
 
@@ -1154,6 +1174,7 @@ describe("public summary", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
     clock.advance(899_001)
 
@@ -1165,8 +1186,9 @@ describe("public summary", () => {
   it("keeps the reroll window of an unclaimed pick open to the end of a later pick's window after that pick claimed", async () => {
     const { room, sql, clock } = setup()
     enterMany(room, ["1", "2", "3", "4"])
+    room.setWinnerCount(2)
     room.close()
-    await room.draw(2)
+    await room.draw()
     clock.advance(300_001)
     await room.reroll(1)
     const later = twitch(String(picks(sql)[2]?.platform_user_id))
@@ -1186,7 +1208,7 @@ describe("public summary", () => {
     const { room, clock } = setup()
     room.enter(viewer("1"))
     room.close()
-    await room.draw(1)
+    await room.draw()
     clock.advance(300_001)
 
     expect(room.liveSnapshot().rerollOpen).toBe(false)
@@ -1218,7 +1240,7 @@ describe("public summary", () => {
     const { room, clock } = setup()
     room.enter(viewer("1"))
     room.close()
-    await room.draw(1)
+    await room.draw()
     clock.advance(300_001)
 
     expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "nobody-left" })
@@ -1235,7 +1257,7 @@ describe("public summary", () => {
     const { room, clock } = setup()
     room.enter(viewer("1"))
     room.close()
-    await room.draw(1)
+    await room.draw()
     clock.advance(900_001)
 
     expect(room.liveSnapshot()).toMatchObject({ rerollOpen: false, rerollBlocked: "window-over" })
@@ -1279,7 +1301,7 @@ describe("public summary", () => {
     claimed.room.claim(0, claimed.winner, "chat")
     const empty = setup()
     empty.room.close()
-    await empty.room.draw(1)
+    await empty.room.draw()
 
     expect(claimed.room.summary().finished).toBe(true)
     expect(empty.room.summary().finished).toBe(true)
@@ -1371,11 +1393,12 @@ describe("GiveawayRoom retention", () => {
     expect(count(sql, "entries")).toBe(0)
   })
 
-  it("sets the alarm to the deadline while data remains and to nothing once it is deleted", () => {
+  it("sets the alarm to the deadline while data remains and to nothing once it is deleted", async () => {
     const { room, alarm, clock } = setup()
     room.enter(viewer("1"))
     clock.advance(1000)
     room.close()
+    await room.commit()
     room.markMirrored("closed")
     expect(alarm.at).toBe(1000 + retentionMs)
 
@@ -1385,7 +1408,7 @@ describe("GiveawayRoom retention", () => {
     expect(alarm.at).toBeNull()
   })
 
-  it("arms the retention alarm of a room that was closed before the schema change and gets no further write", () => {
+  it("arms the retention alarm of a room that was closed before the schema change and gets no further write", async () => {
     const sql = new BunSqliteSyncSql(new Database(":memory:"))
     applyMigrations(sql, roomMigrations.slice(0, 1))
     sql.exec(
@@ -1408,8 +1431,10 @@ describe("GiveawayRoom retention", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
 
+    await room.commit()
     room.armAlarm()
     expect(alarm.at).toBe(1000 + retentionMs)
 
@@ -1430,6 +1455,7 @@ describe("GiveawayRoom retention", () => {
       random,
       config,
       chat: idleChat,
+      beacon: new FakeBeacon(),
     })
 
     room.armAlarm()
@@ -1444,7 +1470,7 @@ describe("GiveawayRoom retention", () => {
     clock.advance(retentionMs)
     room.onAlarm()
 
-    expect(await room.draw(1)).toEqual({ kind: "entries-deleted" })
+    expect(await room.draw()).toEqual({ kind: "entries-deleted" })
     expect(room.summary()).toMatchObject({ status: "closed" })
     expect(room.picks()).toEqual([])
   })
@@ -1455,7 +1481,7 @@ describe("GiveawayRoom retention", () => {
     clock.advance(retentionMs)
     room.onAlarm()
 
-    expect(await room.draw(1)).toEqual({ kind: "drawn", winners: [] })
+    expect(await room.draw()).toEqual({ kind: "drawn", winners: [] })
   })
 
   it("refuses to reroll once the entries were deleted", async () => {
@@ -1465,6 +1491,37 @@ describe("GiveawayRoom retention", () => {
 
     expect(await room.reroll(0)).toEqual({ kind: "entries-deleted" })
     expect(room.picks()).toHaveLength(1)
+  })
+
+  it("keeps the root, the round and the leaves after the entries are deleted, and does not commit then", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    await room.commit()
+    const before = { commitment: room.verification().commitment, leaves: room.leaves() }
+
+    clock.advance(retentionMs)
+    room.onAlarm()
+    await room.commit()
+
+    expect(room.leafOf(twitch("1"))).toBeNull()
+    expect(room.verification().commitment).toEqual(before.commitment)
+    expect(room.leaves()).toEqual(before.leaves)
+    expect(before.leaves).toHaveLength(1)
+  })
+
+  it("does not commit a closed room whose entries were deleted before it committed", async () => {
+    const { room, clock } = setup()
+    room.enter(viewer("1"))
+    room.close()
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    await room.commit()
+
+    expect(room.verification().commitment).toBeNull()
+    expect(room.onAlarm().commit).toBe(false)
+    expect(await room.draw()).toEqual({ kind: "entries-deleted" })
   })
 
   it("never deletes the entries of an open room", () => {
@@ -1483,5 +1540,471 @@ describe("GiveawayRoom retention", () => {
     sql.exec("UPDATE room_state SET closed_at = NULL", [])
 
     expect(() => room.summary()).toThrow(RoomRowError)
+  })
+})
+
+// A salt per call that differs from every other, so leaves can be told apart.
+function countingRandom(): Random {
+  let next = 0
+  return {
+    bytes: (length) => {
+      next += 1
+      return new Uint8Array(length).fill(next % 256)
+    },
+  }
+}
+
+const genesisMs = quicknet.genesisSeconds * 1000
+
+describe("GiveawayRoom salt", () => {
+  it("gives each entry 16 random bytes", () => {
+    const { room, sql } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2"])
+
+    const salts = sql.exec("SELECT salt FROM entries ORDER BY seq", []).map((row) => row.salt)
+
+    expect(salts).toEqual([new Uint8Array(16).fill(1), new Uint8Array(16).fill(2)])
+  })
+
+  it("shows the salt to nobody but its entry through leafOf", () => {
+    const { room } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2"])
+
+    expect(room.leafOf(twitch("2"))).toEqual({
+      ...twitch("2"),
+      tickets: 1,
+      salt: new Uint8Array(16).fill(2),
+    })
+    expect(room.leafOf(twitch("3"))).toBeNull()
+  })
+
+  it("keeps the salt out of every push to a page", () => {
+    const { room, hub } = setup(giveaway, countingRandom())
+    enterMany(room, ["1"])
+    room.close()
+
+    const texts = [...hub.messages, ...hub.overlayMessages, ...hub.viewerMessages].join()
+
+    expect(texts).not.toContain("salt")
+    expect(JSON.stringify(room.summary())).not.toContain("salt")
+    expect(JSON.stringify(room.liveSnapshot())).not.toContain("salt")
+  })
+})
+
+function saltOf(sql: SyncSql, id: string): Uint8Array<ArrayBuffer> {
+  const salt = sql.exec("SELECT salt FROM entries WHERE platform_user_id = ?", [id])[0]?.salt
+  if (!(salt instanceof Uint8Array)) throw new Error("entry has no salt")
+  return new Uint8Array(salt)
+}
+
+describe("GiveawayRoom commit", () => {
+  it("stores the Merkle root over the leaves sorted by platform user id, and the leaves", async () => {
+    const { room, sql, clock } = setup(giveaway, countingRandom())
+    clock.advance(genesisMs)
+    enterMany(room, ["30", "10", "20"])
+    room.close()
+
+    await room.commit()
+
+    const expected = await Promise.all(
+      ["10", "20", "30"].map((id) =>
+        leafHash({ ...twitch(id), tickets: 1, salt: saltOf(sql, id) }),
+      ),
+    )
+    const leaves = room.leaves()
+    expect(leaves?.map((leaf) => toHex(leaf.hash))).toEqual(expected.map(toHex))
+    expect(leaves?.map((leaf) => leaf.tickets)).toEqual([1, 1, 1])
+    expect(room.verification().commitment?.merkleRoot).toEqual(
+      await merkleRoot(expected.map((hash) => ({ hash, tickets: 1 }))),
+    )
+  })
+
+  it("commits to the first round at least the lead after the close, and to nothing before the close", async () => {
+    const { room, clock } = setup()
+    clock.advance(genesisMs)
+    await room.commit()
+    expect(room.verification().commitment).toBeNull()
+    expect(room.leaves()).toBeNull()
+
+    room.close()
+    await room.commit()
+
+    // 30 s after genesis is the time of round 11.
+    expect(room.verification().commitment?.drandRound).toBe(11)
+    expect(roundTime(quicknet, 11)).toBe(genesisMs + 30_000)
+  })
+
+  it("commits an empty room to the root of nothing", async () => {
+    const { room } = setup()
+    room.close()
+
+    await room.commit()
+
+    expect(room.leaves()).toEqual([])
+    expect(room.verification().commitment?.merkleRoot).toEqual(await merkleRoot([]))
+  })
+
+  it("writes the leaves in chunks that read back whole and in order", async () => {
+    const { room, sql } = setup()
+    const ids = Array.from({ length: 1001 }, (_, i) => String(i).padStart(5, "0"))
+    enterMany(room, ids)
+    room.close()
+
+    await room.commit()
+
+    expect(sql.exec("SELECT COUNT(*) AS c FROM leaves", [])[0]?.c).toBe(2)
+    expect(room.leaves()).toHaveLength(1001)
+    expect(room.verification().entrantCount).toBe(1001)
+  })
+
+  it("commits once when two commits run at the same time", async () => {
+    const { room, sql } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2"])
+    room.close()
+
+    await Promise.all([room.commit(), room.commit()])
+
+    expect(sql.exec("SELECT COUNT(*) AS c FROM leaves", [])[0]?.c).toBe(1)
+    expect(room.leaves()).toHaveLength(2)
+  })
+
+  it("leaves an open room and a committed room alone", async () => {
+    const { room, clock } = setup()
+    enterMany(room, ["1"])
+    await room.commit()
+    expect(room.verification().commitment).toBeNull()
+
+    room.close()
+    await room.commit()
+    const first = room.verification().commitment
+    clock.advance(60_000)
+    await room.commit()
+
+    expect(room.verification().commitment).toEqual(first)
+  })
+
+  it("is due from the alarm right after the close and again after the retry delay while it fails", async () => {
+    const { room, clock, alarm } = setup()
+    room.replaceRoles([], [])
+    room.close()
+    expect(alarm.at).toBe(0)
+
+    expect(room.onAlarm().commit).toBe(true)
+    expect(alarm.at).toBe(30_000)
+    clock.advance(29_999)
+    expect(room.onAlarm().commit).toBe(false)
+    clock.advance(1)
+    expect(room.onAlarm().commit).toBe(true)
+
+    await room.commit()
+    clock.advance(60_000)
+    expect(room.onAlarm().commit).toBe(false)
+  })
+
+  it("is due when the end time closes the room", () => {
+    const { room, clock } = setup({ ...giveaway, closesAt: 5000 })
+    room.replaceRoles([], [])
+    clock.advance(5000)
+
+    expect(room.onAlarm().commit).toBe(true)
+  })
+})
+
+// The database of the code before commitments existed, with entries written by raw SQL, then upgraded in place.
+function legacyRoom(ids: readonly string[], status: "open" | "closed", rng: Random) {
+  const sql = new BunSqliteSyncSql(new Database(":memory:"))
+  applyMigrations(sql, roomMigrations.slice(0, 1))
+  sql.exec(
+    "INSERT INTO room_state (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, entrant_count, ticket_total) VALUES (1, 'twitch', 'g1', 'broadcaster', 'Giveaway', 'ABCDE', ?, 300, ?, ?, ?)",
+    [JSON.stringify(rules), status, ids.length, ids.length],
+  )
+  for (const [index, id] of ids.entries()) {
+    sql.exec(
+      "INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at) VALUES (?, 'twitch', ?, ?, ?, 'viewer', 1, 0)",
+      [index + 1, id, `login${id}`, `Name${id}`],
+    )
+  }
+  return {
+    sql,
+    upgrade() {
+      applyMigrations(sql, roomMigrations)
+      return new GiveawayRoom({
+        sql,
+        alarm: new TestAlarm(),
+        live: new TestHub(),
+        clock: new TestClock(0),
+        random: rng,
+        config,
+        chat: idleChat,
+        beacon: new FakeBeacon(),
+      })
+    },
+  }
+}
+
+describe("GiveawayRoom of an older database", () => {
+  it("salts an entry written before salts existed at commit, and keeps the salt it got", async () => {
+    const { sql, upgrade } = legacyRoom(["1"], "closed", countingRandom())
+    const room = upgrade()
+    expect(room.leafOf(twitch("1"))?.salt).toBeNull()
+
+    await room.commit()
+
+    const salt = saltOf(sql, "1")
+    expect(room.leafOf(twitch("1"))?.salt).toEqual(salt)
+    expect(room.leaves()?.map((leaf) => toHex(leaf.hash))).toEqual([
+      toHex(await leafHash({ ...twitch("1"), tickets: 1, salt })),
+    ])
+  })
+
+  it("lets an entry of the older code enter a room that is still open, and commit later", async () => {
+    const { upgrade } = legacyRoom(["1"], "open", countingRandom())
+    const room = upgrade()
+
+    expect(room.enter(viewer("2")).kind).toBe("entered")
+    room.close()
+    await room.commit()
+
+    expect(room.leaves()).toHaveLength(2)
+  })
+
+  it("reports a room drawn before commitments existed as having none, and still rerolls it", async () => {
+    const { sql, upgrade } = legacyRoom(["1", "2", "3"], "closed", random)
+    sql.exec("UPDATE room_state SET status = 'drawn', seed = ?", [new Uint8Array(32).fill(9)])
+    sql.exec(
+      "INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until) VALUES (0, 'twitch', '1', 0, 300000)",
+      [],
+    )
+    const room = upgrade()
+
+    await room.commit()
+    const outcome = await room.reroll(0)
+
+    expect(room.verification()).toMatchObject({
+      status: "drawn",
+      commitment: null,
+      picks: [{ n: 0, leafIndex: null, rerolled: true }, { n: 1 }],
+    })
+    expect(room.leaves()).toBeNull()
+    expect(room.onAlarm().commit).toBe(false)
+    expect(outcome.kind).toBe("rerolled")
+  })
+})
+
+describe("GiveawayRoom damaged commitment", () => {
+  it("refuses a leaf chunk that is not whole records and one that holds an impossible ticket count", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1"])
+    room.close()
+    await room.commit()
+
+    sql.exec("UPDATE leaves SET data = ?", [new Uint8Array(39)])
+    expect(() => room.leaves()).toThrow(RoomRowError)
+
+    sql.exec("UPDATE leaves SET data = ?", [new Uint8Array(40).fill(255)])
+    expect(() => room.leaves()).toThrow(RoomRowError)
+  })
+
+  it("refuses a root without a round and a round without a root", () => {
+    const { room, sql } = setup()
+    room.close()
+
+    sql.exec("UPDATE room_state SET merkle_root = ?", [new Uint8Array(32)])
+    expect(() => room.verification()).toThrow(RoomRowError)
+
+    sql.exec("UPDATE room_state SET merkle_root = NULL, drand_round = 5", [])
+    expect(() => room.verification()).toThrow(RoomRowError)
+  })
+})
+
+describe("GiveawayRoom draw with drand", () => {
+  it("commits at the draw when the alarm has not yet, and seeds the draw with the round it committed to", async () => {
+    const { room, sql, beacon } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2", "3"])
+    room.setWinnerCount(2)
+    room.close()
+
+    const outcome = await room.draw()
+
+    const round = room.verification().commitment?.drandRound
+    expect(round).toBeGreaterThan(0)
+    expect(beacon.requested).toEqual([round ?? -1])
+    expect(sql.exec("SELECT seed FROM room_state", [])[0]?.seed).toEqual(fakeRandomness)
+    expect(outcome.kind).toBe("drawn")
+  })
+
+  it("draws nothing while the round is not published and says when it comes", async () => {
+    const { room, sql, beacon, clock } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.close()
+    beacon.answer = "not-yet"
+
+    const outcome = await room.draw()
+
+    expect(outcome).toEqual({ kind: "round-pending", availableAt: genesisMs + 30_000 })
+    expect(room.summary().status).toBe("closed")
+    expect(sql.exec("SELECT seed FROM room_state", [])[0]?.seed).toBeNull()
+    expect(picks(sql)).toEqual([])
+  })
+
+  it("draws nothing while the beacon fails and draws on a repeat", async () => {
+    const { room, sql, beacon } = setup()
+    enterMany(room, ["1"])
+    room.close()
+    beacon.answer = "unavailable"
+
+    expect(await room.draw()).toEqual({ kind: "beacon-unavailable" })
+    expect(room.summary().status).toBe("closed")
+    expect(picks(sql)).toEqual([])
+
+    beacon.answer = "round"
+    expect((await room.draw()).kind).toBe("drawn")
+  })
+
+  it("asks for random bytes only for salts, never for a seed", async () => {
+    const lengths: number[] = []
+    const { room } = setup(giveaway, {
+      bytes: (length) => {
+        lengths.push(length)
+        return new Uint8Array(length)
+      },
+    })
+    enterMany(room, ["1", "2"])
+    room.close()
+    await room.draw()
+
+    expect(lengths).toEqual([16, 16])
+  })
+
+  it("stores the leaf index of every pick, rerolls included, and they replay from the leaves", async () => {
+    const { room, sql } = setup(giveaway, countingRandom())
+    enterMany(room, ["1", "2", "3", "4"])
+    room.setWinnerCount(2)
+    room.close()
+    await room.draw()
+    await room.reroll(0)
+
+    const leaves = room.leaves() ?? []
+    const replay = await drawLeafPicks(
+      fakeRandomness,
+      leaves.map((leaf) => leaf.tickets),
+      3,
+    )
+
+    expect(room.verification().picks).toEqual(
+      replay.map((pick) => ({ n: pick.n, leafIndex: pick.leafIndex, rerolled: pick.n === 0 })),
+    )
+    const ids = sql.exec("SELECT platform_user_id FROM draws ORDER BY n", [])
+    expect(ids.map((row) => row.platform_user_id)).toEqual(
+      replay.map((pick) => String(pick.leafIndex + 1)),
+    )
+  })
+})
+
+describe("GiveawayRoom winner count", () => {
+  it("is the one the giveaway was created with, and the draw picks that many", async () => {
+    const { room } = setup({ ...giveaway, winnerCount: 2 })
+    enterMany(room, ["1", "2", "3"])
+    expect(room.summary().winnerCount).toBe(2)
+    room.close()
+
+    const outcome = await room.draw()
+
+    expect(outcome.kind === "drawn" ? outcome.winners.map((winner) => winner.n) : []).toEqual([
+      0, 1,
+    ])
+    expect(room.verification().winnerCount).toBe(2)
+  })
+
+  it("changes while entries are open, and a push tells the live page", () => {
+    const { room, hub } = setup()
+    const before = hub.messages.length
+
+    expect(room.setWinnerCount(4)).toEqual({ kind: "set" })
+
+    expect(room.summary().winnerCount).toBe(4)
+    expect(hub.messages.length).toBeGreaterThan(before)
+    expect(hub.messages.at(-1)).toContain('"winnerCount":4')
+  })
+
+  it("is frozen by the close, so it cannot follow the random number", async () => {
+    const { room } = setup()
+    room.close()
+
+    expect(room.setWinnerCount(3)).toEqual({ kind: "not-open", status: "closed" })
+    await room.commit()
+    expect(room.setWinnerCount(3)).toEqual({ kind: "not-open", status: "closed" })
+    expect(room.summary().winnerCount).toBe(1)
+  })
+
+  it("is not changeable once the winners are drawn", async () => {
+    const { room } = setup()
+    room.close()
+    await room.draw()
+
+    expect(room.setWinnerCount(2)).toEqual({ kind: "not-open", status: "drawn" })
+  })
+
+  it("is 1 for a room that existed before the migration", () => {
+    const { upgrade } = legacyRoom(["1"], "closed", random)
+
+    expect(upgrade().summary().winnerCount).toBe(1)
+  })
+})
+
+describe("GiveawayRoom commitment record", () => {
+  it("keeps the time of the commit and the chain it committed to", async () => {
+    const { room, clock } = setup()
+    clock.advance(1234)
+    room.close()
+    await room.commit()
+
+    expect(room.verification().commitment).toMatchObject({
+      committedAt: 1234,
+      chain: {
+        chainHash: quicknet.chainHash,
+        genesisSeconds: quicknet.genesisSeconds,
+        periodSeconds: quicknet.periodSeconds,
+      },
+    })
+  })
+
+  it("asks the beacon for the chain it committed to", async () => {
+    const { room, beacon } = setup()
+    room.close()
+
+    await room.draw()
+
+    expect(beacon.requestedChains).toEqual([quicknet.chainHash])
+  })
+})
+
+describe("GiveawayRoom late round", () => {
+  it("answers pending while the round is within the margin after its time, and unavailable after", async () => {
+    const { room, beacon, clock } = setup()
+    clock.advance(genesisMs)
+    room.close()
+    await room.commit()
+    beacon.answer = "not-yet"
+    clock.advance(30_000 + config.drandPublishMarginSeconds * 1000)
+
+    expect((await room.draw()).kind).toBe("round-pending")
+    clock.advance(1)
+    expect(await room.draw()).toEqual({ kind: "beacon-unavailable" })
+  })
+})
+
+describe("GiveawayRoom reroll timing", () => {
+  it("lets the streamer reroll a pick that is still inside its claim time", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2"])
+    room.close()
+    await room.draw()
+
+    const outcome = await room.reroll(0)
+
+    expect(outcome.kind).toBe("rerolled")
+    expect(picks(sql).map((row) => row.rerolled)).toEqual([1, 0])
   })
 })

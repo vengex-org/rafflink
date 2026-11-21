@@ -32,6 +32,12 @@ describe("securityHeaders", () => {
     expect(policy).toContain("style-src 'self';")
     expect(policy).toContain("frame-ancestors 'none'")
   })
+
+  it("lets the page read the public drand APIs and no other origin", () => {
+    expect(contentSecurityPolicy([])).toContain(
+      "connect-src 'self' https://api.drand.sh https://drand.cloudflare.com;",
+    )
+  })
 })
 
 function appOn(publicUrl: string): Hono {

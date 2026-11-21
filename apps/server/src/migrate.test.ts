@@ -91,6 +91,7 @@ describe("applyAccountsMigrations", () => {
     expect(applyAccountsMigrations(db, coreAccountsSchemaDir(), systemClock)).toEqual([
       "0001_init.sql",
       "0002_retention_armed.sql",
+      "0003_winner_count.sql",
     ])
     expect(tables()).toEqual(["giveaways", "schema_migrations", "streamer_tokens", "streamers"])
   })

@@ -460,10 +460,9 @@ export const en = {
   "live.overlay.qr.on": "Show",
   "live.overlay.qr.off": "Hide",
   "live.draw.title": "Entries are closed",
-  "live.draw.text": "{people}. Now choose how many winners you want and draw them.",
+  "live.draw.text": "{people}. Now draw the winners.",
   "live.draw.count": "How many winners?",
   "live.draw.nobody": "Nobody entered, so there is nobody to draw.",
-  "live.draw.invalid": "Enter a whole number of winners, at least 1.",
   "live.draw.fewer": "Only {count} entered, so you may get fewer winners than this.",
   "live.draw.random": "Winners are picked at random from everyone who entered.",
   "live.draw.label": "Draw winners",
@@ -596,7 +595,7 @@ export const en = {
   "privacy.data.i2":
     "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway.",
   "privacy.data.i3":
-    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets and time of entry. The follow and subscription check uses your Twitch token once and the token is not stored.",
+    "Entrants: Twitch user ID, login name, display name, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4": "Winners: the draw result and whether and how the prize was claimed.",
   "privacy.data.i5":
     "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
@@ -619,6 +618,8 @@ export const en = {
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
   "privacy.retention.i4":
     "Host logs are kept as long as Cloudflare keeps them under its own terms.",
+  "privacy.retention.i5":
+    "The winner list, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay with the giveaway, so anyone can check the draw later.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":
@@ -627,6 +628,8 @@ export const en = {
     "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. Twitch is an independent controller under its own privacy notice.",
   "privacy.recipients.i3":
     "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay.",
+  "privacy.recipients.i4":
+    "The public drand randomness beacon is read for the draw. No personal data is sent to it.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",
@@ -700,6 +703,78 @@ export const en = {
     "We may change these terms. The date at the top shows the current version, and using the service after a change means you accept it. We may remove a giveaway or block an account that breaks these terms.",
   "terms.contact.h": "Contact",
   "terms.contact.p1": "Questions about these terms: {contactEmail}.",
+  "drawResult.round-pending":
+    "The random number for this draw is not published yet. Try again in a few seconds.",
+  "drawResult.beacon-unavailable":
+    "Could not reach the random source (drand). Nothing was drawn. Try again.",
+  "giveaway.verify.link": "Verify this draw",
+  "verify.title": "Verify this draw",
+  "verify.intro":
+    "Check in your browser that the winners follow from the list of entries and from a public random number that nobody here controls.",
+  "verify.back": "Back to the giveaway",
+  "verify.open": "Entries are still open. The list of entries is fixed when they close.",
+  "verify.closed.pending": "Entries are closed and the list is being fixed. Reload in a moment.",
+  "verify.unverifiable":
+    "This giveaway was drawn before draws could be verified, so there is nothing to check.",
+  "verify.facts.entrants": "Entrants",
+  "verify.facts.tickets": "Tickets",
+  "verify.facts.root": "Merkle root",
+  "verify.facts.chain": "drand chain",
+  "verify.facts.round": "drand round",
+  "verify.facts.leaves": "Entry list",
+  "verify.facts.leavesLink": "Open the entry list",
+  "verify.run": "Verify",
+  "verify.running": "Checking…",
+  "verify.check.counts.match": "The list has as many entries and tickets as announced.",
+  "verify.check.counts.mismatch":
+    "The list does not have the announced number of entries and tickets.",
+  "verify.check.root.match": "The Merkle root of the list is the published root.",
+  "verify.check.root.mismatch": "The Merkle root of the list is not the published root.",
+  "verify.check.signature.valid": "The signature of drand round {round} is valid.",
+  "verify.check.signature.invalid":
+    "The signature of drand round {round} is not valid, so nothing below can be trusted.",
+  "verify.check.signature.unavailable":
+    "The signature of drand round {round} could not be checked.",
+  "verify.check.signature.none": "No round is needed yet, so there is no signature to check.",
+  "verify.check.winners.match":
+    "The winners follow from the list and the random number of drand round {round}.",
+  "verify.check.winners.mismatch":
+    "The winners do not follow from the list and the random number of drand round {round}.",
+  "verify.check.winners.unavailable": "Could not read drand round {round}. Try again later.",
+  "verify.check.winners.none": "No winners are drawn yet, so there is nothing to compare.",
+  "verify.winners.title": "Winners",
+  "verify.winner.entry": "Pick {n} is entry {leaf} of the list.",
+  "verify.winner.rerolled": "(rerolled)",
+  "live.draw.fixed": "Winners to draw: {count}. Set before entries closed.",
+  "live.winners.save": "Save",
+  "winnersResult.set": "Winner count saved.",
+  "winnersResult.not-open": "Entries are closed, so the winner count can no longer change.",
+  "winnersResult.rejected": "Could not save. Enter a whole number of winners, at least 1.",
+  "wizard.winners.label": "How many winners?",
+  "wizard.winners.help":
+    "Set before the draw. You can change it until you close entries, not after.",
+  "review.winners": "Winners",
+  "verify.check.timing.match": "The drand round was published after the list was fixed.",
+  "verify.check.timing.mismatch":
+    "The drand round was published before the list was fixed, so the draw cannot be trusted.",
+  "verify.facts.winners": "Winners to draw",
+  "verify.facts.committed": "List fixed at",
+  "verify.rerolls.note":
+    "The streamer may reroll a winner who did not meet the conditions of the giveaway. Every reroll stays in this list.",
+  "verify.rerolls.count": "Rerolled picks: {count}.",
+  "verify.winner.before": "{count} rerolled picks came before it.",
+  "verify.mine.title": "Your entry",
+  "verify.mine.signedOut":
+    "Sign in on the giveaway page with the account you entered with to check your own entry.",
+  "verify.mine.hint":
+    "Your entry is hashed from these values and your private salt. Do not share the salt.",
+  "verify.mine.platform": "Platform",
+  "verify.mine.user": "User id",
+  "verify.mine.salt": "Salt (private)",
+  "verify.mine.noSalt": "Your entry has no salt yet. It gets one when entries close. Reload later.",
+  "verify.mine.found": "Your entry is entry {leaf} of the list, with {tickets} tickets.",
+  "verify.mine.won": "You are pick {n}.",
+  "verify.mine.missing": "Your entry is not in the list.",
 } as const satisfies Record<string, string>
 
 export type MessageKey = keyof typeof en

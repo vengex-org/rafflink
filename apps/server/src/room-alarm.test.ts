@@ -13,6 +13,7 @@ import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import {
+  FakeBeacon,
   idleChat,
   startFakeTwitch,
   users,
@@ -75,6 +76,7 @@ beforeEach(async () => {
     random: systemRandom,
     config,
     chat: idleChat,
+    beacon: new FakeBeacon(),
   })
   room.init(giveawayInit(giveawayId))
 })
@@ -93,6 +95,7 @@ async function createGiveaway(): Promise<void> {
     rules: validRules,
     closesAt: null,
     claimSeconds: 300,
+    winnerCount: 1,
     overlayToken: "overlay",
     createdAt: clock.now(),
   })
@@ -170,6 +173,34 @@ describe("runRoomAlarm role refresh", () => {
     await runRoomAlarm(deps, giveawayId, room)
 
     expect(twitch.fake.control.calls).toHaveLength(calls)
+  })
+})
+
+describe("runRoomAlarm commit", () => {
+  it("commits a room that closed, so the root and the round exist before anyone draws", async () => {
+    room.close()
+    expect(room.verification().commitment).toBeNull()
+
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(room.verification().commitment?.drandRound).toBeGreaterThan(0)
+  })
+
+  it("logs a failed commit and still mirrors the status", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    await seedStreamerAndGiveaway()
+    await runRoomAlarm(deps, giveawayId, room)
+    room.close()
+    clock.advance(config.mirrorRetrySeconds * 1000)
+    const commit = spyOn(room, "commit").mockRejectedValue(new Error("boom"))
+
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(commit).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith("room commit failed", { giveawayId, errorClass: "Error" })
+    expect((await accounts.findGiveawayById(giveawayId))?.status).toBe("closed")
+    commit.mockRestore()
+    warn.mockRestore()
   })
 })
 

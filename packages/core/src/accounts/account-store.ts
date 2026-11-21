@@ -66,6 +66,8 @@ export interface Giveaway {
   readonly status: RoomStatus
   readonly closesAt: Instant | null
   readonly claimSeconds: number
+  /** How many winners the draw picks, as chosen at creation; the room owns the live value. */
+  readonly winnerCount: number
   readonly overlayToken: string
   readonly createdAt: Instant
 }
@@ -154,6 +156,7 @@ export class AccountStore {
       JSON.stringify(giveaway.rules),
       giveaway.closesAt,
       giveaway.claimSeconds,
+      giveaway.winnerCount,
       giveaway.overlayToken,
       giveaway.createdAt,
     ])
@@ -218,6 +221,7 @@ export class AccountStore {
       status: reader.oneOf("status", roomStatuses),
       closesAt: reader.nullableInt("closes_at"),
       claimSeconds: reader.int("claim_seconds"),
+      winnerCount: reader.int("winner_count"),
       overlayToken: reader.text("overlay_token"),
       createdAt: reader.int("created_at"),
     }

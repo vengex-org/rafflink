@@ -60,6 +60,7 @@ function giveaway(overrides: Partial<NewGiveaway> = {}): NewGiveaway {
     rules: { ...validRules },
     closesAt: null,
     claimSeconds: 300,
+    winnerCount: 1,
     overlayToken: "overlay-1",
     createdAt: 5000,
     ...overrides,
