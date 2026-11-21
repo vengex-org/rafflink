@@ -42,6 +42,10 @@ describe("leafHash", () => {
 })
 
 describe("merkleRoot", () => {
+  const leafA = { hash: bytes(firstHash), tickets: 3 }
+  const leafB = { hash: bytes(secondHash), tickets: 1 }
+  const leafC = { hash: bytes(thirdHash), tickets: 7 }
+
   it("is the hash of nothing for no leaves", async () => {
     expect(toHex(await merkleRoot([]))).toBe(
       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -49,26 +53,35 @@ describe("merkleRoot", () => {
     expect(toHex(await emptyRoot())).toBe(toHex(await merkleRoot([])))
   })
 
-  it("is the leaf itself for one leaf", async () => {
-    expect(toHex(await merkleRoot([bytes(firstHash)]))).toBe(firstHash)
-  })
-
-  it("hashes a pair with the node prefix", async () => {
-    expect(toHex(await merkleRoot([bytes(firstHash), bytes(secondHash)]))).toBe(
-      "84043bf1a4ec0af3ab5245e576ad1037b0292cb014307b462ab57e8a31473980",
+  it("is the leaf node of hash and tickets for one leaf", async () => {
+    expect(toHex(await merkleRoot([leafA]))).toBe(
+      "66d8d7cb618dd26ae7d68ba437c744fcf17aacec11ff62adc47dc6152e807156",
     )
   })
 
-  it("carries an odd leaf up unchanged", async () => {
-    expect(toHex(await merkleRoot([bytes(firstHash), bytes(secondHash), bytes(thirdHash)]))).toBe(
-      "748eaa2f86ae60bed638fe3122c3ade71c1db683e955c871168ee7487846f90c",
+  it("hashes a pair of leaf nodes with the node prefix", async () => {
+    expect(toHex(await merkleRoot([leafA, leafB]))).toBe(
+      "ae386ef8c38507ce8665bc5fc80b35d6d856ccca988dab6b143c8feb932fe427",
+    )
+  })
+
+  it("carries an odd leaf node up unchanged", async () => {
+    expect(toHex(await merkleRoot([leafA, leafB, leafC]))).toBe(
+      "18be196b36601399c0b0bfe7ce7b4738634d2bc11a25da1f4b0610218cc3b0de",
     )
   })
 
   it("depends on the order of the leaves", async () => {
-    const forward = await merkleRoot([bytes(firstHash), bytes(secondHash)])
-    const backward = await merkleRoot([bytes(secondHash), bytes(firstHash)])
+    const forward = await merkleRoot([leafA, leafB])
+    const backward = await merkleRoot([leafB, leafA])
 
     expect(toHex(forward)).not.toBe(toHex(backward))
+  })
+
+  it("binds the tickets: moving tickets between leaves changes the root", async () => {
+    const shifted = await merkleRoot([{ ...leafA, tickets: 4 }, { ...leafB, tickets: 0 }, leafC])
+
+    expect(toHex(shifted)).toBe("4ea587ea7f39e4adec5b4bdb39a874fae8d0813b34c1ce91bfd521640679abd6")
+    expect(toHex(shifted)).not.toBe(toHex(await merkleRoot([leafA, leafB, leafC])))
   })
 })

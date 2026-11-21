@@ -244,24 +244,23 @@ describe("live page: collecting entries", () => {
 })
 
 describe("live page: drawing", () => {
-  it("draws the chosen number of winners after a confirmation that names the number", async () => {
+  it("draws the winner count of the giveaway after a confirmation that names it, and sends no count", async () => {
     const requests = mockLive({
-      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
+      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed", winnerCount: 2 }),
       "POST /api/dash/giveaways/gid-1/draw": () => ok({ kind: "drawn", winners: [0, 1] }),
     })
 
     const view = renderApp("/live/gid-1")
     expect(await view.findByRole("heading", { name: "Entries are closed" })).toBeTruthy()
-    expect(
-      view.getByText("3 people entered. Now choose how many winners you want and draw them."),
-    ).toBeTruthy()
-    fireEvent.change(view.getByLabelText("How many winners?"), { target: { value: "2" } })
+    expect(view.getByText("3 people entered. Now draw the winners.")).toBeTruthy()
+    expect(view.getByText(/Winners to draw: 2\. Set before entries closed\./)).toBeTruthy()
+    expect(view.queryByLabelText("How many winners?")).toBeNull()
     fireEvent.click(view.getByRole("button", { name: "Draw winners" }))
     expect(view.getByText("Draw 2 winners now?")).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Yes, draw winners" }))
 
     expect(await view.findByText("Winners drawn.")).toBeTruthy()
-    expect(requests.at(-1)?.body).toEqual({ count: 2 })
+    expect(requests.at(-1)?.body).toEqual({})
   })
 
   it.each([
@@ -301,14 +300,54 @@ describe("live page: drawing", () => {
     expect(view.getByText("Draw 1 winner now?")).toBeTruthy()
   })
 
-  it.each(["0", "-1", "1.5", ""])("disables Draw winners for %p and says why", async (count) => {
-    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+  it("saves the winner count while entries are open", async () => {
+    const requests = mockLive({
+      "GET /api/live/gid-1": () => ok(liveSnapshot),
+      "POST /api/dash/giveaways/gid-1/winners": () => ok({ kind: "set" }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.change(await view.findByLabelText("How many winners?"), { target: { value: "4" } })
+    fireEvent.click(view.getByRole("button", { name: "Save" }))
+
+    expect(await view.findByText("Winner count saved.")).toBeTruthy()
+    expect(requests.at(-1)?.body).toEqual({ count: 4 })
+  })
+
+  it.each(["0", "-1", "1.5", ""])("does not save %p as the winner count", async (count) => {
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     fireEvent.change(await view.findByLabelText("How many winners?"), { target: { value: count } })
 
-    expect(view.getByText("Enter a whole number of winners, at least 1.")).toBeTruthy()
-    expect(view.getByRole("button", { name: "Draw winners" }).hasAttribute("disabled")).toBe(true)
+    expect(view.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(true)
+  })
+
+  it("does not offer a winner count once entries are closed", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByRole("button", { name: "Draw winners" })
+
+    expect(view.queryByLabelText("How many winners?")).toBeNull()
+  })
+
+  it("tells the streamer when the count could not be saved because entries closed", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok(liveSnapshot),
+      "POST /api/dash/giveaways/gid-1/winners": () => ({
+        status: 409,
+        body: { kind: "not-open", status: "closed" },
+      }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.change(await view.findByLabelText("How many winners?"), { target: { value: "2" } })
+    fireEvent.click(view.getByRole("button", { name: "Save" }))
+
+    expect(
+      await view.findByText("Entries are closed, so the winner count can no longer change."),
+    ).toBeTruthy()
   })
 
   it("disables Draw winners when nobody entered and says why", async () => {
@@ -319,17 +358,20 @@ describe("live page: drawing", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByText("Nobody entered, so there is nobody to draw.")).toBeTruthy()
+    expect(await view.findByText(/Nobody entered, so there is nobody to draw./)).toBeTruthy()
     expect(view.getByRole("button", { name: "Draw winners" }).hasAttribute("disabled")).toBe(true)
   })
 
-  it("warns, without blocking, when more winners are asked for than entered", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+  it("warns, without blocking, when the winner count is above the entrants", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed", winnerCount: 9 }),
+    })
 
     const view = renderApp("/live/gid-1")
-    fireEvent.change(await view.findByLabelText("How many winners?"), { target: { value: "9" } })
 
-    expect(view.getByText("Only 3 entered, so you may get fewer winners than this.")).toBeTruthy()
+    expect(
+      await view.findByText(/Only 3 entered, so you may get fewer winners than this\./),
+    ).toBeTruthy()
     expect(view.getByRole("button", { name: "Draw winners" }).hasAttribute("disabled")).toBe(false)
   })
 })
@@ -655,7 +697,7 @@ describe("live page: clean mode", () => {
   })
 
   it("does not toggle while the streamer types in a field", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     const count = await view.findByLabelText("How many winners?")
@@ -1162,7 +1204,7 @@ describe("live page: the controls bar", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
 
     const view = renderApp("/live/gid-1")
-    const count = await view.findByLabelText("How many winners?")
+    const count = await view.findByLabelText("Search by name")
     await effectsRun()
     fireEvent.keyDown(count, { key: "d" })
     expect(view.queryByRole("dialog")).toBeNull()
@@ -1180,7 +1222,7 @@ describe("live page: the controls bar", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText("Nobody entered, so there is nobody to draw.")
+    await view.findByText(/Nobody entered, so there is nobody to draw./)
     await effectsRun()
     fireEvent.keyDown(document.body, { key: "d" })
 

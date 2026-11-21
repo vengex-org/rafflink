@@ -1,5 +1,5 @@
 const giveawayColumns = `g.id, g.code, g.streamer_id, s.platform, s.platform_user_id AS broadcaster_id, s.display_name AS streamer_name,
-  g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.overlay_token, g.created_at`
+  g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.winner_count, g.overlay_token, g.created_at`
 const giveawayFrom = "FROM giveaways g JOIN streamers s ON s.id = g.streamer_id"
 
 /** A giveaway by its short code (parameter 1). */
@@ -14,10 +14,10 @@ export const ownedGiveawaySql = `SELECT ${giveawayColumns} ${giveawayFrom} WHERE
 /** A streamer's giveaways (parameter 1), newest first. */
 export const giveawaysOfStreamerSql = `SELECT ${giveawayColumns} ${giveawayFrom} WHERE g.streamer_id = ? ORDER BY g.created_at DESC, g.id DESC`
 
-/** Parameters: id, code, streamer id, title, prize, rules, closes at, claim seconds, overlay token, created at. */
+/** Parameters: id, code, streamer id, title, prize, rules, closes at, claim seconds, winner count, overlay token, created at. */
 export const insertGiveawaySql = `INSERT INTO giveaways
-  (id, code, streamer_id, title, prize, rules_json, status, closes_at, claim_seconds, overlay_token, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)
+  (id, code, streamer_id, title, prize, rules_json, status, closes_at, claim_seconds, winner_count, overlay_token, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)
   ON CONFLICT (code) DO NOTHING
   RETURNING id`
 

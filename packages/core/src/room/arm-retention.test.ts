@@ -44,6 +44,7 @@ async function setup(closedIds: readonly string[]) {
       rules: { ...validRules },
       closesAt: null,
       claimSeconds: 300,
+      winnerCount: 1,
       overlayToken: "o",
       createdAt: index,
     })
@@ -56,6 +57,7 @@ async function setup(closedIds: readonly string[]) {
       code: `CODE${index}`,
       rules: { ...validRules },
       claimSeconds: 300,
+      winnerCount: 1,
       closesAt: null,
     })
   }

@@ -23,6 +23,7 @@ import type {
   OverlaySnapshot,
   RerollOutcome,
   RerollState,
+  SetWinnerCountOutcome,
   ViewerPush,
   ViewerWinner,
   WinnerChatLine,
@@ -90,6 +91,7 @@ export type EntryResult =
   | { readonly kind: "pending"; readonly ticket: string }
 
 export type CloseKind = CloseOutcome["kind"]
+export type SetWinnerCountKind = SetWinnerCountOutcome["kind"]
 export type DrawKind = DrawOutcome["kind"]
 export type RerollKind = RerollOutcome["kind"]
 export type ClaimKind = ClaimOutcome["kind"]
@@ -109,6 +111,7 @@ export interface CreateGiveawayBody {
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
+  readonly winnerCount: number
 }
 
 export type CreateResult =
@@ -210,13 +213,17 @@ function parseVerify(source: Json): VerifyJson {
     status: oneOf(source, "status", roomStatuses),
     entrantCount: num(source, "entrantCount"),
     ticketTotal: num(source, "ticketTotal"),
+    winnerCount: num(source, "winnerCount"),
     commitment:
       commitment === null
         ? null
         : {
             merkleRoot: text(commitment, "merkleRoot"),
             chainHash: text(commitment, "chainHash"),
+            genesisSeconds: num(commitment, "genesisSeconds"),
+            periodSeconds: num(commitment, "periodSeconds"),
             round: num(commitment, "round"),
+            committedAt: num(commitment, "committedAt"),
           },
     picks: list(source, "picks", (pick) => ({
       n: num(pick, "n"),
@@ -394,8 +401,13 @@ export function closeEntries(id: string): Promise<CloseKind | Rejected> {
   return act(`/api/dash/giveaways/${encodeURIComponent(id)}/close`, {}, closeKinds)
 }
 
-export function drawWinners(id: string, count: number): Promise<DrawKind | Rejected> {
-  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, { count }, drawKinds)
+/** The count is the giveaway's own setting, so the draw sends none. */
+export function drawWinners(id: string): Promise<DrawKind | Rejected> {
+  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, {}, drawKinds)
+}
+
+export function setWinnerCount(id: string, count: number): Promise<SetWinnerCountKind | Rejected> {
+  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/winners`, { count }, setWinnerKinds)
 }
 
 export function rerollWinner(id: string, n: number): Promise<RerollKind | Rejected> {
@@ -416,6 +428,7 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
+const setWinnerKinds = ["set", "not-open"] as const satisfies readonly SetWinnerCountKind[]
 const drawKinds = [
   "drawn",
   "round-pending",
@@ -641,6 +654,7 @@ function parseSharedSnapshotFields(source: Json) {
     closesAt: nullableNum(source, "closesAt"),
     entrantCount: num(source, "entrantCount"),
     ticketTotal: num(source, "ticketTotal"),
+    winnerCount: num(source, "winnerCount"),
     entriesPerSecond: num(source, "entriesPerSecond"),
     lastNames: textList(source, "lastNames"),
     winners: list(source, "winners", parseWinner),

@@ -24,10 +24,15 @@ const drawn = {
   status: "drawn",
   entrantCount: 3,
   ticketTotal: 11,
+  winnerCount: 3,
   commitment: {
-    merkleRoot: "748eaa2f86ae60bed638fe3122c3ade71c1db683e955c871168ee7487846f90c",
+    merkleRoot: "18be196b36601399c0b0bfe7ce7b4738634d2bc11a25da1f4b0610218cc3b0de",
     chainHash,
+    genesisSeconds: 1_692_803_367,
+    periodSeconds: 3,
     round: 1_000_000,
+    // Round 1,000,000 is published 999,999 periods after genesis; the commit is 30 s before that.
+    committedAt: (1_692_803_367 + 999_999 * 3) * 1000 - 30_000,
   },
   picks: [
     { n: 0, leafIndex: 0, rerolled: false },
@@ -143,6 +148,84 @@ describe("verify page", () => {
 
     expect(
       await view.findByText("The Merkle root of the list is not the published root."),
+    ).toBeTruthy()
+  })
+
+  it("says the root does not match when tickets were moved between leaves after the commit", async () => {
+    const view = await verified({
+      "GET /api/g/ABCDE/leaves": () => ok({ ...leaves, tickets: [4, 0, 7] }),
+    })
+
+    expect(
+      await view.findByText("The Merkle root of the list is not the published root."),
+    ).toBeTruthy()
+  })
+
+  it("checks the round was published after the list was fixed", async () => {
+    const view = await verified()
+
+    expect(
+      await view.findByText("The drand round was published after the list was fixed."),
+    ).toBeTruthy()
+  })
+
+  it("says the draw cannot be trusted when the round was published before the list was fixed", async () => {
+    const early = { ...drawn.commitment, committedAt: drawn.commitment.committedAt + 60_000 }
+
+    const view = await verified({
+      "GET /api/g/ABCDE/verify": () => ok({ ...drawn, commitment: early }),
+    })
+
+    expect(
+      await view.findByText(
+        "The drand round was published before the list was fixed, so the draw cannot be trusted.",
+      ),
+    ).toBeTruthy()
+  })
+
+  it("says the winners do not follow when fewer picks were drawn than the winner count", async () => {
+    const view = await verified({
+      "GET /api/g/ABCDE/verify": () =>
+        ok({ ...drawn, winnerCount: 5, picks: drawn.picks.slice(0, 2) }),
+    })
+
+    expect(
+      await view.findByText(
+        "The winners do not follow from the list and the random number of drand round 1000000.",
+      ),
+    ).toBeTruthy()
+  })
+
+  it("shows the winner count, when the list was fixed and that the streamer may reroll", async () => {
+    mockFetch(routes())
+
+    const view = renderApp("/g/ABCDE/verify")
+
+    expect(await view.findByText("Winners to draw")).toBeTruthy()
+    expect(view.getByText("List fixed at")).toBeTruthy()
+    expect(
+      view.getByText(/The streamer may reroll a winner who did not meet the conditions/),
+    ).toBeTruthy()
+  })
+
+  it("lists every rerolled pick and how many rerolled picks came before each standing winner", async () => {
+    const rerolls = {
+      ...drawn,
+      winnerCount: 2,
+      picks: [
+        { n: 0, leafIndex: 0, rerolled: true },
+        { n: 1, leafIndex: 2, rerolled: false },
+        { n: 2, leafIndex: 1, rerolled: false },
+      ],
+    }
+    mockFetch(routes({ "GET /api/g/ABCDE/verify": () => ok(rerolls) }))
+
+    const view = renderApp("/g/ABCDE/verify")
+
+    expect(await view.findByText("Rerolled picks: 1.")).toBeTruthy()
+    expect(view.getByText("Pick 1 is entry 1 of the list. (rerolled)")).toBeTruthy()
+    expect(
+      view.getByText("Pick 2 is entry 3 of the list. 1 rerolled picks came before it."),
     ).toBeTruthy()
   })
 

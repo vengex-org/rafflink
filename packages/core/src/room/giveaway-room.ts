@@ -80,6 +80,7 @@ export type RoomConfig = Pick<
   | "drandPeriodSeconds"
   | "drandLeadSeconds"
   | "commitRetrySeconds"
+  | "drandPublishMarginSeconds"
 >
   & ChatWatcherConfig
 
@@ -106,6 +107,8 @@ export interface GiveawayInit {
   readonly rules: GiveawayRules
   readonly claimSeconds: number
   readonly closesAt: Instant | null
+  /** How many winners the draw picks. */
+  readonly winnerCount: number
 }
 
 /** A viewer entering: who they are on the giveaway's platform and what the platform said about them. */
@@ -123,6 +126,10 @@ export type EnterOutcome =
 
 export type CloseOutcome =
   | { readonly kind: "closed" }
+  | { readonly kind: "not-open"; readonly status: RoomStatus }
+
+export type SetWinnerCountOutcome =
+  | { readonly kind: "set" }
   | { readonly kind: "not-open"; readonly status: RoomStatus }
 
 export type DrawOutcome =
@@ -170,6 +177,8 @@ export interface RoomSummary {
   readonly closesAt: Instant | null
   readonly entrantCount: number
   readonly ticketTotal: number
+  /** How many winners the draw picks. */
+  readonly winnerCount: number
   /** No chat claim is possible: the chat watch gave up, so a winner can only claim on the page or by the streamer's hand. */
   readonly chatClaimUnavailable: boolean
 }
@@ -293,6 +302,7 @@ export interface Verification {
   readonly status: RoomStatus
   readonly entrantCount: number
   readonly ticketTotal: number
+  readonly winnerCount: number
   readonly commitment: Commitment | null
   readonly picks: readonly VerifiedPick[]
 }
@@ -345,8 +355,8 @@ export class GiveawayRoom {
   init(giveaway: GiveawayInit): void {
     this.sql.exec(
       `INSERT INTO room_state
-         (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, closes_at, roles_refresh_at)
-       VALUES (1, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
+         (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, closes_at, roles_refresh_at, winner_count)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
        ON CONFLICT (id) DO NOTHING`,
       [
         giveaway.platform,
@@ -358,9 +368,21 @@ export class GiveawayRoom {
         giveaway.claimSeconds,
         giveaway.closesAt,
         this.clock.now(),
+        giveaway.winnerCount,
       ],
     )
     this.reconcile()
+  }
+
+  /** Changes how many winners the draw picks, while entries are open only: once the room closed the count is part of what was committed. */
+  setWinnerCount(count: number): SetWinnerCountOutcome {
+    const changed = this.sql.exec(
+      "UPDATE room_state SET winner_count = ? WHERE id = 1 AND status = 'open' RETURNING id",
+      [count],
+    )
+    if (changed.length === 0) return { kind: "not-open", status: this.readState().status }
+    this.afterWrite()
+    return { kind: "set" }
   }
 
   /** One entry per account: a repeat returns the first entry and changes nothing. */
@@ -448,6 +470,7 @@ export class GiveawayRoom {
       status: state.status,
       entrantCount: state.entrantCount,
       ticketTotal: state.ticketTotal,
+      winnerCount: state.winnerCount,
       commitment: state.commitment,
       picks: this.readDraws().map((draw) => ({
         n: draw.n,
@@ -533,15 +556,16 @@ export class GiveawayRoom {
     const leaves = await Promise.all(
       entries.map(async (entry) => ({ hash: await leafHash(entry), tickets: entry.tickets })),
     )
-    const root = await merkleRoot(leaves.map((leaf) => leaf.hash))
-    const round = roundAtOrAfter(
-      drandChain(this.config),
-      this.clock.now() + this.config.drandLeadSeconds * 1000,
-    )
+    const root = await merkleRoot(leaves)
+    const chain = drandChain(this.config)
+    const now = this.clock.now()
+    const round = roundAtOrAfter(chain, now + this.config.drandLeadSeconds * 1000)
     this.sql.transaction(() => {
       const stored = this.sql.exec(
-        "UPDATE room_state SET merkle_root = ?, drand_round = ? WHERE id = 1 AND status = 'closed' AND merkle_root IS NULL RETURNING id",
-        [root, round],
+        `UPDATE room_state SET merkle_root = ?, drand_round = ?, committed_at = ?, drand_chain_hash = ?,
+           drand_genesis_seconds = ?, drand_period_seconds = ?
+         WHERE id = 1 AND status = 'closed' AND merkle_root IS NULL RETURNING id`,
+        [root, round, now, chain.chainHash, chain.genesisSeconds, chain.periodSeconds],
       )
       if (stored.length === 0) return
       for (let from = 0; from < leaves.length; from += leavesPerChunk) {
@@ -558,7 +582,7 @@ export class GiveawayRoom {
    * Picks `count` winners from a closed room, once, with the randomness of the drand round the room
    * committed to. While that round is missing it draws nothing and uses no other randomness.
    */
-  async draw(count: number): Promise<DrawOutcome> {
+  async draw(): Promise<DrawOutcome> {
     const early = drawRefusal(this.readState())
     if (early !== null) return early
     await this.commit()
@@ -566,21 +590,24 @@ export class GiveawayRoom {
     const refusal = drawRefusal(state)
     if (refusal !== null) return refusal
     if (state.commitment === null) throw new Error("a closed room has no commitment after commit")
-    const { drandRound } = state.commitment
-    const answer = await this.beacon.fetchRound(drandRound)
+    const { drandRound, chain } = state.commitment
+    const answer = await this.beacon.fetchRound(chain.chainHash, drandRound)
     switch (answer.kind) {
-      case "not-yet":
-        return {
-          kind: "round-pending",
-          availableAt: roundTime(drandChain(this.config), drandRound),
+      case "not-yet": {
+        const availableAt = roundTime(chain, drandRound)
+        // A round still missing long after its time is a broken beacon, not an early draw.
+        if (this.clock.now() > availableAt + this.config.drandPublishMarginSeconds * 1000) {
+          return { kind: "beacon-unavailable" }
         }
+        return { kind: "round-pending", availableAt }
+      }
       case "unavailable":
         return { kind: "beacon-unavailable" }
       case "round":
         break
     }
     const seed = answer.round.randomness
-    const winners = await drawWinners(seed, this.readDrawEntries(), count)
+    const winners = await drawWinners(seed, this.readDrawEntries(), state.winnerCount)
     const now = this.clock.now()
     const outcome = this.sql.transaction((): DrawOutcome => {
       const flipped = this.sql.exec(
@@ -1154,6 +1181,7 @@ function summarize(state: RoomState): RoomSummary {
     closesAt: state.closesAt,
     entrantCount: state.entrantCount,
     ticketTotal: state.ticketTotal,
+    winnerCount: state.winnerCount,
     chatClaimUnavailable: state.chatUnavailable,
   }
 }

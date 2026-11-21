@@ -60,12 +60,19 @@ export interface VerifyJson {
   readonly status: RoomStatus
   readonly entrantCount: number
   readonly ticketTotal: number
+  /** How many winners the draw picks; fixed while entries were open. */
+  readonly winnerCount: number
   readonly commitment: {
     /** Lower-case hex. */
     readonly merkleRoot: string
+    /** The drand chain the room committed to, with the clock of its rounds. */
     readonly chainHash: string
-    /** The drand round whose randomness seeded the draw. */
+    readonly genesisSeconds: number
+    readonly periodSeconds: number
+    /** The drand round whose randomness seeds the draw. */
     readonly round: number
+    /** When the room committed, by the room's clock; the round must come later. */
+    readonly committedAt: Instant
   } | null
   readonly picks: readonly VerifiedPick[]
 }
@@ -112,14 +119,21 @@ export interface EntrantsPage {
   readonly more: boolean
 }
 
-export function verifyJson(chainHash: string, verification: Verification): VerifyJson {
+export function verifyJson(verification: Verification): VerifyJson {
   const { commitment, ...rest } = verification
   return {
     ...rest,
     commitment:
       commitment === null
         ? null
-        : { merkleRoot: toHex(commitment.merkleRoot), chainHash, round: commitment.drandRound },
+        : {
+            merkleRoot: toHex(commitment.merkleRoot),
+            chainHash: commitment.chain.chainHash,
+            genesisSeconds: commitment.chain.genesisSeconds,
+            periodSeconds: commitment.chain.periodSeconds,
+            round: commitment.drandRound,
+            committedAt: commitment.committedAt,
+          },
   }
 }
 

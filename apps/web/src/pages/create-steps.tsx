@@ -168,6 +168,16 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         </div>
         {odds === null ? null : <output className="odds">{oddsText(i18n, odds)}</output>}
       </fieldset>
+      <TextField
+        name="winnerCount"
+        label={t("wizard.winners.label")}
+        help={t("wizard.winners.help")}
+        type="number"
+        min={1}
+        value={values.winnerCount}
+        error={errorOf(i18n, issue, "winnerCount")}
+        onChange={(winnerCount) => setValues((current) => ({ ...current, winnerCount }))}
+      />
       <Segmented
         name="claimSeconds"
         legend={t("wizard.claim.legend")}
@@ -238,6 +248,7 @@ export function ReviewStep({ values }: { readonly values: Values }) {
             : i18n.dateTime(new Date(values.closesAt).getTime())
         }
       />
+      <ReviewRow label={t("review.winners")} value={i18n.number(Number(values.winnerCount))} />
       <ReviewRow
         label={t("review.claim")}
         value={t("review.claimText", {

@@ -16,6 +16,7 @@ export type CreateConfig = Pick<
   | "claimSecondsMax"
   | "titleMaxLength"
   | "prizeMaxLength"
+  | "drawMaxWinners"
 >
 
 /** A create request that passed the boundary. */
@@ -27,6 +28,8 @@ export interface CreateGiveawayInput {
   readonly rules: GiveawayRules
   readonly claimSeconds: number
   readonly closesAt: Instant | null
+  /** How many winners the draw picks; fixed before the draw so nobody can choose it after the random number is known. */
+  readonly winnerCount: number
 }
 
 export type CreateIssue = {
@@ -51,6 +54,8 @@ export function parseCreateGiveaway(
   if (!claimSeconds.ok) return claimSeconds
   const closesAt = parseClosesAt(ownValue(body, "closesAt"), now)
   if (!closesAt.ok) return closesAt
+  const winnerCount = parseWinnerCount(ownValue(body, "winnerCount"), config)
+  if (!winnerCount.ok) return winnerCount
   return {
     ok: true,
     value: {
@@ -59,8 +64,21 @@ export function parseCreateGiveaway(
       rules: rules.value,
       claimSeconds: claimSeconds.value,
       closesAt: closesAt.value,
+      winnerCount: winnerCount.value,
     },
   }
+}
+
+/** Absent means one winner; anything else must be a whole number from 1 to the draw maximum. */
+export function parseWinnerCount(
+  value: unknown,
+  config: Pick<ResolvedConfig, "drawMaxWinners">,
+): Parsed<number, CreateIssue> {
+  if (value === undefined) return { ok: true, value: 1 }
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
+    return fail("winnerCount", "not-a-positive-integer")
+  }
+  return value > config.drawMaxWinners ? fail("winnerCount", "too-large") : { ok: true, value }
 }
 
 // An empty keyword field of a form means "any message claims"; a keyword of spaces is still refused.

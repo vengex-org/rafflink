@@ -93,6 +93,8 @@ function Facts({
     <dl className="verify-facts">
       <Fact label={t("verify.facts.entrants")}>{i18n.number(load.verify.entrantCount)}</Fact>
       <Fact label={t("verify.facts.tickets")}>{i18n.number(load.verify.ticketTotal)}</Fact>
+      <Fact label={t("verify.facts.winners")}>{i18n.number(load.verify.winnerCount)}</Fact>
+      <Fact label={t("verify.facts.committed")}>{i18n.dateTime(commitment.committedAt)}</Fact>
       <Fact label={t("verify.facts.root")} mono>
         {commitment.merkleRoot}
       </Fact>
@@ -172,21 +174,36 @@ function Checker({
         {run.state === "failed" ? <p role="alert">{t("action.failed")}</p> : null}
         {run.state === "done" ? <Results verdict={run.verdict} commitment={commitment} /> : null}
       </section>
-      {load.verify.picks.length === 0 ? null : (
-        <section>
-          <h2>{t("verify.winners.title")}</h2>
-          <ol className="verify-picks">
-            {load.verify.picks.map((pick) => (
-              <li key={pick.n}>
-                {t("verify.winner.entry", { n: pick.n + 1, leaf: (pick.leafIndex ?? -1) + 1 })}
-                {pick.rerolled ? ` ${t("verify.winner.rerolled")}` : ""}
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      {load.verify.picks.length === 0 ? null : <Picks picks={load.verify.picks} />}
       <Mine mine={mine} verdict={run.state === "done" ? run.verdict.mine : null} code={code} />
     </>
+  )
+}
+
+function Picks({ picks }: { readonly picks: VerifyLoad["verify"]["picks"] }) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const rerolled = picks.filter((pick) => pick.rerolled).length
+  return (
+    <section>
+      <h2>{t("verify.winners.title")}</h2>
+      <p>{t("verify.rerolls.note")}</p>
+      <p>{t("verify.rerolls.count", { count: i18n.number(rerolled) })}</p>
+      <ol className="verify-picks">
+        {picks.map((pick) => {
+          const before = picks.filter((other) => other.rerolled && other.n < pick.n).length
+          return (
+            <li key={pick.n}>
+              {t("verify.winner.entry", { n: pick.n + 1, leaf: (pick.leafIndex ?? -1) + 1 })}
+              {pick.rerolled ? ` ${t("verify.winner.rerolled")}` : ""}
+              {!pick.rerolled && before > 0
+                ? ` ${t("verify.winner.before", { count: i18n.number(before) })}`
+                : ""}
+            </li>
+          )
+        })}
+      </ol>
+    </section>
   )
 }
 
@@ -201,6 +218,7 @@ function Results({
   const rows: readonly { readonly outcome: string; readonly text: string }[] = [
     { outcome: verdict.counts, text: t(`verify.check.counts.${verdict.counts}`) },
     { outcome: verdict.root, text: t(`verify.check.root.${verdict.root}`) },
+    { outcome: verdict.timing, text: t(`verify.check.timing.${verdict.timing}`) },
     {
       outcome: signatureOutcome[verdict.signature],
       text: t(`verify.check.signature.${verdict.signature}`, { round: commitment.round }),

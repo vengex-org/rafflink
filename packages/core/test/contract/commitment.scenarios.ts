@@ -70,17 +70,58 @@ export function commitmentScenarios(context: ContractContext): void {
         ticketTotal: leaves.tickets.reduce((sum, tickets) => sum + tickets, 0),
         picks: [],
       })
-      expect(verify.commitment?.chainHash).toBe(quicknet.chainHash)
+      expect(verify.commitment).toMatchObject({
+        chainHash: quicknet.chainHash,
+        genesisSeconds: quicknet.genesisSeconds,
+        periodSeconds: quicknet.periodSeconds,
+      })
+      expect(verify.commitment?.committedAt).toBeGreaterThan(Date.now() - 60_000)
+      expect(verify.winnerCount).toBe(1)
       expect(verify.commitment?.round).toBeGreaterThan(0)
       expect(leaves.hashes).toHaveLength(3)
       expect(verify.commitment?.merkleRoot).toBe(
-        toHex(await merkleRoot(leaves.hashes.map(bytesOf))),
+        toHex(
+          await merkleRoot(
+            leaves.hashes.map((hash, index) => ({
+              hash: bytesOf(hash),
+              tickets: leaves.tickets[index] ?? 0,
+            })),
+          ),
+        ),
       )
       expect(leavesResponse.headers.get("cache-control")).toBe(
         "public, max-age=31536000, immutable",
       )
       expect(leavesText).not.toContain("user_")
       expect(leavesText).not.toContain("User_")
+    },
+  )
+
+  scenario(
+    context,
+    "the winner count is set while entries are open and frozen by the close",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target, { winnerCount: 1 })
+      const set = (count: number) =>
+        giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/winners`, { count })
+
+      const changed = await set(2)
+      for (const user of [users.viewer, users.viewer2, users.viewer3]) {
+        await world.enter(target, giveaway.code, user.id)
+      }
+      await world.closeGiveaway(giveaway)
+      const late = await set(3)
+      const mismatch = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, {
+        count: 3,
+      })
+      const drawn = await world.drawWinners(giveaway)
+
+      expect(await changed.json()).toEqual({ kind: "set" })
+      expect(late.status).toBe(409)
+      expect(mismatch.status).toBe(400)
+      expect(await drawn.json()).toEqual({ kind: "drawn", winners: [0, 1] })
+      expect((await verifyOf(target, giveaway.code)).winnerCount).toBe(2)
     },
   )
 
@@ -109,15 +150,15 @@ export function commitmentScenarios(context: ContractContext): void {
     "a draw waits for the committed round and then uses its randomness",
     async (world) => {
       const target = await world.start()
-      const giveaway = await world.createGiveaway(target)
+      const giveaway = await world.createGiveaway(target, { winnerCount: 2 })
       const viewers = await enterAndClose(world, target, giveaway)
       const round = (await verifyOf(target, giveaway.code)).commitment?.round ?? 0
 
       world.drand.mode = "not-yet"
-      const early = await world.drawWinners(giveaway, 2)
+      const early = await world.drawWinners(giveaway)
       const stillClosed = await verifyOf(target, giveaway.code)
       world.drand.mode = "published"
-      const drawn = await world.drawWinners(giveaway, 2)
+      const drawn = await world.drawWinners(giveaway)
       await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/reroll`, { n: 0 })
 
       expect(early.status).toBe(409)
@@ -148,10 +189,10 @@ export function commitmentScenarios(context: ContractContext): void {
       await enterAndClose(world, target, giveaway)
 
       world.drand.mode = "down"
-      const failed = await world.drawWinners(giveaway, 1)
+      const failed = await world.drawWinners(giveaway)
       const stillClosed = await verifyOf(target, giveaway.code)
       world.drand.mode = "published"
-      const drawn = await world.drawWinners(giveaway, 1)
+      const drawn = await world.drawWinners(giveaway)
 
       expect(failed.status).toBe(503)
       expect(await failed.json()).toEqual({ kind: "beacon-unavailable" })

@@ -198,6 +198,9 @@ class LocalRoomStub implements RoomStub {
   draw(...args: Parameters<GiveawayRoom["draw"]>) {
     return inRoom(() => this.room.draw(...args))
   }
+  setWinnerCount(...args: Parameters<GiveawayRoom["setWinnerCount"]>) {
+    return inRoom(() => this.room.setWinnerCount(...args))
+  }
   reroll(...args: Parameters<GiveawayRoom["reroll"]>) {
     return inRoom(() => this.room.reroll(...args))
   }

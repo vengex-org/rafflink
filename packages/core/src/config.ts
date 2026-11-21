@@ -11,6 +11,7 @@ export type ConfigReason =
   | "not-a-url"
   | "not-a-header-name"
   | "not-a-chain-hash"
+  | "not-at-least-drand-period"
   | "not-an-admin-entry"
   | "not-below-queue-code-max-age"
   | "not-below-eventsub-connection-max"
@@ -419,6 +420,12 @@ export const configSchema = {
     "30",
     "A giveaway commits to the first drand round at least this long after entries close, so nobody knows its value yet; spec The draw",
   ),
+  drandPublishMarginSeconds: withDefault(
+    "DRAND_PUBLISH_MARGIN_SECONDS",
+    int(0),
+    "30",
+    "A drand round still missing this long after its time counts as a failed beacon, not as an early draw; ten rounds of quicknet, a starting guess",
+  ),
   drandRetryDelaysMs: withDefault(
     "DRAND_RETRY_DELAYS_MS",
     list(int(0)),
@@ -556,6 +563,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     drandGenesisSeconds: read(env, configSchema.drandGenesisSeconds),
     drandPeriodSeconds: read(env, configSchema.drandPeriodSeconds),
     drandLeadSeconds: read(env, configSchema.drandLeadSeconds),
+    drandPublishMarginSeconds: read(env, configSchema.drandPublishMarginSeconds),
     drandRetryDelaysMs: read(env, configSchema.drandRetryDelaysMs),
     drandRetryJitterPercent: read(env, configSchema.drandRetryJitterPercent),
     drandTimeoutMs: read(env, configSchema.drandTimeoutMs),
@@ -593,6 +601,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
   // Entrants' data must outlive every window in which a winner can still be claimed or rerolled.
   if (config.entryRetentionSeconds < config.claimSecondsMax + config.rerollWindowSeconds) {
     throw new ConfigError(configSchema.entryRetentionSeconds.env, "below-claim-and-reroll-windows")
+  }
+  // A lead shorter than one round could pick a round that is already known when the room commits.
+  if (config.drandLeadSeconds < config.drandPeriodSeconds) {
+    throw new ConfigError(configSchema.drandLeadSeconds.env, "not-at-least-drand-period")
   }
   // The fake Twitch signs in anyone, so it must never run behind a public origin.
   if (config.devFakeTwitch && !isLocalOrigin(config.publicUrl)) {

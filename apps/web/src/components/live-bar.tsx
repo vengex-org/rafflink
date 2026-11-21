@@ -1,6 +1,12 @@
 import { useId, useState } from "react"
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
-import { closeEntries, drawWinners, markClaimed, rerollWinner } from "../api/client.ts"
+import {
+  closeEntries,
+  drawWinners,
+  markClaimed,
+  rerollWinner,
+  setWinnerCount,
+} from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { overlayUrl } from "../lib/links.ts"
 import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
@@ -56,7 +62,16 @@ export function LiveBar({
   return (
     <div className="live-bar" role="toolbar" aria-label={t("live.bar.label")}>
       {snapshot.status === "closed" ? (
-        <DrawStep id={id} busy={busy} run={run} entrantCount={snapshot.entrantCount} />
+        <DrawStep
+          id={id}
+          busy={busy}
+          run={run}
+          entrantCount={snapshot.entrantCount}
+          winnerCount={snapshot.winnerCount}
+        />
+      ) : null}
+      {snapshot.status === "open" ? (
+        <WinnerCountControl id={id} busy={busy} run={run} winnerCount={snapshot.winnerCount} />
       ) : null}
       {snapshot.status === "drawn" ? (
         <>
@@ -252,38 +267,29 @@ function EntriesSwitch({
   )
 }
 
-function DrawStep({ id, busy, run, entrantCount }: Doing & { readonly entrantCount: number }) {
+function DrawStep({
+  id,
+  busy,
+  run,
+  entrantCount,
+  winnerCount,
+}: Doing & { readonly entrantCount: number; readonly winnerCount: number }) {
   const i18n = useI18n()
   const { t } = i18n
-  const [count, setCount] = useState("1")
-  const winners = Number(count)
-  const countValid = count.trim() !== "" && Number.isInteger(winners) && winners >= 1
-  const blocked =
-    entrantCount === 0 ? t("live.draw.nobody") : countValid ? null : t("live.draw.invalid")
+  const blocked = entrantCount === 0 ? t("live.draw.nobody") : null
   return (
     <>
       <p id="draw-help" className="live-draw-help">
         {blocked
-          ?? (countValid && winners > entrantCount
+          ?? (winnerCount > entrantCount
             ? t("live.draw.fewer", { count: i18n.number(entrantCount) })
-            : t("live.draw.random"))}
+            : t("live.draw.random"))}{" "}
+        {t("live.draw.fixed", { count: i18n.number(winnerCount) })}
       </p>
-      <div className="live-draw-count">
-        <label htmlFor="draw-count">{t("live.draw.count")}</label>
-        <input
-          id="draw-count"
-          type="number"
-          autoComplete="off"
-          min={1}
-          value={count}
-          aria-describedby="draw-help"
-          onChange={(event) => setCount(event.currentTarget.value)}
-        />
-      </div>
       <ConfirmAction
         icon={<ShuffleIcon />}
         label={t("live.draw.label")}
-        question={i18n.plural("drawQuestion", winners)}
+        question={i18n.plural("drawQuestion", winnerCount)}
         detail={t("live.draw.detail")}
         confirmLabel={t("live.draw.confirm")}
         busy={busy}
@@ -292,12 +298,52 @@ function DrawStep({ id, busy, run, entrantCount }: Doing & { readonly entrantCou
         shortcut="d"
         onConfirm={() =>
           void run(
-            () => drawWinners(id, winners),
+            () => drawWinners(id),
             (outcome) => `drawResult.${outcome}`,
           )
         }
       />
     </>
+  )
+}
+
+/** The winner count, editable while entries are open: once they close it is settled, before the random number exists. */
+function WinnerCountControl({
+  id,
+  busy,
+  run,
+  winnerCount,
+}: Doing & { readonly winnerCount: number }) {
+  const { t } = useI18n()
+  const [count, setCount] = useState(String(winnerCount))
+  const winners = Number(count)
+  const valid = count.trim() !== "" && Number.isInteger(winners) && winners >= 1
+  return (
+    <div className="live-draw-count">
+      <label htmlFor="winner-count">{t("live.draw.count")}</label>
+      <input
+        id="winner-count"
+        type="number"
+        autoComplete="off"
+        min={1}
+        value={count}
+        aria-invalid={!valid}
+        onChange={(event) => setCount(event.currentTarget.value)}
+      />
+      <button
+        type="button"
+        className="live-btn secondary"
+        disabled={busy || !valid || winners === winnerCount}
+        onClick={() =>
+          void run(
+            () => setWinnerCount(id, winners),
+            (outcome) => `winnersResult.${outcome}`,
+          )
+        }
+      >
+        {t("live.winners.save")}
+      </button>
+    </div>
   )
 }
 

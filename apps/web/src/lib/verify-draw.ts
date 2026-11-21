@@ -1,6 +1,6 @@
 import type { LeavesJson, MyLeafJson, VerifyJson } from "@rafflink/core/http/json"
 import { drawLeafPicks } from "@rafflink/core/lib/draw"
-import { parseBeaconRound, publicDrandUrls, roundPath } from "@rafflink/core/lib/drand"
+import { parseBeaconRound, publicDrandUrls, roundPath, roundTime } from "@rafflink/core/lib/drand"
 import { fromHex, toHex } from "@rafflink/core/lib/encoding"
 import { leafHash, merkleRoot } from "@rafflink/core/lib/merkle"
 import type { BeaconRound } from "@rafflink/core/ports"
@@ -27,6 +27,8 @@ export type OwnEntry =
 export interface Verdict {
   readonly counts: Match
   readonly root: Match
+  /** The drand round was published after the room says it committed. */
+  readonly timing: Match
   readonly signature: "valid" | "invalid" | "unavailable" | "none"
   readonly winners: Match | "unavailable" | "none"
   /** Null when the viewer is not signed in, has no entry or has no salt yet. */
@@ -44,11 +46,19 @@ export interface DrawEvidence {
 export async function verifyDraw(evidence: DrawEvidence): Promise<Verdict> {
   const { verify, commitment, leaves, mine } = evidence
   const tickets = leaves.tickets.reduce((sum, count) => sum + count, 0)
-  const root = toHex(await merkleRoot(leaves.hashes.map(bytesOf)))
+  const root = toHex(
+    await merkleRoot(
+      leaves.hashes.map((hash, index) => ({
+        hash: bytesOf(hash),
+        tickets: leaves.tickets[index] ?? 0,
+      })),
+    ),
+  )
   const beacon = await checkBeacon(verify, commitment, leaves)
   return {
     counts: matches(leaves.hashes.length === verify.entrantCount && tickets === verify.ticketTotal),
     root: matches(root === commitment.merkleRoot),
+    timing: matches(roundTime(commitment, commitment.round) > commitment.committedAt),
     signature: beacon.signature,
     winners: beacon.winners,
     mine: mine === null ? null : await findOwnEntry(mine, verify, leaves),
@@ -84,9 +94,12 @@ async function checkBeacon(
   if (!(await verifyBeaconSignature(commitment.chainHash, beacon))) {
     return { signature: "invalid", winners: "mismatch" }
   }
+  // The first picks are the draw itself: as many as the giveaway's winner count, or everyone who entered.
+  const drawn = Math.min(verify.winnerCount, leaves.tickets.length)
   const replay = await drawLeafPicks(beacon.randomness, leaves.tickets, verify.picks.length)
   const winners = matches(
-    replay.length === verify.picks.length
+    verify.picks.length >= drawn
+      && replay.length === verify.picks.length
       && replay.every(
         (pick, index) =>
           pick.n === verify.picks[index]?.n && pick.leafIndex === verify.picks[index]?.leafIndex,

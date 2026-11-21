@@ -19,7 +19,7 @@ export function retentionScenarios(context: ContractContext): void {
       const giveaway = await world.createGiveaway(target)
       const { viewer } = await world.enter(target, giveaway.code, users.viewer.id)
       await world.closeGiveaway(giveaway)
-      await world.drawWinners(giveaway, 1)
+      await world.drawWinners(giveaway)
       const meOf = async () => {
         const page: { me: { kind: string; entry: unknown } } = await (
           await viewer.request(`/api/g/${giveaway.code}`)
@@ -60,7 +60,7 @@ export function retentionScenarios(context: ContractContext): void {
         return page.rows.length === 0
       }, "the entries to be deleted")
 
-      const draw = await world.drawWinners(giveaway, 1)
+      const draw = await world.drawWinners(giveaway)
 
       expect(draw.status).toBe(409)
       expect(await draw.json()).toEqual({ kind: "entries-deleted" })

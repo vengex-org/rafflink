@@ -1,6 +1,7 @@
 import type { ResolvedConfig } from "../config.ts"
 import { groups, type Group } from "../domain/groups.ts"
 import { parseRules, type GiveawayRules } from "../domain/rules.ts"
+import type { DrandChain } from "../lib/drand.ts"
 import type { Instant, SqlRow } from "../ports.ts"
 
 /** Where a giveaway is in its life: entries open, entries closed, winners drawn. Matches the `status` CHECK. */
@@ -22,6 +23,9 @@ export class RoomRowError extends Error {
 export interface Commitment {
   readonly merkleRoot: Uint8Array<ArrayBuffer>
   readonly drandRound: number
+  readonly committedAt: Instant
+  /** The chain the round belongs to, as the room's config named it at the commit. */
+  readonly chain: DrandChain
 }
 
 /** The one `room_state` row, parsed. A drawn room has its seed, any other has none; an open room has no close time, any other has one. A room that closed before commitments existed has no commitment. */
@@ -45,6 +49,8 @@ export type RoomState = {
   /** The retention alarm deleted the entrants' data. */
   readonly entriesDeleted: boolean
   readonly commitment: Commitment | null
+  /** How many winners the draw picks; settled while entries are open. */
+  readonly winnerCount: number
 } & (
   | { readonly status: "open"; readonly seed: null; readonly closedAt: null }
   | { readonly status: "closed"; readonly seed: null; readonly closedAt: Instant }
@@ -99,6 +105,7 @@ export function parseState(
     mirrorPending: reader.int("mirror_pending") === 1,
     entriesDeleted: reader.int("entries_deleted") === 1,
     commitment: parseCommitment(reader),
+    winnerCount: reader.int("winner_count"),
   }
   const status = reader.oneOf("status", roomStatuses)
   const seed = reader.nullableBlob("seed")
@@ -213,10 +220,36 @@ export class RowReader {
 function parseCommitment(reader: RowReader): Commitment | null {
   const merkleRoot = reader.nullableBlob("merkle_root")
   const drandRound = reader.nullableInt("drand_round")
-  if (merkleRoot === null && drandRound === null) return null
-  if (merkleRoot === null || drandRound === null)
+  const committedAt = reader.nullableInt("committed_at")
+  const chainHash = reader.nullableText("drand_chain_hash")
+  const genesisSeconds = reader.nullableInt("drand_genesis_seconds")
+  const periodSeconds = reader.nullableInt("drand_period_seconds")
+  if (
+    merkleRoot === null
+    && drandRound === null
+    && committedAt === null
+    && chainHash === null
+    && genesisSeconds === null
+    && periodSeconds === null
+  ) {
+    return null
+  }
+  if (
+    merkleRoot === null
+    || drandRound === null
+    || committedAt === null
+    || chainHash === null
+    || genesisSeconds === null
+    || periodSeconds === null
+  ) {
     throw new RoomRowError("room_state", "merkle_root")
-  return { merkleRoot, drandRound }
+  }
+  return {
+    merkleRoot,
+    drandRound,
+    committedAt,
+    chain: { chainHash, genesisSeconds, periodSeconds },
+  }
 }
 
 function parseClaim(claimedAt: Instant | null, claimedVia: string | null): DrawClaim {

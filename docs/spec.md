@@ -107,7 +107,7 @@ happen only in the claim window; the rest of the watch shows the winners' newest
     message in that gap is missed, and the winner has to claim with the button or the streamer marks it by
     hand.
 
-After the claim time the streamer may reroll for `REROLL_WINDOW_SECONDS` (default one hour) while an entrant is left to pick; Rafflink does not reroll by itself.
+The streamer may reroll an unclaimed pick at any time, also during its claim time, for `REROLL_WINDOW_SECONDS` (default one hour after the last claim time) while an entrant is left to pick. The streamer checks whether the winner met the conditions of the giveaway and draws the next one if not, so waiting would only slow that down. Every reroll stays on the public verify page, with the picks skipped before each final winner. Rafflink does not reroll by itself.
 
 **Viewer**
 
@@ -336,7 +336,8 @@ queue_stats(id, rate_per_second, cooldown_until, dropped, abandoned_results, los
 room_state(id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds,
            status, closes_at, seed, entrant_count, ticket_total, role_refresh_failures,
            eventsub_failures, chat_unavailable, roles_refresh_at, mirror_pending,
-           merkle_root, drand_round)
+           merkle_root, drand_round, committed_at, drand_chain_hash, drand_genesis_seconds,
+           drand_period_seconds, winner_count)
 entries(platform, platform_user_id, login, display_name, group_name, tickets, entered_at, salt,
         PRIMARY KEY (platform, platform_user_id)) WITHOUT ROWID
 channel_roles(platform, platform_user_id, role, fetched_at,
@@ -346,7 +347,8 @@ draws(n, platform, platform_user_id, drawn_at, claim_until, claimed_at, claimed_
 leaves(chunk, data)
 ```
 
-Room migration 0003 adds `merkle_root`, `drand_round`, `entries.salt`, `draws.leaf_index` and `leaves` (the leaf
+Room migration 0003 adds `merkle_root`, `drand_round`, the commit time and the drand chain of the commit,
+`winner_count` (existing rooms get 1), `entries.salt`, `draws.leaf_index` and `leaves` (the leaf
 list, 1000 leaves of 40 bytes per row). All are nullable or new, so a room created before it keeps working. There is
 no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Platforms).
 
@@ -381,12 +383,15 @@ rejection sampling. An entrant is never picked twice, and a reroll takes the nex
 for a drand round and adds the Merkle root, as described next.
 
 1. **Close.** The Durable Object sorts entries by `(platform, platform_user_id)` and builds a Merkle tree.
-   Each leaf is `SHA-256(platform | platform_user_id | tickets | salt)`. It publishes the Merkle root, the
+   Each leaf is `SHA-256(platform | platform_user_id | tickets | salt)`, and the tree is built over
+   `SHA-256(0x00 | leaf | tickets)`, so the root also binds the ticket counts the draw uses. It publishes the Merkle root, the
    entrant count, the total tickets and the leaf list (hashes and tickets only, no names).
 2. **Commit to future randomness.** At close it also publishes a drand round number: the first round of the
    drand `quicknet` beacon at least 30 seconds in the future. drand is a public randomness beacon run by
    independent organizations (Cloudflare is one); nobody can predict a round before it is produced, and
-   anyone can verify its signature.
+   anyone can verify its signature. The number of winners is a giveaway setting chosen at creation and editable
+   only while entries are open, so it is settled before the round is known. The commit time and the chain are
+   published with the root.
 3. **Draw.** When the round exists, the seed is its randomness. Winner `n` is picked by
    `HMAC-SHA256(seed, n)` mapped to a ticket index over the sorted leaves, rejection sampling to avoid modulo
    bias. A reroll takes the next `n`; the streamer cannot choose which entrant comes next.
@@ -457,9 +462,13 @@ Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
 - The room commits from its alarm right after the close and again at the draw if the alarm has not run; `close()`
   stays synchronous. The draw never uses local randomness: while the round is missing it answers `round-pending`
   (409) or `beacon-unavailable` (503) and draws nothing.
-- Leaf = SHA-256(`platform|platformUserId|tickets|` + salt), node = SHA-256(0x01 + left + right), an odd node
-  moves up unchanged. The drand signature is not verified with BLS on the Worker (10 ms CPU limit); the chain hash
-  is pinned in the request path and randomness must equal SHA-256 of the signature.
+- Leaf = SHA-256(`platform|platformUserId|tickets|` + salt), tree leaf = SHA-256(0x00 + leaf + tickets as 8
+  bytes, big-endian), node = SHA-256(0x01 + left + right), an odd node moves up unchanged. The drand signature is
+  not verified with BLS on the Worker (10 ms CPU limit); the Worker pins the chain hash in the request path and
+  checks that randomness is SHA-256 of the signature. The verify page does check the BLS signature in the browser.
+- The winner count is fixed before the round is known (owner decision, review of PR 11): a streamer who could
+  pick it afterwards could choose a count that includes an accomplice. Reroll stays allowed at any time (owner
+  decision), and the verify page lists every rerolled pick.
 - An open or closed room from before the migration gets salts at commit and draws the new way; a room that was
   already drawn stays on its random seed and is reported unverifiable.
 

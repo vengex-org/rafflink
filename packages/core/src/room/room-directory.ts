@@ -15,6 +15,7 @@ export type RoomStub = Remote<
     | "leaves"
     | "close"
     | "draw"
+    | "setWinnerCount"
     | "reroll"
     | "claim"
     | "picks"

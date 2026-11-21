@@ -93,7 +93,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     c.header("Cache-Control", "no-store")
     const verification = await deps.rooms.get(giveaway.id).verification()
-    return c.json(verifyJson(deps.config.drandChainHash, verification))
+    return c.json(verifyJson(verification))
   })
 
   app.get("/api/g/:code/leaves", async (c) => {

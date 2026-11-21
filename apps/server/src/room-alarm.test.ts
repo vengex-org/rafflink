@@ -95,6 +95,7 @@ async function createGiveaway(): Promise<void> {
     rules: validRules,
     closesAt: null,
     claimSeconds: 300,
+    winnerCount: 1,
     overlayToken: "overlay",
     createdAt: clock.now(),
   })

@@ -63,6 +63,9 @@ export class GiveawayRoomDO extends DurableObject<WorkerEnv> {
   async draw(...args: Parameters<GiveawayRoom["draw"]>) {
     return (await this.opened).room.draw(...args)
   }
+  async setWinnerCount(...args: Parameters<GiveawayRoom["setWinnerCount"]>) {
+    return (await this.opened).room.setWinnerCount(...args)
+  }
   async reroll(...args: Parameters<GiveawayRoom["reroll"]>) {
     return (await this.opened).room.reroll(...args)
   }

@@ -38,6 +38,7 @@ export function giveawayInit(id: string, closesAt: number | null = null): Giveaw
     title: "Giveaway",
     code: "ABCDE",
     rules: validRules,
+    winnerCount: 1,
     claimSeconds: 300,
     closesAt,
   }

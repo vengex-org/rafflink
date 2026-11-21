@@ -31,6 +31,7 @@ export interface GiveawayOptions {
   readonly rules?: Partial<GiveawayRules>
   readonly closesAt?: Date
   readonly claimSeconds?: number
+  readonly winnerCount?: number
   readonly streamer?: Browser
   /** Creates the giveaway without a title and a prize. */
   readonly unnamed?: boolean
@@ -134,6 +135,7 @@ export class World {
       rules: { ...defaultRules, ...options.rules },
       closesAt: options.closesAt?.toISOString(),
       claimSeconds: options.claimSeconds,
+      winnerCount: options.winnerCount,
     })
     expect(response.status).toBe(201)
     const body: { giveaway: { id: string; code: string; overlayToken: string } } =
@@ -209,8 +211,8 @@ export class World {
     return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/close`, {})
   }
 
-  drawWinners(giveaway: CreatedGiveaway, count: number): Promise<Response> {
-    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, { count })
+  drawWinners(giveaway: CreatedGiveaway): Promise<Response> {
+    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, {})
   }
 
   /** Requests the fake Twitch has received on `path`. */

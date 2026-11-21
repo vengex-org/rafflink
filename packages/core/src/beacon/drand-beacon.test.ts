@@ -13,7 +13,6 @@ const published = {
 
 const config: DrandConfig = {
   drandUrl: "https://drand.test",
-  drandChainHash: quicknet.chainHash,
   drandRetryDelaysMs: [0, 0, 0],
   drandRetryJitterPercent: 0,
   drandTimeoutMs: 1000,
@@ -39,6 +38,13 @@ function script(...replies: Reply[]) {
 const ok = () => Response.json(published)
 const status = (code: number) => new Response("", { status: code })
 
+const broken = () => {
+  const body = new ReadableStream({
+    pull: (controller) => controller.error(new DOMException("timed out", "TimeoutError")),
+  })
+  return new Response(body, { status: 200 })
+}
+
 beforeEach(() => {
   spyOn(console, "warn").mockImplementation(() => {})
 })
@@ -51,7 +57,10 @@ describe("DrandBeacon", () => {
   it("asks the pinned chain for the round and returns what drand published", async () => {
     const { urls, fetchImpl } = script(ok())
 
-    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(1_000_000)
+    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
 
     expect(urls).toEqual([`https://drand.test/${quicknet.chainHash}/public/1000000`])
     expect(answer.kind).toBe("round")
@@ -61,7 +70,10 @@ describe("DrandBeacon", () => {
   it("tries a round that is not published yet again, and returns it once it is", async () => {
     const { urls, fetchImpl } = script(status(425), status(404), ok())
 
-    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(1_000_000)
+    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
 
     expect(urls).toHaveLength(3)
     expect(answer.kind).toBe("round")
@@ -70,7 +82,10 @@ describe("DrandBeacon", () => {
   it("says not-yet after the last retry when the round is still missing", async () => {
     const { urls, fetchImpl } = script(status(425), status(425), status(425), status(425))
 
-    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(1_000_000)
+    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
 
     expect(urls).toHaveLength(4)
     expect(answer).toEqual({ kind: "not-yet" })
@@ -79,7 +94,10 @@ describe("DrandBeacon", () => {
   it("retries a 5xx, a 429 and a failed connection, then says unavailable", async () => {
     const { urls, fetchImpl } = script(status(503), status(429), new TypeError("down"), status(500))
 
-    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(1_000_000)
+    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
 
     expect(urls).toHaveLength(4)
     expect(answer).toEqual({ kind: "unavailable" })
@@ -89,15 +107,37 @@ describe("DrandBeacon", () => {
     const timeout = new DOMException("timed out", "TimeoutError")
     const { fetchImpl } = script(timeout, ok())
 
-    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(1_000_000)
+    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
 
     expect(answer.kind).toBe("round")
+  })
+
+  it("retries a body that times out or breaks off, and says unavailable after the last retry", async () => {
+    const { urls, fetchImpl } = script(broken(), broken(), ok())
+    const first = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
+    expect([urls.length, first.kind]).toEqual([3, "round"])
+
+    const down = script(broken(), broken(), broken(), broken())
+    const second = await new DrandBeacon(config, down.fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
+    expect([down.urls.length, second.kind]).toEqual([4, "unavailable"])
   })
 
   it("does not retry another 4xx", async () => {
     const { urls, fetchImpl } = script(status(400))
 
-    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(1_000_000)
+    const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+      quicknet.chainHash,
+      1_000_000,
+    )
 
     expect(urls).toHaveLength(1)
     expect(answer).toEqual({ kind: "unavailable" })
@@ -111,7 +151,10 @@ describe("DrandBeacon", () => {
     for (const reply of [forged, notJson, wrongRound]) {
       const { urls, fetchImpl } = script(reply)
 
-      const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(1_000_000)
+      const answer = await new DrandBeacon(config, fetchImpl, random).fetchRound(
+        quicknet.chainHash,
+        1_000_000,
+      )
 
       expect(urls).toHaveLength(1)
       expect(answer).toEqual({ kind: "unavailable" })
@@ -121,8 +164,8 @@ describe("DrandBeacon", () => {
   it("does not swallow an error that is not a network failure", async () => {
     const { fetchImpl } = script(new RangeError("bug"))
 
-    await expect(new DrandBeacon(config, fetchImpl, random).fetchRound(1)).rejects.toThrow(
-      RangeError,
-    )
+    await expect(
+      new DrandBeacon(config, fetchImpl, random).fetchRound(quicknet.chainHash, 1),
+    ).rejects.toThrow(RangeError)
   })
 })

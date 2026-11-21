@@ -554,6 +554,7 @@ function roomInit(claimKeyword: string | null): GiveawayInit {
     code: "ABCDE",
     rules: { ...rules, claimKeyword },
     claimSeconds: 300,
+    winnerCount: 1,
     closesAt: null,
   }
 }
@@ -620,7 +621,7 @@ async function drawnRoom(options: Parameters<typeof roomUnderTest>[0] = {}) {
   context.clock.advance(1)
   context.room.close()
   context.clock.advance(1)
-  await context.room.draw(1)
+  await context.room.draw()
   const winner = context.room.picks()[0]?.platformUserId ?? ""
   const loser = ["1", "2", "3"].find((id) => id !== winner) ?? ""
   return { ...context, winner, loser, drawnAt: context.clock.now() }

@@ -260,6 +260,7 @@ describe("create wizard", () => {
         claimKeyword: "",
       },
       claimSeconds: 300,
+      winnerCount: 1,
     })
   })
 
@@ -308,6 +309,7 @@ describe("create wizard", () => {
       },
       closesAt: new Date("2099-01-01T10:00").toISOString(),
       claimSeconds: 600,
+      winnerCount: 1,
     })
   })
 

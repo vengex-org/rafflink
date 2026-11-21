@@ -42,7 +42,7 @@ export type BeaconAnswer =
  * `unavailable` instead.
  */
 export interface RandomnessBeacon {
-  fetchRound(round: number): Promise<BeaconAnswer>
+  fetchRound(chainHash: string, round: number): Promise<BeaconAnswer>
 }
 
 /** The single wake-up timer of one room. Any implementation keeps at most one pending alarm: `set` replaces it, `clear` cancels it. */

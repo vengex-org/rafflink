@@ -7,9 +7,11 @@ export const fakeRandomness = new Uint8Array(32).fill(7)
 export class FakeBeacon implements RandomnessBeacon {
   answer: BeaconAnswer["kind"] = "round"
   readonly requested: number[] = []
+  readonly requestedChains: string[] = []
 
-  async fetchRound(round: number): Promise<BeaconAnswer> {
+  async fetchRound(chainHash: string, round: number): Promise<BeaconAnswer> {
     this.requested.push(round)
+    this.requestedChains.push(chainHash)
     switch (this.answer) {
       case "round":
         return {

@@ -6,11 +6,7 @@ import type { BeaconAnswer, Random, RandomnessBeacon } from "../ports.ts"
 
 export type DrandConfig = Pick<
   ResolvedConfig,
-  | "drandUrl"
-  | "drandChainHash"
-  | "drandRetryDelaysMs"
-  | "drandRetryJitterPercent"
-  | "drandTimeoutMs"
+  "drandUrl" | "drandRetryDelaysMs" | "drandRetryJitterPercent" | "drandTimeoutMs"
 >
 
 /** The `fetch` the beacon sends every call through; the global `fetch` fits. */
@@ -31,10 +27,10 @@ export class DrandBeacon implements RandomnessBeacon {
    * A round that is not published yet and a failure that may pass are tried again after each configured
    * delay; any other failure ends at once. `not-yet` after the last try means the round is still unpublished.
    */
-  async fetchRound(round: number): Promise<BeaconAnswer> {
+  async fetchRound(chainHash: string, round: number): Promise<BeaconAnswer> {
     const delays = this.config.drandRetryDelaysMs
     for (let attempt = 0; ; attempt++) {
-      const result = await this.tryOnce(round)
+      const result = await this.tryOnce(chainHash, round)
       if (result.kind === "round" || result.kind === "unavailable") return result
       const delay = delays[attempt]
       if (delay === undefined) {
@@ -45,15 +41,12 @@ export class DrandBeacon implements RandomnessBeacon {
     }
   }
 
-  private async tryOnce(round: number): Promise<Attempt> {
+  private async tryOnce(chainHash: string, round: number): Promise<Attempt> {
     let response: Response
     try {
-      response = await this.fetchImpl(
-        new URL(roundPath(this.config.drandChainHash, round), this.config.drandUrl),
-        {
-          signal: AbortSignal.timeout(this.config.drandTimeoutMs),
-        },
-      )
+      response = await this.fetchImpl(new URL(roundPath(chainHash, round), this.config.drandUrl), {
+        signal: AbortSignal.timeout(this.config.drandTimeoutMs),
+      })
     } catch (error) {
       if (error instanceof TypeError || error instanceof DOMException) return { kind: "transient" }
       throw error
@@ -65,20 +58,20 @@ export class DrandBeacon implements RandomnessBeacon {
       console.warn("drand refused the request", { round, status: response.status })
       return { kind: "unavailable" }
     }
-    const parsed = await parseBeaconRound(await readJson(response), round)
+    // A body that times out or breaks off is as transient as a failed connection.
+    let body: unknown
+    try {
+      body = await response.json()
+    } catch (error) {
+      if (error instanceof TypeError || error instanceof DOMException) return { kind: "transient" }
+      if (!(error instanceof SyntaxError)) throw error
+      body = null
+    }
+    const parsed = await parseBeaconRound(body, round)
     if (parsed === null) {
       console.warn("drand answered a round that does not check out", { round })
       return { kind: "unavailable" }
     }
     return { kind: "round", round: parsed }
-  }
-}
-
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json()
-  } catch (error) {
-    if (error instanceof SyntaxError) return null
-    throw error
   }
 }

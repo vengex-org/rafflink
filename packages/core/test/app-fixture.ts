@@ -176,8 +176,11 @@ class InProcessRoomStub implements RoomStub {
   async close() {
     return this.room.close()
   }
-  async draw(count: number) {
-    return this.room.draw(count)
+  async draw() {
+    return this.room.draw()
+  }
+  async setWinnerCount(count: number) {
+    return this.room.setWinnerCount(count)
   }
   async reroll(n: number) {
     return this.room.reroll(n)

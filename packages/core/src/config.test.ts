@@ -332,9 +332,14 @@ describe("resolveConfig", () => {
     }
   })
 
-  it("rejects a drand period of 0 and accepts a lead of 0", () => {
+  it("rejects a drand period of 0 and a lead shorter than one period, and accepts a lead of one period", () => {
     expect(failure({ ...required, DRAND_PERIOD_SECONDS: "0" }).reason).toBe("out-of-range")
-    expect(resolveConfig({ ...required, DRAND_LEAD_SECONDS: "0" }).drandLeadSeconds).toBe(0)
+    const short = failure({ ...required, DRAND_LEAD_SECONDS: "2", DRAND_PERIOD_SECONDS: "3" })
+    expect([short.env, short.reason]).toEqual(["DRAND_LEAD_SECONDS", "not-at-least-drand-period"])
+    expect(
+      resolveConfig({ ...required, DRAND_LEAD_SECONDS: "3", DRAND_PERIOD_SECONDS: "3" })
+        .drandLeadSeconds,
+    ).toBe(3)
   })
 
   it("rejects a poll maximum equal to or above the code maximum age", () => {

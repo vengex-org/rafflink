@@ -8,7 +8,7 @@ import { randomId } from "../lib/random-id.ts"
 import type { Usage } from "../ports.ts"
 import { overlaySnapshot, type RerollOutcome, type ClaimOutcome } from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
-import { parseCreateGiveaway } from "./create-input.ts"
+import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import { dashboardGiveaway, readJson, type EntrantsPage, type OwnerLiveSnapshot } from "./json.ts"
 import type { StreamerSession } from "./session.ts"
@@ -38,6 +38,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       rules: parsed.value.rules,
       closesAt: parsed.value.closesAt,
       claimSeconds: parsed.value.claimSeconds,
+      winnerCount: parsed.value.winnerCount,
       overlayToken: randomId(deps.random),
       createdAt: deps.clock.now(),
     })
@@ -72,13 +73,40 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     }),
   )
 
+  app.post("/api/dash/giveaways/:id/winners", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const body = await readJson(c)
+      // Absent is not "one winner" here: a request that names no count is a bad request.
+      const named =
+        typeof body === "object" && body !== null && Object.hasOwn(body, "count")
+          ? Reflect.get(body, "count")
+          : null
+      const count = parseWinnerCount(named, deps.config)
+      if (!count.ok) return c.json({ error: "invalid-input", field: "count" }, 400)
+      const outcome = await deps.rooms.get(giveaway.id).setWinnerCount(count.value)
+      switch (outcome.kind) {
+        case "set":
+          return c.json({ kind: "set" })
+        case "not-open":
+          return c.json({ kind: "not-open", status: outcome.status }, 409)
+      }
+    }),
+  )
+
+  // The count is the giveaway's own setting, fixed before the round is known. A body that names another
+  // count is refused instead of ignored, so a stale client cannot believe it chose.
   app.post("/api/dash/giveaways/:id/draw", (c) =>
     withOwnedRoom(c, deps, async (giveaway) => {
-      const count = integerField(await readJson(c), "count", 1)
-      if (count === null || count > deps.config.drawMaxWinners) {
+      const room = deps.rooms.get(giveaway.id)
+      const body = await readJson(c)
+      const named =
+        typeof body === "object" && body !== null && Object.hasOwn(body, "count")
+          ? Reflect.get(body, "count")
+          : undefined
+      if (named !== undefined && named !== (await room.summary()).winnerCount) {
         return c.json({ error: "invalid-input", field: "count" }, 400)
       }
-      const outcome = await deps.rooms.get(giveaway.id).draw(count)
+      const outcome = await room.draw()
       switch (outcome.kind) {
         case "drawn":
           await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "drawn")
@@ -240,6 +268,7 @@ async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
       rules: giveaway.rules,
       claimSeconds: giveaway.claimSeconds,
       closesAt: giveaway.closesAt,
+      winnerCount: giveaway.winnerCount,
     })
     return true
   } catch (error) {

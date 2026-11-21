@@ -47,6 +47,7 @@ export const liveSnapshot: LiveSnapshot = {
   closesAt: null,
   entrantCount: 3,
   ticketTotal: 5,
+  winnerCount: 1,
   entriesPerSecond: 1.5,
   lastNames: ["Ada", "Bob"],
   winners: [],
