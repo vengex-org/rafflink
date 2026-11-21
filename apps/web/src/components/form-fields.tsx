@@ -1,4 +1,4 @@
-import { useId } from "react"
+import { useId, useRef } from "react"
 import { MinusIcon, PlusIcon } from "./icons.tsx"
 import { SegmentRow, type SegmentRowOption } from "./segment-row.tsx"
 
@@ -75,12 +75,15 @@ export function StepperField({
   readonly increaseLabel: string
 }) {
   const id = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
   const count = Number(value)
   const atMin = !(count > min)
   // A value that is not a number yet (empty, a typo) steps from `min`; a fraction steps from its whole part.
   const stepBy = (delta: number) => {
     const from = value.trim() !== "" && Number.isFinite(count) ? Math.trunc(count) : min
-    onChange(String(Math.max(min, from + delta)))
+    const next = Math.max(min, from + delta)
+    onChange(String(next))
+    return next
   }
   return (
     <div className="field">
@@ -91,11 +94,14 @@ export function StepperField({
           className="icon-button"
           aria-label={decreaseLabel}
           disabled={atMin}
-          onClick={() => stepBy(-1)}
+          onClick={() => {
+            if (stepBy(-1) === min) inputRef.current?.focus()
+          }}
         >
           <MinusIcon />
         </button>
         <input
+          ref={inputRef}
           id={id}
           name={name}
           type="number"

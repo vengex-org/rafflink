@@ -142,6 +142,21 @@ describe("create wizard", () => {
     expect(followers.value).toBe("0")
   })
 
+  it("moves focus to the ticket count when the minus button reaches 0 and disables itself", async () => {
+    mockFetch(listed)
+    const view = await openWizard()
+    next(view)
+    await view.findByText("Step 2 of 3: Entry rules")
+    const followers = inputOf(view.getByLabelText("Followers"))
+    const fewer = view.getByRole("button", { name: "Fewer tickets for Followers" })
+
+    fewer.focus()
+    fireEvent.click(fewer)
+    expect(followers.value).toBe("0")
+    expect(fewer.hasAttribute("disabled")).toBe(true)
+    expect(document.activeElement === followers).toBe(true)
+  })
+
   it("steps a ticket count with the arrow keys and never below 0", async () => {
     mockFetch(listed)
     const view = await openWizard()
