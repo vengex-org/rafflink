@@ -27,7 +27,10 @@ export function SettingsMenu({ children }: { readonly children?: ReactNode | und
   const { pathname } = useLocation()
 
   // The bar stays mounted across pages, so a link in the open panel would leave it covering the page it opens.
+  const shownPath = useRef(pathname)
   useEffect(() => {
+    if (shownPath.current === pathname) return
+    shownPath.current = pathname
     const element = panel.current
     if (element !== null && element.matches(":popover-open")) element.hidePopover()
   }, [pathname])

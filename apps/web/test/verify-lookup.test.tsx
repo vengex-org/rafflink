@@ -89,7 +89,7 @@ describe("settings popover", () => {
     const panel = view.container.querySelector<HTMLElement>("[popover]")
     if (panel === null) throw new Error("no settings panel")
     let open = true
-    panel.matches = () => open
+    Object.defineProperty(panel, "matches", { value: () => open })
     panel.hidePopover = () => {
       open = false
     }
