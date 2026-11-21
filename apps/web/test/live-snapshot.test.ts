@@ -30,6 +30,16 @@ describe("parseLiveSnapshot reroll state", () => {
 })
 
 describe("parseLiveSnapshot winner chat", () => {
+  it("keeps whether the chat watch is open and rejects a snapshot without it", () => {
+    const { winnerChatOpen: _omitted, ...without } = liveSnapshot
+
+    expect(parseLiveSnapshot({ ...liveSnapshot, winnerChatOpen: true }).winnerChatOpen).toBe(true)
+    expect(() => parseLiveSnapshot(without)).toThrow(ApiShapeError)
+    expect(() => parseLiveSnapshot({ ...liveSnapshot, winnerChatOpen: "yes" })).toThrow(
+      ApiShapeError,
+    )
+  })
+
   it("keeps the chat lines in order", () => {
     const winnerChat = [
       { id: 1, name: "Ada", text: "first", at: 1 },
@@ -65,7 +75,7 @@ describe("parseLiveSnapshot winner chat", () => {
 
 describe("parseOverlaySnapshot", () => {
   it("reads a snapshot without winnerChat and returns none", () => {
-    const { winnerChat: _omitted, ...overlay } = liveSnapshot
+    const { winnerChat: _chat, winnerChatOpen: _open, ...overlay } = liveSnapshot
 
     const parsed = parseOverlaySnapshot(overlay)
 

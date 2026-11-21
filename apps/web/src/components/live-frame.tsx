@@ -69,7 +69,6 @@ export function LiveTopBar({
         )}
       </div>
       <div className="live-link-chip">
-        <span>{t("live.enterAt")}</span>
         <span className="live-link">
           {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
         </span>

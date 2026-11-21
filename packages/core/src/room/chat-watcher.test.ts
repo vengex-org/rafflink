@@ -975,6 +975,23 @@ describe("winner chat", () => {
     expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["thanks"])
   })
 
+  it("keeps showing and pushing a winner's lines after a claim on the giveaway page, without touching the claim", async () => {
+    const { room, socket, winner, liveMessages, clock } = await connectedRoom()
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "rafflink")
+    const claimedAt = clock.now()
+    clock.advance(1_000)
+    const pushed = liveMessages.length
+
+    socket?.receive(chat(winner, "got it, thanks"))
+
+    expect(room.liveSnapshot()).toMatchObject({
+      winners: [{ claim: { state: "claimed", via: "rafflink", at: claimedAt } }],
+      winnerChat: [{ text: "got it, thanks" }],
+    })
+    expect(liveMessages).toHaveLength(pushed + 1)
+    expect(liveMessages.at(-1)).toContain("got it, thanks")
+  })
+
   it("drops the message of a chatter who holds no pick", async () => {
     const { room, socket, loser } = await connectedRoom()
 
@@ -1105,6 +1122,31 @@ describe("winner chat", () => {
     expect(room.summary().finished).toBe(true)
     expect(connector.sockets[0]?.closed).toBe(true)
     expect(room.liveSnapshot().winnerChat).toEqual([])
+  })
+
+  it("reports the watch as open while it runs and pushes when it ends with every pick claimed", async () => {
+    const { room, winner, clock, drawnAt, liveMessages } = await connectedRoom({
+      env: { ...longLived, REROLL_WINDOW_SECONDS: "10" },
+    })
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    expect(room.liveSnapshot()).toMatchObject({ winnerChatOpen: true, rerollBlocked: null })
+    const pushed = liveMessages.length
+
+    clock.advance(drawnAt + 310_001 - clock.now())
+    room.onAlarm()
+
+    expect(room.liveSnapshot()).toMatchObject({ winnerChatOpen: false, rerollBlocked: null })
+    expect(liveMessages).toHaveLength(pushed + 1)
+    expect(liveMessages.at(-1)).toContain('"winnerChatOpen":false')
+  })
+
+  it("reports the watch as closed once the chat watch gave up", async () => {
+    const { room, socket } = await connectedRoom()
+    spyOn(console, "warn").mockImplementation(() => {})
+
+    socket?.receive(revocation)
+
+    expect(room.liveSnapshot()).toMatchObject({ chatClaimUnavailable: true, winnerChatOpen: false })
   })
 
   it("pushes the live page when a winner writes, and the overlay push has no chat", async () => {

@@ -17,7 +17,7 @@ export function ConfirmAction({
   onConfirm,
 }: {
   readonly icon: ReactNode
-  readonly label: string
+  readonly label: ReactNode
   readonly question: string
   readonly detail: string
   readonly confirmLabel: string

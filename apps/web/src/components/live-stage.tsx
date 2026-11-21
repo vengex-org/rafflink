@@ -8,8 +8,7 @@ import { useRemainingMs } from "../lib/use-remaining.ts"
 import { claimTone, Countdown } from "./countdown.tsx"
 import { DrawShuffle } from "./draw-shuffle.tsx"
 import { UsersIcon } from "./icons.tsx"
-import type { Doing } from "./live-bar.tsx"
-import { Avatar, claimLabel, EarlierPicks, msUntil, Stat } from "./live-parts.tsx"
+import { Avatar, claimLabel, claimOutcome, msUntil, Stat } from "./live-parts.tsx"
 import type { Tone } from "./state-card.tsx"
 import { StatusChip } from "./status-chip.tsx"
 import { WinnerChat } from "./winner-chat.tsx"
@@ -23,7 +22,6 @@ export function LiveStage({
   facts,
   current,
   currentEntrant,
-  pickControls,
   showChat,
 }: {
   readonly snapshot: LiveSnapshot
@@ -32,8 +30,6 @@ export function LiveStage({
   readonly current: LiveWinner | null
   /** The entrant behind `current`, once the entrants list has loaded far enough to contain them. */
   readonly currentEntrant: Entrant | null
-  /** Buttons on the earlier picks; null hides them (clean mode). */
-  readonly pickControls: Doing | null
   /** False in clean mode: viewers' chat text must not reach a shared screen. */
   readonly showChat: boolean
 }) {
@@ -53,7 +49,6 @@ export function LiveStage({
           facts={facts}
           current={current}
           currentEntrant={currentEntrant}
-          pickControls={pickControls}
           showChat={showChat}
         />
       )
@@ -130,21 +125,18 @@ function DrawnStage({
   facts,
   current,
   currentEntrant,
-  pickControls,
   showChat,
 }: {
   readonly snapshot: LiveSnapshot
   readonly facts: GiveawayView | null
   readonly current: LiveWinner | null
   readonly currentEntrant: Entrant | null
-  readonly pickControls: Doing | null
   readonly showChat: boolean
 }) {
   const i18n = useI18n()
   const { t } = i18n
   const headId = useId()
   const standing = standingWinners(snapshot.winners)
-  const earlier = snapshot.winners.filter((winner) => winner !== current)
   const name = current?.displayName ?? t("winner.removed")
   return (
     <section className="live-stage" aria-labelledby={headId}>
@@ -161,7 +153,7 @@ function DrawnStage({
         <Progress standing={standing} current={current} />
       </div>
       {current === null ? null : (
-        <div className="live-reveal">
+        <div className="live-reveal" data-settled={current.claim.state !== "waiting"}>
           <div className="live-winner">
             <div className="live-who">
               <Avatar name={name} imageUrl={current.profileImageUrl} />
@@ -173,28 +165,43 @@ function DrawnStage({
               )}
             </div>
             <WinnerPlate key={current.n} name={name} />
-            <p className="live-claim-hint">
-              <ClaimHint snapshot={snapshot} facts={facts} name={name} />
-            </p>
-            {showChat ? <WinnerChat lines={snapshot.winnerChat} /> : null}
-          </div>
-          <div className="live-timer">
             {current.claim.state === "waiting" ? (
+              <p className="live-claim-hint">
+                <ClaimHint snapshot={snapshot} facts={facts} name={name} />
+              </p>
+            ) : (
+              <div className="live-settled">
+                <StatusChip tone={settledTone(current)}>{claimOutcome(current, t)}</StatusChip>
+                {current.claim.state === "claimed" ? (
+                  <p>{i18n.dateTime(current.claim.at)}</p>
+                ) : null}
+              </div>
+            )}
+            {showChat ? (
+              <WinnerChat
+                lines={snapshot.winnerChat}
+                hint={
+                  snapshot.winnerChatOpen ? (
+                    <ChatHint facts={facts} waiting={current.claim.state === "waiting"} />
+                  ) : null
+                }
+              />
+            ) : null}
+          </div>
+          {current.claim.state === "waiting" ? (
+            <div className="live-timer">
               <ClaimRing
                 key={`${current.n}-${current.claimUntil}`}
                 until={current.claimUntil}
                 windowMs={facts === null ? null : facts.claimSeconds * 1000}
               />
-            ) : (
-              <StatusChip tone={settledTone(current)}>{claimLabel(current, i18n)}</StatusChip>
-            )}
-            {facts === null ? null : (
-              <p>{t("live.claimWindow", { seconds: i18n.number(facts.claimSeconds) })}</p>
-            )}
-          </div>
+              {facts === null ? null : (
+                <p>{t("live.claimWindow", { seconds: i18n.number(facts.claimSeconds) })}</p>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
-      <EarlierPicks winners={earlier} snapshot={snapshot} controls={pickControls} />
     </section>
   )
 }
@@ -276,6 +283,23 @@ function ClaimHint({
   return keyword === null
     ? rich("live.claimHint.anyChat", { name: who })
     : rich("live.claimHint.keyword", { name: who, keyword: <strong>{keyword}</strong> })
+}
+
+/** What the winner chat box will show once the winner writes, and, while the claim is open, whether a message claims the prize. */
+function ChatHint({
+  facts,
+  waiting,
+}: {
+  readonly facts: GiveawayView | null
+  readonly waiting: boolean
+}) {
+  const { t, rich } = useI18n()
+  if (!waiting) return t("live.chat.hint.settled")
+  if (facts === null) return t("live.chat.hint")
+  const keyword = facts.rules.claimKeyword
+  return keyword === null
+    ? t("live.chat.hint.anyChat")
+    : rich("live.chat.hint.keyword", { keyword: <strong>{keyword}</strong> })
 }
 
 function tierText(entrant: Entrant, t: I18n["t"]): string {

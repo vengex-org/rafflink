@@ -130,16 +130,15 @@ function Controls({
             facts={facts}
             current={current}
             currentEntrant={currentEntrant}
-            pickControls={clean ? null : { id, busy, run }}
             showChat={!clean}
           />
           {message === null ? null : <Status>{t(message)}</Status>}
           <Problems snapshot={snapshot} />
           <EntrantsSection
             entrants={entrants}
-            entrantCount={snapshot.entrantCount}
-            ticketTotal={snapshot.ticketTotal}
-            winners={snapshot.winners}
+            snapshot={snapshot}
+            current={current}
+            controls={clean ? null : { id, busy, run }}
           />
         </div>
         {clean ? null : (
