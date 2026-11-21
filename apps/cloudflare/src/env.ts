@@ -8,6 +8,7 @@ export interface WorkerEnv {
   readonly QUEUE: DurableObjectNamespace<TokenQueueDO>
   readonly ENTRY_USER_LIMITER: RateLimit
   readonly ENTRY_IP_LIMITER: RateLimit
+  readonly LEAVES_IP_LIMITER: RateLimit
 }
 
 /** The string values of the environment: variables and secrets, without the bindings. */

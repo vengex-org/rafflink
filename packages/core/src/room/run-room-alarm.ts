@@ -17,7 +17,7 @@ export async function runRoomAlarm(
     await mirrorStatus(room, deps.accounts, giveawayId, duties.mirrorStatus)
 }
 
-// A failed commit stays due in the room, whose alarm retries it, so nothing is thrown here.
+// A failed commit stays due in the room, whose alarm retries it with a growing wait until it gives up, so nothing is thrown here.
 async function commitRoom(giveawayId: string, room: GiveawayRoom): Promise<void> {
   try {
     await room.commit()

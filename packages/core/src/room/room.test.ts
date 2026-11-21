@@ -151,6 +151,10 @@ function setup(init: GiveawayInit = giveaway, rng: Random = random) {
   return { room, sql, clock, alarm, hub, beacon }
 }
 
+function advanceToAlarm(clock: TestClock, alarm: TestAlarm): void {
+  clock.advance((alarm.at ?? clock.now()) - clock.now())
+}
+
 function enterMany(room: GiveawayRoom, ids: readonly string[]): void {
   for (const id of ids) room.enter(viewer(id))
 }
@@ -1715,6 +1719,99 @@ describe("GiveawayRoom commit", () => {
     await room.commit()
     clock.advance(60_000)
     expect(room.onAlarm().commit).toBe(false)
+  })
+
+  it("doubles the wait before each retry of a commit that keeps failing", () => {
+    const { room, clock, alarm } = setup()
+    room.replaceRoles([], [])
+    room.close()
+    room.markMirrored("closed")
+
+    const waits: number[] = []
+    for (let attempt = 0; attempt < 3; attempt++) {
+      expect(room.onAlarm().commit).toBe(true)
+      waits.push((alarm.at ?? clock.now()) - clock.now())
+      advanceToAlarm(clock, alarm)
+    }
+
+    expect(waits).toEqual([30_000, 60_000, 120_000])
+  })
+
+  it("gives up after the maximum of attempts, logs it once and arms no alarm for the commit", () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const { room, clock, alarm } = setup()
+    room.replaceRoles([], [])
+    room.close()
+    room.markMirrored("closed")
+    for (let attempt = 0; attempt < config.commitMaxAttempts; attempt++) {
+      expect(room.onAlarm().commit).toBe(true)
+      advanceToAlarm(clock, alarm)
+    }
+
+    expect(error).not.toHaveBeenCalled()
+    expect(room.onAlarm().commit).toBe(false)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(error).toHaveBeenCalledWith("room commit gave up", {
+      giveawayId: expect.any(String),
+      attempts: config.commitMaxAttempts,
+    })
+    expect(alarm.at).toBeNull()
+    clock.advance(24 * 3600 * 1000)
+    expect(room.onAlarm().commit).toBe(false)
+    expect(error).toHaveBeenCalledTimes(1)
+    error.mockRestore()
+  })
+
+  it("keeps counting attempts and the wait across a new room instance over the same storage", () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const { room, sql, clock, alarm } = setup()
+    room.replaceRoles([], [])
+    room.close()
+    room.markMirrored("closed")
+    const revive = () =>
+      new GiveawayRoom({
+        sql,
+        alarm,
+        live: new TestHub(),
+        clock,
+        random,
+        config,
+        chat: idleChat,
+        beacon: new FakeBeacon(),
+      })
+
+    expect(room.onAlarm().commit).toBe(true)
+    clock.advance(1000)
+    expect(revive().onAlarm().commit).toBe(false)
+    advanceToAlarm(clock, alarm)
+    for (let attempt = 1; attempt < config.commitMaxAttempts; attempt++) {
+      expect(revive().onAlarm().commit).toBe(true)
+      advanceToAlarm(clock, alarm)
+    }
+    expect(revive().onAlarm().commit).toBe(false)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(alarm.at).toBeNull()
+    clock.advance(24 * 3600 * 1000)
+    expect(revive().onAlarm().commit).toBe(false)
+    expect(error).toHaveBeenCalledTimes(1)
+    error.mockRestore()
+  })
+
+  it("still commits when a draw asks after the alarm gave up", async () => {
+    spyOn(console, "error").mockImplementation(() => {})
+    const { room, clock, alarm } = setup()
+    room.replaceRoles([], [])
+    room.close()
+    room.markMirrored("closed")
+    for (let attempt = 0; attempt <= config.commitMaxAttempts; attempt++) {
+      room.onAlarm()
+      advanceToAlarm(clock, alarm)
+    }
+    expect(room.verification().commitment).toBeNull()
+
+    await room.draw()
+
+    expect(room.verification().commitment).not.toBeNull()
   })
 
   it("is due when the end time closes the room", () => {

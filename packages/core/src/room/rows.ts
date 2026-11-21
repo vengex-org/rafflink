@@ -49,6 +49,12 @@ export type RoomState = {
   /** The retention alarm deleted the entrants' data. */
   readonly entriesDeleted: boolean
   readonly commitment: Commitment | null
+  /** Commit attempts the alarm made so far. */
+  readonly commitAttempts: number
+  /** When the alarm may attempt the commit again; null before the first attempt. */
+  readonly commitRetryAt: Instant | null
+  /** The alarm used up its attempts and logged it. */
+  readonly commitGaveUp: boolean
   /** How many winners the draw picks; settled while entries are open. */
   readonly winnerCount: number
 } & (
@@ -105,6 +111,9 @@ export function parseState(
     mirrorPending: reader.int("mirror_pending") === 1,
     entriesDeleted: reader.int("entries_deleted") === 1,
     commitment: parseCommitment(reader),
+    commitAttempts: reader.int("commit_attempts"),
+    commitRetryAt: reader.nullableInt("commit_retry_at"),
+    commitGaveUp: reader.int("commit_gave_up") === 1,
     winnerCount: reader.int("winner_count"),
   }
   const status = reader.oneOf("status", roomStatuses)

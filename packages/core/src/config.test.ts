@@ -316,6 +316,7 @@ describe("resolveConfig", () => {
       drandLeadSeconds: 30,
       drandRetryDelaysMs: [200, 500, 1000],
       commitRetrySeconds: 30,
+      commitMaxAttempts: 6,
     })
   })
 

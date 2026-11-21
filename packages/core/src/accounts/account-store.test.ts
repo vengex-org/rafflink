@@ -271,8 +271,8 @@ describe("AccountStore giveaways", () => {
     await store.setStatus("g2", "drawn")
     await store.setStatus("g3", "closed")
 
-    expect(await store.listUnarmedRetention(10)).toEqual(["g2", "g3", "g1"])
-    expect(await store.listUnarmedRetention(2)).toEqual(["g2", "g3"])
+    expect(await store.listUnarmedRetention(10, 5)).toEqual(["g2", "g3", "g1"])
+    expect(await store.listUnarmedRetention(2, 5)).toEqual(["g2", "g3"])
   })
 
   it("stops listing a giveaway once its retention is marked armed, and marking twice changes nothing", async () => {
@@ -285,13 +285,28 @@ describe("AccountStore giveaways", () => {
     await store.markRetentionArmed("g1")
     await store.markRetentionArmed("g1")
 
-    expect(await store.listUnarmedRetention(10)).toEqual(["g2"])
+    expect(await store.listUnarmedRetention(10, 5)).toEqual(["g2"])
+  })
+
+  it("lists giveaways with fewer failed sweeps first and leaves out those at the maximum", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 1 }))
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 2 }))
+    await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 3 }))
+    for (const id of ["g1", "g2", "g3"]) await store.setStatus(id, "closed")
+
+    expect(await store.recordRetentionFailure("g1")).toBe(1)
+    expect(await store.recordRetentionFailure("g1")).toBe(2)
+    expect(await store.recordRetentionFailure("g2")).toBe(1)
+
+    expect(await store.listUnarmedRetention(10, 5)).toEqual(["g3", "g2", "g1"])
+    expect(await store.listUnarmedRetention(10, 2)).toEqual(["g3", "g2"])
   })
 
   it("lists the unarmed giveaways through the partial index without a sort", () => {
     const { db } = setup()
 
-    const details = explainPlan(db, unarmedRetentionSql, [10])
+    const details = explainPlan(db, unarmedRetentionSql, [5, 10])
 
     expect(details.join("\n")).toContain("giveaways_retention_unarmed")
     expect(details.some((detail) => detail.includes("TEMP B-TREE"))).toBe(false)

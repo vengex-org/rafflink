@@ -32,7 +32,7 @@
     ],
   },
   // Workers Rate Limiting counts per key in 60 second periods. The limits equal the defaults of
-  // ENTRY_USER_LIMIT_PER_MINUTE and ENTRY_IP_LIMIT_PER_MINUTE; a test keeps them equal.
+  // ENTRY_USER_LIMIT_PER_MINUTE, ENTRY_IP_LIMIT_PER_MINUTE and LEAVES_IP_LIMIT_PER_MINUTE; a test keeps them equal.
   "ratelimits": [
     {
       "name": "ENTRY_USER_LIMITER",
@@ -40,6 +40,11 @@
       "simple": { "limit": 10, "period": 60 },
     },
     { "name": "ENTRY_IP_LIMITER", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
+    {
+      "name": "LEAVES_IP_LIMITER",
+      "namespace_id": "1003",
+      "simple": { "limit": 20, "period": 60 },
+    },
   ],
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["GiveawayRoomDO", "TokenQueueDO"] },
