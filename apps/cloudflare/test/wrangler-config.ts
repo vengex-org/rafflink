@@ -7,6 +7,8 @@ export interface WranglerConfig {
   readonly crons: readonly string[]
   /** The `assets.run_worker_first` patterns: only these paths run the Worker. */
   readonly runWorkerFirst: readonly string[]
+  /** The `assets.binding` name the Worker reads the built `index.html` through. */
+  readonly assetsBinding: string
   readonly notFoundHandling: "single-page-application" | "404-page" | "none"
   /** The `ratelimits` bindings by binding name; the period is in seconds. */
   readonly rateLimits: Readonly<Record<string, RateLimitConfig>>
@@ -26,17 +28,18 @@ export async function readWranglerConfig(): Promise<WranglerConfig> {
   const { compatibility_date: date, compatibility_flags: flags, triggers } = parsed
   const crons = isRecord(triggers) ? triggers.crons : undefined
   const assets = isRecord(parsed.assets) ? parsed.assets : {}
-  const { not_found_handling: notFound, run_worker_first: workerFirst } = assets
+  const { binding, not_found_handling: notFound, run_worker_first: workerFirst } = assets
   const rateLimits = parseRateLimits(parsed.ratelimits)
   if (
     typeof date !== "string"
     || !isStrings(flags)
     || !isStrings(crons)
     || !isStrings(workerFirst)
+    || typeof binding !== "string"
     || !isNotFoundHandling(notFound)
   ) {
     throw new TypeError(
-      "wrangler.jsonc lacks compatibility_date, compatibility_flags, triggers.crons, assets.run_worker_first or a valid assets.not_found_handling",
+      "wrangler.jsonc lacks compatibility_date, compatibility_flags, triggers.crons, assets.run_worker_first, assets.binding or a valid assets.not_found_handling",
     )
   }
   return {
@@ -44,6 +47,7 @@ export async function readWranglerConfig(): Promise<WranglerConfig> {
     compatibilityFlags: flags,
     crons,
     runWorkerFirst: workerFirst,
+    assetsBinding: binding,
     notFoundHandling: notFound,
     rateLimits,
   }

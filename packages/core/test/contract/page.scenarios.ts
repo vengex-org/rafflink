@@ -1,4 +1,5 @@
 import { expect } from "bun:test"
+import { indexablePaths } from "../../src/http/static-headers.ts"
 import { users } from "./fake-twitch.ts"
 import { inlineScriptSource } from "./spa-fixture.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
@@ -32,15 +33,43 @@ export function pageScenarios(context: ContractContext): void {
     },
   )
 
-  scenario(context, "the home page sends HSTS only where its origin is https", async (world) => {
+  scenario(context, "a page sends HSTS only where its origin is https", async (world) => {
     const target = await world.start()
 
-    const response = await page(target, "/")
+    const home = await page(target, "/")
+    const app = await page(target, "/dashboard")
 
-    // The static host always serves https; the server decides by PUBLIC_URL, which is http here.
-    expect(response.headers.get("strict-transport-security")).toBe(
+    // The server and the Worker decide by PUBLIC_URL, which is http here; the static host always serves https.
+    expect(home.headers.get("strict-transport-security")).toBeNull()
+    expect(app.headers.get("strict-transport-security")).toBe(
       context.pages === "static" ? "max-age=31536000; includeSubDomains" : null,
     )
+  })
+
+  scenario(
+    context,
+    "the indexable pages link their canonical URL and preview image from PUBLIC_URL",
+    async (world) => {
+      const target = await world.start()
+
+      for (const path of indexablePaths) {
+        const html = await (await page(target, path)).text()
+
+        expect(html).toContain(`<link rel="canonical" href="http://localhost${path}" />`)
+        expect(html).toContain(`<meta property="og:url" content="http://localhost${path}" />`)
+        expect(html).toContain(`<meta property="og:image" content="http://localhost/og.png" />`)
+        expect(html).toContain(`<meta name="twitter:image" content="http://localhost/og.png" />`)
+      }
+    },
+  )
+
+  scenario(context, "the favicon answers an icon, not the page", async (world) => {
+    const target = await world.start()
+
+    const response = await page(target, "/favicon.ico")
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toMatch(/^image\/(?:x-icon|vnd\.microsoft\.icon)$/)
   })
 
   scenario(
@@ -141,12 +170,4 @@ function injectedPageScenarios(context: ContractContext): void {
       )
     },
   )
-
-  scenario(context, "the home page links its canonical URL from PUBLIC_URL", async (world) => {
-    const target = await world.start()
-
-    const html = await (await page(target, "/")).text()
-
-    expect(html).toContain(`<link rel="canonical" href="http://localhost/" />`)
-  })
 }

@@ -9,11 +9,14 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "../web/dist",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     // Pages and files come from the assets, which cost no Worker request; their headers are the
-    // dist/_headers of the web build. Only the API and the sign-in routes run the Worker, the paths of
-    // `apiPrefixes` in packages/core/src/http/api-paths.ts.
-    "run_worker_first": ["/api/*", "/auth/*"],
+    // dist/_headers of the web build. The API and the sign-in routes run the Worker, the paths of
+    // `apiPrefixes` in packages/core/src/http/api-paths.ts, and so do the pages search engines index,
+    // `indexablePaths` in packages/core/src/http/static-headers.ts: the Worker writes PUBLIC_URL into their
+    // canonical and Open Graph tags, which link previews need absolute.
+    "run_worker_first": ["/api/*", "/auth/*", "/", "/privacy", "/terms"],
   },
   // Set PUBLIC_URL, TWITCH_CLIENT_ID and ADMIN_TWITCH_IDS under "vars" and the secrets with
   // `wrangler secret put`; every key is listed in .env.example.

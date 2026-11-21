@@ -26,6 +26,7 @@ export const startWorker: StartTarget = async (env, webDir) => {
     },
     // The assets and the paths that run the Worker first are the ones of wrangler.jsonc; `_headers` is read from the folder.
     assets: {
+      binding: wrangler.assetsBinding,
       directory: webDir,
       assetConfig: { not_found_handling: wrangler.notFoundHandling },
       routerConfig: {

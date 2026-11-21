@@ -24,10 +24,10 @@ export const spaTemplate = `<!doctype html>
     <meta property="og:title" content="Rafflink home" />
     <meta property="og:description" content="Home description" />
     <meta property="og:url" content="/" />
-    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:image" content="/og.png" />
     <meta name="twitter:title" content="Rafflink home" />
     <meta name="twitter:description" content="Home description" />
-    <meta name="twitter:image" content="/icon-512.png" />
+    <meta name="twitter:image" content="/og.png" />
     <script>${inlineScript}</script>
     <script type="module" crossorigin src="/index-abc12345.js"></script>
   </head>
@@ -35,10 +35,14 @@ export const spaTemplate = `<!doctype html>
 </html>
 `
 
-/** A temporary folder holding {@link spaTemplate} as `index.html` and the `_headers` the web build writes for it; the returned function removes it. */
+/** The header of an ICO file with no images: the targets answer `/favicon.ico` by its name, not its content. */
+const emptyIcon = new Uint8Array([0, 0, 1, 0, 0, 0])
+
+/** A temporary folder holding {@link spaTemplate} as `index.html`, a `favicon.ico` and the `_headers` the web build writes for them; the returned function removes it. */
 export function webFixture(): { path: string; remove: () => void } {
   const path = mkdtempSync(join(tmpdir(), "rafflink-web-"))
   writeFileSync(join(path, "index.html"), spaTemplate)
+  writeFileSync(join(path, "favicon.ico"), emptyIcon)
   const scriptHashes = [inlineScriptSource.slice(1, -1)]
   writeFileSync(join(path, "_headers"), headersFile(securityHeaders({ hsts: true, scriptHashes })))
   return { path, remove: () => rmSync(path, { recursive: true, force: true }) }

@@ -33,7 +33,7 @@ export function spaRoutes(deps: SpaDeps, loadTemplate: SpaTemplateLoader): Hono 
 
     const code = giveawayPath.exec(pathname)?.[1]
     const giveaway = code === undefined ? null : await deps.accounts.findGiveawayByCode(code)
-    const image = `${publicUrl}/icon-512.png`
+    const image = `${publicUrl}/og.png`
     const meta: PageMeta =
       giveaway === null
         ? { url: `${publicUrl}${pathname}`, image, text: null }

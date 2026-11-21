@@ -3,6 +3,7 @@ import type { TokenQueueDO } from "./durable-objects/token-queue-do.ts"
 
 /** The bindings of `wrangler.jsonc`; the plain string values of the environment are the settings of `resolveConfig`. */
 export interface WorkerEnv {
+  readonly ASSETS: Fetcher
   readonly DB: D1Database
   readonly ROOMS: DurableObjectNamespace<GiveawayRoomObject>
   readonly QUEUE: DurableObjectNamespace<TokenQueueDO>
