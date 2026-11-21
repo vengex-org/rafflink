@@ -23,6 +23,46 @@ const setVisibility = (value: "hidden" | "visible") =>
   Object.defineProperty(document, "visibilityState", { configurable: true, value })
 const currentLabel = (view: ReturnType<typeof renderApp>) =>
   view.container.querySelector(".stage-steps [aria-current='step']")?.textContent
+const phoneScreen = (view: ReturnType<typeof renderApp>) => {
+  const screen = view.container.querySelector(".stage-screen")
+  if (!(screen instanceof HTMLElement)) throw new Error("no phone screen")
+  return screen
+}
+/** A mouse event on the phone with an explicit `timeStamp`, so the fake clock never decides about a glide. */
+const mouse = (
+  screen: HTMLElement,
+  type: "pointerdown" | "pointermove" | "pointerup",
+  clientY: number,
+  timeStamp: number,
+) => {
+  const event = new PointerEvent(type, {
+    clientY,
+    pointerId: 1,
+    pointerType: "mouse",
+    button: 0,
+    buttons: type === "pointerup" ? 0 : 1,
+    bubbles: true,
+    cancelable: true,
+  })
+  Object.defineProperty(event, "timeStamp", { value: timeStamp })
+  screen.dispatchEvent(event)
+}
+const preparePhone = (view: ReturnType<typeof renderApp>) => {
+  const screen = phoneScreen(view)
+  Object.defineProperty(screen, "scrollHeight", { configurable: true, value: 1000 })
+  Object.defineProperty(screen, "clientHeight", { configurable: true, value: 600 })
+  screen.setPointerCapture = () => {}
+  return screen
+}
+/** Drags the phone's content up by `distance` px with the mouse and lets go without a flick. */
+const dragPhone = (view: ReturnType<typeof renderApp>, distance: number) => {
+  const screen = preparePhone(view)
+  mouse(screen, "pointerdown", 400, 0)
+  mouse(screen, "pointermove", 400 - distance, 100)
+  advance(500)
+  mouse(screen, "pointerup", 400 - distance, 1000)
+  return screen
+}
 
 describe("home page", () => {
   it("opens with the one-sentence promise as the only h1", () => {
@@ -140,6 +180,48 @@ describe("home page", () => {
       })
       advance(5000)
       expect(currentLabel(view)).toBe("Drawing")
+    })
+
+    it("holds the step while the visitor scrolls the phone and goes on a while after the last touch", () => {
+      const view = renderApp("/")
+      advance(4000)
+
+      dragPhone(view, 60)
+      advance(3900)
+      expect(currentLabel(view)).toBe("Entries open")
+
+      advance(100)
+      expect(currentLabel(view)).toBe("Drawing")
+    })
+
+    it("holds the step while the mouse stays pressed on the phone beyond the hold time", () => {
+      const view = renderApp("/")
+      advance(4000)
+      const screen = preparePhone(view)
+
+      mouse(screen, "pointerdown", 400, 0)
+      advance(10_000)
+      expect(currentLabel(view)).toBe("Entries open")
+
+      mouse(screen, "pointerup", 400, 10_000)
+      advance(3900)
+      expect(currentLabel(view)).toBe("Entries open")
+
+      advance(100)
+      expect(currentLabel(view)).toBe("Drawing")
+    })
+
+    it("shows each new step on the phone from the top", () => {
+      const view = renderApp("/")
+      const scrolled = dragPhone(view, 60)
+      expect(scrolled.scrollTop).toBe(60)
+
+      advance(9000)
+
+      const screen = phoneScreen(view)
+      expect(currentLabel(view)).toBe("Drawing")
+      expect(screen).not.toBe(scrolled)
+      expect(screen.scrollTop).toBe(0)
     })
 
     it("rests on the winner without cycling or step labels under reduced motion", () => {

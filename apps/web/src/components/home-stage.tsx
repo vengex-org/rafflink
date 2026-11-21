@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { DemoViewer } from "../pages/demo-page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { demoNames, type DemoLive } from "../lib/demo-live.ts"
 import { exampleDraw, restingStageStep, stageSteps, type StageStep } from "../lib/home-example.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
+import { useDragScroll } from "../lib/use-drag-scroll.ts"
 import { Replay } from "./replay.tsx"
 import { EntryPlate, ShufflePlate, WinnerPlates } from "../pages/overlay-page.tsx"
 
 const reducedMotion = "(prefers-reduced-motion: reduce)"
+/** How long the loop keeps the current step after the visitor last scrolled the phone. */
+const holdAfterScrollMs = 4000
 
 /**
  * The home page's picture of the product: a stream with the real overlay plates over it and the real viewer page
@@ -17,11 +20,12 @@ const reducedMotion = "(prefers-reduced-motion: reduce)"
 export function HomeStage() {
   const { t } = useI18n()
   const [calm] = useState(() => window.matchMedia(reducedMotion).matches)
+  const dragging = useRef(false)
   return (
     <section className="home-stage" aria-label={t("home.preview.label")}>
       {calm ? (
         <Replay>
-          <ExampleStep step={restingStageStep} />
+          <ExampleStep step={restingStageStep} dragging={dragging} onPhoneScroll={() => {}} />
         </Replay>
       ) : (
         <PlayingStage />
@@ -32,10 +36,19 @@ export function HomeStage() {
 
 function PlayingStage() {
   const { t } = useI18n()
-  const index = useStageIndex()
+  const heldUntil = useRef(0)
+  const dragging = useRef(false)
+  const index = useStageIndex(heldUntil, dragging)
   return (
     <>
-      <ExampleStep key={index} step={stageSteps[index]?.step ?? restingStageStep} />
+      <ExampleStep
+        key={index}
+        step={stageSteps[index]?.step ?? restingStageStep}
+        dragging={dragging}
+        onPhoneScroll={() => {
+          heldUntil.current = Date.now() + holdAfterScrollMs
+        }}
+      />
       <ol className="stage-steps" aria-hidden="true">
         {stageSteps.map(({ step }, position) => (
           <li key={step} aria-current={position === index ? "step" : undefined}>
@@ -47,8 +60,8 @@ function PlayingStage() {
   )
 }
 
-/** The position in {@link stageSteps}; the loop waits while the tab is hidden. */
-function useStageIndex(): number {
+/** The position in {@link stageSteps}; the loop waits while the tab is hidden, while `dragging` and until `heldUntil` has passed. */
+function useStageIndex(heldUntil: RefObject<number>, dragging: RefObject<boolean>): number {
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(() => document.visibilityState === "visible")
   useEffect(() => {
@@ -58,18 +71,29 @@ function useStageIndex(): number {
   }, [])
   useEffect(() => {
     if (!visible) return
-    const timer = setTimeout(
-      () => setIndex((current) => (current + 1) % stageSteps.length),
-      stageSteps[index]?.ms,
-    )
+    const next = () => {
+      const hold = dragging.current ? holdAfterScrollMs : heldUntil.current - Date.now()
+      if (hold > 0) timer = setTimeout(next, hold)
+      else setIndex((current) => (current + 1) % stageSteps.length)
+    }
+    let timer = setTimeout(next, stageSteps[index]?.ms)
     return () => clearTimeout(timer)
-  }, [index, visible])
+  }, [index, visible, heldUntil, dragging])
   return index
 }
 
-/** Mounts again per step, so the claim clock and the entrance animations start with it. */
-function ExampleStep({ step }: { readonly step: StageStep }) {
+/** Mounts again per step, so the claim clock, the entrance animations and the phone's scroll start with it. */
+function ExampleStep({
+  step,
+  dragging,
+  onPhoneScroll,
+}: {
+  readonly step: StageStep
+  readonly dragging: RefObject<boolean>
+  readonly onPhoneScroll: () => void
+}) {
   const { t } = useI18n()
+  const screen = useDragScroll<HTMLDivElement>(onPhoneScroll, dragging)
   const [startedAt] = useState(Date.now)
   const { state, snapshot, facts } = useMemo(
     () => exampleDraw(step, startedAt, demoNames(t)),
@@ -90,7 +114,7 @@ function ExampleStep({ step }: { readonly step: StageStep }) {
         </div>
       </div>
       <div className="stage-phone" aria-hidden="true">
-        <div className="stage-screen">
+        <div className="stage-screen" ref={screen}>
           <div className="stage-viewer viewer" inert>
             <DemoViewer state={state} heading="h2" showRules={false} />
           </div>
