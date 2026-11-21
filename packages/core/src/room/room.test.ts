@@ -1762,6 +1762,41 @@ describe("GiveawayRoom commit", () => {
     error.mockRestore()
   })
 
+  it("keeps counting attempts and the wait across a new room instance over the same storage", () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const { room, sql, clock, alarm } = setup()
+    room.replaceRoles([], [])
+    room.close()
+    room.markMirrored("closed")
+    const revive = () =>
+      new GiveawayRoom({
+        sql,
+        alarm,
+        live: new TestHub(),
+        clock,
+        random,
+        config,
+        chat: idleChat,
+        beacon: new FakeBeacon(),
+      })
+
+    expect(room.onAlarm().commit).toBe(true)
+    clock.advance(1000)
+    expect(revive().onAlarm().commit).toBe(false)
+    advanceToAlarm(clock, alarm)
+    for (let attempt = 1; attempt < config.commitMaxAttempts; attempt++) {
+      expect(revive().onAlarm().commit).toBe(true)
+      advanceToAlarm(clock, alarm)
+    }
+    expect(revive().onAlarm().commit).toBe(false)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(alarm.at).toBeNull()
+    clock.advance(24 * 3600 * 1000)
+    expect(revive().onAlarm().commit).toBe(false)
+    expect(error).toHaveBeenCalledTimes(1)
+    error.mockRestore()
+  })
+
   it("still commits when a draw asks after the alarm gave up", async () => {
     spyOn(console, "error").mockImplementation(() => {})
     const { room, clock, alarm } = setup()

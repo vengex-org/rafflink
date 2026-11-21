@@ -317,7 +317,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     ...entryDeps,
     queue: asRemote(queue),
     usage,
-    publicCache: new MemoryPublicCache(clock),
+    publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
     keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, 60_000),

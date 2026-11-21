@@ -21,14 +21,23 @@ export async function armRetentionAlarms(
     try {
       // Opening a room arms its alarm; any call opens it.
       await rooms.get(giveawayId).summary()
-      await accounts.markRetentionArmed(giveawayId)
-      woken++
     } catch (error) {
       console.warn("retention sweep failed for a room", {
         giveawayId,
         errorClass: errorClass(error),
       })
       await giveUpAtLimit(accounts, giveawayId, maxAttempts)
+      continue
+    }
+    // The room is armed; a failed mark only lists it once more, which is no room failure.
+    try {
+      await accounts.markRetentionArmed(giveawayId)
+      woken++
+    } catch (error) {
+      console.warn("retention sweep could not mark a room", {
+        giveawayId,
+        errorClass: errorClass(error),
+      })
     }
   }
   return woken

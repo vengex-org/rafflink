@@ -312,6 +312,12 @@ export const configSchema = {
     "5",
     "How long the public part of a giveaway page response is reused, so an anonymous refresh reads neither the account store nor the room; the entrant count can be this stale, 0 turns the cache off; starting guess",
   ),
+  publicCacheMaxEntries: withDefault(
+    "PUBLIC_CACHE_MAX_ENTRIES",
+    int(1),
+    "64",
+    "Most entries the Bun server keeps in its in-memory public cache; the oldest is dropped beyond it; a leaf list is up to about a megabyte, so the default holds about 64 MB at worst; starting guess; the Cloudflare target uses the Cache API and ignores it",
+  ),
   claimKeywordMaxLength: withDefault(
     "CLAIM_KEYWORD_MAX_LENGTH",
     int(1),
@@ -470,9 +476,9 @@ export const configSchema = {
   ),
   commitMaxAttempts: withDefault(
     "COMMIT_MAX_ATTEMPTS",
-    int(1),
+    int(1, 20),
     "6",
-    "Commit attempts of a closed room's alarm before it gives up and logs an error, so a commit that always fails stops waking the Durable Object; the wait doubles from COMMIT_RETRY_SECONDS, so the default spans about 15 minutes; a draw still tries to commit; starting guess",
+    "Commit attempts of a closed room's alarm before it gives up and logs an error, so a commit that always fails stops waking the Durable Object; the wait doubles from COMMIT_RETRY_SECONDS, so the default gives up about 30 minutes after the close; the bound of 20 keeps the doubling wait below a year; a draw still tries to commit; starting guess",
   ),
   dataDir: withDefault(
     "DATA_DIR",
@@ -569,6 +575,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     claimSecondsMax: read(env, configSchema.claimSecondsMax),
     drawMaxWinners: read(env, configSchema.drawMaxWinners),
     publicGiveawayCacheSeconds: read(env, configSchema.publicGiveawayCacheSeconds),
+    publicCacheMaxEntries: read(env, configSchema.publicCacheMaxEntries),
     claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
     codeInsertRetries: read(env, configSchema.codeInsertRetries),
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),

@@ -113,7 +113,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     ...entryDeps,
     queue: remoteQueue(queue),
     usage: { today: async () => null },
-    publicCache: new MemoryPublicCache(clock),
+    publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
     keyRing,
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, rateWindowMs),

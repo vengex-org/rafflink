@@ -3,4 +3,4 @@ ALTER TABLE giveaways ADD COLUMN retention_attempts INTEGER NOT NULL DEFAULT 0 C
 
 DROP INDEX giveaways_retention_unarmed;
 
-CREATE INDEX giveaways_retention_unarmed ON giveaways (retention_attempts, created_at, id) WHERE retention_armed = 0;
+CREATE INDEX giveaways_retention_unarmed ON giveaways (retention_attempts, created_at, id) WHERE retention_armed = 0 AND status != 'open';

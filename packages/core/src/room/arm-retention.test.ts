@@ -134,4 +134,15 @@ describe("armRetentionAlarms", () => {
     expect(get).toHaveBeenCalledTimes(2)
     expect(error).toHaveBeenCalledTimes(1)
   })
+
+  it("does not count a failed mark as a room failure", async () => {
+    spyOn(console, "warn").mockImplementation(() => {})
+    const { accounts, rooms } = await setup(["g1"])
+    spyOn(accounts, "markRetentionArmed").mockRejectedValue(new Error("d1 down"))
+    const failure = spyOn(accounts, "recordRetentionFailure")
+
+    expect(await armRetentionAlarms(accounts, rooms, 10, 5)).toBe(0)
+
+    expect(failure).not.toHaveBeenCalled()
+  })
 })
