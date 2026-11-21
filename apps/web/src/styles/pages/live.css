@@ -451,13 +451,22 @@
   text-align: center;
 }
 
-.live-timer .status-chip {
-  max-width: 100%;
+.live-settled {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.live-settled .status-chip {
   padding: 0.375rem 1rem;
   font-size: var(--fs-lg);
-  overflow-wrap: anywhere;
-  text-align: center;
-  white-space: normal;
+}
+
+.live-settled p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  font-weight: 500;
 }
 
 .live-ring {
@@ -517,10 +526,14 @@
 }
 
 .live-ring .countdown-label {
-  margin-top: 0.5rem;
+  max-width: 90%;
+  margin: 0.5rem auto 0;
   color: var(--ink-2);
   font-size: var(--fs-body);
   font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .live-ring .countdown:not([data-tone="info"]) .countdown-label {
@@ -637,6 +650,7 @@
   max-width: 100%;
   padding-block: 0.5rem;
   line-height: 1.2;
+  overflow-wrap: anywhere;
   white-space: normal;
 }
 
@@ -1312,6 +1326,10 @@ td:nth-child(2) > .entrants-cell {
     gap: calc(var(--u) * 40);
   }
 
+  .live-reveal[data-settled="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .live-winner {
     gap: calc(var(--u) * 20);
   }
@@ -1364,8 +1382,16 @@ td:nth-child(2) > .entrants-cell {
     font-size: max(0.8125rem, calc(var(--u) * 20));
   }
 
-  .live-timer .status-chip {
-    font-size: max(0.875rem, calc(var(--u) * 22));
+  .live-settled {
+    gap: calc(var(--u) * 8);
+  }
+
+  .live-settled .status-chip {
+    font-size: max(0.875rem, calc(var(--u) * 24));
+  }
+
+  .live-settled p {
+    font-size: max(0.8125rem, calc(var(--u) * 20));
   }
 
   .live-ring {

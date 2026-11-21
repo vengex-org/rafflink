@@ -185,7 +185,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "winner.removed": "(přihláška byla odstraněna)",
   "claim.claimed.rafflink": "Převzato přes Rafflink",
   "claim.claimed.chat": "Převzato v chatu",
-  "claim.claimed.manual": "Ručně označeno jako převzaté",
+  "claim.claimed.manual": "Převzato ručně",
   "claim.at": "{label}, {at}",
   "claim.waiting": "Čeká na převzetí",
   "claim.expired": "Čas na převzetí vypršel",
@@ -506,6 +506,12 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.clean.hide": "Skrýt ovládání",
   "live.clean.show": "Zobrazit ovládání",
   "live.chat.title": "Chat vítězů",
+  "live.chat.hint": "Zprávy výherce z chatu se ukážou tady.",
+  "live.chat.hint.anyChat":
+    "Když výherce napíše do chatu, jeho zprávy se ukážou tady a výhra se označí jako převzatá.",
+  "live.chat.hint.keyword":
+    "Zprávy výherce z chatu se ukážou tady. Výhra se označí jako převzatá, až napíše {keyword}.",
+  "live.chat.hint.settled": "Pokud výherce napíše do chatu, uvidíš to tady.",
   "live.chip": "LIVE",
   "live.gives": "{streamer} rozdává {prize}",
   "live.winnerOf": "Vítěz {n} z {total}",

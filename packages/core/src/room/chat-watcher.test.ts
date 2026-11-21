@@ -975,6 +975,23 @@ describe("winner chat", () => {
     expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["thanks"])
   })
 
+  it("keeps showing and pushing a winner's lines after a claim on the giveaway page, without touching the claim", async () => {
+    const { room, socket, winner, liveMessages, clock } = await connectedRoom()
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "rafflink")
+    const claimedAt = clock.now()
+    clock.advance(1_000)
+    const pushed = liveMessages.length
+
+    socket?.receive(chat(winner, "got it, thanks"))
+
+    expect(room.liveSnapshot()).toMatchObject({
+      winners: [{ claim: { state: "claimed", via: "rafflink", at: claimedAt } }],
+      winnerChat: [{ text: "got it, thanks" }],
+    })
+    expect(liveMessages).toHaveLength(pushed + 1)
+    expect(liveMessages.at(-1)).toContain("got it, thanks")
+  })
+
   it("drops the message of a chatter who holds no pick", async () => {
     const { room, socket, loser } = await connectedRoom()
 

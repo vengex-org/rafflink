@@ -184,7 +184,7 @@ export const en = {
   "winner.removed": "(entry removed)",
   "claim.claimed.rafflink": "Claimed on Rafflink",
   "claim.claimed.chat": "Claimed in chat",
-  "claim.claimed.manual": "Marked claimed by hand",
+  "claim.claimed.manual": "Claimed by hand",
   "claim.at": "{label} on {at}",
   "claim.waiting": "Waiting to claim",
   "claim.expired": "Claim time ran out",
@@ -499,6 +499,12 @@ export const en = {
   "live.clean.hide": "Hide controls",
   "live.clean.show": "Show controls",
   "live.chat.title": "Winner chat",
+  "live.chat.hint": "Messages from the winner in chat will show here.",
+  "live.chat.hint.anyChat":
+    "When the winner writes in chat, their messages show here and the prize is marked as claimed.",
+  "live.chat.hint.keyword":
+    "The winner's chat messages show here. The prize is marked as claimed once they write {keyword}.",
+  "live.chat.hint.settled": "If the winner writes in chat, you will see it here.",
   "live.chip": "LIVE",
   "live.gives": "{streamer} gives away {prize}",
   "live.winnerOf": "Winner {n} of {total}",

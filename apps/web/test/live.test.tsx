@@ -612,6 +612,34 @@ describe("live page: winners", () => {
     expect(view.queryByText(`Claimed in chat on ${claimedAtText}`)).toBeNull()
   })
 
+  it("says how a settled winner on the plate claimed in a short chip with the date beside it, and drops the ring", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () =>
+        ok({
+          ...drawn,
+          winners: [
+            {
+              n: 0,
+              entrySeq: 1,
+              displayName: "Wanda",
+              profileImageUrl: null,
+              claimUntil: 1,
+              claim: { state: "claimed", at: claimedAt, via: "manual" },
+            },
+          ],
+        }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    const chip = (await view.findByText("Claimed by hand")).closest(".status-chip")
+    expect(chip?.textContent).toBe("Claimed by hand")
+    expect(view.getByText(claimedAtText).closest(".status-chip")).toBeNull()
+    expect(view.container.querySelector(".live-ring")).toBeNull()
+    expect(view.container.querySelector(".live-timer")).toBeNull()
+    expect(view.queryByText(/write anything in chat|Claim time/)).toBeNull()
+  })
+
   it("shows the claim time only for the winner on the plate, not for another waiting winner", async () => {
     mockLive({
       "GET /api/live/gid-1": () =>
@@ -1075,6 +1103,73 @@ describe("live page: winners' chat", () => {
 
     expect(view.queryByRole("heading", { name: "Winner chat" })).toBeNull()
     expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
+  })
+
+  const anyChatHint =
+    "When the winner writes in chat, their messages show here and the prize is marked as claimed."
+
+  it("says what the box will show while the winner on the plate has not written, and gives way to the first line", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByText(anyChatHint)).toBeTruthy()
+    expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
+    act(() => FakeSocket.opened[0]?.push({ ...drawn, winnerChat: chat }))
+    expect(await view.findByRole("list", { name: "Winner chat" })).toBeTruthy()
+    expect(view.queryByText(anyChatHint)).toBeNull()
+  })
+
+  it("names the claim word in the hint when the giveaway has one", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok(drawn),
+      "GET /api/g/ABCDE": () =>
+        ok({ ...giveaway, rules: { ...giveaway.rules, claimKeyword: "mine" } }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    const hint = await view.findByText(/once they write/)
+    expect(hint.textContent).toBe(
+      "The winner's chat messages show here. The prize is marked as claimed once they write mine.",
+    )
+    expect(hint.querySelector("strong")?.textContent).toBe("mine")
+  })
+
+  it("keeps the chat box in a settled state: a hint before the first line, the lines after", async () => {
+    const settled: LiveSnapshot = { ...drawn, winners: drawn.winners.slice(1, 2) }
+    mockLive({ "GET /api/live/gid-1": () => ok(settled) })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(
+      await view.findByText("If the winner writes in chat, you will see it here."),
+    ).toBeTruthy()
+    act(() => FakeSocket.opened[0]?.push({ ...settled, winnerChat: chat }))
+    expect(await view.findByRole("list", { name: "Winner chat" })).toBeTruthy()
+    expect(view.queryByText("If the winner writes in chat, you will see it here.")).toBeNull()
+  })
+
+  it.each([
+    ["chat watch is off", { ...drawn, chatClaimUnavailable: true }],
+    ["the watch is over", { ...drawn, rerollOpen: false, rerollBlocked: "window-over" }],
+  ])("shows no hint when %s", async (_name, snapshot) => {
+    mockLive({ "GET /api/live/gid-1": () => ok(snapshot) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByRole("heading", { name: /^Winner 1 of/ })
+
+    expect(view.container.querySelector(".winner-chat-hint")).toBeNull()
+  })
+
+  it("shows no hint in clean mode", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText(anyChatHint)
+    fireEvent.click(view.getByRole("button", { name: "Hide controls" }))
+
+    expect(view.queryByText(anyChatHint)).toBeNull()
   })
 
   it("is hidden in clean mode and back with Show controls", async () => {

@@ -1,9 +1,15 @@
-import { useEffect, useId, useRef } from "react"
+import { useEffect, useId, useRef, type ReactNode } from "react"
 import type { WinnerChatLine } from "@rafflink/core/room/giveaway-room"
 import { useI18n } from "../i18n/i18n.tsx"
 
-/** What the winners typed in chat, newest last, so the streamer can see who answered; nothing is shown until a winner writes. */
-export function WinnerChat({ lines }: { readonly lines: readonly WinnerChatLine[] }) {
+/** What the winners typed in chat, newest last, so the streamer can see who answered. Until a winner writes the box is not shown; `hint` says what will appear (null for none). */
+export function WinnerChat({
+  lines,
+  hint,
+}: {
+  readonly lines: readonly WinnerChatLine[]
+  readonly hint: ReactNode
+}) {
   const { t } = useI18n()
   const titleId = useId()
   const list = useRef<HTMLOListElement>(null)
@@ -19,7 +25,7 @@ export function WinnerChat({ lines }: { readonly lines: readonly WinnerChatLine[
     seen.current = new Set(lines.map((line) => line.id))
   }, [lines])
 
-  if (lines.length === 0) return null
+  if (lines.length === 0) return hint === null ? null : <p className="winner-chat-hint">{hint}</p>
   return (
     <section className="winner-chat" aria-labelledby={titleId}>
       <h2 id={titleId}>{t("live.chat.title")}</h2>

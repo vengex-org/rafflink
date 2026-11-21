@@ -96,13 +96,11 @@ function statusIcon(status: RoomStatus): ReactNode {
   }
 }
 
-export function claimLabel(winner: LiveWinner, { t, dateTime }: I18n): string {
+/** How the claim stands in a few words, without the time it happened. */
+export function claimOutcome(winner: LiveWinner, t: I18n["t"]): string {
   switch (winner.claim.state) {
     case "claimed":
-      return t("claim.at", {
-        label: t(`claim.claimed.${winner.claim.via}`),
-        at: dateTime(winner.claim.at),
-      })
+      return t(`claim.claimed.${winner.claim.via}`)
     case "waiting":
       return t("claim.waiting")
     case "expired":
@@ -110,4 +108,9 @@ export function claimLabel(winner: LiveWinner, { t, dateTime }: I18n): string {
     case "rerolled":
       return t("claim.rerolled")
   }
+}
+
+export function claimLabel(winner: LiveWinner, { t, dateTime }: I18n): string {
+  if (winner.claim.state !== "claimed") return claimOutcome(winner, t)
+  return t("claim.at", { label: claimOutcome(winner, t), at: dateTime(winner.claim.at) })
 }

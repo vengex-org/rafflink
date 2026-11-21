@@ -81,15 +81,16 @@ describe("stylesheet", () => {
     expect(others.flatMap(({ text }) => [...text.matchAll(/var\(--/g)]).length).toBeGreaterThan(0)
   })
 
-  it("lets the claim status chip of the live stage wrap inside its column instead of overflowing it", () => {
+  it("keeps the settled claim chip on one line and gives a settled stage no timer column", () => {
     const live = sheet(join(stylesDir, "pages/live.css")).text
-    const chip = blocksOf(live, ".live-timer .status-chip {")[0] ?? ""
-    const timer = blocksOf(live, ".live-timer {")[0] ?? ""
+    const components = sheet(join(stylesDir, "components.css")).text
+    const chip = blocksOf(components, ".status-chip {")[0] ?? ""
 
-    expect(chip).toMatch(/white-space:\s*normal/)
-    expect(chip).toMatch(/max-width:\s*100%/)
-    expect(timer).toMatch(/min-width:\s*0/)
-    expect(live).toMatch(/\.live-reveal \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/)
+    expect(chip).toMatch(/white-space:\s*nowrap/)
+    expect(blocksOf(live, ".live-settled .status-chip {")[0] ?? "").not.toMatch(/white-space/)
+    expect(live).toMatch(
+      /\.live-reveal\[data-settled="true"\] \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/,
+    )
   })
 
   it("switches off animation and transition under reduced motion", () => {
