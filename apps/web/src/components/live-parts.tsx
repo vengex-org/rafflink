@@ -1,20 +1,9 @@
 import { useState, type ReactNode } from "react"
-import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
+import type { LiveWinner } from "@rafflink/core/room/giveaway-room"
 import type { RoomStatus } from "@rafflink/core/room/rows"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { initialsOf } from "../lib/initials.ts"
-import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
-import { PickActions, type Doing } from "./live-bar.tsx"
-import {
-  ActivityIcon,
-  AlertIcon,
-  CheckIcon,
-  ClockIcon,
-  LockIcon,
-  RefreshIcon,
-  TrophyIcon,
-  UsersIcon,
-} from "./icons.tsx"
+import { ActivityIcon, LockIcon, TrophyIcon, UsersIcon } from "./icons.tsx"
 
 /** A number with what it counts, so no figure stands alone. */
 export function Stat({
@@ -94,59 +83,6 @@ export function Avatar({
   )
 }
 
-/** The picks other than the one on the plate, as pills with how their claim stands; `controls` adds buttons per pick. */
-export function EarlierPicks({
-  winners,
-  snapshot,
-  controls,
-}: {
-  readonly winners: readonly LiveWinner[]
-  readonly snapshot: LiveSnapshot
-  readonly controls: Doing | null
-}) {
-  const i18n = useI18n()
-  const { t } = i18n
-  if (winners.length === 0) return null
-  return (
-    <ul className="live-history" aria-label={t("live.history.label")}>
-      {winners.map((winner) => {
-        const name = winner.displayName ?? t("winner.removed")
-        return (
-          <li key={winner.n} className="live-hist" data-claim={winner.claim.state}>
-            <Avatar name={name} imageUrl={winner.profileImageUrl} />
-            <span className="live-hist-name">{name}</span>
-            <span className="live-hist-status">
-              {winner.claim.state === "waiting" ? (
-                <ClaimClock until={winner.claimUntil} />
-              ) : (
-                <>
-                  {claimIcon(winner)}
-                  {claimLabel(winner, i18n)}
-                </>
-              )}
-            </span>
-            {controls === null ? null : (
-              <PickActions {...controls} snapshot={snapshot} winner={winner} />
-            )}
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
-
-export function ClaimClock({ until }: { readonly until: number }) {
-  const { t } = useI18n()
-  const [initial] = useState(() => msUntil(until))
-  const remaining = useRemainingMs(initial)
-  return (
-    <span className="claim-left">
-      <ClockIcon />
-      <span role="timer">{formatClock(remaining)}</span> {t("claim.minLeft")}
-    </span>
-  )
-}
-
 export const msUntil = (instant: number) => Math.max(0, instant - Date.now())
 
 function statusIcon(status: RoomStatus): ReactNode {
@@ -157,19 +93,6 @@ function statusIcon(status: RoomStatus): ReactNode {
       return <LockIcon />
     case "drawn":
       return <TrophyIcon />
-  }
-}
-
-export function claimIcon(winner: LiveWinner): ReactNode {
-  switch (winner.claim.state) {
-    case "claimed":
-      return <CheckIcon />
-    case "waiting":
-      return <ClockIcon />
-    case "expired":
-      return <AlertIcon />
-    case "rerolled":
-      return <RefreshIcon />
   }
 }
 

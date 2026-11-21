@@ -527,75 +527,6 @@
   color: inherit;
 }
 
-/* Earlier picks */
-
-.live-history {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin: 0;
-  padding: var(--space-2) 0 0;
-  border-top: 1px solid var(--line);
-  list-style: none;
-}
-
-.live-hist {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.875rem;
-  padding: 0.5rem 1rem 0.5rem 0.5rem;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--bg);
-  font-size: var(--fs-lg);
-  font-weight: 600;
-}
-
-.live-hist-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-
-.live-hist-status .icon {
-  width: 1rem;
-  height: 1rem;
-}
-
-.live-hist[data-claim="claimed"] .live-hist-status {
-  color: var(--success);
-}
-
-.live-hist[data-claim="expired"] .live-hist-status,
-.live-hist[data-claim="rerolled"] .live-hist-status {
-  color: var(--muted);
-}
-
-.live-hist[data-claim="rerolled"] .live-hist-name {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-
-.live-hist-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.live-hist-actions:empty {
-  display: none;
-}
-
-.claim-left {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-variant-numeric: tabular-nums;
-}
-
 /* The winners' chat, under the claim instruction: compact, the newest line at the bottom. */
 
 .winner-chat {
@@ -1051,6 +982,10 @@
   width: 3rem;
 }
 
+.entrants-col-actions {
+  width: 6.75rem;
+}
+
 .entrants-table td {
   padding: 0;
 }
@@ -1087,6 +1022,50 @@ td:first-child > .entrants-cell {
 td:last-child > .entrants-cell {
   justify-content: flex-end;
   padding-inline-end: 0.75rem;
+}
+
+td:nth-child(3) > .entrants-cell {
+  justify-content: flex-end;
+}
+
+.entrants-cell .entrants-act {
+  flex: none;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  border-color: var(--line-2);
+  background: var(--surface);
+}
+
+.entrants-cell:has(.entrants-act) {
+  gap: 0.375rem;
+}
+
+/* The buttons take room from the name, so a phone gets smaller columns and buttons while the table has them. */
+@media (max-width: 40rem) {
+  .entrants-table[data-actions] .entrants-col-status {
+    width: 5.25rem;
+  }
+
+  .entrants-table[data-actions] .entrants-col-tickets {
+    width: 2.25rem;
+  }
+
+  .entrants-table[data-actions] .entrants-col-actions {
+    width: 5.5rem;
+  }
+
+  .entrants-table[data-actions] .entrants-cell {
+    gap: 0.5rem;
+  }
+
+  .entrants-table[data-actions] .entrants-cell:has(.entrants-act) {
+    gap: 0.125rem;
+  }
+
+  .entrants-table[data-actions] .entrants-act {
+    width: 2.125rem;
+    min-height: 2.125rem;
+  }
 }
 
 td:nth-child(2) > .entrants-cell {
@@ -1300,12 +1279,6 @@ td:nth-child(2) > .entrants-cell {
     flex: none;
   }
 
-  .live-stage > .live-history {
-    flex: 0 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
   /* The list takes the height the stage leaves, but never less than a few rows. */
   .live-panel {
     flex: 1 1 0;
@@ -1407,25 +1380,6 @@ td:nth-child(2) > .entrants-cell {
   .live-ring .countdown-label {
     margin-top: calc(var(--u) * 8);
     font-size: max(0.8125rem, calc(var(--u) * 22));
-  }
-
-  .live-history {
-    gap: calc(var(--u) * 16);
-    padding-top: calc(var(--u) * 24);
-  }
-
-  .live-hist {
-    gap: calc(var(--u) * 14);
-    padding: calc(var(--u) * 14) calc(var(--u) * 20) calc(var(--u) * 14) calc(var(--u) * 14);
-    font-size: max(0.875rem, calc(var(--u) * 22));
-  }
-
-  .live-hist-status {
-    font-size: max(0.8125rem, calc(var(--u) * 18));
-  }
-
-  .live-hist .live-avatar {
-    font-size: max(0.75rem, calc(var(--u) * 16));
   }
 
   .winner-chat li {
@@ -1573,6 +1527,10 @@ td:nth-child(2) > .entrants-cell {
 
   .entrants-col-status {
     width: calc(var(--u) * 120);
+  }
+
+  .entrants-col-actions {
+    width: max(6.75rem, calc(var(--u) * 140));
   }
 
   .entrants-cell {

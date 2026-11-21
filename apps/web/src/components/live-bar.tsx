@@ -1,4 +1,4 @@
-import { useCallback, useId, useState } from "react"
+import { useCallback, useId, useState, type ReactNode } from "react"
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import {
   closeEntries,
@@ -70,6 +70,7 @@ export function LiveActions({
             busy={busy}
             run={run}
             winner={current}
+            label={t("live.mark.label")}
             className="live-btn secondary"
           />
           <RerollPick
@@ -119,7 +120,7 @@ export function LiveSettings({
   )
 }
 
-/** The buttons beside an earlier pick in the list of picks. */
+/** The mark and reroll buttons in the row of a pick, as icons; the names are for screen readers. */
 export function PickActions({
   id,
   busy,
@@ -128,20 +129,28 @@ export function PickActions({
   winner,
 }: Doing & { readonly snapshot: LiveSnapshot; readonly winner: LiveWinner }) {
   const { t } = useI18n()
+  const name = nameOf(winner, t)
   return (
-    <span className="live-hist-actions">
-      <MarkClaimed id={id} busy={busy} run={run} winner={winner} className="button tonal small" />
+    <>
+      <MarkClaimed
+        id={id}
+        busy={busy}
+        run={run}
+        winner={winner}
+        label={null}
+        className="icon-button entrants-act"
+      />
       <RerollPick
         id={id}
         busy={busy}
         run={run}
         snapshot={snapshot}
         winner={winner}
-        label={t("live.reroll.label")}
-        className="button outlined small"
+        label={<span className="sr-only">{t("live.reroll.bar", { name })}</span>}
+        className="icon-button entrants-act"
         shortcut={null}
       />
-    </span>
+    </>
   )
 }
 
@@ -163,9 +172,11 @@ function MarkClaimed({
   busy,
   run,
   winner,
+  label,
   className,
 }: Doing & {
   readonly winner: LiveWinner
+  readonly label: ReactNode
   readonly className: string
 }) {
   const { t } = useI18n()
@@ -184,7 +195,7 @@ function MarkClaimed({
       }
     >
       <CheckCircleIcon />
-      {t("live.mark.label")}
+      {label}
     </button>
   )
 }
@@ -201,7 +212,7 @@ function RerollPick({
 }: Doing & {
   readonly snapshot: LiveSnapshot
   readonly winner: LiveWinner
-  readonly label: string
+  readonly label: ReactNode
   readonly className: string
   readonly shortcut: string | null
 }) {

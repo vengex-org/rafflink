@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
+import type { Entrant } from "@rafflink/core/room/rows"
 import { reconnectDelayMs } from "../src/lib/use-live.ts"
 import { stubClipboard } from "./clipboard.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
@@ -71,11 +72,29 @@ const windowOverText =
 const nobodyLeftText =
   "Everyone who entered has been drawn. Contact the winners who have not claimed, or start a new giveaway."
 
-/** The pill of an earlier pick; the winner on the plate has none. */
-function pickPill(view: ReturnType<typeof renderApp>, name: string): HTMLElement {
-  const pills = view.getByRole("list", { name: "Earlier picks" })
-  const row = within(pills).getByText(name).closest("li")
-  if (row === null) throw new Error(`no pill for ${name}`)
+const entrantOf = (seq: number, displayName: string): Entrant => ({
+  seq,
+  login: displayName.toLowerCase(),
+  displayName,
+  tickets: 1,
+  group: "viewer",
+  profileImageUrl: null,
+})
+
+/** `mockLive` with the entrants behind the winners of `drawn`, so their rows are in the list. */
+function mockDrawn(routes: Readonly<Record<string, () => Reply>>) {
+  return mockLive({
+    "GET /api/live/gid-1/entrants?after=0": () =>
+      ok({ rows: [entrantOf(1, "Wanda"), entrantOf(2, "Bob"), entrantOf(3, "Eve")], more: false }),
+    ...routes,
+  })
+}
+
+/** The row of a pick in the entrants table. */
+async function pickRow(view: ReturnType<typeof renderApp>, name: string): Promise<HTMLElement> {
+  const table = await view.findByRole("table", { name: "People who entered, scroll to see more" })
+  const row = (await within(table).findByText(name)).closest("tr")
+  if (row === null) throw new Error(`no row for ${name}`)
   return row
 }
 
@@ -576,23 +595,24 @@ describe("live page: waiting for the drand round", () => {
 })
 
 describe("live page: winners", () => {
-  it("shows winners with how they claimed and a countdown for the one still waiting", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
+  it("shows the winner on the plate with a countdown and the earlier winners only in the entrants table", async () => {
+    mockDrawn({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByText(`Claimed in chat on ${claimedAtText}`)).toBeTruthy()
+    expect(await view.findByText("Claimed")).toBeTruthy()
     expect(view.getByRole("heading", { name: "Winner 1 of 3" })).toBeTruthy()
-    expect(view.getByText("Claim time ran out")).toBeTruthy()
     expect(view.container.querySelector(".live-ring [role=timer]")?.textContent).toMatch(
       /^[12]:\d\d$/,
     )
     expect(plateName(view)).toBe("Wanda")
-    expect(within(pickPill(view, "Bob")).queryByRole("timer")).toBeNull()
-    expect(within(pickPill(view, "Eve")).queryByRole("timer")).toBeNull()
+    expect(within(await pickRow(view, "Bob")).getByText("Claimed")).toBeTruthy()
+    expect(within(await pickRow(view, "Eve")).getByText("Did not claim")).toBeTruthy()
+    expect(view.queryByRole("list", { name: "Earlier picks" })).toBeNull()
+    expect(view.queryByText(`Claimed in chat on ${claimedAtText}`)).toBeNull()
   })
 
-  it("shows the claim time once for the winner on the plate and keeps it on another waiting winner", async () => {
+  it("shows the claim time only for the winner on the plate, not for another waiting winner", async () => {
     mockLive({
       "GET /api/live/gid-1": () =>
         ok({
@@ -622,8 +642,7 @@ describe("live page: winners", () => {
     await view.findByText("left to claim")
 
     expect(plateName(view)).toBe("Cy")
-    expect(within(pickPill(view, "Wanda")).getByRole("timer").textContent).toMatch(/^[12]:\d\d$/)
-    expect(view.getAllByRole("timer")).toHaveLength(2)
+    expect(view.getAllByRole("timer")).toHaveLength(1)
   })
 
   it.each([
@@ -657,16 +676,14 @@ describe("live page: winners", () => {
   })
 
   it("asks before it picks another winner and names who loses the prize", async () => {
-    const requests = mockLive({
+    const requests = mockDrawn({
       "GET /api/live/gid-1": () => ok(drawn),
       "POST /api/dash/giveaways/gid-1/reroll": () => ok({ kind: "rerolled", pick: 3 }),
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
-    fireEvent.click(
-      within(pickPill(view, "Eve")).getByRole("button", { name: "Pick another winner" }),
-    )
+    await view.findByText("Claimed")
+    fireEvent.click(within(await pickRow(view, "Eve")).getByRole("button", { name: "Reroll Eve" }))
 
     expect(view.getByText("Pick another winner instead of Eve?")).toBeTruthy()
     expect(view.getByText("Eve loses the prize. This cannot be undone.")).toBeTruthy()
@@ -685,25 +702,53 @@ describe("live page: winners", () => {
     })
   })
 
-  it("offers Pick another winner only where it makes sense", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
+  it("offers Pick another winner for the winner on the plate and for unsettled winners in the table only", async () => {
+    mockDrawn({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
+    await view.findByText("Claimed")
 
     expect(view.getByRole("button", { name: "Reroll Wanda" })).toBeTruthy()
     expect(
-      within(pickPill(view, "Eve")).getByRole("button", { name: "Pick another winner" }),
+      within(await pickRow(view, "Eve")).getByRole("button", { name: "Reroll Eve" }),
     ).toBeTruthy()
-    expect(view.getAllByRole("button", { name: /^Reroll|^Pick another winner/ })).toHaveLength(2)
-    expect(within(pickPill(view, "Bob")).queryByRole("button")).toBeNull()
+    expect(view.getAllByRole("button", { name: /^Reroll/ })).toHaveLength(2)
+    expect(within(await pickRow(view, "Wanda")).queryByRole("button")).toBeNull()
+    expect(within(await pickRow(view, "Bob")).queryByRole("button")).toBeNull()
+  })
+
+  it("rerolls an older winner whose claim is still waiting from the table", async () => {
+    const waiting: LiveSnapshot = {
+      ...drawn,
+      winners: [
+        { ...drawn.winners[0]!, n: 0, entrySeq: 1 },
+        { ...drawn.winners[0]!, n: 1, entrySeq: 2, displayName: "Bob" },
+      ],
+    }
+    const requests = mockDrawn({
+      "GET /api/live/gid-1": () => ok(waiting),
+      "POST /api/dash/giveaways/gid-1/reroll": () => ok({ kind: "rerolled", pick: 2 }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByRole("heading", { name: "Winner 2 of 2" })
+    fireEvent.click(
+      await within(await pickRow(view, "Wanda")).findByRole("button", { name: "Reroll Wanda" }),
+    )
+    fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
+
+    expect(await view.findByText("Another winner was picked.")).toBeTruthy()
+    expect(requests.at(-1)).toEqual({
+      route: "POST /api/dash/giveaways/gid-1/reroll",
+      body: { n: 0 },
+    })
   })
 
   it("hides Pick another winner and says the time is over once the reroll window has ended", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok(windowOver) })
+    mockDrawn({ "GET /api/live/gid-1": () => ok(windowOver) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
+    await view.findByText("Claimed")
 
     expect(view.queryByRole("button", { name: /^Reroll|^Pick another winner/ })).toBeNull()
     expect(view.getByText(windowOverText)).toBeTruthy()
@@ -711,10 +756,10 @@ describe("live page: winners", () => {
   })
 
   it("says everyone was drawn when nobody is left to pick, instead of the time being over", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok(nobodyLeft) })
+    mockDrawn({ "GET /api/live/gid-1": () => ok(nobodyLeft) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
+    await view.findByText("Claimed")
 
     expect(view.queryByRole("button", { name: /^Reroll|^Pick another winner/ })).toBeNull()
     expect(view.getByText(nobodyLeftText)).toBeTruthy()
@@ -750,7 +795,7 @@ describe("live page: winners", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
+    await view.findByRole("heading", { name: "Winner 1 of 3" })
 
     expect(view.queryByText(windowOverText)).toBeNull()
     expect(view.queryByText(nobodyLeftText)).toBeNull()
@@ -766,7 +811,7 @@ describe("live page: winners", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
+    await view.findByRole("heading", { name: "Winner 1 of 3" })
     fireEvent.click(view.getByRole("button", { name: "Reroll Wanda" }))
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
 
@@ -787,7 +832,7 @@ describe("live page: winners", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
+    await view.findByRole("heading", { name: "Winner 1 of 3" })
     fireEvent.click(view.getByRole("button", { name: "Reroll Wanda" }))
     fireEvent.click(view.getByRole("button", { name: "Yes, pick another winner" }))
 
@@ -795,7 +840,7 @@ describe("live page: winners", () => {
   })
 
   it("explains that chat watch is off and marks a claim by hand", async () => {
-    const requests = mockLive({
+    const requests = mockDrawn({
       "GET /api/live/gid-1": () => ok({ ...drawn, chatClaimUnavailable: true }),
       "POST /api/dash/giveaways/gid-1/claim": () => ok({ kind: "claimed" }),
     })
@@ -804,7 +849,7 @@ describe("live page: winners", () => {
 
     expect(await view.findByRole("heading", { name: "Chat watch is off" })).toBeTruthy()
     // The entrants request is issued after the page renders; click only once it is answered, or it can land after the claim request.
-    await view.findByRole("heading", { name: "The list is empty" })
+    await view.findByText("Claimed")
     expect(view.getByText(/Chat claim unavailable/)).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Mark as claimed for Wanda" }))
     expect(await view.findByText("Marked as claimed.")).toBeTruthy()
@@ -816,19 +861,20 @@ describe("live page: winners", () => {
   })
 
   it("offers a manual claim for every unclaimed pick while chat watch works", async () => {
-    const requests = mockLive({
+    const requests = mockDrawn({
       "GET /api/live/gid-1": () => ok(drawn),
       "POST /api/dash/giveaways/gid-1/claim": () => ok({ kind: "claimed" }),
     })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
-    await view.findByRole("heading", { name: "The list is empty" })
+    await view.findByText("Claimed")
 
     expect(view.queryByRole("heading", { name: "Chat watch is off" })).toBeNull()
     expect(view.queryByRole("button", { name: "Mark as claimed for Bob" })).toBeNull()
     expect(view.getAllByRole("button", { name: /Mark as claimed/ })).toHaveLength(2)
-    fireEvent.click(view.getByRole("button", { name: "Mark as claimed for Eve" }))
+    fireEvent.click(
+      within(await pickRow(view, "Eve")).getByRole("button", { name: "Mark as claimed for Eve" }),
+    )
     expect(await view.findByText("Marked as claimed.")).toBeTruthy()
     expect(requests.at(-1)).toEqual({
       route: "POST /api/dash/giveaways/gid-1/claim",
@@ -857,16 +903,19 @@ describe("live page: clean mode", () => {
   })
 
   it("takes the buttons off the winners too, so nothing clickable is left on stream", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, chatClaimUnavailable: true }) })
+    mockDrawn({ "GET /api/live/gid-1": () => ok({ ...drawn, chatClaimUnavailable: true }) })
 
     const view = renderApp("/live/gid-1")
+    await view.findByText("Claimed")
     fireEvent.click(await view.findByRole("button", { name: "Hide controls" }))
 
     expect(view.queryByRole("button", { name: /^Reroll|^Pick another winner/ })).toBeNull()
     expect(view.queryByRole("button", { name: /Mark as claimed/ })).toBeNull()
     fireEvent.click(view.getByRole("button", { name: "Show controls" }))
     expect(view.getByRole("button", { name: "Reroll Wanda" })).toBeTruthy()
-    expect(view.getAllByRole("button", { name: "Pick another winner" })).toHaveLength(1)
+    expect(
+      within(await pickRow(view, "Eve")).getByRole("button", { name: "Reroll Eve" }),
+    ).toBeTruthy()
   })
 
   it("brings the bar back with Show controls", async () => {
@@ -1022,7 +1071,7 @@ describe("live page: winners' chat", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText(/^Claimed in chat on /)
+    await view.findByRole("heading", { name: "Winner 1 of 3" })
 
     expect(view.queryByRole("heading", { name: "Winner chat" })).toBeNull()
     expect(view.queryByRole("list", { name: "Winner chat" })).toBeNull()
@@ -1248,7 +1297,7 @@ describe("live page: its own frame", () => {
     await view.findByText("LIVE")
 
     const bar = within(view.getByRole("banner"))
-    expect(bar.getByText("Enter at")).toBeTruthy()
+    expect(bar.queryByText("Enter at")).toBeNull()
     expect(bar.getByText("ABCDE").tagName).toBe("EM")
     expect(bar.queryByText("3")).toBeNull()
   })
@@ -1307,29 +1356,6 @@ describe("live page: the winner on the stage", () => {
     expect(view.container.querySelector(".live-who .live-avatar")?.textContent).toBe("WA")
   })
 
-  it("shows the winner's profile picture on the stage and in the earlier picks, initials when it fails to load", async () => {
-    const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/wanda.png"
-    const withPicture: LiveSnapshot = {
-      ...drawn,
-      winners: drawn.winners.map((winner) =>
-        winner.displayName === "Bob" ? { ...winner, profileImageUrl: picture } : winner,
-      ),
-    }
-    mockLive({ "GET /api/live/gid-1": () => ok(withPicture) })
-
-    const view = renderApp("/live/gid-1")
-    await view.findByText("left to claim")
-
-    const earlier = view.container.querySelector(".live-hist .live-avatar img")
-    expect(earlier?.getAttribute("src")).toBe(picture)
-    expect(view.container.querySelector(".live-who .live-avatar img")).toBeNull()
-    expect(view.container.querySelector(".live-who .live-avatar")?.textContent).toBe("WA")
-    if (earlier !== null) fireEvent.error(earlier)
-    await waitFor(() =>
-      expect(view.container.querySelector(".live-hist .live-avatar img")).toBeNull(),
-    )
-  })
-
   it("shows the current winner's profile picture on the stage", async () => {
     const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/wanda.png"
     const withPicture: LiveSnapshot = {
@@ -1374,7 +1400,7 @@ describe("live page: the winner on the stage", () => {
     ])
   })
 
-  it("counts a replaced pick out of the winners and lists it among the earlier picks", async () => {
+  it("counts a replaced pick out of the winners and shows it as rerolled in the entrants table", async () => {
     const replaced: LiveSnapshot = {
       ...drawn,
       winners: [
@@ -1396,12 +1422,13 @@ describe("live page: the winner on the stage", () => {
         },
       ],
     }
-    mockLive({ "GET /api/live/gid-1": () => ok(replaced) })
+    mockDrawn({ "GET /api/live/gid-1": () => ok(replaced) })
 
     const view = renderApp("/live/gid-1")
 
     expect(await view.findByRole("heading", { name: "Winner 1 of 1" })).toBeTruthy()
-    expect(within(pickPill(view, "Eve")).getByText("Did not claim, rerolled")).toBeTruthy()
+    expect(await within(await pickRow(view, "Eve")).findByText("Rerolled")).toBeTruthy()
+    expect(within(await pickRow(view, "Eve")).queryByRole("button")).toBeNull()
   })
 
   it("says how many tickets the pick was made from", async () => {

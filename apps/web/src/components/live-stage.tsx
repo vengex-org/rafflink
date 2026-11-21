@@ -8,8 +8,7 @@ import { useRemainingMs } from "../lib/use-remaining.ts"
 import { claimTone, Countdown } from "./countdown.tsx"
 import { DrawShuffle } from "./draw-shuffle.tsx"
 import { UsersIcon } from "./icons.tsx"
-import type { Doing } from "./live-bar.tsx"
-import { Avatar, claimLabel, EarlierPicks, msUntil, Stat } from "./live-parts.tsx"
+import { Avatar, claimLabel, msUntil, Stat } from "./live-parts.tsx"
 import type { Tone } from "./state-card.tsx"
 import { StatusChip } from "./status-chip.tsx"
 import { WinnerChat } from "./winner-chat.tsx"
@@ -23,7 +22,6 @@ export function LiveStage({
   facts,
   current,
   currentEntrant,
-  pickControls,
   showChat,
 }: {
   readonly snapshot: LiveSnapshot
@@ -32,8 +30,6 @@ export function LiveStage({
   readonly current: LiveWinner | null
   /** The entrant behind `current`, once the entrants list has loaded far enough to contain them. */
   readonly currentEntrant: Entrant | null
-  /** Buttons on the earlier picks; null hides them (clean mode). */
-  readonly pickControls: Doing | null
   /** False in clean mode: viewers' chat text must not reach a shared screen. */
   readonly showChat: boolean
 }) {
@@ -53,7 +49,6 @@ export function LiveStage({
           facts={facts}
           current={current}
           currentEntrant={currentEntrant}
-          pickControls={pickControls}
           showChat={showChat}
         />
       )
@@ -130,21 +125,18 @@ function DrawnStage({
   facts,
   current,
   currentEntrant,
-  pickControls,
   showChat,
 }: {
   readonly snapshot: LiveSnapshot
   readonly facts: GiveawayView | null
   readonly current: LiveWinner | null
   readonly currentEntrant: Entrant | null
-  readonly pickControls: Doing | null
   readonly showChat: boolean
 }) {
   const i18n = useI18n()
   const { t } = i18n
   const headId = useId()
   const standing = standingWinners(snapshot.winners)
-  const earlier = snapshot.winners.filter((winner) => winner !== current)
   const name = current?.displayName ?? t("winner.removed")
   return (
     <section className="live-stage" aria-labelledby={headId}>
@@ -194,7 +186,6 @@ function DrawnStage({
           </div>
         </div>
       )}
-      <EarlierPicks winners={earlier} snapshot={snapshot} controls={pickControls} />
     </section>
   )
 }

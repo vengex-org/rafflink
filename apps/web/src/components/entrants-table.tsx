@@ -1,7 +1,7 @@
 import { Fragment, useDeferredValue, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useParams } from "react-router"
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
-import type { LiveWinner } from "@rafflink/core/room/giveaway-room"
+import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import type { SubscriberBadges } from "@rafflink/core/twitch/channel-badges"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { orderEntrants, searchEntrants, type ListedEntrant } from "../lib/entrant-list.ts"
@@ -9,6 +9,7 @@ import { useEntrants } from "../lib/use-entrants.ts"
 import { useSubscriberBadges } from "../lib/use-subscriber-badges.ts"
 import { useVirtualRows, type RowGeometry } from "../lib/use-virtual-rows.ts"
 import { AlertIcon, GiftIcon, RefreshIcon, SearchIcon, UsersIcon } from "./icons.tsx"
+import { isUnsettled, PickActions, type Doing } from "./live-bar.tsx"
 import { Avatar } from "./live-parts.tsx"
 import { StateCard } from "./state-card.tsx"
 import { standingWinners } from "../lib/standing-winners.ts"
@@ -23,24 +24,27 @@ const geometry: RowGeometry = {
   overscan: 6,
 }
 
-/** Everyone who entered with their tier, a search and the winners' claim state, in the main column of the live page. The list stays in step with the live socket. */
+/** Everyone who entered with their tier, a search and the winners' claim state, in the main column of the live page. The list stays in step with the live socket. `controls` adds the mark and reroll buttons to the rows of the winners still unsettled, except `current`, whose buttons are in the draw toolbar; null hides them (clean mode). */
 export function EntrantsSection({
   entrants,
-  entrantCount,
-  ticketTotal,
-  winners,
+  snapshot,
+  current,
+  controls,
 }: {
   readonly entrants: ReturnType<typeof useEntrants>
-  readonly entrantCount: number
-  readonly ticketTotal: number
-  readonly winners: readonly LiveWinner[]
+  readonly snapshot: LiveSnapshot
+  readonly current: LiveWinner | null
+  readonly controls: Doing | null
 }) {
   const i18n = useI18n()
   const { t } = i18n
   const [query, setQuery] = useState("")
   const searched = useDeferredValue(query)
+  const { entrantCount, ticketTotal, winners } = snapshot
   const ordered = useMemo(() => orderEntrants(entrants.rows, winners), [entrants.rows, winners])
   const standing = useMemo(() => standingWinners(winners), [winners])
+  const acting =
+    controls !== null && winners.some((winner) => winner !== current && isUnsettled(winner))
   const found = useMemo(() => searchEntrants(ordered, searched), [ordered, searched])
   const badges = useSubscriberBadges(useParams().id)
   const scroller = useRef<HTMLDivElement>(null)
@@ -143,21 +147,24 @@ export function EntrantsSection({
               aria-label={t("entrants.list.aria")}
               aria-rowcount={found.length + 1}
               className="entrants-table"
+              data-actions={acting ? "" : undefined}
             >
               <colgroup>
                 <col />
                 <col className="entrants-col-status" />
                 <col className="entrants-col-tickets" />
+                {acting ? <col className="entrants-col-actions" /> : null}
               </colgroup>
               <thead className="sr-only">
                 <tr>
                   <th scope="col">{t("entrants.col.name")}</th>
                   <th scope="col">{t("entrants.col.status")}</th>
                   <th scope="col">{t("entrants.col.tickets")}</th>
+                  {acting ? <th scope="col">{t("entrants.col.actions")}</th> : null}
                 </tr>
               </thead>
               <tbody>
-                <Spacer rows={virtual.first} />
+                <Spacer rows={virtual.first} columns={acting ? 4 : 3} />
                 {found.slice(virtual.first, virtual.end).map((row, offset) => (
                   <EntrantRow
                     key={row.entrant.seq}
@@ -165,9 +172,12 @@ export function EntrantsSection({
                     index={virtual.first + offset}
                     standing={standing}
                     badges={badges}
+                    snapshot={snapshot}
+                    current={current}
+                    controls={acting ? controls : null}
                   />
                 ))}
-                <Spacer rows={found.length - virtual.end} />
+                <Spacer rows={found.length - virtual.end} columns={acting ? 4 : 3} />
               </tbody>
             </table>
           </div>
@@ -222,7 +232,7 @@ export function Tiers({
 }
 
 // Stands in for the rows that are not rendered, so the scroll box keeps the height of the whole list.
-function Spacer({ rows }: { readonly rows: number }) {
+function Spacer({ rows, columns }: { readonly rows: number; readonly columns: number }) {
   if (rows <= 0) return null
   return (
     <tr
@@ -230,13 +240,9 @@ function Spacer({ rows }: { readonly rows: number }) {
       className="entrants-spacer"
       style={{ height: rows * geometry.rowHeight }}
     >
-      <SpacerCell />
+      <td colSpan={columns} aria-hidden="true" />
     </tr>
   )
-}
-
-function SpacerCell() {
-  return <td colSpan={3} aria-hidden="true" />
 }
 
 // The cell's box is the row height, so one row never grows with its content.
@@ -253,11 +259,18 @@ function EntrantRow({
   index,
   standing,
   badges,
+  snapshot,
+  current,
+  controls,
 }: {
   readonly row: ListedEntrant
   readonly index: number
   readonly standing: readonly LiveWinner[]
   readonly badges: SubscriberBadges | null
+  readonly snapshot: LiveSnapshot
+  readonly current: LiveWinner | null
+  /** Null when no row in the list has buttons, so the table has no actions column. */
+  readonly controls: Doing | null
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -291,6 +304,13 @@ function EntrantRow({
       <Cell>
         <span className="entrants-tickets">{i18n.number(entrant.tickets)}</span>
       </Cell>
+      {controls === null ? null : (
+        <Cell>
+          {winner === null || winner === current ? null : (
+            <PickActions {...controls} snapshot={snapshot} winner={winner} />
+          )}
+        </Cell>
+      )}
     </tr>
   )
 }
