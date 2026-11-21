@@ -1199,6 +1199,21 @@ describe("winners", () => {
     })
   })
 
+  it("lets the streamer mark a claim by hand after the claim time ran out", async () => {
+    const { browser, id } = await drawnGiveaway()
+    harness.clock.advance(3_600_000)
+
+    const response = await browser.postJson(`/api/dash/giveaways/${id}/claim`, { n: 0 })
+    const again = await browser.postJson(`/api/dash/giveaways/${id}/claim`, { n: 0 })
+
+    expect(await response.json()).toEqual({ kind: "claimed" })
+    expect(again.status).toBe(409)
+    expect(harness.rooms.roomFor(id).liveSnapshot().winners[0]?.claim).toMatchObject({
+      state: "claimed",
+      via: "manual",
+    })
+  })
+
   it("answers 404 for a manual claim of a pick that does not exist", async () => {
     const { browser, id } = await drawnGiveaway()
 

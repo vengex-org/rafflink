@@ -245,6 +245,29 @@ export function giveawayScenarios(context: ContractContext): void {
     })
   })
 
+  scenario(context, "the streamer marks a claim by hand after the claim time", async (world) => {
+    const target = await world.start()
+    const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
+    await world.enter(target, giveaway.code, users.viewer.id)
+    await world.closeGiveaway(giveaway)
+    await world.drawWinners(giveaway)
+    await world.waitFor(
+      async () => (await world.live(giveaway)).winners[0]?.claim.state === "expired",
+      "the claim time to pass",
+    )
+
+    const marked = await giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/claim`, {
+      n: 0,
+    })
+
+    expect(marked.status).toBe(200)
+    expect(await marked.json()).toEqual({ kind: "claimed" })
+    expect((await world.live(giveaway)).winners[0]?.claim).toMatchObject({
+      state: "claimed",
+      via: "manual",
+    })
+  })
+
   scenario(context, "another streamer gets 404 on a giveaway that is not theirs", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)

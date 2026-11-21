@@ -82,7 +82,6 @@ export function LiveBar({
                 id={id}
                 busy={busy}
                 run={run}
-                snapshot={snapshot}
                 winner={current}
                 className="live-btn secondary"
               />
@@ -123,14 +122,7 @@ export function PickActions({
   const { t } = useI18n()
   return (
     <span className="live-hist-actions">
-      <MarkClaimed
-        id={id}
-        busy={busy}
-        run={run}
-        snapshot={snapshot}
-        winner={winner}
-        className="button tonal small"
-      />
+      <MarkClaimed id={id} busy={busy} run={run} winner={winner} className="button tonal small" />
       <RerollPick
         id={id}
         busy={busy}
@@ -145,21 +137,19 @@ export function PickActions({
   )
 }
 
-/** The streamer's own word that the winner claimed, offered only while chat watch is off and the claim is open. */
+/** The streamer's own word that the winner claimed, offered for a pick that is neither claimed nor rerolled, after its claim time too. */
 function MarkClaimed({
   id,
   busy,
   run,
-  snapshot,
   winner,
   className,
 }: Doing & {
-  readonly snapshot: LiveSnapshot
   readonly winner: LiveWinner
   readonly className: string
 }) {
   const { t } = useI18n()
-  if (!snapshot.chatClaimUnavailable || winner.claim.state !== "waiting") return null
+  if (winner.claim.state !== "waiting" && winner.claim.state !== "expired") return null
   return (
     <button
       type="button"

@@ -665,15 +665,15 @@ export class GiveawayRoom {
     return outcome
   }
 
-  /** Records that the winner of pick `n` claimed in time; the first claim wins, a later one is refused. */
+  /** Records that the winner of pick `n` claimed; the first claim wins, a later one is refused. A claim by the streamer's hand has no deadline. */
   claim(n: number, winner: Identity, via: ClaimedVia): ClaimOutcome {
     const now = this.clock.now()
     const claimed = this.sql.exec(
       `UPDATE draws SET claimed_at = ?, claimed_via = ?
        WHERE n = ? AND platform = ? AND platform_user_id = ?
-         AND claimed_at IS NULL AND rerolled = 0 AND claim_until >= ?
+         AND claimed_at IS NULL AND rerolled = 0 AND (? = 'manual' OR claim_until >= ?)
        RETURNING n`,
-      [now, via, n, winner.platform, winner.platformUserId, now],
+      [now, via, n, winner.platform, winner.platformUserId, via, now],
     )
     if (claimed.length === 1) {
       this.afterOutcomeWrite()

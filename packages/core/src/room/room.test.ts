@@ -451,6 +451,22 @@ describe("GiveawayRoom claim", () => {
     expect(onTime.room.claim(0, onTime.winner, "rafflink")).toEqual({ kind: "claimed" })
   })
 
+  it("lets the streamer mark a claim by hand after the claim time and refuses it twice", async () => {
+    const { room, sql, winner, clock } = await drawnRoom()
+    clock.advance(300_001)
+
+    expect(room.claim(0, winner, "manual")).toEqual({ kind: "claimed" })
+    expect(room.claim(0, winner, "manual")).toEqual({ kind: "already-claimed" })
+    expect(picks(sql)[0]?.claimed_via).toBe("manual")
+  })
+
+  it("refuses a claim on a rerolled pick even by hand", async () => {
+    const { room, winner, clock } = await drawnRoom()
+    await room.reroll(0)
+    clock.advance(300_001)
+    expect(room.claim(0, winner, "manual")).toEqual({ kind: "rerolled" })
+  })
+
   it("refuses a claim by someone who was not picked", async () => {
     const { room, winner } = await drawnRoom()
     const other = twitch(winner.platformUserId === "1" ? "2" : "1")
