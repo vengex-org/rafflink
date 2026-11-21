@@ -34,7 +34,7 @@ async function drawRoom(
   room: GiveawayRoom,
 ): Promise<void> {
   try {
-    const outcome = await room.draw()
+    const outcome = await room.drawFirst()
     if (outcome.kind === "drawn") await mirrorStatus(room, deps.accounts, giveawayId, "drawn")
   } catch (error) {
     console.warn("room draw failed", { giveawayId, errorClass: errorClass(error) })

@@ -430,7 +430,7 @@ describe("GiveawayRoom requested draw", () => {
     room.markMirrored("closed")
     clock.advance(config.liveIntervalMs)
     await room.commit()
-    expect(alarm.at).toBe(roundTimeOf(room))
+    expect(alarm.at).toBe(roundTimeOf(room) + 500)
   })
 
   it("asks for the draw from the round time on and draws once the round is there", async () => {
@@ -458,12 +458,87 @@ describe("GiveawayRoom requested draw", () => {
     clock.advance(roundTimeOf(room) - clock.now())
 
     expect(room.onAlarm().draw).toBe(true)
-    expect(alarm.at).toBe(roundTimeOf(room) + config.drandPeriodSeconds * 1000)
+    expect(alarm.at).toBe(roundTimeOf(room) + 500)
 
     clock.advance(config.drandPublishMarginSeconds * 1000 + 1)
     expect(room.onAlarm().draw).toBe(false)
     expect(room.liveSnapshot().drawRequested).toBe(false)
     expect(room.summary().status).toBe("closed")
+  })
+
+  it("pushes the live page when it gives up on a late round", async () => {
+    const { room, clock, hub } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(roundTimeOf(room) - clock.now() + config.drandPublishMarginSeconds * 1000 + 1)
+    const before = hub.messages.length
+
+    room.onAlarm()
+
+    expect(hub.messages.length).toBeGreaterThan(before)
+    expect(hub.messages.at(-1)).toContain('"drawRequested":false')
+  })
+
+  it("stops showing a request once the commit gave up, and pushes it", async () => {
+    const { room, clock, hub } = setup(giveaway, random, { COMMIT_MAX_ATTEMPTS: "1" })
+    enterMany(room, ["1"])
+    room.requestDraw()
+    expect(room.liveSnapshot().drawRequested).toBe(true)
+    expect(room.onAlarm().commit).toBe(true)
+    clock.advance(config.commitRetrySeconds * 1000)
+
+    expect(room.onAlarm().commit).toBe(false)
+
+    expect(room.liveSnapshot().drawRequested).toBe(false)
+    expect(hub.messages.at(-1)).toContain('"drawRequested":false')
+  })
+
+  it("stops showing a request once the entries were deleted", async () => {
+    const { room, clock } = setup()
+    enterMany(room, ["1"])
+    room.requestDraw()
+    await room.commit()
+    clock.advance(config.entryRetentionSeconds * 1000)
+    room.onAlarm()
+
+    expect(room.liveSnapshot().drawRequested).toBe(false)
+  })
+
+  it("draws from a new room instance over the same storage, at the round time plus a short lag", async () => {
+    const { room, sql, clock, alarm } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1", "2"])
+    room.requestDraw()
+    await room.commit()
+    const evicted = new GiveawayRoom({
+      sql,
+      alarm,
+      live: new TestHub(),
+      clock,
+      random,
+      config,
+      chat: idleChat,
+      beacon: new FakeBeacon(),
+    })
+
+    evicted.markMirrored("closed")
+    expect(alarm.at).toBe(roundTimeOf(room) + 500)
+    advanceToAlarm(clock, alarm)
+
+    expect(evicted.onAlarm().draw).toBe(true)
+    expect((await evicted.drawFirst()).kind).toBe("drawn")
+  })
+
+  it("draws only pick 0 for the alarm: a drawn room is refused", async () => {
+    const { room, sql } = setup()
+    enterMany(room, ["1", "2"])
+    room.close()
+    await room.draw()
+
+    expect(await room.drawFirst()).toEqual({ kind: "try-again" })
+    expect(picks(sql)).toHaveLength(1)
   })
 
   it("is set by a draw that finds the round missing, so the alarm draws it", async () => {
@@ -2216,6 +2291,43 @@ describe("GiveawayRoom draw with drand", () => {
     expect(ids.map((row) => row.platform_user_id)).toEqual(
       replay.map((pick) => String(pick.leafIndex + 1)),
     )
+  })
+})
+
+describe("GiveawayRoom shuffle names", () => {
+  const ids = ["1", "2", "3", "4", "5"]
+  const entrantNames = ids.map((id) => `Name${id}`)
+
+  it("sends none while entries are open", () => {
+    const { room } = setup()
+    enterMany(room, ids)
+
+    expect(room.liveSnapshot().shuffleNames).toEqual([])
+  })
+
+  it("sends a bounded sample of entrant names once the room is committed, and none after the draw", async () => {
+    const { room } = setup(giveaway, random, { LIVE_SHUFFLE_NAMES: "3" })
+    enterMany(room, ids)
+    room.close()
+    expect(room.liveSnapshot().shuffleNames).toEqual([])
+    await room.commit()
+
+    const sample = room.liveSnapshot().shuffleNames
+
+    expect(sample).toHaveLength(3)
+    expect(new Set(sample).size).toBe(3)
+    expect(sample.every((name) => entrantNames.includes(name))).toBe(true)
+    await room.draw()
+    expect(room.liveSnapshot().shuffleNames).toEqual([])
+  })
+
+  it("sends the sample as soon as the draw is requested", () => {
+    const { room } = setup()
+    enterMany(room, ids)
+
+    room.requestDraw()
+
+    expect(room.liveSnapshot().shuffleNames.length).toBeGreaterThan(0)
   })
 })
 

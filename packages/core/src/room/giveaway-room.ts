@@ -35,6 +35,7 @@ import {
   lastStandingDeadlineSql,
   undrawnEntrantSql,
   recentEntriesCountSql,
+  shuffleNamesSql,
   retainedDataSql,
   waitingPickOfChatterSql,
   winnerChatNameSql,
@@ -62,6 +63,7 @@ export type RoomConfig = Pick<
   | "roleRefreshSeconds"
   | "liveIntervalMs"
   | "liveLastNames"
+  | "liveShuffleNames"
   | "liveEntrantsPerPush"
   | "liveWinnerChatMax"
   | "liveRateWindowSeconds"
@@ -245,6 +247,8 @@ export type OverlaySnapshot = RoomSummary
     readonly drawAvailableAt: Instant | null
     /** The streamer pressed Draw before the round was published; the room draws by itself once it is. */
     readonly drawRequested: boolean
+    /** Random entrant names for the shuffle animation while a draw is pending; empty otherwise. They say nothing about who will be picked. */
+    readonly shuffleNames: readonly string[]
     /** The room's clock when the snapshot was taken, so a page measures `drawAvailableAt` without trusting its own clock. */
     readonly now: Instant
   }
@@ -339,6 +343,8 @@ export class GiveawayRoom {
   // Lost with the object; the first outcome after that is pushed again.
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
+  // Set when the alarm ended a commit or a requested draw, so its live push shows the change.
+  private givenUp = false
   // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
   private winnerChat: readonly ChatterLine[] = []
   private winnerChatSeq = 0
@@ -536,7 +542,15 @@ export class GiveawayRoom {
       state = this.readState()
     }
     pushNow = (state.status === "drawn" && this.rerollWindowOver()) || pushNow
-    pushNow = this.deleteExpiredEntries(state, now) || pushNow
+    if (this.deleteExpiredEntries(state, now)) {
+      pushNow = true
+      state = this.readState()
+    }
+    // Both write when they give up, so they run before the push that shows it.
+    const commitDue = this.commitDue(state, now)
+    const drawDue = this.drawDue(state, now)
+    pushNow = this.givenUp || pushNow
+    this.givenUp = false
     if (pushNow) this.guarded("live-push", () => this.pushLive())
     this.guarded("viewer-push", () => this.pushViewers())
     const refreshRoles =
@@ -548,8 +562,6 @@ export class GiveawayRoom {
     }
     const mirrorDue = state.mirrorPending && now >= (this.mirrorRetryAt ?? now)
     if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
-    const commitDue = this.commitDue(state, now)
-    const drawDue = this.drawDue(state, now)
     this.guarded("chat", () => {
       this.syncChat()
       this.chat.onAlarm()
@@ -570,7 +582,16 @@ export class GiveawayRoom {
     if (now <= window.until) return true
     this.sql.exec("UPDATE room_state SET draw_requested = 0 WHERE id = 1", [])
     console.warn("requested draw gave up", { giveawayId: state.giveawayId })
+    this.givenUp = true
     return false
+  }
+
+  // Whether a requested draw can still happen: the commit is pending or published and the round is not too late. A request that cannot is not shown as one.
+  private drawStillPossible(state: RoomState): boolean {
+    if (!state.drawRequested || state.status !== "closed" || state.entriesDeleted) return false
+    return state.commitment === null
+      ? !state.commitGaveUp
+      : this.requestedDrawWindow(state) !== null
   }
 
   private requestedDrawWindow(state: RoomState): { from: Instant; until: Instant } | null {
@@ -591,7 +612,7 @@ export class GiveawayRoom {
     const window = this.requestedDrawWindow(state)
     if (window === null || state.commitment === null) return null
     const now = this.clock.now()
-    if (now < window.from) return window.from
+    if (now < window.from + drawLagMs) return window.from + drawLagMs
     if (now > window.until) return now
     return Math.min(now + state.commitment.chain.periodSeconds * 1000, window.until + 1)
   }
@@ -603,7 +624,8 @@ export class GiveawayRoom {
       return false
     }
     if (state.commitAttempts >= this.config.commitMaxAttempts) {
-      this.sql.exec("UPDATE room_state SET commit_gave_up = 1 WHERE id = 1", [])
+      this.sql.exec("UPDATE room_state SET commit_gave_up = 1, draw_requested = 0 WHERE id = 1", [])
+      this.givenUp = true
       console.error("room commit gave up", {
         giveawayId: state.giveawayId,
         attempts: state.commitAttempts,
@@ -672,7 +694,8 @@ export class GiveawayRoom {
     return state.status === "drawn" ? this.drawNext(state.seed) : this.drawFirst()
   }
 
-  private async drawFirst(): Promise<DrawOutcome> {
+  /** Draws pick 0 of a closed room and nothing else: a room that is already drawn is refused, so the alarm never adds a pick. */
+  async drawFirst(): Promise<DrawOutcome> {
     await this.commit()
     const state = this.readState()
     const refusal = drawRefusal(state)
@@ -878,8 +901,21 @@ export class GiveawayRoom {
         state.commitment === null
           ? null
           : roundTime(state.commitment.chain, state.commitment.drandRound),
-      drawRequested: state.drawRequested,
+      drawRequested: this.drawStillPossible(state),
+      shuffleNames: this.shuffleNames(state),
     }
+  }
+
+  // Pending: closed and either asked to draw or committed to a round, so the animation can run before the pick exists.
+  private shuffleNames(state: RoomState): string[] {
+    const pending =
+      state.status === "closed"
+      && !state.entriesDeleted
+      && (this.drawStillPossible(state) || state.commitment !== null)
+    if (!pending) return []
+    return this.sql
+      .exec(shuffleNamesSql, [this.config.liveShuffleNames])
+      .map((row) => new RowReader("entries", row).text("display_name"))
   }
 
   private readState(): RoomState {
@@ -1272,6 +1308,9 @@ interface ChatterLine {
   readonly chatterUserId: string
   readonly line: WinnerChatLine
 }
+
+// A round is published at its time; the alarm waits this long more so the first try finds it.
+const drawLagMs = 500
 
 // 128 bits, enough that a published leaf cannot be matched to an id by trying ids.
 const saltBytes = 16

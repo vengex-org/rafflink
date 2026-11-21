@@ -7,7 +7,12 @@ import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
 import { UsageUnavailable } from "../lib/usage-unavailable.ts"
 import type { Usage } from "../ports.ts"
-import { overlaySnapshot, type RerollOutcome, type ClaimOutcome } from "../room/giveaway-room.ts"
+import {
+  overlaySnapshot,
+  type ClaimOutcome,
+  type DrawOutcome,
+  type RerollOutcome,
+} from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
@@ -94,32 +99,36 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   app.post("/api/dash/giveaways/:id/draw", (c) =>
     withOwnedRoom(c, deps, async (giveaway) => {
       const room = deps.rooms.get(giveaway.id)
-      const outcome = await room.draw()
-      switch (outcome.kind) {
-        case "drawn":
-          await mirrorStatus(room, deps.accounts, giveaway.id, "drawn")
-          return c.json({ kind: "drawn", n: outcome.winner.n })
-        case "not-closed": {
-          const requested = await room.requestDraw()
-          if (requested.kind === "not-open") {
-            return c.json({ kind: requested.kind, status: requested.status }, 409)
+      const answer = async (outcome: DrawOutcome, retried: boolean): Promise<Response> => {
+        switch (outcome.kind) {
+          case "drawn":
+            await mirrorStatus(room, deps.accounts, giveaway.id, "drawn")
+            return c.json({ kind: "drawn", n: outcome.winner.n })
+          case "not-closed": {
+            const requested = await room.requestDraw()
+            if (requested.kind === "requested") {
+              await mirrorStatus(room, deps.accounts, giveaway.id, "closed")
+              return c.json({ kind: requested.kind }, 202)
+            }
+            // Entries closed between the two calls; the press still means a draw.
+            if (retried) return c.json({ kind: requested.kind, status: requested.status }, 409)
+            return answer(await room.draw(), true)
           }
-          await mirrorStatus(room, deps.accounts, giveaway.id, "closed")
-          return c.json({ kind: requested.kind }, 202)
+          case "round-pending":
+            return c.json(
+              { kind: outcome.kind, availableAt: outcome.availableAt, now: outcome.now },
+              409,
+            )
+          case "beacon-unavailable":
+            return c.json({ kind: outcome.kind }, 503)
+          case "entries-deleted":
+          case "no-entrants-left":
+          case "pick-limit":
+          case "try-again":
+            return c.json({ kind: outcome.kind }, 409)
         }
-        case "round-pending":
-          return c.json(
-            { kind: outcome.kind, availableAt: outcome.availableAt, now: outcome.now },
-            409,
-          )
-        case "beacon-unavailable":
-          return c.json({ kind: outcome.kind }, 503)
-        case "entries-deleted":
-        case "no-entrants-left":
-        case "pick-limit":
-        case "try-again":
-          return c.json({ kind: outcome.kind }, 409)
       }
+      return answer(await room.draw(), false)
     }),
   )
 

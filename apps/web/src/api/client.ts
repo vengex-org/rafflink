@@ -688,6 +688,7 @@ function parseSharedSnapshotFields(source: Json) {
     eventSubFailures: num(source, "eventSubFailures"),
     drawAvailableAt: nullableNum(source, "drawAvailableAt"),
     drawRequested: bool(source, "drawRequested"),
+    shuffleNames: textList(source, "shuffleNames"),
     now: num(source, "now"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
   }

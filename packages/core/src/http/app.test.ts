@@ -1079,6 +1079,27 @@ describe("winners", () => {
     ).toBe("closed")
   })
 
+  it("draws instead of answering 409 when entries closed between the press and the request", async () => {
+    const { browser, id, code } = await createGiveaway(harness)
+    await viewerSignIn(users.viewer.id, code)
+    const real = harness.deps.rooms.get(id)
+    let calls = 0
+    const racing = Object.assign(Object.create(real), {
+      draw: async () => {
+        calls += 1
+        if (calls > 1) return real.draw()
+        harness.rooms.roomFor(id).close()
+        return { kind: "not-closed" }
+      },
+    })
+    spyOn(harness.deps.rooms, "get").mockReturnValue(racing)
+
+    const response = await browser.postJson(`/api/dash/giveaways/${id}/draw`, {})
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ kind: "drawn", n: 0 })
+  })
+
   it("draws one more winner per press, past the planned count, until nobody is left", async () => {
     const { browser, id, code } = await createGiveaway(harness, users.streamerA.id, {
       winnerCount: 1,

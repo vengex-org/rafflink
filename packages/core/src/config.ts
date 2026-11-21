@@ -120,6 +120,12 @@ export const configSchema = {
     "20",
     "Latest entrant names on the live page; spec AC-4",
   ),
+  liveShuffleNames: withDefault(
+    "LIVE_SHUFFLE_NAMES",
+    int(1),
+    "50",
+    "Random entrant names a live push carries while a draw is pending, for the shuffle animation; starting guess, about 1 KB per push",
+  ),
   liveEntrantsPerPush: withDefault(
     "LIVE_ENTRANTS_PER_PUSH",
     int(1),
@@ -543,6 +549,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
     liveIntervalMs: read(env, configSchema.liveIntervalMs),
     liveLastNames: read(env, configSchema.liveLastNames),
+    liveShuffleNames: read(env, configSchema.liveShuffleNames),
     liveEntrantsPerPush: read(env, configSchema.liveEntrantsPerPush),
     liveWinnerChatMax: read(env, configSchema.liveWinnerChatMax),
     entrantsPageMax: read(env, configSchema.entrantsPageMax),

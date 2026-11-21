@@ -448,7 +448,7 @@ describe("live page: drawing", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByText("Drawing the winner…")).toBeTruthy()
+    expect(await view.findAllByText("Drawing the winner…")).toBeTruthy()
     expect(view.getByRole("button", { name: "Draw winner" }).hasAttribute("disabled")).toBe(true)
   })
 })
@@ -485,7 +485,7 @@ describe("live page: waiting for the drand round", () => {
     act(() => jest.advanceTimersByTime(19_000))
     expect(await view.findAllByText(drawsIn("0:01"))).not.toHaveLength(0)
     act(() => jest.advanceTimersByTime(1000))
-    expect(await view.findByText("Drawing the winner…")).toBeTruthy()
+    expect(await view.findAllByText("Drawing the winner…")).toBeTruthy()
     expect(view.queryByText(/drawn by itself in/)).toBeNull()
   })
 
