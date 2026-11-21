@@ -23,6 +23,24 @@ const setVisibility = (value: "hidden" | "visible") =>
   Object.defineProperty(document, "visibilityState", { configurable: true, value })
 const currentLabel = (view: ReturnType<typeof renderApp>) =>
   view.container.querySelector(".stage-steps [aria-current='step']")?.textContent
+const phoneScreen = (view: ReturnType<typeof renderApp>) => {
+  const screen = view.container.querySelector(".stage-screen")
+  if (!(screen instanceof HTMLElement)) throw new Error("no phone screen")
+  return screen
+}
+/** Drags the phone's content up by `distance` px with the mouse and lets go without a flick. */
+const dragPhone = (view: ReturnType<typeof renderApp>, distance: number) => {
+  const screen = phoneScreen(view)
+  Object.defineProperty(screen, "scrollHeight", { configurable: true, value: 1000 })
+  Object.defineProperty(screen, "clientHeight", { configurable: true, value: 600 })
+  screen.setPointerCapture = () => {}
+  const mouse = { pointerId: 1, pointerType: "mouse", button: 0 }
+  fireEvent.pointerDown(screen, { ...mouse, clientY: 400 })
+  fireEvent.pointerMove(screen, { ...mouse, clientY: 400 - distance })
+  advance(500)
+  fireEvent.pointerUp(screen, { ...mouse, clientY: 400 - distance })
+  return screen
+}
 
 describe("home page", () => {
   it("opens with the one-sentence promise as the only h1", () => {
@@ -140,6 +158,31 @@ describe("home page", () => {
       })
       advance(5000)
       expect(currentLabel(view)).toBe("Drawing")
+    })
+
+    it("holds the step while the visitor scrolls the phone and goes on a while after the last touch", () => {
+      const view = renderApp("/")
+      advance(4000)
+
+      dragPhone(view, 60)
+      advance(3900)
+      expect(currentLabel(view)).toBe("Entries open")
+
+      advance(100)
+      expect(currentLabel(view)).toBe("Drawing")
+    })
+
+    it("shows each new step on the phone from the top", () => {
+      const view = renderApp("/")
+      const scrolled = dragPhone(view, 60)
+      expect(scrolled.scrollTop).toBe(60)
+
+      advance(9000)
+
+      const screen = phoneScreen(view)
+      expect(currentLabel(view)).toBe("Drawing")
+      expect(screen).not.toBe(scrolled)
+      expect(screen.scrollTop).toBe(0)
     })
 
     it("rests on the winner without cycling or step labels under reduced motion", () => {

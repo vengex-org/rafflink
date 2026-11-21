@@ -224,38 +224,52 @@ main.container:has(> .home) > .oauth-error {
   box-shadow: var(--shadow-device);
 }
 
+/* Scrolls like the phone it pictures: dragged with the mouse (use-drag-scroll.ts), by touch or the wheel, no bar. */
 .stage-screen {
-  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
   border-radius: 32px;
   background: var(--bg);
   container-type: inline-size;
+  cursor: grab;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.stage-screen::-webkit-scrollbar {
+  display: none;
+}
+
+.stage-screen[data-dragging] {
+  cursor: grabbing;
 }
 
 /* The page goes on below the screen; a fade says so instead of cutting a row in half. */
 .stage-screen::after {
-  position: absolute;
-  inset: auto 0 0;
+  position: sticky;
+  bottom: 0;
+  flex: none;
   height: 32px;
+  margin-top: -32px;
   background: linear-gradient(transparent, var(--bg));
   content: "";
 }
 
-/* The viewer page as it is in a 390px wide phone; the screen's width over 390px is the scale. */
+/* The viewer page as it is in a 390px wide phone; the screen's width over 390px is the zoom. Zoom, unlike a
+   transform, also scales the height the screen scrolls through. */
 .stage-viewer {
+  flex: none;
   width: 390px;
-  min-height: 0;
-  padding: 1.5rem 1rem;
-  transform: scale(0.913);
-  transform-origin: 0 0;
+  padding: 1.5rem 1rem 2.5rem;
+  zoom: 0.913;
 }
 
-@supports (transform: scale(tan(atan2(1px, 1px)))) {
+@supports (zoom: tan(atan2(1px, 1px))) {
   .stage-viewer {
-    transform: scale(tan(atan2(100cqw, 390px)));
+    zoom: tan(atan2(100cqw, 390px));
   }
 }
 
