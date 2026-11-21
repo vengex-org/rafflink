@@ -127,6 +127,18 @@ describe("stylesheet", () => {
     expect(faces.join("\n")).toContain('font-family: "Geist"')
     expect(faces.join("\n")).toContain('font-family: "Geist Mono"')
   })
+
+  it("gives the app bar the width of the live page and lets the winner status wrap in the list", () => {
+    const live = others.find(({ name }) => name === "styles/pages/live.css")?.text ?? ""
+    const wide = rootBlock(live, "main.container:has(> .live-page)").match(/max-width:\s*([^;]+);/)
+    expect(wide?.[1]).toBeDefined()
+    const bar = rootBlock(live, ".layout:has(> main.container > .live-page) .app-bar-inner")
+    expect(bar).toContain(`max-width: ${wide?.[1]}`)
+    const components = others.find(({ name }) => name === "styles/components.css")?.text ?? ""
+    expect(rootBlock(components, ".entrants-cell > .entrants-claim")).toMatch(
+      /white-space:\s*normal/,
+    )
+  })
 })
 
 function cssFiles(dir: string): string[] {

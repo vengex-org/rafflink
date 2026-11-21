@@ -15,6 +15,16 @@ describe("home page", () => {
     ])
   })
 
+  it("starts with a skip link to the main landmark", () => {
+    const view = renderApp("/")
+
+    const skip = view.getAllByRole("link")[0]
+
+    expect(skip?.textContent).toBe("Skip to content")
+    expect(skip?.getAttribute("href")).toBe("#main")
+    expect(view.getByRole("main").id).toBe("main")
+  })
+
   it("links the log-in button to the sign-in target", () => {
     const view = renderApp("/")
 

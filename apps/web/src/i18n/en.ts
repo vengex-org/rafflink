@@ -1,6 +1,7 @@
 /** The source dictionary: its keys are the {@link MessageKey}s every other language must provide. `{name}` marks a value filled in at runtime. */
 export const en = {
   "nav.main": "Main",
+  "nav.skip": "Skip to content",
   "nav.myGiveaways": "My giveaways",
   "theme.legend": "Theme",
   "theme.system": "System",
@@ -378,7 +379,7 @@ export const en = {
   "live.overlay.mode.auto.help": "The entry link and count while people join, then the winners.",
   "live.overlay.mode.compact": "Corner badge",
   "live.overlay.mode.compact.help":
-    "The entry link, the count and the newest names, then the winners.",
+    "The entry link, the count and the newest names, then a small line with the winners.",
   "live.overlay.mode.winner": "Winner only",
   "live.overlay.mode.winner.help": "Blank until the draw, then only the winners.",
   "live.overlay.qr": "QR code",
@@ -413,6 +414,9 @@ export const en = {
   "live.reroll.confirm": "Yes, pick another winner",
   "live.problems.title": "Problems",
   "live.bar.label": "Giveaway controls",
+  "live.bar.waiting": "Waiting for {name} to claim the prize.",
+  "live.bar.claimed": "{name} claimed the prize.",
+  "live.bar.unclaimed": "Nobody has claimed the prize yet.",
   "live.clean.hide": "Hide controls",
   "live.clean.show": "Show controls",
   "live.chat.title": "Winner chat",

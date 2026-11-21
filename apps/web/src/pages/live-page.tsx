@@ -36,7 +36,7 @@ import { ObsStepList, ShareLinks } from "../components/share-panel.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { WinnerChat } from "../components/winner-chat.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { useI18n } from "../i18n/i18n.tsx"
+import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { overlayUrl, shareUrl } from "../lib/links.ts"
 import { giveawayName } from "../lib/messages.ts"
 import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
@@ -228,7 +228,11 @@ function Controls({
                   ? t("live.winners.page")
                   : t("live.winners.pageOrChat")}
               </p>
-              <WinnerList winners={snapshot.winners} actions={clean ? null : winnerActions} />
+              <WinnerList
+                winners={snapshot.winners}
+                current={current}
+                actions={clean ? null : winnerActions}
+              />
             </section>
           ) : null}
           <WinnerChat lines={snapshot.winnerChat} />
@@ -243,6 +247,9 @@ function Controls({
               {snapshot.status === "open" ? <CloseStep id={id} busy={busy} run={run} /> : null}
               {snapshot.status === "closed" ? (
                 <DrawStep id={id} snapshot={snapshot} busy={busy} run={run} />
+              ) : null}
+              {snapshot.status === "drawn" ? (
+                <p className="live-bar-status">{claimStatusText(snapshot.winners, current, t)}</p>
               ) : null}
               <span className="live-bar-end">
                 {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
@@ -329,6 +336,7 @@ function DrawStep({
         <input
           id="draw-count"
           type="number"
+          autoComplete="off"
           min={1}
           value={count}
           aria-describedby="draw-help"
@@ -482,6 +490,21 @@ function rerollOverText(snapshot: LiveSnapshot): MessageKey | null {
     case null:
       return null
   }
+}
+
+/** One line for the controls bar once winners are drawn: whose claim is open, who claimed, or that nobody did. */
+function claimStatusText(
+  winners: readonly LiveWinner[],
+  current: LiveWinner | null,
+  t: I18n["t"],
+): string {
+  const nameOf = (winner: LiveWinner) =>
+    winner.displayName ?? t("live.winnerFallback", { n: winner.n + 1 })
+  if (current?.claim.state === "waiting") return t("live.bar.waiting", { name: nameOf(current) })
+  const claimed = winners.findLast((winner) => winner.claim.state === "claimed")
+  return claimed === undefined
+    ? t("live.bar.unclaimed")
+    : t("live.bar.claimed", { name: nameOf(claimed) })
 }
 
 /** The newest pick whose claim is still open, else the newest pick that was not replaced. */

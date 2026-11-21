@@ -76,8 +76,8 @@ function Overlay({
   const i18n = useI18n()
   const { t } = i18n
   const heading = <h1 className="sr-only">{giveawayName(i18n, snapshot.title, snapshot.code)}</h1>
-  if (snapshot.status === "drawn") {
-    const standing = snapshot.winners.filter((winner) => winner.claim.state !== "rerolled")
+  const standing = snapshot.winners.filter((winner) => winner.claim.state !== "rerolled")
+  if (snapshot.status === "drawn" && options.mode !== "compact") {
     return (
       <main className="overlay">
         {heading}
@@ -92,28 +92,37 @@ function Overlay({
       </main>
     )
   }
-  switch (options.mode) {
-    case "winner":
-      return <main className="overlay">{heading}</main>
-    case "auto":
-    case "compact":
-      return (
-        <main className="overlay">
-          {heading}
-          <div className="overlay-plate overlay-open">
-            <div className="overlay-link">
-              <div className="overlay-chip">
-                <span className="overlay-chip-label">
-                  {snapshot.status === "open" ? t("overlay.enterAt") : t("status.closed")}
-                </span>
-                <span className="overlay-url">
-                  {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
-                </span>
-              </div>
-              {options.qr ? (
-                <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} />
-              ) : null}
-            </div>
+  if (options.mode === "winner") return <main className="overlay">{heading}</main>
+  const drawn = snapshot.status === "drawn"
+  return (
+    <main className="overlay">
+      {heading}
+      <div className="overlay-plate overlay-open">
+        <div className="overlay-link">
+          <div className="overlay-chip">
+            <span className="overlay-chip-label">
+              {drawn
+                ? t("overlay.winners")
+                : snapshot.status === "open"
+                  ? t("overlay.enterAt")
+                  : t("status.closed")}
+            </span>
+            {drawn ? (
+              <span className="overlay-winner-line">
+                {standing.map((winner) => winner.displayName ?? t("winner.removed")).join(", ")}
+              </span>
+            ) : (
+              <span className="overlay-url">
+                {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
+              </span>
+            )}
+          </div>
+          {options.qr && !drawn ? (
+            <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} />
+          ) : null}
+        </div>
+        {drawn ? null : (
+          <>
             <dl className="stats">
               <Stat
                 icon={<UsersIcon />}
@@ -122,8 +131,9 @@ function Overlay({
               />
             </dl>
             <EntrantNames names={snapshot.lastNames.slice(0, newestNames)} />
-          </div>
-        </main>
-      )
-  }
+          </>
+        )}
+      </div>
+    </main>
+  )
 }

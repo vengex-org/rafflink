@@ -11,6 +11,9 @@ export function Layout() {
   const settingsId = useId()
   return (
     <div className="layout">
+      <a href="#main" className="skip-link">
+        {t("nav.skip")}
+      </a>
       <header className="app-bar">
         <div className="container app-bar-inner">
           <Link to="/" className="brand">
@@ -37,7 +40,7 @@ export function Layout() {
           </div>
         </div>
       </header>
-      <main className="container">
+      <main id="main" className="container">
         <OAuthErrorCard />
         <Outlet />
       </main>

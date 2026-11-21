@@ -914,7 +914,7 @@ legend {
 
 .banner .state-icon {
   background: var(--warning);
-  color: var(--warning-soft);
+  color: var(--bg);
 }
 
 .status {
@@ -1031,6 +1031,19 @@ legend {
 .entrants-secondary .icon {
   width: 1rem;
   height: 1rem;
+}
+
+/* Claim status is the longest text in the row, so it wraps to a second line instead of being cut. */
+.entrants-cell > .entrants-claim {
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.2;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.entrants-claim .icon {
+  flex: none;
 }
 
 .entrants-table tr[data-claim="claimed"] {

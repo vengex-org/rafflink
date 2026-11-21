@@ -102,6 +102,25 @@ it("shows the code, the count and the newest names in compact mode while open", 
   expect(view.container.querySelector(".winner-plate")).toBeNull()
 })
 
+it("keeps the corner badge small after a draw and names the standing winner on it", async () => {
+  routeSnapshot({
+    ...drawn,
+    winners: [
+      { n: 0, entrySeq: 1, displayName: "Bob", claimUntil: 1, claim: { state: "rerolled" } },
+      { n: 1, entrySeq: 2, displayName: "Cy", claimUntil: 1, claim: { state: "waiting" } },
+    ],
+  })
+
+  const view = renderApp("/overlay/gid-1/tok-1?mode=compact")
+
+  expect(await view.findByText("Cy")).toBeTruthy()
+  expect(view.getByText("Winners")).toBeTruthy()
+  expect(view.queryByText("Bob")).toBeNull()
+  expect(view.container.querySelector(".winner-plate")).toBeNull()
+  expect(view.queryByText("ABCDE")).toBeNull()
+  expect(view.queryByText("people entered")).toBeNull()
+})
+
 it("says the entries are closed on the chip once they close", async () => {
   routeSnapshot({ ...liveSnapshot, status: "closed" })
 

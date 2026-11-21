@@ -69,12 +69,14 @@ export function EntrantNames({ names }: { readonly names: readonly string[] }) {
   )
 }
 
-/** Every winner with how their claim stands; `actions` adds buttons per winner. */
+/** Every winner with how their claim stands; `actions` adds buttons per winner. The winner on the plate (`current`) has the big countdown, so the list shows no second clock for them. */
 export function WinnerList({
   winners,
+  current,
   actions,
 }: {
   readonly winners: readonly LiveWinner[]
+  readonly current: LiveWinner | null
   readonly actions: ((winner: LiveWinner) => ReactNode) | null
 }) {
   const { t } = useI18n()
@@ -89,7 +91,9 @@ export function WinnerList({
             {claimIcon(winner)}
             {claimLabel(winner, t)}
           </span>
-          {winner.claim.state === "waiting" ? <ClaimClock until={winner.claimUntil} /> : null}
+          {winner.claim.state === "waiting" && winner !== current ? (
+            <ClaimClock until={winner.claimUntil} />
+          ) : null}
           {actions?.(winner)}
         </li>
       ))}

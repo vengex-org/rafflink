@@ -5,6 +5,10 @@ main.container:has(> .live-page) {
   max-width: 120rem;
 }
 
+.layout:has(> main.container > .live-page) .app-bar-inner {
+  max-width: 120rem;
+}
+
 .live-page {
   display: grid;
   gap: var(--space-2);
@@ -54,7 +58,6 @@ main.container:has(> .live-page) {
 .live-main .banner .state-icon {
   grid-row: 1 / span 2;
   margin: 0;
-  color: var(--bg);
 }
 
 .live-main .banner > :not(.state-icon) {
@@ -201,6 +204,13 @@ main.container:has(> .live-page) {
   padding: var(--space-2);
 }
 
+.live-bar-status {
+  flex: 1 1 14rem;
+  align-self: center;
+  margin: 0;
+  font-weight: 600;
+}
+
 .live-bar-end {
   display: flex;
   flex-wrap: wrap;
@@ -212,10 +222,10 @@ main.container:has(> .live-page) {
   padding: 0.125rem 0.375rem;
   border: 1px solid currentColor;
   border-radius: var(--r-sm);
+  color: var(--ink-2);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   font-weight: 600;
-  opacity: 0.7;
 }
 
 .live-draw {
@@ -400,6 +410,10 @@ main.container:has(> .live-page) {
   }
 
   .winner-chat li {
+    font-size: 1.25rem;
+  }
+
+  .live-bar-status {
     font-size: 1.25rem;
   }
 

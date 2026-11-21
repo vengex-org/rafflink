@@ -285,8 +285,57 @@ describe("live page: winners", () => {
     expect(view.getByText("Step 3 of 3: Winners claim")).toBeTruthy()
     expect(view.getByText("Waiting to claim")).toBeTruthy()
     expect(view.getByText("Claim time ran out")).toBeTruthy()
-    expect(within(winnerRow(view, "Wanda")).getByRole("timer").textContent).toMatch(/^[12]:\d\d$/)
+    expect(view.container.querySelector(".live-winner [role=timer]")?.textContent).toMatch(
+      /^[12]:\d\d$/,
+    )
+    expect(within(winnerRow(view, "Wanda")).queryByRole("timer")).toBeNull()
     expect(within(winnerRow(view, "Bob")).queryByRole("timer")).toBeNull()
+  })
+
+  it("shows the claim time once for the winner on the plate and keeps it on another waiting winner", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () =>
+        ok({
+          ...drawn,
+          winners: [
+            {
+              n: 0,
+              entrySeq: 1,
+              displayName: "Wanda",
+              claimUntil: Date.now() + 120_000,
+              claim: { state: "waiting" },
+            },
+            {
+              n: 1,
+              entrySeq: 2,
+              displayName: "Cy",
+              claimUntil: Date.now() + 60_000,
+              claim: { state: "waiting" },
+            },
+          ],
+        }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    await view.findAllByText("Waiting to claim")
+
+    expect(within(winnerRow(view, "Cy")).queryByRole("timer")).toBeNull()
+    expect(within(winnerRow(view, "Wanda")).getByRole("timer").textContent).toMatch(/^[12]:\d\d$/)
+  })
+
+  it.each([
+    ["whose claim the stream waits for", 0, "Waiting for Wanda to claim the prize."],
+    ["who claimed", 1, "Bob claimed the prize."],
+    ["that nobody claimed", 2, "Nobody has claimed the prize yet."],
+  ])("says in the controls bar %s", async (_name, skip, text) => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok({ ...drawn, winners: drawn.winners.slice(skip) }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    const bar = await view.findByRole("toolbar", { name: "Giveaway controls" })
+    expect(within(bar).getByText(text)).toBeTruthy()
   })
 
   it("asks before it picks another winner and names who loses the prize", async () => {

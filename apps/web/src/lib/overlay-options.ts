@@ -1,3 +1,8 @@
+/**
+ * `auto`: the entry link and count while people join, then a big plate per winner.
+ * `compact`: the same corner badge after the draw, with the winner name in place of the link.
+ * `winner`: nothing until the draw, then the big plate only.
+ */
 export const overlayModes = ["auto", "compact", "winner"] as const
 export type OverlayMode = (typeof overlayModes)[number]
 

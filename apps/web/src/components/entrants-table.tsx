@@ -217,7 +217,7 @@ function EntrantRow({ row, index }: { readonly row: ListedEntrant; readonly inde
         {winner === null ? null : (
           <>
             <span className="entrants-primary">{t("entrants.winner", { n: winner.n + 1 })}</span>
-            <span className="entrants-secondary">
+            <span className="entrants-secondary entrants-claim">
               {winner.claim.state === "waiting" ? (
                 <ClaimClock until={winner.claimUntil} />
               ) : (

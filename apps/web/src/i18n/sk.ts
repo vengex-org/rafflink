@@ -2,6 +2,7 @@ import type { MessageKey } from "./en.ts"
 
 export const sk: Readonly<Record<MessageKey, string>> = {
   "nav.main": "Hlavná navigácia",
+  "nav.skip": "Preskočiť na obsah",
   "nav.myGiveaways": "Moje súťaže",
   "theme.legend": "Vzhľad",
   "theme.system": "Podľa systému",
@@ -379,7 +380,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.overlay.mode.auto.help":
     "Odkaz na zapojenie a počet, kým sa ľudia pridávajú, potom víťazi.",
   "live.overlay.mode.compact": "Rohový štítok",
-  "live.overlay.mode.compact.help": "Odkaz na zapojenie, počet a najnovšie mená, potom víťazi.",
+  "live.overlay.mode.compact.help":
+    "Odkaz na zapojenie, počet a najnovšie mená, potom malý riadok s víťazmi.",
   "live.overlay.mode.winner": "Iba víťaz",
   "live.overlay.mode.winner.help": "Prázdne do žrebovania, potom iba víťazi.",
   "live.overlay.qr": "QR kód",
@@ -414,6 +416,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.reroll.confirm": "Áno, vybrať iného víťaza",
   "live.problems.title": "Problémy",
   "live.bar.label": "Ovládanie giveawayu",
+  "live.bar.waiting": "Čaká sa, kým {name} prevezme cenu.",
+  "live.bar.claimed": "Cena je prevzatá: {name}.",
+  "live.bar.unclaimed": "Cenu zatiaľ nikto neprevzal.",
   "live.clean.hide": "Skryť ovládanie",
   "live.clean.show": "Zobraziť ovládanie",
   "live.chat.title": "Chat víťazov",
