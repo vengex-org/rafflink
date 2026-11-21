@@ -119,7 +119,7 @@ export const demoClosesInMs = enteredMs + risingMs
 
 export const demoJoinEveryMs = 700
 
-export const demoViewerName = "mira_vex"
+export const demoViewerName = "Kestrel27"
 
 export const demoRules: GiveawayRules = {
   tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
