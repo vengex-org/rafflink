@@ -1,16 +1,38 @@
-import { useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+
+/** The time the countdowns read. */
+export interface Clock {
+  readonly now: () => number
+  /** False while the time stands still: countdowns stop ticking and show what they had left. */
+  readonly running: boolean
+}
+
+// `Date.now` is looked up per call, so the tests' fake timers reach it.
+const clock = createContext<Clock>({ now: () => Date.now(), running: true })
+
+/** The home page stage supplies its own, which stops while the stage is paused. */
+export const ClockProvider = clock.Provider
+
+export const useClock = () => useContext(clock)
 
 /** Milliseconds left, counted down from `initialMs` (what the server computed) since the first render; never below 0. */
 export function useRemainingMs(initialMs: number): number {
-  const [startedAt] = useState(() => Date.now())
+  const { now: readNow, running } = useClock()
+  const [startedAt] = useState(readNow)
   const [now, setNow] = useState(startedAt)
+  // Read the clock as soon as it stops or starts, so a pause between two ticks shows its own time and resuming does not jump.
+  const [last, setLast] = useState({ readNow, running })
+  if (last.readNow !== readNow || last.running !== running) {
+    setLast({ readNow, running })
+    setNow(readNow())
+  }
   const remaining = Math.max(0, initialMs - (now - startedAt))
   const over = remaining === 0
   useEffect(() => {
-    if (over) return
-    const timer = setInterval(() => setNow(Date.now()), 1000)
+    if (over || !running) return
+    const timer = setInterval(() => setNow(readNow()), 1000)
     return () => clearInterval(timer)
-  }, [over])
+  }, [over, running, readNow])
   return remaining
 }
 

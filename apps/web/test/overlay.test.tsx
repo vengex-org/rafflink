@@ -366,7 +366,7 @@ it("draws the QR code with qr=1 in winner mode before a draw", async () => {
   ).toBeTruthy()
 })
 
-const mark = (view: ReturnType<typeof renderApp>) => view.container.querySelector(".overlay-mark")
+const mark = (view: ReturnType<typeof renderApp>) => view.container.querySelector(".overlay-host")
 
 describe("host mark", () => {
   it("stays off while the entry plate shows the host", async () => {
@@ -402,7 +402,7 @@ describe("host mark", () => {
 
     expect(await view.findAllByText("Drawing the winner…")).not.toHaveLength(0)
     expect(mark(view)?.textContent).toBe("Rrafflink.test")
-    expect(mark(view)?.previousElementSibling?.className).toBe("overlay-winners")
+    expect(mark(view)?.parentElement?.className).toBe("overlay-plate overlay-winner")
   })
 
   it("names the deployment's host under a claimed winner, in every mode", async () => {
@@ -411,10 +411,51 @@ describe("host mark", () => {
       const view = renderApp(`/overlay/gid-1/tok-1?mode=${mode}`)
       expect(await view.findByText("Bob")).toBeTruthy()
       expect(mark(view)?.textContent).toBe("Rrafflink.test")
-      expect(view.container.querySelector("main")?.lastElementChild).toBe(mark(view))
+      expect(mark(view)?.parentElement?.lastElementChild).toBe(mark(view))
+      expect(mark(view)?.parentElement?.classList.contains("overlay-plate")).toBe(true)
       cleanup()
       mock.restore()
     }
+  })
+
+  it("names the host once, on the last of several winner plates", async () => {
+    routeSnapshot({
+      ...drawn,
+      winners: [
+        ...drawn.winners,
+        {
+          n: 1,
+          entrySeq: 2,
+          displayName: "Cy",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "claimed", at: 1, via: "chat" },
+        },
+      ],
+    })
+
+    const view = renderApp("/overlay/gid-1/tok-1")
+
+    expect(await view.findByText("Cy")).toBeTruthy()
+    const plates = view.container.querySelectorAll(".overlay-winner")
+    expect(plates).toHaveLength(2)
+    expect(plates[0]?.querySelector(".overlay-host")).toBeNull()
+    expect(plates[1]?.lastElementChild).toBe(mark(view))
+  })
+
+  it("keeps the host on a plate of its own when no winner stands", async () => {
+    routeSnapshot({
+      ...drawn,
+      winners: drawn.winners.map((winner) => ({ ...winner, claim: { state: "rerolled" } })),
+    })
+
+    const view = renderApp("/overlay/gid-1/tok-1")
+
+    expect(await view.findByRole("heading", { level: 2, name: "Winners" })).toBeTruthy()
+    expect(mark(view)?.textContent).toBe("Rrafflink.test")
+    expect(view.container.querySelectorAll(".overlay-winner")).toHaveLength(1)
+    expect(mark(view)?.parentElement?.className).toBe("overlay-plate overlay-winner")
+    expect(view.container.querySelector(".winner-plate")).toBeNull()
   })
 })
 

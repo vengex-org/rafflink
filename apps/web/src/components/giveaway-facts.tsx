@@ -9,7 +9,7 @@ import {
   ticketText,
   whoCanEnterText,
 } from "../lib/rules-text.ts"
-import { formatLeft, useRemainingMs } from "../lib/use-remaining.ts"
+import { formatLeft, useClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { ChevronDownIcon } from "./icons.tsx"
 
 /** Which detail rows a screen shows: what a viewer can still enter, or the pool a winner was drawn from. */
@@ -78,7 +78,8 @@ function EntriesEnd({ closesAt }: { readonly closesAt: number | null }) {
 
 function CountdownToClose({ closesAt }: { readonly closesAt: number }) {
   const { t } = useI18n()
-  const [initial] = useState(() => Math.max(0, closesAt - Date.now()))
+  const { now } = useClock()
+  const [initial] = useState(() => Math.max(0, closesAt - now()))
   const remaining = useRemainingMs(initial)
   return remaining === 0
     ? t("giveaway.aboutToClose")

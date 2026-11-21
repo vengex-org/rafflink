@@ -197,17 +197,99 @@ describe("home page", () => {
       expect(preview.getByText("Enter at")).toBeTruthy()
     })
 
-    it("keeps the overlay host mark and the support link out of every step", () => {
+    it("ends the drawing and winner plates with the host mark, never the entry plate, and shows no support link", () => {
       mock.restore()
       mockFetch({ "GET /api/session": () => ok(supportedSession) })
       const view = renderApp("/")
       const preview = view.getByRole("region", { name: "Example of a draw" })
+      const mark = () => preview.querySelector(".stage-stream .overlay-host")
 
+      expect(mark()).toBeNull()
+      for (const ms of [5000, 4000, 6000]) {
+        advance(ms)
+        expect(mark()?.textContent).toBe("Rrafflink.test")
+        expect(mark()?.parentElement?.className).toBe("overlay-plate overlay-winner")
+      }
+      expect(currentLabel(view)).toBe("Claimed")
       for (const ms of [0, 5000, 4000, 6000]) {
         advance(ms)
-        expect(preview.querySelector(".overlay-mark")).toBeNull()
         expect(preview.querySelector(`a[href="${donateUrl}"]`)).toBeNull()
       }
+    })
+
+    it("stops the claim clock on the overlay and the phone while paused and goes on from the same time", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      fireEvent.click(preview.getByRole("button", { name: "Winner drawn" }))
+      advance(3000)
+      expect(preview.getAllByText("0:39")).toHaveLength(2)
+
+      fireEvent.click(preview.getByRole("button", { name: "Pause preview" }))
+      advance(60_000)
+      expect(preview.getAllByText("0:39")).toHaveLength(2)
+      expect(preview.getByText("Claim my prize")).toBeTruthy()
+
+      fireEvent.click(preview.getByRole("button", { name: "Play preview" }))
+      advance(1000)
+      expect(preview.getAllByText("0:38")).toHaveLength(2)
+    })
+
+    it("starts the claim clock full on the overlay and the phone in a step shown after a pause", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      fireEvent.click(preview.getByRole("button", { name: "Pause preview" }))
+      advance(60_000)
+      fireEvent.click(preview.getByRole("button", { name: "Play preview" }))
+
+      fireEvent.click(preview.getByRole("button", { name: "Winner drawn" }))
+      advance(1000)
+
+      expect(preview.getAllByText("0:41")).toHaveLength(2)
+    })
+
+    it("stops the claim clock while the tab is hidden", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      fireEvent.click(preview.getByRole("button", { name: "Winner drawn" }))
+      advance(2000)
+
+      setVisibility("hidden")
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      advance(60_000)
+      expect(preview.getAllByText("0:40")).toHaveLength(2)
+
+      setVisibility("visible")
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      advance(1000)
+      expect(preview.getAllByText("0:39")).toHaveLength(2)
+    })
+
+    it("stops the claim clock while the visitor holds the phone", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      fireEvent.click(preview.getByRole("button", { name: "Winner drawn" }))
+      advance(1000)
+      const screen = preparePhone(view)
+
+      mouse(screen, "pointerdown", 400, 0)
+      advance(60_000)
+
+      expect(preview.getAllByText("0:41")).toHaveLength(2)
+    })
+
+    it("stops the countdown to the end of entries while paused", () => {
+      const view = renderApp("/")
+      const preview = stage(view)
+      advance(1000)
+
+      fireEvent.click(preview.getByRole("button", { name: "Pause preview" }))
+      advance(60_000)
+
+      expect(preview.getByText("Entries close in 6 s.")).toBeTruthy()
     })
 
     it("waits while the tab is hidden and goes on when it is shown", () => {
@@ -278,6 +360,7 @@ describe("home page", () => {
 
       expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
       expect(preview.getByText("Claim my prize")).toBeTruthy()
+      expect(preview.getAllByText("0:42")).toHaveLength(2)
       expect(preview.queryByText("Enter at")).toBeNull()
       expect(currentLabel(view)).toBe("Winner drawn")
       expect(progress(view).hasAttribute("data-paused")).toBe(true)
