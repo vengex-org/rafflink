@@ -243,14 +243,19 @@ describe("id service", () => {
     await fake.server.stop(true)
     fake = serveFakeTwitch(0, { ...options, tokenLimitPerSecond: 2 })
     const now = spyOn(Date, "now")
-    const codes = await Promise.all([1, 2, 3, 4].map(() => authorizeCode("openid")))
-
-    now.mockReturnValue(5_000_100)
-    const first = [await exchangeCode(codes[0] ?? ""), await exchangeCode(codes[1] ?? "")]
-    const rejected = await exchangeCode(codes[2] ?? "")
-    now.mockReturnValue(6_000_100)
-    const nextSecond = await exchangeCode(codes[3] ?? "")
-    now.mockRestore()
+    let first: Response[]
+    let rejected: Response
+    let nextSecond: Response
+    try {
+      const codes = await Promise.all([1, 2, 3, 4].map(() => authorizeCode("openid")))
+      now.mockReturnValue(5_000_100)
+      first = [await exchangeCode(codes[0] ?? ""), await exchangeCode(codes[1] ?? "")]
+      rejected = await exchangeCode(codes[2] ?? "")
+      now.mockReturnValue(6_000_100)
+      nextSecond = await exchangeCode(codes[3] ?? "")
+    } finally {
+      now.mockRestore()
+    }
 
     expect(first.map((response) => response.status)).toEqual([200, 200])
     expect(rejected.status).toBe(429)

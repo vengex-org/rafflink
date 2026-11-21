@@ -87,6 +87,45 @@ describe("runLoad", () => {
 
     await expect(runLoad(load, plan)).rejects.toThrow(NonLocalUrlError)
   })
+
+  it("stops before any request when the callback redirects to a host that is not local", async () => {
+    const load = await launch({ PUBLIC_URL: "http://example.invalid" })
+
+    await expect(runLoad(load, plan)).rejects.toThrow(NonLocalUrlError)
+  })
+
+  it("stops starting viewers at the first one redirected to a host that is not local", async () => {
+    let backend: URL | null = null
+    let viewerStarts = 0
+    const front = Bun.serve({
+      port: 0,
+      hostname: "127.0.0.1",
+      fetch: (request) => {
+        const url = new URL(request.url)
+        if (url.pathname === "/auth/twitch/viewer/start") {
+          viewerStarts += 1
+          return Response.redirect("http://example.invalid/oauth2/authorize")
+        }
+        if (backend === null) return new Response(null, { status: 503 })
+        return fetch(new URL(url.pathname + url.search, backend), {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+          redirect: "manual",
+        })
+      },
+    })
+    try {
+      const load = await launch({ PUBLIC_URL: front.url.origin })
+      backend = load.target
+      await expect(runLoad({ ...load, target: front.url }, plan)).rejects.toThrow(NonLocalUrlError)
+    } finally {
+      await front.stop(true)
+    }
+
+    expect(viewerStarts).toBeGreaterThan(0)
+    expect(viewerStarts).toBeLessThan(viewerCount)
+  })
 })
 
 function fakeTwitch(limits: { tokenLimitPerSecond?: number }): FakeTwitch {
@@ -113,8 +152,14 @@ function serveFake(fake: FakeTwitch) {
 
 async function launch(env: Readonly<Record<string, string>> = {}): Promise<LoadTarget> {
   const origin = twitchServer.url.origin
+  const probe = Bun.serve({ port: 0, fetch: () => new Response() })
+  const port = probe.port
+  await probe.stop(true)
   running = await startServer({
     config: testConfig({
+      PORT: String(port),
+      PUBLIC_URL: `http://localhost:${port}`,
+      ENTRY_IP_LIMIT_PER_MINUTE: "1000",
       DATA_DIR: dir.path,
       TWITCH_ID_BASE_URL: origin,
       TWITCH_HELIX_BASE_URL: origin,

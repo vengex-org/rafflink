@@ -1,4 +1,4 @@
-import { assertLocalUrl } from "./local-host.ts"
+import { assertLocalUrl, NonLocalUrlError } from "./local-host.ts"
 
 /** A request that takes longer is a failed one; above the slowest answer of a healthy run, a starting guess. */
 const requestTimeoutMs = 30_000
@@ -35,7 +35,8 @@ export class LocalBrowser {
     const authorizeUrl = this.locationOf(start)
     authorizeUrl.searchParams.set("login_hint", userId)
     const authorize = await this.send(authorizeUrl, { withCookies: false })
-    const callback = this.locationOf(authorize)
+    const callback = assertLocalUrl(this.locationOf(authorize).href)
+    if (callback.host !== this.target.host) throw new NonLocalUrlError(callback.host)
     return callback.pathname + callback.search
   }
 

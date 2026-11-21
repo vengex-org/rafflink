@@ -1,5 +1,4 @@
 import { parseArgs } from "node:util"
-import { assertLocalUrl } from "./local-host.ts"
 
 export interface LoadPlan {
   /** Viewers that start a sign-in per second. */
@@ -9,23 +8,18 @@ export interface LoadPlan {
   readonly duplicatePercent: number
 }
 
-export type TargetChoice =
-  | { readonly kind: "spawn"; readonly tokenLimitPerSecond: number | null }
-  | { readonly kind: "external"; readonly target: URL }
-
 export interface LoadTestOptions {
   readonly plan: LoadPlan
-  readonly targets: TargetChoice
+  /** The fake Twitch answers 429 on the token endpoint above this many calls per second; null for no limit. */
+  readonly tokenLimitPerSecond: number | null
 }
 
 export const usage = `Usage: bun run load-test -- [flags]
   --rate <n>             viewers started per second (default 500)
   --duration <s>         seconds to keep that rate (default 30)
   --duplicates <percent> viewers that enter a second time (default 5)
-  --token-limit <n>      fake Twitch answers 429 on the token endpoint above n per second (spawned fake only)
-  --target <url>         use a running local target instead of spawning the server and the fake Twitch;
-                         its Twitch URLs must point at the fake started with SEED_USERS of at least rate x duration
-Only localhost, 127.0.0.1 and [::1] are accepted.`
+  --token-limit <n>      fake Twitch answers 429 on the token endpoint above n per second
+The server and the fake Twitch are spawned on local ports; the load test only talks to localhost, 127.0.0.1 and [::1].`
 
 /** Reads the CLI flags; throws a plain Error naming the bad flag. */
 export function parseOptions(argv: readonly string[]): LoadTestOptions {
@@ -36,7 +30,6 @@ export function parseOptions(argv: readonly string[]): LoadTestOptions {
       duration: { type: "string", default: "30" },
       duplicates: { type: "string", default: "5" },
       "token-limit": { type: "string" },
-      target: { type: "string" },
     },
     strict: true,
   })
@@ -46,13 +39,10 @@ export function parseOptions(argv: readonly string[]): LoadTestOptions {
     duplicatePercent: integer("duplicates", values.duplicates, 0, 100),
   }
   const tokenLimit = values["token-limit"]
-  if (values.target === undefined) {
-    const tokenLimitPerSecond =
-      tokenLimit === undefined ? null : integer("token-limit", tokenLimit, 1)
-    return { plan, targets: { kind: "spawn", tokenLimitPerSecond } }
+  return {
+    plan,
+    tokenLimitPerSecond: tokenLimit === undefined ? null : integer("token-limit", tokenLimit, 1),
   }
-  if (tokenLimit !== undefined) throw new Error("--token-limit applies to the spawned fake only")
-  return { plan, targets: { kind: "external", target: assertLocalUrl(values.target) } }
 }
 
 function integer(flag: string, text: string, min: number, max = Number.MAX_SAFE_INTEGER): number {

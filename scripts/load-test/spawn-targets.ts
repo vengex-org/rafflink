@@ -17,6 +17,8 @@ const portRange = { first: 20_000, last: 39_999 }
 const portAttempts = 20
 const readyAttempts = 100
 const readyPollMs = 100
+/** A child that ignores the first kill is killed hard after this long; a starting guess, a healthy one exits in milliseconds. */
+const stopTimeoutMs = 5_000
 
 /** Credentials the fake accepts; the dev fake's own client id and secret. */
 const twitchClient = { id: "fake-client-id", secret: "fake-client-secret" } as const
@@ -35,7 +37,12 @@ export async function spawnTargets(
   const children: Bun.Subprocess[] = []
   const stop = async () => {
     for (const child of children) child.kill()
-    await Promise.all(children.map((child) => child.exited))
+    const exited = Promise.all(children.map((child) => child.exited))
+    const timedOut = await Promise.race([exited.then(() => false), sleep(stopTimeoutMs, true)])
+    if (timedOut) {
+      for (const child of children) child.kill("SIGKILL")
+      await exited
+    }
     rmSync(dataDir, { recursive: true, force: true })
   }
   try {
@@ -67,6 +74,8 @@ export async function spawnTargets(
           PORT: String(serverPort),
           PUBLIC_URL: serverUrl,
           DATA_DIR: dataDir,
+          // Every viewer signs in from this machine's one address, and a repeat sign-in is a second callback.
+          ENTRY_IP_LIMIT_PER_MINUTE: String(viewers * 2),
           TWITCH_ID_BASE_URL: twitchUrl,
           TWITCH_HELIX_BASE_URL: twitchUrl,
           EVENTSUB_URL: `ws://127.0.0.1:${twitchPort}/eventsub/ws`,

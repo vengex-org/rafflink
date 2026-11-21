@@ -84,18 +84,23 @@ export async function runLoad(load: LoadTarget, plan: LoadPlan): Promise<LoadRep
   }
 
   const viewers = plan.rate * plan.durationSeconds
-  const repeatEvery = plan.duplicatePercent === 0 ? 0 : Math.round(100 / plan.duplicatePercent)
   const runs: Promise<ViewerRun>[] = []
+  const failures: unknown[] = []
   const began = performance.now()
   let lastStartedAt = began
-  for (let index = 0; index < viewers; index++) {
+  for (let index = 0; index < viewers && failures.length === 0; index++) {
     const wait = began + (index * 1000) / plan.rate - performance.now()
     if (wait > 1) await sleep(wait)
     lastStartedAt = performance.now()
-    const repeats = repeatEvery !== 0 && index % repeatEvery === 0
-    runs.push(enter(context, String(load.firstViewerId + index), repeats))
+    const repeats = (index * plan.duplicatePercent) % 100 < plan.duplicatePercent
+    const run = enter(context, String(load.firstViewerId + index), repeats)
+    run.catch((error: unknown) => failures.push(error))
+    runs.push(run)
   }
-  const done = await Promise.all(runs)
+  const settled = await Promise.allSettled(runs)
+  if (failures.length > 0) throw failures[0]
+  const done: ViewerRun[] = []
+  for (const result of settled) if (result.status === "fulfilled") done.push(result.value)
 
   const room = await readRoom(streamer, giveaway.id)
   const startPhaseSeconds = (lastStartedAt - began) / 1000 + 1 / plan.rate
@@ -145,6 +150,7 @@ async function readRoom(streamer: LocalBrowser, giveawayId: string): Promise<Roo
     logins.push(...page.rows.map((row) => row.login))
     const last = page.rows.at(-1)
     if (!page.more || last === undefined) break
+    if (last.seq <= after) throw new Error(`the entrants list did not advance past seq ${after}`)
     after = last.seq
   }
   const usage = await streamer.get("/api/admin/usage")

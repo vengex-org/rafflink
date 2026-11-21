@@ -74,14 +74,11 @@ bun run load-test -- --rate 300 --duration 10 --token-limit 100   # fake Twitch 
 ```
 
 The script starts the Bun server and the fake Twitch as child processes on free local ports, with a throwaway
-data folder. Server settings such as `QUEUE_MAX_RATE_PER_SECOND` are read from your environment. To test a
-Worker, run the fake Twitch with `SEED_USERS` of at least rate times duration (`SEED_USERS=15000 bun run dev:twitch`
-in `apps/cloudflare`), start `bun run dev` there and pass `--target http://127.0.0.1:8787`. The exit code is 1 when a
-check fails and 2 for bad flags.
+data folder. Server settings such as `QUEUE_MAX_RATE_PER_SECOND` are read from your environment. The exit code
+is 1 when a check fails and 2 for bad flags or a redirect to a host that is not local.
 
 The load test only talks to `localhost`, `127.0.0.1` and `[::1]`: any other host is refused before a request is
-sent. Never point load at the hosted service. On Windows, wrangler closes every connection, so a long run
-exhausts the client's ephemeral ports at a few hundred sign-ins per second; run the Bun server for 500 per second.
+sent, and it only runs against the processes it spawns itself. Never point load at the hosted service.
 
 ## Twitch app registration
 

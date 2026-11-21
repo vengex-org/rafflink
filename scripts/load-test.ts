@@ -3,7 +3,7 @@ import { NonLocalUrlError } from "./load-test/local-host.ts"
 import { parseOptions, usage, type LoadTestOptions } from "./load-test/options.ts"
 import { runLoad, type LoadReport } from "./load-test/run-load.ts"
 import { spawnTargets } from "./load-test/spawn-targets.ts"
-import { devFakeTwitchUsers, seededUsersFirstId } from "../packages/fake-twitch/src/index.ts"
+import { devFakeTwitchUsers } from "../packages/fake-twitch/src/index.ts"
 
 if (import.meta.main) {
   process.exit(await main(process.argv.slice(2)))
@@ -30,19 +30,13 @@ async function main(argv: readonly string[]): Promise<number> {
   }
 }
 
-async function run({ plan, targets }: LoadTestOptions): Promise<LoadReport> {
+async function run({ plan, tokenLimitPerSecond }: LoadTestOptions): Promise<LoadReport> {
   const streamer = devFakeTwitchUsers[0]
   if (streamer === undefined) throw new Error("the dev fake Twitch has no streamer user")
-  if (targets.kind === "external") {
-    return runLoad(
-      { target: targets.target, streamerUserId: streamer.id, firstViewerId: seededUsersFirstId },
-      plan,
-    )
-  }
   const spawned = await spawnTargets(
     streamer.id,
     plan.rate * plan.durationSeconds,
-    targets.tokenLimitPerSecond,
+    tokenLimitPerSecond,
   )
   try {
     return await runLoad(spawned.load, plan)
