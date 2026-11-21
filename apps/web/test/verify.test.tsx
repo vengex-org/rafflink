@@ -103,6 +103,39 @@ describe("verify page", () => {
     ).toBeTruthy()
   })
 
+  it("checks the BLS signature of the round as its own line", async () => {
+    const view = await verified()
+
+    expect(await view.findByText("The signature of drand round 1000000 is valid.")).toBeTruthy()
+  })
+
+  it("fails the whole verification when the signature of the round is not valid", async () => {
+    // A forged round that keeps drand's link of randomness to signature, so only the BLS check can catch it.
+    const forgedSignature = `${round.signature.slice(0, -1)}3`
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      Uint8Array.from(forgedSignature.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16)),
+    )
+    const randomness = Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("")
+
+    const view = await verified({
+      [first]: () => ok({ ...round, signature: forgedSignature, randomness }),
+    })
+
+    expect(
+      await view.findByText(
+        "The signature of drand round 1000000 is not valid, so nothing below can be trusted.",
+      ),
+    ).toBeTruthy()
+    expect(
+      view.getByText(
+        "The winners do not follow from the list and the random number of drand round 1000000.",
+      ),
+    ).toBeTruthy()
+  })
+
   it("says the root does not match when the published root is not the root of the list", async () => {
     const forged = { ...drawn, commitment: { ...drawn.commitment, merkleRoot: "00".repeat(32) } }
 
@@ -159,6 +192,9 @@ describe("verify page", () => {
 
     expect(
       await view.findByText("Could not read drand round 1000000. Try again later."),
+    ).toBeTruthy()
+    expect(
+      view.getByText("The signature of drand round 1000000 could not be checked."),
     ).toBeTruthy()
   })
 

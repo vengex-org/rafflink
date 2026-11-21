@@ -202,6 +202,10 @@ function Results({
     { outcome: verdict.counts, text: t(`verify.check.counts.${verdict.counts}`) },
     { outcome: verdict.root, text: t(`verify.check.root.${verdict.root}`) },
     {
+      outcome: signatureOutcome[verdict.signature],
+      text: t(`verify.check.signature.${verdict.signature}`, { round: commitment.round }),
+    },
+    {
       outcome: verdict.winners,
       text: t(`verify.check.winners.${verdict.winners}`, { round: commitment.round }),
     },
@@ -217,6 +221,13 @@ function Results({
     </ul>
   )
 }
+
+const signatureOutcome = {
+  valid: "match",
+  invalid: "mismatch",
+  unavailable: "unavailable",
+  none: "none",
+} as const satisfies Record<Verdict["signature"], string>
 
 function CheckMark({ outcome }: { readonly outcome: string }) {
   switch (outcome) {

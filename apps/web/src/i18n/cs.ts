@@ -731,6 +731,11 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "verify.check.counts.mismatch": "Seznam nemá oznámený počet přihlášek a tiketů.",
   "verify.check.root.match": "Merkle root seznamu je zveřejněný root.",
   "verify.check.root.mismatch": "Merkle root seznamu není zveřejněný root.",
+  "verify.check.signature.valid": "Podpis kola drand {round} je platný.",
+  "verify.check.signature.invalid":
+    "Podpis kola drand {round} není platný, takže výsledku níže se nedá věřit.",
+  "verify.check.signature.unavailable": "Podpis kola drand {round} se nepodařilo zkontrolovat.",
+  "verify.check.signature.none": "Zatím není potřeba žádné kolo, takže není co kontrolovat.",
   "verify.check.winners.match":
     "Vítězové vycházejí ze seznamu a z náhodného čísla kola drand {round}.",
   "verify.check.winners.mismatch":

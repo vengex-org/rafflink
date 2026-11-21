@@ -727,6 +727,12 @@ export const en = {
     "The list does not have the announced number of entries and tickets.",
   "verify.check.root.match": "The Merkle root of the list is the published root.",
   "verify.check.root.mismatch": "The Merkle root of the list is not the published root.",
+  "verify.check.signature.valid": "The signature of drand round {round} is valid.",
+  "verify.check.signature.invalid":
+    "The signature of drand round {round} is not valid, so nothing below can be trusted.",
+  "verify.check.signature.unavailable":
+    "The signature of drand round {round} could not be checked.",
+  "verify.check.signature.none": "No round is needed yet, so there is no signature to check.",
   "verify.check.winners.match":
     "The winners follow from the list and the random number of drand round {round}.",
   "verify.check.winners.mismatch":

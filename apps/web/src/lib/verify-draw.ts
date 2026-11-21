@@ -4,6 +4,7 @@ import { parseBeaconRound, publicDrandUrls, roundPath } from "@rafflink/core/lib
 import { fromHex, toHex } from "@rafflink/core/lib/encoding"
 import { leafHash, merkleRoot } from "@rafflink/core/lib/merkle"
 import type { BeaconRound } from "@rafflink/core/ports"
+import { verifyBeaconSignature } from "./beacon-signature.ts"
 
 /** What a committed giveaway published before its draw. */
 export type Commitment = NonNullable<VerifyJson["commitment"]>
@@ -22,10 +23,11 @@ export type OwnEntry =
       readonly pick: number | null
     }
 
-/** What the page recomputed. `winners` is `unavailable` when no drand source answered and `none` before any draw. */
+/** What the page recomputed. `winners` and `signature` are `unavailable` when no drand source answered and `none` before any draw. An invalid signature also makes `winners` a mismatch. */
 export interface Verdict {
   readonly counts: Match
   readonly root: Match
+  readonly signature: "valid" | "invalid" | "unavailable" | "none"
   readonly winners: Match | "unavailable" | "none"
   /** Null when the viewer is not signed in, has no entry or has no salt yet. */
   readonly mine: OwnEntry | null
@@ -43,10 +45,12 @@ export async function verifyDraw(evidence: DrawEvidence): Promise<Verdict> {
   const { verify, commitment, leaves, mine } = evidence
   const tickets = leaves.tickets.reduce((sum, count) => sum + count, 0)
   const root = toHex(await merkleRoot(leaves.hashes.map(bytesOf)))
+  const beacon = await checkBeacon(verify, commitment, leaves)
   return {
     counts: matches(leaves.hashes.length === verify.entrantCount && tickets === verify.ticketTotal),
     root: matches(root === commitment.merkleRoot),
-    winners: await checkWinners(verify, commitment, leaves),
+    signature: beacon.signature,
+    winners: beacon.winners,
     mine: mine === null ? null : await findOwnEntry(mine, verify, leaves),
   }
 }
@@ -69,22 +73,26 @@ export async function fetchBeaconRound(
   return null
 }
 
-async function checkWinners(
+async function checkBeacon(
   verify: VerifyJson,
   commitment: Commitment,
   leaves: LeavesJson,
-): Promise<Verdict["winners"]> {
-  if (verify.picks.length === 0) return "none"
+): Promise<Pick<Verdict, "signature" | "winners">> {
+  if (verify.picks.length === 0) return { signature: "none", winners: "none" }
   const beacon = await fetchBeaconRound(commitment.chainHash, commitment.round)
-  if (beacon === null) return "unavailable"
+  if (beacon === null) return { signature: "unavailable", winners: "unavailable" }
+  if (!(await verifyBeaconSignature(commitment.chainHash, beacon))) {
+    return { signature: "invalid", winners: "mismatch" }
+  }
   const replay = await drawLeafPicks(beacon.randomness, leaves.tickets, verify.picks.length)
-  return matches(
+  const winners = matches(
     replay.length === verify.picks.length
       && replay.every(
         (pick, index) =>
           pick.n === verify.picks[index]?.n && pick.leafIndex === verify.picks[index]?.leafIndex,
       ),
   )
+  return { signature: "valid", winners }
 }
 
 async function findOwnEntry(
