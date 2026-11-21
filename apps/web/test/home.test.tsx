@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, jest, mock } from "bun:test"
-import { act, cleanup, within } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
+import { act, cleanup, fireEvent, within } from "@testing-library/react"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
+import { languageStorageKey } from "../src/i18n/language.ts"
 import { renderApp } from "./render-app.tsx"
 
 beforeEach(() => {
@@ -10,9 +11,18 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   mock.restore()
+  window.localStorage.clear()
 })
 
 let restoreSocket = () => {}
+
+const advance = (ms: number) => act(() => jest.advanceTimersByTime(ms))
+const stage = (view: ReturnType<typeof renderApp>) =>
+  within(view.getByRole("region", { name: "Example of a draw" }))
+const setVisibility = (value: "hidden" | "visible") =>
+  Object.defineProperty(document, "visibilityState", { configurable: true, value })
+const currentLabel = (view: ReturnType<typeof renderApp>) =>
+  view.container.querySelector(".stage-steps [aria-current='step']")?.textContent
 
 describe("home page", () => {
   it("opens with the one-sentence promise as the only h1", () => {
@@ -76,21 +86,108 @@ describe("home page", () => {
     })
     afterEach(() => {
       jest.useRealTimers()
+      Reflect.deleteProperty(document, "visibilityState")
       restoreSocket()
     })
 
-    it("show the real overlay plate and the real claim panel of the example winner", () => {
+    it("plays entries open, drawing, winner and claimed in sync on the overlay and the phone, then starts over", () => {
       const view = renderApp("/")
+      const preview = stage(view)
 
-      const preview = within(view.getByRole("region", { name: "Example of a draw" }))
+      expect(currentLabel(view)).toBe("Entries open")
+      expect(preview.getByText("Enter at")).toBeTruthy()
+      expect(preview.getByText("DEMO1", { selector: ".overlay-url em" })).toBeTruthy()
+      expect(preview.getAllByText("Entries open")).toHaveLength(2)
+      expect(view.container.querySelector(".stage-stream .qr")).toBeNull()
 
+      advance(5000)
+      expect(currentLabel(view)).toBe("Drawing")
+      expect(view.container.querySelector(".stage-stream [data-shuffling]")).not.toBeNull()
+      expect(preview.getByText("Drawing a winner…")).toBeTruthy()
+
+      advance(4000)
+      expect(currentLabel(view)).toBe("Winner drawn")
       expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
       expect(preview.getByText("A gaming chair", { selector: ".overlay-prize" })).toBeTruthy()
-      expect(view.container.querySelector(".stage-stream .qr")).toBeNull()
       expect(preview.getAllByText("mira_vex")).toHaveLength(2)
       expect(preview.getAllByText("0:42")).toHaveLength(2)
       expect(preview.getByText("You won")).toBeTruthy()
       expect(preview.getByText("Claim my prize")).toBeTruthy()
+
+      advance(6000)
+      expect(currentLabel(view)).toBe("Claimed")
+      expect(preview.getByText("Prize claimed")).toBeTruthy()
+      expect(preview.queryByText("Claim my prize")).toBeNull()
+      expect(preview.queryByText("0:42")).toBeNull()
+
+      advance(5000)
+      expect(currentLabel(view)).toBe("Entries open")
+      expect(preview.getByText("Enter at")).toBeTruthy()
+    })
+
+    it("waits while the tab is hidden and goes on when it is shown", () => {
+      const view = renderApp("/")
+      setVisibility("hidden")
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      advance(60_000)
+      expect(currentLabel(view)).toBe("Entries open")
+
+      setVisibility("visible")
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      advance(5000)
+      expect(currentLabel(view)).toBe("Drawing")
+    })
+
+    it("rests on the winner without cycling or step labels under reduced motion", () => {
+      spyOn(window, "matchMedia").mockImplementation((query) => ({
+        matches: query.includes("prefers-reduced-motion"),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }))
+      const view = renderApp("/")
+      const preview = stage(view)
+
+      advance(120_000)
+
+      expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
+      expect(preview.getByText("Claim my prize")).toBeTruthy()
+      expect(preview.queryByText("Enter at")).toBeNull()
+      expect(view.container.querySelector(".stage-steps")).toBeNull()
+    })
+
+    it("shows the example prize and title in the page language", () => {
+      window.localStorage.setItem(languageStorageKey, "cs")
+      const view = renderApp("/")
+
+      advance(5000)
+      advance(4000)
+
+      const preview = within(view.getByRole("region", { name: "Ukázka losování" }))
+      expect(preview.getByText("Herní křeslo", { selector: ".overlay-prize" })).toBeTruthy()
+      expect(preview.getByText("Streamy, Letní soutěž")).toBeTruthy()
+      expect(preview.queryByText(/gaming chair|Summer giveaway/)).toBeNull()
+    })
+
+    it("switches the overlay text with the page language in the middle of a step", () => {
+      const view = renderApp("/")
+      advance(5000)
+      advance(4000)
+      expect(stage(view).getByText("A gaming chair", { selector: ".overlay-prize" })).toBeTruthy()
+
+      fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
+
+      const preview = within(view.getByRole("region", { name: "Ukázka losování" }))
+      expect(preview.getByText("Herní křeslo", { selector: ".overlay-prize" })).toBeTruthy()
+      expect(preview.queryByText("A gaming chair")).toBeNull()
     })
 
     it("are inert and hidden from the accessibility tree, with one h1 on the page", () => {
@@ -109,17 +206,6 @@ describe("home page", () => {
         expect(element.getAttribute("aria-hidden")).toBe("true")
       }
       expect(view.container.querySelectorAll("h1")).toHaveLength(1)
-    })
-
-    it("show the example claim clock from the start again before it runs out", () => {
-      const view = renderApp("/")
-      const stage = within(view.getByRole("region", { name: "Example of a draw" }))
-
-      act(() => jest.advanceTimersByTime(29_000))
-      expect(stage.queryAllByText("0:42")).toHaveLength(0)
-
-      act(() => jest.advanceTimersByTime(1000))
-      expect(stage.getAllByText("0:42")).toHaveLength(2)
     })
 
     it("send no request and open no socket", () => {

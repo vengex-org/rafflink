@@ -2,8 +2,8 @@ import type { ReactNode } from "react"
 import type { Group } from "@rafflink/core/domain/groups"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { demoRules, demoViewerName, initialDemoState } from "../lib/demo-script.ts"
-import { demoFacts } from "../lib/demo-live.ts"
+import { demoRules, demoViewerName } from "../lib/demo-script.ts"
+import { demoCode } from "../lib/demo-live.ts"
 import { exampleClaimLeftMs } from "../lib/home-example.ts"
 import { initialValues, type Values } from "../pages/create-values.ts"
 import { TicketsField } from "../pages/create-steps.tsx"
@@ -37,8 +37,6 @@ const exampleValues: Values = {
   },
 }
 
-const exampleCode = demoFacts(initialDemoState).code
-
 const noChange = () => {}
 
 /** The "three moves" section: the headline on the left, the steps with their small previews on the right. */
@@ -69,7 +67,7 @@ export function HomeHow() {
             title={t("home.how.share.title")}
             text={t("home.how.share.text")}
           >
-            <ShareLinks code={exampleCode} />
+            <ShareLinks code={demoCode} />
           </Step>
           <Step
             icon={<ShuffleIcon />}

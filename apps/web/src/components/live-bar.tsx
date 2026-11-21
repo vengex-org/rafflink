@@ -9,7 +9,7 @@ import { useShortcut } from "../lib/use-shortcut.ts"
 import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
 import type { useAction } from "../lib/use-action.ts"
 import { ConfirmAction } from "./confirm-action.tsx"
-import { CopyField } from "./copy-field.tsx"
+import { CopyLink } from "./copy-field.tsx"
 import { Segmented, type SegmentOption } from "./form-fields.tsx"
 import {
   CheckCircleIcon,
@@ -501,6 +501,7 @@ function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overl
     { value: "off", label: t("live.overlay.qr.off"), icon: null, description: "" },
     { value: "on", label: t("live.overlay.qr.on"), icon: null, description: "" },
   ]
+  const optionedUrl = withOverlayOptions(overlayUrl(id, overlayToken), { mode, qr })
   return (
     <>
       <button type="button" className="live-btn ghost" popoverTarget={popoverId}>
@@ -526,11 +527,14 @@ function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overl
           value={qr ? "on" : "off"}
           onSelect={(choice) => setQr(choice === "on")}
         />
-        <CopyField
+        <CopyLink
           label={t("share.overlay")}
-          value={withOverlayOptions(overlayUrl(id, overlayToken), { mode, qr })}
+          value={optionedUrl}
           buttonLabel={t("share.copyOverlay")}
-        />
+          clipped
+        >
+          {optionedUrl}
+        </CopyLink>
       </div>
     </>
   )

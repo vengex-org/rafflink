@@ -1,20 +1,17 @@
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import { useI18n } from "../i18n/i18n.tsx"
 import { overlayUrl, shareUrl } from "../lib/links.ts"
-import { CopyField } from "./copy-field.tsx"
+import { CopyLink } from "./copy-field.tsx"
 
 /** The link the streamer pastes to start collecting entries. */
 export function ShareLinks({ code }: { readonly code: string }) {
   const { t } = useI18n()
+  const url = shareUrl(code)
   return (
-    <>
-      <CopyField
-        label={t("share.link")}
-        value={shareUrl(code)}
-        buttonLabel={t("share.copyLink")}
-        code={code}
-      />
-    </>
+    <CopyLink label={t("share.link")} value={url} buttonLabel={t("share.copyLink")} clipped={false}>
+      {new URL(url).host}/<wbr />
+      <em>{code}</em>
+    </CopyLink>
   )
 }
 
@@ -24,14 +21,13 @@ export function ObsSteps({
   readonly giveaway: Pick<DashboardGiveaway, "id" | "overlayToken">
 }) {
   const { t } = useI18n()
+  const url = overlayUrl(giveaway.id, giveaway.overlayToken)
   return (
     <>
       <ObsStepList />
-      <CopyField
-        label={t("share.overlay")}
-        value={overlayUrl(giveaway.id, giveaway.overlayToken)}
-        buttonLabel={t("share.copyOverlay")}
-      />
+      <CopyLink label={t("share.overlay")} value={url} buttonLabel={t("share.copyOverlay")} clipped>
+        {url}
+      </CopyLink>
     </>
   )
 }

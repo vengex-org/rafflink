@@ -18,6 +18,7 @@ import {
   type DemoState,
   type DemoStep,
 } from "./demo-script.ts"
+import type { I18n } from "../i18n/i18n.tsx"
 import type { LiveApi } from "./live-api.ts"
 
 /** What the streamer's view needs to show the simulated giveaway: its snapshot, the people who entered and the public facts. */
@@ -27,10 +28,21 @@ export interface DemoLive {
   readonly facts: GiveawayView
 }
 
+/** The texts of the simulated giveaway that change with the language. */
+export interface DemoNames {
+  readonly title: string
+  readonly prize: string
+}
+
+export function demoNames(t: I18n["t"]): DemoNames {
+  return { title: t("demo.example.title"), prize: t("demo.example.prize") }
+}
+
 export function demoLive(
   state: DemoState,
   now: number,
   chatText: (key: DemoChatKey) => string,
+  names: DemoNames,
 ): DemoLive {
   const entrants = demoEntrants(state.entrants)
   const winners = demoWinners(state, entrants)
@@ -40,9 +52,9 @@ export function demoLive(
   )
   return {
     entrants,
-    facts: demoFacts(state),
+    facts: demoFacts(state, names),
     snapshot: {
-      title: demoTitle,
+      title: names.title,
       code: demoCode,
       status,
       closesAt: demoClosesAt(state),
@@ -70,12 +82,12 @@ export function demoLive(
 }
 
 /** The public facts of the simulated giveaway: what the viewer's page and the streamer's view both show. */
-export function demoFacts(state: DemoState): GiveawayView {
+export function demoFacts(state: DemoState, names: DemoNames): GiveawayView {
   const status = demoStatus(state.step)
   return {
     code: demoCode,
-    title: demoTitle,
-    prize: "A gaming chair",
+    title: names.title,
+    prize: names.prize,
     streamerName: "Streamy",
     rules: demoRules,
     status,
@@ -125,8 +137,7 @@ function demoChatLines(
   }))
 }
 
-const demoCode = "DEMO1"
-const demoTitle = "Summer giveaway"
+export const demoCode = "DEMO1"
 
 export function demoStatus(step: DemoStep): LiveSnapshot["status"] {
   switch (step) {
