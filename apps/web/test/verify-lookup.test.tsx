@@ -70,7 +70,10 @@ describe("verify link in the header and the home footer", () => {
   it("is in the header when signed in, and in the home footer", async () => {
     mockFetch({
       "GET /api/session": () =>
-        ok({ streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null } }),
+        ok({
+          streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+          donateUrl: null,
+        }),
     })
     const view = renderApp("/")
     await view.findByRole("button", { name: "Streamy" })

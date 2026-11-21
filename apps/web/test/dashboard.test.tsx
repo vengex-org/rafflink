@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent } from "@testing-library/react"
 import { stubClipboard } from "./clipboard.ts"
-import { dashboardGiveaway, rules } from "./fixtures.ts"
+import { dashboardGiveaway, donateUrl, rules, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { inputOf } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
@@ -157,6 +157,55 @@ describe("dashboard", () => {
     expect(view.getByText("Entries open").closest(".status-chip")?.getAttribute("data-tone")).toBe(
       "success",
     )
+  })
+
+  describe("support line", () => {
+    const withDrawn = {
+      "GET /api/dash/giveaways": () =>
+        ok({
+          giveaways: [
+            { ...dashboardGiveaway, id: "a", code: "AAAAA", status: "open" },
+            { ...dashboardGiveaway, id: "c", code: "CCCCC", status: "drawn" },
+          ],
+        }),
+    }
+    const supportText = "The draw is done. If Rafflink saved you time, you can support it."
+
+    it("links the configured support page in a new tab above the drawn giveaways", async () => {
+      mockFetch({ ...withDrawn, "GET /api/session": () => ok(supportedSession) })
+
+      const view = renderApp("/dashboard")
+
+      const link = await view.findByRole("link", { name: "Support" })
+      expect(link.getAttribute("href")).toBe(donateUrl)
+      expect(link.getAttribute("target")).toBe("_blank")
+      expect(link.getAttribute("rel")).toBe("noopener")
+      expect(link.closest(".support-note")?.textContent).toContain(supportText)
+      expect(link.closest(".support-note")?.nextElementSibling?.className).toBe("giveaways rows")
+    })
+
+    it("stays away while nothing is drawn yet", async () => {
+      mockFetch({ ...listed, "GET /api/session": () => ok(supportedSession) })
+
+      const view = renderApp("/dashboard")
+
+      await view.findByRole("heading", { name: "Summer giveaway" })
+      await view.findByRole("button", { name: "Streamy" })
+      expect(view.queryByText(supportText, { exact: false })).toBeNull()
+    })
+
+    it("stays away when the deployment names no support page", async () => {
+      mockFetch({
+        ...withDrawn,
+        "GET /api/session": () => ok({ ...supportedSession, donateUrl: null }),
+      })
+
+      const view = renderApp("/dashboard")
+
+      await view.findByRole("button", { name: "Streamy" })
+      await view.findByText("Winners drawn")
+      expect(view.queryByRole("link", { name: "Support" })).toBeNull()
+    })
   })
 
   it("pins the open giveaway above the others", async () => {

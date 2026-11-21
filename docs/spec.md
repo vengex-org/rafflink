@@ -459,6 +459,15 @@ of the id could be brute-forced into a list of who entered.
 - Hosting targets: Cloudflare and a VPS from one core with ports and a shared contract test suite.
 - Code: public repo `vengex-org/rafflink` on GitHub, license AGPL-3.0.
 
+Decisions on support and reach (owner decision, 2026-11-21):
+
+- An optional `DONATE_URL` (https only, unset by default) gives signed-in streamers a quiet support link: a line
+  above the drawn giveaways on the dashboard and an entry in the account menu. It reaches the web app only in the
+  `/api/session` answer of a signed-in streamer; viewer pages, the overlay and the home preview never show it.
+- The OBS overlay shows the host it is served from, with the logo mark, on a small plate under the plates while a
+  draw runs and after it. It stays off while the entry plate already shows the host and on the blank winner-only
+  overlay before a draw.
+
 Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
 
 - The room commits from its alarm right after the close and again at the draw if the alarm has not run; `close()`

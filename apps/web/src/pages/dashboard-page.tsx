@@ -9,6 +9,7 @@ import {
   ArrowLeftIcon,
   CheckIcon,
   CopyIcon,
+  HeartIcon,
   LinkIcon,
   PlusIcon,
   TvIcon,
@@ -18,6 +19,7 @@ import { Page } from "../components/page.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import type { Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
+import { useStreamerSession } from "../components/streamer-session.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { giveawayDisplayName } from "../lib/messages.ts"
 import { useLoad } from "../lib/use-load.ts"
@@ -141,6 +143,7 @@ function GiveawayList({
 }) {
   const i18n = useI18n()
   const { t } = i18n
+  const { donateUrl } = useStreamerSession()
   if (giveaways.length === 0) {
     return (
       <>
@@ -189,6 +192,7 @@ function GiveawayList({
           ))}
         </ul>
       )}
+      {rest.length === 0 || donateUrl === null ? null : <SupportNote url={donateUrl} />}
       {rest.length === 0 ? null : (
         <ul className="giveaways rows">
           {rest.map((giveaway) => (
@@ -202,6 +206,22 @@ function GiveawayList({
         </ul>
       )}
     </>
+  )
+}
+
+/** A quiet line above the drawn giveaways, the moment a streamer has just seen a giveaway through. */
+function SupportNote({ url }: { readonly url: string }) {
+  const { t } = useI18n()
+  return (
+    <p className="support-note">
+      <HeartIcon />
+      <span>
+        {t("dash.support.text")}{" "}
+        <a href={url} target="_blank" rel="noopener">
+          {t("dash.support.link")}
+        </a>
+      </span>
+    </p>
   )
 }
 

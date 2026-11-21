@@ -9,6 +9,7 @@ export type ConfigReason =
   | "not-an-integer"
   | "out-of-range"
   | "not-a-url"
+  | "not-an-https-url"
   | "not-a-header-name"
   | "not-a-chain-hash"
   | "not-at-least-drand-period"
@@ -540,6 +541,12 @@ export const configSchema = {
     "100000",
     "Durable Object requests per UTC day the usage meter compares against; Cloudflare Free plan limit, raise it on a paid plan",
   ),
+  donateUrl: withDefault(
+    "DONATE_URL",
+    optional(httpsUrl),
+    "",
+    "HTTPS page where streamers can support this deployment; the dashboard and the account menu link to it, never a viewer page or the overlay; blank shows no link",
+  ),
 }
 
 export function resolveConfig(env: Env): ResolvedConfig {
@@ -625,6 +632,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     cloudflareUsageTimeoutMs: read(env, configSchema.cloudflareUsageTimeoutMs),
     workerRequestLimit: read(env, configSchema.workerRequestLimit),
     durableObjectRequestLimit: read(env, configSchema.durableObjectRequestLimit),
+    donateUrl: read(env, configSchema.donateUrl),
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
@@ -748,6 +756,13 @@ function endpoint(raw: string): Parsed<string, ConfigReason> {
   const parsed = new URL(value)
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fail("not-a-url")
   return ok(parsed.href)
+}
+
+function httpsUrl(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  if (!URL.canParse(value)) return fail("not-a-url")
+  const parsed = new URL(value)
+  return parsed.protocol === "https:" ? ok(parsed.href) : fail("not-an-https-url")
 }
 
 function socketUrl(raw: string): Parsed<string, ConfigReason> {

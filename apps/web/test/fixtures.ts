@@ -70,3 +70,11 @@ export const claimedAtText = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
   timeStyle: "short",
 }).format(claimedAt)
+
+export const donateUrl = "https://ko-fi.com/rafflink"
+
+/** A signed-in streamer on a deployment that names a support page. */
+export const supportedSession = {
+  streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+  donateUrl,
+}
