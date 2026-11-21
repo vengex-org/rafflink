@@ -8,6 +8,7 @@ import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { MemoryPublicCache } from "@rafflink/core/lib/memory-public-cache"
+import { MemoryRateLimiter } from "@rafflink/core/lib/memory-rate-limiter"
 import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { applyMigrations } from "@rafflink/core/room/migrate"
@@ -23,6 +24,7 @@ import { existsSync, mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { BunSocketConnector } from "./bun-socket-connector.ts"
 import { openDatabase } from "./database.ts"
+import { forwardedAddress } from "./forwarded-address.ts"
 import { LocalRoomDirectory } from "./local-room-directory.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
 import { createServerApp } from "./server-app.ts"
@@ -47,6 +49,8 @@ export interface RunningServer {
 export const accountsFileName = "accounts.sqlite"
 const queueFileName = "queue.sqlite"
 const roomsDirName = "rooms"
+// The entry limits are per minute.
+const rateWindowMs = 60_000
 
 /** Opens the data folder, starts the timers and listens. With `config.devFakeTwitch` the fake Twitch answers at the Twitch URLs. */
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
@@ -77,7 +81,15 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const queueDb = openDatabase(join(config.dataDir, queueFileName))
   const queueSql = new BunSqliteSyncSql(queueDb)
   applyMigrations(queueSql, queueMigrations)
-  const entryDeps = { config, clock, random, twitch, accounts, rooms }
+  const entryDeps = {
+    config,
+    clock,
+    random,
+    twitch,
+    accounts,
+    rooms,
+    entryUserLimiter: new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, rateWindowMs),
+  }
   // The timer can fire while a pass still waits for Twitch; the claim in the queue keeps rows apart, this keeps passes apart.
   const runQueue = skipWhileRunning(async () => {
     try {
@@ -102,6 +114,8 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     publicCache: new MemoryPublicCache(clock),
     keyRing,
     admins: new AdminDirectory(config, twitch),
+    entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, rateWindowMs),
+    clientAddress: forwardedAddress,
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null

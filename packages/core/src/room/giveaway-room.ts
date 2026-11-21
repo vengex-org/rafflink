@@ -23,6 +23,7 @@ import {
   lastStandingDeadlineSql,
   undrawnEntrantSql,
   recentEntriesCountSql,
+  retainedDataSql,
   waitingPickOfChatterSql,
   winnerChatNameSql,
 } from "./queries.ts"
@@ -52,6 +53,7 @@ export type RoomConfig = Pick<
   | "liveRateWindowSeconds"
   | "mirrorRetrySeconds"
   | "rerollWindowSeconds"
+  | "entryRetentionSeconds"
 >
   & ChatWatcherConfig
 
@@ -378,6 +380,7 @@ export class GiveawayRoom {
       state = this.readState()
     }
     pushNow = (state.status === "drawn" && this.rerollWindowOver()) || pushNow
+    pushNow = this.deleteExpiredEntries(state, now) || pushNow
     if (pushNow) this.guarded("live-push", () => this.pushLive())
     this.guarded("viewer-push", () => this.pushViewers())
     const refreshRoles =
@@ -621,10 +624,31 @@ export class GiveawayRoom {
 
   private closeOpenRoom(): boolean {
     const closed = this.sql.exec(
-      "UPDATE room_state SET status = 'closed', mirror_pending = 1 WHERE id = 1 AND status = 'open' RETURNING id",
-      [],
+      "UPDATE room_state SET status = 'closed', closed_at = ?, mirror_pending = 1 WHERE id = 1 AND status = 'open' RETURNING id",
+      [this.clock.now()],
     )
     return closed.length > 0
+  }
+
+  // Counts, picks and claims stay: the winner list belongs to the giveaway, the entrants' data does not.
+  private deleteExpiredEntries(state: RoomState, now: Instant): boolean {
+    const deadline = this.retentionDeadline(state)
+    if (deadline === null || now < deadline) return false
+    this.sql.transaction(() => {
+      this.sql.exec("DELETE FROM entries", [])
+      this.sql.exec("DELETE FROM channel_roles", [])
+    })
+    console.info("room entries deleted", {
+      giveawayId: state.giveawayId,
+      entrantCount: state.entrantCount,
+    })
+    return true
+  }
+
+  // Null while entries are open and once nothing is left to delete.
+  private retentionDeadline(state: RoomState): Instant | null {
+    if (state.closedAt === null || this.sql.exec(retainedDataSql, []).length === 0) return null
+    return state.closedAt + this.config.entryRetentionSeconds * 1000
   }
 
   // A write the viewers' pages show: the same effects as {@link afterWrite}, plus the viewers' push.
@@ -849,6 +873,7 @@ export class GiveawayRoom {
       claimDeadline === null ? null : claimDeadline + 1,
       this.rerollWindowWake(state),
       this.chatWatchWake(state),
+      this.retentionDeadline(state),
       this.chat.wakeAt(),
     ].filter((at): at is Instant => at !== null)
     if (wakeups.length === 0) this.alarm.clear()

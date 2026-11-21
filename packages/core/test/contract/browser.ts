@@ -48,14 +48,19 @@ export class Browser {
     return new URL(authorize.headers.get("location") ?? "")
   }
 
-  finishSignIn(callback: URL): Promise<Response> {
-    return this.request(callback.pathname + callback.search)
+  finishSignIn(callback: URL, headers: HeadersInit = {}): Promise<Response> {
+    return this.request(callback.pathname + callback.search, { headers })
   }
 
-  /** A whole sign-in: start, consent as `userId`, callback. Returns the callback response. */
-  async signInAs(userId: string, startPath: string, twitch: SignInControl): Promise<Response> {
+  /** A whole sign-in: start, consent as `userId`, callback, which carries `callbackHeaders`. Returns the callback response. */
+  async signInAs(
+    userId: string,
+    startPath: string,
+    twitch: SignInControl,
+    callbackHeaders: HeadersInit = {},
+  ): Promise<Response> {
     const authorizeUrl = await this.beginSignIn(startPath)
-    return this.finishSignIn(await this.consent(authorizeUrl, userId, twitch))
+    return this.finishSignIn(await this.consent(authorizeUrl, userId, twitch), callbackHeaders)
   }
 
   private store(setCookie: string): void {

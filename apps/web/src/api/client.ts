@@ -192,8 +192,7 @@ function parseViewerState(source: Json): ViewerState {
         kind,
         userId: text(source, "userId"),
         n: num(source, "n"),
-        tickets: num(source, "tickets"),
-        group: oneOf(source, "group", groups),
+        entry: source.entry === null ? null : parseWonEntry(child(source, "entry")),
         claimRemainingMs: num(source, "claimRemainingMs"),
         claim: parseClaim(child(source, "claim")),
         chatClaimAvailable: bool(source, "chatClaimAvailable"),
@@ -382,6 +381,7 @@ const entryKinds = [
   "already-in",
   "not-eligible",
   "closed",
+  "rate-limited",
   "pending",
   "dropped",
   "try-again",
@@ -432,11 +432,16 @@ function parseEntryResult(source: Json): EntryResult {
         entry: Object.hasOwn(source, "entry") ? parseEntry(child(source, "entry")) : null,
       }
     case "closed":
+    case "rate-limited":
     case "dropped":
     case "try-again":
     case "invalid-state":
       return { kind }
   }
+}
+
+function parseWonEntry(source: Json): Pick<EntrySummary, "tickets" | "group"> {
+  return { group: oneOf(source, "group", groups), tickets: num(source, "tickets") }
 }
 
 function parseEntry(source: Json): EntrySummary {

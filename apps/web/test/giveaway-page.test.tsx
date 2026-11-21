@@ -29,8 +29,7 @@ const wonRoute = (
         kind: "won",
         userId: "u1",
         n: 0,
-        tickets: 3,
-        group: "follower",
+        entry: { tickets: 3, group: "follower" },
         claimRemainingMs,
         claim,
         chatClaimAvailable,
@@ -321,6 +320,15 @@ describe("entry outcomes", () => {
     expect(view.getByRole("link", { name: "Enter with Twitch" })).toBeTruthy()
   })
 
+  it("says Too many attempts with a way to enter again", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE?entry=rate-limited")
+
+    expect(await view.findByRole("heading", { name: "Too many attempts" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "Enter with Twitch" })).toBeTruthy()
+  })
+
   it.each(["invalid-state", "dropped"])("offers Enter with Twitch again after %s", async (kind) => {
     mockFetch(giveawayRoute)
 
@@ -485,6 +493,31 @@ describe("winner claim", () => {
     expect(await view.findByText("Your entry: 3 tickets as a follower.")).toBeTruthy()
   })
 
+  it("shows the won screen without the ticket box once the entry was deleted", async () => {
+    mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({
+          ...giveaway,
+          status: "drawn",
+          me: {
+            kind: "won",
+            userId: "u1",
+            n: 0,
+            entry: null,
+            claimRemainingMs: 90_000,
+            claim: { state: "waiting" },
+            chatClaimAvailable: true,
+          },
+        }),
+    })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { name: "You won" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "Claim my prize" })).toBeTruthy()
+    expect(view.queryByText(/Your entry:/)).toBeNull()
+  })
+
   it("shows a claimed winner their tickets and when the prize was claimed", async () => {
     mockFetch(wonRoute(0, { state: "claimed", at: claimedAt, via: "chat" }))
 
@@ -506,8 +539,7 @@ describe("winner claim", () => {
             kind: "won",
             userId: "u1",
             n: 0,
-            tickets: 3,
-            group: "follower",
+            entry: { tickets: 3, group: "follower" },
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,

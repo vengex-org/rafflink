@@ -31,6 +31,16 @@
       { "name": "QUEUE", "class_name": "TokenQueueDO" },
     ],
   },
+  // Workers Rate Limiting counts per key in 60 second periods. The limits equal the defaults of
+  // ENTRY_USER_LIMIT_PER_MINUTE and ENTRY_IP_LIMIT_PER_MINUTE; a test keeps them equal.
+  "ratelimits": [
+    {
+      "name": "ENTRY_USER_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 },
+    },
+    { "name": "ENTRY_IP_LIMITER", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
+  ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GiveawayRoomDO", "TokenQueueDO"] }],
   "triggers": { "crons": ["0 * * * *"] },
   "observability": { "enabled": true },

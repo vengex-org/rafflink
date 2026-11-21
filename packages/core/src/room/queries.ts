@@ -43,3 +43,7 @@ export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, ti
 
 /** The sequence number of the newest entry; `head` is NULL when nobody entered. */
 export const headSeqSql = "SELECT MAX(seq) AS head FROM entries"
+
+/** One row while the room still holds personal data of entrants or channel roles; no row once it was deleted. */
+export const retainedDataSql =
+  "SELECT 1 AS present WHERE EXISTS (SELECT 1 FROM entries) OR EXISTS (SELECT 1 FROM channel_roles)"

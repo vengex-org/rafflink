@@ -214,6 +214,17 @@ function entryCard(entry: EntryView, giveaway: GiveawayView, i18n: I18n): EntryC
         retry: true,
         entered: false,
       }
+    case "rate-limited":
+      return {
+        tone: "warning",
+        icon: <AlertIcon />,
+        title: t("entry.rateLimited.title"),
+        detail: t("entry.rateLimited.detail"),
+        help: t("entry.rateLimited.help"),
+        step: 1,
+        retry: true,
+        entered: false,
+      }
     case "invalid-state":
       return {
         tone: "danger",

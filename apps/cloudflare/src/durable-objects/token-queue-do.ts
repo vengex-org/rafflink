@@ -42,7 +42,7 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
   }
 
   private async open(): Promise<TokenQueue> {
-    const { config, clock, random, twitch, accounts } = await runtimeOf(this.env)
+    const { config, clock, random, twitch, accounts, entryUserLimiter } = await runtimeOf(this.env)
     const sql = new DurableObjectSyncSql(this.ctx.storage)
     applyMigrations(sql, queueMigrations)
     const entryDeps = {
@@ -52,6 +52,7 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
       twitch,
       accounts,
       rooms: new DurableObjectRoomDirectory(this.env.ROOMS),
+      entryUserLimiter,
     }
     return new TokenQueue({
       sql,

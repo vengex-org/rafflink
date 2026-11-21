@@ -9,6 +9,7 @@ export type CallbackOutcome =
   | { readonly kind: "already-in"; readonly entry: EntrySummary }
   | { readonly kind: "not-eligible"; readonly reason: IneligibleReason }
   | { readonly kind: "closed" }
+  | { readonly kind: "rate-limited" }
   | { readonly kind: "pending"; readonly ticket: string }
   | { readonly kind: "dropped" }
   | { readonly kind: "try-again" }
@@ -36,6 +37,7 @@ export function parseFinalOutcome(text: string): Parsed<FinalOutcome, "malformed
   if (!isRecord(value)) return malformed
   switch (value.kind) {
     case "closed":
+    case "rate-limited":
     case "try-again":
     case "invalid-state":
       return { ok: true, value: { kind: value.kind } }

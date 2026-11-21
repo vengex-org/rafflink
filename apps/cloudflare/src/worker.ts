@@ -7,6 +7,7 @@ import { CacheApiPublicCache } from "./adapters/cache-api-public-cache.ts"
 import { createUsageMeter } from "./adapters/cloudflare-usage-meter.ts"
 import { DurableObjectRoomDirectory } from "./adapters/durable-object-room-directory.ts"
 import { durableObjectTokenQueue } from "./adapters/durable-object-token-queue.ts"
+import { RateLimitBindingLimiter, connectingAddress } from "./adapters/rate-limit-binding.ts"
 import type { WorkerEnv } from "./env.ts"
 import { runtimeOf } from "./runtime.ts"
 import { createWorkerApp } from "./worker-app.ts"
@@ -44,6 +45,8 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     usage: createUsageMeter(runtime.config, runtime.clock, (input, init) => fetch(input, init)),
     publicCache: new CacheApiPublicCache(caches.default),
     admins: new AdminDirectory(runtime.config, runtime.twitch),
+    entryIpLimiter: new RateLimitBindingLimiter(env.ENTRY_IP_LIMITER),
+    clientAddress: connectingAddress,
   }
   return createWorkerApp({ api: createApp(deps, null), rooms: env.ROOMS })
 }

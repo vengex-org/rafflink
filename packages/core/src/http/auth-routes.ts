@@ -122,6 +122,10 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
         ? null
         : await deps.accounts.findGiveawayByCode(saved.giveawayCode)
     if (giveaway === null) return c.redirect(returnTo(null, { kind: "invalid-state" }))
+    const address = deps.clientAddress(c.req.raw)
+    if (address !== null && !(await deps.entryIpLimiter.allow(address))) {
+      return c.redirect(returnTo(giveaway.code, { kind: "rate-limited" }))
+    }
 
     const item: QueuedCode = { code, giveawayId: giveaway.id, nonce: saved.nonce }
     const queued = async (cause: EnqueueCause) => {
