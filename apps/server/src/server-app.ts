@@ -1,6 +1,7 @@
 import { serveStatic, upgradeWebSocket } from "@hono/bun"
 import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
 import { staticCacheControl } from "@rafflink/core/http/static-headers"
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import {
@@ -77,6 +78,9 @@ function isPagePath(pathname: string): boolean {
   return pathname.endsWith("/") || pathname === "/index.html"
 }
 
+// RFC 6455: the server hit an unexpected condition and cannot serve the socket.
+const internalErrorCloseCode = 1011
+
 interface Subscribable {
   subscribe(topic: string): void
 }
@@ -104,7 +108,12 @@ function socketRoute(
       onOpen: (_event, ws) => {
         if (!isSubscribable(ws.raw)) throw new TypeError("the socket cannot subscribe to a topic")
         ws.raw.subscribe(topic)
-        ws.send(first())
+        try {
+          ws.send(first())
+        } catch (error) {
+          console.error("socket first message failed", { topic, errorClass: errorClass(error) })
+          ws.close(internalErrorCloseCode)
+        }
       },
     }))(c, next)
   }

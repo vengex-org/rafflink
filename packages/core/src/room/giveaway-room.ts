@@ -170,8 +170,9 @@ export type RerollState =
   | { readonly rerollOpen: true; readonly rerollBlocked: null }
   | { readonly rerollOpen: false; readonly rerollBlocked: "window-over" | "nobody-left" | null }
 
-/** One chat message of a winner as the live page shows it; `name` is the display name of the winner's entry. */
+/** One chat message of a winner as the live page shows it; `name` is the display name of the winner's entry, `id` counts the room's lines up from 1 so a page can tell a new line from an old one. */
 export interface WinnerChatLine {
+  readonly id: number
   readonly name: string
   readonly text: string
   readonly at: Instant
@@ -252,6 +253,7 @@ export class GiveawayRoom {
   private mirrorRetryAt: Instant | null = null
   // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
   private winnerChat: readonly ChatterLine[] = []
+  private winnerChatSeq = 0
 
   constructor(deps: RoomDeps) {
     this.sql = deps.sql
@@ -684,14 +686,16 @@ export class GiveawayRoom {
     if (shown && !claimed) {
       this.pushLive()
       // A throttled push only sets `pushDueAt`; the alarm has to wake the room for it.
-      this.guarded("alarm", () => this.rearm())
+      if (this.pushDueAt !== null) this.guarded("alarm", () => this.rearm())
     }
   }
 
   private showWinnerChat(message: ChatMessage): boolean {
     const row = this.sql.exec(winnerChatNameSql, [message.chatterUserId])[0]
     if (row === undefined) return false
+    this.winnerChatSeq += 1
     const line: WinnerChatLine = {
+      id: this.winnerChatSeq,
       name: new RowReader("entries", row).text("display_name"),
       text: message.text,
       at: this.clock.now(),

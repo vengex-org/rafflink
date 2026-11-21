@@ -700,8 +700,8 @@ describe("live page: the stage", () => {
 
 describe("live page: winners' chat", () => {
   const chat = [
-    { name: "Wanda", text: "I am here!", at: 1 },
-    { name: "Bob", text: "me too", at: 2 },
+    { id: 1, name: "Wanda", text: "I am here!", at: 1 },
+    { id: 2, name: "Bob", text: "me too", at: 2 },
   ]
 
   it("lists the messages with the winner's name, newest last, in a polite live region", async () => {
@@ -757,7 +757,7 @@ describe("live page: winners' chat", () => {
     expect(list.scrollTop).toBe(480)
   })
 
-  it("scrolls to a new message that has the same time as the one before it", async () => {
+  it("scrolls to a new message when the list is full and the oldest line dropped out at the same time", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
 
     const view = renderApp("/live/gid-1")
@@ -767,12 +767,30 @@ describe("live page: winners' chat", () => {
       list.scrollTop = 0
       FakeSocket.opened[0]?.push({
         ...drawn,
-        winnerChat: [...chat, { name: "Wanda", text: "same millisecond", at: 2 }],
+        winnerChat: [
+          { id: 2, name: "Bob", text: "me too", at: 2 },
+          { id: 3, name: "Wanda", text: "same millisecond", at: 2 },
+        ],
       })
     })
 
     await view.findByText("same millisecond")
     expect(list.scrollTop).toBe(480)
+  })
+
+  it("keeps the scroll when a reroll drops the newest line", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: chat }) })
+
+    const view = renderApp("/live/gid-1")
+    const list = await view.findByRole("list", { name: "Winner chat" })
+    Object.defineProperty(list, "scrollHeight", { value: 480 })
+    act(() => {
+      list.scrollTop = 120
+      FakeSocket.opened[0]?.push({ ...drawn, winnerChat: chat.slice(0, 1) })
+    })
+
+    await waitFor(() => expect(view.queryByText("me too")).toBeNull())
+    expect(list.scrollTop).toBe(120)
   })
 })
 

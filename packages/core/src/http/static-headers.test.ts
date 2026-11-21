@@ -8,7 +8,7 @@ describe("staticCacheControl", () => {
     expect(staticCacheControl("/fonts/geist-1.9.2.woff2")).toBe(
       "public, max-age=31536000, immutable",
     )
-    expect(staticCacheControl("/fonts/OFL.txt")).toBe("no-cache")
+    expect(staticCacheControl("/licenses/geist-OFL.txt")).toBe("no-cache")
     expect(staticCacheControl("/fonts/")).toBe("no-cache")
     expect(staticCacheControl("/fonts/nested/geist.woff2")).toBe("no-cache")
     expect(staticCacheControl("/favicon.svg")).toBe("no-cache")
@@ -39,7 +39,7 @@ describe("headersFile", () => {
         "/index-*.css",
         "  ! Cache-Control",
         "  Cache-Control: public, max-age=31536000, immutable",
-        "/fonts/*.woff2",
+        "/fonts/*",
         "  ! Cache-Control",
         "  Cache-Control: public, max-age=31536000, immutable",
         "",

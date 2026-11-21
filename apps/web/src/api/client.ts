@@ -551,7 +551,12 @@ function parseRerollState(source: Json): RerollState {
 }
 
 function parseChatLine(source: Json): WinnerChatLine {
-  return { name: text(source, "name"), text: text(source, "text"), at: num(source, "at") }
+  return {
+    id: num(source, "id"),
+    name: text(source, "name"),
+    text: text(source, "text"),
+    at: num(source, "at"),
+  }
 }
 
 function parseWinner(source: Json): LiveWinner {

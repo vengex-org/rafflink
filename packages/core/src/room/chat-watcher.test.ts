@@ -60,10 +60,13 @@ class TestClock implements Clock {
 
 class TestAlarm implements Alarm {
   at: Instant | null = null
+  writes = 0
   set(at: Instant): void {
+    this.writes += 1
     this.at = at
   }
   clear(): void {
+    this.writes += 1
     this.at = null
   }
 }
@@ -934,7 +937,7 @@ describe("winner chat", () => {
     socket?.receive(chat(winner, "hello chat"))
 
     expect(room.liveSnapshot().winnerChat).toEqual([
-      { name: `Name${winner}`, text: "hello chat", at: clock.now() },
+      { id: 1, name: `Name${winner}`, text: "hello chat", at: clock.now() },
     ])
   })
 
@@ -965,6 +968,21 @@ describe("winner chat", () => {
     for (const text of ["one", "two", "three"]) socket?.receive(chat(winner, text))
 
     expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["two", "three"])
+  })
+
+  it("numbers the lines in arrival order, past the cap and past a reroll", async () => {
+    const { room, socket, winner } = await connectedRoom({
+      claimKeyword: "!claim",
+      env: { LIVE_WINNER_CHAT_MAX: "2" },
+    })
+
+    for (const text of ["one", "two", "three"]) socket?.receive(chat(winner, text))
+    expect(room.liveSnapshot().winnerChat.map((line) => line.id)).toEqual([2, 3])
+
+    await room.reroll(0)
+    socket?.receive(chat(room.picks()[1]?.platformUserId ?? "", "four"))
+
+    expect(room.liveSnapshot().winnerChat.map((line) => line.id)).toEqual([4])
   })
 
   it("stops the rerolled chatter and shows the new winner", async () => {
@@ -1025,6 +1043,16 @@ describe("winner chat", () => {
 
     expect(liveMessages).toHaveLength(pushed + 1)
     expect(liveMessages.at(-1)).toContain("second line")
+  })
+
+  it("does not rearm the alarm for a chat push that went out at once", async () => {
+    const { socket, winner, alarm, clock } = await connectedRoom({ claimKeyword: "!claim" })
+    clock.advance(1_000)
+    const writes = alarm.writes
+
+    socket?.receive(chat(winner, "no throttle"))
+
+    expect(alarm.writes).toBe(writes)
   })
 
   it("drops the lines of a rerolled pick and pushes the live page", async () => {

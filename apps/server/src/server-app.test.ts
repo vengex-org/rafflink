@@ -1,5 +1,5 @@
 import { websocket } from "@hono/bun"
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono } from "hono"
 import { createServerApp } from "./server-app.ts"
@@ -84,5 +84,45 @@ describe.each([
     socket.close()
 
     expect(messages).toEqual(["pushed while the snapshot was read", "snapshot"])
+  })
+})
+
+describe("a socket whose first message cannot be built", () => {
+  it("closes with an internal error code and logs the error class without the message", async () => {
+    const logged = spyOn(console, "error").mockImplementation(() => {})
+    const api = new Hono().get("/api/live/g1", (c) => c.json({ answeredByTheCheck: true }))
+    const server = Bun.serve({
+      port: 0,
+      fetch: (request, bunServer) => app.fetch(request, bunServer),
+      websocket,
+    })
+    stops.push(() => void server.stop(true))
+    const app = createServerApp({
+      api,
+      rooms: {
+        viewerPushText: unusedText,
+        overlaySnapshotText: unusedText,
+        liveSnapshotText: () => {
+          throw new RangeError("database is locked")
+        },
+      },
+      fakeTwitch: null,
+      staticDir: null,
+    })
+
+    const socket = new WebSocket(`ws://localhost:${server.port}/api/live/g1`)
+    const messages: string[] = []
+    socket.addEventListener("message", (event) => messages.push(String(event.data)))
+    const closed = await new Promise<CloseEvent>((resolve) =>
+      socket.addEventListener("close", resolve),
+    )
+
+    expect(closed.code).toBe(1011)
+    expect(messages).toEqual([])
+    expect(logged).toHaveBeenCalledWith("socket first message failed", {
+      topic: liveTopic("g1"),
+      errorClass: "RangeError",
+    })
+    logged.mockRestore()
   })
 })
