@@ -1,13 +1,11 @@
 import { useState } from "react"
 import { DemoClaim } from "../pages/demo-page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
-import { shareUrl } from "../lib/links.ts"
 import { exampleDraw } from "../lib/home-example.ts"
 import { demoViewerName } from "../lib/demo-script.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { GiveawayFacts } from "./giveaway-facts.tsx"
 import { GiveawayHead } from "./giveaway-head.tsx"
-import { QrCode } from "./qr-code.tsx"
 import { Replay } from "./replay.tsx"
 import { WinnerPlates } from "../pages/overlay-page.tsx"
 import { WinnerPlate } from "./winner-plate.tsx"
@@ -41,9 +39,6 @@ function ExampleDraw() {
         <div className="stage-canvas">
           <div className="overlay">
             <WinnerPlates standing={standingWinners(snapshot.winners)} prize={facts.prize ?? ""} />
-            <div className="overlay-plate overlay-qr">
-              <QrCode value={shareUrl(facts.code)} label={t("overlay.qr")} />
-            </div>
           </div>
         </div>
       </div>

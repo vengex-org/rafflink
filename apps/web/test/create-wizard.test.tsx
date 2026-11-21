@@ -348,7 +348,7 @@ describe("create wizard", () => {
     expect(sent?.body).toMatchObject({ closesAt: new Date("2099-01-01T10:00").toISOString() })
   })
 
-  it("shows the success screen with the link, a chat message to copy and the OBS steps", async () => {
+  it("shows the success screen with the link and the OBS steps", async () => {
     const copied = stubClipboard(false)
     mockFetch(withCreate(createdReply))
     const view = await openWizard()
@@ -360,9 +360,6 @@ describe("create wizard", () => {
     expect(view.getByLabelText("Your link").getAttribute("value")).toBe(
       "http://rafflink.test/ABCDE",
     )
-    expect(view.getByLabelText("Message for your chat").getAttribute("value")).toBe(
-      "Enter the giveaway: http://rafflink.test/ABCDE",
-    )
     expect(view.getByLabelText("Overlay link").getAttribute("value")).toBe(
       "http://rafflink.test/overlay/gid-1/tok-1",
     )
@@ -373,9 +370,9 @@ describe("create wizard", () => {
     )
     expect(view.queryByRole("alert")).toBeNull()
 
-    fireEvent.click(view.getByRole("button", { name: "Copy chat message" }))
+    fireEvent.click(view.getByRole("button", { name: "Copy link" }))
     expect(await view.findByText("Copied!")).toBeTruthy()
-    expect(copied).toEqual(["Enter the giveaway: http://rafflink.test/ABCDE"])
+    expect(copied).toEqual(["http://rafflink.test/ABCDE"])
 
     fireEvent.click(view.getByRole("button", { name: "Back to my giveaways" }))
     expect(await view.findByRole("heading", { name: "My giveaways" })).toBeTruthy()

@@ -212,14 +212,12 @@ describe("live page: collecting entries", () => {
     expect([field.selectionStart, field.selectionEnd]).toEqual([0, field.value.length])
   })
 
-  it("leaves the chat message and the link card out of the page, since the top bar has the link", async () => {
+  it("leaves the link card out of the page, since the top bar has the link", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     await view.findByRole("heading", openStage)
 
-    expect(view.queryByRole("button", { name: "Copy chat message" })).toBeNull()
-    expect(view.queryByLabelText("Message for your chat")).toBeNull()
     expect(view.queryByText("Latest entrants")).toBeNull()
   })
 
