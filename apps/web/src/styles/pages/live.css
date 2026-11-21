@@ -1,8 +1,9 @@
 /* Live page: the streamer's control room, shown on stream at 1920x1080. It has its own top bar instead of the app bar.
-   Below 64rem everything stacks in one column with phone sizes, the sidebar under the main column. From 64rem the stage
-   and the entrants list fill the main column and the sidebar (draw actions, stats, settings) sits right; every size there is a multiple of --u (tokens.css), so the layout of the 1920x1080 frame
-   holds at smaller windows. An entrants row is always 58px (entrantRowHeight in entrants-table.tsx), because the virtual
-   list computes with it. */
+   Below 64rem everything stacks in one column with phone sizes: the stage, the draw actions, the list, the sidebar.
+   From 64rem the stage and the entrants list fill the main column, and the draw actions sit right with the sidebar
+   (stats, settings) under them; every size there is a multiple of --u (tokens.css), so the layout of the 1920x1080
+   frame holds at smaller windows. An entrants row is always 58px (entrantRowHeight in entrants-table.tsx), because the
+   virtual list computes with it. */
 
 .live-frame {
   display: grid;
@@ -135,6 +136,22 @@
   display: flex;
   margin-inline-start: auto;
 }
+
+/* The settings popover hangs under its button: the app bar's fixed offset does not fit this bar, whose height changes
+   with the window. Without anchor positioning it keeps that offset. */
+@supports (anchor-name: --live-settings) {
+  .live-top-end {
+    anchor-name: --live-settings;
+  }
+
+  .live-top .settings-panel:popover-open {
+    position-anchor: --live-settings;
+    inset: auto;
+    top: anchor(bottom);
+    right: anchor(right);
+    margin-top: var(--space-1);
+  }
+}
 .live-top .pill {
   min-height: 2.75rem;
   padding-inline: 1rem;
@@ -174,12 +191,22 @@
   padding: var(--space-2) var(--gutter) var(--space-3);
 }
 
+/* Below 64rem the main column dissolves into the page grid, so the draw actions sit between the stage and the list
+   and the sidebar comes last. From 64rem it is one column again, beside the actions and the sidebar. */
 .live-left {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-  min-height: 0;
+  display: contents;
+}
+
+.live-left > .live-panel {
+  order: 2;
+}
+
+.live-page > .live-actions {
+  order: 1;
+}
+
+.live-page > .live-side {
+  order: 3;
 }
 
 .live-left > * {
@@ -643,8 +670,7 @@
   font-weight: 600;
 }
 
-/* The sidebar: the draw actions on top (they stay in view while the sidebar scrolls), the stats, the settings and the
-   way back from clean mode. */
+/* The draw actions, a cell of their own, and the sidebar: the stats, the settings and the way back from clean mode. */
 
 .live-side {
   display: flex;
@@ -655,14 +681,20 @@
 }
 
 .live-actions {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
   padding: 0.75rem;
+}
+
+/* A reroll label carries the winner's name, up to 25 characters: it wraps instead of widening a phone screen. */
+.live-actions .live-btn {
+  max-width: 100%;
+  padding-block: 0.5rem;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .live-card {
@@ -1202,30 +1234,53 @@ td:nth-child(2) > .entrants-cell {
     font-size: max(0.8125rem, calc(var(--u) * 18));
   }
 
+  /* The main column spans both rows, and a track it spans that is flexible does not grow from it, so the first row is
+     as tall as the actions alone (zero without them) and the sidebar starts right under them. */
   .live-page {
     grid-template-columns: minmax(0, 1fr) calc(var(--u) * 560);
-    grid-template-rows: minmax(0, 1fr);
-    gap: calc(var(--u) * 32) calc(var(--u) * 26);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "main actions"
+      "main side";
+    gap: 0 calc(var(--u) * 26);
     align-items: stretch;
     min-height: 0;
     padding: calc(var(--u) * 32) calc(var(--u) * 40);
   }
 
   .live-left {
+    display: flex;
+    flex-direction: column;
+    grid-area: main;
     gap: calc(var(--u) * 24);
+    min-width: 0;
+    min-height: 0;
     overflow-y: auto;
   }
 
+  /* A drawn stage with earlier picks is taller than the frame leaves beside the list: the picks shrink and scroll
+     inside the stage, so the plate and the clock stay whole and the list below keeps its rows. */
   .live-stage {
+    flex: 0 1 auto;
+    gap: calc(var(--u) * 16);
+    min-height: 0;
+    padding: calc(var(--u) * 28) calc(var(--u) * 40);
+  }
+
+  .live-stage > * {
     flex: none;
-    gap: calc(var(--u) * 24);
-    padding: calc(var(--u) * 40) calc(var(--u) * 48);
+  }
+
+  .live-stage > .live-history {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   /* The list takes the height the stage leaves, but never less than a few rows. */
   .live-panel {
     flex: 1 1 0;
-    min-height: calc(var(--u) * 420);
+    min-height: calc(var(--u) * 360);
   }
 
   .live-stage-head {
@@ -1251,12 +1306,12 @@ td:nth-child(2) > .entrants-cell {
 
   .live-reveal {
     flex: 1 1 auto;
-    grid-template-columns: minmax(0, 1fr) calc(var(--u) * 340);
-    gap: calc(var(--u) * 56);
+    grid-template-columns: minmax(0, 1fr) calc(var(--u) * 280);
+    gap: calc(var(--u) * 40);
   }
 
   .live-winner {
-    gap: calc(var(--u) * 28);
+    gap: calc(var(--u) * 20);
   }
 
   .live-who {
@@ -1264,9 +1319,9 @@ td:nth-child(2) > .entrants-cell {
   }
 
   .live-who .live-avatar {
-    width: calc(var(--u) * 84);
-    height: calc(var(--u) * 84);
-    font-size: max(1.125rem, calc(var(--u) * 32));
+    width: calc(var(--u) * 64);
+    height: calc(var(--u) * 64);
+    font-size: max(1.125rem, calc(var(--u) * 26));
   }
 
   .live-meta {
@@ -1288,11 +1343,11 @@ td:nth-child(2) > .entrants-cell {
   }
 
   .live-stage .winner-plate {
-    padding: calc(var(--u) * 18) calc(var(--u) * 40) calc(var(--u) * 26);
+    padding: calc(var(--u) * 12) calc(var(--u) * 28) calc(var(--u) * 18);
   }
 
   .live-stage .winner-plate-name {
-    font-size: max(2.5rem, calc(var(--u) * 150));
+    font-size: max(2.5rem, calc(var(--u) * 96));
   }
 
   .live-claim-hint {
@@ -1312,12 +1367,12 @@ td:nth-child(2) > .entrants-cell {
   }
 
   .live-ring {
-    width: calc(var(--u) * 320);
-    height: calc(var(--u) * 320);
+    width: calc(var(--u) * 280);
+    height: calc(var(--u) * 280);
   }
 
   .live-ring .countdown [role="timer"] {
-    font-size: max(2rem, calc(var(--u) * 84));
+    font-size: max(2rem, calc(var(--u) * 72));
   }
 
   .live-ring .countdown-label {
@@ -1353,12 +1408,15 @@ td:nth-child(2) > .entrants-cell {
   }
 
   .live-side {
+    grid-area: side;
     gap: calc(var(--u) * 24);
     overflow-y: auto;
   }
 
   .live-actions {
+    grid-area: actions;
     gap: calc(var(--u) * 12);
+    margin-bottom: calc(var(--u) * 24);
     padding: calc(var(--u) * 16);
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type RefObject } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { CheckIcon, CopyIcon } from "./icons.tsx"
@@ -51,26 +51,36 @@ export function CopyField({
   )
 }
 
-/** An icon button that copies `value`; when the browser refuses, it selects the text of `fallback` for Ctrl+C. */
+/**
+ * An icon button that copies `value`. The value also sits in a read-only field, invisible until the browser refuses
+ * the copy; then the field shows with the whole value selected for Ctrl+C. `fieldLabel` names that field.
+ */
 export function CopyButton({
   value,
   label,
-  fallback,
+  fieldLabel,
 }: {
   readonly value: string
   readonly label: string
-  readonly fallback: RefObject<HTMLElement | null>
+  readonly fieldLabel: string
 }) {
-  const { state, copy } = useCopy(value, () => {
-    if (fallback.current !== null) window.getSelection()?.selectAllChildren(fallback.current)
-  })
+  const input = useRef<HTMLInputElement>(null)
+  const { state, copy } = useCopy(value, () => input.current?.select())
   return (
-    <>
+    <span className="copy-button" data-state={state}>
+      <input
+        ref={input}
+        readOnly
+        tabIndex={-1}
+        aria-label={fieldLabel}
+        value={value}
+        onFocus={(event) => event.currentTarget.select()}
+      />
       <button type="button" className="icon-button" aria-label={label} onClick={() => void copy()}>
         {state === "copied" ? <CheckIcon /> : <CopyIcon />}
       </button>
       <CopyFeedback state={state} />
-    </>
+    </span>
   )
 }
 

@@ -165,7 +165,7 @@ describe("live page: collecting entries", () => {
     expect(copied).toEqual(["http://rafflink.test/ABCDE"])
   })
 
-  it("selects the entry link for Ctrl+C when the browser refuses to copy", async () => {
+  it("shows the whole entry link selected for Ctrl+C when the browser refuses to copy", async () => {
     stubClipboard(true)
     spyOn(console, "error").mockImplementation(() => {})
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
@@ -177,7 +177,10 @@ describe("live page: collecting entries", () => {
     expect(
       await view.findByText("Could not copy. The text is selected: press Ctrl+C."),
     ).toBeTruthy()
-    expect(window.getSelection()?.toString()).toBe("rafflink.test/ABCDE")
+    const field = within(view.getByRole("banner")).getByLabelText("Your link")
+    if (!(field instanceof HTMLInputElement)) throw new Error("the link field is not an input")
+    expect(field.value).toBe("http://rafflink.test/ABCDE")
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, field.value.length])
   })
 
   it("leaves the chat message and the link card out of the page, since the top bar has the link", async () => {
@@ -187,7 +190,7 @@ describe("live page: collecting entries", () => {
     await view.findByRole("heading", openStage)
 
     expect(view.queryByRole("button", { name: "Copy chat message" })).toBeNull()
-    expect(view.queryByLabelText("Your link")).toBeNull()
+    expect(view.queryByLabelText("Message for your chat")).toBeNull()
     expect(view.queryByText("Latest entrants")).toBeNull()
   })
 
@@ -551,15 +554,24 @@ describe("live page: winners", () => {
     ["whose claim the stream waits for", 0, "Waiting for Wanda to claim the prize."],
     ["who claimed", 1, "Bob claimed the prize."],
     ["that nobody claimed", 2, "Nobody has claimed the prize yet."],
-  ])("says in the controls bar %s", async (_name, skip, text) => {
+  ])("says to screen readers in the sidebar %s", async (_name, skip, text) => {
     mockLive({
       "GET /api/live/gid-1": () => ok({ ...drawn, winners: drawn.winners.slice(skip) }),
     })
 
     const view = renderApp("/live/gid-1")
 
-    const bar = await view.findByRole("toolbar", { name: "Giveaway controls" })
-    expect(within(bar).getByText(text)).toBeTruthy()
+    const side = await view.findByRole("complementary", { name: "Stats and settings" })
+    expect(within(side).getByText(text).className).toBe("sr-only")
+  })
+
+  it("shows no controls toolbar once the winner on the plate claimed, since nothing is left to do", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winners: drawn.winners.slice(1, 2) }) })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByText("Bob claimed the prize.")).toBeTruthy()
+    expect(view.queryByRole("toolbar", { name: "Giveaway controls" })).toBeNull()
   })
 
   it("asks before it picks another winner and names who loses the prize", async () => {

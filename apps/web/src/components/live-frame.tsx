@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react"
+import type { ReactNode } from "react"
 import { Link } from "react-router"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import type { GiveawayView } from "../api/client.ts"
@@ -52,7 +52,6 @@ export function LiveTopBar({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const link = useRef<HTMLSpanElement>(null)
   return (
     <>
       <LiveBrand />
@@ -71,11 +70,15 @@ export function LiveTopBar({
       </div>
       <div className="live-link-chip">
         <span>{t("live.enterAt")}</span>
-        <span ref={link} className="live-link">
+        <span className="live-link">
           {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
         </span>
         {controls ? (
-          <CopyButton value={shareUrl(snapshot.code)} label={t("share.copyLink")} fallback={link} />
+          <CopyButton
+            value={shareUrl(snapshot.code)}
+            label={t("share.copyLink")}
+            fieldLabel={t("share.link")}
+          />
         ) : null}
       </div>
       {snapshot.status === "open" ? (

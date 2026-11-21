@@ -485,6 +485,7 @@ export const en = {
   "live.bar.label": "Giveaway controls",
   "live.settings.title": "Giveaway settings",
   "live.stats.title": "Stats",
+  "live.side.label": "Stats and settings",
   "live.bar.waiting": "Waiting for {name} to claim the prize.",
   "live.bar.claimed": "{name} claimed the prize.",
   "live.bar.unclaimed": "Nobody has claimed the prize yet.",

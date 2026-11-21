@@ -488,6 +488,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.bar.label": "Ovládanie giveawayu",
   "live.settings.title": "Nastavenia giveawayu",
   "live.stats.title": "Štatistiky",
+  "live.side.label": "Štatistiky a nastavenia",
   "live.bar.waiting": "Čaká sa, kým {name} prevezme cenu.",
   "live.bar.claimed": "Cena je prevzatá: {name}.",
   "live.bar.unclaimed": "Cenu zatiaľ nikto neprevzal.",

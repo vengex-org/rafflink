@@ -4,7 +4,7 @@ import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/roo
 import { liveSnapshotPath, parseLiveSnapshot } from "../api/client.ts"
 import { ActivityIcon, AlertIcon, EyeOffIcon } from "../components/icons.tsx"
 import { EntrantsSection, Tiers } from "../components/entrants-table.tsx"
-import { LiveActions, LiveSettings } from "../components/live-bar.tsx"
+import { ClaimStatus, isUnsettled, LiveActions, LiveSettings } from "../components/live-bar.tsx"
 import { LiveBrand, LiveFrame, LiveTopBar } from "../components/live-frame.tsx"
 import { Stat } from "../components/live-parts.tsx"
 import { LiveStage } from "../components/live-stage.tsx"
@@ -78,9 +78,6 @@ function Loaded({ id }: { readonly id: string }) {
   }
 }
 
-const isUnclaimed = (winner: LiveWinner) =>
-  winner.claim.state === "waiting" || winner.claim.state === "expired"
-
 function Controls({
   id,
   snapshot,
@@ -120,7 +117,7 @@ function Controls({
               <p>{t("live.chatOff.text")}</p>
             </section>
           ) : null}
-          {rerollOver !== null && snapshot.winners.some(isUnclaimed) ? (
+          {rerollOver !== null && snapshot.winners.some(isUnsettled) ? (
             <section className="card banner" data-tone="warning">
               <span className="state-icon">
                 <AlertIcon />
@@ -145,9 +142,12 @@ function Controls({
             winners={snapshot.winners}
           />
         </div>
-        <div className="live-side">
-          {clean ? null : (
-            <LiveActions id={id} busy={busy} run={run} snapshot={snapshot} current={current} />
+        {clean ? null : (
+          <LiveActions id={id} busy={busy} run={run} snapshot={snapshot} current={current} />
+        )}
+        <aside className="live-side" aria-label={t("live.side.label")}>
+          {clean || snapshot.status !== "drawn" ? null : (
+            <ClaimStatus winners={snapshot.winners} current={current} />
           )}
           <LiveStats snapshot={snapshot} facts={facts} rows={entrants.rows} />
           {clean ? (
@@ -165,7 +165,7 @@ function Controls({
               onHide={toggleClean}
             />
           )}
-        </div>
+        </aside>
       </div>
     </LiveFrame>
   )
