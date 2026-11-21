@@ -19,7 +19,7 @@ import { SegmentRow, type SegmentRowOption } from "../components/segment-row.tsx
 import { StatusChip } from "../components/status-chip.tsx"
 import { WinnerPlate } from "../components/winner-plate.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
-import { demoFacts, demoLive, demoLiveApi } from "../lib/demo-live.ts"
+import { demoFacts, demoLive, demoLiveApi, demoNames } from "../lib/demo-live.ts"
 import {
   demoChatDelaysMs,
   demoChatScript,
@@ -161,7 +161,12 @@ function StreamerDemo({
   const api = useMemo(() => demoLiveApi(dispatch), [dispatch])
   const [now] = useState(() => Date.now())
   const { t } = useI18n()
-  const { snapshot, entrants, facts } = demoLive(state, now, (key) => demoChatText(key, t))
+  const { snapshot, entrants, facts } = demoLive(
+    state,
+    now,
+    (key) => demoChatText(key, t),
+    demoNames(t),
+  )
   return (
     <>
       <div className="demo-strip">{bar}</div>
@@ -189,7 +194,6 @@ function ViewerDemo({
   readonly dispatch: Dispatch<DemoAction>
   readonly bar: ReactNode
 }) {
-  const { t } = useI18n()
   const { step } = state
 
   // The buttons and links of the real panels would sign in or call the API; here they move the script on.
@@ -200,17 +204,37 @@ function ViewerDemo({
     if (step === "open" || step === "won") dispatch({ type: "advance", now: Date.now() })
   }
 
-  const giveaway = demoFacts(state)
-  const drawn = giveaway.status === "drawn"
-
   return (
     <Page width="compact" as="article" className="viewer demo">
       {bar}
-      <GiveawayHead giveaway={giveaway} as="h1" />
+      <DemoViewer state={state} heading="h1" showRules onOutcomeClick={driveScript} />
+    </Page>
+  )
+}
+
+/** The viewer page of the simulated giveaway at one step: the same panels a real viewer sees. */
+export function DemoViewer({
+  state,
+  heading,
+  showRules,
+  onOutcomeClick,
+}: {
+  readonly state: DemoState
+  readonly heading: "h1" | "h2"
+  readonly showRules: boolean
+  readonly onOutcomeClick?: (event: MouseEvent<HTMLElement>) => void
+}) {
+  const { t } = useI18n()
+  const { step } = state
+  const giveaway = demoFacts(state, demoNames(t))
+  const drawn = giveaway.status === "drawn"
+  return (
+    <>
+      <GiveawayHead giveaway={giveaway} as={heading} />
       {drawn ? null : <GiveawayPhase giveaway={giveaway} />}
       {step === "drawing" ? <output className="demo-drawing">{t("demo.drawing")}</output> : null}
       {drawn && !state.firstRerolled ? <WinnerPlate name={demoViewerName} /> : null}
-      <div aria-live="polite" className="viewer-outcome" onClickCapture={driveScript}>
+      <div aria-live="polite" className="viewer-outcome" onClickCapture={onOutcomeClick}>
         {drawn ? (
           <DemoClaim state={state} giveaway={giveaway} />
         ) : (
@@ -227,9 +251,9 @@ function ViewerDemo({
       </div>
       <div className="viewer-details">
         <GiveawayFacts kind={drawn ? "pool" : "entry"} giveaway={giveaway} />
-        <GiveawayRules giveaway={giveaway} />
+        {showRules ? <GiveawayRules giveaway={giveaway} /> : null}
       </div>
-    </Page>
+    </>
   )
 }
 

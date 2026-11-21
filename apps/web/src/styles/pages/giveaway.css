@@ -251,7 +251,7 @@ main.container:has(> .viewer) {
 }
 
 .viewer-state-head:has(.claim-ring) h2 {
-  font-size: 3.25rem;
+  font-size: 2.75rem;
   white-space: nowrap;
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useParams, useSearchParams } from "react-router"
 import type { LiveWinner, OverlaySnapshot } from "@rafflink/core/room/giveaway-room"
 import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
@@ -95,14 +95,7 @@ function Overlay({
     return (
       <main className="overlay">
         {heading}
-        <ul className="overlay-winners">
-          <li className="overlay-plate overlay-winner">
-            <div>
-              <p className="overlay-label">{t("live.draw.due")}</p>
-              <DrawShuffle key={waitMs} names={shuffle.names} waitMs={waitMs} />
-            </div>
-          </li>
-        </ul>
+        <ShufflePlate names={shuffle.names} waitMs={waitMs} />
       </main>
     )
   }
@@ -123,46 +116,83 @@ function Overlay({
       </main>
     )
   }
-  const drawn = snapshot.status === "drawn"
   return (
     <main className="overlay">
       {heading}
-      <div className="overlay-plate overlay-open">
-        <div className="overlay-link">
-          <div className="overlay-chip">
-            <span className="overlay-chip-label">
-              {drawn
-                ? t("overlay.winners")
-                : snapshot.status === "open"
-                  ? t("overlay.enterAt")
-                  : t("status.closed")}
-            </span>
-            {drawn ? (
-              <span className="overlay-winner-line">
-                {standing.map((winner) => winner.displayName ?? t("winner.removed")).join(", ")}
-              </span>
-            ) : (
-              <span className="overlay-url">
-                {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
-              </span>
-            )}
-          </div>
-          {qr}
-        </div>
-        {drawn ? null : (
-          <>
-            <dl className="stats">
-              <Stat
-                icon={<UsersIcon />}
-                value={i18n.number(snapshot.entrantCount)}
-                label={t("stat.people")}
-              />
-            </dl>
-            <EntrantNames names={snapshot.lastNames.slice(0, newestNames)} />
-          </>
-        )}
-      </div>
+      <EntryPlate snapshot={snapshot} qr={qr} />
     </main>
+  )
+}
+
+/** The winner slot while a draw is pending. */
+export function ShufflePlate({
+  names,
+  waitMs,
+}: {
+  readonly names: readonly string[]
+  readonly waitMs: number | null
+}) {
+  const { t } = useI18n()
+  return (
+    <ul className="overlay-winners">
+      <li className="overlay-plate overlay-winner">
+        <div>
+          <p className="overlay-label">{t("live.draw.due")}</p>
+          <DrawShuffle key={waitMs} names={names} waitMs={waitMs} />
+        </div>
+      </li>
+    </ul>
+  )
+}
+
+/** Where to enter and how many did while entries are open; the winners' names once drawn. */
+export function EntryPlate({
+  snapshot,
+  qr,
+}: {
+  readonly snapshot: OverlaySnapshot
+  readonly qr: ReactNode
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const drawn = snapshot.status === "drawn"
+  const standing = standingWinners(snapshot.winners)
+  return (
+    <div className="overlay-plate overlay-open">
+      <div className="overlay-link">
+        <div className="overlay-chip">
+          <span className="overlay-chip-label">
+            {drawn
+              ? t("overlay.winners")
+              : snapshot.status === "open"
+                ? t("overlay.enterAt")
+                : t("status.closed")}
+          </span>
+          {drawn ? (
+            <span className="overlay-winner-line">
+              {standing.map((winner) => winner.displayName ?? t("winner.removed")).join(", ")}
+            </span>
+          ) : (
+            <span className="overlay-url">
+              {new URL(shareUrl(snapshot.code)).host}/<em>{snapshot.code}</em>
+            </span>
+          )}
+        </div>
+        {qr}
+      </div>
+      {drawn ? null : (
+        <>
+          <dl className="stats">
+            <Stat
+              icon={<UsersIcon />}
+              value={i18n.number(snapshot.entrantCount)}
+              label={t("stat.people")}
+            />
+          </dl>
+          <EntrantNames names={snapshot.lastNames.slice(0, newestNames)} />
+        </>
+      )}
+    </div>
   )
 }
 

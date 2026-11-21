@@ -1,33 +1,76 @@
-import { useState } from "react"
-import { DemoClaim } from "../pages/demo-page.tsx"
+import { useEffect, useState } from "react"
+import { DemoViewer } from "../pages/demo-page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
-import { exampleDraw } from "../lib/home-example.ts"
-import { demoViewerName } from "../lib/demo-script.ts"
+import { demoNames, type DemoLive } from "../lib/demo-live.ts"
+import { exampleDraw, restingStageStep, stageSteps, type StageStep } from "../lib/home-example.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
-import { GiveawayFacts } from "./giveaway-facts.tsx"
-import { GiveawayHead } from "./giveaway-head.tsx"
 import { Replay } from "./replay.tsx"
-import { WinnerPlates } from "../pages/overlay-page.tsx"
-import { WinnerPlate } from "./winner-plate.tsx"
+import { EntryPlate, ShufflePlate, WinnerPlates } from "../pages/overlay-page.tsx"
+
+const reducedMotion = "(prefers-reduced-motion: reduce)"
 
 /**
  * The home page's picture of the product: a stream with the real overlay plates over it and the real viewer page
- * of the winner beside it, both fed by the demo giveaway. The pieces send no request and take no input.
+ * of the winner beside it, both fed by the demo giveaway. They play its story in a loop: entries open, drawing,
+ * winner, claimed. The pieces send no request and take no input.
  */
 export function HomeStage() {
   const { t } = useI18n()
+  const [calm] = useState(() => window.matchMedia(reducedMotion).matches)
   return (
     <section className="home-stage" aria-label={t("home.preview.label")}>
-      <Replay>
-        <ExampleDraw />
-      </Replay>
+      {calm ? (
+        <Replay>
+          <ExampleStep step={restingStageStep} />
+        </Replay>
+      ) : (
+        <PlayingStage />
+      )}
     </section>
   )
 }
 
-function ExampleDraw() {
+function PlayingStage() {
   const { t } = useI18n()
-  const [{ state, snapshot, facts }] = useState(() => exampleDraw(Date.now()))
+  const index = useStageIndex()
+  return (
+    <>
+      <ExampleStep key={index} step={stageSteps[index]?.step ?? restingStageStep} />
+      <ol className="stage-steps" aria-hidden="true">
+        {stageSteps.map(({ step }, position) => (
+          <li key={step} aria-current={position === index ? "step" : undefined}>
+            {t(`home.stage.step.${step}`)}
+          </li>
+        ))}
+      </ol>
+    </>
+  )
+}
+
+/** The position in {@link stageSteps}; the loop waits while the tab is hidden. */
+function useStageIndex(): number {
+  const [index, setIndex] = useState(0)
+  const [visible, setVisible] = useState(() => document.visibilityState === "visible")
+  useEffect(() => {
+    const onChange = () => setVisible(document.visibilityState === "visible")
+    document.addEventListener("visibilitychange", onChange)
+    return () => document.removeEventListener("visibilitychange", onChange)
+  }, [])
+  useEffect(() => {
+    if (!visible) return
+    const timer = setTimeout(
+      () => setIndex((current) => (current + 1) % stageSteps.length),
+      stageSteps[index]?.ms,
+    )
+    return () => clearTimeout(timer)
+  }, [index, visible])
+  return index
+}
+
+/** Mounts again per step, so the claim clock and the entrance animations start with it. */
+function ExampleStep({ step }: { readonly step: StageStep }) {
+  const { t } = useI18n()
+  const [{ state, snapshot, facts }] = useState(() => exampleDraw(step, Date.now(), demoNames(t)))
   return (
     <>
       <div className="stage-stream" inert aria-hidden="true">
@@ -38,26 +81,39 @@ function ExampleDraw() {
         </div>
         <div className="stage-canvas">
           <div className="overlay">
-            <WinnerPlates standing={standingWinners(snapshot.winners)} prize={facts.prize ?? ""} />
+            <OverlayPlates step={step} snapshot={snapshot} prize={facts.prize ?? ""} />
           </div>
         </div>
       </div>
       <div className="stage-phone" aria-hidden="true">
         <div className="stage-screen">
           <div className="stage-viewer viewer" inert>
-            <GiveawayHead giveaway={facts} as="h2" />
-            <WinnerPlate name={demoViewerName} />
-            <div className="viewer-outcome">
-              <DemoClaim state={state} giveaway={facts} />
-            </div>
-            <div className="viewer-details">
-              <GiveawayFacts kind="pool" giveaway={facts} />
-            </div>
+            <DemoViewer state={state} heading="h2" showRules={false} />
           </div>
         </div>
       </div>
     </>
   )
+}
+
+function OverlayPlates({
+  step,
+  snapshot,
+  prize,
+}: {
+  readonly step: StageStep
+  readonly snapshot: DemoLive["snapshot"]
+  readonly prize: string
+}) {
+  switch (step) {
+    case "rising":
+      return <EntryPlate snapshot={snapshot} qr={null} />
+    case "drawing":
+      return <ShufflePlate names={snapshot.shuffleNames} waitMs={null} />
+    case "won":
+    case "claimed":
+      return <WinnerPlates standing={standingWinners(snapshot.winners)} prize={prize} />
+  }
 }
 
 // A sunset over mountains in fixed colors: the picture stays the same in both themes, like a real stream.

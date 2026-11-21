@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { CheckIcon, CopyIcon } from "./icons.tsx"
@@ -8,45 +8,31 @@ type CopyState = "idle" | "copied" | "failed"
 const feedbackMs = 3000
 
 /**
- * A read-only value with a button that copies it and says so: "Copied!", or how to copy by hand.
- * With `code`, the box shows the value without its protocol and `code` marked in lime; the input stays
- * under it, invisible until a copy fails and its selected text has to be seen.
+ * A labelled link in one row: `children` show it, the icon button copies `value`. A long address is cut with an
+ * ellipsis when `clipped`; the whole value still goes to the clipboard.
  */
-export function CopyField({
+export function CopyLink({
   label,
   value,
   buttonLabel,
-  code,
+  clipped,
+  children,
 }: {
   readonly label: string
   readonly value: string
   readonly buttonLabel: string
-  readonly code?: string
+  readonly clipped: boolean
+  readonly children: ReactNode
 }) {
-  const id = useId()
-  const input = useRef<HTMLInputElement>(null)
-  const { state, copy } = useCopy(value, () => input.current?.select())
-
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <div className="copy-row" data-state={state}>
-        <div className="copy-value" data-marked={code !== undefined}>
-          {code === undefined ? null : <MarkedLink value={value} code={code} />}
-          <input
-            ref={input}
-            id={id}
-            readOnly
-            value={value}
-            onFocus={(event) => event.currentTarget.select()}
-          />
-        </div>
-        <button type="button" className="button" onClick={() => void copy()}>
-          {state === "copied" ? <CheckIcon /> : <CopyIcon />}
-          {buttonLabel}
-        </button>
+      <span className="field-label">{label}</span>
+      <div className="share-link">
+        <span className="share-link-url" data-clipped={clipped}>
+          {children}
+        </span>
+        <CopyButton value={value} label={buttonLabel} fieldLabel={label} />
       </div>
-      <CopyFeedback state={state} />
     </div>
   )
 }
@@ -119,15 +105,5 @@ function CopyFeedback({ state }: { readonly state: CopyState }) {
       ) : null}
       {state === "failed" ? t("copy.failed") : null}
     </output>
-  )
-}
-
-function MarkedLink({ value, code }: { readonly value: string; readonly code: string }) {
-  const head = value.endsWith(code) ? value.slice(0, -code.length) : value
-  return (
-    <code aria-hidden="true">
-      {head.replace(/^https?:\/\//, "")}
-      {head === value ? null : <em>{code}</em>}
-    </code>
   )
 }

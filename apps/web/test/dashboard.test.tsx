@@ -89,17 +89,32 @@ describe("dashboard", () => {
     expect(copied).toEqual(["http://rafflink.test/ABCDE"])
   })
 
-  it("shows the link without its protocol and the code marked, and copies the whole link", async () => {
+  it("copies the whole overlay link from an icon button beside its clipped address", async () => {
+    const copied = stubClipboard(false)
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard")
+    await view.findByText("Link and OBS overlay")
+    fireEvent.click(view.getByRole("button", { name: "Copy overlay link" }))
+
+    expect(await view.findByText("Copied!")).toBeTruthy()
+    expect(copied).toEqual(["http://rafflink.test/overlay/gid-1/tok-1"])
+    const shown = view.getByText("http://rafflink.test/overlay/gid-1/tok-1", {
+      selector: ".share-link-url",
+    })
+    expect(shown.getAttribute("data-clipped")).toBe("true")
+  })
+
+  it("shows the link without its protocol and the code marked, and the icon button copies the whole link", async () => {
     const copied = stubClipboard(false)
     mockFetch(listed)
 
     const view = renderApp("/dashboard")
     await view.findByText("Link and OBS overlay")
 
-    const shown = view.container.querySelector(".copy-value code")
+    const shown = view.container.querySelector(".share-link-url")
     expect(shown?.textContent).toBe("rafflink.test/ABCDE")
     expect(shown?.querySelector("em")?.textContent).toBe("ABCDE")
-    expect(shown?.getAttribute("aria-hidden")).toBe("true")
     fireEvent.click(view.getByRole("button", { name: "Copy link" }))
     expect(await view.findByText("Copied!")).toBeTruthy()
     expect(copied).toEqual(["http://rafflink.test/ABCDE"])
@@ -115,7 +130,9 @@ describe("dashboard", () => {
     fireEvent.click(view.getByRole("button", { name: "Copy link" }))
 
     expect(await view.findByText(/Could not copy/)).toBeTruthy()
-    expect(view.container.querySelector(".copy-row")?.getAttribute("data-state")).toBe("failed")
+    expect(
+      view.container.querySelector(".share-link .copy-button")?.getAttribute("data-state"),
+    ).toBe("failed")
   })
 
   it("shows each status as a chip with its words", async () => {
