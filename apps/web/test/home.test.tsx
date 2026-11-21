@@ -88,7 +88,16 @@ describe("home page", () => {
     )
     expect(nav.queryByRole("link", { name: "Fair odds" })).toBeNull()
     expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
-    expect(view.getByRole("link", { name: "Demo giveaway" })).toBeTruthy()
+  })
+
+  it("opens the demo from the header, the hero and the how-it-works section", () => {
+    const view = renderApp("/")
+
+    const links = ["Demo giveaway", "Try the demo", "Open the demo giveaway"].map((name) =>
+      view.getByRole("link", { name }).getAttribute("href"),
+    )
+
+    expect(links).toEqual(["/demo", "/demo", "/demo"])
   })
 
   it("keeps the theme and language switches inside one settings button", () => {

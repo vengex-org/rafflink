@@ -35,9 +35,9 @@ export function HomePage() {
                   <TwitchIcon />
                   {t("home.login")}
                 </Link>
-                <a className="button outlined home-cta" href="#how">
+                <Link className="button outlined home-cta" to="/demo">
                   {t("home.demo")}
-                </a>
+                </Link>
               </div>
               <p className="home-reads">{t("home.reads")}</p>
             </div>

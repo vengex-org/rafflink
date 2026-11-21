@@ -4,6 +4,7 @@ import { NotFound } from "./components/notice.tsx"
 import { I18nProvider } from "./i18n/i18n.tsx"
 import { AdminPage } from "./pages/admin-page.tsx"
 import { DashboardPage } from "./pages/dashboard-page.tsx"
+import { DemoPage } from "./pages/demo-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
 import { HomePage } from "./pages/home-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
@@ -17,6 +18,7 @@ export function AppRoutes() {
         <Route path="live/:id" element={<LivePage />} />
         <Route element={<Layout />}>
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="demo" element={<DemoPage />} />
           <Route path="admin" element={<AdminPage />} />
           <Route index element={<HomePage />} />
           <Route path="g/:code" element={<GiveawayPage />} />

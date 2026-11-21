@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { Link } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { claimPresets, initialValues } from "../pages/create-values.ts"
@@ -29,9 +30,9 @@ export function HomeHow() {
         <div>
           <h2 id="home-how-title">{t("home.how.title")}</h2>
           <p className="home-lede">{t("home.how.lede")}</p>
-          <a className="button outlined home-demo" href="#how">
+          <Link className="button outlined home-demo" to="/demo">
             {t("home.how.demo")}
-          </a>
+          </Link>
         </div>
         <ol className="home-steps" aria-label={t("home.how.list")}>
           <Step

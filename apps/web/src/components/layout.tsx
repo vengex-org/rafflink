@@ -29,9 +29,9 @@ export function Layout() {
             <a href={repositoryUrl}>{t("nav.github")}</a>
           </nav>
           <div className="app-bar-end">
-            <a className="button text app-demo" href="/#how">
+            <Link className="button text app-demo" to="/demo">
               {t("nav.demo")}
-            </a>
+            </Link>
             <Link className="button" to="/dashboard">
               <TwitchIcon />
               {t("nav.login")}
