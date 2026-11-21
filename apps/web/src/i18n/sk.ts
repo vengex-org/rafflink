@@ -402,9 +402,6 @@ export const sk: Readonly<Record<MessageKey, string>> = {
 
   "share.link": "Tvoj odkaz",
   "share.copyLink": "Kopírovať odkaz",
-  "share.chat": "Správa pre tvoj chat",
-  "share.copyChat": "Kopírovať správu pre chat",
-  "share.chatMessage": "Zapoj sa do súťaže: {url}",
   "share.overlay": "Odkaz na prekrytie",
   "share.copyOverlay": "Kopírovať odkaz na prekrytie",
   "share.obs.1": "V OBS nájdi okno Zdroje a stlač tlačidlo +.",

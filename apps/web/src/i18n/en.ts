@@ -401,9 +401,6 @@ export const en = {
 
   "share.link": "Your link",
   "share.copyLink": "Copy link",
-  "share.chat": "Message for your chat",
-  "share.copyChat": "Copy chat message",
-  "share.chatMessage": "Enter the giveaway: {url}",
   "share.overlay": "Overlay link",
   "share.copyOverlay": "Copy overlay link",
   "share.obs.1": "In OBS, find the Sources box and press the + button.",

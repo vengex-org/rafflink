@@ -86,7 +86,7 @@ describe("home page", () => {
 
       expect(preview.getByText("Winner 1 of 1")).toBeTruthy()
       expect(preview.getByText("A gaming chair", { selector: ".overlay-prize" })).toBeTruthy()
-      expect(view.container.querySelector(".stage-stream .qr")).not.toBeNull()
+      expect(view.container.querySelector(".stage-stream .qr")).toBeNull()
       expect(preview.getAllByText("mira_vex")).toHaveLength(2)
       expect(preview.getAllByText("0:42")).toHaveLength(2)
       expect(preview.getByText("You won")).toBeTruthy()

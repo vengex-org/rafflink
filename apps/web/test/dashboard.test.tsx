@@ -71,7 +71,7 @@ describe("dashboard", () => {
     expect(view.queryByText(/Prize:/)).toBeNull()
   })
 
-  it("keeps the link, chat message and overlay link of a listed giveaway at hand", async () => {
+  it("keeps the link and overlay link of a listed giveaway at hand", async () => {
     const copied = stubClipboard(false)
     mockFetch(listed)
 
@@ -84,9 +84,9 @@ describe("dashboard", () => {
     expect(view.getByLabelText("Overlay link").getAttribute("value")).toBe(
       "http://rafflink.test/overlay/gid-1/tok-1",
     )
-    fireEvent.click(view.getByRole("button", { name: "Copy chat message" }))
+    fireEvent.click(view.getByRole("button", { name: "Copy link" }))
     expect(await view.findByText("Copied!")).toBeTruthy()
-    expect(copied).toEqual(["Enter the giveaway: http://rafflink.test/ABCDE"])
+    expect(copied).toEqual(["http://rafflink.test/ABCDE"])
   })
 
   it("shows the link without its protocol and the code marked, and copies the whole link", async () => {
