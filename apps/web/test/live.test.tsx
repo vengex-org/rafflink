@@ -17,6 +17,8 @@ afterEach(() => {
   mock.restore()
   restoreSocket()
   window.localStorage.clear()
+  delete document.documentElement.dataset.theme
+  document.documentElement.lang = "en"
 })
 
 /** `mockFetch` plus the public giveaway and an empty entrants list, which every streamer live page asks for. */
@@ -71,8 +73,10 @@ function pickPill(view: ReturnType<typeof renderApp>, name: string): HTMLElement
 const plateName = (view: ReturnType<typeof renderApp>) =>
   view.container.querySelector(".winner-plate-name")?.textContent
 
-const enteredCount = (view: ReturnType<typeof renderApp>) =>
-  view.getByText("entered").previousElementSibling?.textContent
+const entrantsHeading = (view: ReturnType<typeof renderApp>) =>
+  view.getByRole("heading", { name: /^Entrants/ }).textContent
+
+const openStage = { name: "Entries are open" }
 
 describe("live page: collecting entries", () => {
   it("renders the snapshot with labelled numbers and then every push of the socket", async () => {
@@ -80,17 +84,20 @@ describe("live page: collecting entries", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByText("Ada")).toBeTruthy()
+    expect(await view.findByRole("heading", openStage)).toBeTruthy()
     expect(view.getByRole("heading", { level: 1, name: "Summer giveaway" })).toBeTruthy()
     expect(await view.findByText("Streamy gives away A gaming chair")).toBeTruthy()
-    expect(enteredCount(view)).toBe("3")
-    expect(view.getByText("1.5")).toBeTruthy()
-    expect(view.getByText("entries per second")).toBeTruthy()
+    expect(entrantsHeading(view)).toBe("Entrants 3")
+    const stats = within(view.getByRole("region", { name: "Stats" }))
+    expect(stats.getByText("1.5")).toBeTruthy()
+    expect(stats.getByText("entries per second")).toBeTruthy()
     expect(view.getByText("5 tickets")).toBeTruthy()
     expect(FakeSocket.opened[0]?.url).toBe("ws://rafflink.test/api/live/gid-1")
-    act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 9, lastNames: ["Cy"] }))
-    expect(await view.findByText("Cy")).toBeTruthy()
-    expect(enteredCount(view)).toBe("9")
+    act(() =>
+      FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 9, entriesPerSecond: 2.5 }),
+    )
+    expect(await stats.findByText("2.5")).toBeTruthy()
+    expect(entrantsHeading(view)).toBe("Entrants 9")
   })
 
   it("names an untitled giveaway by its prize, as the dashboard does", async () => {
@@ -112,16 +119,6 @@ describe("live page: collecting entries", () => {
     await waitFor(() =>
       expect(view.getByRole("heading", { level: 1 }).textContent).toBe("Giveaway ABCDE"),
     )
-  })
-
-  it("says nobody has entered yet when the list is empty", async () => {
-    mockLive({
-      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, entrantCount: 0, lastNames: [] }),
-    })
-
-    const view = renderApp("/live/gid-1")
-
-    expect(await view.findByText("Nobody has entered yet.")).toBeTruthy()
   })
 
   it("says that entries are open with the LIVE chip and the stage title", async () => {
@@ -156,18 +153,42 @@ describe("live page: collecting entries", () => {
     expect(view.queryByText(/gives away/)).toBeNull()
   })
 
-  it("offers the link and a chat message to copy while entries are open", async () => {
+  it("copies the entry link from the top bar", async () => {
     const copied = stubClipboard(false)
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
-    fireEvent.click(await view.findByRole("button", { name: "Copy chat message" }))
+    await view.findByText("LIVE")
+    fireEvent.click(within(view.getByRole("banner")).getByRole("button", { name: "Copy link" }))
 
     expect(await view.findByText("Copied!")).toBeTruthy()
-    expect(copied).toEqual(["Enter the giveaway: http://rafflink.test/ABCDE"])
-    expect(view.getByLabelText("Your link").getAttribute("value")).toBe(
-      "http://rafflink.test/ABCDE",
-    )
+    expect(copied).toEqual(["http://rafflink.test/ABCDE"])
+  })
+
+  it("selects the entry link for Ctrl+C when the browser refuses to copy", async () => {
+    stubClipboard(true)
+    spyOn(console, "error").mockImplementation(() => {})
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("LIVE")
+    fireEvent.click(within(view.getByRole("banner")).getByRole("button", { name: "Copy link" }))
+
+    expect(
+      await view.findByText("Could not copy. The text is selected: press Ctrl+C."),
+    ).toBeTruthy()
+    expect(window.getSelection()?.toString()).toBe("rafflink.test/ABCDE")
+  })
+
+  it("leaves the chat message and the link card out of the page, since the top bar has the link", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByRole("heading", openStage)
+
+    expect(view.queryByRole("button", { name: "Copy chat message" })).toBeNull()
+    expect(view.queryByLabelText("Your link")).toBeNull()
+    expect(view.queryByText("Latest entrants")).toBeNull()
   })
 
   it("asks before it closes entries, and sends nothing when the streamer cancels", async () => {
@@ -250,7 +271,7 @@ describe("live page: collecting entries", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText("Ada")
+    await view.findByRole("heading", openStage)
 
     expect(view.queryByRole("heading", { name: "Problems" })).toBeNull()
   })
@@ -724,7 +745,7 @@ describe("live page: winners", () => {
 const effectsRun = () => act(async () => {})
 
 describe("live page: clean mode", () => {
-  const toolbar = { name: "Giveaway controls" }
+  const settings = { name: "Giveaway settings" }
 
   it("hides the controls bar and keeps the stage, the code and the list", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(drawn) })
@@ -732,7 +753,7 @@ describe("live page: clean mode", () => {
     const view = renderApp("/live/gid-1")
     fireEvent.click(await view.findByRole("button", { name: "Hide controls" }))
 
-    expect(view.queryByRole("toolbar", toolbar)).toBeNull()
+    expect(view.queryByRole("region", settings)).toBeNull()
     expect(view.getByRole("button", { name: "Show controls" })).toBeTruthy()
     expect(plateName(view)).toBe("Wanda")
     expect(view.getByText("ABCDE")).toBeTruthy()
@@ -759,7 +780,7 @@ describe("live page: clean mode", () => {
     fireEvent.click(await view.findByRole("button", { name: "Hide controls" }))
     fireEvent.click(view.getByRole("button", { name: "Show controls" }))
 
-    expect(view.getByRole("toolbar", toolbar)).toBeTruthy()
+    expect(view.getByRole("region", settings)).toBeTruthy()
     expect(view.queryByRole("button", { name: "Show controls" })).toBeNull()
   })
 
@@ -772,7 +793,7 @@ describe("live page: clean mode", () => {
     const again = renderApp("/live/gid-1")
 
     expect(await again.findByRole("button", { name: "Show controls" })).toBeTruthy()
-    expect(again.queryByRole("toolbar", toolbar)).toBeNull()
+    expect(again.queryByRole("region", settings)).toBeNull()
   })
 
   it("starts with the bar when nothing was stored", async () => {
@@ -780,32 +801,32 @@ describe("live page: clean mode", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByRole("toolbar", toolbar)).toBeTruthy()
+    expect(await view.findByRole("region", settings)).toBeTruthy()
   })
 
   it("toggles with the c key in both directions", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("toolbar", toolbar)
+    await view.findByRole("region", settings)
     await effectsRun()
     fireEvent.keyDown(document.body, { key: "c" })
-    expect(view.queryByRole("toolbar", toolbar)).toBeNull()
+    expect(view.queryByRole("region", settings)).toBeNull()
     fireEvent.keyDown(document.body, { key: "c" })
 
-    expect(view.getByRole("toolbar", toolbar)).toBeTruthy()
+    expect(view.getByRole("region", settings)).toBeTruthy()
   })
 
   it("ignores the repeats of a held c key", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("toolbar", toolbar)
+    await view.findByRole("region", settings)
     await effectsRun()
     fireEvent.keyDown(document.body, { key: "c" })
     fireEvent.keyDown(document.body, { key: "c", repeat: true })
 
-    expect(view.queryByRole("toolbar", toolbar)).toBeNull()
+    expect(view.queryByRole("region", settings)).toBeNull()
   })
 
   it("does not toggle while the streamer types in a field", async () => {
@@ -815,24 +836,24 @@ describe("live page: clean mode", () => {
     const count = await view.findByLabelText("How many winners?")
     await effectsRun()
     fireEvent.keyDown(count, { key: "c" })
-    expect(view.getByRole("toolbar", toolbar)).toBeTruthy()
+    expect(view.getByRole("region", settings)).toBeTruthy()
     fireEvent.keyDown(view.getByLabelText("Search by name"), { key: "c" })
 
-    expect(view.getByRole("toolbar", toolbar)).toBeTruthy()
+    expect(view.getByRole("region", settings)).toBeTruthy()
   })
 
   it("ignores c with Ctrl, which copies, and while a confirmation is open", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("toolbar", toolbar)
+    await view.findByRole("region", settings)
     await effectsRun()
     fireEvent.keyDown(document.body, { key: "c", ctrlKey: true })
-    expect(view.getByRole("toolbar", toolbar)).toBeTruthy()
+    expect(view.getByRole("region", settings)).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Closed" }))
     fireEvent.keyDown(document.body, { key: "c" })
 
-    expect(view.getByRole("toolbar", toolbar)).toBeTruthy()
+    expect(view.getByRole("region", settings)).toBeTruthy()
     expect(view.getByRole("dialog", { name: "Close entries now?" })).toBeTruthy()
   })
 })
@@ -846,7 +867,7 @@ describe("live page: the stage", () => {
     const code = within(view.getByRole("banner")).getByText("ABCDE")
 
     expect(code.parentElement?.textContent).toBe("rafflink.test/ABCDE")
-    expect(enteredCount(view)).toBe("3")
+    expect(entrantsHeading(view)).toBe("Entrants 3")
   })
 
   it("puts the newest winner who still has a claim open on the plate with the countdown", async () => {
@@ -998,7 +1019,7 @@ describe("live page: access and connection", () => {
   it("reconnects after the socket drops and says so meanwhile", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
     const view = renderApp("/live/gid-1")
-    await view.findByText("Ada")
+    await view.findByRole("heading", openStage)
 
     act(() => FakeSocket.opened[0]?.drop())
 
@@ -1010,11 +1031,11 @@ describe("live page: access and connection", () => {
   it("ignores a push that is not a snapshot", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
     const view = renderApp("/live/gid-1")
-    await view.findByText("Ada")
+    await view.findByRole("heading", openStage)
 
     act(() => FakeSocket.opened[0]?.push({ nonsense: true }))
 
-    expect(view.getByText("Ada")).toBeTruthy()
+    expect(view.getByRole("heading", openStage)).toBeTruthy()
   })
 })
 
@@ -1050,7 +1071,7 @@ describe("live page: overlay link", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText("Ada")
+    await view.findByRole("heading", openStage)
     fireEvent.click(view.getByRole("radio", { name: "Winner only" }))
     fireEvent.click(view.getByRole("radio", { name: "Show" }))
 
@@ -1067,7 +1088,7 @@ describe("live page: overlay link", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText("Ada")
+    await view.findByRole("heading", openStage)
     fireEvent.click(view.getByRole("radio", { name: "Corner badge" }))
     fireEvent.click(view.getByRole("radio", { name: "Automatic" }))
 
@@ -1081,10 +1102,10 @@ describe("live page: overlay link", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByText("Ada")
-    act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, lastNames: ["Cy"] }))
+    await view.findByRole("heading", openStage)
+    act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 9 }))
 
-    expect(await view.findByText("Cy")).toBeTruthy()
+    await waitFor(() => expect(entrantsHeading(view)).toBe("Entrants 9"))
     expect(view.getByLabelText("Overlay link")).toBeTruthy()
   })
 
@@ -1093,7 +1114,7 @@ describe("live page: overlay link", () => {
 
     const view = renderApp("/live/gid-1")
 
-    await view.findByText("Ada")
+    await view.findByRole("heading", openStage)
     expect(view.queryByLabelText("Overlay link")).toBeNull()
   })
 })
@@ -1124,7 +1145,7 @@ describe("live page: its own frame", () => {
     expect(view.container.querySelector(".page")).toBeNull()
   })
 
-  it("shows the entry link with the code, the count and the LIVE chip in the top bar", async () => {
+  it("shows the entry link with the code and the LIVE chip in the top bar, and leaves the count to the list", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
@@ -1133,7 +1154,33 @@ describe("live page: its own frame", () => {
     const bar = within(view.getByRole("banner"))
     expect(bar.getByText("Enter at")).toBeTruthy()
     expect(bar.getByText("ABCDE").tagName).toBe("EM")
-    expect(bar.getByText("3").nextElementSibling?.textContent).toBe("entered")
+    expect(bar.queryByText("3")).toBeNull()
+  })
+
+  it("switches the theme and the language from the top bar", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByText("LIVE")
+    const bar = within(view.getByRole("banner"))
+    fireEvent.click(bar.getByRole("button", { name: "Settings" }))
+    fireEvent.click(bar.getByRole("radio", { name: "Dark" }))
+    fireEvent.click(bar.getByRole("radio", { name: "Čeština" }))
+
+    expect(document.documentElement.dataset.theme).toBe("dark")
+    expect(await view.findByRole("heading", { name: "Přihlašování je otevřené" })).toBeTruthy()
+  })
+
+  it("takes the copy button and the settings out of the top bar in clean mode", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.click(await view.findByRole("button", { name: "Hide controls" }))
+
+    const bar = within(view.getByRole("banner"))
+    expect(bar.queryByRole("button", { name: "Copy link" })).toBeNull()
+    expect(bar.queryByRole("button", { name: "Settings" })).toBeNull()
+    expect(bar.getByText("ABCDE")).toBeTruthy()
   })
 })
 

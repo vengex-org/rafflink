@@ -1,13 +1,15 @@
-import { useCallback, useState, type ReactNode } from "react"
+import { useCallback, useId, useState, type ReactNode } from "react"
 import { useParams } from "react-router"
 import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { liveSnapshotPath, parseLiveSnapshot } from "../api/client.ts"
-import { AlertIcon, EyeOffIcon } from "../components/icons.tsx"
-import { EntrantsSection } from "../components/entrants-table.tsx"
-import { LiveBar } from "../components/live-bar.tsx"
+import { ActivityIcon, AlertIcon, EyeOffIcon } from "../components/icons.tsx"
+import { EntrantsSection, Tiers } from "../components/entrants-table.tsx"
+import { LiveActions, LiveSettings } from "../components/live-bar.tsx"
 import { LiveBrand, LiveFrame, LiveTopBar } from "../components/live-frame.tsx"
+import { Stat } from "../components/live-parts.tsx"
 import { LiveStage } from "../components/live-stage.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
+import type { GiveawayView } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { findBySeq } from "../lib/entrant-list.ts"
@@ -105,7 +107,7 @@ function Controls({
       : (findBySeq(entrants.rows, current.entrySeq) ?? null)
 
   return (
-    <LiveFrame bar={<LiveTopBar snapshot={snapshot} facts={facts} />}>
+    <LiveFrame bar={<LiveTopBar snapshot={snapshot} facts={facts} controls={!clean} />}>
       <div className="live-page" data-clean={clean}>
         <div className="live-left">
           {connected ? null : <output className="status">{t("live.reconnecting")}</output>}
@@ -136,32 +138,66 @@ function Controls({
           />
           {message === null ? null : <Status>{t(message)}</Status>}
           <Problems snapshot={snapshot} />
+          <EntrantsSection
+            entrants={entrants}
+            entrantCount={snapshot.entrantCount}
+            ticketTotal={snapshot.ticketTotal}
+            winners={snapshot.winners}
+          />
+        </div>
+        <div className="live-side">
+          {clean ? null : (
+            <LiveActions id={id} busy={busy} run={run} snapshot={snapshot} current={current} />
+          )}
+          <LiveStats snapshot={snapshot} facts={facts} rows={entrants.rows} />
           {clean ? (
             <button type="button" className="live-btn ghost live-show" onClick={toggleClean}>
               <EyeOffIcon />
               {t("live.clean.show")}
             </button>
           ) : (
-            <LiveBar
+            <LiveSettings
               id={id}
               busy={busy}
               run={run}
               snapshot={snapshot}
-              current={current}
               overlayToken={overlayToken}
               onHide={toggleClean}
             />
           )}
         </div>
-        <EntrantsSection
-          entrants={entrants}
-          entrantCount={snapshot.entrantCount}
-          ticketTotal={snapshot.ticketTotal}
-          ticketsPerGroup={facts === null ? null : facts.rules.tickets}
-          winners={snapshot.winners}
-        />
       </div>
     </LiveFrame>
+  )
+}
+
+/** The numbers beside the list: how fast people enter while entries are open, and how many entered per tier. */
+function LiveStats({
+  snapshot,
+  facts,
+  rows,
+}: {
+  readonly snapshot: LiveSnapshot
+  readonly facts: GiveawayView | null
+  readonly rows: ReturnType<typeof useEntrants>["rows"]
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const headId = useId()
+  return (
+    <section className="live-card live-stats" aria-labelledby={headId}>
+      <h2 id={headId}>{t("live.stats.title")}</h2>
+      {snapshot.status === "open" ? (
+        <dl className="stats live-rate">
+          <Stat
+            icon={<ActivityIcon />}
+            value={i18n.decimal(snapshot.entriesPerSecond)}
+            label={t("stat.perSecond")}
+          />
+        </dl>
+      ) : null}
+      <Tiers rows={rows} ticketsPerGroup={facts === null ? null : facts.rules.tickets} />
+    </section>
   )
 }
 

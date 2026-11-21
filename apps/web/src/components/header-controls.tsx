@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
 import { languages, type Language } from "../i18n/language.ts"
 import {
@@ -9,13 +9,35 @@ import {
   themes,
   type Theme,
 } from "../theme/theme.ts"
-import { TvIcon, MoonIcon, SunIcon } from "./icons.tsx"
+import { MoonIcon, SlidersIcon, SunIcon, TvIcon } from "./icons.tsx"
 import { SegmentRow } from "./segment-row.tsx"
 
 const languageNames: Readonly<Record<Language, string>> = {
   en: "English",
   sk: "Slovenčina",
   cs: "Čeština",
+}
+
+/** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. */
+export function SettingsMenu() {
+  const { t } = useI18n()
+  const panelId = useId()
+  return (
+    <>
+      <button
+        type="button"
+        className="icon-button"
+        popoverTarget={panelId}
+        aria-label={t("settings.label")}
+      >
+        <SlidersIcon />
+      </button>
+      <div id={panelId} popover="auto" className="settings-panel">
+        <ThemeSwitch />
+        <LanguageSwitch />
+      </div>
+    </>
+  )
 }
 
 /** System, Light or Dark; the choice is kept in the browser and `System` follows the OS. */

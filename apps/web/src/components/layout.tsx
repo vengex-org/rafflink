@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router"
 import { getSession, logout, sessionLost } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -8,8 +8,8 @@ import { useLoad } from "../lib/use-load.ts"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { AppFrame } from "./page.tsx"
-import { LanguageSwitch, ThemeSwitch } from "./header-controls.tsx"
-import { SlidersIcon, TwitchIcon } from "./icons.tsx"
+import { SettingsMenu } from "./header-controls.tsx"
+import { TwitchIcon } from "./icons.tsx"
 
 /**
  * The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages.
@@ -17,7 +17,6 @@ import { SlidersIcon, TwitchIcon } from "./icons.tsx"
  */
 export function Layout({ account }: { readonly account: boolean }) {
   const { t } = useI18n()
-  const settingsId = useId()
   // The home page ends with its own footer.
   const showFooter = useLocation().pathname !== "/"
   return (
@@ -43,18 +42,7 @@ export function Layout({ account }: { readonly account: boolean }) {
               {t("nav.demo")}
             </Link>
             {account ? <Account /> : <LoginLink />}
-            <button
-              type="button"
-              className="icon-button"
-              popoverTarget={settingsId}
-              aria-label={t("settings.label")}
-            >
-              <SlidersIcon />
-            </button>
-            <div id={settingsId} popover="auto" className="settings-panel">
-              <ThemeSwitch />
-              <LanguageSwitch />
-            </div>
+            <SettingsMenu />
           </div>
         </div>
       </header>

@@ -20,19 +20,16 @@ const geometry: RowGeometry = {
   overscan: 6,
 }
 
-/** Everyone who entered with their tier, a search and the winners' claim state, as the right-hand panel of the live page. The list stays in step with the live socket. */
+/** Everyone who entered with their tier, a search and the winners' claim state, in the main column of the live page. The list stays in step with the live socket. */
 export function EntrantsSection({
   entrants,
   entrantCount,
   ticketTotal,
-  ticketsPerGroup,
   winners,
 }: {
   readonly entrants: ReturnType<typeof useEntrants>
   readonly entrantCount: number
   readonly ticketTotal: number
-  /** What each tier is worth, from the giveaway's rules; null while they are not known. */
-  readonly ticketsPerGroup: Tickets | null
   readonly winners: readonly LiveWinner[]
 }) {
   const i18n = useI18n()
@@ -53,14 +50,13 @@ export function EntrantsSection({
   const loadingFirstPage = entrants.rows.length === 0 && entrants.phase === "loading"
 
   return (
-    <aside className="live-panel" aria-labelledby="entrants-list-title">
+    <section className="live-panel" aria-labelledby="entrants-list-title">
       <div className="live-panel-head">
         <h2 id="entrants-list-title">
           {t("entrants.title")} <span>{i18n.number(entrantCount)}</span>
         </h2>
         <p>{i18n.plural("ticket", ticketTotal)}</p>
       </div>
-      <Tiers rows={entrants.rows} ticketsPerGroup={ticketsPerGroup} />
       <div className="live-search">
         <SearchIcon />
         <input
@@ -183,12 +179,12 @@ export function EntrantsSection({
           <span>{t("entrants.sort")}</span>
         </div>
       )}
-    </aside>
+    </section>
   )
 }
 
-/** How many entrants each tier has, with what a ticket of the tier is worth. Without the rules it lists the tiers that have entrants. */
-function Tiers({
+/** How many entrants each tier has, with what a ticket of the tier is worth. Without the rules (`ticketsPerGroup` null while they load) it lists the tiers that have entrants. */
+export function Tiers({
   rows,
   ticketsPerGroup,
 }: {

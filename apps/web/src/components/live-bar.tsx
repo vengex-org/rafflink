@@ -44,24 +44,21 @@ export function canReroll(winner: LiveWinner, snapshot: LiveSnapshot): boolean {
 const nameOf = (winner: LiveWinner, t: I18n["t"]) =>
   winner.displayName ?? t("live.winnerFallback", { n: winner.n + 1 })
 
-/** The buttons of the controls bar: the next step of the draw, the entries switch, the overlay link and the way to hide it all. */
-export function LiveBar({
+/** The next step of the draw: draw once entries are closed, then mark or replace the winner on the plate. Null while entries are open, when no step is due. */
+export function LiveActions({
   id,
   busy,
   run,
   snapshot,
   current,
-  overlayToken,
-  onHide,
 }: Doing & {
   readonly snapshot: LiveSnapshot
   readonly current: LiveWinner | null
-  readonly overlayToken: string | null
-  readonly onHide: () => void
 }) {
   const { t } = useI18n()
+  if (snapshot.status === "open") return null
   return (
-    <div className="live-bar" role="toolbar" aria-label={t("live.bar.label")}>
+    <div className="live-actions" role="toolbar" aria-label={t("live.bar.label")}>
       {snapshot.status === "closed" ? (
         <DrawStep
           id={id}
@@ -73,9 +70,6 @@ export function LiveBar({
             snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
           }
         />
-      ) : null}
-      {snapshot.status === "open" ? (
-        <WinnerCountControl id={id} busy={busy} run={run} winnerCount={snapshot.winnerCount} />
       ) : null}
       {snapshot.status === "drawn" ? (
         <>
@@ -103,15 +97,40 @@ export function LiveBar({
           )}
         </>
       ) : null}
+    </div>
+  )
+}
+
+/** What the streamer sets around the draw: the winner count while entries are open, the entries switch, the overlay link and the way to hide the controls. */
+export function LiveSettings({
+  id,
+  busy,
+  run,
+  snapshot,
+  overlayToken,
+  onHide,
+}: Doing & {
+  readonly snapshot: LiveSnapshot
+  readonly overlayToken: string | null
+  readonly onHide: () => void
+}) {
+  const { t } = useI18n()
+  const headId = useId()
+  return (
+    <section className="live-card live-settings" aria-labelledby={headId}>
+      <h2 id={headId}>{t("live.settings.title")}</h2>
+      {snapshot.status === "open" ? (
+        <WinnerCountControl id={id} busy={busy} run={run} winnerCount={snapshot.winnerCount} />
+      ) : null}
       <EntriesSwitch id={id} busy={busy} run={run} status={snapshot.status} />
-      <span className="live-bar-end">
+      <span className="live-settings-end">
         {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
         <button type="button" className="live-btn ghost" aria-keyshortcuts="c" onClick={onHide}>
           <EyeOffIcon />
           {t("live.clean.hide")}
         </button>
       </span>
-    </div>
+    </section>
   )
 }
 

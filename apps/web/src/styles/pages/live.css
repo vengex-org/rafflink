@@ -1,6 +1,6 @@
 /* Live page: the streamer's control room, shown on stream at 1920x1080. It has its own top bar instead of the app bar.
-   Below 64rem everything stacks in one column with phone sizes. From 64rem the stage and the controls bar sit left and the
-   entrants panel right; every size there is a multiple of --u (tokens.css), so the layout of the 1920x1080 frame
+   Below 64rem everything stacks in one column with phone sizes, the sidebar under the main column. From 64rem the stage
+   and the entrants list fill the main column and the sidebar (draw actions, stats, settings) sits right; every size there is a multiple of --u (tokens.css), so the layout of the 1920x1080 frame
    holds at smaller windows. An entrants row is always 58px (entrantRowHeight in entrants-table.tsx), because the virtual
    list computes with it. */
 
@@ -126,26 +126,15 @@
   font-style: normal;
 }
 
-.live-count {
+.live-link-chip .icon-button {
+  min-height: 2.5rem;
+  width: 2.5rem;
+}
+
+.live-top-end {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.1;
+  margin-inline-start: auto;
 }
-
-.live-count strong {
-  font-size: 1.875rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.live-count span {
-  color: var(--ink-2);
-  font-size: var(--fs-body);
-  font-weight: 500;
-}
-
 .live-top .pill {
   min-height: 2.75rem;
   padding-inline: 1rem;
@@ -222,7 +211,8 @@
 }
 
 .live-stage,
-.live-bar,
+.live-actions,
+.live-card,
 .live-panel {
   border-radius: var(--r-lg);
   background: var(--surface);
@@ -230,7 +220,8 @@
 }
 
 :root[data-theme="dark"] .live-stage,
-:root[data-theme="dark"] .live-bar,
+:root[data-theme="dark"] .live-actions,
+:root[data-theme="dark"] .live-card,
 :root[data-theme="dark"] .live-panel {
   box-shadow: 0 0 0 1px var(--line);
 }
@@ -612,36 +603,11 @@
 
 /* Entries open and closed */
 
-.live-open {
-  display: grid;
-  gap: var(--space-3);
-  align-items: start;
-}
-
-.live-open,
 .live-closed,
 .winner-chat,
 .live-draw-help {
   line-height: 1.5;
 }
-
-.live-open h3 {
-  margin: 0 0 var(--space-1);
-  color: var(--ink-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-
-.live-open .names li {
-  font-size: var(--fs-lg);
-  line-height: 2.5rem;
-}
-
-.live-open-side {
-  display: grid;
-  gap: var(--space-2);
-}
-
 .live-rate {
   margin: 0;
 }
@@ -677,14 +643,42 @@
   font-weight: 600;
 }
 
-/* The controls bar and the way back from clean mode */
+/* The sidebar: the draw actions on top (they stay in view while the sidebar scrolls), the stats, the settings and the
+   way back from clean mode. */
 
-.live-bar {
+.live-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 0;
+}
+
+.live-actions {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
+}
+
+.live-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.live-card > h2 {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .live-btn {
@@ -757,12 +751,10 @@
 }
 
 .live-seg {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  padding-inline-start: 1rem;
-  margin-inline-start: 0.25rem;
-  border-inline-start: 1px solid var(--line);
 }
 
 .live-seg-label {
@@ -807,13 +799,15 @@
   color: var(--ink);
 }
 
-.live-bar-end {
+.live-settings-end {
   display: flex;
   flex-wrap: wrap;
-  margin-inline-start: auto;
+  gap: 0.5rem;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
 }
 
-.live-bar-end .live-btn {
+.live-settings-end .live-btn {
   padding: 0 0.875rem;
 }
 
@@ -846,7 +840,7 @@
 }
 
 .live-show {
-  align-self: flex-end;
+  align-self: flex-start;
 }
 
 .live-overlay:popover-open {
@@ -867,7 +861,7 @@
 
 .live-panel {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-height: 0;
   overflow: hidden;
 }
@@ -905,7 +899,7 @@
 .live-tiers {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 0 var(--space-2);
+  margin: 0;
   padding: 0;
   list-style: none;
   border: 1px solid var(--line);
@@ -1190,15 +1184,6 @@ td:nth-child(2) > .entrants-cell {
   .live-link em {
     padding: 0 calc(var(--u) * 6);
   }
-
-  .live-count strong {
-    font-size: max(1.25rem, calc(var(--u) * 30));
-  }
-
-  .live-count span {
-    font-size: max(0.75rem, calc(var(--u) * 16));
-  }
-
   .live-chip {
     gap: calc(var(--u) * 10);
     height: calc(var(--u) * 44);
@@ -1228,13 +1213,19 @@ td:nth-child(2) > .entrants-cell {
 
   .live-left {
     gap: calc(var(--u) * 24);
+    overflow-y: auto;
   }
 
   .live-stage {
-    flex: 1 1 auto;
+    flex: none;
     gap: calc(var(--u) * 24);
-    min-height: 0;
     padding: calc(var(--u) * 40) calc(var(--u) * 48);
+  }
+
+  /* The list takes the height the stage leaves, but never less than a few rows. */
+  .live-panel {
+    flex: 1 1 0;
+    min-height: calc(var(--u) * 420);
   }
 
   .live-stage-head {
@@ -1357,26 +1348,27 @@ td:nth-child(2) > .entrants-cell {
     font-size: max(0.875rem, calc(var(--u) * 20));
   }
 
-  .live-open {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
-  }
-
-  .live-open .names li {
-    font-size: max(0.9375rem, calc(var(--u) * 24));
-  }
-
   .live-big-count .stat dd {
     font-size: max(3rem, calc(var(--u) * 140));
   }
 
-  .live-bar {
-    flex-wrap: nowrap;
+  .live-side {
+    gap: calc(var(--u) * 24);
+    overflow-y: auto;
+  }
+
+  .live-actions {
     gap: calc(var(--u) * 12);
     padding: calc(var(--u) * 16);
   }
 
-  .live-bar:has(.live-draw-help) {
-    flex-wrap: wrap;
+  .live-card {
+    gap: calc(var(--u) * 16);
+    padding: calc(var(--u) * 20) calc(var(--u) * 24);
+  }
+
+  .live-card > h2 {
+    font-size: max(0.75rem, calc(var(--u) * 15));
   }
 
   .live-btn {
@@ -1399,7 +1391,6 @@ td:nth-child(2) > .entrants-cell {
 
   .live-seg {
     gap: calc(var(--u) * 12);
-    padding-inline-start: calc(var(--u) * 16);
   }
 
   .live-seg-label {
@@ -1417,11 +1408,12 @@ td:nth-child(2) > .entrants-cell {
     font-size: max(0.875rem, calc(var(--u) * 19));
   }
 
-  .live-bar-end {
-    flex-wrap: nowrap;
+  .live-settings-end {
+    gap: calc(var(--u) * 8);
+    padding-top: calc(var(--u) * 16);
   }
 
-  .live-bar-end .live-btn {
+  .live-settings-end .live-btn {
     padding: 0 calc(var(--u) * 14);
   }
 
@@ -1448,10 +1440,6 @@ td:nth-child(2) > .entrants-cell {
 
   .live-panel-head p {
     font-size: max(0.8125rem, calc(var(--u) * 18));
-  }
-
-  .live-tiers {
-    margin: 0 calc(var(--u) * 28);
   }
 
   .live-tiers > li {

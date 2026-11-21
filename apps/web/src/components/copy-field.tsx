@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState, type RefObject } from "react"
 import { useI18n } from "../i18n/i18n.tsx"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { CheckIcon, CopyIcon } from "./icons.tsx"
@@ -23,27 +23,9 @@ export function CopyField({
   readonly buttonLabel: string
   readonly code?: string
 }) {
-  const { t } = useI18n()
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
-  const [state, setState] = useState<CopyState>("idle")
-
-  useEffect(() => {
-    if (state === "idle") return
-    const timer = setTimeout(() => setState("idle"), feedbackMs)
-    return () => clearTimeout(timer)
-  }, [state])
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setState("copied")
-    } catch (error) {
-      console.error("copy failed", { errorClass: errorClass(error) })
-      input.current?.select()
-      setState("failed")
-    }
-  }
+  const { state, copy } = useCopy(value, () => input.current?.select())
 
   return (
     <div className="field">
@@ -64,16 +46,69 @@ export function CopyField({
           {buttonLabel}
         </button>
       </div>
-      <output className="snackbar">
-        {state === "copied" ? (
-          <>
-            <CheckIcon />
-            {t("copy.copied")}
-          </>
-        ) : null}
-        {state === "failed" ? t("copy.failed") : null}
-      </output>
+      <CopyFeedback state={state} />
     </div>
+  )
+}
+
+/** An icon button that copies `value`; when the browser refuses, it selects the text of `fallback` for Ctrl+C. */
+export function CopyButton({
+  value,
+  label,
+  fallback,
+}: {
+  readonly value: string
+  readonly label: string
+  readonly fallback: RefObject<HTMLElement | null>
+}) {
+  const { state, copy } = useCopy(value, () => {
+    if (fallback.current !== null) window.getSelection()?.selectAllChildren(fallback.current)
+  })
+  return (
+    <>
+      <button type="button" className="icon-button" aria-label={label} onClick={() => void copy()}>
+        {state === "copied" ? <CheckIcon /> : <CopyIcon />}
+      </button>
+      <CopyFeedback state={state} />
+    </>
+  )
+}
+
+/** Copies `value` and says how it went for a few seconds; `onFailed` puts the text where the streamer can copy it by hand. */
+function useCopy(value: string, onFailed: () => void) {
+  const [state, setState] = useState<CopyState>("idle")
+
+  useEffect(() => {
+    if (state === "idle") return
+    const timer = setTimeout(() => setState("idle"), feedbackMs)
+    return () => clearTimeout(timer)
+  }, [state])
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setState("copied")
+    } catch (error) {
+      console.error("copy failed", { errorClass: errorClass(error) })
+      onFailed()
+      setState("failed")
+    }
+  }
+  return { state, copy }
+}
+
+function CopyFeedback({ state }: { readonly state: CopyState }) {
+  const { t } = useI18n()
+  return (
+    <output className="snackbar">
+      {state === "copied" ? (
+        <>
+          <CheckIcon />
+          {t("copy.copied")}
+        </>
+      ) : null}
+      {state === "failed" ? t("copy.failed") : null}
+    </output>
   )
 }
 
