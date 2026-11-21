@@ -37,6 +37,7 @@ import {
   type DemoState,
 } from "../lib/demo-script.ts"
 import { LiveApiProvider } from "../lib/live-api.ts"
+import { useClock } from "../lib/use-remaining.ts"
 import type { WonView } from "../lib/viewer-outcome.ts"
 import { LiveControls } from "./live-page.tsx"
 
@@ -265,7 +266,8 @@ export function DemoClaim({
   readonly state: DemoState
   readonly giveaway: GiveawayView
 }) {
-  const [now] = useState(() => Date.now())
+  const { now: readNow } = useClock()
+  const [now] = useState(readNow)
   const win: WonView = {
     kind: "won",
     userId: "demo",

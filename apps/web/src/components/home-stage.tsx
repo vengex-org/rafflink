@@ -5,8 +5,8 @@ import { demoNames, type DemoLive } from "../lib/demo-live.ts"
 import { exampleDraw, restingStageStep, stageSteps, type StageStep } from "../lib/home-example.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { useDragScroll } from "../lib/use-drag-scroll.ts"
+import { ClockProvider, useClock, type Clock } from "../lib/use-remaining.ts"
 import { PauseIcon, PlayIcon } from "./icons.tsx"
-import { Replay } from "./replay.tsx"
 import { EntryPlate, ShufflePlate, WinnerPlates } from "../pages/overlay-page.tsx"
 
 const reducedMotion = "(prefers-reduced-motion: reduce)"
@@ -17,7 +17,8 @@ const holdAfterScrollMs = 4000
  * The home page's picture of the product: a stream with the real overlay plates over it and the real viewer page
  * of the winner beside it, both fed by the demo giveaway. They play its story in a loop: entries open, drawing,
  * winner, claimed. A thin bar above shows how far the loop is, with a play/pause button at its end, and the step
- * labels below jump to their step. The pictured pieces send no request and take no input.
+ * labels below jump to their step. The pictured pieces send no request and take no input. Their clocks read the
+ * stage's time, which stands still whenever the loop does.
  *
  * Under reduced motion the stage starts paused on the winner and plays only when the visitor presses play; the step
  * labels still switch steps, since a jump is not motion, and the bar shows the step without filling.
@@ -28,14 +29,7 @@ export function HomeStage() {
   const dragging = useRef(false)
   const [held, hold] = usePhoneHold(dragging)
   const { index, round, paused, running, togglePause, goTo } = useStageLoop(calm, held)
-  const scene = (
-    <ExampleStep
-      key={round}
-      step={stageSteps[index]?.step ?? restingStageStep}
-      dragging={dragging}
-      onPhoneScroll={hold}
-    />
-  )
+  const clock = useStageClock(running)
   return (
     <section className="home-stage" aria-label={t("home.preview.label")}>
       <div className="stage-controls">
@@ -62,7 +56,14 @@ export function HomeStage() {
           {paused ? <PlayIcon /> : <PauseIcon />}
         </button>
       </div>
-      {calm ? <Replay>{scene}</Replay> : scene}
+      <ClockProvider value={clock}>
+        <ExampleStep
+          key={round}
+          step={stageSteps[index]?.step ?? restingStageStep}
+          dragging={dragging}
+          onPhoneScroll={hold}
+        />
+      </ClockProvider>
       <ol className="stage-steps">
         {stageSteps.map(({ step }, position) => (
           <li key={step}>
@@ -153,6 +154,26 @@ function stepMs(index: number): number {
   return stageSteps[index]?.ms ?? 0
 }
 
+/** The page's time less every stretch the loop stood still, so the scene's clocks stop and go on with the loop. */
+function useStageClock(running: boolean): Clock {
+  const stood = useRef<{ readonly ms: number; readonly since: number | null }>({
+    ms: 0,
+    since: null,
+  })
+  useEffect(() => {
+    if (running) return
+    const since = Date.now()
+    stood.current = { ms: stood.current.ms, since }
+    return () => {
+      stood.current = { ms: stood.current.ms + Date.now() - since, since: null }
+    }
+  }, [running])
+  return useMemo(
+    () => ({ running, now: () => (stood.current.since ?? Date.now()) - stood.current.ms }),
+    [running],
+  )
+}
+
 /** Mounts again per step, so the claim clock, the entrance animations and the phone's scroll start with it. */
 function ExampleStep({
   step,
@@ -165,7 +186,8 @@ function ExampleStep({
 }) {
   const { t } = useI18n()
   const screen = useDragScroll<HTMLDivElement>(onPhoneScroll, dragging)
-  const [startedAt] = useState(Date.now)
+  const { now } = useClock()
+  const [startedAt] = useState(now)
   const { state, snapshot, facts } = useMemo(
     () => exampleDraw(step, startedAt, demoNames(t)),
     [step, startedAt, t],

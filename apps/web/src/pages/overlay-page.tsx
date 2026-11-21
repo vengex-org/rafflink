@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router"
 import type { LiveWinner, OverlaySnapshot } from "@rafflink/core/room/giveaway-room"
 import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
 import { UsersIcon } from "../components/icons.tsx"
-import { EntrantNames, msUntil, Stat } from "../components/live-parts.tsx"
+import { EntrantNames, Stat } from "../components/live-parts.tsx"
 import { Failed, Loading } from "../components/notice.tsx"
 import { DrawShuffle } from "../components/draw-shuffle.tsx"
 import { QrCode } from "../components/qr-code.tsx"
@@ -14,7 +14,7 @@ import { giveawayDisplayName, giveawayName } from "../lib/messages.ts"
 import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
 import { useLive } from "../lib/use-live.ts"
 import { useGiveawayFacts } from "../lib/use-giveaway-facts.ts"
-import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
+import { formatClock, useClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { useDrawShuffle } from "../lib/use-draw-shuffle.ts"
 
@@ -96,7 +96,6 @@ function Overlay({
       <main className="overlay">
         {heading}
         <ShufflePlate names={shuffle.names} waitMs={waitMs} />
-        <PoweredBy />
       </main>
     )
   }
@@ -106,7 +105,6 @@ function Overlay({
         {heading}
         <FetchedWinnerPlates snapshot={snapshot} standing={standing} />
         {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
-        <PoweredBy />
       </main>
     )
   }
@@ -122,16 +120,17 @@ function Overlay({
     <main className="overlay">
       {heading}
       <EntryPlate snapshot={snapshot} qr={qr} />
-      {/* Before the draw the entry plate already shows the host. */}
-      {snapshot.status === "drawn" ? <PoweredBy /> : null}
     </main>
   )
 }
 
-/** The deployment's host and mark under the plates once the entry link is gone from the stream. */
-function PoweredBy() {
+/**
+ * The deployment's mark and host as the last row of a plate that does not show the entry link: the shuffle, the
+ * winners, and the entry plate once it names the winners instead of the link.
+ */
+function PlateHost() {
   return (
-    <p className="overlay-plate overlay-mark">
+    <p className="overlay-host">
       <span className="brand-mark" aria-hidden="true">
         R
       </span>
@@ -156,6 +155,7 @@ export function ShufflePlate({
           <p className="overlay-label">{t("live.draw.due")}</p>
           <DrawShuffle key={waitMs} names={names} waitMs={waitMs} />
         </div>
+        <PlateHost />
       </li>
     </ul>
   )
@@ -208,6 +208,7 @@ export function EntryPlate({
           <EntrantNames names={snapshot.lastNames.slice(0, newestNames)} />
         </>
       )}
+      {drawn ? <PlateHost /> : null}
     </div>
   )
 }
@@ -259,6 +260,8 @@ export function WinnerPlates({
               <p className="overlay-prize">{prize}</p>
             </div>
             {winner.claim.state === "waiting" ? <ClaimTimer winner={winner} /> : null}
+            {/* Once under the last plate, so several winners do not repeat it. */}
+            {index === standing.length - 1 ? <PlateHost /> : null}
           </li>
         ))}
       </ul>
@@ -268,7 +271,8 @@ export function WinnerPlates({
 
 function ClaimTimer({ winner }: { readonly winner: LiveWinner }) {
   const { t } = useI18n()
-  const [initial] = useState(() => msUntil(winner.claimUntil))
+  const { now } = useClock()
+  const [initial] = useState(() => Math.max(0, winner.claimUntil - now()))
   const remaining = useRemainingMs(initial)
   return (
     <div className="overlay-timer">
