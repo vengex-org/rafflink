@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { cleanup, render } from "@testing-library/react"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 import { useDragScroll } from "../src/lib/use-drag-scroll.ts"
 
 const frames = new Map<number, FrameRequestCallback>()
@@ -7,6 +7,7 @@ let nextFrame = 1
 
 beforeEach(() => {
   frames.clear()
+  dragging.current = false
   spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback) => {
     frames.set(nextFrame, callback)
     return nextFrame++
@@ -48,8 +49,10 @@ const reduceMotion = (reduce: boolean) =>
     dispatchEvent: () => false,
   }))
 
+const dragging = { current: false }
+
 function Scroller({ onActivity }: { readonly onActivity: () => void }) {
-  const ref = useDragScroll<HTMLDivElement>(onActivity)
+  const ref = useDragScroll<HTMLDivElement>(onActivity, dragging)
   return <div ref={ref} data-testid="scroller" />
 }
 
@@ -65,16 +68,18 @@ const mountScroller = (onActivity = () => {}) => {
 
 const pointer = (
   element: HTMLElement,
-  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel",
+  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel" | "lostpointercapture",
   clientY: number,
   at: number,
   pointerType = "mouse",
+  buttons = type === "pointerup" ? 0 : 1,
 ) => {
   const event = new PointerEvent(type, {
     clientY,
     pointerId: 1,
     pointerType,
     button: 0,
+    buttons,
     bubbles: true,
     cancelable: true,
   })
@@ -190,7 +195,7 @@ describe("useDragScroll", () => {
     expect(element.scrollTop).toBe(caught)
   })
 
-  it("leaves a touch to the browser's own scrolling", () => {
+  it("ignores a touch pointer", () => {
     const { element } = mountScroller()
 
     const down = pointer(element, "pointerdown", 400, 0, "touch")
@@ -213,5 +218,41 @@ describe("useDragScroll", () => {
 
     view.unmount()
     expect(frames.size).toBe(0)
+  })
+
+  it("ends the drag when the pointer capture is lost", () => {
+    const { element } = mountScroller()
+    pointer(element, "pointerdown", 400, 0)
+    expect(dragging.current).toBe(true)
+
+    pointer(element, "lostpointercapture", 400, 10)
+    expect(element.hasAttribute("data-dragging")).toBe(false)
+    expect(dragging.current).toBe(false)
+
+    pointer(element, "pointermove", 300, 20)
+    expect(element.scrollTop).toBe(0)
+  })
+
+  it("ends the drag on a move with no button pressed", () => {
+    const { element } = mountScroller()
+    pointer(element, "pointerdown", 400, 0)
+
+    pointer(element, "pointermove", 300, 10, "mouse", 0)
+
+    expect(element.hasAttribute("data-dragging")).toBe(false)
+    expect(dragging.current).toBe(false)
+    expect(element.scrollTop).toBe(0)
+  })
+
+  it("reports a scroll the browser did itself, and stops after unmount", () => {
+    const onActivity = mock(() => {})
+    const { element, view } = mountScroller(onActivity)
+
+    fireEvent.scroll(element)
+    expect(onActivity).toHaveBeenCalledTimes(1)
+
+    view.unmount()
+    fireEvent.scroll(element)
+    expect(onActivity).toHaveBeenCalledTimes(1)
   })
 })

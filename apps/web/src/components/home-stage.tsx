@@ -20,11 +20,12 @@ const holdAfterScrollMs = 4000
 export function HomeStage() {
   const { t } = useI18n()
   const [calm] = useState(() => window.matchMedia(reducedMotion).matches)
+  const dragging = useRef(false)
   return (
     <section className="home-stage" aria-label={t("home.preview.label")}>
       {calm ? (
         <Replay>
-          <ExampleStep step={restingStageStep} onPhoneScroll={() => {}} />
+          <ExampleStep step={restingStageStep} dragging={dragging} onPhoneScroll={() => {}} />
         </Replay>
       ) : (
         <PlayingStage />
@@ -36,12 +37,14 @@ export function HomeStage() {
 function PlayingStage() {
   const { t } = useI18n()
   const heldUntil = useRef(0)
-  const index = useStageIndex(heldUntil)
+  const dragging = useRef(false)
+  const index = useStageIndex(heldUntil, dragging)
   return (
     <>
       <ExampleStep
         key={index}
         step={stageSteps[index]?.step ?? restingStageStep}
+        dragging={dragging}
         onPhoneScroll={() => {
           heldUntil.current = Date.now() + holdAfterScrollMs
         }}
@@ -57,8 +60,8 @@ function PlayingStage() {
   )
 }
 
-/** The position in {@link stageSteps}; the loop waits while the tab is hidden and until `heldUntil` has passed. */
-function useStageIndex(heldUntil: RefObject<number>): number {
+/** The position in {@link stageSteps}; the loop waits while the tab is hidden, while `dragging` and until `heldUntil` has passed. */
+function useStageIndex(heldUntil: RefObject<number>, dragging: RefObject<boolean>): number {
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(() => document.visibilityState === "visible")
   useEffect(() => {
@@ -69,26 +72,28 @@ function useStageIndex(heldUntil: RefObject<number>): number {
   useEffect(() => {
     if (!visible) return
     const next = () => {
-      const hold = heldUntil.current - Date.now()
+      const hold = dragging.current ? holdAfterScrollMs : heldUntil.current - Date.now()
       if (hold > 0) timer = setTimeout(next, hold)
       else setIndex((current) => (current + 1) % stageSteps.length)
     }
     let timer = setTimeout(next, stageSteps[index]?.ms)
     return () => clearTimeout(timer)
-  }, [index, visible, heldUntil])
+  }, [index, visible, heldUntil, dragging])
   return index
 }
 
 /** Mounts again per step, so the claim clock, the entrance animations and the phone's scroll start with it. */
 function ExampleStep({
   step,
+  dragging,
   onPhoneScroll,
 }: {
   readonly step: StageStep
+  readonly dragging: RefObject<boolean>
   readonly onPhoneScroll: () => void
 }) {
   const { t } = useI18n()
-  const screen = useDragScroll<HTMLDivElement>(onPhoneScroll)
+  const screen = useDragScroll<HTMLDivElement>(onPhoneScroll, dragging)
   const [startedAt] = useState(Date.now)
   const { state, snapshot, facts } = useMemo(
     () => exampleDraw(step, startedAt, demoNames(t)),

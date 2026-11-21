@@ -17,9 +17,13 @@ interface Sample {
 /**
  * Scrolls the element by dragging it with a mouse or a pen, the way a finger scrolls a phone: the content follows
  * the pointer and, after a flick, glides on and slows down (not under reduced motion). Touch keeps the browser's
- * own scrolling, the wheel scrolls it natively. `onActivity` runs on every press, move, wheel turn and glide frame.
+ * own scrolling, the wheel scrolls it natively. `onActivity` runs on every press, move, scroll, wheel turn and glide
+ * frame. `dragging` is true from the press until the pointer is released, also while the pointer rests.
  */
-export function useDragScroll<T extends HTMLElement>(onActivity: () => void): RefObject<T | null> {
+export function useDragScroll<T extends HTMLElement>(
+  onActivity: () => void,
+  dragging: RefObject<boolean>,
+): RefObject<T | null> {
   const ref = useRef<T>(null)
   const report = useEffectEvent(onActivity)
   useEffect(() => {
@@ -69,11 +73,16 @@ export function useDragScroll<T extends HTMLElement>(onActivity: () => void): Re
       event.preventDefault()
       element.setPointerCapture(event.pointerId)
       element.dataset.dragging = ""
+      dragging.current = true
       drag = { pointerId: event.pointerId, startY: event.clientY, startTop: element.scrollTop }
       samples = [{ y: event.clientY, at: event.timeStamp }]
     }
     const onPointerMove = (event: PointerEvent) => {
       if (drag?.pointerId !== event.pointerId) return
+      if ((event.buttons & 1) === 0) {
+        endDrag(event, false)
+        return
+      }
       report()
       scrollTo(drag.startTop - (event.clientY - drag.startY))
       samples = [
@@ -84,6 +93,7 @@ export function useDragScroll<T extends HTMLElement>(onActivity: () => void): Re
     const endDrag = (event: PointerEvent, flick: boolean) => {
       if (drag?.pointerId !== event.pointerId) return
       drag = null
+      dragging.current = false
       delete element.dataset.dragging
       report()
       const speed = releaseSpeed(samples, event.timeStamp)
@@ -91,6 +101,8 @@ export function useDragScroll<T extends HTMLElement>(onActivity: () => void): Re
     }
     const onPointerUp = (event: PointerEvent) => endDrag(event, true)
     const onPointerCancel = (event: PointerEvent) => endDrag(event, false)
+    const onLostPointerCapture = (event: PointerEvent) => endDrag(event, false)
+    const onScroll = () => report()
     const onWheel = () => {
       stopGlide()
       report()
@@ -100,16 +112,21 @@ export function useDragScroll<T extends HTMLElement>(onActivity: () => void): Re
     element.addEventListener("pointermove", onPointerMove)
     element.addEventListener("pointerup", onPointerUp)
     element.addEventListener("pointercancel", onPointerCancel)
+    element.addEventListener("lostpointercapture", onLostPointerCapture)
+    element.addEventListener("scroll", onScroll, { passive: true })
     element.addEventListener("wheel", onWheel, { passive: true })
     return () => {
       stopGlide()
+      dragging.current = false
       element.removeEventListener("pointerdown", onPointerDown)
       element.removeEventListener("pointermove", onPointerMove)
       element.removeEventListener("pointerup", onPointerUp)
       element.removeEventListener("pointercancel", onPointerCancel)
+      element.removeEventListener("lostpointercapture", onLostPointerCapture)
+      element.removeEventListener("scroll", onScroll)
       element.removeEventListener("wheel", onWheel)
     }
-  }, [])
+  }, [dragging])
   return ref
 }
 
