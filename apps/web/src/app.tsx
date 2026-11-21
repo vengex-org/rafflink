@@ -24,8 +24,8 @@ export function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path="*" element={<NotFound title="notFound.page" />} />
         </Route>
+        <Route path="demo" element={<DemoPage />} />
         <Route element={<Layout account={false} />}>
-          <Route path="demo" element={<DemoPage />} />
           <Route path="privacy" caseSensitive element={<PrivacyPage />} />
           <Route path="terms" caseSensitive element={<TermsPage />} />
           <Route path="g/:code" element={<GiveawayPage />} />

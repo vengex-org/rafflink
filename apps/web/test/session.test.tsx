@@ -214,12 +214,12 @@ describe("header session", () => {
     expect(sessionCalls).toBe(1)
   })
 
-  it("keeps the marketing links and the demo link in the home page's bar only", async () => {
+  it("keeps the marketing links in the home page's bar only, and no demo link in any bar", async () => {
     mockFetch({})
     const home = renderApp("/")
     await home.findByRole("link", { name: "Log in" })
     expect(home.getByRole("link", { name: "How it works" })).toBeTruthy()
-    expect(home.getByRole("link", { name: "Demo giveaway" })).toBeTruthy()
+    expect(home.queryByRole("link", { name: "Demo giveaway" })).toBeNull()
     cleanup()
 
     const legal = renderApp("/privacy")

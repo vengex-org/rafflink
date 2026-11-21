@@ -66,7 +66,7 @@ function Loaded({ id }: { readonly id: string }) {
       )
     case "ready":
       return (
-        <Controls
+        <Connected
           key={id}
           id={id}
           snapshot={live.snapshot}
@@ -78,7 +78,8 @@ function Loaded({ id }: { readonly id: string }) {
   }
 }
 
-function Controls({
+/** The live page over the API: loads the giveaway's facts and the entrant list that the controls show. */
+function Connected({
   id,
   snapshot,
   connected,
@@ -91,11 +92,39 @@ function Controls({
   readonly entrantsAfter: EntrantsDelta | null
   readonly overlayToken: string | null
 }) {
+  const { facts } = useGiveawayFacts(snapshot.code)
+  const entrants = useEntrants(id, { connected, entrantsAfter })
+  return (
+    <LiveControls
+      id={id}
+      snapshot={snapshot}
+      connected={connected}
+      overlayToken={overlayToken}
+      facts={facts}
+      entrants={entrants}
+    />
+  )
+}
+
+/** The live page for data it is given; the demo gives it a simulated giveaway. */
+export function LiveControls({
+  id,
+  snapshot,
+  connected,
+  overlayToken,
+  facts,
+  entrants,
+}: {
+  readonly id: string
+  readonly snapshot: LiveSnapshot
+  readonly connected: boolean
+  readonly overlayToken: string | null
+  readonly facts: GiveawayView | null
+  readonly entrants: ReturnType<typeof useEntrants>
+}) {
   const { t } = useI18n()
   const { message, busy, run } = useAction()
   const [clean, toggleClean] = useCleanMode()
-  const { facts } = useGiveawayFacts(snapshot.code)
-  const entrants = useEntrants(id, { connected, entrantsAfter })
   const rerollOver = rerollOverText(snapshot)
   const current = currentWinner(snapshot.winners)
   const currentEntrant =

@@ -1,26 +1,49 @@
-import { useEffect, useReducer, useState, type MouseEvent } from "react"
+import {
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+  type Dispatch,
+  type MouseEvent,
+  type ReactNode,
+} from "react"
+import { useSearchParams } from "react-router"
 import type { GiveawayView } from "../api/client.ts"
 import { ClaimPanel } from "../components/giveaway-claim.tsx"
 import { EntryPanel } from "../components/giveaway-entry.tsx"
 import { GiveawayFacts, GiveawayRules } from "../components/giveaway-facts.tsx"
 import { GiveawayHead, GiveawayPhase } from "../components/giveaway-head.tsx"
+import { Layout } from "../components/layout.tsx"
 import { Page } from "../components/page.tsx"
+import { SegmentRow, type SegmentRowOption } from "../components/segment-row.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { WinnerPlate } from "../components/winner-plate.tsx"
-import { useI18n } from "../i18n/i18n.tsx"
+import { useI18n, type I18n } from "../i18n/i18n.tsx"
+import { demoFacts, demoLive, demoLiveApi } from "../lib/demo-live.ts"
 import {
+  demoChatDelaysMs,
+  demoChatScript,
+  demoClaimKeyword,
   demoClaimMs,
-  demoClosesInMs,
   demoEntry,
   demoJoinEveryMs,
   demoReducer,
-  demoRules,
   demoStepMs,
   demoViewerName,
   initialDemoState,
+  type DemoAction,
+  type DemoChatKey,
   type DemoState,
 } from "../lib/demo-script.ts"
+import { LiveApiProvider } from "../lib/live-api.ts"
 import type { WonView } from "../lib/viewer-outcome.ts"
+import { LiveControls } from "./live-page.tsx"
+
+type DemoView = "streamer" | "viewer"
+
+const demoViews = ["streamer", "viewer"] as const satisfies readonly DemoView[]
+
+const noRetry = () => {}
 
 /** A giveaway that plays itself in the browser with made-up names; nothing leaves the page. */
 export function DemoPage() {
@@ -29,7 +52,8 @@ export function DemoPage() {
 }
 
 function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
-  const { t } = useI18n()
+  const [params, setParams] = useSearchParams()
+  const view: DemoView = params.get("view") === "streamer" ? "streamer" : "viewer"
   const [state, dispatch] = useReducer(demoReducer, initialDemoState)
   const { step } = state
 
@@ -40,11 +64,116 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
     return () => clearTimeout(timer)
   }, [step])
 
+  const nextChat = demoChatScript[state.chat.length]
+  useEffect(() => {
+    if (step !== "won" || nextChat === undefined || state.firstRerolled) return
+    const timer = setTimeout(
+      () => dispatch({ type: "chat", now: Date.now() }),
+      demoChatDelaysMs[nextChat],
+    )
+    return () => clearTimeout(timer)
+  }, [step, nextChat, state.firstRerolled])
+
   useEffect(() => {
     if (step !== "rising") return
     const timer = setInterval(() => dispatch({ type: "join" }), demoJoinEveryMs)
     return () => clearInterval(timer)
   }, [step])
+
+  const bar = (
+    <DemoBar
+      view={view}
+      onView={(next) => setParams({ view: next }, { replace: true })}
+      onReplay={onReplay}
+    />
+  )
+  return view === "streamer" ? (
+    <StreamerDemo state={state} dispatch={dispatch} bar={bar} />
+  ) : (
+    <Layout account={false}>
+      <ViewerDemo state={state} dispatch={dispatch} bar={bar} />
+    </Layout>
+  )
+}
+
+/** The label, the note, the switch between the two views of the same giveaway, and the replay button. */
+function DemoBar({
+  view,
+  onView,
+  onReplay,
+}: {
+  readonly view: DemoView
+  readonly onView: (view: DemoView) => void
+  readonly onReplay: () => void
+}) {
+  const { t } = useI18n()
+  const options: readonly SegmentRowOption<DemoView>[] = demoViews.map((value) => ({
+    value,
+    label: t(`demo.view.${value}`),
+    icon: null,
+  }))
+  return (
+    <div className="demo-bar">
+      <StatusChip tone="info">{t("demo.label")}</StatusChip>
+      <p>{t("demo.note")}</p>
+      <fieldset className="demo-switch" aria-label={t("demo.view.label")}>
+        <SegmentRow
+          name="demo-view"
+          options={options}
+          value={view}
+          onSelect={onView}
+          labels="shown"
+        />
+      </fieldset>
+      <button type="button" className="button outlined" onClick={onReplay}>
+        {t("demo.replay")}
+      </button>
+    </div>
+  )
+}
+
+/** The streamer's live page over the simulated giveaway; its buttons change that state and send nothing. */
+function StreamerDemo({
+  state,
+  dispatch,
+  bar,
+}: {
+  readonly state: DemoState
+  readonly dispatch: Dispatch<DemoAction>
+  readonly bar: ReactNode
+}) {
+  const api = useMemo(() => demoLiveApi(dispatch), [dispatch])
+  const [now] = useState(() => Date.now())
+  const { t } = useI18n()
+  const { snapshot, entrants, facts } = demoLive(state, now, (key) => demoChatText(key, t))
+  return (
+    <>
+      <div className="demo-strip">{bar}</div>
+      <LiveApiProvider value={api}>
+        <LiveControls
+          id="demo"
+          snapshot={snapshot}
+          connected
+          overlayToken={null}
+          facts={facts}
+          entrants={{ rows: entrants, phase: "ready", retry: noRetry }}
+        />
+      </LiveApiProvider>
+    </>
+  )
+}
+
+function ViewerDemo({
+  state,
+  dispatch,
+  bar,
+}: {
+  readonly state: DemoState
+  readonly dispatch: Dispatch<DemoAction>
+  readonly bar: ReactNode
+}) {
+  const { t } = useI18n()
+  const { step } = state
 
   // The buttons and links of the real panels would sign in or call the API; here they move the script on.
   const driveScript = (event: MouseEvent<HTMLElement>) => {
@@ -54,37 +183,19 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
     if (step === "open" || step === "won") dispatch({ type: "advance", now: Date.now() })
   }
 
-  const giveaway = demoGiveaway(state)
+  const giveaway = demoFacts(state)
   const drawn = giveaway.status === "drawn"
-  const win: WonView = {
-    kind: "won",
-    userId: "demo",
-    n: 0,
-    entry: demoEntry,
-    claimRemainingMs: demoClaimMs,
-    claim:
-      state.claimedAt === null
-        ? { state: "waiting" }
-        : { state: "claimed", at: state.claimedAt, via: "rafflink" },
-    chatClaimAvailable: false,
-  }
 
   return (
     <Page width="compact" as="article" className="viewer demo">
-      <div className="demo-bar">
-        <StatusChip tone="info">{t("demo.label")}</StatusChip>
-        <p>{t("demo.note")}</p>
-        <button type="button" className="button outlined" onClick={onReplay}>
-          {t("demo.replay")}
-        </button>
-      </div>
+      {bar}
       <GiveawayHead giveaway={giveaway} />
       {drawn ? null : <GiveawayPhase giveaway={giveaway} />}
       {step === "drawing" ? <output className="demo-drawing">{t("demo.drawing")}</output> : null}
       {drawn ? <WinnerPlate name={demoViewerName} /> : null}
       <div aria-live="polite" className="viewer-outcome" onClickCapture={driveScript}>
         {drawn ? (
-          <ClaimPanel code={giveaway.code} win={win} giveaway={giveaway} />
+          <DemoClaim state={state} giveaway={giveaway} />
         ) : (
           <EntryPanel
             entry={step === "open" ? null : { kind: "entered", entry: demoEntry }}
@@ -98,41 +209,45 @@ function DemoRun({ onReplay }: { readonly onReplay: () => void }) {
         )}
       </div>
       <div className="viewer-details">
-        {step === "entered" || step === "rising" ? (
-          <ClosingFacts giveaway={giveaway} />
-        ) : (
-          <GiveawayFacts kind={drawn ? "pool" : "entry"} giveaway={giveaway} />
-        )}
+        <GiveawayFacts kind={drawn ? "pool" : "entry"} giveaway={giveaway} />
         <GiveawayRules giveaway={giveaway} />
       </div>
     </Page>
   )
 }
 
-/** Mounts when the visitor has entered, so its countdown to the close starts there. */
-function ClosingFacts({ giveaway }: { readonly giveaway: GiveawayView }) {
-  const [closesAt] = useState(() => Date.now() + demoClosesInMs)
-  return <GiveawayFacts kind="entry" giveaway={{ ...giveaway, closesAt }} />
+/** Mounts when the visitor is drawn, so the claim clock it shows starts at what is left of the window then. */
+function DemoClaim({
+  state,
+  giveaway,
+}: {
+  readonly state: DemoState
+  readonly giveaway: GiveawayView
+}) {
+  const [now] = useState(() => Date.now())
+  const win: WonView = {
+    kind: "won",
+    userId: "demo",
+    n: 0,
+    entry: demoEntry,
+    claimRemainingMs: Math.max(0, (state.drawnAt ?? now) + demoClaimMs - now),
+    claim: state.firstRerolled
+      ? { state: "rerolled" }
+      : state.claimedAt === null
+        ? { state: "waiting" }
+        : { state: "claimed", at: state.claimedAt, via: "rafflink" },
+    chatClaimAvailable: true,
+  }
+  return <ClaimPanel code={giveaway.code} win={win} giveaway={giveaway} />
 }
 
-function demoGiveaway({ step, entrants }: DemoState): GiveawayView {
-  const status =
-    step === "closed" || step === "drawing"
-      ? "closed"
-      : step === "won" || step === "claimed"
-        ? "drawn"
-        : "open"
-  return {
-    code: "DEMO1",
-    title: "Summer giveaway",
-    prize: "A gaming chair",
-    streamerName: "Streamy",
-    rules: demoRules,
-    status,
-    closesAt: null,
-    claimSeconds: demoClaimMs / 1000,
-    entrantCount: entrants,
-    finished: status === "drawn",
-    poll: { intervalMs: 1000, maxMs: 1000 },
+function demoChatText(key: DemoChatKey, t: I18n["t"]): string {
+  switch (key) {
+    case "thanks":
+      return t("demo.chat.thanks")
+    case "discord":
+      return t("demo.chat.discord")
+    case "claim":
+      return demoClaimKeyword
   }
 }

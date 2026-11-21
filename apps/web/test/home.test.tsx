@@ -97,14 +97,16 @@ describe("home page", () => {
     expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
   })
 
-  it("opens the demo from the header and the hero only", () => {
+  it("opens the demo from the hero only, not from the header", () => {
     const view = renderApp("/")
 
-    const links = ["Demo giveaway", "Try the demo"].map((name) =>
-      view.getByRole("link", { name }).getAttribute("href"),
-    )
+    const header = within(view.getByRole("banner"))
+    const demoLinks = view
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("href") === "/demo")
 
-    expect(links).toEqual(["/demo", "/demo"])
+    expect(header.queryByRole("link", { name: "Demo giveaway" })).toBeNull()
+    expect(demoLinks.map((link) => link.textContent)).toEqual(["Try the demo"])
     expect(view.queryByRole("link", { name: "Open the demo giveaway" })).toBeNull()
   })
 

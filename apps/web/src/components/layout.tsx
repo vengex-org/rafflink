@@ -1,5 +1,5 @@
 import type { SessionJson } from "@rafflink/core/http/json"
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router"
 import { getSession, logout, sessionLost } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -16,8 +16,15 @@ import { Avatar } from "./live-parts.tsx"
 /**
  * The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages.
  * `account` asks the server who the streamer is, which only the streamer's pages need.
+ * A page that picks its frame itself, as the demo does, passes its content as `children` instead of being a route here.
  */
-export function Layout({ account }: { readonly account: boolean }) {
+export function Layout({
+  account,
+  children,
+}: {
+  readonly account: boolean
+  readonly children?: ReactNode | undefined
+}) {
   const { t } = useI18n()
   // The home page ends with its own footer and keeps the marketing links in its bar.
   const isHome = useLocation().pathname === "/"
@@ -43,11 +50,6 @@ export function Layout({ account }: { readonly account: boolean }) {
             </nav>
           ) : null}
           <div className="app-bar-end">
-            {isHome ? (
-              <Link className="button text app-demo" to="/demo">
-                {t("nav.demo")}
-              </Link>
-            ) : null}
             {account ? <Account menu={!isHome} /> : <LoginLink />}
             <SettingsMenu />
           </div>
@@ -56,7 +58,7 @@ export function Layout({ account }: { readonly account: boolean }) {
       <main id="main" className="container">
         <AppFrame value>
           <OAuthErrorCard />
-          <Outlet />
+          {children ?? <Outlet />}
         </AppFrame>
       </main>
       {showFooter ? (

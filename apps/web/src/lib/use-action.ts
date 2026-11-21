@@ -2,7 +2,7 @@ import { useCallback, useState } from "react"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 
-/** Runs one request at a time and keeps the message for its outcome, for a polite live region; the page shows it in the current language. */
+/** Runs one request at a time and keeps the message for its outcome, for a polite live region; the page shows it in the current language. An outcome with no message clears the last one. */
 export function useAction() {
   const [message, setMessage] = useState<MessageKey | null>(null)
   const [busy, setBusy] = useState(false)
@@ -10,7 +10,7 @@ export function useAction() {
   const run = useCallback(
     async <K extends string>(
       call: () => Promise<K>,
-      messageOf: (outcome: K) => MessageKey,
+      messageOf: (outcome: K) => MessageKey | null,
     ): Promise<K | "failed"> => {
       setBusy(true)
       try {

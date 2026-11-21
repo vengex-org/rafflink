@@ -7,7 +7,6 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "nav.howItWorks": "Jak to funguje",
   "nav.selfHost": "Vlastní hosting",
   "nav.github": "GitHub",
-  "nav.demo": "Ukázková soutěž",
   "nav.login": "Přihlásit se",
   "nav.logout": "Odhlásit se",
   "nav.loggedOut": "Odhlášeno.",
@@ -15,6 +14,11 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "demo.note": "Nacvičená soutěž s vymyšlenými jmény. Nic se nikam neposílá.",
   "demo.replay": "Přehrát znovu",
   "demo.drawing": "Losuje se vítěz…",
+  "demo.chat.thanks": "děkuju moc!!",
+  "demo.chat.discord": "napíšu ti na discord",
+  "demo.view.label": "Pohled",
+  "demo.view.streamer": "Streamer",
+  "demo.view.viewer": "Divák",
   "theme.legend": "Vzhled",
   "theme.system": "Podle systému",
   "theme.light": "Světlý",
@@ -228,7 +232,6 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "closeResult.not-open": "Přihlašování už bylo uzavřené.",
   "closeResult.rejected":
     "Přihlašování se nepodařilo uzavřít. Načti stránku znovu a zkus to ještě jednou.",
-  "drawResult.drawn": "Vítěz je vylosovaný.",
   "drawResult.entries-deleted":
     "Údaje účastníků se už po uchovávací lhotě smazaly, vítěze už nelze vylosovat.",
   "drawResult.rejected": "Vítěze se nepodařilo vylosovat.",
