@@ -44,5 +44,16 @@ export const waitingCountSql =
   "SELECT COUNT(*) AS c FROM token_queue WHERE state IN ('queued', 'processing')"
 
 export const statsSql = `SELECT rate_per_second, rate_changed_at, cooldown_until, measure_giveaway_id, measure_until,
-  backlog_started_at, pass_started_at, pass_calls, dropped, abandoned_results, lost_claims
+  backlog_started_at, pass_started_at, pass_calls, dropped, abandoned_results, lost_claims,
+  rate_limited_total, last_rate_limited_at
   FROM queue_stats WHERE id = 1`
+
+/** Adds 429s to a minute (parameters: start of the minute, how many). */
+export const addRateLimitedMinuteSql = `INSERT INTO rate_limited_minute (minute, count) VALUES (?, ?)
+  ON CONFLICT (minute) DO UPDATE SET count = count + excluded.count`
+
+/** Deletes the minutes before a cutoff (parameter 1). */
+export const pruneRateLimitedMinutesSql = "DELETE FROM rate_limited_minute WHERE minute < ?"
+
+/** Every minute that had a 429, oldest first. */
+export const rateLimitedMinutesSql = "SELECT minute, count FROM rate_limited_minute ORDER BY minute"

@@ -806,9 +806,12 @@ describe("chat watch lifetime", () => {
 
   it("wakes the room one past the claim time when nothing else is due", async () => {
     // The status mirror and the subscribe window would wake the room sooner.
-    const { alarm, drawnAt } = await drawnRoom({
+    const { room, sql, alarm, drawnAt } = await drawnRoom({
       env: { EVENTSUB_SUBSCRIBE_SECONDS: "1000", MIRROR_RETRY_SECONDS: "100000" },
     })
+    // The minute of the entries would wake the room too, so it counts as reported.
+    sql.exec("UPDATE room_state SET metrics_reported_until = 60000 WHERE id = 1", [])
+    room.armAlarm()
 
     expect(alarm.at).toBe(drawnAt + 300_001)
   })

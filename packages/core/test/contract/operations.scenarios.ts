@@ -124,6 +124,43 @@ export function operationsScenarios(context: ContractContext): void {
     },
   )
 
+  scenario(
+    context,
+    "an admin reads the live statistics with an open giveaway, its viewer count and a referral source, and another streamer cannot",
+    async (world) => {
+      const target = await world.start()
+      const created = await world.createGiveaway(target)
+      await world.enter(target, created.code, users.viewer.id)
+      const other = await world.signInStreamer(target, users.otherStreamer.id)
+
+      const home = await fetch(new URL("/?ref=launch-post", target.url), {
+        headers: { "cf-connecting-ip": "203.0.113.5", "x-forwarded-for": "203.0.113.5" },
+      })
+      const refused = await other.request("/api/admin/stats")
+      const response = await created.streamer.request("/api/admin/stats")
+      const stats = await response.json()
+
+      expect(home.headers.get("set-cookie")).toBeNull()
+      expect(refused.status).toBe(403)
+      expect(response.status).toBe(200)
+      expect(stats).toMatchObject({
+        openGiveaways: 1,
+        giveaways: [
+          {
+            code: created.code,
+            counts: { entrants: 1, entriesLastMinute: 1, claimsLastMinute: 0, viewers: 0 },
+          },
+        ],
+        entriesLastMinute: 1,
+        queue: { queued: 0, rateLimited: 0, rateLimitedMinutes: [] },
+        access: null,
+        referrals: [{ ref: "launch-post", visits: 1 }],
+      })
+      expect(stats.series).toHaveLength(60)
+      expect(stats.growth.at(-1)).toMatchObject({ giveaways: 1, streamers: 2 })
+    },
+  )
+
   // A deleted token is no longer refreshed or validated, so the second job run reaches Twitch only for
   // the token that was kept.
   scenario(

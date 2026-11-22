@@ -8,6 +8,8 @@ import {
 import { pickWinner, sortEntries, type DrawEntry, type Identity, type Winner } from "../lib/draw.ts"
 import { drandChain, roundAtOrAfter, roundTime } from "../lib/drand.ts"
 import { leafHash, merkleRoot, type LeafPreimage } from "../lib/merkle.ts"
+import type { MinuteCounts } from "../stats/stats-store.ts"
+import { minuteMs, startOfMinute } from "../stats/time.ts"
 import type {
   Alarm,
   Clock,
@@ -26,7 +28,10 @@ import {
   type ChatWatcherConfig,
 } from "./chat-watcher.ts"
 import {
+  claimsPerMinuteSql,
+  claimsSinceCountSql,
   entrantsAfterSql,
+  entriesPerMinuteSql,
   entryOfSql,
   headSeqSql,
   lastNamesSql,
@@ -36,6 +41,7 @@ import {
   undrawnEntrantSql,
   recentEntriesCountSql,
   entriesBetweenCountSql,
+  firstUnreportedActivitySql,
   shuffleNamesSql,
   retainedDataSql,
   waitingPickOfChatterSql,
@@ -79,6 +85,7 @@ export type RoomConfig = Pick<
   | "commitMaxAttempts"
   | "drandPublishMarginSeconds"
   | "drawMaxWinners"
+  | "metricsRetentionHours"
 >
   & ChatWatcherConfig
 
@@ -179,6 +186,15 @@ export interface AlarmDuties {
   readonly commit: boolean
   /** Call `draw`: the streamer asked for it and the committed drand round is published. */
   readonly draw: boolean
+  /** Add these minutes of entries and claims to the account store's per-minute counters; they are final and the room does not report them again. */
+  readonly metrics: readonly MinuteCounts[]
+}
+
+/** What an admin sees of a room that is open right now. */
+export interface RoomCounts {
+  readonly entrants: number
+  readonly entriesLastMinute: number
+  readonly claimsLastMinute: number
 }
 
 export type FailureKind = "role-refresh" | "eventsub"
@@ -543,6 +559,7 @@ export class GiveawayRoom {
   /** Runs when the alarm fires: closes at the end time, pushes a held live update, reports what is left to the caller. */
   onAlarm(): AlarmDuties {
     const now = this.clock.now()
+    const metrics = this.takeFinishedMinutes(now)
     let state = this.readState()
     let pushNow = this.pushDueAt !== null && now >= this.pushDueAt
     if (state.status === "open" && state.closesAt !== null && now >= state.closesAt) {
@@ -582,6 +599,7 @@ export class GiveawayRoom {
       mirrorStatus: mirrorDue ? state.status : null,
       commit: commitDue,
       draw: drawDue,
+      metrics,
     }
   }
 
@@ -901,6 +919,16 @@ export class GiveawayRoom {
   entriesPerSecondBefore(until: Instant, windowSeconds: number): number {
     const row = this.sql.exec(entriesBetweenCountSql, [until - windowSeconds * 1000, until])[0]
     return row === undefined ? 0 : new RowReader("entries", row).int("c") / windowSeconds
+  }
+
+  /** The counts the admin page shows for this room: the entrants so far, and the entries and claims of the last minute. */
+  liveCounts(): RoomCounts {
+    const since = this.clock.now() - minuteMs
+    return {
+      entrants: this.readState().entrantCount,
+      entriesLastMinute: this.count(recentEntriesCountSql, [since]),
+      claimsLastMinute: this.count(claimsSinceCountSql, [since]),
+    }
   }
 
   liveSnapshot(): LiveSnapshot {
@@ -1299,9 +1327,56 @@ export class GiveawayRoom {
       this.chatWatchWake(state),
       this.retentionDeadline(state),
       this.chat.wakeAt(),
+      this.metricsWake(),
     ].filter((at): at is Instant => at !== null)
     if (wakeups.length === 0) this.alarm.clear()
     else this.alarm.set(Math.min(...wakeups))
+  }
+
+  // The end of the first minute that has an entry or a claim not yet reported, so each active minute is reported once, after it ends.
+  private metricsWake(): Instant | null {
+    const reported = this.metricsReportedUntil()
+    const row = this.sql.exec(firstUnreportedActivitySql, [reported, reported])[0]
+    const first = row === undefined ? null : new RowReader("entries", row).nullableInt("at")
+    return first === null ? null : startOfMinute(first) + minuteMs
+  }
+
+  // The minutes that ended since the last report, read from the room's own rows so an object evicted in between loses none. Minutes older than the retention are not worth reporting.
+  private takeFinishedMinutes(now: Instant): readonly MinuteCounts[] {
+    const upTo = startOfMinute(now)
+    const reported = this.metricsReportedUntil()
+    const from = Math.max(reported, upTo - this.config.metricsRetentionHours * 3_600_000)
+    if (from >= upTo) return []
+    const byMinute = new Map<Instant, MinuteCounts>()
+    for (const row of this.sql.exec(entriesPerMinuteSql, [from, upTo])) {
+      const reader = new RowReader("entries", row)
+      const minute = reader.int("minute")
+      byMinute.set(minute, { minute, entries: reader.int("c"), claims: 0 })
+    }
+    for (const row of this.sql.exec(claimsPerMinuteSql, [from, upTo])) {
+      const reader = new RowReader("draws", row)
+      const minute = reader.int("minute")
+      byMinute.set(minute, {
+        minute,
+        entries: byMinute.get(minute)?.entries ?? 0,
+        claims: reader.int("c"),
+      })
+    }
+    // With nothing to report the mark moves only past the retention: otherwise the next wake-up finds the same old rows again.
+    if (byMinute.size > 0 || reported < from) {
+      this.sql.exec("UPDATE room_state SET metrics_reported_until = ? WHERE id = 1", [upTo])
+    }
+    return [...byMinute.values()].toSorted((a, b) => a.minute - b.minute)
+  }
+
+  private metricsReportedUntil(): Instant {
+    const row = this.sql.exec("SELECT metrics_reported_until FROM room_state WHERE id = 1", [])[0]
+    return row === undefined ? 0 : new RowReader("room_state", row).int("metrics_reported_until")
+  }
+
+  private count(sql: string, params: readonly SqlValue[]): number {
+    const row = this.sql.exec(sql, params)[0]
+    return row === undefined ? 0 : new RowReader("room", row).int("c")
   }
 
   // One past the end of the reroll window, so the alarm finds the giveaway finished and pushes it.

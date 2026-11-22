@@ -37,6 +37,7 @@ import { applyMigrations } from "../src/room/migrate.ts"
 import { roomMigrations } from "../src/room/migrations.ts"
 import type { RoomDirectory, RoomStub } from "../src/room/room-directory.ts"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "../src/sqlite-bun.ts"
+import { StatsStore } from "../src/stats/stats-store.ts"
 import { TwitchClient } from "../src/twitch/twitch-client.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
 import { FakeBeacon } from "./fake-beacon.ts"
@@ -210,6 +211,9 @@ class InProcessRoomStub implements RoomStub {
   async entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
     return this.room.entriesPerSecondBefore(...args)
   }
+  async liveCounts() {
+    return { ...this.room.liveCounts(), viewers: 0 }
+  }
 }
 
 export class StubUsageMeter implements UsageMeter {
@@ -325,7 +329,8 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const random = options.random ?? secureRandom
   const accountsDb = new Database(":memory:")
   accountsDb.exec(accountsSchema)
-  const accounts = new AccountStore(new BunSqliteAsyncSql(accountsDb), config)
+  const accountsSql = new BunSqliteAsyncSql(accountsDb)
+  const accounts = new AccountStore(accountsSql, config)
   const rooms = new InProcessRooms(clock, config)
   const twitch = new TwitchClient(config, fetch)
   const usage = new StubUsageMeter()
@@ -348,6 +353,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const deps: AppDeps = {
     ...entryDeps,
     queue: asRemote(queue),
+    stats: new StatsStore(accountsSql, config),
     usage,
     planQueue,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),

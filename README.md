@@ -348,6 +348,24 @@ includes 10 million Worker and 1 million Durable Object requests a month and bil
 sends up to 9,000 subrequests per alarm invocation instead of 45. `WORKER_REQUEST_LIMIT`,
 `DURABLE_OBJECT_REQUEST_LIMIT` and `QUEUE_SUBREQUESTS_PER_INVOCATION` override the plan's values when set,
 for example a self-imposed daily cap on Paid. The Bun server has no Cloudflare plan and shows no switch.
+
+Live statistics: the admin page polls `GET /api/admin/stats` every 10 seconds while its tab is visible and
+stops while it is hidden. The answer is reused for `ADMIN_STATS_CACHE_SECONDS` (5), so two admins cost one set
+of reads, and it asks the rooms of at most `ADMIN_STATS_LIVE_ROOMS_MAX` (20) open giveaways for their viewers
+and entries, one Durable Object request each on Cloudflare. The page shows the open giveaways, connected
+viewers, entries and claims of the last minute, the entry line with its Twitch 429 responses, a chart of the
+last `ADMIN_STATS_SERIES_MINUTES` (60) minutes, giveaways and new streamers per day over `ADMIN_STATS_DAYS` (14)
+days, streamers who came back for a second giveaway within `ADMIN_STATS_RETURN_DAYS` (30), and, with
+`OPEN_SIGNUP=false`, how many streamers wait for approval.
+
+The statistics are aggregate counts and nothing else. The chart reads per-minute counters that each giveaway
+room adds to the account database once a minute while it is active (`metrics_minute`, deleted after
+`METRICS_RETENTION_HOURS`, 24). The token queue keeps its 429 counts in its own database the same way. The daily
+figures are counted from the giveaway and streamer tables. A home page visit with `?ref=<label>` (lower-case
+letters, digits and hyphens, up to 32 characters; anything else is ignored) adds one to that label's count for
+the day, and the page lists the busiest labels. The count has no cookie, address or other visitor data, and a
+new label beyond `REFERRAL_SOURCES_PER_DAY_MAX` (100) a day is ignored. Cloudflare's own request analytics
+(the usage meter above) are the only other source; no analytics service or script is added.
 Scripts, styles, icons and the app pages are static assets that Cloudflare serves without the Worker. Only
 `/api/*`, `/auth/*` and the pages search engines index (`/`, `/privacy` and `/terms`) count as Worker requests;
 the Worker writes `PUBLIC_URL` into the canonical and Open Graph tags of those pages. A giveaway page load makes one such request, and the

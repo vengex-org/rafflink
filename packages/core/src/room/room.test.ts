@@ -792,6 +792,7 @@ describe("GiveawayRoom alarm", () => {
       mirrorStatus: null,
       commit: false,
       draw: false,
+      metrics: [],
     })
     room.replaceRoles([], [])
     expect(alarm.at).toBe(5000)
@@ -805,6 +806,7 @@ describe("GiveawayRoom alarm", () => {
       mirrorStatus: "closed",
       commit: true,
       draw: false,
+      metrics: [],
     })
     expect(room.enter(viewer("1"))).toEqual({ kind: "closed" })
   })
@@ -1739,6 +1741,111 @@ function count(sql: SyncSql, table: "entries" | "channel_roles"): unknown {
   return sql.exec(`SELECT COUNT(*) AS c FROM ${table}`, [])[0]?.c
 }
 
+// Roles refreshed, so only the counters can wake the room within the first minutes.
+function quietRoom(env: Record<string, string> = {}) {
+  const context = setup(giveaway, random, env)
+  context.room.replaceRoles([], [])
+  return context
+}
+
+describe("GiveawayRoom minute counts", () => {
+  const minute = 60_000
+
+  it("wakes the room at the end of the minute of the first entry nobody reported", () => {
+    const { room, clock, alarm } = quietRoom()
+    clock.advance(10_000)
+
+    room.enter(viewer("1"))
+
+    expect(alarm.at).toBe(minute)
+  })
+
+  it("reports each finished minute once, with its entries, and not the minute in progress", () => {
+    const { room, clock } = quietRoom()
+    clock.advance(10_000)
+    room.enter(viewer("1"))
+    clock.advance(10_000)
+    room.enter(viewer("2"))
+    clock.advance(50_000)
+    room.enter(viewer("3"))
+    clock.advance(10_000)
+
+    expect(room.onAlarm().metrics).toEqual([{ minute: 0, entries: 2, claims: 0 }])
+
+    clock.advance(minute)
+    expect(room.onAlarm().metrics).toEqual([{ minute, entries: 1, claims: 0 }])
+    expect(room.onAlarm().metrics).toEqual([])
+  })
+
+  it("reports nothing and keeps the alarm at the end of the minute while that minute is in progress", () => {
+    const { room, clock, alarm } = quietRoom()
+    clock.advance(10_000)
+    room.enter(viewer("1"))
+    clock.advance(10_000)
+
+    expect(room.onAlarm().metrics).toEqual([])
+    expect(alarm.at).toBe(minute)
+  })
+
+  it("does not wake the room again once every minute is reported", () => {
+    const { room, clock, alarm } = quietRoom()
+    room.enter(viewer("1"))
+    clock.advance(minute)
+    room.onAlarm()
+
+    expect(alarm.at).not.toBe(minute)
+  })
+
+  it("reports the minutes of a room object that was evicted before the alarm", () => {
+    const { room, sql, clock, alarm } = quietRoom()
+    room.enter(viewer("1"))
+    clock.advance(minute)
+    const revived = new GiveawayRoom({
+      sql,
+      alarm,
+      live: new TestHub(),
+      clock,
+      random,
+      config,
+      chat: idleChat,
+      beacon: new FakeBeacon(),
+    })
+
+    expect(revived.onAlarm().metrics).toEqual([{ minute: 0, entries: 1, claims: 0 }])
+  })
+
+  it("reports the claims of a minute together with its entries", async () => {
+    const { room, clock, winner } = await drawnRoom()
+    expect(room.claim(0, winner, "manual").kind).toBe("claimed")
+    clock.advance(minute)
+
+    const metrics = room.onAlarm().metrics
+
+    expect(metrics.reduce((total, row) => total + row.entries, 0)).toBe(3)
+    expect(metrics.reduce((total, row) => total + row.claims, 0)).toBe(1)
+  })
+
+  it("leaves out minutes older than the retention and does not wake the room for them", () => {
+    const { room, clock, alarm } = quietRoom({ METRICS_RETENTION_HOURS: "1" })
+    room.enter(viewer("1"))
+    clock.advance(3 * 3_600_000)
+
+    expect(room.onAlarm().metrics).toEqual([])
+    expect(alarm.at).not.toBe(minute)
+  })
+
+  it("counts the entries and claims of the last minute for the admin page", () => {
+    const { room, clock } = quietRoom()
+    room.enter(viewer("1"))
+    clock.advance(30_000)
+    room.enter(viewer("2"))
+    clock.advance(40_000)
+    room.enter(viewer("3"))
+
+    expect(room.liveCounts()).toEqual({ entrants: 3, entriesLastMinute: 2, claimsLastMinute: 0 })
+  })
+})
+
 describe("GiveawayRoom retention", () => {
   const retentionMs = config.entryRetentionSeconds * 1000
 
@@ -1795,12 +1902,14 @@ describe("GiveawayRoom retention", () => {
   it("sets the alarm to the deadline while data remains and to nothing once it is deleted", async () => {
     const { room, alarm, clock } = setup()
     room.enter(viewer("1"))
+    clock.advance(60_000)
+    room.onAlarm()
     clock.advance(1000)
     room.close()
     clock.advance(config.liveIntervalMs)
     await room.commit()
     room.markMirrored("closed")
-    expect(alarm.at).toBe(1000 + retentionMs)
+    expect(alarm.at).toBe(61_000 + retentionMs)
 
     clock.advance(retentionMs)
     room.onAlarm()
@@ -1821,6 +1930,8 @@ describe("GiveawayRoom retention", () => {
       [],
     )
     applyMigrations(sql, roomMigrations)
+    // The entry's minute is reported already, so only the retention wakes the room.
+    sql.exec("UPDATE room_state SET metrics_reported_until = 60000 WHERE id = 1", [])
     const clock = new TestClock(0)
     const alarm = new TestAlarm()
     const room = new GiveawayRoom({

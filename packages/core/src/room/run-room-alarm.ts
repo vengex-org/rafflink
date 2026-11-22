@@ -1,21 +1,45 @@
 import { errorClass } from "../lib/error-class.ts"
 import type { StreamerTokenDeps } from "../accounts/streamer-token.ts"
-import type { GiveawayRoom } from "./giveaway-room.ts"
+import type { StatsStore } from "../stats/stats-store.ts"
+import type { AlarmDuties, GiveawayRoom } from "./giveaway-room.ts"
 import { mirrorStatus } from "./mirror-status.ts"
 import { openGiveawayStreamerAccess } from "./streamer-access.ts"
 
-/** What the room's alarm asks of the adapter: the role lists need Twitch, the commit is asynchronous, the status mirror needs the account store. */
+export interface RoomAlarmDeps extends StreamerTokenDeps {
+  readonly stats: Pick<StatsStore, "addMinutes">
+}
+
+/** What the room's alarm asks of the adapter: the role lists need Twitch, the commit is asynchronous, the status mirror and the minute counters need the account store. */
 export async function runRoomAlarm(
-  deps: StreamerTokenDeps,
+  deps: RoomAlarmDeps,
   giveawayId: string,
   room: GiveawayRoom,
 ): Promise<void> {
   const duties = room.onAlarm()
+  await addMinutes(deps, giveawayId, duties.metrics)
   if (duties.refreshRoles) await refreshRoles(deps, giveawayId, room)
   if (duties.commit) await commitRoom(giveawayId, room)
   if (duties.draw) await drawRoom(deps, giveawayId, room)
   if (duties.mirrorStatus !== null)
     await mirrorStatus(room, deps.accounts, giveawayId, duties.mirrorStatus)
+}
+
+// Not retried: the room has moved past these minutes, so a lost write is a gap in the admin chart, logged here.
+async function addMinutes(
+  deps: RoomAlarmDeps,
+  giveawayId: string,
+  metrics: AlarmDuties["metrics"],
+): Promise<void> {
+  if (metrics.length === 0) return
+  try {
+    await deps.stats.addMinutes(metrics, deps.clock.now())
+  } catch (error) {
+    console.warn("room minute counts lost", {
+      giveawayId,
+      minutes: metrics.length,
+      errorClass: errorClass(error),
+    })
+  }
 }
 
 // A failed commit stays due in the room, whose alarm retries it with a growing wait until it gives up, so nothing is thrown here.

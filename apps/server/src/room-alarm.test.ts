@@ -1,7 +1,6 @@
 import { Database } from "bun:sqlite"
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { AccountStore } from "@rafflink/core/accounts/account-store"
-import type { StreamerTokenDeps } from "@rafflink/core/accounts/streamer-token"
 import type { ResolvedConfig } from "@rafflink/core/config"
 import { openKeyRing, type KeyRing } from "@rafflink/core/lib/seal"
 import { systemRandom } from "@rafflink/core/lib/system-ports"
@@ -9,7 +8,8 @@ import type { Clock, Instant } from "@rafflink/core/ports"
 import { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
-import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
+import { runRoomAlarm, type RoomAlarmDeps } from "@rafflink/core/room/run-room-alarm"
+import { StatsStore } from "@rafflink/core/stats/stats-store"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import {
@@ -41,7 +41,7 @@ let clock: TestClock
 let accountsDb: Database
 let accounts: AccountStore
 let keyRing: KeyRing
-let deps: StreamerTokenDeps
+let deps: RoomAlarmDeps
 let room: GiveawayRoom
 
 beforeEach(async () => {
@@ -57,7 +57,8 @@ beforeEach(async () => {
   clock = new TestClock(Date.now())
   accountsDb = new Database(":memory:")
   applyAccountsMigrations(accountsDb, coreAccountsSchemaDir(), clock)
-  accounts = new AccountStore(new BunSqliteAsyncSql(accountsDb), config)
+  const accountsSql = new BunSqliteAsyncSql(accountsDb)
+  accounts = new AccountStore(accountsSql, config)
   keyRing = await openKeyRing([sealKey])
   deps = {
     clock,
@@ -65,6 +66,7 @@ beforeEach(async () => {
     twitch: new TwitchClient(config, fetch),
     accounts,
     keyRing,
+    stats: new StatsStore(accountsSql, config),
   }
   const roomSql = new BunSqliteSyncSql(new Database(":memory:"))
   applyMigrations(roomSql, roomMigrations)
@@ -236,6 +238,41 @@ describe("runRoomAlarm status mirror", () => {
     expect(room.onAlarm().mirrorStatus).toBeNull()
     clock.advance(config.mirrorRetrySeconds * 1000)
     expect(room.onAlarm().mirrorStatus).toBe("closed")
+    warn.mockRestore()
+  })
+})
+
+describe("runRoomAlarm minute counts", () => {
+  it("adds the finished minutes of the room's entries to the account store's counters", async () => {
+    await seedStreamerAndGiveaway()
+    await runRoomAlarm(deps, giveawayId, room)
+    room.enter(viewer)
+    clock.advance(60_000)
+
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(accountsDb.query("SELECT SUM(entries) AS total FROM metrics_minute").get()).toEqual({
+      total: 1,
+    })
+  })
+
+  it("logs a lost write and still runs the other duties of the alarm", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    await seedStreamerAndGiveaway()
+    await runRoomAlarm(deps, giveawayId, room)
+    room.enter(viewer)
+    room.close()
+    accountsDb.run("DROP TABLE metrics_minute")
+    clock.advance(60_000)
+
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(warn).toHaveBeenCalledWith("room minute counts lost", {
+      giveawayId,
+      minutes: 1,
+      errorClass: "Error",
+    })
+    expect((await accounts.findGiveawayById(giveawayId))?.status).toBe("closed")
     warn.mockRestore()
   })
 })

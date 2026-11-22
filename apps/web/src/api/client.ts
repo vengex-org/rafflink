@@ -2,7 +2,9 @@ import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
+  AdminAccessCountsJson,
   AdminPlanJson,
+  AdminStatsJson,
   AdminStreamerJson,
   AdminStreamerListJson,
   AdminStreamersJson,
@@ -19,6 +21,7 @@ import type {
   ViewerState,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
+import type { LiveCounts } from "@rafflink/core/room/room-directory"
 import {
   cloudflarePlans,
   type CloudflarePlan,
@@ -142,6 +145,8 @@ export type CreateResult =
   | { readonly kind: "not-approved" }
 
 export type AdminUsage = AdminUsageJson
+
+export type AdminStats = AdminStatsJson
 
 /** What the verify page reads: the public facts, the leaf list once the room committed, and the viewer's own leaf when they entered. */
 export interface VerifyLoad {
@@ -493,6 +498,64 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
     alertPercent: num(source, "alertPercent"),
     signupOpen: bool(source, "signupOpen"),
     queue: parseQueue(child(source, "queue")),
+  }
+}
+
+/** `fresh` skips the server's short-lived copy, for the first read after the plan changed. */
+export async function getAdminStats(fresh: boolean): Promise<AdminStats> {
+  const { status, body } = await send(fresh ? "/api/admin/stats?fresh=1" : "/api/admin/stats")
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "stats")
+  return {
+    generatedAt: num(source, "generatedAt"),
+    openGiveaways: num(source, "openGiveaways"),
+    giveaways: list(source, "giveaways", (giveaway) => ({
+      code: text(giveaway, "code"),
+      title: nullableText(giveaway, "title"),
+      streamerName: text(giveaway, "streamerName"),
+      closesAt: nullableNum(giveaway, "closesAt"),
+      counts: giveaway.counts === null ? null : parseLiveCounts(child(giveaway, "counts")),
+    })),
+    viewers: num(source, "viewers"),
+    entriesLastMinute: num(source, "entriesLastMinute"),
+    claimsLastMinute: num(source, "claimsLastMinute"),
+    queue: parseQueue(child(source, "queue")),
+    usage: parseUsage(source),
+    series: list(source, "series", (point) => ({
+      minute: num(point, "minute"),
+      entries: num(point, "entries"),
+      claims: num(point, "claims"),
+      rateLimited: num(point, "rateLimited"),
+    })),
+    growth: list(source, "growth", (day) => ({
+      day: num(day, "day"),
+      giveaways: num(day, "giveaways"),
+      streamers: num(day, "streamers"),
+    })),
+    returningStreamers: num(source, "returningStreamers"),
+    returningWithinDays: num(source, "returningWithinDays"),
+    access: source.access === null ? null : parseAccessCounts(child(source, "access")),
+    referrals: list(source, "referrals", (row) => ({
+      ref: text(row, "ref"),
+      visits: num(row, "visits"),
+    })),
+  }
+}
+
+function parseLiveCounts(source: Json): LiveCounts {
+  return {
+    entrants: num(source, "entrants"),
+    entriesLastMinute: num(source, "entriesLastMinute"),
+    claimsLastMinute: num(source, "claimsLastMinute"),
+    viewers: num(source, "viewers"),
+  }
+}
+
+function parseAccessCounts(source: Json): AdminAccessCountsJson {
+  return {
+    pending: num(source, "pending"),
+    approved: num(source, "approved"),
+    truncated: bool(source, "truncated"),
   }
 }
 
@@ -890,5 +953,11 @@ function parseQueue(source: Json): QueueStats {
     dropped: num(source, "dropped"),
     abandonedResults: num(source, "abandonedResults"),
     lostClaims: num(source, "lostClaims"),
+    rateLimited: num(source, "rateLimited"),
+    lastRateLimitedAt: num(source, "lastRateLimitedAt"),
+    rateLimitedMinutes: list(source, "rateLimitedMinutes", (row) => ({
+      minute: num(row, "minute"),
+      count: num(row, "count"),
+    })),
   }
 }

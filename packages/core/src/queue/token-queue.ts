@@ -6,6 +6,7 @@ import type { Alarm, Clock, Instant, Random, Remote, SqlRow, SyncSql } from "../
 import type { RoomStub } from "../room/room-directory.ts"
 import { queuedEntryTwitchSubrequests } from "../twitch/queued-entry-requests.ts"
 import { RowReader } from "../room/rows.ts"
+import { startOfMinute } from "../stats/time.ts"
 import {
   parseFinalOutcome,
   type DeferCause,
@@ -13,13 +14,16 @@ import {
   type FinalOutcome,
 } from "../viewer/outcome.ts"
 import {
+  addRateLimitedMinuteSql,
   claimQueuedSql,
   expiredQueuedSql,
   finishClaimedSql,
   oldestClaimSql,
   oldestDoneSql,
   oldestQueuedSql,
+  pruneRateLimitedMinutesSql,
   purgeDoneSql,
+  rateLimitedMinutesSql,
   releaseStaleSql,
   requeueClaimedSql,
   statsSql,
@@ -34,6 +38,7 @@ export type QueueConfig = Pick<
   | "queueCooldownSeconds"
   | "queueRateWindowSeconds"
   | "queueBacklogLeaseSeconds"
+  | "metricsRetentionHours"
 >
   & RateConfig
 
@@ -104,6 +109,12 @@ export interface QueueStats {
   readonly abandonedResults: number
   /** Passes whose claim was released and retaken before they reported, so their result was discarded. */
   readonly lostClaims: number
+  /** Twitch token endpoint 429s since the queue started, on the direct path and in its own passes. */
+  readonly rateLimited: number
+  /** When the last 429 came; 0 when none has. */
+  readonly lastRateLimitedAt: Instant
+  /** The 429s of each minute that had one, from the last METRICS_RETENTION_HOURS, oldest first; `minute` is the start of the minute. */
+  readonly rateLimitedMinutes: readonly { readonly minute: Instant; readonly count: number }[]
 }
 
 /** The queue methods the HTTP app calls, as an async stub. */
@@ -149,6 +160,7 @@ export class TokenQueue {
     const now = this.clock.now()
     const ticket = randomId(this.random)
     const ahead = this.sql.transaction(() => {
+      if (cause === "rate-limited") this.recordRateLimited(1, now)
       const waiting = this.waitingCount()
       this.sql.exec(
         `INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state)
@@ -202,13 +214,19 @@ export class TokenQueue {
   }
 
   stats(): QueueStats {
-    const { ratePerSecond, cooldownUntil, dropped, abandonedResults, lostClaims } = this.readStats()
+    const stored = this.readStats()
     return {
-      ratePerSecond,
-      cooldownUntil,
-      dropped,
-      abandonedResults,
-      lostClaims,
+      ratePerSecond: stored.ratePerSecond,
+      cooldownUntil: stored.cooldownUntil,
+      dropped: stored.dropped,
+      abandonedResults: stored.abandonedResults,
+      lostClaims: stored.lostClaims,
+      rateLimited: stored.rateLimited,
+      lastRateLimitedAt: stored.lastRateLimitedAt,
+      rateLimitedMinutes: this.sql.exec(rateLimitedMinutesSql, []).map((row) => {
+        const reader = new RowReader("rate_limited_minute", row)
+        return { minute: reader.int("minute"), count: reader.int("count") }
+      }),
       queued: this.waitingCount(),
     }
   }
@@ -238,6 +256,7 @@ export class TokenQueue {
         giveawayId: new RowReader("token_queue", row).text("giveaway_id"),
       })
     }
+    this.sql.exec(pruneRateLimitedMinutesSql, [now - this.config.metricsRetentionHours * 3_600_000])
     const purged = this.sql.exec(purgeDoneSql, [cutoff])
     const abandoned = purged.filter((row) => new RowReader("token_queue", row).int("polled") === 0)
     if (expired.length === 0 && abandoned.length === 0) return
@@ -277,7 +296,19 @@ export class TokenQueue {
     ])
     if (items.length === 0) return
     const results = await Promise.all(items.map((item) => this.processOne(item, claimedAt)))
-    if (results.includes("rate-limited")) this.slowDown(calls)
+    const limited = results.filter((result) => result === "rate-limited").length
+    if (limited > 0) {
+      this.recordRateLimited(limited, this.clock.now())
+      this.slowDown(calls)
+    }
+  }
+
+  private recordRateLimited(count: number, now: Instant): void {
+    this.sql.exec(
+      "UPDATE queue_stats SET rate_limited_total = rate_limited_total + ?, last_rate_limited_at = ? WHERE id = 1",
+      [count, now],
+    )
+    this.sql.exec(addRateLimitedMinuteSql, [startOfMinute(now), count])
   }
 
   // Every invocation of a pass claims within the second the pass started, and each code's token exchange is
@@ -434,13 +465,15 @@ export class TokenQueue {
       dropped: reader.int("dropped"),
       abandonedResults: reader.int("abandoned_results"),
       lostClaims: reader.int("lost_claims"),
+      rateLimited: reader.int("rate_limited_total"),
+      lastRateLimitedAt: reader.int("last_rate_limited_at"),
     }
   }
 }
 
 type QueuedItem = QueuedCode & { readonly ticket: string }
 
-type StoredStats = Omit<QueueStats, "queued"> & {
+type StoredStats = Omit<QueueStats, "queued" | "rateLimitedMinutes"> & {
   readonly rateChangedAt: Instant
   readonly backlogStartedAt: Instant
   readonly passStartedAt: Instant

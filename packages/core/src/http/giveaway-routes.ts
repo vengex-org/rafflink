@@ -5,7 +5,7 @@ import type { ClaimOutcome, PublicSummary, WinnerPick } from "../room/giveaway-r
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
-import { errorClass } from "../lib/error-class.ts"
+import { readPublicCache, writePublicCache } from "./public-cache.ts"
 import { toHex } from "../lib/encoding.ts"
 import {
   verifyJson,
@@ -205,35 +205,6 @@ function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: PublicSummar
       intervalMs: deps.config.queuePollSeconds * 1000,
       maxMs: deps.config.queuePollMaxSeconds * 1000,
     },
-  }
-}
-
-// A cache that fails is a cache that missed: the answer still comes from the account store and the room.
-async function readPublicCache(
-  deps: AppDeps,
-  key: string,
-  ttlSeconds: number,
-): Promise<string | null> {
-  if (ttlSeconds === 0) return null
-  try {
-    return await deps.publicCache.read(key)
-  } catch (error) {
-    console.warn("public cache read failed", { errorClass: errorClass(error) })
-    return null
-  }
-}
-
-async function writePublicCache(
-  deps: AppDeps,
-  key: string,
-  text: string,
-  ttlSeconds: number,
-): Promise<void> {
-  if (ttlSeconds === 0) return
-  try {
-    await deps.publicCache.write(key, text, ttlSeconds)
-  } catch (error) {
-    console.warn("public cache write failed", { errorClass: errorClass(error) })
   }
 }
 

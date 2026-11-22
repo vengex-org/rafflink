@@ -23,15 +23,20 @@ import {
   type RerollOutcome,
 } from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
+import { denseDays, denseMinutes } from "../stats/series.ts"
+import { liveGiveaways } from "../stats/live-giveaways.ts"
+import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
 import { ChannelBadges } from "../twitch/channel-badges.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import {
   dashboardGiveaway,
   readJson,
+  type AdminAccessCountsJson,
   type AdminPlanJson,
   type AdminStreamerJson,
   type AdminStreamerListJson,
+  type AdminStatsJson,
   type AdminStreamersJson,
   type AdminUsageJson,
   type BadgesJson,
@@ -39,6 +44,7 @@ import {
   type OwnerLiveSnapshot,
 } from "./json.ts"
 import { sameOriginJson } from "./origin.ts"
+import { readPublicCache, writePublicCache } from "./public-cache.ts"
 import type { StreamerSession } from "./session.ts"
 import { currentStreamer } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
@@ -229,8 +235,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
 
   app.get("/api/admin/usage", async (c) => {
     const plan = await activePlan(deps)
-    const usage =
-      plan === "unavailable" ? plan : await adminUsage(deps, plan === null ? null : plan.limits)
+    const usage = await usageOfPlan(deps, plan)
     const body: AdminUsageJson = {
       usage,
       plan: plan === "unavailable" ? null : plan,
@@ -243,6 +248,19 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       queue: await deps.queue.stats(),
     }
     return c.json(body)
+  })
+
+  // The answer holds no per-admin or per-person data, so one cached copy serves every admin. `?fresh=1` skips the copy, for the page right after a plan switch changed what the usage is measured against.
+  app.get("/api/admin/stats", async (c) => {
+    c.header("Cache-Control", "no-store")
+    const key = `${deps.config.publicUrl}/api/admin/stats`
+    const ttlSeconds = deps.config.adminStatsCacheSeconds
+    const cached =
+      c.req.query("fresh") === "1" ? null : await readPublicCache(deps, key, ttlSeconds)
+    if (cached !== null) return c.body(cached, 200, { "Content-Type": "application/json" })
+    const text = JSON.stringify(await adminStats(deps))
+    await writePublicCache(deps, key, text, ttlSeconds)
+    return c.body(text, 200, { "Content-Type": "application/json" })
   })
 
   // The admin pays for the plan in the Cloudflare dashboard first; this only tells the app which limits apply.
@@ -415,6 +433,71 @@ async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
     console.warn("room init failed", { giveawayId: giveaway.id, errorClass: errorClass(error) })
     return false
   }
+}
+
+async function adminStats(deps: AppDeps): Promise<AdminStatsJson> {
+  const { config } = deps
+  const now = deps.clock.now()
+  const seriesFrom = startOfMinute(now) - (config.adminStatsSeriesMinutes - 1) * minuteMs
+  const growthFrom = startOfDay(now) - (config.adminStatsDays - 1) * dayMs
+  const [live, queue, usage, minutes, giveawaysPerDay, streamersPerDay, returning, referrals] =
+    await Promise.all([
+      liveGiveaways(deps, config.adminStatsLiveRoomsMax),
+      deps.queue.stats(),
+      activePlan(deps).then((plan) => usageOfPlan(deps, plan)),
+      deps.stats.minutes(seriesFrom),
+      deps.stats.giveawaysPerDay(growthFrom),
+      deps.stats.streamersPerDay(growthFrom),
+      deps.stats.returningStreamers(config.adminStatsReturnDays * dayMs),
+      deps.stats.topReferrals(growthFrom, config.adminStatsRefsMax),
+    ])
+  const counted = live.giveaways.flatMap((giveaway) =>
+    giveaway.counts === null ? [] : [giveaway.counts],
+  )
+  const sum = (pick: (counts: (typeof counted)[number]) => number) =>
+    counted.reduce((total, counts) => total + pick(counts), 0)
+  return {
+    generatedAt: now,
+    openGiveaways: live.total,
+    giveaways: live.giveaways,
+    viewers: sum((counts) => counts.viewers),
+    entriesLastMinute: sum((counts) => counts.entriesLastMinute),
+    claimsLastMinute: sum((counts) => counts.claimsLastMinute),
+    queue,
+    usage,
+    series: denseMinutes(
+      minutes,
+      new Map(queue.rateLimitedMinutes.map((row) => [row.minute, row.count])),
+      now,
+      config.adminStatsSeriesMinutes,
+    ),
+    growth: denseDays(giveawaysPerDay, streamersPerDay, now, config.adminStatsDays),
+    returningStreamers: returning,
+    returningWithinDays: config.adminStatsReturnDays,
+    access: config.openSignup ? null : await accessCounts(deps),
+    referrals,
+  }
+}
+
+async function accessCounts(deps: AppDeps): Promise<AdminAccessCountsJson> {
+  const max = deps.config.streamerAccessListMax
+  const { pending, approved } = await deps.accounts.listStreamerAccess(
+    max + deps.config.admins.length + 1,
+  )
+  const waiting = await withoutAdmins(deps, pending, max)
+  const allowed = await withoutAdmins(deps, approved, max)
+  return {
+    pending: waiting.streamers.length,
+    approved: allowed.streamers.length,
+    truncated: waiting.truncated || allowed.truncated,
+  }
+}
+
+async function usageOfPlan(
+  deps: AppDeps,
+  plan: AdminPlanJson | null | "unavailable",
+): Promise<Usage | null | "unavailable"> {
+  return plan === "unavailable" ? plan : adminUsage(deps, plan === null ? null : plan.limits)
 }
 
 type UsageWarning = { readonly kind: "worker-requests-low"; readonly remaining: number }

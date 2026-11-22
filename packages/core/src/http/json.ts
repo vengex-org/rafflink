@@ -13,6 +13,9 @@ import type {
   WinnerClaim,
 } from "../room/giveaway-room.ts"
 import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
+import type { GrowthDay, SeriesMinute } from "../stats/series.ts"
+import type { AdminLiveGiveawayJson } from "../stats/live-giveaways.ts"
+import type { ReferralCount } from "../stats/stats-store.ts"
 import type { SubscriberBadges } from "../twitch/channel-badges.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
@@ -164,6 +167,42 @@ export interface AdminUsageJson {
   /** OPEN_SIGNUP: every streamer may create giveaways, so the page shows no access lists. */
   readonly signupOpen: boolean
   readonly queue: QueueStats
+}
+
+/**
+ * Streamers by approval state, admins left out; each count stops at STREAMER_ACCESS_LIST_MAX and `truncated`
+ * says it did.
+ */
+export interface AdminAccessCountsJson {
+  readonly pending: number
+  readonly approved: number
+  readonly truncated: boolean
+}
+
+/** The admin page's live numbers, last hour and aggregates. Nothing in it identifies a viewer. */
+export interface AdminStatsJson {
+  readonly generatedAt: Instant
+  /** Giveaways open now, all of them. */
+  readonly openGiveaways: number
+  /** The newest open giveaways, at most ADMIN_STATS_LIVE_ROOMS_MAX; the sums below cover only these. */
+  readonly giveaways: readonly AdminLiveGiveawayJson[]
+  readonly viewers: number
+  readonly entriesLastMinute: number
+  readonly claimsLastMinute: number
+  readonly queue: QueueStats
+  /** As in {@link AdminUsageJson}. */
+  readonly usage: Usage | null | "unavailable"
+  /** One point per minute, oldest first; the minute in progress has no room counts yet. */
+  readonly series: readonly SeriesMinute[]
+  /** One point per UTC day, oldest first. */
+  readonly growth: readonly GrowthDay[]
+  /** Streamers whose second giveaway came within `returningWithinDays` of their first. */
+  readonly returningStreamers: number
+  /** ADMIN_STATS_RETURN_DAYS. */
+  readonly returningWithinDays: number
+  /** Null while OPEN_SIGNUP is true: nobody waits for approval then. */
+  readonly access: AdminAccessCountsJson | null
+  readonly referrals: readonly ReferralCount[]
 }
 
 /** A streamer in the admin's access lists. `id` is the account id the approve and revoke calls take. */

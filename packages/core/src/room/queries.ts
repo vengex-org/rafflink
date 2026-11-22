@@ -54,3 +54,20 @@ export const headSeqSql = "SELECT MAX(seq) AS head FROM entries"
 /** One row while the room still holds personal data of entrants or channel roles; no row once it was deleted. */
 export const retainedDataSql =
   "SELECT 1 AS present WHERE EXISTS (SELECT 1 FROM entries) OR EXISTS (SELECT 1 FROM channel_roles)"
+
+/** Entries written per minute from one instant (parameter 1) up to but not including another (parameter 2); `minute` is the start of the minute. */
+export const entriesPerMinuteSql = `SELECT entered_at / 60000 * 60000 AS minute, COUNT(*) AS c FROM entries
+  WHERE entered_at >= ? AND entered_at < ? GROUP BY minute`
+
+/** Claims made per minute in the same range. */
+export const claimsPerMinuteSql = `SELECT claimed_at / 60000 * 60000 AS minute, COUNT(*) AS c FROM draws
+  WHERE claimed_at >= ? AND claimed_at < ? GROUP BY minute`
+
+/** Claims made since a time (parameter 1). */
+export const claimsSinceCountSql = "SELECT COUNT(*) AS c FROM draws WHERE claimed_at >= ?"
+
+/** The time of the first entry or claim at or after an instant (given twice, parameters 1 and 2); NULL when there is none. */
+export const firstUnreportedActivitySql = `SELECT MIN(at) AS at FROM (
+  SELECT MIN(entered_at) AS at FROM entries WHERE entered_at >= ?
+  UNION ALL SELECT MIN(claimed_at) FROM draws WHERE claimed_at >= ?
+)`
