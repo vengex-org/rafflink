@@ -43,6 +43,13 @@ const planDefaults: Readonly<Record<CloudflarePlan, PlanLimits>> = {
   },
 }
 
+/** Which limits the config sets, so they apply on every plan instead of the plan's own value. */
+export interface PlanLimitOverrides {
+  readonly workerRequestsPerDay: boolean
+  readonly doRequestsPerDay: boolean
+  readonly subrequestsPerInvocation: boolean
+}
+
 /** The plan's limits, with each limit the config sets explicitly in place of the plan's value. */
 export function planLimits(plan: CloudflarePlan, config: PlanLimitConfig): PlanLimits {
   const limits = planDefaults[plan]
@@ -53,4 +60,30 @@ export function planLimits(plan: CloudflarePlan, config: PlanLimitConfig): PlanL
     subrequestsPerInvocation:
       config.queueSubrequestsPerInvocation ?? limits.subrequestsPerInvocation,
   }
+}
+
+export function overriddenLimits(config: PlanLimitConfig): PlanLimitOverrides {
+  return {
+    workerRequestsPerDay: config.workerRequestLimit !== null,
+    doRequestsPerDay: config.durableObjectRequestLimit !== null,
+    subrequestsPerInvocation: config.queueSubrequestsPerInvocation !== null,
+  }
+}
+
+/** The limits a config override holds on Paid at or below Free's value, as an old Free `.env` leaves them. */
+export function limitsHeldAtFree(
+  plan: CloudflarePlan,
+  config: PlanLimitConfig,
+): (keyof PlanLimitOverrides)[] {
+  if (plan !== "paid") return []
+  const free = planDefaults.free
+  const overrides: readonly (readonly [keyof PlanLimitOverrides, number | null])[] = [
+    ["workerRequestsPerDay", config.workerRequestLimit],
+    ["doRequestsPerDay", config.durableObjectRequestLimit],
+    ["subrequestsPerInvocation", config.queueSubrequestsPerInvocation],
+  ]
+  return overrides.flatMap(([limit, value]) => {
+    const freeValue = free[limit]
+    return value !== null && freeValue !== null && value <= freeValue ? [limit] : []
+  })
 }

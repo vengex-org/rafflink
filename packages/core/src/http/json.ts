@@ -2,7 +2,7 @@ import type { Context } from "hono"
 import { toHex } from "../lib/encoding.ts"
 import type { Giveaway } from "../accounts/account-store.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
-import type { CloudflarePlan, PlanLimits } from "../plan/plan-limits.ts"
+import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/plan-limits.ts"
 import type { Usage, UsageAlert } from "../plan/usage.ts"
 import type { QueueStats } from "../queue/token-queue.ts"
 import type { Instant } from "../ports.ts"
@@ -137,14 +137,14 @@ export interface EntrantsPage {
 /** The Cloudflare plan the app assumes and the limits it applies. */
 export interface AdminPlanJson {
   readonly current: CloudflarePlan
-  readonly limits: PlanLimits
+  readonly limits: PlanLimits & { readonly overridden: PlanLimitOverrides }
 }
 
 /** What the admin page shows. */
 export interface AdminUsageJson {
   /** Null: the target has no daily limit. "unavailable": the usage source did not answer. */
   readonly usage: Usage | null | "unavailable"
-  /** Null on a target without a Cloudflare plan. */
+  /** Null on a target without a Cloudflare plan, and while the stored plan cannot be read. */
   readonly plan: AdminPlanJson | null
   /** The daily limits today's requests reached `alertPercent` of. */
   readonly alerts: readonly UsageAlert[]

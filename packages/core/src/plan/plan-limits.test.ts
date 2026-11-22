@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test"
-import { planLimits, type PlanLimitConfig } from "./plan-limits.ts"
+import {
+  limitsHeldAtFree,
+  overriddenLimits,
+  planLimits,
+  type PlanLimitConfig,
+} from "./plan-limits.ts"
 
 const noOverrides: PlanLimitConfig = {
   workerRequestLimit: null,
@@ -46,5 +51,47 @@ describe("planLimits", () => {
       doRequestsPerDay: null,
       subrequestsPerInvocation: 9_000,
     })
+  })
+})
+
+describe("overriddenLimits", () => {
+  it("flags only the limits the config sets", () => {
+    expect(overriddenLimits(noOverrides)).toEqual({
+      workerRequestsPerDay: false,
+      doRequestsPerDay: false,
+      subrequestsPerInvocation: false,
+    })
+    expect(overriddenLimits({ ...noOverrides, durableObjectRequestLimit: 0 })).toEqual({
+      workerRequestsPerDay: false,
+      doRequestsPerDay: true,
+      subrequestsPerInvocation: false,
+    })
+  })
+})
+
+describe("limitsHeldAtFree", () => {
+  const copiedFreeEnv: PlanLimitConfig = {
+    workerRequestLimit: 100_000,
+    durableObjectRequestLimit: 100_000,
+    queueSubrequestsPerInvocation: 45,
+  }
+
+  it("names every override on Paid that sits at or below the Free value", () => {
+    expect(limitsHeldAtFree("paid", copiedFreeEnv)).toEqual([
+      "workerRequestsPerDay",
+      "doRequestsPerDay",
+      "subrequestsPerInvocation",
+    ])
+    expect(limitsHeldAtFree("paid", { ...noOverrides, queueSubrequestsPerInvocation: 10 })).toEqual(
+      ["subrequestsPerInvocation"],
+    )
+  })
+
+  it("names nothing on Free, without overrides, or for an override above the Free value", () => {
+    expect(limitsHeldAtFree("free", copiedFreeEnv)).toEqual([])
+    expect(limitsHeldAtFree("paid", noOverrides)).toEqual([])
+    expect(limitsHeldAtFree("paid", { ...noOverrides, queueSubrequestsPerInvocation: 46 })).toEqual(
+      [],
+    )
   })
 })

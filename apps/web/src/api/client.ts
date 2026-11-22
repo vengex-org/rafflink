@@ -15,7 +15,11 @@ import type {
   ViewerState,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
-import { cloudflarePlans, type CloudflarePlan } from "@rafflink/core/plan/plan-limits"
+import {
+  cloudflarePlans,
+  type CloudflarePlan,
+  type PlanLimitOverrides,
+} from "@rafflink/core/plan/plan-limits"
 import { usageAlertLimits, type Usage, type UsageAlert } from "@rafflink/core/plan/usage"
 import type {
   ClaimOutcome,
@@ -469,9 +473,17 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
   }
 }
 
-/** Tells the app which Cloudflare plan the account is on; the payment happens in the Cloudflare dashboard. */
-export async function switchPlan(plan: CloudflarePlan): Promise<"switched" | Rejected> {
-  return act("/api/admin/plan", { plan }, switchPlanKinds)
+/**
+ * Tells the app which Cloudflare plan the account is on; the payment happens in the Cloudflare dashboard.
+ * "queue-unavailable": the plan is stored, only the token queue has not taken it yet.
+ */
+export async function switchPlan(
+  plan: CloudflarePlan,
+): Promise<"switched" | "queue-unavailable" | Rejected> {
+  const { status, body } = await postJson("/api/admin/plan", { plan })
+  const source = record(body, "action")
+  if (status === 503 && source.error === "queue-unavailable") return "queue-unavailable"
+  return answerKind(source, switchPlanKinds)
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
@@ -563,13 +575,16 @@ async function act<K extends string>(
   return answerKind(await post(path, payload), kinds)
 }
 
-async function post(path: string, payload: unknown): Promise<Json> {
-  const { body } = await send(path, {
+function postJson(path: string, payload: unknown): Promise<Answer> {
+  return send(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   })
-  return record(body, "action")
+}
+
+async function post(path: string, payload: unknown): Promise<Json> {
+  return record((await postJson(path, payload)).body, "action")
 }
 
 function answerKind<K extends string>(source: Json, kinds: readonly K[]): K | Rejected {
@@ -786,7 +801,16 @@ function parsePlan(source: Json): AdminPlanJson {
       workerRequestsPerMonth: nullableNum(limits, "workerRequestsPerMonth"),
       doRequestsPerMonth: nullableNum(limits, "doRequestsPerMonth"),
       subrequestsPerInvocation: num(limits, "subrequestsPerInvocation"),
+      overridden: parseOverridden(child(limits, "overridden")),
     },
+  }
+}
+
+function parseOverridden(source: Json): PlanLimitOverrides {
+  return {
+    workerRequestsPerDay: bool(source, "workerRequestsPerDay"),
+    doRequestsPerDay: bool(source, "doRequestsPerDay"),
+    subrequestsPerInvocation: bool(source, "subrequestsPerInvocation"),
   }
 }
 

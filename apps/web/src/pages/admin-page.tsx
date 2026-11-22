@@ -165,6 +165,12 @@ const planQuestions: Readonly<
   },
 }
 
+const switchMessages: Readonly<Record<Awaited<ReturnType<typeof switchPlan>>, MessageKey>> = {
+  switched: "admin.plan.switched",
+  "queue-unavailable": "admin.plan.queueUnavailable",
+  rejected: "admin.plan.failed",
+}
+
 // A choice in the switch only asks; the plan changes after the confirm step below it.
 function PlanCard({
   plan,
@@ -180,10 +186,11 @@ function PlanCard({
   const confirm = async (target: CloudflarePlan) => {
     const outcome = await run(
       () => switchPlan(target),
-      (kind): MessageKey => (kind === "switched" ? "admin.plan.switched" : "admin.plan.failed"),
+      (kind) => switchMessages[kind],
     )
     setPending(null)
-    if (outcome === "switched") onSwitched()
+    // The server stores the plan before it tells the queue, so both outcomes show the stored plan.
+    if (outcome === "switched" || outcome === "queue-unavailable") onSwitched()
   }
   return (
     <section className="card plan-card" aria-labelledby="plan">
@@ -243,23 +250,40 @@ function ActiveLimits({ limits }: { readonly limits: AdminPlanJson["limits"] }) 
     ["admin.limits.workerPerMonth", limits.workerRequestsPerMonth],
     ["admin.limits.doPerMonth", limits.doRequestsPerMonth],
   ]
-  const rows: readonly (readonly [MessageKey, string])[] = [
-    ["admin.limits.workerPerDay", perDay(limits.workerRequestsPerDay)],
-    ["admin.limits.doPerDay", perDay(limits.doRequestsPerDay)],
+  const { overridden } = limits
+  const rows: readonly (readonly [MessageKey, string, boolean])[] = [
+    [
+      "admin.limits.workerPerDay",
+      perDay(limits.workerRequestsPerDay),
+      overridden.workerRequestsPerDay,
+    ],
+    ["admin.limits.doPerDay", perDay(limits.doRequestsPerDay), overridden.doRequestsPerDay],
     // Only Paid includes a monthly amount; Free bills nothing.
     ...monthly.flatMap(([label, value]) =>
-      value === null ? [] : [[label, number(value)] as const],
+      value === null ? [] : [[label, number(value), false] as const],
     ),
-    ["admin.limits.subrequests", number(limits.subrequestsPerInvocation)],
+    [
+      "admin.limits.subrequests",
+      number(limits.subrequestsPerInvocation),
+      overridden.subrequestsPerInvocation,
+    ],
   ]
   return (
     <>
       <h3 className="plan-limits-title">{t("admin.limits.title")}</h3>
       <dl className="plan-limits">
-        {rows.map(([label, value]) => (
+        {rows.map(([label, value, isOverridden]) => (
           <div key={label}>
             <dt>{t(label)}</dt>
-            <dd>{value}</dd>
+            <dd>
+              {value}
+              {isOverridden ? (
+                <>
+                  {" "}
+                  <small className="muted">{t("admin.limits.overridden")}</small>
+                </>
+              ) : null}
+            </dd>
           </div>
         ))}
       </dl>

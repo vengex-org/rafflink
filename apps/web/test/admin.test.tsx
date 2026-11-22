@@ -17,12 +17,18 @@ const queue = {
   lostClaims: 3,
 }
 const quota = (used: number, limit: number | null) => ({ used, limit })
+const notOverridden = {
+  workerRequestsPerDay: false,
+  doRequestsPerDay: false,
+  subrequestsPerInvocation: false,
+}
 const freeLimits = {
   workerRequestsPerDay: 100_000,
   doRequestsPerDay: 100_000,
   workerRequestsPerMonth: null,
   doRequestsPerMonth: null,
   subrequestsPerInvocation: 45,
+  overridden: notOverridden,
 }
 const paidLimits = {
   workerRequestsPerDay: null,
@@ -30,6 +36,7 @@ const paidLimits = {
   workerRequestsPerMonth: 10_000_000,
   doRequestsPerMonth: 1_000_000,
   subrequestsPerInvocation: 9_000,
+  overridden: notOverridden,
 }
 const freePlan = { current: "free", limits: freeLimits }
 const paidPlan = { current: "paid", limits: paidLimits }
@@ -154,7 +161,7 @@ describe("admin page", () => {
   it("says the switch failed when the server refuses it", async () => {
     mockFetch({
       "GET /api/admin/usage": () => adminAnswer({ usage: freeUsage(10), plan: freePlan }),
-      "POST /api/admin/plan": () => ({ status: 503, body: { error: "queue-unavailable" } }),
+      "POST /api/admin/plan": () => ({ status: 400, body: { error: "invalid-input" } }),
     })
 
     const view = renderApp("/admin")
@@ -162,6 +169,49 @@ describe("admin page", () => {
     fireEvent.click(view.getByRole("button", { name: "Switch to Paid" }))
 
     expect(await view.findByText("The plan did not switch. Try again.")).toBeTruthy()
+    expect(view.getByRole("radio", { name: "Free" })).toHaveProperty("checked", true)
+  })
+
+  it("says the plan is saved and shows it when only the queue could not be told", async () => {
+    let plan: unknown = freePlan
+    mockFetch({
+      "GET /api/admin/usage": () => adminAnswer({ usage: freeUsage(10), plan }),
+      "POST /api/admin/plan": () => {
+        plan = paidPlan
+        return { status: 503, body: { error: "queue-unavailable" } }
+      },
+    })
+
+    const view = renderApp("/admin")
+    fireEvent.click(await view.findByRole("radio", { name: "Paid" }))
+    fireEvent.click(view.getByRole("button", { name: "Switch to Paid" }))
+
+    expect(
+      await view.findByText(
+        "The plan is saved, but the queue has not taken it yet. Switch again to retry.",
+      ),
+    ).toBeTruthy()
+    expect(view.queryByText("The plan did not switch. Try again.")).toBeNull()
+    await waitFor(() =>
+      expect(view.getByRole("radio", { name: "Paid" })).toHaveProperty("checked", true),
+    )
+  })
+
+  it("marks a limit that an env override sets", async () => {
+    const overridden = { ...notOverridden, workerRequestsPerDay: true }
+    mockFetch({
+      "GET /api/admin/usage": () =>
+        adminAnswer({
+          usage: freeUsage(10),
+          plan: { current: "free", limits: { ...freeLimits, overridden } },
+        }),
+    })
+
+    const view = renderApp("/admin")
+
+    const row = (await view.findByText("Worker requests per day")).nextSibling
+    expect(row?.textContent).toBe("100,000 set in env")
+    expect(view.getAllByText("set in env")).toHaveLength(1)
   })
 
   it("warns from 70 percent of a daily limit, naming the limit and the switch to Paid", async () => {

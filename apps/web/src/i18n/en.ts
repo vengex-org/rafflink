@@ -152,6 +152,9 @@ export const en = {
   "admin.plan.free.confirm": "Switch to Free",
   "admin.plan.switched": "Plan switched.",
   "admin.plan.failed": "The plan did not switch. Try again.",
+  "admin.plan.queueUnavailable":
+    "The plan is saved, but the queue has not taken it yet. Switch again to retry.",
+  "admin.limits.overridden": "set in env",
   "admin.limits.title": "Active limits",
   "admin.limits.workerPerDay": "Worker requests per day",
   "admin.limits.doPerDay": "Durable Object requests per day",

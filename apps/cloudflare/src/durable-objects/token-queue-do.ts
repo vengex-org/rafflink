@@ -1,7 +1,7 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { DurableObject } from "cloudflare:workers"
-import { currentPlan } from "@rafflink/core/plan/current-plan"
-import { planLimits, type CloudflarePlan } from "@rafflink/core/plan/plan-limits"
+import { currentPlanOrFree } from "@rafflink/core/plan/current-plan"
+import { limitsHeldAtFree, planLimits, type CloudflarePlan } from "@rafflink/core/plan/plan-limits"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { entriesPerInvocation, TokenQueue } from "@rafflink/core/queue/token-queue"
 import { applyMigrations } from "@rafflink/core/room/migrate"
@@ -78,14 +78,16 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
   // Read once per start of the object; a switch while it runs arrives through `usePlan`.
   private async startPlan(): Promise<CloudflarePlan> {
     const { config, accounts } = await runtimeOf(this.env)
-    try {
-      return await currentPlan(accounts, config)
-    } catch (error) {
-      // The queue must still drain; the configured plan applies until the next start or switch.
-      console.warn("cloudflare plan unavailable, CLOUDFLARE_PLAN applies", {
+    const plan = await currentPlanOrFree(accounts, config, (error) => {
+      // The queue must still drain; Free applies until the next start or switch.
+      console.warn("cloudflare plan unavailable, Free budget applies", {
         errorClass: errorClass(error),
       })
-      return config.cloudflarePlan
+    })
+    const held = limitsHeldAtFree(plan, config)
+    if (held.length > 0) {
+      console.warn("env overrides hold Paid limits at the Free value", { plan, limits: held })
     }
+    return plan
   }
 }

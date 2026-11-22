@@ -153,6 +153,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "admin.plan.free.confirm": "Přepnout na Free",
   "admin.plan.switched": "Plán je přepnutý.",
   "admin.plan.failed": "Plán se nepřepnul. Zkus to znovu.",
+  "admin.plan.queueUnavailable":
+    "Plán je uložený, ale fronta ho zatím nepřevzala. Přepni ho znovu a zkus to ještě jednou.",
+  "admin.limits.overridden": "nastaveno v env",
   "admin.limits.title": "Aktivní limity",
   "admin.limits.workerPerDay": "Požadavky Workeru za den",
   "admin.limits.doPerDay": "Požadavky Durable Objectů za den",

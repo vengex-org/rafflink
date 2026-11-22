@@ -179,6 +179,40 @@ describe("admin plan", () => {
     })
   })
 
+  it("marks the limits an env override sets, on either plan", async () => {
+    const overridden = await createHarness({ env: { WORKER_REQUEST_LIMIT: "90000" } })
+    try {
+      expect(await adminView(await signedIn(users.streamerA.id, overridden))).toMatchObject({
+        plan: {
+          limits: {
+            workerRequestsPerDay: 90_000,
+            overridden: {
+              workerRequestsPerDay: true,
+              doRequestsPerDay: false,
+              subrequestsPerInvocation: false,
+            },
+          },
+        },
+      })
+    } finally {
+      await overridden.stop()
+    }
+  })
+
+  it("answers the rest of the page without a plan when the stored plan cannot be read", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const admin = await signedIn(users.streamerA.id)
+    harness.accountsDb.exec("DROP TABLE cloudflare_plan")
+
+    expect(await adminView(admin)).toMatchObject({
+      plan: null,
+      usage: "unavailable",
+      alerts: [],
+      queue: {},
+    })
+    expect(warn.mock.calls.map(([message]) => message)).toEqual(["plan unavailable"])
+  })
+
   it("has no plan on a target without a Cloudflare plan, and the switch answers 404", async () => {
     const bun = await createHarness({ target: "bun" })
     try {

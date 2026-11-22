@@ -9,6 +9,7 @@ import { UsageUnavailable } from "../lib/usage-unavailable.ts"
 import { currentPlan } from "../plan/current-plan.ts"
 import {
   cloudflarePlans,
+  overriddenLimits,
   planLimits,
   type CloudflarePlan,
   type PlanLimits,
@@ -224,10 +225,11 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       return c.json({ error: "forbidden" }, 403)
     }
     const plan = await activePlan(deps)
-    const usage = await adminUsage(deps, plan?.limits ?? null)
+    const usage =
+      plan === "unavailable" ? plan : await adminUsage(deps, plan === null ? null : plan.limits)
     const body: AdminUsageJson = {
       usage,
-      plan,
+      plan: plan === "unavailable" ? null : plan,
       alerts:
         typeof usage === "object" && usage !== null
           ? usageAlerts(usage, deps.config.usageAlertPercent)
@@ -350,11 +352,19 @@ async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
 
 type UsageWarning = { readonly kind: "worker-requests-low"; readonly remaining: number }
 
-/** The plan and its limits; null on a target without a Cloudflare plan. */
-async function activePlan(deps: AppDeps): Promise<AdminPlanJson | null> {
+/** The plan and its limits; null on a target without a Cloudflare plan, "unavailable" when the stored plan cannot be read. */
+async function activePlan(deps: AppDeps): Promise<AdminPlanJson | null | "unavailable"> {
   if (deps.planQueue === null) return null
-  const plan = await currentPlan(deps.accounts, deps.config)
-  return { current: plan, limits: planLimits(plan, deps.config) }
+  try {
+    const plan = await currentPlan(deps.accounts, deps.config)
+    return {
+      current: plan,
+      limits: { ...planLimits(plan, deps.config), overridden: overriddenLimits(deps.config) },
+    }
+  } catch (error) {
+    console.warn("plan unavailable", { errorClass: errorClass(error) })
+    return "unavailable"
+  }
 }
 
 /** The admin page shows "unavailable" instead of failing when the usage source does not answer. */
@@ -377,8 +387,10 @@ async function todayUsage(deps: AppDeps, limits: PlanLimits | null): Promise<Usa
 }
 
 async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
+  const plan = await activePlan(deps)
+  if (plan === "unavailable") return []
   try {
-    const usage = await todayUsage(deps, (await activePlan(deps))?.limits ?? null)
+    const usage = await todayUsage(deps, plan === null ? null : plan.limits)
     const limit = usage?.workerRequests.limit ?? null
     if (usage === null || limit === null) return []
     const remaining = limit - usage.workerRequests.used

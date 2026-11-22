@@ -14,3 +14,17 @@ export async function currentPlan(
 ): Promise<CloudflarePlan> {
   return (await accounts.storedCloudflarePlan()) ?? config.cloudflarePlan
 }
+
+/** Like {@link currentPlan}, but Free when the stored plan cannot be read: its budgets stay within the limits of either plan. */
+export async function currentPlanOrFree(
+  accounts: Pick<AccountStore, "storedCloudflarePlan">,
+  config: Pick<ResolvedConfig, "cloudflarePlan">,
+  onUnreadable: (error: unknown) => void,
+): Promise<CloudflarePlan> {
+  try {
+    return await currentPlan(accounts, config)
+  } catch (error) {
+    onUnreadable(error)
+    return "free"
+  }
+}
