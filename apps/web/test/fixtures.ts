@@ -13,6 +13,9 @@ export const rules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  minAge: null,
+  excludedCountries: null,
+  extraTerms: null,
 }
 
 /** The body of `GET /api/g/ABCDE` for a viewer who has not signed in. */

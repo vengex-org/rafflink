@@ -309,6 +309,9 @@ export const validRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  minAge: null,
+  excludedCountries: null,
+  extraTerms: null,
 }
 
 /** The header a test sets to give a request a client address; the real targets read the one their edge sets. */

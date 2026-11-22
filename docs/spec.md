@@ -188,6 +188,14 @@ Same model as common chat giveaway tools, so streamers know it already:
 
 VIP and moderator groups are in v1. They need the streamer's token, see Streamer token.
 
+The giveaway page shows official rules built from these settings in the viewer's language: the streamer as
+organizer, a line that Twitch does not sponsor the giveaway, the prize, how to enter, whether entry is free,
+the odds, the end, the drand draw with its verify link, the claim time and who hands over the prize. A
+subscribers-only giveaway says it has no free way to enter. The streamer may add a minimum age to win, places
+whose residents cannot win and extra terms (stored in `rules_json` as `minAge`, `excludedCountries`,
+`extraTerms`); Rafflink cannot check age or residence, so the text says the streamer checks them. The rules
+can be copied as text. They are a template, not legal advice, and the page says so.
+
 ## Platforms
 
 A provider is one sign-in plus one eligibility check. In M1 Twitch is the only provider and the code does not

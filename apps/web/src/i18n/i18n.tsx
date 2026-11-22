@@ -14,6 +14,7 @@ export type PluralBase =
   | "ticket"
   | "minute"
   | "day"
+  | "year"
   | "recentGiveaways"
   | "recentDays"
   | "entered"

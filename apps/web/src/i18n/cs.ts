@@ -320,6 +320,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "issue.wholeMinutes": "Zadej celý počet minut, aspoň 1.",
   "issue.pickEnd": "Vyber datum a čas, kdy přihlašování končí.",
   "issue.future": "Vyber čas v budoucnosti.",
+  "issue.wholeYears": "Zadej celý počet let od 1 do 99, nebo pole nech prázdné.",
 
   "ticket.one": "{count} los",
   "ticket.few": "{count} losy",
@@ -333,6 +334,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "day.one": "{count} den",
   "day.few": "{count} dny",
   "day.other": "{count} dnů",
+  "year.one": "{count} rok",
+  "year.few": "{count} roky",
+  "year.other": "{count} let",
   "recentGiveaways.one": "Výherci posledního giveawaye streamera se nemohou zapojit.",
   "recentGiveaways.few": "Výherci posledních {count} giveawayů streamera se nemohou zapojit.",
   "recentGiveaways.other": "Výherci posledních {count} giveawayů streamera se nemohou zapojit.",
@@ -458,6 +462,31 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "rules.claimTime": "Vítězové mají na převzetí {time}",
   "rules.claimWhere": "Vítěz výhru převezme na této stránce nebo v chatu streamu.",
   "rules.organizer": "Pořadatel: {name}. Rafflink není pořadatel.",
+  "rules.platform":
+    "Twitch tuto soutěž nesponzoruje, nepodporuje ani nepořádá a nemá s ní nic společného.",
+  "rules.prize": "Výhra: {prize}",
+  "rules.prizeNone": "Výhra tu není popsaná. Zeptej se: {name}.",
+  "rules.enterPage": "Zapojíš se tak, že se na této stránce přihlásíš přes Twitch.",
+  "rules.enterChat":
+    'Zapojíš se tak, že dokud je přihlašování otevřené, napíšeš "{keyword}" do Twitch chatu kanálu {name}.',
+  "rules.free": "Zapojení je zdarma. Nemusíš nic kupovat, aby ses zapojil nebo vyhrál.",
+  "rules.paidOnly":
+    "Zapojit se mohou jen platící předplatitelé, takže do této soutěže se nedá zapojit zdarma.",
+  "rules.minAge": "Vítěz musí mít alespoň {age}.",
+  "rules.excludedCountries": "Lidé, kteří žijí na těchto místech, nemohou vyhrát: {places}.",
+  "rules.checkedByStreamer":
+    "Rafflink neumí ověřit věk ani to, kde někdo žije. Před předáním výhry to ověří {name}.",
+  "rules.entriesEndManual": "Přihlašování končí, když ho {name} uzavře.",
+  "rules.draw":
+    "Vítězové se losují náhodně, podle počtu losů, z veřejného náhodného čísla (drand), které tu nikdo neovládá.",
+  "rules.verify": "Losování si může kdokoli ověřit na {url}",
+  "rules.claimLate": "Pokud vítěz výhru nepřevezme včas, {name} může losovat znovu.",
+  "rules.delivery": "Výhru předá {name}. Rafflink výhry nedrží ani neposílá.",
+  "rules.extraTerms": "Další podmínky od {name}:",
+  "rules.notice":
+    "Tato pravidla vznikla z nastavení soutěže. Jsou to vzorová pravidla, ne právní rada.",
+  "rules.copy": "Kopírovat pravidla jako text",
+  "rules.copyHeading": "Pravidla soutěže: {url}",
 
   "dash.title": "Moje soutěže",
   "dash.new.title": "Nová soutěž",
@@ -708,6 +737,18 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Zabrání lidem zakládat nové účty jen kvůli soutěži. Když pole nevyplníš, zapojit se může jakýkoli účet.",
   "wizard.minAge.fewer": "Méně dní",
   "wizard.minAge.more": "Více dní",
+  "wizard.official.legend": "Oficiální pravidla (nepovinné)",
+  "wizard.official.help":
+    "Stránka soutěže ukáže pravidla sestavená z tvého nastavení. Tohle doplň, jen pokud to tvoje soutěž potřebuje.",
+  "wizard.winnerAge.label": "Minimální věk vítěze v letech",
+  "wizard.winnerAge.help": "Rafflink neumí ověřit věk. Ověříš ho ty před předáním výhry.",
+  "wizard.winnerAge.fewer": "Méně let",
+  "wizard.winnerAge.more": "Více let",
+  "wizard.excludedCountries.label": "Místa, kde lidé nemohou vyhrát",
+  "wizard.excludedCountries.help":
+    "Příklad: Quebec, Itálie. Rafflink neumí ověřit, kde někdo žije.",
+  "wizard.extraTerms.label": "Další podmínky",
+  "wizard.extraTerms.help": "Zobrazí se pod pravidly přesně tak, jak je napíšeš.",
   "wizard.recent.legend": "Nezapojovat nedávné vítěze",
   "wizard.recent.off": "Vypnuto",
   "wizard.recent.off.help": "Vítězové tvých předchozích giveawayů se mohou zapojit znovu.",
@@ -761,6 +802,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "review.notSet": "Nevyplněno",
   "review.everyoneOne": "Každý dostane 1 los.",
   "review.ageText": "Účet musí být starý alespoň {days}.",
+  "review.winnerAge": "Minimální věk vítěze",
+  "review.excludedCountries": "Nemohou vyhrát v",
+  "review.extraTerms": "Další podmínky",
   "review.recent": "Nedávní vítězové",
   "review.endsManual": "Až ho uzavřeš.",
   "review.claimText": "{time}. {chat}",

@@ -317,6 +317,7 @@ export const en = {
   "issue.wholeMinutes": "Enter a whole number of minutes, 1 or more.",
   "issue.pickEnd": "Pick the date and time when entries end.",
   "issue.future": "Pick a time in the future.",
+  "issue.wholeYears": "Enter a whole number of years from 1 to 99, or leave it empty.",
 
   // English has no "few" form; every plural base keeps all three keys so each language shares one key set.
   "ticket.one": "{count} ticket",
@@ -331,6 +332,9 @@ export const en = {
   "day.one": "{count} day",
   "day.few": "{count} days",
   "day.other": "{count} days",
+  "year.one": "{count} year",
+  "year.few": "{count} years",
+  "year.other": "{count} years",
   "recentGiveaways.one": "Winners of the streamer's last giveaway cannot enter.",
   "recentGiveaways.few": "Winners of the streamer's last {count} giveaways cannot enter.",
   "recentGiveaways.other": "Winners of the streamer's last {count} giveaways cannot enter.",
@@ -455,6 +459,30 @@ export const en = {
   "rules.claimTime": "Winners have {time} to claim",
   "rules.claimWhere": "A winner claims on this page or in the stream chat.",
   "rules.organizer": "Organized by {name}. Rafflink is not the organizer.",
+  "rules.platform":
+    "Twitch does not sponsor, endorse or run this giveaway and is not connected to it.",
+  "rules.prize": "Prize: {prize}",
+  "rules.prizeNone": "The prize is not described here. Ask {name}.",
+  "rules.enterPage": "To enter, sign in with Twitch on this page.",
+  "rules.enterChat": 'To enter, type "{keyword}" in {name}\'s Twitch chat while entries are open.',
+  "rules.free": "Entering is free. You do not have to buy anything to enter or to win.",
+  "rules.paidOnly":
+    "Only paying subscribers can enter, so there is no free way to enter this giveaway.",
+  "rules.minAge": "Winners must be at least {age} old.",
+  "rules.excludedCountries": "People who live in these places cannot win: {places}.",
+  "rules.checkedByStreamer":
+    "Rafflink cannot check age or where someone lives. {name} checks this before handing over the prize.",
+  "rules.entriesEndManual": "Entries end when {name} closes them.",
+  "rules.draw":
+    "Winners are drawn at random, weighted by tickets, from a public random number (drand) that nobody here controls.",
+  "rules.verify": "Anyone can check the draw at {url}",
+  "rules.claimLate": "If a winner does not claim in time, {name} may draw again.",
+  "rules.delivery": "{name} hands over the prize. Rafflink does not hold or send prizes.",
+  "rules.extraTerms": "More terms from {name}:",
+  "rules.notice":
+    "These rules are made from the giveaway's settings. They are a template, not legal advice.",
+  "rules.copy": "Copy rules as text",
+  "rules.copyHeading": "Giveaway rules: {url}",
 
   "dash.title": "My giveaways",
   "dash.new.title": "New giveaway",
@@ -703,6 +731,19 @@ export const en = {
     "Stops people from making fresh accounts just to enter. Leave it empty to allow any account.",
   "wizard.minAge.fewer": "Fewer days",
   "wizard.minAge.more": "More days",
+  "wizard.official.legend": "Official rules (optional)",
+  "wizard.official.help":
+    "The giveaway page shows rules made from your settings. Add these only if your giveaway needs them.",
+  "wizard.winnerAge.label": "Minimum age to win, in years",
+  "wizard.winnerAge.help":
+    "Rafflink cannot check age. You check it before you hand over the prize.",
+  "wizard.winnerAge.fewer": "Fewer years",
+  "wizard.winnerAge.more": "More years",
+  "wizard.excludedCountries.label": "Places where people cannot win",
+  "wizard.excludedCountries.help":
+    "Example: Quebec, Italy. Rafflink cannot check where someone lives.",
+  "wizard.extraTerms.label": "Extra terms",
+  "wizard.extraTerms.help": "Shown under the rules exactly as you write them.",
   "wizard.recent.legend": "Keep out recent winners",
   "wizard.recent.off": "Off",
   "wizard.recent.off.help": "Winners of your earlier giveaways can enter again.",
@@ -754,6 +795,9 @@ export const en = {
   "review.notSet": "Not set",
   "review.everyoneOne": "Everyone gets 1 ticket.",
   "review.ageText": "Accounts must be at least {days} old.",
+  "review.winnerAge": "Minimum age to win",
+  "review.excludedCountries": "Cannot win in",
+  "review.extraTerms": "Extra terms",
   "review.recent": "Recent winners",
   "review.endsManual": "When you close them.",
   "review.claimText": "{time}. {chat}",

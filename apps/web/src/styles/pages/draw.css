@@ -1,25 +1,7 @@
 /* The list draw: the verify page's column and facts, plus the names box, the winners and the note on what the draw proves. */
 
 .draw textarea {
-  width: 100%;
   min-height: 12rem;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r);
-  background: var(--bg);
-  color: inherit;
-  font: inherit;
-  resize: vertical;
-}
-
-.draw textarea:focus-visible {
-  border-color: var(--focus);
-  outline: 2px solid var(--focus);
-  outline-offset: -2px;
-}
-
-.draw textarea[aria-invalid="true"] {
-  border-color: var(--danger);
 }
 
 .draw-winners {

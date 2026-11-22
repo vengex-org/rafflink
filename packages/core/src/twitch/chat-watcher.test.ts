@@ -627,6 +627,9 @@ const rules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  minAge: null,
+  excludedCountries: null,
+  extraTerms: null,
 }
 
 const random: Random = { bytes: (length) => new Uint8Array(length).fill(7) }

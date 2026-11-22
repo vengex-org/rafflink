@@ -28,6 +28,9 @@ export const defaultRules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  minAge: null,
+  excludedCountries: null,
+  extraTerms: null,
 }
 
 export interface GiveawayOptions {

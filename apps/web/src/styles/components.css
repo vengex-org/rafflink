@@ -609,6 +609,27 @@ input[readonly] {
   background: var(--surface-2);
 }
 
+textarea {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+textarea:focus-visible {
+  border-color: var(--focus);
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
 fieldset {
   min-width: 0;
   margin: 0;

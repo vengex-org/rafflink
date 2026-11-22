@@ -2,7 +2,7 @@ import { useId, useRef } from "react"
 import { MinusIcon, PlusIcon } from "./icons.tsx"
 import { SegmentRow, type SegmentRowOption } from "./segment-row.tsx"
 
-/** A labelled input with optional help under the label and the problem under the input. */
+/** A labelled input, or a text area for `multiline`, with optional help under the label and the problem under the input. */
 export function TextField({
   name,
   label,
@@ -18,7 +18,7 @@ export function TextField({
   readonly value: string
   readonly error: string | null
   readonly onChange: (value: string) => void
-  readonly type: "text" | "datetime-local"
+  readonly type: "text" | "datetime-local" | "multiline"
 }) {
   const id = useId()
   const describedBy = [help === null ? null : `${id}-help`, error === null ? null : `${id}-error`]
@@ -32,16 +32,28 @@ export function TextField({
           {help}
         </p>
       )}
-      <input
-        id={id}
-        name={name}
-        type={type}
-        autoComplete="off"
-        value={value}
-        aria-invalid={error !== null}
-        aria-describedby={describedBy === "" ? undefined : describedBy}
-        onChange={(event) => onChange(event.currentTarget.value)}
-      />
+      {type === "multiline" ? (
+        <textarea
+          id={id}
+          name={name}
+          rows={4}
+          value={value}
+          aria-invalid={error !== null}
+          aria-describedby={describedBy === "" ? undefined : describedBy}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      ) : (
+        <input
+          id={id}
+          name={name}
+          type={type}
+          autoComplete="off"
+          value={value}
+          aria-invalid={error !== null}
+          aria-describedby={describedBy === "" ? undefined : describedBy}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      )}
       {error === null ? null : (
         <p id={`${id}-error`} className="field-error">
           {error}

@@ -491,6 +491,18 @@ main.container:has(> .viewer) {
   padding-left: var(--space-3);
 }
 
+/* The streamer's extra terms keep the line breaks they were typed with */
+.viewer-rules-terms {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.viewer-rules-copy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 /* The way on for a viewer who is in sits at the foot of the phone screen */
 
 .viewer-dock {

@@ -438,6 +438,18 @@ export const configSchema = {
     "32",
     "Longest claim keyword and chat entry keyword a streamer can set; starting guess",
   ),
+  excludedCountriesMaxLength: withDefault(
+    "EXCLUDED_COUNTRIES_MAX_LENGTH",
+    int(1),
+    "200",
+    "Longest list of places whose residents cannot win that a streamer can type into a giveaway's rules; starting guess, a sentence",
+  ),
+  extraTermsMaxLength: withDefault(
+    "EXTRA_TERMS_MAX_LENGTH",
+    int(1),
+    "1000",
+    "Longest extra terms a streamer can add under a giveaway's generated rules; starting guess, a few short paragraphs",
+  ),
   codeInsertRetries: withDefault(
     "CODE_INSERT_RETRIES",
     int(1),
@@ -834,6 +846,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     blockListMax: read(env, configSchema.blockListMax),
     blockListPushMax: read(env, configSchema.blockListPushMax),
     claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
+    excludedCountriesMaxLength: read(env, configSchema.excludedCountriesMaxLength),
+    extraTermsMaxLength: read(env, configSchema.extraTermsMaxLength),
     codeInsertRetries: read(env, configSchema.codeInsertRetries),
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
     liveRateWindowSeconds: read(env, configSchema.liveRateWindowSeconds),

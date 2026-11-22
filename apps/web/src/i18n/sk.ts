@@ -320,6 +320,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.wholeMinutes": "Zadaj celý počet minút, aspoň 1.",
   "issue.pickEnd": "Vyber dátum a čas, kedy zápis končí.",
   "issue.future": "Vyber čas v budúcnosti.",
+  "issue.wholeYears": "Zadaj celý počet rokov od 1 do 99 alebo pole nechaj prázdne.",
 
   "ticket.one": "{count} lístok",
   "ticket.few": "{count} lístky",
@@ -333,6 +334,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "day.one": "{count} deň",
   "day.few": "{count} dni",
   "day.other": "{count} dní",
+  "year.one": "{count} rok",
+  "year.few": "{count} roky",
+  "year.other": "{count} rokov",
   "recentGiveaways.one": "Výhercovia posledného giveawayu streamera sa nemôžu zapojiť.",
   "recentGiveaways.few": "Výhercovia posledných {count} giveawayov streamera sa nemôžu zapojiť.",
   "recentGiveaways.other": "Výhercovia posledných {count} giveawayov streamera sa nemôžu zapojiť.",
@@ -457,6 +461,31 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rules.claimTime": "Víťazi majú na prevzatie {time}",
   "rules.claimWhere": "Víťaz výhru preberie na tejto stránke alebo v chate streamu.",
   "rules.organizer": "Organizátor: {name}. Rafflink nie je organizátor.",
+  "rules.platform":
+    "Twitch túto súťaž nesponzoruje, nepodporuje ani neorganizuje a nemá s ňou nič spoločné.",
+  "rules.prize": "Výhra: {prize}",
+  "rules.prizeNone": "Výhra tu nie je opísaná. Opýtaj sa: {name}.",
+  "rules.enterPage": "Zapojíš sa tak, že sa na tejto stránke prihlásiš cez Twitch.",
+  "rules.enterChat":
+    'Zapojíš sa tak, že kým je zápis otvorený, napíšeš "{keyword}" do Twitch chatu kanála {name}.',
+  "rules.free": "Zapojenie je zadarmo. Nemusíš nič kúpiť, aby si sa zapojil alebo vyhral.",
+  "rules.paidOnly":
+    "Zapojiť sa môžu len platiaci predplatitelia, takže do tejto súťaže sa nedá zapojiť zadarmo.",
+  "rules.minAge": "Víťaz musí mať aspoň {age}.",
+  "rules.excludedCountries": "Ľudia, ktorí žijú na týchto miestach, nemôžu vyhrať: {places}.",
+  "rules.checkedByStreamer":
+    "Rafflink nevie overiť vek ani to, kde niekto žije. Pred odovzdaním výhry to overí {name}.",
+  "rules.entriesEndManual": "Zápis končí, keď ho {name} uzavrie.",
+  "rules.draw":
+    "Víťazi sa losujú náhodne, podľa počtu lístkov, z verejného náhodného čísla (drand), ktoré tu nikto neovláda.",
+  "rules.verify": "Žrebovanie si môže ktokoľvek overiť na {url}",
+  "rules.claimLate": "Ak víťaz výhru neprevezme včas, {name} môže losovať znova.",
+  "rules.delivery": "Výhru odovzdá {name}. Rafflink výhry nedrží ani neposiela.",
+  "rules.extraTerms": "Ďalšie podmienky od {name}:",
+  "rules.notice":
+    "Tieto pravidlá vznikli z nastavení súťaže. Sú to vzorové pravidlá, nie právna rada.",
+  "rules.copy": "Kopírovať pravidlá ako text",
+  "rules.copyHeading": "Pravidlá súťaže: {url}",
 
   "dash.title": "Moje súťaže",
   "dash.new.title": "Nová súťaž",
@@ -707,6 +736,18 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Zabráni ľuďom vytvárať nové účty len kvôli súťaži. Keď pole nevyplníš, zapojiť sa môže akýkoľvek účet.",
   "wizard.minAge.fewer": "Menej dní",
   "wizard.minAge.more": "Viac dní",
+  "wizard.official.legend": "Oficiálne pravidlá (nepovinné)",
+  "wizard.official.help":
+    "Stránka súťaže ukáže pravidlá zostavené z tvojich nastavení. Toto doplň, len ak to tvoja súťaž potrebuje.",
+  "wizard.winnerAge.label": "Minimálny vek víťaza v rokoch",
+  "wizard.winnerAge.help": "Rafflink nevie overiť vek. Overíš ho ty pred odovzdaním výhry.",
+  "wizard.winnerAge.fewer": "Menej rokov",
+  "wizard.winnerAge.more": "Viac rokov",
+  "wizard.excludedCountries.label": "Miesta, kde ľudia nemôžu vyhrať",
+  "wizard.excludedCountries.help":
+    "Príklad: Quebec, Taliansko. Rafflink nevie overiť, kde niekto žije.",
+  "wizard.extraTerms.label": "Ďalšie podmienky",
+  "wizard.extraTerms.help": "Zobrazia sa pod pravidlami presne tak, ako ich napíšeš.",
   "wizard.recent.legend": "Nezapájať nedávnych víťazov",
   "wizard.recent.off": "Vypnuté",
   "wizard.recent.off.help": "Víťazi tvojich predchádzajúcich giveawayov sa môžu zapojiť znova.",
@@ -759,6 +800,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "review.notSet": "Nevyplnené",
   "review.everyoneOne": "Každý dostane 1 lístok.",
   "review.ageText": "Účet musí byť starý aspoň {days}.",
+  "review.winnerAge": "Minimálny vek víťaza",
+  "review.excludedCountries": "Nemôžu vyhrať v",
+  "review.extraTerms": "Ďalšie podmienky",
   "review.recent": "Nedávni víťazi",
   "review.endsManual": "Keď ho uzavrieš.",
   "review.claimText": "{time}. {chat}",

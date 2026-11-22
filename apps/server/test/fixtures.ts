@@ -31,6 +31,9 @@ export const validRules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  minAge: null,
+  excludedCountries: null,
+  extraTerms: null,
 }
 
 export function giveawayInit(id: string, closesAt: number | null = null): GiveawayInit {
