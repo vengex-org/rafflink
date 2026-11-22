@@ -36,16 +36,12 @@ export class TwitchProvider implements PlatformProvider {
   readonly platform = "twitch"
   readonly capabilities = twitchCapabilities
   readonly scopes = {
-    streamer: [
-      "openid",
-      "channel:read:vips",
-      "moderation:read",
-      "user:read:chat",
-      "moderator:read:followers",
-    ],
+    streamer: ["openid", "channel:read:vips", "moderation:read", "user:read:chat"],
     viewer: ["openid", "user:read:subscriptions", "user:read:follows"],
     moderator: ["openid"],
   } as const
+  // The follow of a chat entrant is read with the streamer's token.
+  readonly chatEntryScopes = ["moderator:read:followers"] as const
   private readonly badges: ChannelBadges
 
   constructor(

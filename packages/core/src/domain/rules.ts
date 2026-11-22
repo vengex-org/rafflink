@@ -18,6 +18,8 @@ export interface GiveawayRules {
   readonly excludeRecentWinners: RecentWinnersRule | null
   /** A chat message starting with it enters the chatter while entries are open; null means no chat entry. */
   readonly chatKeyword: string | null
+  /** Viewers enter by signing in on the giveaway page; false only with a chat keyword (chat only). */
+  readonly pageEntry: boolean
 }
 
 /** Keeps out the winners of the streamer's last `count` drawn giveaways, or of those drawn in the last `count` days. */
@@ -62,6 +64,8 @@ export const ineligibleReasons = [
   "followers-only",
   "account-too-young",
   "no-tickets",
+  // The giveaway takes chat entries only; the room refuses a page entry before any rule is read.
+  "page-entry-off",
 ] as const
 
 export type IneligibleReason = (typeof ineligibleReasons)[number]
@@ -82,6 +86,8 @@ export type RulesIssueCode =
   | "too-long"
   | "too-large"
   | "unknown-kind"
+  /** Page entry is off and no chat keyword is set, so nobody could enter. */
+  | "no-entry-way"
 
 /** The first invalid field of untrusted input, as a path like `tickets.vip`. */
 export interface RulesIssue {
@@ -128,6 +134,9 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
   if (!excludeRecentWinners.ok) return excludeRecentWinners
   const chatKeyword = parseKeyword(input, "chatKeyword", config.claimKeywordMaxLength)
   if (!chatKeyword.ok) return chatKeyword
+  const pageEntry = parseFlag(input, "pageEntry", true)
+  if (!pageEntry.ok) return pageEntry
+  if (!pageEntry.value && chatKeyword.value === null) return fail("pageEntry", "no-entry-way")
   return ok({
     tickets: tickets.value,
     subsOnly: subsOnly.value,
@@ -136,6 +145,7 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
     claimKeyword: claimKeyword.value,
     excludeRecentWinners: excludeRecentWinners.value,
     chatKeyword: chatKeyword.value,
+    pageEntry: pageEntry.value,
   })
 }
 
@@ -194,9 +204,13 @@ function parseTickets(input: unknown, max: number): Parsed<Tickets, RulesIssue> 
   return ok(counts)
 }
 
-function parseFlag(input: Record<string, unknown>, field: string): Parsed<boolean, RulesIssue> {
+function parseFlag(
+  input: Record<string, unknown>,
+  field: string,
+  absent = false,
+): Parsed<boolean, RulesIssue> {
   const value = ownValue(input, field)
-  if (value === undefined) return ok(false)
+  if (value === undefined) return ok(absent)
   if (typeof value !== "boolean") return fail(field, "not-a-boolean")
   return ok(value)
 }

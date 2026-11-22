@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, waitFor, type RenderResult } from "@testing-library/react"
 import { stubClipboard } from "./clipboard.ts"
-import { dashboardGiveaway } from "./fixtures.ts"
+import { dashboardGiveaway, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { inputOf } from "./queries.ts"
 import { initialValues } from "../src/pages/create-values.ts"
@@ -46,6 +46,12 @@ async function toReview(view: RenderResult) {
   await view.findByText("Step 2 of 3: Entry rules")
   next(view)
   await view.findByText("Step 3 of 3: Review")
+}
+
+// The session of a signed-in streamer whose token does or does not hold the chat entry scopes.
+function session(chatEntryReady: boolean) {
+  return () =>
+    ok({ ...supportedSession, streamer: { ...supportedSession.streamer, chatEntryReady } })
 }
 
 async function toRules(view: RenderResult) {
@@ -360,6 +366,7 @@ describe("create wizard", () => {
         claimKeyword: "",
         excludeRecentWinners: null,
         chatKeyword: null,
+        pageEntry: true,
       },
       claimSeconds: 300,
       winnerCount: 1,
@@ -415,6 +422,7 @@ describe("create wizard", () => {
         claimKeyword: "mine",
         excludeRecentWinners: null,
         chatKeyword: "!join",
+        pageEntry: true,
       },
       closesAt: new Date("2099-01-01T10:00").toISOString(),
       claimSeconds: 600,
@@ -516,6 +524,42 @@ describe("create wizard", () => {
     expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
     expect(await view.findByText("This number is too large. Enter a smaller one.")).toBeTruthy()
     expect(view.getByLabelText("How many giveaways back").getAttribute("aria-invalid")).toBe("true")
+  })
+
+  it("sends a chat-only giveaway with page entry off", async () => {
+    const requests = mockFetch(withCreate(createdReply))
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    expect(view.getByText('Only by typing "!enter" in your chat.')).toBeDefined()
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/giveaways")?.body,
+    ).toMatchObject({ rules: { chatKeyword: "!enter", pageEntry: false } })
+  })
+
+  it("offers Reconnect Twitch for chat entry only while the streamer's token lacks the scope", async () => {
+    mockFetch({ ...listed, "GET /api/session": session(false) })
+    const view = await openWizard()
+    await toRules(view)
+    expect(view.queryByRole("link", { name: "Reconnect Twitch" })).toBeNull()
+
+    fireEvent.click(view.getByRole("radio", { name: /Page and chat/ }))
+
+    const reconnect = await view.findByRole("link", { name: "Reconnect Twitch" })
+    expect(reconnect.getAttribute("href")).toBe(
+      "/auth/twitch/streamer/start?scopes=chat-entry&return=%2Fdashboard%2Fnew",
+    )
+    cleanup()
+    mockFetch({ ...listed, "GET /api/session": session(true) })
+    const ready = await openWizard()
+    await toRules(ready)
+    fireEvent.click(ready.getByRole("radio", { name: /Page and chat/ }))
+    expect(ready.queryByRole("link", { name: "Reconnect Twitch" })).toBeNull()
   })
 
   it("sends a blank name and prize and reviews them as not set", async () => {

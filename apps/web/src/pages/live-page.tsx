@@ -155,7 +155,7 @@ export function LiveControls({
                 <AlertIcon />
               </span>
               <h2>{t("live.chatOff.title")}</h2>
-              <p>{t("live.chatOff.text")}</p>
+              <p>{t(snapshot.chatEntryOff ? "live.chatEntryOff.text" : "live.chatOff.text")}</p>
             </section>
           ) : null}
           {rerollOver !== null && snapshot.winners.some(isUnsettled) ? (

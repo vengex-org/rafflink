@@ -23,10 +23,20 @@ const malformed: Malformed = { ok: false, issue: "malformed" }
 
 export function parseTokenResponse(body: unknown): Parsed<ExchangedCode, "malformed"> {
   if (!isRecord(body)) return malformed
-  const { access_token: accessToken, refresh_token: refreshToken, id_token: idToken } = body
+  const {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    id_token: idToken,
+    expires_in: expiresInSeconds,
+  } = body
   if (typeof accessToken !== "string" || typeof refreshToken !== "string") return malformed
   if (idToken !== undefined && typeof idToken !== "string") return malformed
-  return { ok: true, value: { accessToken, refreshToken, idToken: idToken ?? null } }
+  if (typeof expiresInSeconds !== "number" || !Number.isFinite(expiresInSeconds)) return malformed
+  if (expiresInSeconds <= 0) return malformed
+  return {
+    ok: true,
+    value: { accessToken, refreshToken, expiresInSeconds, idToken: idToken ?? null },
+  }
 }
 
 /** The app access token of a client credentials grant. */

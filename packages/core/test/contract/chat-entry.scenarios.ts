@@ -1,8 +1,9 @@
 import { expect } from "bun:test"
 import type { Entrant } from "../../src/room/rows.ts"
+import { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
-import type { ContractContext } from "./target.ts"
-import { scenario, type CreatedGiveaway } from "./world.ts"
+import type { ContractContext, ContractTarget } from "./target.ts"
+import { scenario, type CreatedGiveaway, type World } from "./world.ts"
 
 export function chatEntryScenarios(context: ContractContext): void {
   scenario(
@@ -10,7 +11,10 @@ export function chatEntryScenarios(context: ContractContext): void {
     "the chat keyword enters a viewer once, with the tickets of their badges and their follow",
     async (world) => {
       const target = await world.start({ CHAT_ENTRY_CHECK_SECONDS: "1" })
-      const giveaway = await world.createGiveaway(target, { rules: { chatKeyword: "!enter" } })
+      const giveaway = await world.createGiveaway(target, {
+        streamer: await chatEntryStreamer(world, target),
+        rules: { chatKeyword: "!enter" },
+      })
       const { control } = world.twitch.fake
       control.setSubscription(users.viewer.id, users.streamer.id, "2000")
       control.setFollowing(users.viewer2.id, users.streamer.id, true)
@@ -38,7 +42,7 @@ export function chatEntryScenarios(context: ContractContext): void {
 
   scenario(
     context,
-    "a viewer who entered by chat is already in on the page, and the lookup says yes or no only",
+    "a viewer who entered by chat is already in on the page, and the lookup answers yes for chat entrants only",
     async (world) => {
       const target = await world.start({ CHAT_ENTRY_CHECK_SECONDS: "1" })
       const giveaway = await world.createGiveaway(target, { rules: { chatKeyword: "!enter" } })
@@ -51,19 +55,58 @@ export function chatEntryScenarios(context: ContractContext): void {
         "the chatter to enter",
       )
       const page = await world.enter(target, giveaway.code, users.viewer.id)
+      await world.enter(target, giveaway.code, users.viewer3.id)
 
       expect(page.entry).toBe("already-in")
       expect(await lookup(target.url, giveaway, users.viewer.login.toUpperCase())).toEqual({
         status: 200,
         body: { entered: true },
       })
-      expect(await lookup(target.url, giveaway, users.viewer2.login)).toEqual({
-        status: 200,
-        body: { entered: false },
-      })
-      expect((await lookup(target.url, giveaway, " ")).status).toBe(400)
+      for (const login of [users.viewer2.login, users.viewer3.login]) {
+        expect(await lookup(target.url, giveaway, login)).toEqual({
+          status: 200,
+          body: { entered: false },
+        })
+      }
+      expect((await lookup(target.url, giveaway, "no login")).status).toBe(400)
     },
   )
+
+  scenario(
+    context,
+    "a chat-only giveaway refuses a page entry and takes the chat keyword",
+    async (world) => {
+      const target = await world.start({ CHAT_ENTRY_CHECK_SECONDS: "1" })
+      const giveaway = await world.createGiveaway(target, {
+        rules: { chatKeyword: "!enter", pageEntry: false },
+      })
+      const { control } = world.twitch.fake
+      await world.waitFor(() => control.eventSubSubscriptions() >= 1, "the chat subscription")
+
+      const page = await world.enter(target, giveaway.code, users.viewer.id)
+      control.sendChatMessage(users.streamer.id, users.viewer2.id, "!enter")
+      await world.waitFor(
+        async () => (await world.live(giveaway)).entrantCount === 1,
+        "the chatter to enter",
+      )
+
+      expect(page).toMatchObject({ entry: "not-eligible", reason: "page-entry-off" })
+      expect((await entrants(giveaway)).map((entrant) => entrant.login)).toEqual([
+        users.viewer2.login,
+      ])
+    },
+  )
+}
+
+// A streamer who signed in with the scopes chat entry needs, as the wizard's "Reconnect Twitch" does.
+async function chatEntryStreamer(world: World, target: ContractTarget): Promise<Browser> {
+  const streamer = new Browser(target.url)
+  await streamer.signInAs(
+    users.streamer.id,
+    "/auth/twitch/streamer/start?scopes=chat-entry",
+    world.twitch.fake.control,
+  )
+  return streamer
 }
 
 async function entrants(giveaway: CreatedGiveaway): Promise<readonly Entrant[]> {

@@ -21,7 +21,7 @@ import {
   users,
   type RunningFakeTwitch,
 } from "@rafflink/core/test/contract"
-import { seedStreamer } from "../test/fake-twitch.ts"
+import { chatEntryStreamerScopes, seedStreamer } from "../test/fake-twitch.ts"
 import { giveawayInit, sealKey, testConfig, validRules } from "../test/fixtures.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
 
@@ -107,7 +107,9 @@ async function createGiveaway(): Promise<void> {
   })
 }
 
-async function seedStreamerAndGiveaway(): Promise<void> {
+async function seedStreamerAndGiveaway(
+  scopes: readonly [string, ...string[]] = chatEntryStreamerScopes,
+): Promise<void> {
   await seedStreamer(
     twitch,
     new TwitchClient(config, fetch),
@@ -115,6 +117,7 @@ async function seedStreamerAndGiveaway(): Promise<void> {
     keyRing,
     "streamer-1",
     users.streamer.id,
+    scopes,
   )
   await createGiveaway()
 }
@@ -296,8 +299,8 @@ function queueChatter(platformUserId: string): void {
   )
 }
 
-function tokenCalls(): number {
-  return twitch.fake.control.calls.filter((call) => call.path === "/oauth2/token").length
+function callsTo(path: string): number {
+  return twitch.fake.control.calls.filter((call) => call.path === path).length
 }
 
 describe("runRoomAlarm chat entry", () => {
@@ -339,9 +342,74 @@ describe("runRoomAlarm chat entry", () => {
     warn.mockRestore()
   })
 
+  it("leaves a chatter whose follow read failed waiting and enters the others", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    await seedStreamerAndGiveaway()
+    for (const user of [users.viewer, users.viewer2]) {
+      twitch.fake.control.setFollowing(user.id, users.streamer.id, true)
+      queueChatter(user.id)
+    }
+    twitch.fake.control.failNext("followers", 500, 1)
+
+    await runRoomAlarm(deps, giveawayId, room)
+    const afterFirst = room.summary().entrantCount
+    clock.advance(config.chatEntryCheckSeconds * 1000)
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(afterFirst).toBe(1)
+    expect(warn).toHaveBeenCalledWith("chat entry follow reads failed", {
+      giveawayId,
+      count: 1,
+      errorClass: "TwitchUnavailable",
+    })
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((entrant) => entrant.group)).toEqual([
+      "follower",
+      "follower",
+    ])
+    warn.mockRestore()
+  })
+
+  it("counts every chatter as not following when the token lacks the chat entry scope, and logs it once", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    await seedStreamerAndGiveaway(["openid", "channel:read:vips", "moderation:read"])
+    twitch.fake.control.setFollowing(users.viewer.id, users.streamer.id, true)
+    queueChatter(users.viewer.id)
+
+    await runRoomAlarm(deps, giveawayId, room)
+    queueChatter(users.viewer2.id)
+    clock.advance(config.chatEntryCheckSeconds * 1000)
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((entrant) => entrant.group)).toEqual([
+      "viewer",
+      "viewer",
+    ])
+    expect(
+      warn.mock.calls.filter(([message]) => message === "chat entry follows not readable"),
+    ).toEqual([["chat entry follows not readable", { giveawayId }]])
+    expect(callsTo("/helix/channels/followers")).toBe(0)
+    warn.mockRestore()
+  })
+
+  it("keeps the streamer's access token between checks instead of refreshing it each time", async () => {
+    await seedStreamerAndGiveaway()
+    const refreshesBefore = callsTo("/oauth2/token")
+
+    for (const user of [users.viewer, users.viewer2]) {
+      queueChatter(user.id)
+      await runRoomAlarm(deps, giveawayId, room)
+      clock.advance(config.chatEntryCheckSeconds * 1000)
+    }
+
+    expect(room.summary().entrantCount).toBe(2)
+    expect(callsTo("/helix/channels/followers")).toBe(2)
+    // One refresh of the streamer's token and one app token for the profile reads.
+    expect(callsTo("/oauth2/token")).toBe(refreshesBefore + 2)
+  })
+
   it("shares one token refresh between callers that overlap", async () => {
     await seedStreamerAndGiveaway()
-    const refreshesBefore = tokenCalls()
+    const refreshesBefore = callsTo("/oauth2/token")
 
     const [first, second] = await Promise.all([
       openGiveawayStreamerAccess(deps, giveawayId),
@@ -349,6 +417,6 @@ describe("runRoomAlarm chat entry", () => {
     ])
 
     expect(second.accessToken).toBe(first.accessToken)
-    expect(tokenCalls()).toBe(refreshesBefore + 1)
+    expect(callsTo("/oauth2/token")).toBe(refreshesBefore + 1)
   })
 })

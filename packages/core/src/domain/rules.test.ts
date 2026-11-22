@@ -17,6 +17,7 @@ const rules: GiveawayRules = {
   claimKeyword: null,
   excludeRecentWinners: null,
   chatKeyword: null,
+  pageEntry: true,
 }
 
 const viewer: ViewerFacts = {
@@ -207,7 +208,25 @@ describe("parseRules", () => {
         claimKeyword: null,
         excludeRecentWinners: null,
         chatKeyword: null,
+        pageEntry: true,
       },
+    })
+  })
+
+  it("keeps page entry on unless it is turned off, and only next to a chat keyword", () => {
+    expect(
+      parseRules({ ...validInput, pageEntry: false, chatKeyword: "!enter" }, config),
+    ).toMatchObject({
+      ok: true,
+      value: { pageEntry: false, chatKeyword: "!enter" },
+    })
+    expect(parseRules({ ...validInput, pageEntry: false }, config)).toEqual({
+      ok: false,
+      issue: { field: "pageEntry", code: "no-entry-way" },
+    })
+    expect(parseRules({ ...validInput, pageEntry: "no" }, config)).toEqual({
+      ok: false,
+      issue: { field: "pageEntry", code: "not-a-boolean" },
     })
   })
 

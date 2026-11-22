@@ -242,6 +242,8 @@ export const en = {
   "reason.followers-only": "This giveaway is for followers only.",
   "reason.account-too-young": "Your Twitch account is too new for this giveaway.",
   "reason.no-tickets": "Your group gets no tickets in this giveaway.",
+  "reason.page-entry-off": "This giveaway takes entries in the stream chat only.",
+  "reasonHelp.page-entry-off": "Type the keyword shown on this page in the stream chat to enter.",
   "reasonHelp.broadcaster": "Sign in with a different Twitch account to enter.",
   "entry.otherAccount": "Use another Twitch account",
   "reason.blocked": "You cannot enter this giveaway.",
@@ -306,6 +308,7 @@ export const en = {
   "issue.blank": "This field cannot be empty.",
   "issue.too-long": "This is too long. Make it shorter.",
   "issue.too-large": "This number is too large. Enter a smaller one.",
+  "issue.no-entry-way": "Viewers need a way to enter: the page, the chat or both.",
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.unknown-kind": "Pick one of the options.",
@@ -536,6 +539,8 @@ export const en = {
 
   "live.reconnecting": "Reconnecting to the live feed…",
   "live.chatOff.title": "Chat watch is off",
+  "live.chatEntryOff.text":
+    "Chat entry is off: Rafflink cannot read your chat right now, so typing the keyword enters nobody. Viewers can still enter on the giveaway page if it takes page entries.",
   "live.chatOff.text":
     "Chat claim unavailable: Rafflink cannot read your chat right now, so winners cannot claim by typing there. When a winner tells you they are in, press Mark as claimed next to their name.",
   "live.open.title": "Entries are open",
@@ -756,14 +761,21 @@ export const en = {
   "wizard.entry.legend": "How viewers enter",
   "wizard.entry.page": "Giveaway page",
   "wizard.entry.page.help": "Viewers sign in with Twitch on the giveaway page.",
-  "wizard.entry.chat": "Page and chat",
-  "wizard.entry.chat.help": "Viewers can also enter by typing a keyword in your chat.",
+  "wizard.entry.both": "Page and chat",
+  "wizard.entry.both.help": "Viewers can also enter by typing a keyword in your chat.",
+  "wizard.entry.chat": "Chat only",
+  "wizard.entry.chat.help":
+    "Viewers enter only by typing a keyword in your chat. The page shows the keyword and lets them check whether they are in.",
+  "wizard.reconnect.text":
+    "To check whether a chat entrant follows you, Rafflink needs one more Twitch permission (read your followers). Reconnect Twitch, then set up the giveaway again.",
+  "wizard.reconnect.button": "Reconnect Twitch",
   "wizard.chatKeyword.label": "Entry keyword",
   "wizard.chatKeyword.help":
     "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
   "review.entry": "Entry",
   "review.entryPage": "On the giveaway page.",
-  "review.entryChat": 'On the giveaway page or by typing "{keyword}" in your chat.',
+  "review.entryBoth": 'On the giveaway page or by typing "{keyword}" in your chat.',
+  "review.entryChat": 'Only by typing "{keyword}" in your chat.',
   "giveaway.chatEntry": "Or type {keyword} in the chat of {name} to enter.",
   "giveaway.lookup.legend": "Entered by chat?",
   "giveaway.lookup.label": "Your Twitch login",

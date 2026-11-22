@@ -942,6 +942,28 @@ describe("chat entry", () => {
     expect(requests.filter((request) => request.route.includes("/entered"))).toHaveLength(2)
   })
 
+  it("offers no sign-in on an open chat-only giveaway, only the keyword and the lookup", async () => {
+    mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({ ...chatGiveaway, rules: { ...chatGiveaway.rules, pageEntry: false } }),
+    })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Or type !enter in the chat of Streamy to enter.")).toBeTruthy()
+    expect(view.getByRole("button", { name: "Am I in?" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: /Enter with Twitch|Sign in/ })).toBeNull()
+  })
+
+  it("hides the keyword while chat entry is off and keeps the lookup", async () => {
+    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...chatGiveaway, chatEntryOff: true }) })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("button", { name: "Am I in?" })).toBeTruthy()
+    expect(view.queryByText("Or type !enter in the chat of Streamy to enter.")).toBeNull()
+  })
+
   it("says the check did not work when the lookup fails", async () => {
     spyOn(console, "error").mockImplementation(() => {})
     mockFetch({

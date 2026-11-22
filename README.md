@@ -11,7 +11,8 @@ What it does:
 - Viewers open the link, sign in with Twitch and are entered with the tickets of their best group
   (viewer, follower, subscriber tier, VIP, moderator). The streamer cannot enter their own giveaway.
 - With a chat keyword (such as `!enter`) viewers can also enter by typing it in the stream chat. The same
-  rules and ticket groups apply, and the giveaway page answers "Am I in?" for a login.
+  rules and ticket groups apply, the giveaway can take chat entries only, and the giveaway page answers "Am I in?"
+  for the login of a chat entrant.
 - The streamer watches a live page (also available as a read-only OBS overlay link), closes the giveaway
   and draws winners. Winners claim with a button or by writing in chat. A winner who does not claim can be
   rerolled.
@@ -148,9 +149,10 @@ register it once and copy two values into the config.
 
 You do not pick scopes in the console. Rafflink asks for them at sign-in:
 
-- streamers: `openid`, `channel:read:vips`, `moderation:read` (to know VIPs and moderators),
-  `user:read:chat` (to watch the chat for chat entries and claims and show the winners' messages) and
-  `moderator:read:followers` (to check whether a chat entrant follows);
+- streamers: `openid`, `channel:read:vips`, `moderation:read` (to know VIPs and moderators) and
+  `user:read:chat` (to watch the chat for chat entries and claims and show the winners' messages); a streamer
+  who turns chat entry on is asked to reconnect once for `moderator:read:followers` (to check whether a chat
+  entrant follows);
 - viewers: `openid`, `user:read:subscriptions` and `user:read:follows` (to check who may enter and how many
   tickets they get).
 

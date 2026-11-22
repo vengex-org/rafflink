@@ -62,6 +62,7 @@ const rules: GiveawayRules = {
   claimKeyword: null,
   excludeRecentWinners: null,
   chatKeyword: null,
+  pageEntry: true,
 }
 
 const giveaway: GiveawayInit = {

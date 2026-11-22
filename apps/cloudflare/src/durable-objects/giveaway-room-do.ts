@@ -95,8 +95,8 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async entryOf(...args: Parameters<GiveawayRoom["entryOf"]>) {
     return (await this.opened).room.entryOf(...args)
   }
-  async hasEntrant(...args: Parameters<GiveawayRoom["hasEntrant"]>) {
-    return (await this.opened).room.hasEntrant(...args)
+  async hasChatEntrant(...args: Parameters<GiveawayRoom["hasChatEntrant"]>) {
+    return (await this.opened).room.hasChatEntrant(...args)
   }
   async entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
     return (await this.opened).room.entrants(...args)

@@ -146,6 +146,8 @@ export interface CreateGiveawayBody {
     readonly excludeRecentWinners: RecentWinnersRule | null
     /** Null when viewers enter on the page only. */
     readonly chatKeyword: string | null
+    /** False for a chat-only giveaway. */
+    readonly pageEntry: boolean
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
@@ -205,6 +207,7 @@ export async function getSession(): Promise<SessionJson> {
       canCreate: bool(streamer, "canCreate"),
       platform: platformOf(streamer, "platform"),
       capabilities: capabilitiesOf(child(streamer, "capabilities")),
+      chatEntryReady: bool(streamer, "chatEntryReady"),
     },
     donateUrl,
     operator,
@@ -341,6 +344,7 @@ export function parseGiveawayLoad(source: Json): GiveawayLoad {
       claimSeconds: num(source, "claimSeconds"),
       entrantCount: num(source, "entrantCount"),
       finished: bool(source, "finished"),
+      chatEntryOff: bool(source, "chatEntryOff"),
       poll: {
         intervalMs: num(child(source, "poll"), "intervalMs"),
         maxMs: num(child(source, "poll"), "maxMs"),
@@ -1042,6 +1046,7 @@ function parseRules(source: Json): GiveawayRules {
         ? null
         : parseRecentWinners(child(source, "excludeRecentWinners")),
     chatKeyword: nullableText(source, "chatKeyword"),
+    pageEntry: bool(source, "pageEntry"),
   }
 }
 
@@ -1171,6 +1176,7 @@ function parseSharedSnapshotFields(source: Json) {
     shuffleNames: textList(source, "shuffleNames"),
     now: num(source, "now"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
+    chatEntryOff: bool(source, "chatEntryOff"),
   }
 }
 

@@ -5,16 +5,14 @@ import { systemRandom } from "@rafflink/core/lib/system-ports"
 import type { RunningFakeTwitch } from "@rafflink/core/test/contract"
 import type { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 
-const streamerScopes = [
-  "openid",
-  "channel:read:vips",
-  "moderation:read",
-  "moderator:read:followers",
-] as const
+const baseStreamerScopes = ["openid", "channel:read:vips", "moderation:read"] as const
+
+/** The scopes of a streamer who reconnected for chat entry. */
+export const chatEntryStreamerScopes = [...baseStreamerScopes, "moderator:read:followers"] as const
 
 /**
  * Signs `userId` in at the fake and stores their sealed refresh token as streamer `streamerId`, as the
- * streamer sign-in does. Returns the refresh token that was sealed.
+ * streamer sign-in does, with `streamerScopes` granted. Returns the refresh token that was sealed.
  */
 export async function seedStreamer(
   running: RunningFakeTwitch,
@@ -23,6 +21,7 @@ export async function seedStreamer(
   keyRing: KeyRing,
   streamerId: string,
   userId: string,
+  streamerScopes: readonly [string, ...string[]] = baseStreamerScopes,
 ): Promise<string> {
   running.fake.control.signInAs(userId)
   const redirectUri = "http://localhost/callback"

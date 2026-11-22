@@ -81,6 +81,8 @@ function GiveawayDetails({
   const channelUrl = twitchChannelUrl(giveaway.streamerName)
   const isWinner = me.kind === "won"
   const isIn = entered !== null && !isWinner && giveaway.status !== "drawn"
+  // A chat-only giveaway offers no sign-in while entries are open: the chat keyword and the lookup are the way in.
+  const chatOnlyOpen = !giveaway.rules.pageEntry && giveaway.status === "open" && !isIn
 
   return (
     <Page width="compact" as="article" className="viewer">
@@ -89,7 +91,7 @@ function GiveawayDetails({
       <div aria-live="polite" className="viewer-outcome">
         {me.kind === "won" ? (
           <ClaimPanel code={code} win={me} giveaway={giveaway} />
-        ) : (
+        ) : chatOnlyOpen ? null : (
           <EntryPanel
             entry={entry}
             tickets={tickets}
@@ -106,7 +108,7 @@ function GiveawayDetails({
           code={code}
           keyword={giveaway.rules.chatKeyword}
           streamerName={giveaway.streamerName}
-          open={giveaway.status === "open"}
+          open={giveaway.status === "open" && !giveaway.chatEntryOff}
         />
       )}
       <div className="viewer-details">

@@ -242,6 +242,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "reason.followers-only": "Táto súťaž je len pre sledovateľov.",
   "reason.account-too-young": "Tvoj účet na Twitchi je pre túto súťaž príliš nový.",
   "reason.no-tickets": "Tvoja skupina v tejto súťaži nemá žiadne lístky.",
+  "reason.page-entry-off": "Do tejto súťaže sa dá zapojiť len cez chat streamu.",
+  "reasonHelp.page-entry-off":
+    "Na zapojenie napíš do chatu streamu kľúčové slovo, ktoré vidíš na tejto stránke.",
   "reasonHelp.broadcaster": "Na zapojenie sa prihlás iným účtom na Twitchi.",
   "entry.otherAccount": "Použiť iný účet na Twitchi",
   "reason.blocked": "Do tejto súťaže sa nemôžeš zapojiť.",
@@ -307,6 +310,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.blank": "Toto pole nesmie byť prázdne.",
   "issue.too-long": "Text je príliš dlhý. Skráť ho.",
   "issue.too-large": "Toto číslo je príliš veľké. Zadaj menšie.",
+  "issue.no-entry-way":
+    "Diváci sa musia mať ako zapojiť: cez stránku, cez chat alebo oboma spôsobmi.",
   "issue.not-a-timestamp": "Zadaj platný dátum a čas.",
   "issue.in-the-past": "Čas ukončenia musí byť v budúcnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
@@ -536,6 +541,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
 
   "live.reconnecting": "Znovu sa pripájam k živému prenosu…",
   "live.chatOff.title": "Sledovanie chatu je vypnuté",
+  "live.chatEntryOff.text":
+    "Zapojenie cez chat je vypnuté: Rafflink teraz nevie čítať tvoj chat, takže napísanie kľúčového slova nikoho nezapojí. Ak súťaž berie zapojenie cez stránku, diváci sa môžu zapojiť tam.",
   "live.chatOff.text":
     "Prevzatie cez chat nie je dostupné: Rafflink teraz nevie čítať tvoj chat, takže víťazi výhru nemôžu prevziať napísaním doň. Keď ti víťaz povie, že je tu, stlač pri jeho mene Označiť ako prevzaté.",
   "live.open.title": "Zápis je otvorený",
@@ -759,14 +766,21 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.entry.legend": "Ako sa diváci zapoja",
   "wizard.entry.page": "Stránka súťaže",
   "wizard.entry.page.help": "Diváci sa prihlásia cez Twitch na stránke súťaže.",
-  "wizard.entry.chat": "Stránka aj chat",
-  "wizard.entry.chat.help": "Diváci sa môžu zapojiť aj napísaním kľúčového slova do tvojho chatu.",
+  "wizard.entry.both": "Stránka aj chat",
+  "wizard.entry.both.help": "Diváci sa môžu zapojiť aj napísaním kľúčového slova do tvojho chatu.",
+  "wizard.entry.chat": "Len chat",
+  "wizard.entry.chat.help":
+    "Diváci sa zapoja len napísaním kľúčového slova do tvojho chatu. Stránka ukáže kľúčové slovo a dovolí im overiť si, či sú v súťaži.",
+  "wizard.reconnect.text":
+    "Aby Rafflink overil, či ťa divák z chatu sleduje, potrebuje ešte jedno povolenie Twitchu (čítať tvojich sledujúcich). Pripoj Twitch znova a potom súťaž nastav ešte raz.",
+  "wizard.reconnect.button": "Pripojiť Twitch znova",
   "wizard.chatKeyword.label": "Kľúčové slovo na zapojenie",
   "wizard.chatKeyword.help":
     "Správa v chate, ktorá začína týmto slovom, diváka zapojí s rovnakými pravidlami a lístkami ako stránka. Rafflink do tvojho chatu nikdy nepíše.",
   "review.entry": "Zapojenie",
   "review.entryPage": "Na stránke súťaže.",
-  "review.entryChat": "Na stránke súťaže alebo napísaním „{keyword}“ do tvojho chatu.",
+  "review.entryBoth": "Na stránke súťaže alebo napísaním „{keyword}“ do tvojho chatu.",
+  "review.entryChat": "Len napísaním „{keyword}“ do tvojho chatu.",
   "giveaway.chatEntry": "Alebo napíš {keyword} do chatu kanála {name} a zapojíš sa.",
   "giveaway.lookup.legend": "Zapojenie cez chat",
   "giveaway.lookup.label": "Tvoje meno na Twitchi",

@@ -101,6 +101,7 @@ describe("session", () => {
           pageEntry: true,
           chatEntry: true,
         },
+        chatEntryReady: false,
       },
       donateUrl: null,
       operator: null,
@@ -211,10 +212,29 @@ describe("streamer sign-in", () => {
     const sealed = String(token?.refresh_token_enc)
     expect(sealed.startsWith("test.")).toBe(true)
     expect(await openSecret(harness.deps.keyRing, sealed, "twitch:200")).toMatch(/^[0-9a-f-]{36}$/)
+    expect(token?.scopes).toBe("openid channel:read:vips moderation:read user:read:chat")
+    expect((await browser.request("/api/dash/giveaways")).status).toBe(200)
+    expect((await (await browser.request("/api/session")).json()).streamer.chatEntryReady).toBe(
+      false,
+    )
+  })
+
+  it("asks for the chat entry scopes on a reconnect for chat entry and reports the token ready", async () => {
+    const browser = new Browser(harness)
+
+    const signIn = await browser.signInAs(
+      users.streamerA.id,
+      "/auth/twitch/streamer/start?scopes=chat-entry&return=/dashboard/new",
+    )
+
+    expect(signIn.response.headers.get("location")).toBe("/dashboard/new")
+    const [token] = sqlRows(harness.accountsDb, "SELECT scopes FROM streamer_tokens")
     expect(token?.scopes).toBe(
       "openid channel:read:vips moderation:read user:read:chat moderator:read:followers",
     )
-    expect((await browser.request("/api/dash/giveaways")).status).toBe(200)
+    expect((await (await browser.request("/api/session")).json()).streamer.chatEntryReady).toBe(
+      true,
+    )
   })
 
   it("returns to the page the sign-in was started from", async () => {
@@ -545,6 +565,7 @@ describe("creating a giveaway", () => {
       claimSeconds: 300,
       entrantCount: 1,
       finished: false,
+      chatEntryOff: false,
       poll: { intervalMs: 3000, maxMs: 120_000 },
       me: { kind: "signed-out" },
     })
@@ -2230,5 +2251,37 @@ describe("draw commitment", () => {
     expect(response.status).toBe(503)
     expect(await response.json()).toEqual({ kind: "beacon-unavailable" })
     expect(await pageOf(undefined, code)).toMatchObject({ status: "closed" })
+  })
+})
+
+describe("entrant lookup by login", () => {
+  it("refuses a value that is no login before waking the room, and a missing giveaway", async () => {
+    const { code } = await createGiveaway(harness)
+    const wake = spyOn(harness.deps.rooms, "get")
+
+    const invalid = await harness.app.request(`/api/g/${code}/entered?login=no%20login`)
+    const tooLong = await harness.app.request(`/api/g/${code}/entered?login=${"a".repeat(26)}`)
+    const missing = await harness.app.request("/api/g/ZZZZZ/entered?login=viewer")
+
+    expect([invalid.status, tooLong.status, missing.status]).toEqual([400, 400, 404])
+    expect(await invalid.json()).toEqual({ error: "invalid-login" })
+    expect(wake).not.toHaveBeenCalled()
+  })
+
+  it("refuses a lookup beyond the limit from one address, apart from the leaf downloads", async () => {
+    await restart({ LEAVES_IP_LIMIT_PER_MINUTE: "1" })
+    const { code } = await createGiveaway(harness)
+    const from = (address: string) =>
+      harness.app.request(`/api/g/${code}/entered?login=viewer`, {
+        headers: { [testAddressHeader]: address },
+      })
+
+    const first = await from("203.0.113.7")
+    const refused = await from("203.0.113.7")
+    const otherAddress = await from("203.0.113.8")
+
+    expect(await first.json()).toEqual({ entered: false })
+    expect(refused.status).toBe(429)
+    expect(otherAddress.status).toBe(200)
   })
 })

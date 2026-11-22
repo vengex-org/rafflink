@@ -1,11 +1,11 @@
 import { publicDrandUrls, quicknet } from "./lib/drand.ts"
 import type { Parsed } from "./lib/parsed.ts"
 import { cloudflarePlans, type CloudflarePlan } from "./plan/plan-limits.ts"
+import { twitchLoginPattern } from "./twitch/lib/login.ts"
 import {
   queuedEntryTwitchRequests,
   queuedEntryTwitchSubrequests,
 } from "./twitch/queued-entry-requests.ts"
-import { twitchLoginPattern } from "./twitch/lib/login.ts"
 
 export type ConfigReason =
   | "missing"
@@ -514,7 +514,7 @@ export const configSchema = {
     "LEAVES_IP_LIMIT_PER_MINUTE",
     int(1),
     "20",
-    "Leaf list downloads one client address may make per minute when the list is not in the cache; each wakes the giveaway's room and carries up to a megabyte; a verify page loads it once, so this is a loose backstop (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
+    'Leaf list downloads one client address may make per minute when the list is not in the cache, and apart from those as many "Am I in?" lookups by login; each wakes the giveaway\'s room and a leaf list carries up to a megabyte; a verify page loads it once and a viewer looks up a login a few times, so this is a loose backstop (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal',
   ),
   moderatorIpLimitPerMinute: withDefault(
     "MODERATOR_IP_LIMIT_PER_MINUTE",

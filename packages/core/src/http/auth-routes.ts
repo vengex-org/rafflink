@@ -53,6 +53,8 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     const nonce = randomId(deps.random)
     const verifier = codeVerifier(deps.random)
     const returnPath = safeReturnPath(c.req.query("return")) ?? defaultReturnPath
+    // `?scopes=chat-entry` is the wizard's "Reconnect Twitch": the base scopes plus the ones chat entry needs.
+    const chatEntry = c.req.query("scopes") === "chat-entry"
     await startOAuthState(c, deps, "streamer", {
       state,
       nonce,
@@ -60,13 +62,14 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: null,
       returnPath,
       moderatorLinkId: null,
+      chatEntry,
     })
     return c.redirect(
       provider.authorizeUrl({
         state,
         nonce,
         codeChallenge: await codeChallenge(verifier),
-        scopes: provider.scopes.streamer,
+        scopes: streamerScopes(provider, chatEntry),
         redirectUri: redirectUri(deps.config, streamerCallbackPath),
       }),
     )
@@ -103,7 +106,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
         streamerTokenAad(platform, signIn.userId),
         deps.random,
       ),
-      scopes: provider.scopes.streamer.join(" "),
+      scopes: streamerScopes(provider, saved.chatEntry).join(" "),
       now: deps.clock.now(),
     })
     await startStreamerSession(c, deps, {
@@ -128,6 +131,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: giveaway.code,
       returnPath: null,
       moderatorLinkId: null,
+      chatEntry: false,
     })
     return c.redirect(
       provider.authorizeUrl({
@@ -202,6 +206,14 @@ interface StreamerGrant {
   readonly displayName: string
   readonly profileImageUrl: string | null
   readonly refreshToken: string
+}
+
+function streamerScopes(
+  provider: PlatformProvider,
+  chatEntry: boolean,
+): readonly [string, ...string[]] {
+  const base = provider.scopes.streamer
+  return chatEntry ? [...base, ...provider.chatEntryScopes] : base
 }
 
 async function exchangeStreamer(

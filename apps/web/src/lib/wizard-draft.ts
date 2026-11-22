@@ -62,7 +62,7 @@ function isValues(value: unknown): value is Values {
     )
     && (audience === "everyone" || audience === "followers" || audience === "subscribers")
     && (ending === "never" || ending === "at-time")
-    && (entryWays === "page" || entryWays === "page-and-chat")
+    && (entryWays === "page" || entryWays === "page-and-chat" || entryWays === "chat")
     && isTickets(tickets)
     && isClaim(claim)
   )

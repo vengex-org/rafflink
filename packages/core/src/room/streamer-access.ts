@@ -11,26 +11,12 @@ export interface GiveawayStreamerAccess {
   readonly provider: PlatformProvider
   readonly accessToken: string
   readonly broadcasterId: string
+  /** The scopes the streamer granted, so a caller can skip a call the token may not make. */
+  readonly scopes: readonly string[]
 }
-
-// A refresh can replace the stored refresh token, so two refreshes at once from the same row can make the
-// second fail: callers that overlap, such as the role refresh and the chat subscription right after the
-// giveaway opens, share one refresh.
-const inFlight = new Map<string, Promise<GiveawayStreamerAccess>>()
 
 /** An access token of the giveaway's streamer, with the channel it is for and its platform's provider. */
-export function openGiveawayStreamerAccess(
-  deps: StreamerTokenDeps,
-  giveawayId: string,
-): Promise<GiveawayStreamerAccess> {
-  const running = inFlight.get(giveawayId)
-  if (running !== undefined) return running
-  const access = readStreamerAccess(deps, giveawayId).finally(() => inFlight.delete(giveawayId))
-  inFlight.set(giveawayId, access)
-  return access
-}
-
-async function readStreamerAccess(
+export async function openGiveawayStreamerAccess(
   deps: StreamerTokenDeps,
   giveawayId: string,
 ): Promise<GiveawayStreamerAccess> {
@@ -42,5 +28,6 @@ async function readStreamerAccess(
     provider: providerFor(deps.platforms, giveaway.platform),
     accessToken: await openStreamerAccess(deps, token),
     broadcasterId: giveaway.broadcasterId,
+    scopes: token.scopes,
   }
 }

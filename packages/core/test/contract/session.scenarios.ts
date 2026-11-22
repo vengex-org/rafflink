@@ -65,6 +65,7 @@ export function sessionScenarios(context: ContractContext): void {
           pageEntry: true,
           chatEntry: true,
         },
+        chatEntryReady: false,
       },
       donateUrl: null,
       operator: null,

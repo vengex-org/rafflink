@@ -56,6 +56,8 @@ export interface OAuthState {
   readonly giveawayCode: string | null
   readonly returnPath: string | null
   readonly moderatorLinkId: string | null
+  /** The streamer sign-in asked for the chat entry scopes too; false for every other sign-in. */
+  readonly chatEntry: boolean
 }
 
 const cookieNames = {
@@ -260,13 +262,15 @@ export async function takeOAuthState(
   if (returnedState === undefined || !hexId.test(returnedState)) return null
   const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
-    const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId } = value
+    const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, chatEntry } =
+      value
     if (typeof state !== "string" || typeof nonce !== "string") return null
     if (typeof codeVerifier !== "string") return null
     if (giveawayCode !== null && typeof giveawayCode !== "string") return null
     if (returnPath !== null && typeof returnPath !== "string") return null
     if (moderatorLinkId !== null && typeof moderatorLinkId !== "string") return null
-    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId }
+    if (typeof chatEntry !== "boolean") return null
+    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, chatEntry }
   })
   deleteCookie(c, name, { path: "/" })
   return saved

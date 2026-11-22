@@ -16,7 +16,7 @@ export type RoomStub = Remote<
     | "enter"
     | "summary"
     | "entryOf"
-    | "hasEntrant"
+    | "hasChatEntrant"
     | "entrants"
     | "leafOf"
     | "verification"

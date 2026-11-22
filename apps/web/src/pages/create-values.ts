@@ -1,5 +1,5 @@
 import { bestGroup, groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
-import type { RecentWinnersRule } from "@rafflink/core/domain/rules"
+import type { GiveawayRules, RecentWinnersRule } from "@rafflink/core/domain/rules"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { CreateGiveawayBody } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
@@ -8,8 +8,8 @@ export type Step = 1 | 2 | 3
 export type Audience = "everyone" | "followers" | "subscribers"
 export type Ending = "never" | "at-time"
 export type RecentWinners = "off" | RecentWinnersRule["kind"]
-/** Where viewers enter: only on the giveaway page, or also by the chat keyword. */
-export type EntryWays = "page" | "page-and-chat"
+/** Where viewers enter: on the giveaway page, by the chat keyword, or both. */
+export type EntryWays = "page" | "page-and-chat" | "chat"
 
 /** The chat keyword the wizard offers until the streamer types another. */
 export const defaultChatKeyword = "!enter"
@@ -101,7 +101,7 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
       rules.excludeRecentWinners === null
         ? initialValues.recentWinnersCount
         : String(rules.excludeRecentWinners.count),
-    entryWays: rules.chatKeyword === null ? "page" : "page-and-chat",
+    entryWays: entryWaysOf(rules),
     chatKeyword: rules.chatKeyword ?? defaultChatKeyword,
   }
 }
@@ -205,7 +205,8 @@ export function toBody(values: Values): CreateGiveawayBody {
         values.recentWinners === "off"
           ? null
           : { kind: values.recentWinners, count: Number(values.recentWinnersCount) },
-      chatKeyword: values.entryWays === "page-and-chat" ? values.chatKeyword : null,
+      chatKeyword: values.entryWays === "page" ? null : values.chatKeyword,
+      pageEntry: values.entryWays !== "chat",
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
     claimSeconds: claimSecondsOf(values.claim),
@@ -228,6 +229,11 @@ export function claimSecondsOf(claim: ClaimTime): number {
     case "custom":
       return Number(claim.minutes) * 60
   }
+}
+
+function entryWaysOf(rules: GiveawayRules): EntryWays {
+  if (rules.chatKeyword === null) return "page"
+  return rules.pageEntry ? "page-and-chat" : "chat"
 }
 
 function ticketCounts(typed: Values["tickets"]): Tickets {

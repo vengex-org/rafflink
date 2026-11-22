@@ -92,6 +92,8 @@ export interface StoredStreamerToken {
   readonly platform: string
   readonly platformUserId: string
   readonly sealedRefreshToken: string
+  /** The scopes the streamer granted at the sign-in that stored the token. */
+  readonly scopes: readonly string[]
 }
 
 /** A giveaway as the account store holds it. `status` mirrors the room, which owns it. */
@@ -581,6 +583,7 @@ function parseStoredToken(row: SqlRow): StoredStreamerToken {
     platform: reader.text("platform"),
     platformUserId: reader.text("platform_user_id"),
     sealedRefreshToken: reader.text("refresh_token_enc"),
+    scopes: reader.text("scopes").split(" "),
   }
 }
 

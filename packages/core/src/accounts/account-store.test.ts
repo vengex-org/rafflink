@@ -248,18 +248,21 @@ describe("AccountStore streamer tokens", () => {
         platform: "twitch",
         platformUserId: "199",
         sealedRefreshToken: "sealed-1",
+        scopes: ["openid"],
       },
       {
         streamerId: "s1",
         platform: "twitch",
         platformUserId: "200",
         sealedRefreshToken: "sealed-1",
+        scopes: ["openid"],
       },
       {
         streamerId: "s2",
         platform: "twitch",
         platformUserId: "201",
         sealedRefreshToken: "sealed-1",
+        scopes: ["openid"],
       },
     ])
   })

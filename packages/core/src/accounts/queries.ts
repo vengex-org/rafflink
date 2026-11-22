@@ -138,7 +138,7 @@ export const streamerByPlatformUserSql = `SELECT ${streamerColumns} FROM streame
 /** A streamer by id (parameter 1). */
 export const streamerByIdSql = `SELECT ${streamerColumns} FROM streamers WHERE id = ?`
 
-const streamerTokenSelect = `SELECT t.streamer_id, s.platform, s.platform_user_id, t.refresh_token_enc
+const streamerTokenSelect = `SELECT t.streamer_id, s.platform, s.platform_user_id, t.refresh_token_enc, t.scopes
   FROM streamer_tokens t JOIN streamers s ON s.id = t.streamer_id`
 
 /** Every stored streamer token, in streamer id order. */
