@@ -95,7 +95,16 @@ export interface MyLeafJson {
   readonly salt: string | null
 }
 
-/** Who the streamer cookie belongs to (`null` without a valid session), and the deployment's support link (`DONATE_URL`, null when unset). */
+/** Who runs the instance, as the privacy policy and the terms name them (the `OPERATOR_*` keys); `legalUpdated` is `LEGAL_UPDATED`, null when unset. */
+export interface OperatorJson {
+  readonly name: string
+  readonly address: string | null
+  readonly id: string | null
+  readonly email: string
+  readonly legalUpdated: string | null
+}
+
+/** Who the streamer cookie belongs to (`null` without a valid session), the deployment's support link (`DONATE_URL`, null when unset) and its operator (null while `OPERATOR_NAME` is unset). */
 export interface SessionJson {
   readonly streamer: {
     readonly displayName: string
@@ -105,6 +114,7 @@ export interface SessionJson {
     readonly canCreate: boolean
   } | null
   readonly donateUrl: string | null
+  readonly operator: OperatorJson | null
 }
 
 /** The streamer's own view of a giveaway, with the overlay token. */

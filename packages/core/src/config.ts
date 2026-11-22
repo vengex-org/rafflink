@@ -14,6 +14,9 @@ export type ConfigReason =
   | "out-of-range"
   | "not-a-url"
   | "not-an-https-url"
+  | "not-an-email"
+  | "not-an-iso-date"
+  | "requires-operator-name"
   | "not-a-header-name"
   | "not-a-chain-hash"
   | "not-at-least-drand-period"
@@ -607,6 +610,36 @@ export const configSchema = {
     "",
     "HTTPS page where people can support this deployment; the home page, the dashboard, the account menu and the streamer's live page link to it, never a viewer page or the overlay; blank shows no link",
   ),
+  operatorName: withDefault(
+    "OPERATOR_NAME",
+    optional(text),
+    "",
+    "Who runs this instance (a person or a company); the privacy policy and the terms name them as the controller of the data; OPERATOR_EMAIL is then required and the other OPERATOR_* keys and LEGAL_UPDATED only work with it; blank shows a generic text saying the operator has published no details; whoever runs an instance is responsible for these texts",
+  ),
+  operatorAddress: withDefault(
+    "OPERATOR_ADDRESS",
+    optional(text),
+    "",
+    "Postal address of the operator, shown in the privacy policy and the terms; blank leaves it out",
+  ),
+  operatorId: withDefault(
+    "OPERATOR_ID",
+    optional(text),
+    "",
+    "Business or company registration number of the operator, shown next to the name; blank leaves it out",
+  ),
+  operatorEmail: withDefault(
+    "OPERATOR_EMAIL",
+    optional(email),
+    "",
+    "Contact e-mail of the operator for data requests and questions about the terms; required with OPERATOR_NAME because the privacy policy must name a contact (GDPR Article 13(1)(a))",
+  ),
+  legalUpdated: withDefault(
+    "LEGAL_UPDATED",
+    optional(isoDate),
+    "",
+    "Date (YYYY-MM-DD) shown as the last update of the privacy policy and the terms; blank shows the date of the template text shipped with Rafflink",
+  ),
 }
 
 export function resolveConfig(env: Env): ResolvedConfig {
@@ -702,6 +735,25 @@ export function resolveConfig(env: Env): ResolvedConfig {
     cloudflarePlan: read(env, configSchema.cloudflarePlan),
     usageAlertPercent: read(env, configSchema.usageAlertPercent),
     donateUrl: read(env, configSchema.donateUrl),
+    operatorName: read(env, configSchema.operatorName),
+    operatorAddress: read(env, configSchema.operatorAddress),
+    operatorId: read(env, configSchema.operatorId),
+    operatorEmail: read(env, configSchema.operatorEmail),
+    legalUpdated: read(env, configSchema.legalUpdated),
+  }
+  // The texts name the controller with a contact, and the other keys describe the named operator.
+  if (config.operatorName === null) {
+    const orphans: [string, string | null][] = [
+      [configSchema.operatorAddress.env, config.operatorAddress],
+      [configSchema.operatorId.env, config.operatorId],
+      [configSchema.operatorEmail.env, config.operatorEmail],
+      [configSchema.legalUpdated.env, config.legalUpdated],
+    ]
+    for (const [key, value] of orphans) {
+      if (value !== null) throw new ConfigError(key, "requires-operator-name")
+    }
+  } else if (config.operatorEmail === null) {
+    throw new ConfigError(configSchema.operatorEmail.env, "missing")
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
@@ -841,6 +893,18 @@ function httpsUrl(raw: string): Parsed<string, ConfigReason> {
   if (!URL.canParse(value)) return fail("not-a-url")
   const parsed = new URL(value)
   return parsed.protocol === "https:" ? ok(parsed.href) : fail("not-an-https-url")
+}
+
+function email(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(value) ? ok(value) : fail("not-an-email")
+}
+
+function isoDate(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  const parsed = new Date(`${value}T00:00:00Z`)
+  const real = Number.isFinite(parsed.getTime()) && parsed.toISOString().startsWith(`${value}T`)
+  return real ? ok(value) : fail("not-an-iso-date")
 }
 
 function socketUrl(raw: string): Parsed<string, ConfigReason> {

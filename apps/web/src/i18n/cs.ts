@@ -605,14 +605,20 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "legal.footerLabel": "Právní informace",
   "legal.updated": "Poslední aktualizace: {date}",
 
+  "legal.operator.id": "identifikační číslo {id}",
+  "legal.unavailable": "Údaje o tom, kdo tuto instanci provozuje, se nepodařilo načíst.",
+  "legal.retry": "Zkusit znovu",
+
   "privacy.title": "Zásady ochrany osobních údajů",
   "privacy.intro":
     "Rafflink losuje výherce giveawayů na Twitchi. Tyto zásady vysvětlují, jaké osobní údaje zpracovává, proč, jak dlouho a jaká práva máš. Jsou záměrně stručné.",
   "privacy.controller.h": "Kdo je odpovědný",
   "privacy.controller.p1":
-    "U hostované služby na této adrese je správcem tvých osobních údajů {operatorName}, IČO {operatorId}, {operatorAddress}. Kontakt: {contactEmail}.",
+    "Správcem tvých osobních údajů na této instanci je {operator}. Kontakt: {contact}.",
+  "privacy.controller.none":
+    "Tuto instanci provozuje její provozovatel, který tu nezveřejnil kontaktní údaje. Software neposílá žádná data projektu Rafflink. Chceš-li uplatnit své právo nebo se na něco zeptat, obrať se na osobu, která ti poslala odkaz.",
   "privacy.controller.p2":
-    "Rafflink je open source a každý si může spustit vlastní kopii. U samostatně hostované instance je správcem ten, kdo ji provozuje, a tento text jen popisuje, co dělá software. Projekt Rafflink z takových instancí nedostává žádná data.",
+    "Rafflink je open source a každý si může spustit vlastní kopii. Tento text popisuje, co dělá software; správcem údajů na instanci je ten, kdo ji provozuje. Projekt Rafflink od instancí, které provozují jiní, nedostává žádná data.",
   "privacy.data.h": "Jaké údaje se zpracovávají",
   "privacy.data.p1":
     "Vše pochází z Twitche, když se jím přihlásíš. Rafflink žádá jen přístup pro čtení a nikdy nepíše do chatu.",
@@ -638,18 +644,18 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "K udržení přihlášení pomocí cookies, které jsou k tomu nezbytné. Rafflink nepoužívá reklamu, analytiku ani sledování a údaje neprodává ani nepředává pro marketing.",
   "privacy.retention.h": "Jak dlouho se údaje uchovávají",
   "privacy.retention.i1":
-    "Zapojení (jména, URL obrázků, skupiny, tikety, časy zapojení) se mažou 30 dní po uzavření giveawaye.",
+    "Zapojení (jména, URL obrázků, skupiny, tikety, časy zapojení) se mažou nejpozději 30 dní po uzavření giveawaye; provozovatel může nastavit kratší dobu.",
   "privacy.retention.i2":
     "Když streamer odebere Rafflinku přístup na Twitchi, smaže se jen uložený Twitch token. Účet a giveawaye zůstávají, dokud streamer nepožádá provozovatele o jejich smazání (viz kontakt výše).",
   "privacy.retention.i3": "Přihlašovací kódy čekající ve frontě se po několika minutách zahodí.",
   "privacy.retention.i4":
-    "Logy hostitele se uchovávají tak dlouho, jak je podle vlastních podmínek uchovává Cloudflare.",
+    "Logy hostitele uchovává provozovatel nebo jeho poskytovatel hostingu podle vlastních podmínek.",
   "privacy.retention.i5":
     "Seznam výherců, Merkleův kořen seznamu zapojení a seznam jeho listů (hashe a počty tiketů, bez jmen) zůstávají u giveawaye, aby losování mohl později ověřit kdokoli.",
   "privacy.recipients.h": "Kdo další údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje neprodává. Údaje jdou jen těmto stranám.",
   "privacy.recipients.i1":
-    "Cloudflare hostuje službu (Workers, Durable Objects, D1) jako náš zpracovatel a může údaje zpracovávat i mimo Evropský hospodářský prostor na základě standardních smluvních doložek.",
+    "Poskytovatel hostingu této instance službu uchovává a doručuje jako zpracovatel provozovatele a může údaje zpracovávat i mimo Evropský hospodářský prostor podle vlastních podmínek a záruk.",
   "privacy.recipients.i2":
     "Twitch je poskytovatel identity. Dostává tvé přihlášení a během giveawaye také volání API ke kontrole follow, předplatného a rolí a odběr chatu, kterým se rozpoznává převzetí výhry. Prohlížeč streamera navíc načítá profilové obrázky a odznaky předplatitelů z obrazových serverů Twitche. Twitch je samostatný správce podle vlastních zásad ochrany soukromí.",
   "privacy.recipients.i3":
@@ -659,18 +665,19 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",
-  "privacy.cookies.i1": "rl_streamer: drží streamera přihlášeného, 7 dní.",
+  "privacy.cookies.i1": "rl_streamer: drží streamera přihlášeného, výchozí 7 dní.",
   "privacy.cookies.i2":
-    "rl_viewer: umožní vracejícímu se divákovi vidět výsledek bez nového přihlášení, 30 dní.",
+    "rl_viewer: umožní vracejícímu se divákovi vidět výsledek bez nového přihlášení, výchozí 30 dní.",
   "privacy.cookies.i3":
-    "rl_oauth_streamer_* a rl_oauth_viewer_*: chrání přihlášení před zfalšováním, 10 minut.",
+    "rl_oauth_streamer_* a rl_oauth_viewer_*: chrání přihlášení před zfalšováním, výchozí 10 minut.",
   "privacy.cookies.i4":
-    "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, 10 minut.",
+    "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, výchozí 10 minut.",
   "privacy.cookies.i5":
     "Lokální úložiště prohlížeče si pamatuje tvůj výběr jazyka a motivu a čistý režim živé stránky. Úložiště relace drží přibližně 30 sekund kopii načtené stránky giveawaye včetně tvého stavu v ní. Zařízení neopouští ani jedno.",
   "privacy.rights.h": "Tvá práva",
-  "privacy.rights.p1":
-    "Máš práva uvedená níže. Napiš na {contactEmail}. Odpovíme do jednoho měsíce.",
+  "privacy.rights.p1": "Máš práva uvedená níže. Napiš na {contact}. Odpovíme do jednoho měsíce.",
+  "privacy.rights.none":
+    "Provozovatel této instance tu nezveřejnil kontaktní údaje a osoba, která ti poslala odkaz, nemusí být provozovatel. Bez kontaktu tu není zaručený způsob, jak tato práva uplatnit přes tuto stránku.",
   "privacy.rights.p2":
     "Přístup Rafflinku můžeš kdykoli odebrat také v nastavení Twitche v části Connections.",
   "privacy.rights.i1": "Přístup k údajům, jejich oprava, omezení zpracování a přenositelnost.",
@@ -686,12 +693,14 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Přihlášením nebo zapojením do giveawaye na Rafflinku tyto podmínky přijímáš. Pokud s nimi nesouhlasíš, službu nepoužívej.",
   "terms.service.h": "Služba",
   "terms.service.p1":
-    "Rafflink umožňuje streamerovi na Twitchi vytvořit giveaway, sbírat zapojení a losovat výherce živě. Hostovanou službu provozuje {operatorName}, IČO {operatorId}, {operatorAddress}, podnikatel zapsaný v živnostenském rejstříku vedeném Úřadem městské části Praha 4.",
+    "Rafflink umožňuje streamerovi na Twitchi vytvořit giveaway, sbírat zapojení a losovat výherce živě. Tuto instanci provozuje {operator}.",
+  "terms.service.none":
+    "Rafflink umožňuje streamerovi na Twitchi vytvořit giveaway, sbírat zapojení a losovat výherce živě. Tuto instanci provozuje její provozovatel, který tu nezveřejnil kontaktní údaje. Obrať se na osobu, která ti poslala odkaz.",
   "terms.service.p2":
-    "Služba se poskytuje tak, jak je, a tak, jak je dostupná, bez jakékoli záruky. Může se kdykoli změnit, omezit nebo ukončit a nemá garantovanou dostupnost. U samostatně hostované instance určuje podmínky ten, kdo ji provozuje.",
+    "Služba se poskytuje tak, jak je, a tak, jak je dostupná, bez jakékoli záruky. Může se kdykoli změnit, omezit nebo ukončit a nemá garantovanou dostupnost.",
   "terms.source.h": "Open source",
   "terms.source.p1":
-    "Zdrojový kód je licencován pod GNU AGPL-3.0 a je dostupný na {repository}. Licence se vztahuje na kód. Tyto podmínky se vztahují na hostovanou službu.",
+    "Zdrojový kód je licencován pod GNU AGPL-3.0 a je dostupný na {repository}. Licence se vztahuje na kód. Tyto podmínky se vztahují na službu na této instanci.",
   "terms.streamers.h": "Streameři",
   "terms.streamers.p1": "Giveaway vedeš ty, ne Rafflink. Rafflink jen losuje.",
   "terms.streamers.i1": "Odpovídáš za výhru, její předání a svá pravidla.",
@@ -727,7 +736,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "terms.changes.p1":
     "Tyto podmínky můžeme změnit. Datum na začátku ukazuje aktuální verzi a používáním služby po změně ji přijímáš. Giveaway můžeme odstranit a účet zablokovat, pokud porušuje tyto podmínky.",
   "terms.contact.h": "Kontakt",
-  "terms.contact.p1": "Dotazy k těmto podmínkám: {contactEmail}.",
+  "terms.contact.p1": "Dotazy k těmto podmínkám: {contact}.",
+  "terms.contact.none":
+    "Provozovatel této instance tu nezveřejnil kontaktní údaje. Osoba, která ti poslala odkaz, nemusí být provozovatel.",
   "drawResult.round-pending":
     "Náhodné číslo ještě není zveřejněné. Vítěz se vylosuje sám, hned jak bude.",
   "drawResult.round-due": "Náhodné číslo už letí. Vítěz se vylosuje sám za chvíli.",

@@ -12,8 +12,36 @@ export function sessionScenarios(context: ContractContext): void {
 
     expect(response.status).toBe(200)
     expect(response.headers.get("cache-control")).toBe("no-store")
-    expect(await response.json()).toEqual({ streamer: null, donateUrl: null })
+    expect(await response.json()).toEqual({ streamer: null, donateUrl: null, operator: null })
   })
+
+  scenario(
+    context,
+    "the session names the operator to a visitor without a session",
+    async (world) => {
+      const target = await world.start({
+        OPERATOR_NAME: "Example Operator",
+        OPERATOR_ADDRESS: "1 Example Street, Example City",
+        OPERATOR_ID: "12345678",
+        OPERATOR_EMAIL: "legal@example.com",
+        LEGAL_UPDATED: "2026-02-28",
+      })
+
+      const response = await new Browser(target.url).request("/api/session")
+
+      expect(await response.json()).toEqual({
+        streamer: null,
+        donateUrl: null,
+        operator: {
+          name: "Example Operator",
+          address: "1 Example Street, Example City",
+          id: "12345678",
+          email: "legal@example.com",
+          legalUpdated: "2026-02-28",
+        },
+      })
+    },
+  )
 
   scenario(context, "the session names the signed-in streamer", async (world) => {
     const target = await world.start()
@@ -30,6 +58,7 @@ export function sessionScenarios(context: ContractContext): void {
         canCreate: true,
       },
       donateUrl: null,
+      operator: null,
     })
   })
 
@@ -47,6 +76,7 @@ export function sessionScenarios(context: ContractContext): void {
     expect(await (await streamer.request("/api/session")).json()).toEqual({
       streamer: null,
       donateUrl: null,
+      operator: null,
     })
   })
 

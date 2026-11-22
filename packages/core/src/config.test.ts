@@ -384,6 +384,107 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("leaves the operator settings null when unset or blank", () => {
+    const config = resolveConfig({ ...required, OPERATOR_NAME: "  ", OPERATOR_EMAIL: "" })
+
+    expect(config).toMatchObject({
+      operatorName: null,
+      operatorAddress: null,
+      operatorId: null,
+      operatorEmail: null,
+      legalUpdated: null,
+    })
+  })
+
+  it("reads the operator settings trimmed", () => {
+    const config = resolveConfig({
+      ...required,
+      OPERATOR_NAME: " Example Operator ",
+      OPERATOR_ADDRESS: " 1 Example Street, Example City ",
+      OPERATOR_ID: " 12345678 ",
+      OPERATOR_EMAIL: " legal@example.com ",
+      LEGAL_UPDATED: " 2026-02-28 ",
+    })
+
+    expect(config).toMatchObject({
+      operatorName: "Example Operator",
+      operatorAddress: "1 Example Street, Example City",
+      operatorId: "12345678",
+      operatorEmail: "legal@example.com",
+      legalUpdated: "2026-02-28",
+    })
+  })
+
+  it("requires the operator e-mail when the operator is named", () => {
+    expect(failure({ ...required, OPERATOR_NAME: "Example Operator" })).toMatchObject({
+      env: "OPERATOR_EMAIL",
+      reason: "missing",
+    })
+    expect(
+      failure({ ...required, OPERATOR_NAME: "Example Operator", OPERATOR_EMAIL: "  " }),
+    ).toMatchObject({ env: "OPERATOR_EMAIL", reason: "missing" })
+  })
+
+  it("rejects operator details and a legal date without an operator name", () => {
+    const orphans = {
+      OPERATOR_ADDRESS: "1 Example Street",
+      OPERATOR_ID: "12345678",
+      OPERATOR_EMAIL: "legal@example.com",
+      LEGAL_UPDATED: "2026-02-28",
+    }
+    for (const [env, value] of Object.entries(orphans)) {
+      expect(failure({ ...required, [env]: value })).toMatchObject({
+        env,
+        reason: "requires-operator-name",
+      })
+    }
+  })
+
+  it("rejects an operator e-mail that is not an address", () => {
+    const invalid = [
+      "legal",
+      "legal@",
+      "@example.com",
+      "legal@example",
+      "a b@example.com",
+      "legal@example.com.",
+      "legal@example..com",
+    ]
+    for (const value of invalid) {
+      expect(
+        failure({ ...required, OPERATOR_NAME: "Example Operator", OPERATOR_EMAIL: value }),
+      ).toMatchObject({
+        env: "OPERATOR_EMAIL",
+        reason: "not-an-email",
+      })
+    }
+  })
+
+  it("rejects a legal update date that is not a real ISO date", () => {
+    const invalid = [
+      "2026-02-30",
+      "2026-2-3",
+      "21.11.2026",
+      "2026-13-01",
+      "tomorrow",
+      "2026-02-28T10:00",
+      "2026-02-28T10:00:00Z",
+    ]
+    for (const value of invalid) {
+      expect(
+        failure({
+          ...required,
+          OPERATOR_NAME: "Example Operator",
+          OPERATOR_EMAIL: "legal@example.com",
+          LEGAL_UPDATED: value,
+        }),
+      ).toMatchObject({
+        env: "LEGAL_UPDATED",
+        reason: "not-an-iso-date",
+      })
+    }
+  })
+
   it("defaults the drand settings to the quicknet beacon and a lead of 6 seconds", () => {
     const config = resolveConfig(required)
 

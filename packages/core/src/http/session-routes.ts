@@ -1,8 +1,9 @@
 import { Hono, type Context } from "hono"
 import type { StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
+import type { ResolvedConfig } from "../config.ts"
 import type { AppDeps } from "./deps.ts"
-import type { SessionJson } from "./json.ts"
+import type { OperatorJson, SessionJson } from "./json.ts"
 import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
 import { sameOrigin } from "./origin.ts"
 
@@ -23,6 +24,7 @@ export function sessionRoutes(deps: AppDeps): Hono {
               canCreate: await canCreateGiveaways(deps.config, deps.admins, current.streamer),
             },
       donateUrl: deps.config.donateUrl,
+      operator: operatorOf(deps.config),
     }
     return c.json(body)
   })
@@ -33,6 +35,18 @@ export function sessionRoutes(deps: AppDeps): Hono {
   })
 
   return app
+}
+
+function operatorOf(config: ResolvedConfig): OperatorJson | null {
+  // resolveConfig sets the e-mail whenever it sets the name.
+  if (config.operatorName === null || config.operatorEmail === null) return null
+  return {
+    name: config.operatorName,
+    address: config.operatorAddress,
+    id: config.operatorId,
+    email: config.operatorEmail,
+    legalUpdated: config.legalUpdated,
+  }
 }
 
 /**
