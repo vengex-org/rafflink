@@ -34,7 +34,12 @@ export function GiveawayFacts({
       ) : (
         <>
           <Fact label={t("giveaway.row.who")} format="text">
-            {whoCanEnterText(i18n, giveaway.rules.subsOnly, giveaway.rules.followersOnly)}
+            {whoCanEnterText(
+              i18n,
+              giveaway.rules.subsOnly,
+              giveaway.rules.followersOnly,
+              giveaway.rules.tickets.viewer === 0,
+            )}
             {extraTickets === null ? null : ` ${extraTickets}`}
             {recentWinners === null ? null : ` ${recentWinners}`}
           </Fact>

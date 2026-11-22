@@ -91,10 +91,12 @@ describe("official rules", () => {
       "Entering is free. You do not have to buy anything to enter or to win.",
       "Everyone can enter.",
       "A moderator has 7x the chance of a viewer.",
+      "Accounts Streamy has blocked cannot enter.",
+      "Streamy cannot enter their own giveaway.",
       "Entries end when Streamy closes them.",
       "Winners are drawn at random, weighted by tickets, from a public random number (drand) that nobody here controls.",
       "Anyone can check the draw at http://rafflink.test/ABCDE/verify",
-      "If a winner does not claim in time, Streamy may draw again.",
+      "Until the winner claims the prize, Streamy can replace them with a new draw.",
       "Streamy hands over the prize. Rafflink does not hold or send prizes.",
       "These rules are made from the giveaway's settings. They are a template, not legal advice.",
     ]) {
@@ -124,7 +126,7 @@ describe("official rules", () => {
 
     expect(
       await view.findByText(
-        "Only paying subscribers can enter, so there is no free way to enter this giveaway.",
+        "Only subscribers can enter, so there is no free way to enter this giveaway.",
       ),
     ).toBeTruthy()
     expect(view.queryByText(/Entering is free/)).toBeNull()
@@ -144,8 +146,58 @@ describe("official rules", () => {
 
     expect(
       await view.findByText(
-        "Only paying subscribers can enter, so there is no free way to enter this giveaway.",
+        "Only subscribers can enter, so there is no free way to enter this giveaway.",
       ),
+    ).toBeTruthy()
+  })
+
+  it("says neither free entry nor subscribers only when only VIPs and moderators get tickets", async () => {
+    mockFetch(withRules({ tickets: { ...rules.tickets, viewer: 0, follower: 0, vip: 6 } }))
+
+    const view = renderApp("/ABCDE")
+
+    await view.findByText("Organized by Streamy. Rafflink is not the organizer.")
+    expect(view.queryByText(/no free way to enter/)).toBeNull()
+    expect(view.queryByText(/Entering is free/)).toBeNull()
+  })
+
+  it("does not say everyone can enter when viewers get no tickets", async () => {
+    mockFetch(withRules({ tickets: { ...rules.tickets, viewer: 0 } }))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Only the groups that get tickets can enter.")).toBeTruthy()
+    expect(view.getByText("Viewers get no tickets and cannot win.")).toBeTruthy()
+    expect(view.queryByText(/Everyone can enter/)).toBeNull()
+  })
+
+  it("leaves a group the platform cannot tell out of the odds and the ticket lines", async () => {
+    const copied = stubClipboard(false)
+    mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({
+          ...giveaway,
+          capabilities: { ...giveaway.capabilities, vip: false },
+          rules: { ...rules, tickets: { ...rules.tickets, vip: 10 } },
+        }),
+    })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("A moderator has 7x the chance of a viewer.")).toBeTruthy()
+    expect(view.queryByText(/VIP/)).toBeNull()
+    fireEvent.click(view.getByRole("button", { name: "Copy rules as text" }))
+    await waitFor(() => expect(copied).toHaveLength(1))
+    expect(copied[0]).not.toContain("VIP")
+  })
+
+  it("says entries may close before the set end time", async () => {
+    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, closesAt: claimedAt }) })
+
+    const view = renderApp("/ABCDE")
+
+    expect(
+      await view.findByText(`Entries end ${claimedAtText}, or earlier if Streamy closes them.`),
     ).toBeTruthy()
   })
 
@@ -153,7 +205,7 @@ describe("official rules", () => {
     mockFetch(
       withRules({
         minAge: 18,
-        excludedCountries: "Quebec, Italy",
+        excludedCountries: "Quebec, Italy.",
         extraTerms: "Ships in the EU only.",
       }),
     )
@@ -166,7 +218,7 @@ describe("official rules", () => {
     ).toBeTruthy()
     expect(
       view.getByText(
-        "Rafflink cannot check age or where someone lives. Streamy checks this before handing over the prize.",
+        "Rafflink cannot check age or where someone lives. Streamy may check this and withhold the prize.",
       ),
     ).toBeTruthy()
     expect(view.getByText("More terms from Streamy:")).toBeTruthy()
@@ -315,7 +367,7 @@ describe("giveaway landing", () => {
     const view = renderApp("/ABCDE")
 
     expect(await whoRow(view)).toMatch(/Everyone can enter\./)
-    expect(view.queryByText(/cannot enter\./)).toBeNull()
+    expect(view.queryByText(/Winners of the streamer/)).toBeNull()
   })
 
   it("lists the tickets of every group and the claim time under the rules", async () => {
@@ -329,7 +381,7 @@ describe("giveaway landing", () => {
     expect(await view.findByText("Subscribers, tier 2: 4 tickets")).toBeTruthy()
     expect(view.getByText("Viewers: 1 ticket")).toBeTruthy()
     expect(view.getByText("Account at least 30 days old")).toBeTruthy()
-    expect(view.getByText("Winners have 5 minutes to claim")).toBeTruthy()
+    expect(view.getByText("Winners have 5 minutes to claim.")).toBeTruthy()
     expect(view.getByText(/Some viewers get extra tickets/)).toBeTruthy()
   })
 
@@ -472,7 +524,10 @@ describe("entry outcomes", () => {
 
     expect(await view.findByText("You cannot enter this giveaway.")).toBeTruthy()
     expect(view.getByText("If you have questions, ask the streamer.")).toBeTruthy()
-    expect(view.queryByText(/block/i)).toBeNull()
+    // The general rule every viewer reads is the only mention of blocking.
+    expect(view.queryAllByText(/block/i).map((element) => element.textContent)).toEqual([
+      "Accounts Streamy has blocked cannot enter.",
+    ])
     expect(view.queryByRole("link", { name: "Use another Twitch account" })).toBeNull()
   })
 

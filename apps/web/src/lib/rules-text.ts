@@ -3,11 +3,17 @@ import type { GiveawayRules } from "@rafflink/core/domain/rules"
 import type { I18n } from "../i18n/i18n.tsx"
 import { formatClock } from "./use-remaining.ts"
 
-export function whoCanEnterText(i18n: I18n, subsOnly: boolean, followersOnly: boolean): string {
+/** `viewersOut` when plain viewers get no tickets, so not everyone can enter even without a filter. */
+export function whoCanEnterText(
+  i18n: I18n,
+  subsOnly: boolean,
+  followersOnly: boolean,
+  viewersOut: boolean,
+): string {
   if (subsOnly && followersOnly) return i18n.t("who.both")
   if (subsOnly) return i18n.t("who.subs")
   if (followersOnly) return i18n.t("who.followers")
-  return i18n.t("who.everyone")
+  return viewersOut ? i18n.t("who.ticketGroups") : i18n.t("who.everyone")
 }
 
 /** The one sentence about extra tickets a viewer reads before signing in; null when nobody gets extra. */

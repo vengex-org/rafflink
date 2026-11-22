@@ -369,6 +369,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "who.subs": "Zapojiť sa môžu len predplatitelia.",
   "who.followers": "Zapojiť sa môžu len sledovatelia.",
   "who.everyone": "Zapojiť sa môže každý.",
+  "who.ticketGroups": "Zapojiť sa môžu len skupiny, ktoré dostanú lístky.",
   "extraTickets.subs": "Predplatitelia dostanú {tickets}.",
   "extraTickets.some": "Niektorí diváci dostanú lístky navyše. Zoznam nižšie ukazuje koľko.",
   "ticket.cannotEnter": "nemôže sa zapojiť",
@@ -457,10 +458,12 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rules.help": "Čím viac lístkov skupina dostane, tým väčšiu má šancu vyhrať.",
   "rules.groupTickets": "{group}: {tickets}",
   "rules.accountAge": "Účet starý aspoň {days}",
-  "rules.entriesEnd": "Zápis končí {time}",
-  "rules.claimTime": "Víťazi majú na prevzatie {time}",
+  "rules.entriesEnd": "Zápis končí {time}, alebo skôr, ak ho {name} uzavrie.",
+  "rules.claimTime": "Víťazi majú na prevzatie {time}.",
   "rules.claimWhere": "Víťaz výhru preberie na tejto stránke alebo v chate streamu.",
   "rules.organizer": "Organizátor: {name}. Rafflink nie je organizátor.",
+  "rules.blocked": "Účty, ktoré {name} zablokoval, sa zapojiť nemôžu.",
+  "rules.broadcaster": "{name} sa do vlastnej súťaže zapojiť nemôže.",
   "rules.platform":
     "Twitch túto súťaž nesponzoruje, nepodporuje ani neorganizuje a nemá s ňou nič spoločné.",
   "rules.prize": "Výhra: {prize}",
@@ -470,16 +473,16 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     'Zapojíš sa tak, že kým je zápis otvorený, napíšeš "{keyword}" do Twitch chatu kanála {name}.',
   "rules.free": "Zapojenie je zadarmo. Nemusíš nič kúpiť, aby si sa zapojil alebo vyhral.",
   "rules.paidOnly":
-    "Zapojiť sa môžu len platiaci predplatitelia, takže do tejto súťaže sa nedá zapojiť zadarmo.",
+    "Zapojiť sa môžu len predplatitelia, takže do tejto súťaže sa nedá zapojiť zadarmo.",
   "rules.minAge": "Víťaz musí mať aspoň {age}.",
   "rules.excludedCountries": "Ľudia, ktorí žijú na týchto miestach, nemôžu vyhrať: {places}.",
   "rules.checkedByStreamer":
-    "Rafflink nevie overiť vek ani to, kde niekto žije. Pred odovzdaním výhry to overí {name}.",
+    "Rafflink nevie overiť vek ani to, kde niekto žije. {name} to môže overiť a výhru neodovzdať.",
   "rules.entriesEndManual": "Zápis končí, keď ho {name} uzavrie.",
   "rules.draw":
-    "Víťazi sa losujú náhodne, podľa počtu lístkov, z verejného náhodného čísla (drand), ktoré tu nikto neovláda.",
+    "Víťazi sa žrebujú náhodne, podľa počtu lístkov, z verejného náhodného čísla (drand), ktoré tu nikto neovláda.",
   "rules.verify": "Žrebovanie si môže ktokoľvek overiť na {url}",
-  "rules.claimLate": "Ak víťaz výhru neprevezme včas, {name} môže losovať znova.",
+  "rules.claimLate": "Kým víťaz výhru neprevezme, {name} ho môže nahradiť novým žrebovaním.",
   "rules.delivery": "Výhru odovzdá {name}. Rafflink výhry nedrží ani neposiela.",
   "rules.extraTerms": "Ďalšie podmienky od {name}:",
   "rules.notice":

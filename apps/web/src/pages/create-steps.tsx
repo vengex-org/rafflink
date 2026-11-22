@@ -502,6 +502,7 @@ export function ReviewStep({
           i18n,
           values.audience === "subscribers",
           values.audience === "followers",
+          Number(values.tickets.viewer) === 0,
         )}
       />
       <ReviewRow

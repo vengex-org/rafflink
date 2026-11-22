@@ -368,6 +368,7 @@ export const en = {
   "who.subs": "Only subscribers can enter.",
   "who.followers": "Only followers can enter.",
   "who.everyone": "Everyone can enter.",
+  "who.ticketGroups": "Only the groups that get tickets can enter.",
   "extraTickets.subs": "Subscribers get {tickets}.",
   "extraTickets.some": "Some viewers get extra tickets. The list below shows how many.",
   "ticket.cannotEnter": "cannot enter",
@@ -455,10 +456,12 @@ export const en = {
   "rules.help": "The more tickets a group gets, the better its chance of winning.",
   "rules.groupTickets": "{group}: {tickets}",
   "rules.accountAge": "Account at least {days} old",
-  "rules.entriesEnd": "Entries end {time}",
-  "rules.claimTime": "Winners have {time} to claim",
+  "rules.entriesEnd": "Entries end {time}, or earlier if {name} closes them.",
+  "rules.claimTime": "Winners have {time} to claim.",
   "rules.claimWhere": "A winner claims on this page or in the stream chat.",
   "rules.organizer": "Organized by {name}. Rafflink is not the organizer.",
+  "rules.blocked": "Accounts {name} has blocked cannot enter.",
+  "rules.broadcaster": "{name} cannot enter their own giveaway.",
   "rules.platform":
     "Twitch does not sponsor, endorse or run this giveaway and is not connected to it.",
   "rules.prize": "Prize: {prize}",
@@ -466,17 +469,16 @@ export const en = {
   "rules.enterPage": "To enter, sign in with Twitch on this page.",
   "rules.enterChat": 'To enter, type "{keyword}" in {name}\'s Twitch chat while entries are open.',
   "rules.free": "Entering is free. You do not have to buy anything to enter or to win.",
-  "rules.paidOnly":
-    "Only paying subscribers can enter, so there is no free way to enter this giveaway.",
+  "rules.paidOnly": "Only subscribers can enter, so there is no free way to enter this giveaway.",
   "rules.minAge": "Winners must be at least {age} old.",
   "rules.excludedCountries": "People who live in these places cannot win: {places}.",
   "rules.checkedByStreamer":
-    "Rafflink cannot check age or where someone lives. {name} checks this before handing over the prize.",
+    "Rafflink cannot check age or where someone lives. {name} may check this and withhold the prize.",
   "rules.entriesEndManual": "Entries end when {name} closes them.",
   "rules.draw":
     "Winners are drawn at random, weighted by tickets, from a public random number (drand) that nobody here controls.",
   "rules.verify": "Anyone can check the draw at {url}",
-  "rules.claimLate": "If a winner does not claim in time, {name} may draw again.",
+  "rules.claimLate": "Until the winner claims the prize, {name} can replace them with a new draw.",
   "rules.delivery": "{name} hands over the prize. Rafflink does not hold or send prizes.",
   "rules.extraTerms": "More terms from {name}:",
   "rules.notice":
