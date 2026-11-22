@@ -87,6 +87,10 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
     return (await this.opened).room.entriesPerSecondBefore(...args)
   }
+  async liveCounts() {
+    const { room } = await this.opened
+    return { ...room.liveCounts(), viewers: this.ctx.getWebSockets(viewerTag).length }
+  }
 
   /** Accepts a page's WebSocket and sends it the current snapshot (without the winner chat for the overlay), or for a viewer's page the current outcome; the Worker has already checked who may connect. */
   override async fetch(request: Request): Promise<Response> {

@@ -22,6 +22,7 @@ import {
   ServerIcon,
   UsersIcon,
 } from "../components/icons.tsx"
+import { LiveCards, LiveStatus } from "../components/admin-live.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
 import { Stat } from "../components/live-parts.tsx"
 import { Failed, Loading, SignIn, Status } from "../components/notice.tsx"
@@ -32,6 +33,7 @@ import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { cloudflarePlansUrl } from "../lib/links.ts"
 import { useAction } from "../lib/use-action.ts"
+import { useAdminStats } from "../lib/use-admin-stats.ts"
 import { useLoad } from "../lib/use-load.ts"
 
 export function AdminPage() {
@@ -72,21 +74,36 @@ function Report({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const { queue, plan } = report
+  const { plan } = report
+  const { load, refreshNow } = useAdminStats()
+  // The page loads once and shows the polled numbers as soon as the first poll answers.
+  const stats = load.state === "loading" ? null : load.stats
+  const queue = stats?.queue ?? report.queue
   return (
     <>
       <div className="page-head">
         <h1>{t("admin.title")}</h1>
       </div>
+      <LiveStatus load={load} />
       {report.alerts.length === 0 ? null : (
         <UsageAlerts alerts={report.alerts} onFree={plan?.current === "free"} />
       )}
       <div className="card-grid">
+        {stats === null ? null : <LiveCards stats={stats} />}
         <section className="card" aria-labelledby="usage">
           <h2 id="usage">{t("admin.usage.title")}</h2>
-          <UsageBars usage={report.usage} />
+          <UsageBars usage={stats === null ? report.usage : stats.usage} />
         </section>
-        {plan === null ? null : <PlanCard plan={plan} onSwitched={onPlanSwitched} />}
+        {plan === null ? null : (
+          <PlanCard
+            plan={plan}
+            onSwitched={() => {
+              onPlanSwitched()
+              // The polled usage is measured against the plan that was just replaced.
+              refreshNow()
+            }}
+          />
+        )}
         {report.signupOpen ? null : <AccessCard />}
         <section className="card" aria-labelledby="queue">
           <h2 id="queue">{t("admin.queue.title")}</h2>
@@ -116,6 +133,20 @@ function Report({
               icon={<AlertIcon />}
               value={i18n.number(queue.lostClaims)}
               label={t("admin.queue.lostClaims")}
+            />
+            <Stat
+              icon={<AlertIcon />}
+              value={i18n.number(queue.rateLimited)}
+              label={t("admin.queue.rateLimited")}
+            />
+            <Stat
+              icon={<ClockIcon />}
+              value={
+                queue.lastRateLimitedAt === 0
+                  ? t("admin.queue.never")
+                  : i18n.time(queue.lastRateLimitedAt)
+              }
+              label={t("admin.queue.lastRateLimited")}
             />
             <Stat
               icon={<ClockIcon />}

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, waitFor, within } from "@testing-library/react"
-import { mockFetch, ok } from "./mock-fetch.ts"
+import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 afterEach(() => {
@@ -15,6 +15,9 @@ const queue = {
   dropped: 2,
   abandonedResults: 1,
   lostClaims: 3,
+  rateLimited: 9,
+  lastRateLimitedAt: 0,
+  rateLimitedMinutes: [],
 }
 const quota = (used: number, limit: number | null) => ({ used, limit })
 const notOverridden = {
@@ -57,11 +60,43 @@ function adminAnswer(overrides: Record<string, unknown> = {}) {
   })
 }
 
+const emptyStats = {
+  generatedAt: 0,
+  openGiveaways: 0,
+  giveaways: [],
+  viewers: 0,
+  entriesLastMinute: 0,
+  claimsLastMinute: 0,
+  series: [],
+  growth: [],
+  returningStreamers: 0,
+  returningWithinDays: 30,
+  access: null,
+  referrals: [],
+}
+
+/** Like `mockFetch`, and the live statistics repeat the usage and the queue the usage route answers, so each test states them once. */
+function mockAdmin(routes: Readonly<Record<string, () => Reply | Promise<Reply>>>) {
+  const usageRoute = routes["GET /api/admin/usage"]
+  const polled = async () => {
+    const body: unknown =
+      usageRoute === undefined ? { usage: null, queue } : (await usageRoute()).body
+    const { usage, queue: polledQueue } =
+      typeof body === "object" && body !== null ? Object.fromEntries(Object.entries(body)) : {}
+    return ok({ ...emptyStats, usage: usage ?? null, queue: polledQueue ?? queue })
+  }
+  return mockFetch({
+    "GET /api/admin/stats": polled,
+    "GET /api/admin/stats?fresh=1": polled,
+    ...routes,
+  })
+}
+
 const list = (streamers: readonly unknown[], truncated = false) => ({ streamers, truncated })
 
 describe("admin page", () => {
   it("shows the usage as bars with a sentence and the queue counters with labels", async () => {
-    mockFetch({
+    mockAdmin({
       "GET /api/admin/usage": () => adminAnswer({ usage: freeUsage(62_000), plan: freePlan }),
     })
 
@@ -80,7 +115,7 @@ describe("admin page", () => {
   })
 
   it("says the usage is unavailable when the usage source did not answer", async () => {
-    mockFetch({ "GET /api/admin/usage": () => adminAnswer({ usage: "unavailable" }) })
+    mockAdmin({ "GET /api/admin/usage": () => adminAnswer({ usage: "unavailable" }) })
 
     const view = renderApp("/admin")
 
@@ -89,7 +124,7 @@ describe("admin page", () => {
   })
 
   it("says there is no daily limit when the target has none", async () => {
-    mockFetch({ "GET /api/admin/usage": () => adminAnswer() })
+    mockAdmin({ "GET /api/admin/usage": () => adminAnswer() })
 
     const view = renderApp("/admin")
 
@@ -97,7 +132,7 @@ describe("admin page", () => {
   })
 
   it("hides the plan switch on a target without a Cloudflare plan", async () => {
-    mockFetch({ "GET /api/admin/usage": () => adminAnswer() })
+    mockAdmin({ "GET /api/admin/usage": () => adminAnswer() })
 
     const view = renderApp("/admin")
 
@@ -107,7 +142,7 @@ describe("admin page", () => {
 
   it("shows the active Free limits and switches to Paid only after the confirm step", async () => {
     let plan: unknown = freePlan
-    const requests = mockFetch({
+    const requests = mockAdmin({
       "GET /api/admin/usage": () =>
         adminAnswer({
           usage:
@@ -155,10 +190,11 @@ describe("admin page", () => {
     expect(view.getAllByText("no daily limit")).toHaveLength(2)
     expect(view.getByText("10 requests today, no daily limit")).toBeTruthy()
     expect(view.queryByRole("region", { name: "Switch to Paid?" })).toBeNull()
+    expect(requests.map((request) => request.route)).toContain("GET /api/admin/stats?fresh=1")
   })
 
   it("cancels the confirm step without posting and keeps the current plan", async () => {
-    const requests = mockFetch({
+    const requests = mockAdmin({
       "GET /api/admin/usage": () => adminAnswer({ usage: freeUsage(10), plan: freePlan }),
     })
 
@@ -172,7 +208,7 @@ describe("admin page", () => {
   })
 
   it("says the switch failed when the server refuses it", async () => {
-    mockFetch({
+    mockAdmin({
       "GET /api/admin/usage": () => adminAnswer({ usage: freeUsage(10), plan: freePlan }),
       "POST /api/admin/plan": () => ({ status: 400, body: { error: "invalid-input" } }),
     })
@@ -187,7 +223,7 @@ describe("admin page", () => {
 
   it("says the plan is saved and shows it when only the queue could not be told", async () => {
     let plan: unknown = freePlan
-    mockFetch({
+    mockAdmin({
       "GET /api/admin/usage": () => adminAnswer({ usage: freeUsage(10), plan }),
       "POST /api/admin/plan": () => {
         plan = paidPlan
@@ -212,7 +248,7 @@ describe("admin page", () => {
 
   it("marks a limit that an env override sets", async () => {
     const overridden = { ...notOverridden, workerRequestsPerDay: true }
-    mockFetch({
+    mockAdmin({
       "GET /api/admin/usage": () =>
         adminAnswer({
           usage: freeUsage(10),
@@ -228,7 +264,7 @@ describe("admin page", () => {
   })
 
   it("warns from 70 percent of a daily limit, naming the limit and the switch to Paid", async () => {
-    mockFetch({
+    mockAdmin({
       "GET /api/admin/usage": () =>
         adminAnswer({
           usage: freeUsage(75_000, 70_000),
@@ -250,7 +286,7 @@ describe("admin page", () => {
   })
 
   it("shows no warning below the alert percent", async () => {
-    mockFetch({
+    mockAdmin({
       "GET /api/admin/usage": () => adminAnswer({ usage: freeUsage(69_000), plan: freePlan }),
     })
 
@@ -261,7 +297,7 @@ describe("admin page", () => {
   })
 
   it("refuses a signed-in streamer who is not an admin", async () => {
-    mockFetch({ "GET /api/admin/usage": () => ({ status: 403, body: { error: "forbidden" } }) })
+    mockAdmin({ "GET /api/admin/usage": () => ({ status: 403, body: { error: "forbidden" } }) })
 
     const view = renderApp("/admin")
 
@@ -269,7 +305,7 @@ describe("admin page", () => {
   })
 
   it("asks for a sign-in without a session", async () => {
-    mockFetch({ "GET /api/admin/usage": () => ({ status: 401, body: { error: "unauthorized" } }) })
+    mockAdmin({ "GET /api/admin/usage": () => ({ status: 401, body: { error: "unauthorized" } }) })
 
     const view = renderApp("/admin")
 
@@ -286,7 +322,7 @@ describe("admin page", () => {
     const allowed = { ...waiting, id: "s-ok", login: "oldie", displayName: "Oldie", approvedAt: 1 }
 
     it("tells the admin when a list is cut", async () => {
-      mockFetch({
+      mockAdmin({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
         "GET /api/admin/streamers": () =>
           ok({ pending: list([waiting], true), approved: list([]) }),
@@ -300,7 +336,7 @@ describe("admin page", () => {
     })
 
     it("shows no access section while signup is open", async () => {
-      mockFetch({ "GET /api/admin/usage": () => adminAnswer() })
+      mockAdmin({ "GET /api/admin/usage": () => adminAnswer() })
 
       const view = renderApp("/admin")
 
@@ -309,7 +345,7 @@ describe("admin page", () => {
     })
 
     it("lists waiting and approved streamers with their login and first sign-in", async () => {
-      mockFetch({
+      mockAdmin({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
         "GET /api/admin/streamers": () =>
           ok({ pending: list([waiting]), approved: list([allowed]) }),
@@ -328,7 +364,7 @@ describe("admin page", () => {
 
     it("approves a waiting streamer and reloads the lists", async () => {
       let approved = false
-      const requests = mockFetch({
+      const requests = mockAdmin({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
         "GET /api/admin/streamers": () =>
           ok(
@@ -354,7 +390,7 @@ describe("admin page", () => {
 
     it("revokes an approved streamer", async () => {
       let revoked = false
-      mockFetch({
+      mockAdmin({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
         "GET /api/admin/streamers": () =>
           ok(
@@ -376,7 +412,7 @@ describe("admin page", () => {
     })
 
     it("says so when the server refuses the decision", async () => {
-      mockFetch({
+      mockAdmin({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
         "GET /api/admin/streamers": () => ok({ pending: list([waiting]), approved: list([]) }),
         "POST /api/admin/streamers/s-wait/approve": () => ({

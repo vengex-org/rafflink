@@ -13,7 +13,8 @@ import { MemoryRateLimiter } from "@rafflink/core/lib/memory-rate-limiter"
 import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { applyMigrations } from "@rafflink/core/room/migrate"
-import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
+import { runRoomAlarm, type RoomAlarmDeps } from "@rafflink/core/room/run-room-alarm"
+import { StatsStore } from "@rafflink/core/stats/stats-store"
 import { subscribeChat } from "@rafflink/core/room/subscribe-chat"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { TokenQueue, type TokenQueueStub } from "@rafflink/core/queue/token-queue"
@@ -63,10 +64,13 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const accountsDb = openDatabase(join(config.dataDir, accountsFileName))
   const applied = applyAccountsMigrations(accountsDb, coreAccountsSchemaDir(), clock)
   if (applied.length > 0) console.info("accounts migrations applied", { count: applied.length })
-  const accounts = new AccountStore(new BunSqliteAsyncSql(accountsDb), config)
+  const accountsSql = new BunSqliteAsyncSql(accountsDb)
+  const accounts = new AccountStore(accountsSql, config)
+  const stats = new StatsStore(accountsSql, config)
   const twitch = new TwitchClient(config, fetch)
   const keyRing = await openKeyRing(config.tokenSealKeys)
   const tokenDeps: StreamerTokenDeps = { clock, random, twitch, accounts, keyRing }
+  const alarmDeps: RoomAlarmDeps = { ...tokenDeps, stats }
 
   const rooms = new LocalRoomDirectory({
     roomsDir: join(config.dataDir, roomsDirName),
@@ -75,7 +79,8 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     random,
     beacon: new DrandBeacon(config, fetch, random),
     publish: (topic, message) => void server.publish(topic, message),
-    onAlarm: (giveawayId, room) => runRoomAlarm(tokenDeps, giveawayId, room),
+    subscriberCount: (topic) => server.subscriberCount(topic),
+    onAlarm: (giveawayId, room) => runRoomAlarm(alarmDeps, giveawayId, room),
     connector: new BunSocketConnector(),
     subscribeChat: (giveawayId, sessionId) => subscribeChat(tokenDeps, giveawayId, sessionId),
   })
@@ -115,6 +120,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const deps: AppDeps = {
     ...entryDeps,
     queue: remoteQueue(queue),
+    stats,
     usage: { today: async () => null },
     planQueue: null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),

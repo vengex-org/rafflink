@@ -25,6 +25,8 @@ export interface LocalRoomDirectoryDeps {
   readonly beacon: RandomnessBeacon
   /** Sends one text to every socket subscribed to the topic. */
   readonly publish: (topic: string, message: string) => void
+  /** How many sockets are subscribed to the topic. */
+  readonly subscriberCount: (topic: string) => number
   /** Runs when a room's alarm fires; its error is logged and goes no further. */
   readonly onAlarm: (giveawayId: string, room: GiveawayRoom) => Promise<void>
   readonly connector: SocketConnector
@@ -67,7 +69,9 @@ export class LocalRoomDirectory implements RoomDirectory {
   }
 
   get(giveawayId: string): RoomStub {
-    return new LocalRoomStub(this.roomFor(giveawayId))
+    return new LocalRoomStub(this.roomFor(giveawayId), () =>
+      this.deps.subscriberCount(viewerTopic(giveawayId)),
+    )
   }
 
   /** The outcome a viewer's page connecting now starts from, as the JSON text of a push. */
@@ -166,7 +170,10 @@ const sqliteSuffix = ".sqlite"
 
 /** The room's methods as the async stub the HTTP app expects; a locked database is transient, anything else is not. */
 class LocalRoomStub implements RoomStub {
-  constructor(private readonly room: GiveawayRoom) {}
+  constructor(
+    private readonly room: GiveawayRoom,
+    private readonly viewers: () => number,
+  ) {}
 
   init(...args: Parameters<GiveawayRoom["init"]>) {
     return inRoom(() => this.room.init(...args))
@@ -221,6 +228,9 @@ class LocalRoomStub implements RoomStub {
   }
   entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
     return inRoom(() => this.room.entriesPerSecondBefore(...args))
+  }
+  liveCounts() {
+    return inRoom(() => ({ ...this.room.liveCounts(), viewers: this.viewers() }))
   }
 }
 

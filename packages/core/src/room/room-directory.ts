@@ -1,9 +1,14 @@
 import type { Remote } from "../ports.ts"
-import type { GiveawayRoom } from "./giveaway-room.ts"
+import type { GiveawayRoom, RoomCounts } from "./giveaway-room.ts"
+
+/** The counts of a room that is open now; `viewers` are the giveaway pages connected to it, which only the target's socket layer knows. */
+export interface LiveCounts extends RoomCounts {
+  readonly viewers: number
+}
 
 /** The room methods the HTTP app calls, as an async stub: a Durable Object stub, or an in-process room. */
 export type RoomStub = Remote<
-  Pick<
+  { liveCounts(): LiveCounts } & Pick<
     GiveawayRoom,
     | "init"
     | "enter"

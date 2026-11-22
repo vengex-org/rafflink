@@ -861,3 +861,96 @@ describe("token queue queries", () => {
     })
   }
 })
+
+const rateLimitedProcess: Process = async () => ({ kind: "deferred", cause: "rate-limited" })
+
+describe("TokenQueue 429 counters", () => {
+  it("counts a 429 on the direct path with its minute and time", () => {
+    const { queue, clock } = setup()
+    const minuteStart = Math.floor(clock.now() / 60_000) * 60_000
+
+    queue.enqueue(item("c1"), "rate-limited")
+    queue.enqueue(item("c2"), "rate-limited")
+
+    expect(queue.stats()).toMatchObject({
+      rateLimited: 2,
+      lastRateLimitedAt: clock.now(),
+      rateLimitedMinutes: [{ minute: minuteStart, count: 2 }],
+    })
+  })
+
+  it("counts no 429 for a code queued because of a backlog or an outage", () => {
+    const { queue } = setup()
+
+    queue.enqueue(item("c1"), "backlog")
+    queue.enqueue(item("c2"), "unavailable")
+
+    expect(queue.stats()).toMatchObject({
+      rateLimited: 0,
+      lastRateLimitedAt: 0,
+      rateLimitedMinutes: [],
+    })
+  })
+
+  it("counts every 429 of a pass of the queue", async () => {
+    const { queue, clock } = setup(rateLimitedProcess)
+    for (let code = 1; code <= 6; code++) queue.enqueue(item(`c${code}`), "unavailable")
+    clock.advance(20_000)
+
+    await queue.onAlarm()
+
+    // The grown rate is above 6, so the pass takes all six waiting codes.
+    expect(queue.stats().rateLimited).toBe(6)
+    expect(queue.stats().lastRateLimitedAt).toBe(clock.now())
+  })
+
+  it("keeps the counts of separate minutes apart and deletes the minutes past the retention", async () => {
+    const { queue, clock } = setup()
+    const first = Math.floor(clock.now() / 60_000) * 60_000
+    queue.enqueue(item("c1"), "rate-limited")
+    clock.advance(60_000)
+    queue.enqueue(item("c2"), "rate-limited")
+    expect(queue.stats().rateLimitedMinutes).toEqual([
+      { minute: first, count: 1 },
+      { minute: first + 60_000, count: 1 },
+    ])
+
+    clock.advance(config.metricsRetentionHours * 3_600_000 - 60_000)
+    await queue.onAlarm()
+
+    expect(queue.stats().rateLimitedMinutes).toEqual([{ minute: first + 60_000, count: 1 }])
+    expect(queue.stats().rateLimited).toBe(2)
+  })
+})
+
+describe("TokenQueue populated before the 429 counters", () => {
+  it("keeps its waiting codes and counters and starts the 429 counters at zero", () => {
+    const db = new Database(":memory:")
+    const sql = new BunSqliteSyncSql(db)
+    applyMigrations(sql, queueMigrations.slice(0, 2))
+    db.run("INSERT INTO queue_stats (id, rate_per_second, dropped) VALUES (1, 7, 3)")
+    db.run(
+      "INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state) VALUES ('t1', 'c', 'g1', 'n', 1, 'queued')",
+    )
+    applyMigrations(sql, queueMigrations)
+    const queue = new TokenQueue({
+      sql,
+      alarm: new TestAlarm(),
+      clock: new TestClock(1_000_000),
+      random: secureRandom,
+      config,
+      process: async () => entered,
+      rooms: { get: () => ({ entriesPerSecondBefore: async () => 0 }) },
+      entriesPerInvocation: config.queueMaxRatePerSecond,
+    })
+
+    expect(queue.stats()).toMatchObject({
+      queued: 1,
+      ratePerSecond: 7,
+      dropped: 3,
+      rateLimited: 0,
+      lastRateLimitedAt: 0,
+      rateLimitedMinutes: [],
+    })
+  })
+})

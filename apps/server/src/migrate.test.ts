@@ -96,10 +96,13 @@ describe("applyAccountsMigrations", () => {
       "0005_profile_image.sql",
       "0006_cloudflare_plan.sql",
       "0007_streamer_access.sql",
+      "0008_stats.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",
       "giveaways",
+      "metrics_minute",
+      "referrals",
       "schema_migrations",
       "streamer_tokens",
       "streamers",

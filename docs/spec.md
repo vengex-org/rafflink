@@ -47,8 +47,8 @@ needs it. The free plan fits about 4 giveaways of 12,000 entries per day for all
 budget), and over a limit entries fail. So the hosted service:
 
 - reads the day's Worker and Durable Object requests from the Cloudflare GraphQL Analytics API on demand,
-  when the admin page opens and when a giveaway is created, and shows the remaining budget on the admin
-  page. Counting every request in D1 would cost about 12,000 D1 writes per giveaway against a free limit of
+  when the admin page opens, then every 10 seconds while its tab is visible (the answer is reused for 5
+  seconds), and when a giveaway is created, and shows the remaining budget on the admin page. Counting every request in D1 would cost about 12,000 D1 writes per giveaway against a free limit of
   100,000 per day, so nothing is counted per request;
 - moves to Paid on the first day that uses 70% (USAGE_ALERT_PERCENT) of any daily limit, when the admin page warns;
 - warns the admin on the admin page once the day's Worker or Durable Object requests reach 70%
@@ -371,19 +371,24 @@ streamer_tokens(streamer_id, refresh_token_enc, scopes, validated_at,
 giveaways(id, code UNIQUE, streamer_id, title, prize, rules_json, status,
           closes_at, claim_seconds, overlay_token, created_at)
 cloudflare_plan(id CHECK (id = 1), plan CHECK (plan IN ('free', 'paid')), changed_at, changed_by)
+metrics_minute(minute, entries, claims, PRIMARY KEY (minute)) WITHOUT ROWID   -- admin chart, aggregate
+referrals(day, ref, count, PRIMARY KEY (day, ref)) WITHOUT ROWID              -- ?ref= visits, aggregate
+-- indexes for the admin statistics: giveaways(created_at), giveaways(created_at) WHERE status = 'open',
+-- streamers(created_at)
 
 -- token queue (its own Durable Object or SQLite file)
 token_queue(ticket, code, giveaway_id, nonce, received_at, state, result_json,
             PRIMARY KEY (ticket)) WITHOUT ROWID
 queue_stats(id, rate_per_second, rate_changed_at, cooldown_until, measure_giveaway_id, measure_until,
-            dropped, abandoned_results, lost_claims)
+            dropped, abandoned_results, lost_claims, rate_limited_total, last_rate_limited_at)
+rate_limited_minute(minute, count, PRIMARY KEY (minute)) WITHOUT ROWID
 
 -- inside each giveaway's room
 room_state(id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds,
            status, closes_at, seed, entrant_count, ticket_total, role_refresh_failures,
            eventsub_failures, chat_unavailable, roles_refresh_at, mirror_pending,
            merkle_root, drand_round, committed_at, drand_chain_hash, drand_genesis_seconds,
-           drand_period_seconds, winner_count, draw_requested)
+           drand_period_seconds, winner_count, draw_requested, metrics_reported_until)
 entries(platform, platform_user_id, login, display_name, profile_image_url, group_name, tickets, entered_at, salt,
         PRIMARY KEY (platform, platform_user_id)) WITHOUT ROWID
 channel_roles(platform, platform_user_id, role, fetched_at,
@@ -570,7 +575,8 @@ Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
 Decisions made while building M1 (2026-11-20):
 
 - Hourly token validation is in M1, not M2: Twitch requires it from the moment an app keeps an OAuth session.
-- Daily usage is read from the Cloudflare GraphQL Analytics API on demand; there is no `usage_daily` table.
+- Daily usage is read from the Cloudflare GraphQL Analytics API on demand (the admin page polls it every 10
+  seconds while visible); there is no `usage_daily` table.
 - The M1 draw is `HMAC-SHA256(seed, n)` with a random 32-byte seed; M2 only swaps the seed for a drand round.
 - The broadcaster cannot enter their own giveaway.
 - The live page has a read-only overlay URL with an unguessable token for OBS.

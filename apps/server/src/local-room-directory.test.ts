@@ -49,6 +49,7 @@ function directoryWith(overrides: Partial<LocalRoomDirectoryDeps> = {}): LocalRo
     random: systemRandom,
     beacon: new FakeBeacon(),
     publish: () => {},
+    subscriberCount: () => 0,
     onAlarm: async () => {},
     connector: idleChat.connector,
     subscribeChat: idleChat.subscribe,
@@ -254,5 +255,22 @@ describe("LocalRoomDirectory", () => {
     expect(finished).toEqual([id])
     expect(error).not.toHaveBeenCalled()
     error.mockRestore()
+  })
+})
+
+describe("LocalRoomDirectory live counts", () => {
+  it("adds the viewer pages subscribed to the room's own topic to the counts of its rows", async () => {
+    const directory = directoryWith({
+      subscriberCount: (topic) => (topic === viewerTopic(id) ? 3 : topic === liveTopic(id) ? 9 : 0),
+    })
+    await directory.get(id).init(giveawayInit(id))
+    await directory.get(id).enter(viewer)
+
+    expect(await directory.get(id).liveCounts()).toEqual({
+      entrants: 1,
+      entriesLastMinute: 1,
+      claimsLastMinute: 0,
+      viewers: 3,
+    })
   })
 })

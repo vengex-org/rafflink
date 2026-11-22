@@ -1,7 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import type { Hono } from "hono"
-import { createGiveaway, createHarness, users, type Harness } from "../../test/app-fixture.ts"
+import {
+  createGiveaway,
+  createHarness,
+  testAddressHeader,
+  users,
+  type Harness,
+} from "../../test/app-fixture.ts"
 import { spaTemplate } from "../../test/contract/spa-fixture.ts"
+import { dayMs } from "../stats/time.ts"
 import { createApp } from "./create-app.ts"
 
 let harness: Harness
@@ -76,5 +83,107 @@ describe("page routes", () => {
 
     expect(response.status).toBe(404)
     expect(await response.json()).toEqual({ error: "not-found" })
+  })
+})
+
+const sources = () => harness.deps.stats.topReferrals(harness.clock.now() - dayMs, 10)
+
+const visit = (target: Hono, path: string, address = "203.0.113.5") =>
+  target.request(path, { headers: { [testAddressHeader]: address } })
+
+describe("referral counting on the home page", () => {
+  it("counts a visit of the home page by its ref label, with no cookie and no redirect", async () => {
+    const response = await visit(app, "/?ref=reddit")
+    await visit(app, "/?ref=reddit&utm_source=x")
+    await visit(app, "/?ref=blog")
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(await sources()).toEqual([
+      { ref: "reddit", visits: 2 },
+      { ref: "blog", visits: 1 },
+    ])
+  })
+
+  it("counts nothing for a visit without a client address and logs the reason", async () => {
+    const info = spyOn(console, "info").mockImplementation(() => {})
+
+    const response = await app.request("/?ref=reddit")
+
+    expect(response.status).toBe(200)
+    expect(await sources()).toEqual([])
+    expect(info).toHaveBeenCalledWith("referral visit not counted", { reason: "no-address" })
+    info.mockRestore()
+  })
+
+  it("stops counting once the day's visits reached the most, serves the page and logs the reason", async () => {
+    const info = spyOn(console, "info").mockImplementation(() => {})
+    await harness.stop()
+    harness = await createHarness({ env: { REFERRAL_VISITS_PER_DAY_MAX: "2" } })
+    app = createApp(harness.deps, async () => spaTemplate)
+
+    const statuses = []
+    for (const address of ["198.51.100.1", "198.51.100.2", "198.51.100.3"]) {
+      statuses.push((await visit(app, "/?ref=reddit", address)).status)
+    }
+
+    expect(statuses).toEqual([200, 200, 200])
+    expect(await sources()).toEqual([{ ref: "reddit", visits: 2 }])
+    expect(info).toHaveBeenCalledWith("referral visit not counted", { reason: "day-limit" })
+    info.mockRestore()
+  })
+
+  it("stops counting an address over the entry limit, still serves the page, and keeps other addresses and entry sign-ins unaffected", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { ENTRY_IP_LIMIT_PER_MINUTE: "2" } })
+    app = createApp(harness.deps, async () => spaTemplate)
+
+    const info = spyOn(console, "info").mockImplementation(() => {})
+    const statuses = []
+    for (let visits = 0; visits < 4; visits++) {
+      statuses.push((await visit(app, "/?ref=reddit")).status)
+    }
+    await visit(app, "/?ref=reddit", "198.51.100.8")
+
+    expect(statuses).toEqual([200, 200, 200, 200])
+    expect(await sources()).toEqual([{ ref: "reddit", visits: 3 }])
+    expect(await harness.deps.entryIpLimiter.allow("203.0.113.5")).toBe(true)
+    expect(info).toHaveBeenCalledWith("referral visit not counted", { reason: "rate-limited" })
+    expect(JSON.stringify(info.mock.calls)).not.toContain("203.0.113")
+    info.mockRestore()
+  })
+
+  it("counts nothing for a missing, empty or malformed ref", async () => {
+    for (const query of [
+      "",
+      "?ref=",
+      "?ref=Reddit",
+      "?ref=a%20b",
+      `?ref=${"a".repeat(33)}`,
+      "?other=x",
+    ]) {
+      const response = await visit(app, `/${query}`)
+      expect(response.status).toBe(200)
+    }
+
+    expect(await sources()).toEqual([])
+  })
+
+  it("counts only the home page, not other pages", async () => {
+    await visit(app, "/privacy?ref=reddit")
+    await visit(app, "/dashboard?ref=reddit")
+
+    expect(await sources()).toEqual([])
+  })
+
+  it("serves the page and logs when the count cannot be written", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    harness.accountsDb.run("DROP TABLE referrals")
+
+    const response = await visit(app, "/?ref=reddit")
+
+    expect(response.status).toBe(200)
+    expect(warn).toHaveBeenCalledWith("referral count failed", { errorClass: "Error" })
+    warn.mockRestore()
   })
 })

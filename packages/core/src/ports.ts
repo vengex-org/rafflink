@@ -4,6 +4,9 @@ export type Instant = number
 /** A value SQLite can bind or return. */
 export type SqlValue = string | number | bigint | null | Uint8Array
 
+/** The smallest bound-parameter limit among the targets (D1). */
+export const maxBoundParameters = 100
+
 /** A result row as the driver returns it: unconstrained, so the caller parses it at its repository edge. */
 export type SqlRow = Readonly<Record<string, SqlValue>>
 
