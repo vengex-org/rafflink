@@ -20,7 +20,7 @@ export const siteRoutes: ReactElement | null = null
 
 export function HomePage() {
   const { t } = useI18n()
-  const problem = signInProblem(useConsumedParam("signin"))
+  const problem = signInProblem(useConsumedParam("signin")?.value ?? null)
   const { streamer, donateUrl } = useStreamerSession()
   return (
     <div className="home">

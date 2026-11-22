@@ -14,7 +14,7 @@ import { OverlayPage } from "./pages/overlay-page.tsx"
 import { VerifyLookupPage } from "./pages/verify-lookup-page.tsx"
 import { VerifyPage } from "./pages/verify-page.tsx"
 import { parseGiveawayCode } from "./lib/giveaway-code.ts"
-import { giveawayPath, verifyPath } from "./lib/routes.ts"
+import { giveawayPath, staticSegments, staticSubSegments, verifyPath } from "./lib/routes.ts"
 import { useConsumedParam } from "./lib/use-consumed-param.ts"
 import { HomePage, siteRoutes } from "./site/site.tsx"
 
@@ -53,21 +53,20 @@ export function AppRoutes() {
 /** A `?lang=` in the address, such as a link in a chat, picks the language once and is stored like a choice made in the menu. */
 function LinkedLanguage() {
   const { setLanguage } = useI18n()
-  const linked = parseLanguage(useConsumedParam("lang"))
-  const apply = useEffectEvent((language: NonNullable<typeof linked>) => setLanguage(language))
-  useEffect(() => {
-    if (linked !== null) apply(linked)
-  }, [linked])
+  const consumed = useConsumedParam("lang")
+  const apply = useEffectEvent((param: typeof consumed) => {
+    const linked = parseLanguage(param?.value ?? null)
+    if (linked !== null) setLanguage(linked)
+  })
+  useEffect(() => apply(consumed), [consumed])
   return null
 }
 
-// First path segments of the pages that are not giveaways; their canonical spelling is lowercase.
-const staticSegments = ["dashboard", "admin", "privacy", "terms", "verify", "live", "overlay"]
-
 /**
  * The router matches `/privacy/` like `/privacy`, and the static routes are case sensitive; the address bar gets
- * the one spelling: no trailing slash, and a static page in lowercase. A first segment that is a giveaway code
- * stays, so `/TERMS` is a giveaway; the code redirect of {@link GiveawayCode} handles the other cases.
+ * the one spelling: no trailing slash, and the fixed words of a path in lowercase while its ids stay as they are.
+ * A first segment that is a giveaway code stays, so `/TERMS` is a giveaway; the code redirect of
+ * {@link GiveawayCode} handles the other cases.
  */
 function CanonicalPath({ children }: { readonly children: ReactNode }) {
   const { pathname, search, hash } = useLocation()
@@ -79,6 +78,12 @@ function CanonicalPath({ children }: { readonly children: ReactNode }) {
     && parseGiveawayCode(first) !== first
   ) {
     segments[1] = first.toLowerCase()
+  }
+  // After `/g/<code>` the fixed word is the fourth segment, otherwise the third.
+  const wordAt = segments[1] === "g" ? 3 : 2
+  const word = segments[wordAt]
+  if (word !== undefined && staticSubSegments.includes(word.toLowerCase())) {
+    segments[wordAt] = word.toLowerCase()
   }
   const canonical = segments.join("/")
   // Nothing else renders while it redirects, so a route cannot redirect the same address elsewhere.

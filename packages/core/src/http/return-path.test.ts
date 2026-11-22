@@ -2,12 +2,16 @@ import { describe, expect, it } from "bun:test"
 import { safeReturnPath } from "./return-path.ts"
 
 describe("safeReturnPath", () => {
-  it.each(["/dashboard", "/live/abc123", "/dashboard/new?step=2", "/live/abc?q=a%2Fb"])(
-    "keeps the path %s on this site",
-    (path) => {
-      expect(safeReturnPath(path)).toBe(path)
-    },
-  )
+  it.each([
+    "/dashboard",
+    "/live/abc123",
+    "/dashboard/new?step=2",
+    "/live/abc?q=a%2Fb",
+    "/authors",
+    "/apiary",
+  ])("keeps the path %s on this site", (path) => {
+    expect(safeReturnPath(path)).toBe(path)
+  })
 
   it.each([
     ["nothing", undefined],
@@ -22,6 +26,12 @@ describe("safeReturnPath", () => {
     ["a newline", "/live\n/x"],
     ["a null character", "/live\u0000"],
     ["a delete character", "/live\u007f"],
+    ["a space", "/live/a b"],
+    ["a letter outside ASCII", "/live/café"],
+    ["an emoji", "/live/\u{1F600}"],
+    ["a sign-in path", "/auth/twitch/streamer/start"],
+    ["an API path", "/api/session"],
+    ["a fake Twitch path", "/oauth2/authorize"],
     ["a path longer than a cookie should carry", `/${"a".repeat(200)}`],
   ])("refuses %s", (_, path) => {
     expect(safeReturnPath(path)).toBeNull()

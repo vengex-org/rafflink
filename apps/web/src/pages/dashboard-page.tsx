@@ -1,5 +1,5 @@
-import type { ReactNode } from "react"
-import { Link, useLocation } from "react-router"
+import { useEffect, type ReactNode } from "react"
+import { Link, useLocation, useNavigate } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { RoomStatus } from "@rafflink/core/room/rows"
 import { listGiveaways } from "../api/client.ts"
@@ -53,14 +53,21 @@ function GiveawayList({
   approved,
 }: {
   readonly giveaways: readonly DashboardGiveaway[]
-  /** False once the server refused a create with `streamer_not_approved`. */
+  /** False once the server refused a create with `streamer_not_approved`; the session, once loaded, has the last word. */
   readonly approved: boolean
 }) {
   const i18n = useI18n()
   const { t } = i18n
   const { donateUrl, streamer } = useStreamerSession()
   // An unknown session is not a refusal: the server still enforces approval on create.
-  const canCreate = approved && (streamer === null || streamer.canCreate)
+  const canCreate = streamer === null ? approved : streamer.canCreate
+  // The refusal in the history entry is out of date once the session says the streamer may create.
+  const superseded = !approved && canCreate
+  const { pathname, search } = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (superseded) navigate({ pathname, search }, { replace: true, state: null })
+  }, [superseded, pathname, search, navigate])
   if (giveaways.length === 0) {
     if (!canCreate) {
       return (

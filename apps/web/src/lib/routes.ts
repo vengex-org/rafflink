@@ -2,6 +2,21 @@ import type { OverlayOptions } from "./overlay-options.ts"
 
 export { giveawayPath, verifyPath } from "@rafflink/core/lib/page-paths"
 
+/** The first segments of the pages that are not giveaways; their canonical spelling is lowercase. `g` is the old giveaway link. */
+export const staticSegments = [
+  "dashboard",
+  "admin",
+  "privacy",
+  "terms",
+  "verify",
+  "live",
+  "overlay",
+  "g",
+]
+
+/** The fixed words after a first segment or a giveaway code; the segments between them are ids and tokens, whose case is theirs. */
+export const staticSubSegments = ["new", "created", "verify"]
+
 export const homePath = "/"
 export const dashboardPath = "/dashboard"
 export const verifyLookupPath = "/verify"

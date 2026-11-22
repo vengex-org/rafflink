@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
-import { Link, useSearchParams } from "react-router"
+import { useEffect, useEffectEvent, useRef, useState, type FormEvent, type ReactNode } from "react"
+import { Link, Navigate, useLocation, useSearchParams } from "react-router"
 import { createGiveaway, type CreateResult } from "../api/client.ts"
 import {
   ArrowLeftIcon,
@@ -13,6 +13,7 @@ import {
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { dashboardPath } from "../lib/routes.ts"
+import { isCreated, markCreated, readDraft } from "../lib/wizard-draft.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
@@ -26,12 +27,17 @@ import {
 
 type Created = Extract<CreateResult, { kind: "created" }>
 
+// Long enough that typing is one write to the history entry.
+const saveAfterMs = 400
+
 const stepNames = ["wizard.step.basics", "wizard.step.rules", "wizard.step.review"] as const
 
 /**
  * Creates a giveaway in three steps; each step is checked before the next, and the server's complaint sends the streamer back to its step.
  * The step is the `?step=` of the address: Next and Back add a history entry, so the browser's back button walks the steps.
- * The answers are not in the address, so a reload opens the furthest step already checked, which is the first.
+ * The answers and the furthest step checked are kept in the history entries, so Back, Forward and a reload restore them;
+ * an address typed by hand has none, and opens the first step. Once the giveaway exists, an entry of the same run sends
+ * the streamer to the dashboard instead of showing a form that would create it a second time.
  */
 export function CreateForm({
   seed,
@@ -46,16 +52,23 @@ export function CreateForm({
   readonly onNotApproved: () => void
 }) {
   const { t } = useI18n()
-  const [values, setValues] = useState(seed)
+  const { state } = useLocation()
+  const [saved] = useState(() => readDraft(state))
+  const [id] = useState(() => saved?.id ?? crypto.randomUUID())
+  const [values, setValues] = useState(saved?.values ?? seed)
   const [query, setQuery] = useSearchParams()
-  const [furthest, setFurthest] = useState<Step>(1)
+  const [furthest, setFurthest] = useState<Step>(saved?.furthest ?? 1)
   const wanted = query.get("step")
   const step = clampStep(wanted, furthest)
   const [issue, setIssue] = useState<Issue | null>(null)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 
-  const showStep = (target: Step, mode: "push" | "replace") =>
+  // Decided when the wizard opens: the create that finishes this run must not send it to the dashboard.
+  const [created] = useState(() => saved !== null && isCreated(saved.id))
+  const draftState = (reached: Step) => ({ draft: { id, values, furthest: reached } })
+
+  const showStep = (target: Step, mode: "push" | "replace", reached: Step = furthest) =>
     setQuery(
       (current) => {
         const next = new URLSearchParams(current)
@@ -63,8 +76,21 @@ export function CreateForm({
         else next.set("step", String(target))
         return next
       },
-      { replace: mode === "replace" },
+      { replace: mode === "replace", state: draftState(reached) },
     )
+
+  // The entry the streamer is on keeps the answers typed since the last step change, a moment after typing pauses.
+  const saveDraft = useEffectEvent((answers: Values, reached: Step) =>
+    setQuery((current) => current, {
+      replace: true,
+      state: { draft: { id, values: answers, furthest: reached } },
+    }),
+  )
+  useEffect(() => {
+    if (created) return
+    const timer = setTimeout(() => saveDraft(values, furthest), saveAfterMs)
+    return () => clearTimeout(timer)
+  }, [values, furthest, created])
 
   // An address that asks for a step the answers have not reached, or for none, is corrected in place.
   useEffect(() => {
@@ -84,8 +110,11 @@ export function CreateForm({
       setIssue(problem)
       if (problem === null) {
         const target = following(step)
-        setFurthest((reached) => (reached > target ? reached : target))
-        showStep(target, "push")
+        const reached = furthest > target ? furthest : target
+        setFurthest(reached)
+        // The entry left behind keeps the answers of this step.
+        showStep(step, "replace")
+        showStep(target, "push", reached)
       }
       return
     }
@@ -96,6 +125,7 @@ export function CreateForm({
       switch (result.kind) {
         case "created":
           setIssue(null)
+          markCreated(id)
           onCreated(result)
           return
         case "invalid":
@@ -116,6 +146,8 @@ export function CreateForm({
       setBusy(false)
     }
   }
+
+  if (created) return <Navigate replace to={dashboardPath} />
 
   return (
     <form

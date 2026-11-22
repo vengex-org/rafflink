@@ -301,6 +301,15 @@ describe("entrants table: search", () => {
     await waitFor(() => expect(view.address()).toBe("/live/gid-1"))
   })
 
+  it("takes a search that arrives in the address from elsewhere", async () => {
+    const { view } = await openLive(people, {}, liveSnapshot, "/live/gid-1?q=ada")
+
+    view.go("/live/gid-1?q=zoe")
+
+    await waitFor(() => expect(inputOf(view.getByLabelText("Search by name")).value).toBe("zoe"))
+    await waitFor(() => expect(names(view)).toEqual(["Zoe_Ada"]))
+  })
+
   it("opens with the search of the address already applied", async () => {
     const { view } = await openLive(people, {}, liveSnapshot, "/live/gid-1?q=ada")
 

@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
+import { staticSegments, staticSubSegments } from "../src/lib/routes.ts"
 import { dashboardGiveaway, giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
@@ -93,7 +95,10 @@ describe("static pages", () => {
     ["/Dashboard", "/dashboard"],
     ["/Admin", "/admin"],
     ["/LIVE/gid-1", "/live/gid-1"],
-    ["/Dashboard/Created/AbC", "/dashboard/Created/AbC"],
+    ["/Dashboard/Created/AbC", "/dashboard/created/AbC"],
+    ["/dashboard/NEW?step=2", "/dashboard/new?step=2"],
+    ["/ABCDE/Verify", "/ABCDE/verify"],
+    ["/G/abcde/VERIFY", "/ABCDE/verify"],
   ])("replaces %s with the lowercase path %s, never a giveaway code", async (typed, expected) => {
     const requests = mockFetch({})
 
@@ -119,6 +124,25 @@ describe("static pages", () => {
 
     expect(await view.findByRole("heading", { level: 1 })).toBeTruthy()
     expect(view.queryByRole("heading", { name: "Page not found" })).toBeNull()
+  })
+})
+
+describe("canonical spelling", () => {
+  it("knows every fixed word of every static route in app.tsx", () => {
+    const source = readFileSync(new URL("../src/app.tsx", import.meta.url), "utf8")
+    const paths = [...source.matchAll(/<Route\s+path="([^"]+)"/g)].map((match) => match[1] ?? "")
+    const words = paths.flatMap((path) =>
+      path
+        .split("/")
+        .map((segment, index) => ({ segment, index }))
+        .filter(({ segment }) => segment !== "" && segment !== "*" && !segment.startsWith(":")),
+    )
+
+    expect(words.length).toBeGreaterThan(8)
+    for (const { segment, index } of words) {
+      const known = index === 0 ? staticSegments : [...staticSegments, ...staticSubSegments]
+      expect([segment, known]).toEqual([segment, expect.arrayContaining([segment])])
+    }
   })
 })
 
@@ -169,6 +193,26 @@ describe("one-time parameters", () => {
     expect(
       await view.findByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
     ).toBeTruthy()
+  })
+
+  it("applies a ?lang= link followed later in the page, though the language was chosen again since", async () => {
+    mockFetch({})
+    const view = renderApp("/?lang=sk")
+    await view.findByRole("heading", {
+      name: "Férové Twitch súťaže, žrebované naživo na streame.",
+    })
+    await waitFor(() => expect(view.address()).toBe("/"))
+    fireEvent.click(view.getByRole("radio", { name: "English" }))
+    await view.findByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." })
+
+    view.go("/?lang=sk")
+
+    expect(
+      await view.findByRole("heading", {
+        name: "Férové Twitch súťaže, žrebované naživo na streame.",
+      }),
+    ).toBeTruthy()
+    await waitFor(() => expect(view.address()).toBe("/"))
   })
 
   it("ignores a language it does not offer and still removes the parameter", async () => {

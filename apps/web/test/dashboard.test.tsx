@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { cleanup, fireEvent } from "@testing-library/react"
+import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { stubClipboard } from "./clipboard.ts"
 import { dashboardGiveaway, donateUrl, rules, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
@@ -384,6 +384,26 @@ describe("dashboard", () => {
 
     expect(await view.findByRole("link", { name: "Create giveaway" })).toBeTruthy()
     expect(view.queryByRole("heading", { name: "Waiting for approval" })).toBeNull()
+  })
+
+  it("lets a session that allows creating outrank an old refusal and clears the refusal from the history entry", async () => {
+    mockFetch({ ...listed, "GET /api/session": () => ok(supportedSession) })
+
+    const view = renderApp("/dashboard", { kind: "not-approved" })
+
+    expect(await view.findByRole("link", { name: "New giveaway" })).toBeTruthy()
+    expect(view.queryByRole("heading", { name: "Waiting for approval" })).toBeNull()
+    await waitFor(() => expect(view.state()).toBeNull())
+  })
+
+  it("keeps the refusal while the session is unknown, and after a reload of the page", async () => {
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard", { kind: "not-approved" })
+
+    expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: "New giveaway" })).toBeNull()
+    expect(view.state()).toEqual({ kind: "not-approved" })
   })
 
   it("shows the waiting notice when the server refuses a create the session allowed", async () => {

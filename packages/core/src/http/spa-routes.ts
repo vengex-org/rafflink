@@ -6,7 +6,7 @@ import { errorClass } from "../lib/error-class.ts"
 import type { Clock, RateLimiter } from "../ports.ts"
 import { parseReferral } from "../stats/referral.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
-import { giveawayPath } from "../lib/page-paths.ts"
+import { giveawayPath, verifyPath } from "../lib/page-paths.ts"
 import { inlineScriptHashes, renderSpaHtml, type PageMeta } from "../lib/spa-html.ts"
 import { isApiPath } from "./api-paths.ts"
 import { contentSecurityPolicy } from "./security-headers.ts"
@@ -25,7 +25,7 @@ export interface SpaDeps {
   readonly stats: Pick<StatsStore, "countReferral">
 }
 
-const giveawayRoute = new RegExp(`^/(?:g/)?([${codeAlphabet}]{${codeLength}})(?:/verify)?$`)
+const giveawayRoute = new RegExp(`^/(?:g/)?([${codeAlphabet}]{${codeLength}})(/verify)?$`)
 
 /**
  * The page of every path that is not an API path: the built `index.html` with the link preview of its
@@ -43,14 +43,17 @@ export function spaRoutes(deps: SpaDeps, loadTemplate: SpaTemplateLoader): Hono 
 
     if (pathname === "/") await countReferral(deps, c.req.raw)
 
-    const code = giveawayRoute.exec(pathname)?.[1]
+    const route = giveawayRoute.exec(pathname)
+    const code = route?.[1]
+    const canonicalPath = (giveawayCode: string) =>
+      route?.[2] === undefined ? giveawayPath(giveawayCode) : verifyPath(giveawayCode)
     const giveaway = code === undefined ? null : await deps.accounts.findGiveawayByCode(code)
     const image = `${publicUrl}/og.png`
     const meta: PageMeta =
       giveaway === null
         ? { url: `${publicUrl}${pathname}`, image, text: null }
         : {
-            url: `${publicUrl}${giveawayPath(giveaway.code)}`,
+            url: `${publicUrl}${canonicalPath(giveaway.code)}`,
             image,
             text: {
               title: giveaway.title ?? `Giveaway ${giveaway.code}`,
