@@ -893,6 +893,8 @@ export const en = {
   "draw.facts.committed": "List fixed at (clock of the browser that fixed it)",
   "draw.early":
     "This list says it was fixed after drand round {round} was published, so the draw cannot be trusted.",
+  "draw.seenBefore":
+    "You opened this list before drand round {round} was published, so it was fixed before anyone could know the winners.",
   "draw.waiting": "The winners are drawn when drand round {round} is published.",
   "draw.drawn": "The winners follow from the list and the random number of drand round {round}.",
   "draw.invalid": "The signature of drand round {round} is not valid, so no winners are shown.",

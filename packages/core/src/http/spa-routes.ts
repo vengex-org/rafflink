@@ -26,6 +26,7 @@ export interface SpaDeps {
 }
 
 // The preview of a shared list draw; the list itself is in the fragment, which never reaches the server.
+// Only the Bun server applies it: Cloudflare serves `/draw` from the static assets without the Worker.
 const drawText = {
   title: "Draw from a list",
   description:

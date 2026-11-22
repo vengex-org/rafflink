@@ -91,9 +91,12 @@ export async function drawNames(
 
 /**
  * The fragment of the share link, without `#`. The names go in only while the whole fragment fits
- * {@link maxFragmentLength}; a longer list travels as the file of {@link listFile}.
+ * {@link maxFragmentLength}; a longer list travels as the file of {@link listFile}, and `withNames` is false.
  */
-export function shareFragment(commit: ListCommit, hash: string): string {
+export function shareFragment(
+  commit: ListCommit,
+  hash: string,
+): { readonly fragment: string; readonly withNames: boolean } {
   const params = new URLSearchParams({
     v: String(linkVersion),
     h: hash,
@@ -102,9 +105,11 @@ export function shareFragment(commit: ListCommit, hash: string): string {
     c: String(commit.committedAt),
   })
   if (commit.title !== "") params.set("t", commit.title)
-  const withNames = new URLSearchParams(params)
-  withNames.set("n", commit.names.join("\n"))
-  return withNames.toString().length <= maxFragmentLength ? withNames.toString() : params.toString()
+  const listed = new URLSearchParams(params)
+  listed.set("n", commit.names.join("\n"))
+  return listed.toString().length <= maxFragmentLength
+    ? { fragment: listed.toString(), withNames: true }
+    : { fragment: params.toString(), withNames: false }
 }
 
 /** Reads a share link fragment (with or without `#`); null when it is not one {@link shareFragment} could write. */

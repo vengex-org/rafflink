@@ -5,8 +5,9 @@ import { Link, useLocation, useNavigate } from "react-router"
 import { CopyLink } from "../components/copy-field.tsx"
 import { DrawShuffle } from "../components/draw-shuffle.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
+import { Fact } from "../components/fact.tsx"
 import { StepperField, TextField } from "../components/form-fields.tsx"
-import { AlertIcon, RefreshIcon, ShuffleIcon } from "../components/icons.tsx"
+import { AlertIcon, CheckCircleIcon, RefreshIcon, ShuffleIcon } from "../components/icons.tsx"
 import { Page } from "../components/page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { verifyBeaconSignature } from "../lib/beacon-signature.ts"
@@ -25,8 +26,8 @@ import {
   type ListCommit,
 } from "../lib/list-draw.ts"
 import { drawPath } from "../lib/routes.ts"
+import { sleep } from "../lib/use-entry-result.ts"
 import { fetchBeaconRound } from "../lib/verify-draw.ts"
-import { Fact } from "./verify-page.tsx"
 
 /**
  * A draw from a pasted list, without an account: the list is fixed to a future drand round and the winners
@@ -60,6 +61,7 @@ function DrawForm() {
   const [text, setText] = useState("")
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
   const names = parseNames(text)
   const count = names.kind === "names" ? names.names.length : 0
   const winnerCount = Number(winners)
@@ -82,12 +84,20 @@ function DrawForm() {
     setChecked(true)
     if (names.kind !== "names" || winnersError !== null || titleError !== null) return
     setBusy(true)
-    const { commit, hash } = await fixList(names.names, {
-      title: title.trim(),
-      winners: winnerCount,
-    })
-    // The list rides in the history entry too, so this tab keeps a list too long for the link through a reload.
-    navigate({ hash: shareFragment(commit, hash) }, { state: listFile(commit) })
+    setFailed(false)
+    try {
+      const { commit, hash } = await fixList(names.names, {
+        title: title.trim(),
+        winners: winnerCount,
+      })
+      // The list rides in the history entry too, so this tab keeps a list too long for the link through a reload.
+      navigate({ hash: shareFragment(commit, hash).fragment }, { state: listFile(commit) })
+    } catch (error) {
+      console.error("list commit failed", { errorClass: errorClass(error) })
+      setFailed(true)
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -126,6 +136,7 @@ function DrawForm() {
         <ShuffleIcon />
         {t("draw.commit")}
       </button>
+      {failed ? <p role="alert">{t("action.failed")}</p> : null}
     </form>
   )
 }
@@ -216,7 +227,16 @@ function FilePicker({ onPicked }: { readonly onPicked: (commit: ListCommit) => v
   const read = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
     if (file === undefined) return
-    const commit = parseListFile(await file.text())
+    let text: string
+    try {
+      text = await file.text()
+    } catch (error) {
+      // The browser could not read the file (moved, no permission); to the viewer it is no list file either.
+      console.warn("list file unreadable", { errorClass: errorClass(error) })
+      setInvalid(true)
+      return
+    }
+    const commit = parseListFile(text)
     setInvalid(commit === null)
     if (commit !== null) onPicked(commit)
   }
@@ -273,8 +293,10 @@ function Committed({ commit, hash }: { readonly commit: ListCommit; readonly has
   const i18n = useI18n()
   const { t } = i18n
   const roundAt = roundTime(quicknet, commit.round)
-  const fragment = shareFragment(commit, hash)
+  const { fragment, withNames } = shareFragment(commit, hash)
   const shareUrl = `${window.location.origin}${drawPath}#${fragment}`
+  // Read once: whoever saw the list before its round saw it fixed in advance, also after the round is out.
+  const [seenBefore] = useState(() => Date.now() < roundAt)
   const roundUrl = `${publicDrandUrls[0]}${roundPath(quicknet.chainHash, commit.round)}`
   return (
     <>
@@ -299,6 +321,12 @@ function Committed({ commit, hash }: { readonly commit: ListCommit; readonly has
           {t("draw.early", { round: commit.round })}
         </p>
       )}
+      {seenBefore && commit.committedAt < roundAt ? (
+        <p className="draw-seen">
+          <CheckCircleIcon />
+          {t("draw.seenBefore", { round: commit.round })}
+        </p>
+      ) : null}
       <Outcome commit={commit} />
       <CopyLink
         label={t("draw.share.label")}
@@ -308,13 +336,7 @@ function Committed({ commit, hash }: { readonly commit: ListCommit; readonly has
       >
         {shareUrl}
       </CopyLink>
-      <p>
-        {t(
-          parseShareFragment(fragment)?.names === null
-            ? "draw.share.noNames"
-            : "draw.share.withNames",
-        )}
-      </p>
+      <p>{t(withNames ? "draw.share.withNames" : "draw.share.noNames")}</p>
       <div className="draw-actions">
         <button type="button" className="button secondary" onClick={() => download(commit, hash)}>
           {t("draw.download")}
@@ -427,10 +449,6 @@ async function resolveDraw(commit: ListCommit, isCurrent: () => boolean): Promis
     if (tried < fetchAttempts) await sleep(fetchRetryMs)
   }
   return { state: "unavailable" }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)))
 }
 
 function download(commit: ListCommit, hash: string): void {

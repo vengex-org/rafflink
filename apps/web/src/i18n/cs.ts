@@ -900,6 +900,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "draw.facts.committed": "Seznam uzamčen (podle hodin prohlížeče, který ho uzamkl)",
   "draw.early":
     "Podle tohoto seznamu byl uzamčen až po zveřejnění kola drand {round}, takže losování se nedá věřit.",
+  "draw.seenBefore":
+    "Tento seznam jsi otevřel před zveřejněním kola drand {round}, takže byl uzamčen dřív, než mohl kdokoli znát vítěze.",
   "draw.waiting": "Vítězové se vylosují, až se zveřejní kolo drand {round}.",
   "draw.drawn": "Vítězové vycházejí ze seznamu a z náhodného čísla kola drand {round}.",
   "draw.invalid": "Podpis kola drand {round} není platný, takže se žádní vítězové nezobrazí.",

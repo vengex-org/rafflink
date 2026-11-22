@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, jest, mock } from "bun:test"
+import { afterEach, describe, expect, it, jest, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { quicknet, roundTime } from "@rafflink/core/lib/drand"
 import {
@@ -28,6 +28,8 @@ const round = {
 const first = `GET https://api.drand.sh/${quicknet.chainHash}/public/1000000`
 const second = `GET https://drand.cloudflare.com/${quicknet.chainHash}/public/1000000`
 const unavailable: Reply = { status: 503, body: "" }
+const seenBefore =
+  "You opened this list before drand round 1000000 was published, so it was fixed before anyone could know the winners."
 
 const names = ["Alice", "Bob", "Carol", "Dave", "Eve", "Zoë", "alice"]
 const shortList: ListCommit = {
@@ -44,7 +46,7 @@ const longList: ListCommit = {
 }
 
 async function linkTo(commit: ListCommit): Promise<string> {
-  return `/draw#${shareFragment(commit, await commitHash(commit))}`
+  return `/draw#${shareFragment(commit, await commitHash(commit)).fragment}`
 }
 
 function winnersOf(view: ReturnType<typeof renderApp>): string[] {
@@ -127,6 +129,25 @@ describe("list draw form", () => {
         "The winners follow from the list and the random number of drand round 1000000.",
       ),
     ).toBeTruthy()
+    expect(view.getByText(seenBefore)).toBeTruthy()
+    // No session lookup or any other call to this app's server: only the drand round leaves the page.
+    expect(
+      requests.map(
+        (request) => new URL(request.route.split(" ")[1] ?? "", window.location.origin).host,
+      ),
+    ).toEqual(["api.drand.sh"])
+  })
+
+  it("says the commit failed and lets the list be fixed again", async () => {
+    mockFetch({})
+    spyOn(crypto.subtle, "digest").mockRejectedValueOnce(new DOMException("no digest"))
+    const view = renderApp("/draw")
+    fireEvent.change(view.getByLabelText("Names"), { target: { value: "Alice" } })
+
+    fireEvent.click(view.getByRole("button", { name: "Fix the list" }))
+
+    expect(await view.findByText("Something went wrong. Try again.")).toBeTruthy()
+    expect(view.getByRole("button", { name: "Fix the list" }).hasAttribute("disabled")).toBe(false)
   })
 
   it("keeps a list too long for the link in this tab and offers it as a file", async () => {
@@ -154,6 +175,18 @@ describe("shared list draw", () => {
     const view = renderApp(await linkTo(shortList))
 
     await waitFor(() => expect(winnersOf(view)).toEqual(["Alice", "Dave", "alice"]))
+    expect(view.queryByText(seenBefore)).toBeNull()
+  })
+
+  it("treats a file the browser cannot read as no list file", async () => {
+    mockFetch({})
+    const view = renderApp(await linkTo(longList))
+    const unreadable = new File(["{}"], "draw.json")
+    spyOn(unreadable, "text").mockRejectedValue(new DOMException("gone", "NotReadableError"))
+
+    fireEvent.change(view.getByLabelText("List file"), { target: { files: [unreadable] } })
+
+    expect(await view.findByText("This is not a list file.")).toBeTruthy()
   })
 
   it("draws a long list from the file that came with the link", async () => {
@@ -179,7 +212,9 @@ describe("shared list draw", () => {
 
   it("draws nothing and reads no round when the names do not match the hash of the link", async () => {
     const requests = mockFetch({})
-    const params = new URLSearchParams(shareFragment(shortList, await commitHash(shortList)))
+    const params = new URLSearchParams(
+      shareFragment(shortList, await commitHash(shortList)).fragment,
+    )
     params.set("n", ["Mallory", ...names].join("\n"))
 
     const view = renderApp(`/draw#${params.toString()}`)

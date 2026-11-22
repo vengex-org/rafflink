@@ -1,7 +1,7 @@
 import type { LeavesJson, MyLeafJson } from "@rafflink/core/http/json"
 import { publicDrandUrls, roundPath } from "@rafflink/core/lib/drand"
 import { errorClass } from "@rafflink/core/lib/error-class"
-import { useCallback, useEffect, useEffectEvent, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useEffectEvent, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { getVerifyLoad, type VerifyLoad } from "../api/client.ts"
 import {
@@ -12,6 +12,7 @@ import {
   ShuffleIcon,
 } from "../components/icons.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
+import { Fact } from "../components/fact.tsx"
 import { GiveawayCode } from "../components/giveaway-code.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
@@ -115,24 +116,6 @@ function Facts({
         <a href={`/api/g/${encodeURIComponent(code)}/leaves`}>{t("verify.facts.leavesLink")}</a>
       </Fact>
     </dl>
-  )
-}
-
-/** One row of a `verify-facts` list; `mono` sets hashes and ids in the monospace face. */
-export function Fact({
-  label,
-  mono,
-  children,
-}: {
-  readonly label: string
-  readonly mono?: boolean
-  readonly children: ReactNode
-}) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd data-format={mono === true ? "mono" : undefined}>{children}</dd>
-    </div>
   )
 }
 

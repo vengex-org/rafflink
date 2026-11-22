@@ -114,8 +114,10 @@ describe("share fragment", () => {
   it("carries a short list with its title, count, round, time and hash", async () => {
     const hash = await commitHash(commit)
 
-    const link = parseShareFragment(`#${shareFragment(commit, hash)}`)
+    const { fragment, withNames } = shareFragment(commit, hash)
+    const link = parseShareFragment(`#${fragment}`)
 
+    expect(withNames).toBe(true)
     expect(link).toEqual({
       hash,
       commit: { title: "Cup & mug", winners: 3, round: 1_000_000, committedAt: 1_700_000_000_000 },
@@ -126,8 +128,9 @@ describe("share fragment", () => {
   it("leaves out the names of a list too long for a link, and the title when there is none", async () => {
     const long = { ...commit, title: "", names: Array.from({ length: 400 }, (_, i) => `name${i}`) }
 
-    const fragment = shareFragment(long, await commitHash(long))
+    const { fragment, withNames } = shareFragment(long, await commitHash(long))
 
+    expect(withNames).toBe(false)
     expect(fragment.length).toBeLessThan(200)
     expect(parseShareFragment(fragment)).toMatchObject({ commit: { title: "" }, names: null })
   })
@@ -144,14 +147,14 @@ describe("share fragment", () => {
     ["a title over the limit", { t: "x".repeat(101) }],
     ["a name list of blank lines", { n: "\n \n" }],
   ])("rejects %s", async (_, change) => {
-    const params = new URLSearchParams(shareFragment(commit, await commitHash(commit)))
+    const params = new URLSearchParams(shareFragment(commit, await commitHash(commit)).fragment)
     for (const [key, value] of Object.entries(change)) params.set(key, value)
 
     expect(parseShareFragment(params.toString())).toBeNull()
   })
 
   it.each(["h", "r", "w", "c"])("rejects a link without %s", async (key) => {
-    const params = new URLSearchParams(shareFragment(commit, await commitHash(commit)))
+    const params = new URLSearchParams(shareFragment(commit, await commitHash(commit)).fragment)
     params.delete(key)
 
     expect(parseShareFragment(params.toString())).toBeNull()

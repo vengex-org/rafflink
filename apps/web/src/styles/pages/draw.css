@@ -29,15 +29,24 @@
   overflow-wrap: anywhere;
 }
 
-.draw-warning {
+.draw-warning,
+.draw-seen {
   display: flex;
   align-items: flex-start;
   gap: var(--space-1);
-  color: var(--danger);
   font-weight: 600;
 }
 
-.draw-warning .icon {
+.draw-warning {
+  color: var(--danger);
+}
+
+.draw-seen {
+  color: var(--success);
+}
+
+.draw-warning .icon,
+.draw-seen .icon {
   flex: none;
   width: 1.25rem;
   height: 1.25rem;

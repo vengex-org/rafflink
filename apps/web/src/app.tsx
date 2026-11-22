@@ -35,9 +35,12 @@ export function AppRoutes() {
             <Route path="privacy" caseSensitive element={<PrivacyPage />} />
             <Route path="terms" caseSensitive element={<TermsPage />} />
             <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
-            <Route path="draw" caseSensitive element={<DrawPage />} />
             <Route index element={<HomePage />} />
             <Route path="*" element={<NotFound title="notFound.page" />} />
+          </Route>
+          {/* The list draw makes no request but the drand round, so it skips the session lookup. */}
+          <Route element={<Layout account={false} />}>
+            <Route path="draw" caseSensitive element={<DrawPage />} />
           </Route>
           {siteRoutes}
           <Route element={<Layout account={false} />}>
