@@ -98,6 +98,10 @@ export interface DrawRow {
   readonly rerolledBy: Actor | null
   /** Who marked the claim by hand; null for any other claim. */
   readonly claimMarkedBy: Actor | null
+  /** When the winner sent the winner form; kept after the answers are deleted. */
+  readonly answeredAt: Instant | null
+  /** When the streamer marked the prize delivered. */
+  readonly deliveredAt: Instant | null
 }
 
 export interface EntrySummary {
@@ -171,6 +175,8 @@ export function parseDraw(row: SqlRow): DrawRow {
     drawnBy: reader.nullableActor("drawn_by"),
     rerolledBy: reader.nullableActor("rerolled_by"),
     claimMarkedBy: reader.nullableActor("claim_marked_by"),
+    answeredAt: reader.nullableInt("answered_at"),
+    deliveredAt: reader.nullableInt("delivered_at"),
   }
 }
 

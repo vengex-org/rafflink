@@ -314,6 +314,8 @@ export const en = {
   "issue.in-the-past": "The end time must be in the future.",
   "issue.unknown-kind": "Pick one of the options.",
   "issue.unsupported": "Your streaming platform cannot check this rule. Turn it off.",
+  "issue.not-a-list": "Invalid value.",
+  "issue.duplicate": "Each option can be picked once.",
   "issue.wholeDays": "Enter a whole number of days, or leave it empty.",
   "issue.wholeMinutes": "Enter a whole number of minutes, 1 or more.",
   "issue.pickEnd": "Pick the date and time when entries end.",
@@ -456,6 +458,36 @@ export const en = {
   "win.claim": "Claim my prize",
   "win.orAny": "Or write any message in the stream chat.",
   "win.orType": "Or type {keyword} in the stream chat.",
+
+  "winnerField.name": "Name",
+  "winnerField.email": "E-mail",
+  "winnerField.address": "Shipping address",
+  "winnerField.platform-id": "Game account or platform ID",
+  "winnerField.text": "Message to the streamer",
+  "winnerForm.title": "Where should the prize go?",
+  "winnerForm.notice":
+    "Only {name}, who runs this giveaway, sees your answers, to deliver the prize. They are deleted when the prize is marked delivered, at the latest 30 days after your claim. You can send the form once.",
+  "winnerForm.send": "Send",
+  "winnerForm.saved": "Your answers were sent to the streamer.",
+  "winnerForm.already-answered": "You already sent your answers.",
+  "winnerForm.not-claimed": "Claim the prize first.",
+  "winnerForm.form-closed": "The form is closed.",
+  "winnerForm.not-a-winner": "You are not a winner of this giveaway.",
+  "winnerForm.rejected": "Sending did not work. Try again.",
+  "winnerForm.invalid": "Fill in every field. The e-mail needs an @.",
+  "answers.title": "Winner answers",
+  "answers.none": "No winner has claimed yet.",
+  "answers.pick": "Pick {n}: {name}",
+  "answers.unnamed": "unknown winner",
+  "answers.waiting": "Not sent yet.",
+  "answers.deleted": "The answers were deleted.",
+  "answers.closed": "Not sent. The form is closed.",
+  "answers.delivered": "Delivered on {at}.",
+  "answers.markDelivered": "Mark delivered",
+  "answers.deliverFailed": "The prize could not be marked delivered. Reload the page.",
+  "answers.failed": "The answers could not be loaded.",
+  "answers.privacy":
+    "Only you see these answers, moderators do not. Marking the prize delivered deletes them, otherwise they are deleted 30 days after the claim.",
   "rules.summary": "Rules and tickets",
   "rules.help": "The more tickets a group gets, the better its chance of winning.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -780,6 +812,9 @@ export const en = {
   "wizard.recent.count.days": "How many days back",
   "wizard.recent.fewer": "Fewer",
   "wizard.recent.more": "More",
+  "wizard.winnerForm.legend": "Winner form",
+  "wizard.winnerForm.help":
+    "After claiming, the winner fills these in on the giveaway page. Only you see the answers. They are deleted when you mark the prize delivered, at the latest 30 days after the claim.",
   "wizard.tickets.legend": "Tickets per group",
   "wizard.tickets.help":
     "Every group gets 1 ticket. More tickets mean a better chance of winning, for example 3 for subscribers. Leave this as it is if everyone should have the same chance.",
@@ -896,6 +931,8 @@ export const en = {
     "Blocked accounts: a streamer can block accounts from their giveaways. Rafflink then stores the blocked person's Twitch user ID and login name, and the time of the block, with the streamer's account. Each giveaway room of the streamer keeps a copy of the blocked user IDs so it can refuse them. If the person had already entered a giveaway that is still open, that entry is deleted.",
   "privacy.data.i10":
     "Recent winners: when a streamer keeps recent winners out, the Twitch user IDs of the winners of their earlier giveaways are copied into the new giveaway's room so it can refuse them.",
+  "privacy.data.i11":
+    "Winners who fill in a winner form: the answers the streamer asked for, such as name, e-mail, shipping address, a game account ID or a message to the streamer. They are stored encrypted, only the streamer of the giveaway can read them, to deliver the prize, and they are never written to logs. The winner can send the form once.",
   "privacy.purposes.h": "Why and on what legal basis",
   "privacy.purposes.i1":
     "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of a contract with you, the service you asked for (GDPR Article 6(1)(b)).",
@@ -915,6 +952,8 @@ export const en = {
     "The giveaway (title, prize, rules, dates, entrant and ticket counts), everyone drawn, rerolled picks included, with Twitch user ID, login name, display name and claim state, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay until the streamer deletes the giveaway, so the prize can be delivered and anyone can check the draw later. The operator may set a number of days after the draw closed when giveaways are deleted.",
   "privacy.retention.i6":
     "A block (Twitch user ID and login name) is kept to keep that person out of the streamer's giveaways, until the streamer removes it on the dashboard or deletes their account. The copies of blocked and recent-winner user IDs in a giveaway room are deleted with that giveaway's entries, at most 30 days after it closes.",
+  "privacy.retention.i7":
+    "Winner form answers are deleted when the streamer marks the prize delivered, at the latest 30 days after the claim; the operator may set a shorter time. Only the times when the form was sent and when the prize was delivered stay with the pick. Deleting the giveaway or the streamer's account deletes the answers at once.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":
@@ -927,6 +966,8 @@ export const en = {
     "The public drand randomness beacon is read for the draw. No personal data is sent to it.",
   "privacy.recipients.i5":
     "When a streamer turns on their public history, anyone can see the streamer's name and their finished giveaways there: title, prize, close date and the numbers of entrants and winners. The page names no entrant and no winner, and the streamer can hide single giveaways or turn the page off.",
+  "privacy.recipients.i6":
+    "Winner form answers go to the streamer who runs the giveaway and nobody else: moderators, the overlay and the public pages never show them.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",

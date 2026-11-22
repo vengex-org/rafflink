@@ -23,6 +23,7 @@ const rules: GiveawayRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+  winnerForm: [],
 }
 
 const viewer: ViewerFacts = {
@@ -219,6 +220,7 @@ describe("parseRules", () => {
         minAge: null,
         excludedCountries: null,
         extraTerms: null,
+        winnerForm: [],
       },
     })
   })
@@ -279,6 +281,33 @@ describe("parseRules", () => {
       ok: false,
       issue: { field: "extraTerms", code: "too-long" },
     })
+  })
+
+  it("parses the winner form fields in the order given", () => {
+    expect(
+      parseRules({ ...validInput, winnerForm: ["address", "name", "platform-id"] }, config),
+    ).toMatchObject({ ok: true, value: { winnerForm: ["address", "name", "platform-id"] } })
+    expect(parseRules({ ...validInput, winnerForm: [] }, config)).toMatchObject({
+      ok: true,
+      value: { winnerForm: [] },
+    })
+  })
+
+  it("refuses a winner form that is not a list, or has an unknown or a repeated field", () => {
+    for (const [winnerForm, field, code] of [
+      [null, "winnerForm", "not-a-list"],
+      ["name", "winnerForm", "not-a-list"],
+      [{ 0: "name" }, "winnerForm", "not-a-list"],
+      [["phone"], "winnerForm.0", "unknown-kind"],
+      [["name", "constructor"], "winnerForm.1", "unknown-kind"],
+      [["name", 1], "winnerForm.1", "unknown-kind"],
+      [["email", "email"], "winnerForm.1", "duplicate"],
+    ] as const) {
+      expect(parseRules({ ...validInput, winnerForm }, config)).toEqual({
+        ok: false,
+        issue: { field, code },
+      })
+    }
   })
 
   it("keeps page entry on unless it is turned off, and only next to a chat keyword", () => {

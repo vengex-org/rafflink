@@ -1992,3 +1992,64 @@ describe("live page: the controls bar", () => {
     expect(group.getByRole("button", { name: "Closed" }).hasAttribute("disabled")).toBe(true)
   })
 })
+
+describe("live page: winner form answers", () => {
+  const withForm = { ...giveaway, rules: { ...giveaway.rules, winnerForm: ["name", "address"] } }
+  const answers = {
+    form: ["name", "address"],
+    picks: [
+      {
+        n: 1,
+        answers: "sent",
+        deliveredAt: null,
+        values: { name: "Bob Smith", address: "Main Street 1\n12345 Town" },
+      },
+    ],
+  }
+
+  it("shows the claimed winners' answers to the streamer and deletes them when the prize is marked delivered", async () => {
+    let delivered = false
+    const requests = mockDrawn({
+      "GET /api/g/ABCDE": () => ok(withForm),
+      "GET /api/live/gid-1": () => ok(drawn),
+      "GET /api/dash/giveaways/gid-1/answers": () =>
+        ok(
+          delivered
+            ? {
+                form: answers.form,
+                picks: [{ ...answers.picks[0], values: null, deliveredAt: claimedAt }],
+              }
+            : answers,
+        ),
+      "POST /api/dash/giveaways/gid-1/delivered": () => {
+        delivered = true
+        return ok({ kind: "delivered" })
+      },
+    })
+
+    const view = renderApp("/live/gid-1")
+    const panel = within(
+      (await view.findByRole("heading", { name: "Winner answers" })).closest("section")
+        ?? document.body,
+    )
+
+    expect(await panel.findByText("Bob Smith")).toBeTruthy()
+    expect(panel.getByRole("heading", { name: "Pick 2: Bob" })).toBeTruthy()
+    fireEvent.click(panel.getByRole("button", { name: "Mark delivered" }))
+    expect(await panel.findByText(`Delivered on ${claimedAtText}.`)).toBeTruthy()
+    expect(panel.queryByText("Bob Smith")).toBeNull()
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/delivered")?.body).toEqual({
+      n: 1,
+    })
+  })
+
+  it("asks for no answers when the giveaway has no winner form", async () => {
+    const requests = mockDrawn({ "GET /api/live/gid-1": () => ok(drawn) })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByText("Claimed")).toBeTruthy()
+    expect(view.queryByRole("heading", { name: "Winner answers" })).toBeNull()
+    expect(requests.some((request) => request.route.endsWith("/answers"))).toBe(false)
+  })
+})

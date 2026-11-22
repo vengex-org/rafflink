@@ -7,8 +7,10 @@ import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/pla
 import type { Usage, UsageAlert } from "../plan/usage.ts"
 import type { QueueStats } from "../queue/token-queue.ts"
 import type { Instant } from "../ports.ts"
+import type { WinnerAnswers, WinnerFieldKind } from "../domain/winner-form.ts"
 import type {
   LiveSnapshot,
+  PickAnswers,
   Verification,
   VerifiedPick,
   WinnerClaim,
@@ -64,8 +66,22 @@ export type ViewerState =
       readonly claim: WinnerClaim
       /** Whether a chat message can still claim; false when the chat watch is off. */
       readonly chatClaimAvailable: boolean
+      /** Where the winner form stands; null when the giveaway has none. */
+      readonly answers: PickAnswers | null
     }
   | { readonly kind: "not-won"; readonly userId: string }
+
+/** The winner form of a giveaway with each claimed pick's answers, for its streamer only. */
+export interface WinnerAnswersJson {
+  readonly form: readonly WinnerFieldKind[]
+  readonly picks: readonly {
+    readonly n: number
+    readonly answers: PickAnswers
+    readonly deliveredAt: Instant | null
+    /** Null once deleted (delivered or after `WINNER_FORM_RETENTION_SECONDS`), before they were sent, or when the key that sealed them is gone. */
+    readonly values: WinnerAnswers | null
+  }[]
+}
 
 /** The public facts a visitor checks a draw against; `commitment` is null before the commit and for a giveaway drawn before commitments existed. */
 export interface VerifyJson {

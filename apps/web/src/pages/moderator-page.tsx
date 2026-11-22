@@ -154,6 +154,7 @@ function Connected({
       cleanModeKey={moderatorCleanModeKey}
       facts={facts}
       entrants={entrants}
+      winnerAnswers={false}
     />
   )
 }

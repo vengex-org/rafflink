@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react"
 import { supportedGroups, type Group } from "@rafflink/core/domain/groups"
+import { winnerFieldKinds } from "@rafflink/core/domain/winner-form"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import {
   Segmented,
@@ -256,7 +257,39 @@ export function RulesStep({
         issue={issue}
         capabilities={capabilities}
       />
+      <WinnerFormField values={values} setValues={setValues} />
     </>
+  )
+}
+
+/** The fields the winner fills in after the claim, in the order the form shows them. */
+function WinnerFormField({ values, setValues }: Omit<StepProps, "issue">) {
+  const { t } = useI18n()
+  return (
+    <fieldset className="field">
+      <legend>{t("wizard.winnerForm.legend")}</legend>
+      <p className="help">{t("wizard.winnerForm.help")}</p>
+      {winnerFieldKinds.map((kind) => (
+        <label key={kind} className="check">
+          <input
+            type="checkbox"
+            name="winnerForm"
+            value={kind}
+            checked={values.winnerForm.includes(kind)}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked
+              setValues((current) => ({
+                ...current,
+                winnerForm: winnerFieldKinds.filter((candidate) =>
+                  candidate === kind ? checked : current.winnerForm.includes(candidate),
+                ),
+              }))
+            }}
+          />
+          {t(`winnerField.${kind}`)}
+        </label>
+      ))}
+    </fieldset>
   )
 }
 
@@ -558,6 +591,12 @@ export function ReviewStep({
           chat: keyword === "" ? t("review.anyChat") : t("review.keywordChat", { keyword }),
         })}
       />
+      {values.winnerForm.length === 0 ? null : (
+        <ReviewRow
+          label={t("wizard.winnerForm.legend")}
+          value={values.winnerForm.map((kind) => t(`winnerField.${kind}`)).join(", ")}
+        />
+      )}
     </dl>
   )
 }

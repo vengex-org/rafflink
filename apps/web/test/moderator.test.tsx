@@ -116,6 +116,37 @@ describe("a moderator link's live page", () => {
     expect(view.queryByRole("button", { name: "Moderator links" })).toBeNull()
   })
 
+  it("never shows or asks for the winners' form answers", async () => {
+    const drawn: LiveSnapshot = {
+      ...liveSnapshot,
+      status: "drawn",
+      winners: [
+        {
+          n: 0,
+          entrySeq: null,
+          displayName: "Wanda",
+          profileImageUrl: null,
+          claimUntil: 1,
+          claim: { state: "claimed", at: 1, via: "rafflink" },
+        },
+      ],
+    }
+    const requests = mockModerator({
+      "GET /api/g/ABCDE": () =>
+        ok({ ...giveaway, rules: { ...giveaway.rules, winnerForm: ["address"] } }),
+      "GET /api/mod/gid-1": () => ok(drawn),
+    })
+
+    const view = renderApp("/mod/gid-1")
+
+    expect(await view.findByText("Wanda")).toBeTruthy()
+    // The form comes with the giveaway's public facts; once they are in, the panel would have asked.
+    await act(async () => {})
+    expect(requests.some((request) => request.route === "GET /api/g/ABCDE")).toBe(true)
+    expect(view.queryByRole("heading", { name: "Winner answers" })).toBeNull()
+    expect(requests.some((request) => request.route.endsWith("/answers"))).toBe(false)
+  })
+
   it("sends its buttons to the link's own routes", async () => {
     const requests = mockModerator({
       "POST /api/mod/gid-1/close": () => ok({ kind: "closed" }),

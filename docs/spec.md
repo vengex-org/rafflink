@@ -33,7 +33,6 @@ paid extra chances. This keeps it out of gambling law and inside Twitch's giveaw
 - Paid plans, ads, sponsored giveaways.
 - "Chatted in the last N minutes" rule. The chat watch for claims (see Claim) could later feed it, but it
   would have to run during the whole giveaway, not only from the draw until the reroll window ends.
-- Winner form (for example a shipping address). Planned in M8 (#73), see Milestones.
 - Messages to chat. Rafflink never posts to chat; the streamer announces the winner.
 - A mobile app.
 
@@ -442,7 +441,8 @@ channel_roles(platform, platform_user_id, role, fetched_at,
 excluded_users(platform, platform_user_id, reason ('blocked' | 'recent-winner'),
                PRIMARY KEY (platform, platform_user_id, reason)) WITHOUT ROWID
 draws(n, platform, platform_user_id, drawn_at, claim_until, claimed_at, claimed_via, rerolled,
-      leaf_index, drawn_by, rerolled_by, claim_marked_by, PRIMARY KEY (n))
+      leaf_index, drawn_by, rerolled_by, claim_marked_by, answered_at, delivered_at, PRIMARY KEY (n))
+winner_answers(n, sealed, PRIMARY KEY (n))
 leaves(chunk, data)
 ```
 
@@ -546,6 +546,25 @@ of the id could be brute-forced into a list of who entered.
 - Rafflink asks only for read scopes and never posts to chat.
 - Chat is read from the draw until the giveaway is finished. Messages are matched in memory and never stored or logged.
 
+## Winner form
+
+- The streamer picks the fields when creating the giveaway (`rules.winnerForm`): name, e-mail, shipping address,
+  game or platform ID, free text, each at most once. The labels are fixed per field and translated; an empty list
+  means no form.
+- After the claim, the winner fills the form on the giveaway page, signed in with the platform account that won.
+  Every field is required, trimmed and capped at `WINNER_ANSWER_MAX_LENGTH`; keys the form does not ask for are
+  dropped. The form is sent once: `draws.answered_at` is set with the answers and stays after they are deleted.
+  The form shows a notice naming the streamer as the only recipient.
+- The answers are sealed with `TOKEN_SEAL_KEYS` (AES-256-GCM, bound to the giveaway and the pick) before they
+  reach the room, which stores ciphertext only in `winner_answers`. They are never logged.
+- Only the giveaway's streamer reads them, on the live page (`GET /api/dash/giveaways/:id/answers`). Moderator
+  links, the overlay and the public pages never get them.
+- The answers are deleted when the streamer marks the prize delivered (`draws.delivered_at`, also in the CSV), or by
+  the room alarm `WINNER_FORM_RETENTION_SECONDS` (at most 30 days) after the claim. Deleting the giveaway or the
+  streamer's data deletes the room and the answers with it. After the deletion the winner cannot send the form
+  again.
+- YouTube chat winners without a platform sign-in have no route to the form yet.
+
 ## Milestones
 
 Milestone names and issue numbers match GitHub. There is no M3.
@@ -567,9 +586,7 @@ Milestone names and issue numbers match GitHub. There is no M3.
    verifiable list draw (#68).
 6. **M7, History:** long-term history with winner names, export and deletion (#69), public streamer history (#70).
 7. **M8, Extras:** one giveaway across platforms (#71), official rules text (#72), winner form for prize
-   delivery (#73). The winner form collects personal data (for example a shipping address): encrypted at rest,
-   visible only to the streamer, deleted 30 days after the claim, with a privacy notice on the form. Needs its
-   own short spec before work starts.
+   delivery (#73), see Winner form.
 
 ## Open questions
 

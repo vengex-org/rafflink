@@ -317,6 +317,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "issue.in-the-past": "Čas ukončení musí být v budoucnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
   "issue.unsupported": "Tvoje streamovací platforma tohle pravidlo neumí ověřit. Vypni ho.",
+  "issue.not-a-list": "Neplatná hodnota.",
+  "issue.duplicate": "Každou možnost můžeš vybrat jen jednou.",
   "issue.wholeDays": "Zadej celý počet dnů, nebo nech pole prázdné.",
   "issue.wholeMinutes": "Zadej celý počet minut, aspoň 1.",
   "issue.pickEnd": "Vyber datum a čas, kdy přihlašování končí.",
@@ -459,6 +461,36 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "win.claim": "Převzít výhru",
   "win.orAny": "Nebo napiš jakoukoli zprávu do chatu streamu.",
   "win.orType": "Nebo napiš {keyword} do chatu streamu.",
+
+  "winnerField.name": "Jméno",
+  "winnerField.email": "E-mail",
+  "winnerField.address": "Doručovací adresa",
+  "winnerField.platform-id": "Herní účet nebo ID na platformě",
+  "winnerField.text": "Zpráva pro streamera",
+  "winnerForm.title": "Kam má výhra přijít?",
+  "winnerForm.notice":
+    "Tvoje odpovědi vidí jen {name}, který tento giveaway vede, aby ti mohl doručit výhru. Smažou se, když označí výhru jako doručenou, nejpozději 30 dní po převzetí. Formulář můžeš poslat jen jednou.",
+  "winnerForm.send": "Odeslat",
+  "winnerForm.saved": "Tvoje odpovědi jsme poslali streamerovi.",
+  "winnerForm.already-answered": "Odpovědi už jsi poslal.",
+  "winnerForm.not-claimed": "Nejdřív si převezmi výhru.",
+  "winnerForm.form-closed": "Formulář je uzavřený.",
+  "winnerForm.not-a-winner": "Nejsi vítěz tohoto giveawaye.",
+  "winnerForm.rejected": "Odeslání nevyšlo. Zkus to znovu.",
+  "winnerForm.invalid": "Vyplň všechna pole. E-mail musí obsahovat @.",
+  "answers.title": "Odpovědi vítězů",
+  "answers.none": "Výhru si zatím nepřevzal žádný vítěz.",
+  "answers.pick": "Los {n}: {name}",
+  "answers.unnamed": "neznámý vítěz",
+  "answers.waiting": "Zatím neposlal.",
+  "answers.deleted": "Odpovědi jsou smazané.",
+  "answers.closed": "Neposlal. Formulář je uzavřený.",
+  "answers.delivered": "Doručeno {at}.",
+  "answers.markDelivered": "Označit jako doručené",
+  "answers.deliverFailed": "Výhru se nepodařilo označit jako doručenou. Obnov stránku.",
+  "answers.failed": "Odpovědi se nepodařilo načíst.",
+  "answers.privacy":
+    "Tyto odpovědi vidíš jen ty, moderátoři ne. Označení výhry jako doručené je smaže, jinak se smažou 30 dní po převzetí.",
   "rules.summary": "Pravidla a losy",
   "rules.help": "Čím víc losů skupina dostane, tím větší má šanci vyhrát.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -787,6 +819,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "wizard.recent.count.days": "Kolik dní zpět",
   "wizard.recent.fewer": "Méně",
   "wizard.recent.more": "Více",
+  "wizard.winnerForm.legend": "Formulář pro vítěze",
+  "wizard.winnerForm.help":
+    "Po převzetí ho vítěz vyplní na stránce giveawaye. Odpovědi vidíš jen ty. Smažou se, když označíš výhru jako doručenou, nejpozději 30 dní po převzetí.",
   "wizard.tickets.legend": "Losy podle skupiny",
   "wizard.tickets.help":
     "Každá skupina dostane 1 los. Víc losů znamená větší šanci vyhrát, například 3 pro předplatitele. Nech to tak, pokud mají mít všichni stejnou šanci.",
@@ -904,6 +939,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Zablokované účty: streamer může zablokovat účty ve svých giveawayích. Rafflink pak u účtu streamera uloží Twitch user ID a přihlašovací jméno zablokované osoby a čas bloku. Každá místnost giveawaye streamera si drží kopii zablokovaných user ID, aby je mohla odmítnout. Pokud se osoba už zapojila do giveawaye, který je ještě otevřený, její záznam se smaže.",
   "privacy.data.i10":
     "Nedávní vítězové: když streamer nezapojuje nedávné vítěze, Twitch user ID vítězů jeho předchozích giveawayů se zkopírují do místnosti nového giveawaye, aby je mohla odmítnout.",
+  "privacy.data.i11":
+    "Vítězové, kteří vyplní formulář pro vítěze: odpovědi, o které streamer požádal, například jméno, e-mail, doručovací adresa, ID herního účtu nebo zpráva pro streamera. Ukládají se šifrovaně, číst je může jen streamer daného giveawaye, aby doručil výhru, a nikdy se nezapisují do logů. Vítěz může formulář poslat jen jednou.",
   "privacy.purposes.h": "Proč a na jakém právním základě",
   "privacy.purposes.i1":
     "K provozu giveawayů, které streameři vytvářejí, a k zapojování diváků včetně losování a převzetí výhry: plnění smlouvy s tebou, tedy služby, o kterou jsi požádal (čl. 6 odst. 1 písm. b) GDPR).",
@@ -923,6 +960,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Giveaway (název, výhra, pravidla, data, počty zapojených a tiketů), všichni vylosovaní, i ti nahrazení novým losem, s Twitch ID, přihlašovacím a zobrazovaným jménem a stavem převzetí, Merkleův kořen seznamu zapojení a seznam jeho listů (hashe a počty tiketů, bez jmen) zůstávají, dokud streamer giveaway nesmaže, aby šlo doručit výhru a aby losování mohl později ověřit kdokoli. Provozovatel může nastavit počet dní po uzavření losování, po kterých se giveawaye mažou.",
   "privacy.retention.i6":
     "Blok (Twitch user ID a přihlašovací jméno) se uchovává, aby se daná osoba nezapojila do giveawayů streamera, dokud ho streamer neodebere na přehledu nebo nesmaže svůj účet. Kopie zablokovaných user ID a user ID nedávných vítězů v místnosti giveawaye se smažou spolu se záznamy toho giveawaye, nejpozději 30 dní po jeho uzavření.",
+  "privacy.retention.i7":
+    "Odpovědi z formuláře pro vítěze se smažou, když streamer označí výhru jako doručenou, nejpozději 30 dní po převzetí; provozovatel může nastavit kratší dobu. U losu zůstává jen čas odeslání formuláře a čas doručení. Smazání giveawaye nebo účtu streamera smaže odpovědi hned.",
   "privacy.recipients.h": "Kdo další údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje neprodává. Údaje jdou jen těmto stranám.",
   "privacy.recipients.i1":
@@ -935,6 +974,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Při losování se čte veřejný maják náhodnosti drand. Neposílají se mu žádné osobní údaje.",
   "privacy.recipients.i5":
     "Když streamer zapne veřejnou historii, kdokoli na ní vidí jméno streamera a jeho ukončené giveawaye: název, cenu, datum uzavření a počet přihlášených a vítězů. Stránka neuvádí jména přihlášených ani vítězů a streamer může jednotlivé giveawaye skrýt nebo stránku vypnout.",
+  "privacy.recipients.i6":
+    "Odpovědi z formuláře pro vítěze dostane jen streamer, který giveaway vede: moderátoři, overlay ani veřejné stránky je nikdy nezobrazí.",
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",

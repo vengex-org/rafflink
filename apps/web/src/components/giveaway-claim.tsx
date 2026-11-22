@@ -9,6 +9,7 @@ import { claimTone, Countdown } from "./countdown.tsx"
 import { AlertIcon, CheckIcon, ClockIcon } from "./icons.tsx"
 import { GiveawayState, TicketBox } from "./giveaway-state.tsx"
 import { Status } from "./notice.tsx"
+import { WinnerForm } from "./winner-form.tsx"
 
 const ringRadius = 52
 const ringLength = 2 * Math.PI * ringRadius
@@ -47,6 +48,15 @@ export function ClaimPanel({
           <p className="viewer-note">{t("win.claimedAt", { at: i18n.dateTime(win.claim.at) })}</p>
         ) : null}
         <p className="viewer-note">{t("viewerClaim.claimed")}</p>
+        {win.answers === "open" ? (
+          <WinnerForm
+            code={code}
+            form={giveaway.rules.winnerForm}
+            streamerName={giveaway.streamerName}
+          />
+        ) : win.answers === "sent" ? (
+          <p className="viewer-note">{t("winnerForm.saved")}</p>
+        ) : null}
       </GiveawayState>
     )
   }

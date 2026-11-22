@@ -66,6 +66,7 @@ const rules: GiveawayRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+  winnerForm: [],
 }
 
 const giveaway: GiveawayInit = {
@@ -3241,5 +3242,100 @@ describe("overlay theme push", () => {
     expect(hub.overlayMessages.map((text) => JSON.parse(text))).toEqual([{ theme }])
     expect(hub.messages).toEqual([])
     expect(hub.viewerMessages).toEqual([])
+  })
+})
+
+describe("winner form answers", () => {
+  const retentionSeconds = 3600
+
+  async function claimedRoom() {
+    const context = setup(giveaway, random, {
+      WINNER_FORM_RETENTION_SECONDS: String(retentionSeconds),
+    })
+    enterMany(context.room, ["1", "2", "3"])
+    context.room.close(null)
+    await context.room.draw(1, null)
+    const winner = twitch(String(picks(context.sql)[0]?.platform_user_id))
+    context.clock.advance(1000)
+    expect(context.room.claim(0, winner, "rafflink", null)).toEqual({ kind: "claimed" })
+    return { ...context, winner, claimedAt: context.clock.now() }
+  }
+
+  it("keeps the first sealed answers of a claimed winner and refuses a second sending", async () => {
+    const { room, winner } = await claimedRoom()
+
+    expect(room.saveWinnerAnswers(0, winner, "sealed-1")).toEqual({ kind: "saved" })
+    expect(room.saveWinnerAnswers(0, winner, "sealed-2")).toEqual({ kind: "already-answered" })
+    expect(room.winnerAnswers()).toEqual([{ n: 0, sealed: "sealed-1" }])
+    expect(room.picks()[0]).toMatchObject({ answers: "sent", deliveredAt: null })
+  })
+
+  it("refuses answers before the claim, from another account and for an unknown pick", async () => {
+    const { room, winner } = await drawnRoom()
+    const other = twitch(winner.platformUserId === "1" ? "2" : "1")
+
+    expect(room.picks()[0]?.answers).toBe("open")
+    expect(room.saveWinnerAnswers(0, winner, "sealed")).toEqual({ kind: "not-claimed" })
+    room.claim(0, winner, "rafflink", null)
+    expect(room.saveWinnerAnswers(0, other, "sealed")).toEqual({ kind: "not-a-winner" })
+    expect(room.saveWinnerAnswers(5, winner, "sealed")).toEqual({ kind: "not-a-winner" })
+    expect(room.winnerAnswers()).toEqual([])
+  })
+
+  it("deletes the answers when the prize is marked delivered and still shows they were sent", async () => {
+    const { room, winner, clock } = await claimedRoom()
+    room.saveWinnerAnswers(0, winner, "sealed")
+    clock.advance(10)
+
+    expect(room.markDelivered(0)).toEqual({ kind: "delivered" })
+    expect(room.markDelivered(0)).toEqual({ kind: "already-delivered" })
+    expect(room.markDelivered(5)).toEqual({ kind: "unknown-pick" })
+    expect(room.winnerAnswers()).toEqual([])
+    expect(room.picks()[0]).toMatchObject({ answers: "sent", deliveredAt: clock.now() })
+  })
+
+  it("closes the form of a winner whose prize was marked delivered before they answered", async () => {
+    const { room, winner } = await claimedRoom()
+
+    room.markDelivered(0)
+
+    expect(room.picks()[0]?.answers).toBe("closed")
+    expect(room.saveWinnerAnswers(0, winner, "sealed")).toEqual({ kind: "form-closed" })
+  })
+
+  it("refuses to mark an unclaimed pick delivered", async () => {
+    const { room } = await drawnRoom()
+
+    expect(room.markDelivered(0)).toEqual({ kind: "not-claimed" })
+  })
+
+  it("deletes the answers on the alarm WINNER_FORM_RETENTION_SECONDS after the claim", async () => {
+    const { room, winner, clock, alarm, sql, claimedAt } = await claimedRoom()
+    room.saveWinnerAnswers(0, winner, "sealed")
+    const deadline = claimedAt + retentionSeconds * 1000
+
+    clock.advance(deadline - 1 - clock.now())
+    room.onAlarm()
+    expect(room.winnerAnswers()).toHaveLength(1)
+    expect(alarm.at).toBe(deadline)
+
+    const info = spyOn(console, "info").mockImplementation(() => {})
+    clock.advance(1)
+    room.onAlarm()
+    expect(info).toHaveBeenCalledWith("winner answers deleted", { giveawayId: "g1", count: 1 })
+    info.mockRestore()
+    expect(sql.exec("SELECT COUNT(*) AS c FROM winner_answers", [])[0]?.c).toBe(0)
+    expect(room.picks()[0]?.answers).toBe("sent")
+  })
+
+  it("refuses answers once the retention time after the claim has passed", async () => {
+    const { room, winner, clock, claimedAt } = await claimedRoom()
+
+    clock.advance(claimedAt + retentionSeconds * 1000 - 1 - clock.now())
+    expect(room.picks()[0]?.answers).toBe("open")
+    clock.advance(1)
+
+    expect(room.picks()[0]?.answers).toBe("closed")
+    expect(room.saveWinnerAnswers(0, winner, "sealed")).toEqual({ kind: "form-closed" })
   })
 })

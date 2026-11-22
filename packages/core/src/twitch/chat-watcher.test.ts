@@ -630,6 +630,7 @@ const rules: GiveawayRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+  winnerForm: [],
 }
 
 const random: Random = { bytes: (length) => new Uint8Array(length).fill(7) }

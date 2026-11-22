@@ -10,6 +10,7 @@ import { LiveBrand, LiveFrame, LiveTopBar } from "../components/live-frame.tsx"
 import { Stat } from "../components/live-parts.tsx"
 import { LiveStage } from "../components/live-stage.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
+import { WinnerAnswersPanel } from "../components/winner-answers.tsx"
 import type { GiveawayView } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -109,6 +110,7 @@ function Connected({
       cleanModeKey={liveCleanModeKey}
       facts={facts}
       entrants={entrants}
+      winnerAnswers
     />
   )
 }
@@ -123,6 +125,7 @@ export function LiveControls({
   cleanModeKey,
   facts,
   entrants,
+  winnerAnswers,
 }: {
   readonly id: string
   readonly snapshot: LiveSnapshot
@@ -133,6 +136,8 @@ export function LiveControls({
   readonly cleanModeKey: string
   readonly facts: GiveawayView | null
   readonly entrants: ReturnType<typeof useEntrants>
+  /** Shows the winners' form answers: true on the streamer's own page only, never on a moderator link's. */
+  readonly winnerAnswers: boolean
 }) {
   const { t } = useI18n()
   const { message, busy, run } = useAction()
@@ -189,6 +194,13 @@ export function LiveControls({
           {clean || snapshot.status !== "drawn" ? null : (
             <ClaimStatus winners={snapshot.winners} current={current} />
           )}
+          {winnerAnswers
+          && !clean
+          && snapshot.status === "drawn"
+          && facts !== null
+          && facts.rules.winnerForm.length > 0 ? (
+            <WinnerAnswersPanel id={id} winners={snapshot.winners} />
+          ) : null}
           <LiveStats snapshot={snapshot} facts={facts} rows={entrants.rows} />
           <ActorLog actors={snapshot.actors} />
           {clean ? (

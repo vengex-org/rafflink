@@ -92,6 +92,15 @@ class DurableObjectRoomStub implements RoomStub {
   mirrorState() {
     return inRoom(() => this.stub.mirrorState())
   }
+  saveWinnerAnswers(...args: Parameters<GiveawayRoom["saveWinnerAnswers"]>) {
+    return inRoom(() => this.stub.saveWinnerAnswers(...args))
+  }
+  winnerAnswers() {
+    return inRoom(() => this.stub.winnerAnswers())
+  }
+  markDelivered(...args: Parameters<GiveawayRoom["markDelivered"]>) {
+    return inRoom(() => this.stub.markDelivered(...args))
+  }
   markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return inRoom(() => this.stub.markMirrored(...args))
   }

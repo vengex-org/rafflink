@@ -1655,6 +1655,7 @@ describe("viewer state", () => {
       entry: { tickets: 1, group: "viewer" },
       claim: { state: "waiting" },
       chatClaimAvailable: true,
+      answers: null,
     })
     expect(await meOf(winnerBrowser, code)).toMatchObject({
       kind: "won",
