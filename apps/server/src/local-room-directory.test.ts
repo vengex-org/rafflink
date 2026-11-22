@@ -129,6 +129,18 @@ describe("LocalRoomDirectory", () => {
     expect((await directory.get(id).summary()).status).toBe("open")
   })
 
+  it("closes a socket of a revoked link that opens after the revoke", async () => {
+    const directory = directoryWith()
+    await directory.get(id).init(giveawayInit(id))
+    const closed: number[] = []
+    await directory.closeModeratorSockets(id, "link-1")
+
+    directory.attachSocket(id, { close: (code?: number) => void closed.push(code ?? 0) }, "link-1")
+    directory.attachSocket(id, { close: () => void closed.push(-1) }, "link-2")
+
+    expect(closed).toEqual([1008])
+  })
+
   it("waits for the room's running alarm work before it closes the database", async () => {
     const first = directoryWith()
     await first.get(id).init(giveawayInit(id))
@@ -202,7 +214,7 @@ describe("LocalRoomDirectory", () => {
     })
     await directory.get(id).init(giveawayInit(id))
 
-    await directory.get(id).close()
+    await directory.get(id).close(null)
 
     expect(published.map((item) => item.topic).toSorted()).toEqual(
       [liveTopic(id), overlayTopic(id), viewerTopic(id)].toSorted(),
@@ -309,8 +321,8 @@ describe("LocalRoomDirectory", () => {
     const room = directory.get(id)
     await room.init(giveawayInit(id))
     await room.enter(viewer)
-    await room.close()
-    await room.draw(1)
+    await room.close(null)
+    await room.draw(1, null)
     expect({ opened, closed }).toEqual({ opened: 1, closed: 0 })
 
     await directory.close()

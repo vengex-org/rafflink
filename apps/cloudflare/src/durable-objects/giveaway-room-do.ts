@@ -27,6 +27,11 @@ function moderatorTag(linkId: string): string {
   return `mod:${linkId}`
 }
 
+// The storage key that marks a moderator link revoked; `destroy` deletes it with everything else.
+function revokedLinkKey(linkId: string): string {
+  return `revoked-link:${linkId}`
+}
+
 // RFC 6455: the server ends a socket whose peer is no longer allowed.
 const policyViolationCloseCode = 1008
 
@@ -61,8 +66,12 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
     })
   }
 
-  /** Closes the live sockets opened through the moderator link; the room and every other socket stay. */
-  closeModeratorSockets(linkId: string): void {
+  /**
+   * Closes the live sockets opened through the moderator link and remembers the revoke, so a socket whose
+   * route check passed just before it is refused when it arrives; the room and every other socket stay.
+   */
+  async closeModeratorSockets(linkId: string): Promise<void> {
+    await this.ctx.storage.put(revokedLinkKey(linkId), true)
     for (const socket of this.ctx.getWebSockets(moderatorTag(linkId))) {
       socket.close(policyViolationCloseCode, "moderator link revoked")
     }
@@ -151,6 +160,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
     } else if (pathname.startsWith("/api/mod/")) {
       const linkId = request.headers.get(moderatorLinkHeader)
       if (linkId === null) return new Response("expected a moderator link", { status: 400 })
+      if ((await this.ctx.storage.get(revokedLinkKey(linkId))) === true) {
+        return new Response("moderator link revoked", { status: 403 })
+      }
       this.ctx.acceptWebSocket(pair[1], [liveTag, moderatorTag(linkId)])
       pair[1].send(JSON.stringify(room.liveSnapshot()))
     } else if (pathname.startsWith("/api/overlay/")) {

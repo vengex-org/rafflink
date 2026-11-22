@@ -417,8 +417,11 @@ no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Pl
   the SHA-256 of the 128-bit secret, compared in constant time. Opening the link gives a cookie scoped to
   `/api/mod/<giveaway id>`, and every request looks the row up, so revoking (`revoked_at`) stops the link at
   once and closes its live sockets. The link may close entries, draw, reroll and mark claims, nothing else.
-  With `require_mod` the opener signs in with Twitch and must be the broadcaster or a moderator of the channel,
-  which Helix answers with the streamer's token when the link is opened. Rows go with their giveaway.
+  With `require_mod` the opener must be the broadcaster or a moderator of the channel, which Helix answers with
+  the streamer's token. Someone not signed in gets a pending cookie with the link id only, signs in on the
+  viewer callback with scope `openid` (no account row, no stored token), and the cookie keeps their user id;
+  button presses check it again at most every `MODERATOR_RECHECK_SECONDS`. Rows go with their giveaway. A link
+  for all of a streamer's giveaways (issue #64) is deferred: every link is for one giveaway.
 - `room_state.closed_by`, `draw_requested_by`, `draws.drawn_by`, `rerolled_by`, `claim_marked_by` (room
   migration 0010): who pressed the action, `streamer` or `mod:<link id>`; NULL when the room acted by itself.
   The live page lists them once a moderator link acted.

@@ -189,7 +189,7 @@ describe("runRoomAlarm role refresh", () => {
 
 describe("runRoomAlarm commit", () => {
   it("commits a room that closed, so the root and the round exist before anyone draws", async () => {
-    room.close()
+    room.close(null)
     expect(room.verification().commitment).toBeNull()
 
     await runRoomAlarm(deps, giveawayId, room)
@@ -201,7 +201,7 @@ describe("runRoomAlarm commit", () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     await seedStreamerAndGiveaway()
     await runRoomAlarm(deps, giveawayId, room)
-    room.close()
+    room.close(null)
     clock.advance(config.mirrorRetrySeconds * 1000)
     const commit = spyOn(room, "commit").mockRejectedValue(new Error("boom"))
 
@@ -219,7 +219,7 @@ describe("runRoomAlarm status mirror", () => {
   it("writes the closed status to the account store and clears the pending mirror", async () => {
     await seedStreamerAndGiveaway()
     await runRoomAlarm(deps, giveawayId, room)
-    room.close()
+    room.close(null)
     clock.advance(config.mirrorRetrySeconds * 1000)
 
     await runRoomAlarm(deps, giveawayId, room)
@@ -232,7 +232,7 @@ describe("runRoomAlarm status mirror", () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     await seedStreamerAndGiveaway()
     await runRoomAlarm(deps, giveawayId, room)
-    room.close()
+    room.close(null)
     accountsDb.close()
     clock.advance(config.mirrorRetrySeconds * 1000)
 
@@ -269,7 +269,7 @@ describe("runRoomAlarm minute counts", () => {
     await seedStreamerAndGiveaway()
     await runRoomAlarm(deps, giveawayId, room)
     room.enter(viewer)
-    room.close()
+    room.close(null)
     accountsDb.run("DROP TABLE metrics_minute")
     clock.advance(60_000)
 

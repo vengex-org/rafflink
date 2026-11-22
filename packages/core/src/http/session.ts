@@ -44,7 +44,10 @@ export interface PendingEntry {
   readonly giveawayId: string
 }
 
-/** What the sign-in start remembers for the callback. `giveawayCode` is set for the viewer flow, `returnPath` for the streamer flow. */
+/**
+ * What the sign-in start remembers for the callback. `giveawayCode` is set for the viewer flow, `returnPath`
+ * for the streamer flow, `moderatorLinkId` for a moderator's sign-in, which runs on the viewer callback.
+ */
 export interface OAuthState {
   readonly state: string
   readonly nonce: string
@@ -52,6 +55,7 @@ export interface OAuthState {
   readonly codeVerifier: string
   readonly giveawayCode: string | null
   readonly returnPath: string | null
+  readonly moderatorLinkId: string | null
 }
 
 const cookieNames = {
@@ -62,7 +66,9 @@ const cookieNames = {
 // One cookie per queued giveaway and per sign-in in progress, so a second one in the same browser
 // does not overwrite the first. Ids and states are 32 hex characters, which are safe in a cookie name.
 const oauthCookiePrefix = { streamer: "rl_oauth_streamer_", viewer: "rl_oauth_viewer_" } as const
-const hexId = /^[0-9a-f]{32}$/
+/** The text of an id, state, ticket or secret of `randomId`: 32 lower-case hex characters. */
+export const hexIdText = "[0-9a-f]{32}"
+const hexId = new RegExp(`^${hexIdText}$`)
 
 /**
  * Sign-in states of one flow a browser keeps, the new one included. Only a finished callback deletes
@@ -149,10 +155,19 @@ export function endPendingEntry(c: Context, giveaway: PendingGiveaway): void {
   deleteCookie(c, name, { path })
 }
 
-/** Whoever opened a moderator link of one giveaway: the cookie names the link, which every request looks up so a revoked link stops at once. */
+/**
+ * Whoever opened a moderator link of one giveaway: the cookie names the link, which every request looks up so
+ * a revoked link stops at once, and for a link that requires a moderator the platform user who signed in.
+ */
 export interface ModeratorSession {
   readonly linkId: string
+  /** Null for a link anyone may use. */
+  readonly platformUserId: string | null
 }
+
+// A link that requires a moderator, opened by someone not signed in: only the link id waits for the
+// sign-in start, never the link's secret.
+const moderatorPendingCookie = { name: "rl_mod_pending", path: "/auth/" } as const
 
 // One cookie per giveaway, sent only to that giveaway's moderator routes. Giveaway ids are 32 hex characters.
 function moderatorCookie(giveawayId: string): { name: string; path: string } {
@@ -175,9 +190,31 @@ export async function readModeratorSession(
   giveawayId: string,
 ): Promise<ModeratorSession | null> {
   if (!hexId.test(giveawayId)) return null
-  return readCookie(c, deps, moderatorCookie(giveawayId).name, (value) =>
-    typeof value.linkId === "string" ? { linkId: value.linkId } : null,
+  return readCookie(c, deps, moderatorCookie(giveawayId).name, (value) => {
+    const { linkId, platformUserId } = value
+    if (typeof linkId !== "string") return null
+    if (platformUserId !== null && typeof platformUserId !== "string") return null
+    return { linkId, platformUserId }
+  })
+}
+
+export async function startModeratorPending(
+  c: Context,
+  deps: SessionDeps,
+  linkId: string,
+): Promise<void> {
+  const { name, path } = moderatorPendingCookie
+  await writeCookie(c, deps, name, { linkId }, deps.config.stateCookieTtlSeconds, path)
+}
+
+/** The link a moderator's sign-in start is for; the cookie is removed, a start uses it once. */
+export async function takeModeratorPending(c: Context, deps: SessionDeps): Promise<string | null> {
+  const { name, path } = moderatorPendingCookie
+  const linkId = await readCookie(c, deps, name, (value) =>
+    typeof value.linkId === "string" ? value.linkId : null,
   )
+  deleteCookie(c, name, { path })
+  return linkId
 }
 
 export async function startOAuthState(
@@ -223,12 +260,13 @@ export async function takeOAuthState(
   if (returnedState === undefined || !hexId.test(returnedState)) return null
   const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
-    const { state, nonce, codeVerifier, giveawayCode, returnPath } = value
+    const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId } = value
     if (typeof state !== "string" || typeof nonce !== "string") return null
     if (typeof codeVerifier !== "string") return null
     if (giveawayCode !== null && typeof giveawayCode !== "string") return null
     if (returnPath !== null && typeof returnPath !== "string") return null
-    return { state, nonce, codeVerifier, giveawayCode, returnPath }
+    if (moderatorLinkId !== null && typeof moderatorLinkId !== "string") return null
+    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId }
   })
   deleteCookie(c, name, { path: "/" })
   return saved

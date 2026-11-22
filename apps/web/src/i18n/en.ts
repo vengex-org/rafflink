@@ -733,7 +733,7 @@ export const en = {
   "privacy.data.i1":
     "Streamers: Twitch user ID, login name, display name, the URL of the Twitch profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
   "privacy.data.i2":
-    "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway.",
+    "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway, and check that someone who opens a moderator link moderates the channel.",
   "privacy.data.i3":
     "Entrants: Twitch user ID, login name, display name, the URL of the Twitch profile picture, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4":
@@ -744,6 +744,8 @@ export const en = {
     "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example with rate limits.",
   "privacy.data.i7":
     "Giveaway rooms: the Twitch user IDs of the channel's VIPs and moderators, stored to apply the ticket rules. They are deleted with the giveaway's entries.",
+  "privacy.data.i8":
+    "Moderators who open a moderator link: the link stores only a hash of its secret. When a link is for channel moderators, the moderator signs in with Twitch and Rafflink checks the Twitch user ID against the channel's moderators. The ID is kept only in the moderator's cookie, nothing else about them is stored, and no Twitch token is kept.",
   "privacy.purposes.h": "Why and on what legal basis",
   "privacy.purposes.i1":
     "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of a contract with you, the service you asked for (GDPR Article 6(1)(b)).",
@@ -783,6 +785,8 @@ export const en = {
     "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes by default.",
   "privacy.cookies.i5":
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
+  "privacy.cookies.i6":
+    "rl_mod_*: lets whoever opened a moderator link use that giveaway's moderator page, 7 days by default or until the streamer revokes the link. rl_mod_pending: remembers which link waits for the moderator's Twitch sign-in, 10 minutes by default.",
   "privacy.rights.h": "Your rights",
   "privacy.rights.p1":
     "You have the rights listed below. Write to {contact}. We answer within one month.",
@@ -1016,6 +1020,7 @@ export const en = {
   "mod.notMod.title": "Only for moderators",
   "mod.notMod.text":
     "This link is for moderators of the streamer's channel, and the Twitch account you signed in with is not one.",
+  "mod.signInAgain": "The Twitch sign-in did not finish. Open the link from the streamer again.",
   "mod.rateLimited": "Too many tries from your network. Wait a minute and open the link again.",
   "signIn.why.moderator":
     "This moderator link is for moderators of the channel. Sign in with Twitch so Rafflink can check that you are one.",

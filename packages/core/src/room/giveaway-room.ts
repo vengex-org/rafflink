@@ -563,9 +563,8 @@ export class GiveawayRoom {
   }
 
   /** Stops entries. Idempotent: closing a room that is not open reports its status. */
-  close(by?: Actor): CloseOutcome {
-    if (!this.closeOpenRoom(by ?? null))
-      return { kind: "not-open", status: this.readState().status }
+  close(by: Actor | null): CloseOutcome {
+    if (!this.closeOpenRoom(by)) return { kind: "not-open", status: this.readState().status }
     this.mirrorRetryAt = this.clock.now() + this.config.mirrorRetrySeconds * 1000
     this.afterOutcomeWrite()
     return { kind: "closed" }
@@ -871,7 +870,7 @@ export class GiveawayRoom {
   }
 
   /** Marks pick `n` rerolled and adds the next pick; a repeat for the same `n` changes nothing. */
-  async reroll(n: number, by?: Actor): Promise<RerollOutcome> {
+  async reroll(n: number, by: Actor | null): Promise<RerollOutcome> {
     const state = this.readState()
     if (state.status !== "drawn") return { kind: "not-drawn" }
     if (state.entriesDeleted) return { kind: "entries-deleted" }
@@ -895,10 +894,10 @@ export class GiveawayRoom {
       }
       const marked = this.sql.exec(
         "UPDATE draws SET rerolled = 1, rerolled_by = ? WHERE n = ? AND rerolled = 0 AND claimed_at IS NULL RETURNING n",
-        [by ?? null, n],
+        [by, n],
       )
       if (marked.length === 0) return rerollRefusal(this.readDraw(n)) ?? { kind: "unknown-pick" }
-      this.insertPick(winner, now, state.claimSeconds, by ?? null)
+      this.insertPick(winner, now, state.claimSeconds, by)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
       this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
       return { kind: "rerolled", replaced: n, winner }
@@ -914,9 +913,9 @@ export class GiveawayRoom {
    * Records that the winner of pick `n` claimed; the first claim wins, a later one is refused. A claim by the
    * streamer's hand has no deadline; `by` is who marked it and is kept only for such a claim.
    */
-  claim(n: number, winner: Identity, via: ClaimedVia, by?: Actor): ClaimOutcome {
+  claim(n: number, winner: Identity, via: ClaimedVia, by: Actor | null): ClaimOutcome {
     const now = this.clock.now()
-    const markedBy = via === "manual" ? (by ?? null) : null
+    const markedBy = via === "manual" ? by : null
     const claimed = this.sql.exec(
       `UPDATE draws SET claimed_at = ?, claimed_via = ?, claim_marked_by = ?
        WHERE n = ? AND platform = ? AND platform_user_id = ?
@@ -1315,6 +1314,7 @@ export class GiveawayRoom {
       new RowReader("draws", pick).int("n"),
       { platform: state.platform, platformUserId: message.platformUserId },
       "chat",
+      null,
     )
     return outcome.kind === "claimed"
   }

@@ -736,7 +736,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i1":
     "Streameri: Twitch user ID, prihlasovacie meno, zobrazované meno, URL profilového obrázka na Twitchi a čas prvého prihlásenia, ďalej giveawaye, ktoré vytvoria (názov, text výhry, pravidlá, kód odkazu, časy) a ich výsledky.",
   "privacy.data.i2":
-    "Streameri: Twitch refresh token, uložený šifrovane. Vďaka nemu Rafflink počas giveawayu číta zoznam VIP a moderátorov kanála a chat.",
+    "Streameri: Twitch refresh token, uložený šifrovane. Vďaka nemu Rafflink počas giveawayu číta zoznam VIP a moderátorov kanála a chat a overí, že ten, kto otvorí odkaz pre moderátora, kanál moderuje.",
   "privacy.data.i3":
     "Účastníci: Twitch user ID, prihlasovacie meno, zobrazované meno, URL profilového obrázka na Twitchi, skupina, ktorá dala tikety (divák, follower, úroveň predplatiteľa, VIP alebo moderátor), počet tiketov, čas zapojenia a náhodná hodnota (salt), vďaka ktorej je žrebovanie overiteľné. Kontrola follow a predplatného použije tvoj Twitch token jedenkrát a token sa neukladá.",
   "privacy.data.i4":
@@ -747,6 +747,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Technické údaje: hostiteľ spracúva tvoju IP adresu a údaje o požiadavke, aby stránku doručil a ochránil pred zneužitím, napríklad obmedzeniami rýchlosti.",
   "privacy.data.i7":
     "Miestnosti giveawayov: Twitch user ID VIP a moderátorov kanála, uložené na uplatnenie pravidiel tiketov. Mažú sa spolu so zapojeniami giveawayu.",
+  "privacy.data.i8":
+    "Moderátori, ktorí otvoria odkaz pre moderátora: odkaz ukladá iba hash svojho tajomstva. Keď je odkaz pre moderátorov kanála, moderátor sa prihlási cez Twitch a Rafflink porovná jeho Twitch user ID so zoznamom moderátorov kanála. ID zostane iba v cookie moderátora, nič iné sa o ňom neukladá a žiadny Twitch token sa nedrží.",
   "privacy.purposes.h": "Prečo a na akom právnom základe",
   "privacy.purposes.i1":
     "Na prevádzku giveawayov, ktoré streameri vytvárajú, a na zapájanie divákov vrátane žrebovania a prevzatia výhry: plnenie zmluvy s tebou, teda služby, o ktorú si požiadal (čl. 6 ods. 1 písm. b) GDPR).",
@@ -787,6 +789,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "rl_pending_*: umožní prehliadaču, ktorý zaradil zapojenie do fronty, vyzdvihnúť jeho výsledok, predvolene 10 minút.",
   "privacy.cookies.i5":
     "Lokálne úložisko prehliadača si pamätá tvoj výber jazyka a témy a čistý režim živej stránky. Úložisko relácie drží približne 30 sekúnd kópiu načítanej stránky giveawayu vrátane tvojho stavu v nej. Zariadenie neopúšťa ani jedno.",
+  "privacy.cookies.i6":
+    "rl_mod_*: umožní tomu, kto otvoril odkaz pre moderátora, používať stránku moderátora daného giveawayu, predvolene 7 dní alebo kým streamer odkaz nezruší. rl_mod_pending: pamätá si, ktorý odkaz čaká na prihlásenie moderátora cez Twitch, predvolene 10 minút.",
   "privacy.rights.h": "Tvoje práva",
   "privacy.rights.p1":
     "Máš práva uvedené nižšie. Napíš na {contact}. Odpovieme do jedného mesiaca.",
@@ -1021,6 +1025,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "mod.notMod.title": "Iba pre moderátorov",
   "mod.notMod.text":
     "Tento odkaz je pre moderátorov streamerovho kanála a Twitch účet, cez ktorý si sa prihlásil, medzi nich nepatrí.",
+  "mod.signInAgain": "Prihlásenie cez Twitch sa nedokončilo. Otvor odkaz od streamera znova.",
   "mod.rateLimited": "Príliš veľa pokusov z tvojej siete. Počkaj minútu a otvor odkaz znova.",
   "signIn.why.moderator":
     "Tento odkaz je pre moderátorov kanála. Prihlás sa cez Twitch, aby Rafflink overil, že si jedným z nich.",

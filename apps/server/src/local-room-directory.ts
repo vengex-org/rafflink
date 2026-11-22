@@ -70,6 +70,8 @@ export class LocalRoomDirectory implements RoomDirectory {
   private readonly inFlight = new Map<Promise<void>, string>()
   // Each page's socket of a room with the moderator link it was opened through, null for the streamer, overlay and viewers.
   private readonly sockets = new Map<string, Map<RoomSocket, string | null>>()
+  // Links revoked in this process: a socket whose route check passed just before the revoke opens after it.
+  private readonly revokedLinks = new Set<string>()
   // Rooms deleted in this process: a call that looked the giveaway up before the delete must not create a new file.
   private readonly deleted = new Set<string>()
   private closing = false
@@ -114,6 +116,10 @@ export class LocalRoomDirectory implements RoomDirectory {
    * was opened through, closes it; the returned function forgets it.
    */
   attachSocket(giveawayId: string, socket: RoomSocket, linkId: string | null): () => void {
+    if (linkId !== null && this.revokedLinks.has(linkId)) {
+      socket.close(policyViolationCloseCode, "moderator link revoked")
+      return keepNothing
+    }
     const attached = this.sockets.get(giveawayId) ?? new Map<RoomSocket, string | null>()
     attached.set(socket, linkId)
     this.sockets.set(giveawayId, attached)
@@ -126,6 +132,7 @@ export class LocalRoomDirectory implements RoomDirectory {
   }
 
   async closeModeratorSockets(giveawayId: string, linkId: string): Promise<void> {
+    this.revokedLinks.add(linkId)
     for (const [socket, opener] of this.sockets.get(giveawayId) ?? []) {
       if (opener === linkId) socket.close(policyViolationCloseCode, "moderator link revoked")
     }
@@ -225,6 +232,9 @@ const sqliteSuffix = ".sqlite"
 
 // RFC 6455: the server ends a socket whose peer is no longer allowed.
 const policyViolationCloseCode = 1008
+
+// What a socket refused at attach has to forget when it closes.
+const keepNothing = (): void => {}
 
 /** The room's methods as the async stub the HTTP app expects; a locked database is transient, anything else is not. */
 class LocalRoomStub implements RoomStub {

@@ -1,5 +1,5 @@
 import { useId } from "react"
-import type { Actor } from "@rafflink/core/domain/actor"
+import { actorLinkId, type Actor } from "@rafflink/core/domain/actor"
 import type { ActionActors } from "@rafflink/core/room/giveaway-room"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
@@ -53,7 +53,8 @@ function actorLines(actors: ActionActors): ActorLine[] {
 }
 
 function actorName(actor: Actor, t: I18n["t"]): string {
-  return actor === "streamer"
+  const linkId = actorLinkId(actor)
+  return linkId === null
     ? t("live.actors.streamer")
-    : t("live.actors.moderator", { id: linkName(actor.slice("mod:".length)) })
+    : t("live.actors.moderator", { id: linkName(linkId) })
 }

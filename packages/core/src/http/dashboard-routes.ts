@@ -26,6 +26,7 @@ import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import {
   dashboardGiveaway,
+  objectField,
   readJson,
   type AdminAccessCountsJson,
   type AdminPlanJson,
@@ -110,11 +111,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     withOwnedRoom(c, deps, async (giveaway) => {
       const body = await readJson(c)
       // Absent is not "one winner" here: a request that names no count is a bad request.
-      const named =
-        typeof body === "object" && body !== null && Object.hasOwn(body, "count")
-          ? Reflect.get(body, "count")
-          : null
-      const count = parseWinnerCount(named, deps.config)
+      const count = parseWinnerCount(objectField(body, "count") ?? null, deps.config)
       if (!count.ok) return c.json({ error: "invalid-input", field: "count" }, 400)
       await deps.rooms.get(giveaway.id).setWinnerCount(count.value)
       return c.json({ kind: "set" })
@@ -590,8 +587,7 @@ async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
 }
 
 function planField(body: unknown): CloudflarePlan | null {
-  if (typeof body !== "object" || body === null || !Object.hasOwn(body, "plan")) return null
-  const value: unknown = Reflect.get(body, "plan")
+  const value = objectField(body, "plan")
   return cloudflarePlans.find((plan) => plan === value) ?? null
 }
 

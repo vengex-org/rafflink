@@ -50,22 +50,35 @@ describe("opening a moderator link", () => {
     expect(FakeSocket.opened[0]?.url).toBe("ws://rafflink.test/api/mod/gid-1")
   })
 
-  it("asks a signed-out opener to sign in and keeps the token for the way back", async () => {
-    let answer = refused(401, "sign-in-required")
-    const requests = mockModerator({ "POST /api/moderator-links/open": () => answer })
+  it("sends a signed-out opener to the moderator sign-in and keeps no copy of the token", async () => {
+    mockModerator({ "POST /api/moderator-links/open": () => refused(401, "sign-in-required") })
 
-    const first = renderApp(`/mod#${token}`)
-    const signIn = await first.findByRole("link", { name: "Sign in with Twitch" })
-    expect(signIn.getAttribute("href")).toBe("/auth/twitch/streamer/start?return=%2Fmod")
-    cleanup()
+    const view = renderApp(`/mod#${token}`)
 
-    answer = ok({ giveawayId: "gid-1" })
-    const back = renderApp("/mod")
+    const signIn = await view.findByRole("link", { name: "Sign in with Twitch" })
+    expect(signIn.getAttribute("href")).toBe("/auth/twitch/moderator/start")
+    expect(window.sessionStorage.length).toBe(0)
+    expect(window.localStorage.length).toBe(0)
+  })
 
-    expect(await back.findByRole("heading", { name: "Entries are open" })).toBeTruthy()
-    const opens = requests.filter((request) => request.route === "POST /api/moderator-links/open")
-    expect(opens.map((request) => request.body)).toEqual([{ token }, { token }])
-    expect(window.sessionStorage.getItem("rafflink-moderator-token")).toBeNull()
+  it("explains where the moderator sign-in ended when it came back without the moderator page", async () => {
+    const requests = mockModerator({})
+    const cases = [
+      ["not-a-moderator", "Only for moderators"],
+      ["link-invalid", "This moderator link does not work"],
+      ["cancelled", "The Twitch sign-in did not finish. Open the link from the streamer again."],
+      [
+        "invalid-state",
+        "The Twitch sign-in did not finish. Open the link from the streamer again.",
+      ],
+    ] as const
+
+    for (const [outcome, text] of cases) {
+      const view = renderApp(`/mod?moderator=${outcome}`)
+      expect(await view.findByText(text)).toBeTruthy()
+      cleanup()
+    }
+    expect(requests.filter((request) => request.route.startsWith("POST"))).toHaveLength(0)
   })
 
   it("says a revoked or mistyped link does not work, and sends nothing without a token", async () => {

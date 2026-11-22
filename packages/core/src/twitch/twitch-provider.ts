@@ -36,6 +36,7 @@ export class TwitchProvider implements PlatformProvider {
   readonly scopes = {
     streamer: ["openid", "channel:read:vips", "moderation:read", "user:read:chat"],
     viewer: ["openid", "user:read:subscriptions", "user:read:follows"],
+    moderator: ["openid"],
   } as const
   private readonly badges: ChannelBadges
 

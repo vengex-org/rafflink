@@ -7,7 +7,7 @@ import { providerFor } from "../platform/provider.ts"
 import type { ClaimOutcome, DrawOutcome, RerollOutcome } from "../room/giveaway-room.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
 import type { AppDeps } from "./deps.ts"
-import { readJson, type BadgesJson, type EntrantsPage } from "./json.ts"
+import { objectField, readJson, type BadgesJson, type EntrantsPage } from "./json.ts"
 
 /**
  * The live page's buttons and lists, shared by the streamer's routes and a moderator link's: the caller has
@@ -171,8 +171,7 @@ export async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boole
 }
 
 export function integerField(body: unknown, field: string, min: number): number | null {
-  if (typeof body !== "object" || body === null) return null
-  const value: unknown = Object.hasOwn(body, field) ? Reflect.get(body, field) : undefined
+  const value = objectField(body, field)
   return typeof value === "number" && Number.isSafeInteger(value) && value >= min ? value : null
 }
 

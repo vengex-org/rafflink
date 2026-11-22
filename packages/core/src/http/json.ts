@@ -319,6 +319,12 @@ export function outcomeQuery(outcome: CallbackOutcome): URLSearchParams {
 }
 
 /** Body of a request, or undefined when it is not JSON. */
+/** The value a JSON body names under `name`; undefined when the body is not an object or lacks the field. */
+export function objectField(body: unknown, name: string): unknown {
+  if (typeof body !== "object" || body === null || !Object.hasOwn(body, name)) return undefined
+  return Reflect.get(body, name)
+}
+
 export async function readJson(c: Context): Promise<unknown> {
   try {
     return await c.req.json()

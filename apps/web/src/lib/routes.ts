@@ -1,6 +1,13 @@
 import type { OverlayOptions } from "./overlay-options.ts"
 
-export { drawPath, giveawayPath, verifyPath } from "@rafflink/core/lib/page-paths"
+export {
+  drawPath,
+  giveawayPath,
+  moderatorLivePath,
+  moderatorOpenPath,
+  moderatorSignInOutcomes,
+  verifyPath,
+} from "@rafflink/core/lib/page-paths"
 
 /** The first segments of the pages that are not giveaways; their canonical spelling is lowercase. `g` is the old giveaway link. */
 export const staticSegments = [
@@ -24,14 +31,6 @@ export const dashboardPath = "/dashboard"
 export const verifyLookupPath = "/verify"
 export const privacyPath = "/privacy"
 export const termsPath = "/terms"
-
-/** Where a moderator link points; the link's token follows after `#`, so it never reaches a server log. */
-export const moderatorOpenPath = "/mod"
-
-/** The live page of a moderator link, which its cookie opens. */
-export function moderatorLivePath(id: string): string {
-  return `/mod/${encodeURIComponent(id)}`
-}
 
 export function livePath(id: string): string {
   return `/live/${encodeURIComponent(id)}`
@@ -65,6 +64,9 @@ export function streamerSignInPath(returnTo: string): string {
   if (returnTo !== dashboardPath) query.set("return", returnTo)
   return withQuery("/auth/twitch/streamer/start", query)
 }
+
+/** A moderator's sign-in for the link that just asked for it; the server remembers which link in a cookie. */
+export const moderatorSignInPath = "/auth/twitch/moderator/start"
 
 export function viewerSignInPath(code: string): string {
   return `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`

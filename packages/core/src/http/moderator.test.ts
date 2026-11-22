@@ -124,7 +124,7 @@ describe("a moderator link", () => {
     expect(await response.json()).toEqual({ giveawayId: id })
 
     expect((await sameOriginPost(browser, `/api/mod/${id}/close`)).status).toBe(200)
-    expect((await sameOriginPost(browser, `/api/mod/${id}/draw`)).status).toBe(200)
+    expect((await sameOriginPost(browser, `/api/mod/${id}/draw`, { count: 1 })).status).toBe(200)
     expect((await sameOriginPost(browser, `/api/mod/${id}/reroll`, { n: 0 })).status).toBe(200)
     expect((await sameOriginPost(browser, `/api/mod/${id}/claim`, { n: 1 })).status).toBe(200)
 
@@ -138,12 +138,34 @@ describe("a moderator link", () => {
     })
   })
 
+  it("draws a batch of winners in one press, all named after the link, and refuses a count it may not draw", async () => {
+    const { id, code, link, token } = await giveawayWithLink()
+    for (const user of [users.viewer, users.viewer2, users.viewer3]) await enter(code, user.id)
+    const { browser } = await openLink(token)
+    await sameOriginPost(browser, `/api/mod/${id}/close`)
+
+    const tooMany = await sameOriginPost(browser, `/api/mod/${id}/draw`, {
+      count: harness.config.drawMaxWinners + 1,
+    })
+    const missing = await sameOriginPost(browser, `/api/mod/${id}/draw`, {})
+    const batch = await sameOriginPost(browser, `/api/mod/${id}/draw`, { count: 2 })
+
+    expect(tooMany.status).toBe(400)
+    expect(missing.status).toBe(400)
+    expect(await batch.json()).toEqual({ kind: "drawn", picks: [0, 1] })
+    const actor = moderatorActor(link.id)
+    expect(actorsOf(id).picks).toEqual([
+      { n: 0, drawnBy: actor, rerolledBy: null, claimMarkedBy: null },
+      { n: 1, drawnBy: actor, rerolledBy: null, claimMarkedBy: null },
+    ])
+  })
+
   it("records the streamer as the actor of the streamer's own buttons", async () => {
     const { browser, id, code } = await createGiveaway(harness)
     await enter(code, users.viewer.id)
 
     await browser.postJson(`/api/dash/giveaways/${id}/close`, {})
-    await browser.postJson(`/api/dash/giveaways/${id}/draw`, {})
+    await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
 
     expect(actorsOf(id)).toEqual({
       closedBy: "streamer",
@@ -309,47 +331,123 @@ describe("a revoked moderator link", () => {
   })
 })
 
-describe("a moderator link that requires a moderator", () => {
-  it("asks a signed-out opener to sign in", async () => {
-    const { token } = await giveawayWithLink(true)
+/** Opens a link that requires a moderator while signed out, then runs the moderator's Twitch sign-in as `userId`. */
+async function signInThroughLink(token: string, userId: string) {
+  const { browser, response } = await openLink(token)
+  expect(response.status).toBe(401)
+  const signIn = await browser.signInAs(userId, "/auth/twitch/moderator/start")
+  return { browser, ...signIn, location: signIn.response.headers.get("location") }
+}
 
-    const { response } = await openLink(token)
+describe("a moderator link that requires a moderator", () => {
+  it("answers a signed-out opener with sign-in-required and a pending cookie that holds no secret", async () => {
+    const { link, token } = await giveawayWithLink(true)
+
+    const { browser, response } = await openLink(token)
 
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({ error: "sign-in-required" })
+    expect(browser.cookieNames()).toEqual(["rl_mod_pending"])
+    const pending = decodeURIComponent(browser.cookie("rl_mod_pending") ?? "")
+    expect(pending).toContain(link.id)
+    expect(pending).not.toContain(token.slice(33))
   })
 
-  it("refuses a signed-in account that does not moderate the channel", async () => {
-    const { token } = await giveawayWithLink(true)
-    const browser = new Browser(harness)
-    await browser.signInAs(users.viewer.id, "/auth/twitch/streamer/start")
-
-    const { response } = await openLink(token, browser)
-
-    expect(response.status).toBe(403)
-    expect(await response.json()).toEqual({ error: "not-a-moderator" })
-  })
-
-  it("admits a moderator of the channel and the broadcaster", async () => {
-    const { browser: streamer, id, token } = await giveawayWithLink(true)
+  it("signs a moderator in with openid only on the viewer callback, without an account row or a token", async () => {
+    const { id, token } = await giveawayWithLink(true)
     harness.fake.control.setRole(users.streamerA.id, users.viewer.id, "moderator", true)
-    const moderator = new Browser(harness)
-    await moderator.signInAs(users.viewer.id, "/auth/twitch/streamer/start")
+    const streamersBefore = sqlRows(harness.accountsDb, "SELECT id FROM streamers")
 
-    expect((await openLink(token, moderator)).response.status).toBe(200)
-    expect((await moderator.request(`/api/mod/${id}`)).status).toBe(200)
+    const { browser, location } = await signInThroughLink(token, users.viewer.id)
+
+    expect(location).toBe(`/mod/${id}`)
+    expect((await browser.request(`/api/mod/${id}`)).status).toBe(200)
+    expect(sqlRows(harness.accountsDb, "SELECT id FROM streamers")).toEqual(streamersBefore)
+    expect(sqlRows(harness.accountsDb, "SELECT streamer_id FROM streamer_tokens")).toHaveLength(1)
+    const authorize = harness.fake.control.calls.findLast(
+      (call) => call.path === "/oauth2/authorize",
+    )
+    expect(authorize?.query.scope).toBe("openid")
+    expect(authorize?.query.redirect_uri).toBe(`${harness.config.publicUrl}/auth/twitch/viewer`)
+    expect(browser.cookieNames().filter((name) => name.startsWith("rl_mod_pending"))).toEqual([])
+  })
+
+  it("sends a signed-in account that does not moderate the channel back with not-a-moderator", async () => {
+    const { id, token } = await giveawayWithLink(true)
+
+    const { browser, location } = await signInThroughLink(token, users.viewer.id)
+
+    expect(location).toBe("/mod?moderator=not-a-moderator")
+    expect((await browser.request(`/api/mod/${id}`)).status).toBe(403)
+  })
+
+  it("refuses a link revoked while its opener signed in, and a start without a pending link", async () => {
+    const { browser: streamer, id, link, token } = await giveawayWithLink(true)
+    harness.fake.control.setRole(users.streamerA.id, users.viewer.id, "moderator", true)
+    const { browser } = await openLink(token)
+    await sameOriginPost(streamer, `/api/dash/giveaways/${id}/moderator-links/${link.id}/revoke`)
+
+    const signIn = await browser.signInAs(users.viewer.id, "/auth/twitch/moderator/start")
+    const again = await browser.request("/auth/twitch/moderator/start")
+
+    expect(signIn.response.headers.get("location")).toBe("/mod?moderator=link-invalid")
+    expect(again.headers.get("location")).toBe("/mod?moderator=invalid-state")
+  })
+
+  it("admits the broadcaster and a viewer session of a moderator without a new sign-in", async () => {
+    const { browser: streamer, code, token } = await giveawayWithLink(true)
+    harness.fake.control.setRole(users.streamerA.id, users.viewer.id, "moderator", true)
+    const viewer = new Browser(harness)
+    await viewer.signInAs(users.viewer.id, `/auth/twitch/viewer/start?giveaway=${code}`)
+
     expect((await openLink(token, streamer)).response.status).toBe(200)
+    expect((await openLink(token, viewer)).response.status).toBe(200)
   })
 
   it("answers 503 when the channel's moderators cannot be read", async () => {
     const { token } = await giveawayWithLink(true)
-    const browser = new Browser(harness)
-    await browser.signInAs(users.viewer.id, "/auth/twitch/streamer/start")
+    const other = new Browser(harness)
+    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
     spyOn(console, "warn").mockImplementation(() => {})
     harness.fake.control.failNext("moderators", 503, 2)
 
-    const { response } = await openLink(token, browser)
+    const { response } = await openLink(token, other)
 
     expect(response.status).toBe(503)
+  })
+
+  it("checks a moderator again on a button press once the last yes is older than the recheck time", async () => {
+    const { id, token } = await giveawayWithLink(true)
+    harness.fake.control.setRole(users.streamerA.id, users.viewer.id, "moderator", true)
+    const { browser } = await signInThroughLink(token, users.viewer.id)
+    const checks = () =>
+      harness.fake.control.calls.filter((call) => call.path === "/helix/moderation/moderators")
+        .length
+
+    expect((await sameOriginPost(browser, `/api/mod/${id}/close`)).status).toBe(200)
+    const afterFirst = checks()
+    harness.fake.control.setRole(users.streamerA.id, users.viewer.id, "moderator", false)
+    expect((await sameOriginPost(browser, `/api/mod/${id}/draw`, { count: 1 })).status).not.toBe(
+      403,
+    )
+    expect(checks()).toBe(afterFirst)
+
+    harness.clock.advance(harness.config.moderatorRecheckSeconds * 1000)
+    const demoted = await sameOriginPost(browser, `/api/mod/${id}/draw`, { count: 1 })
+    expect(demoted.status).toBe(403)
+    expect(await demoted.json()).toEqual({ error: "not-a-moderator" })
+  })
+
+  it("answers 503 to a button press when the recheck cannot reach the platform", async () => {
+    const { id, token } = await giveawayWithLink(true)
+    harness.fake.control.setRole(users.streamerA.id, users.viewer.id, "moderator", true)
+    const { browser } = await signInThroughLink(token, users.viewer.id)
+    spyOn(console, "warn").mockImplementation(() => {})
+    harness.fake.control.failNext("moderators", 503, 2)
+
+    const response = await sameOriginPost(browser, `/api/mod/${id}/close`)
+
+    expect(response.status).toBe(503)
+    expect(harness.rooms.roomFor(id).summary().status).toBe("open")
   })
 })
