@@ -569,7 +569,7 @@ describe("AccountStore overlay themes", () => {
     await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC" }))
     await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", streamerId: "s2" }))
     await store.setGiveawayOverlayTheme("s1", "g2", special)
-    await store.setStatus("g3", "drawn")
+    await store.setStatus("g3", "drawn", 0)
 
     expect(await store.streamerThemedGiveaways("s1")).toEqual(["g1"])
   })
