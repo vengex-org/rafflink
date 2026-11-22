@@ -1,8 +1,10 @@
+import type { OperatorJson } from "@rafflink/core/http/json"
 import type { ReactNode } from "react"
+import { ExternalLink } from "../components/external-link.tsx"
 import { Page } from "../components/page.tsx"
+import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { useI18n } from "../i18n/i18n.tsx"
-import { legalUpdated, operator } from "../lib/operator.ts"
+import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { repositoryUrl } from "../lib/links.ts"
 
 /** One headed part of a legal text: paragraphs first, then a bullet list. */
@@ -29,26 +31,39 @@ export function TermsPage() {
 // The other legal text is one click away in the footer every legal page ends with, so the page does not link it again.
 function LegalPage({ document }: { readonly document: LegalDocument }) {
   const { t, rich, date } = useI18n()
+  const { operator, loaded } = useStreamerSession()
   const placeholders: Readonly<Record<string, ReactNode>> = {
-    operatorName: operator.name,
-    operatorAddress: operator.address,
-    operatorId: operator.id,
-    contactEmail: operator.contactEmail,
-    repository: <a href={repositoryUrl}>{repositoryUrl}</a>,
+    operator: operator === null ? "" : operatorDetails(operator, t),
+    contact: operator?.email ?? t("legal.contact.none"),
+    repository: (
+      <ExternalLink kind="own" href={repositoryUrl}>
+        {repositoryUrl}
+      </ExternalLink>
+    ),
+  }
+  // An instance without an operator gets the generic paragraph; until the session answers, neither shows.
+  const paragraph = (key: MessageKey): MessageKey | null => {
+    const withoutOperator = operatorVariants[key]
+    if (withoutOperator === undefined) return key
+    if (!loaded) return null
+    return operator === null ? withoutOperator : key
   }
   return (
     <Page width="text" as="article" className="legal">
       <h1>{t(document.title)}</h1>
       <p className="legal-updated">
-        {t("legal.updated", { date: date(Date.parse(`${legalUpdated}T00:00`)) })}
+        {t("legal.updated", {
+          date: date(Date.parse(`${operator?.legalUpdated ?? templateUpdated}T00:00`)),
+        })}
       </p>
       <p>{rich(document.intro, placeholders)}</p>
       {document.sections.map((section) => (
         <section key={section.heading}>
           <h2>{t(section.heading)}</h2>
-          {section.paragraphs.map((key) => (
-            <p key={key}>{rich(key, placeholders)}</p>
-          ))}
+          {section.paragraphs.map((key) => {
+            const shown = paragraph(key)
+            return shown === null ? null : <p key={key}>{rich(shown, placeholders)}</p>
+          })}
           {section.items.length === 0 ? null : (
             <ul>
               {section.items.map((key) => (
@@ -60,6 +75,22 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
       ))}
     </Page>
   )
+}
+
+/** The day the template texts last changed, as an ISO date. Update it with every edit of the texts. */
+const templateUpdated = "2026-11-22"
+
+/** Paragraphs naming the operator, and what an instance without one shows in their place. */
+const operatorVariants: Readonly<Partial<Record<MessageKey, MessageKey>>> = {
+  "privacy.controller.p1": "privacy.controller.none",
+  "terms.service.p1": "terms.service.none",
+}
+
+function operatorDetails(operator: OperatorJson, t: I18n["t"]): string {
+  const parts = [operator.name]
+  if (operator.id !== null) parts.push(t("legal.operator.id", { id: operator.id }))
+  if (operator.address !== null) parts.push(operator.address)
+  return parts.join(", ")
 }
 
 const privacy: LegalDocument = {

@@ -21,6 +21,7 @@ const signedIn = {
         canCreate: true,
       },
       donateUrl: null,
+      operator: null,
     }),
 }
 
@@ -56,6 +57,7 @@ describe("header session", () => {
             canCreate: true,
           },
           donateUrl: null,
+          operator: null,
         }),
     })
     const withPicture = renderApp("/")
@@ -124,7 +126,7 @@ describe("header session", () => {
         ok(
           signedInNow
             ? { ...supportedSession, donateUrl: null }
-            : { streamer: null, donateUrl: null },
+            : { streamer: null, donateUrl: null, operator: null },
         ),
       "POST /auth/logout": () => {
         signedInNow = false
@@ -174,6 +176,7 @@ describe("header session", () => {
                 canCreate: true,
               },
               donateUrl: null,
+              operator: null,
             })
           : { status: 500, body: { error: "unavailable" } }
       },
@@ -247,7 +250,7 @@ describe("header session", () => {
         return ok(
           sessionCalls === 1
             ? { ...supportedSession, donateUrl: null }
-            : { streamer: null, donateUrl: null },
+            : { streamer: null, donateUrl: null, operator: null },
         )
       },
       "GET /api/dash/giveaways": async () => {
@@ -272,7 +275,7 @@ describe("header session", () => {
     mockFetch({
       "GET /api/session": () => {
         sessionCalls += 1
-        return ok({ streamer: null, donateUrl: null })
+        return ok({ streamer: null, donateUrl: null, operator: null })
       },
       "GET /api/dash/giveaways": async () => {
         await setTimeout(0)

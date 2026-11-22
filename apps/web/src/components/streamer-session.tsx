@@ -1,4 +1,4 @@
-import type { SessionJson } from "@rafflink/core/http/json"
+import type { OperatorJson, SessionJson } from "@rafflink/core/http/json"
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router"
 import { getSession, logout, sessionLost } from "../api/client.ts"
@@ -14,6 +14,10 @@ export interface StreamerSession {
   readonly streamer: SignedInStreamer | null
   /** The deployment's support page, signed in or not; null while the session is unknown or when `DONATE_URL` is unset. */
   readonly donateUrl: string | null
+  /** Who runs the instance; null while the session is unknown or when `OPERATOR_NAME` is unset. */
+  readonly operator: OperatorJson | null
+  /** False until the session call has answered, so a page can tell "not yet known" from "no operator". */
+  readonly loaded: boolean
   readonly busy: boolean
   readonly message: MessageKey | null
   readonly signOut: () => void
@@ -22,6 +26,8 @@ export interface StreamerSession {
 const unknownSession: StreamerSession = {
   streamer: null,
   donateUrl: null,
+  operator: null,
+  loaded: false,
   busy: false,
   message: null,
   signOut: () => {},
@@ -41,6 +47,7 @@ export function StreamerSessionProvider({ children }: { readonly children: React
   const streamer = session?.streamer ?? null
   // A deployment fact, so it outlives a logout.
   const donateUrl = result.state === "ready" ? result.value.donateUrl : null
+  const operator = result.state === "ready" ? result.value.operator : null
 
   // A signed-out header has nothing to correct, and a call still in flight already asks the server.
   const signedIn = streamer !== null
@@ -59,7 +66,15 @@ export function StreamerSessionProvider({ children }: { readonly children: React
 
   return (
     <sessionContext.Provider
-      value={{ streamer, donateUrl, busy, message, signOut: () => void signOut() }}
+      value={{
+        streamer,
+        donateUrl,
+        operator,
+        loaded: result.state !== "loading",
+        busy,
+        message,
+        signOut: () => void signOut(),
+      }}
     >
       {children}
     </sessionContext.Provider>

@@ -598,14 +598,19 @@ export const en = {
   "legal.footerLabel": "Legal",
   "legal.updated": "Last updated: {date}",
 
+  "legal.contact.none": "the person who shared this link with you",
+  "legal.operator.id": "business ID {id}",
+
   "privacy.title": "Privacy policy",
   "privacy.intro":
     "Rafflink draws winners of Twitch giveaways. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
   "privacy.controller.h": "Who is responsible",
   "privacy.controller.p1":
-    "For the hosted service at this address the controller of your personal data is {operatorName}, business ID (IČO) {operatorId}, {operatorAddress}. Contact: {contactEmail}.",
+    "The controller of your personal data on this instance is {operator}. Contact: {contact}.",
+  "privacy.controller.none":
+    "This instance is run by its operator, who has not published contact details here. The software sends no data to the Rafflink project. To use a data right or ask a question, contact the person who shared the link with you.",
   "privacy.controller.p2":
-    "Rafflink is open source and anyone can run their own copy. On a self-hosted instance the person who runs it is the controller, and this text only describes what the software does. The Rafflink project receives no data from self-hosted instances.",
+    "Rafflink is open source and anyone can run their own copy. This text describes what the software does; the person who runs an instance is the controller of the data on it. The Rafflink project receives no data from instances run by others.",
   "privacy.data.h": "What data is processed",
   "privacy.data.p1":
     "Everything comes from Twitch when you sign in with it. Rafflink asks for read access only and never posts to chat.",
@@ -636,13 +641,13 @@ export const en = {
     "When a streamer removes Rafflink's access on Twitch, only the stored Twitch token is deleted. The account and its giveaways stay until the streamer asks the operator to delete them (see the contact above).",
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
   "privacy.retention.i4":
-    "Host logs are kept as long as Cloudflare keeps them under its own terms.",
+    "Host logs are kept as long as the hosting provider keeps them under its own terms.",
   "privacy.retention.i5":
     "The winner list, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay with the giveaway, so anyone can check the draw later.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":
-    "Cloudflare hosts the service (Workers, Durable Objects, D1) as our processor and may process data outside the European Economic Area under its standard contractual clauses.",
+    "The hosting provider of this instance stores and delivers the service as the operator's processor and may process data outside the European Economic Area under its own terms and safeguards.",
   "privacy.recipients.i2":
     "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. The streamer's browser also loads profile pictures and subscriber badges from Twitch's image servers. Twitch is an independent controller under its own privacy notice.",
   "privacy.recipients.i3":
@@ -663,7 +668,7 @@ export const en = {
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
   "privacy.rights.h": "Your rights",
   "privacy.rights.p1":
-    "You have the rights listed below. Write to {contactEmail}. We answer within one month.",
+    "You have the rights listed below. Write to {contact}. We answer within one month.",
   "privacy.rights.p2":
     "You can also remove Rafflink's access at any time in your Twitch settings under Connections.",
   "privacy.rights.i1":
@@ -680,12 +685,14 @@ export const en = {
     "By signing in or entering a giveaway on Rafflink you accept these terms. If you do not accept them, do not use the service.",
   "terms.service.h": "The service",
   "terms.service.p1":
-    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. The hosted service is run by {operatorName}, business ID (IČO) {operatorId}, {operatorAddress}, a sole trader registered in the Czech Trade Register kept by the Prague 4 Municipal District Office.",
+    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. This instance is run by {operator}.",
+  "terms.service.none":
+    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. This instance is run by its operator, who has not published contact details here. Contact the person who shared the link with you.",
   "terms.service.p2":
-    "The service is provided as is and as available, without any warranty. It may change, be limited or be stopped at any time, and it has no uptime guarantee. On a self-hosted instance the person who runs it sets the terms.",
+    "The service is provided as is and as available, without any warranty. It may change, be limited or be stopped at any time, and it has no uptime guarantee.",
   "terms.source.h": "Open source",
   "terms.source.p1":
-    "The source code is licensed under the GNU AGPL-3.0 and is available at {repository}. The licence applies to the code. These terms apply to the hosted service.",
+    "The source code is licensed under the GNU AGPL-3.0 and is available at {repository}. The licence applies to the code. These terms apply to the service on this instance.",
   "terms.streamers.h": "Streamers",
   "terms.streamers.p1": "You run your giveaway, not Rafflink. Rafflink only draws.",
   "terms.streamers.i1": "You are responsible for the prize, for delivering it and for your rules.",
@@ -721,7 +728,7 @@ export const en = {
   "terms.changes.p1":
     "We may change these terms. The date at the top shows the current version, and using the service after a change means you accept it. We may remove a giveaway or block an account that breaks these terms.",
   "terms.contact.h": "Contact",
-  "terms.contact.p1": "Questions about these terms: {contactEmail}.",
+  "terms.contact.p1": "Questions about these terms: {contact}.",
   "drawResult.round-pending":
     "The random number is not published yet. The winner is drawn by itself as soon as it is.",
   "drawResult.round-due":

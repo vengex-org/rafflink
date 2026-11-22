@@ -77,4 +77,5 @@ export const donateUrl = "https://ko-fi.com/rafflink"
 export const supportedSession = {
   streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null, canCreate: true },
   donateUrl,
+  operator: null,
 }

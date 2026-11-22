@@ -74,7 +74,7 @@ describe("session", () => {
     const response = await new Browser(harness).request("/api/session")
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ streamer: null, donateUrl: null })
+    expect(await response.json()).toEqual({ streamer: null, donateUrl: null, operator: null })
   })
 
   it("names the signed-in streamer", async () => {
@@ -92,6 +92,7 @@ describe("session", () => {
         canCreate: true,
       },
       donateUrl: null,
+      operator: null,
     })
   })
 
@@ -102,6 +103,7 @@ describe("session", () => {
     expect(await (await browser.request("/api/session")).json()).toEqual({
       streamer: null,
       donateUrl: "https://ko-fi.com/rafflink",
+      operator: null,
     })
 
     await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
@@ -110,12 +112,35 @@ describe("session", () => {
     expect(session.donateUrl).toBe("https://ko-fi.com/rafflink")
   })
 
+  it("names the operator to every visitor when OPERATOR_NAME is set", async () => {
+    await harness.stop()
+    harness = await createHarness({
+      env: {
+        OPERATOR_NAME: "Example Operator",
+        OPERATOR_EMAIL: "legal@example.com",
+        LEGAL_UPDATED: "2026-02-28",
+      },
+    })
+
+    const session: { operator: unknown } = await (
+      await new Browser(harness).request("/api/session")
+    ).json()
+
+    expect(session.operator).toEqual({
+      name: "Example Operator",
+      address: null,
+      id: null,
+      email: "legal@example.com",
+      legalUpdated: "2026-02-28",
+    })
+  })
+
   it("answers null for a deleted streamer and deletes the cookie", async () => {
     const browser = await deletedStreamerBrowser()
 
     const response = await browser.request("/api/session")
 
-    expect(await response.json()).toEqual({ streamer: null, donateUrl: null })
+    expect(await response.json()).toEqual({ streamer: null, donateUrl: null, operator: null })
     expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
     expect(browser.cookie("rl_streamer")).toBeUndefined()
   })
@@ -131,6 +156,7 @@ describe("session", () => {
     expect(await (await browser.request("/api/session")).json()).toEqual({
       streamer: null,
       donateUrl: null,
+      operator: null,
     })
   })
 

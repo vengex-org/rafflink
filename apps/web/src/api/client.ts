@@ -12,6 +12,7 @@ import type {
   EntrantsPage,
   LeavesJson,
   MyLeafJson,
+  OperatorJson,
   PublicGiveaway,
   SessionJson,
   VerifyJson,
@@ -166,7 +167,8 @@ export async function getSession(): Promise<SessionJson> {
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "session")
   const donateUrl = nullableText(source, "donateUrl")
-  if (source.streamer === null) return { streamer: null, donateUrl }
+  const operator = source.operator === null ? null : operatorOf(child(source, "operator"))
+  if (source.streamer === null) return { streamer: null, donateUrl, operator }
   const streamer = child(source, "streamer")
   return {
     streamer: {
@@ -176,6 +178,17 @@ export async function getSession(): Promise<SessionJson> {
       canCreate: bool(streamer, "canCreate"),
     },
     donateUrl,
+    operator,
+  }
+}
+
+function operatorOf(source: Json): OperatorJson {
+  return {
+    name: text(source, "name"),
+    address: nullableText(source, "address"),
+    id: nullableText(source, "id"),
+    email: nullableText(source, "email"),
+    legalUpdated: nullableText(source, "legalUpdated"),
   }
 }
 

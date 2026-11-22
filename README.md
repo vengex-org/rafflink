@@ -150,6 +150,14 @@ Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Spo
 and in the settings panel of the streamer's live page. Viewer pages and the OBS overlay never show it. Left blank,
 no link appears anywhere.
 
+Legal pages: `/privacy` and `/terms` are a generic template that is accurate for any install. Whoever runs an
+instance is the controller of its data and must name themselves. Set `OPERATOR_NAME` (a person or a company) and
+the pages name you; `OPERATOR_ADDRESS`, `OPERATOR_ID` (business or company registration number) and
+`OPERATOR_EMAIL` (where visitors send data requests) add the rest, and `LEGAL_UPDATED` (`YYYY-MM-DD`) sets the
+date shown as the last update. The other `OPERATOR_*` keys apply only with `OPERATOR_NAME`. Without it the pages
+say the operator has published no contact details and point visitors to whoever shared the link. Rafflink sends no
+data to the Rafflink project from any install.
+
 ### Server size (VPS)
 
 One Bun process serves everything and writes entries to SQLite, so a small VPS is enough. The entry path runs on

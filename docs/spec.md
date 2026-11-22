@@ -526,6 +526,11 @@ Decisions on support and reach (owner decision, 2026-11-21):
   in the settings panel of the streamer's live page, hidden with the controls. It reaches the web app in the
   `/api/session` answer and in the owner's `/api/live/:id` answer; viewer pages and the overlay
   never show it (owner decision, 2026-11-22).
+- The privacy policy and the terms are a generic template (owner decision, 2026-11-22). The operator's details come
+  from the optional `OPERATOR_NAME`, `OPERATOR_ADDRESS`, `OPERATOR_ID`, `OPERATOR_EMAIL` and `LEGAL_UPDATED` keys and
+  reach the web app as the `operator` object of `/api/session`, which is null while `OPERATOR_NAME` is unset; the
+  pages then say the operator has published no contact details. The hosted service's own details live only in its
+  private deployment config, never in this repository.
 - The home page of this repository is intentionally plain. A hosted deployment replaces the one module
   `apps/web/src/site/site.tsx` at build time, which exports `HomePage`, `SiteNav` and `siteRoutes`.
 - The OBS overlay shows the host it is served from, with the logo mark, on a small plate under the plates while a

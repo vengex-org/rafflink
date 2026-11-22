@@ -302,6 +302,7 @@ describe("dashboard", () => {
             canCreate: false,
           },
           donateUrl: null,
+          operator: null,
         }),
     })
 
@@ -324,6 +325,7 @@ describe("dashboard", () => {
             canCreate: false,
           },
           donateUrl: null,
+          operator: null,
         }),
     })
 
