@@ -1,7 +1,7 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { DurableObject } from "cloudflare:workers"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
-import { TokenQueue } from "@rafflink/core/queue/token-queue"
+import { entriesPerInvocation, TokenQueue } from "@rafflink/core/queue/token-queue"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import { DurableObjectAlarm } from "../adapters/durable-object-alarm.ts"
@@ -61,6 +61,9 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
       random,
       config,
       process: (item) => enterQueuedCode(entryDeps, item),
+      rooms: entryDeps.rooms,
+      // An alarm invocation on Workers Free may send only a few dozen external subrequests.
+      entriesPerInvocation: entriesPerInvocation(config),
     })
   }
 }

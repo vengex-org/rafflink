@@ -57,7 +57,6 @@ describe("runLoad", () => {
     const load = await launch({
       QUEUE_POLL_SECONDS: "1",
       QUEUE_COOLDOWN_SECONDS: "1",
-      QUEUE_START_RATE_PER_SECOND: "100",
       QUEUE_MAX_RATE_PER_SECOND: "100",
     })
 

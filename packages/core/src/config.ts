@@ -1,6 +1,9 @@
 import { publicDrandUrls, quicknet } from "./lib/drand.ts"
 import type { Parsed } from "./lib/parsed.ts"
-import { queuedEntryTwitchRequests } from "./twitch/queued-entry-requests.ts"
+import {
+  queuedEntryTwitchRequests,
+  queuedEntryTwitchSubrequests,
+} from "./twitch/queued-entry-requests.ts"
 
 export type ConfigReason =
   | "missing"
@@ -178,26 +181,50 @@ export const configSchema = {
   queueCooldownSeconds: withDefault(
     "QUEUE_COOLDOWN_SECONDS",
     int(0),
-    "30",
-    "Every new code is queued this long after the first token endpoint 429; spec AC-15",
-  ),
-  queueStartRatePerSecond: withDefault(
-    "QUEUE_START_RATE_PER_SECOND",
-    int(1),
-    "10",
-    "Token endpoint calls per second the queue starts at; starting guess, the real limit is unknown",
+    "2",
+    "Pause after a token endpoint 429 before the queue calls the endpoint again; a few seconds so a short Twitch window can reset without stalling the drain, starting guess",
   ),
   queueMinRatePerSecond: withDefault(
     "QUEUE_MIN_RATE_PER_SECOND",
     int(1),
     "1",
-    "Lowest rate the queue slows down to after 429s; starting guess",
+    "Floor of the queue's drain rate, a safety rail for a 429 with no measured rate; starting guess",
   ),
   queueMaxRatePerSecond: withDefault(
     "QUEUE_MAX_RATE_PER_SECOND",
     int(1),
-    "50",
-    "Highest rate the queue speeds up to after successes; starting guess",
+    "500",
+    "Ceiling of the queue's drain rate, a safety rail: one pass processes this many codes at once, each with the Twitch requests of one entry and a room write; starting guess above the spec's 400 sign-ins per second",
+  ),
+  queueDecreasePercent: withDefault(
+    "QUEUE_DECREASE_PERCENT",
+    int(1, 99),
+    "67",
+    "After a 429 the queue drains at this percent of the rate that triggered it; the owner's choice of 2/3",
+  ),
+  queueIncreaseStepPerSecond: withDefault(
+    "QUEUE_INCREASE_STEP_PER_SECOND",
+    int(1),
+    "10",
+    "The drain rate grows by this many calls per second every QUEUE_INCREASE_INTERVAL_SECONDS until the next 429; starting guess",
+  ),
+  queueIncreaseIntervalSeconds: withDefault(
+    "QUEUE_INCREASE_INTERVAL_SECONDS",
+    int(1),
+    "1",
+    "How often the drain rate grows by QUEUE_INCREASE_STEP_PER_SECOND; starting guess",
+  ),
+  queueSubrequestsPerInvocation: withDefault(
+    "QUEUE_SUBREQUESTS_PER_INVOCATION",
+    int(queuedEntryTwitchSubrequests),
+    "45",
+    "External subrequests one queue alarm invocation may send on Cloudflare; a pass larger than the codes that fit spreads over several invocations. Workers Free allows 50 per invocation, 45 leaves headroom; the Bun target ignores it",
+  ),
+  queueRateWindowSeconds: withDefault(
+    "QUEUE_RATE_WINDOW_SECONDS",
+    int(1),
+    "1",
+    "At a 429 on the direct path the queue takes the entries the giveaway's room wrote in this many seconds before it as the rate that triggered the 429; one second matches a per-second limit, starting guess",
   ),
   entryWriteRetryDelaysMs: withDefault(
     "ENTRY_WRITE_RETRY_DELAYS_MS",
@@ -572,9 +599,13 @@ export function resolveConfig(env: Env): ResolvedConfig {
     queueCodeMaxAgeSeconds: read(env, configSchema.queueCodeMaxAgeSeconds),
     queueProcessingTimeoutSeconds: read(env, configSchema.queueProcessingTimeoutSeconds),
     queueCooldownSeconds: read(env, configSchema.queueCooldownSeconds),
-    queueStartRatePerSecond: read(env, configSchema.queueStartRatePerSecond),
     queueMinRatePerSecond: read(env, configSchema.queueMinRatePerSecond),
     queueMaxRatePerSecond: read(env, configSchema.queueMaxRatePerSecond),
+    queueDecreasePercent: read(env, configSchema.queueDecreasePercent),
+    queueIncreaseStepPerSecond: read(env, configSchema.queueIncreaseStepPerSecond),
+    queueIncreaseIntervalSeconds: read(env, configSchema.queueIncreaseIntervalSeconds),
+    queueSubrequestsPerInvocation: read(env, configSchema.queueSubrequestsPerInvocation),
+    queueRateWindowSeconds: read(env, configSchema.queueRateWindowSeconds),
     entryWriteRetryDelaysMs: read(env, configSchema.entryWriteRetryDelaysMs),
     entryWriteJitterPercent: read(env, configSchema.entryWriteJitterPercent),
     helixRetryDelayMs: read(env, configSchema.helixRetryDelayMs),

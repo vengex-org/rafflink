@@ -35,6 +35,7 @@ import {
   lastStandingDeadlineSql,
   undrawnEntrantSql,
   recentEntriesCountSql,
+  entriesBetweenCountSql,
   shuffleNamesSql,
   retainedDataSql,
   waitingPickOfChatterSql,
@@ -894,6 +895,12 @@ export class GiveawayRoom {
         platformUserId: draw.platformUserId,
       }
     })
+  }
+
+  /** Entries written per second in the `windowSeconds` before `until`: what the token endpoint let through for this giveaway. */
+  entriesPerSecondBefore(until: Instant, windowSeconds: number): number {
+    const row = this.sql.exec(entriesBetweenCountSql, [until - windowSeconds * 1000, until])[0]
+    return row === undefined ? 0 : new RowReader("entries", row).int("c") / windowSeconds
   }
 
   liveSnapshot(): LiveSnapshot {

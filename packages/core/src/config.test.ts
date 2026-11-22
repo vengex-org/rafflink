@@ -38,7 +38,9 @@ describe("resolveConfig", () => {
     expect(config.defaultClaimSeconds).toBe(300)
     expect(config.queuePollMaxSeconds).toBe(120)
     expect(config.queueCodeMaxAgeSeconds).toBe(300)
-    expect(config.queueCooldownSeconds).toBe(30)
+    expect(config.queueCooldownSeconds).toBe(2)
+    expect(config.queueDecreasePercent).toBe(67)
+    expect(config.queueMaxRatePerSecond).toBe(500)
     expect(config.entryWriteRetryDelaysMs).toEqual([200, 500, 1000])
     expect(config.usageWarningThreshold).toBe(25_000)
     expect(config.titleMaxLength).toBe(100)
@@ -260,6 +262,18 @@ describe("resolveConfig", () => {
       reason: "out-of-range",
     })
     expect(resolveConfig({ ...required, QUEUE_COOLDOWN_SECONDS: "0" }).queueCooldownSeconds).toBe(0)
+  })
+
+  it("keeps the queue's decrease a real decrease: below 100 percent and above 0", () => {
+    for (const percent of ["0", "100"]) {
+      expect(failure({ ...required, QUEUE_DECREASE_PERCENT: percent })).toMatchObject({
+        env: "QUEUE_DECREASE_PERCENT",
+        reason: "out-of-range",
+      })
+    }
+    expect(resolveConfig({ ...required, QUEUE_DECREASE_PERCENT: "99" }).queueDecreasePercent).toBe(
+      99,
+    )
   })
 
   it("rejects an integer beyond the safe range and a percent above 100", () => {

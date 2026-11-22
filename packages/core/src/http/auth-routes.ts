@@ -19,8 +19,11 @@ import {
   startPendingEntry,
 } from "./session.ts"
 
-/** Shared by every request of one app: until when new viewer codes go straight to the queue. */
-export interface Cooldown {
+/**
+ * Shared by every request of one app: until when new viewer codes go straight to the queue, as the last
+ * enqueue answered. An app that has not queued a code since goes to the token endpoint first.
+ */
+export interface Backlog {
   until: Instant
 }
 
@@ -29,7 +32,7 @@ const viewerScopes = ["openid", "user:read:subscriptions", "user:read:follows"] 
 
 const platform = "twitch"
 
-export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
+export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
   const app = new Hono()
 
   app.get("/auth/twitch/streamer/start", async (c) => {
@@ -131,11 +134,12 @@ export function authRoutes(deps: AppDeps, cooldown: Cooldown): Hono {
     const item: QueuedCode = { code, giveawayId: giveaway.id, nonce: saved.nonce }
     const queued = async (cause: EnqueueCause) => {
       const enqueued = await deps.queue.enqueue(item, cause)
-      cooldown.until = Math.max(cooldown.until, enqueued.cooldownUntil)
+      backlog.until = Math.max(backlog.until, enqueued.queueUntil)
       await startPendingEntry(c, deps, giveaway, enqueued.ticket)
       return c.redirect(returnTo(giveaway.code, { kind: "pending", ticket: enqueued.ticket }))
     }
-    if (deps.clock.now() < cooldown.until) return queued("cooldown")
+    // Behind a backlog a direct call would overtake the queued viewers and spend the rate the queue drains at.
+    if (deps.clock.now() < backlog.until) return queued("backlog")
 
     const attempt = await enterGiveaway(deps, giveaway, item)
     if (attempt.kind === "deferred") return queued(attempt.cause)

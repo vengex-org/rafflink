@@ -84,6 +84,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async liveSnapshot() {
     return (await this.opened).room.liveSnapshot()
   }
+  async entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
+    return (await this.opened).room.entriesPerSecondBefore(...args)
+  }
 
   /** Accepts a page's WebSocket and sends it the current snapshot (without the winner chat for the overlay), or for a viewer's page the current outcome; the Worker has already checked who may connect. */
   override async fetch(request: Request): Promise<Response> {

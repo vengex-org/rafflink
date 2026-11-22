@@ -205,6 +205,9 @@ class InProcessRoomStub implements RoomStub {
   async liveSnapshot() {
     return this.room.liveSnapshot()
   }
+  async entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
+    return this.room.entriesPerSecondBefore(...args)
+  }
 }
 
 export class StubUsageMeter implements UsageMeter {
@@ -321,6 +324,8 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     random,
     config,
     process: (item) => enterQueuedCode(entryDeps, item),
+    rooms,
+    entriesPerInvocation: config.queueMaxRatePerSecond,
   })
   const deps: AppDeps = {
     ...entryDeps,

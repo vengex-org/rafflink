@@ -206,14 +206,33 @@ answers 429 or 5xx. Only the token endpoint queues; a Helix failure after the ex
 
 - The callback stores `(code, giveaway, nonce)` in the token queue (a Durable Object on Cloudflare, a SQLite file
   on the VPS) and redirects the viewer to the giveaway page with "You are being entered".
-- The queue drains codes with an alarm, at a rate it adapts down on 429 and up on success, and runs
-  steps 2 to 5 for each.
+- The queue drains codes with an alarm, one pass per second, and runs steps 2 to 5 for each. One queue serves
+  the whole deployment, because the limit is per `client_id`.
+- The drain rate follows AIMD (decided 2026-11-22). The first 429 of a backlog pauses the queue for a few
+  seconds (`QUEUE_COOLDOWN_SECONDS`), then it drains at 2/3 (`QUEUE_DECREASE_PERCENT`) of the rate that
+  triggered the 429. The rate then grows by a step (`QUEUE_INCREASE_STEP_PER_SECOND`) every second
+  (`QUEUE_INCREASE_INTERVAL_SECONDS`) until the next 429 cuts it to 2/3 again, without another pause.
+  `QUEUE_MIN_RATE_PER_SECOND` and `QUEUE_MAX_RATE_PER_SECOND` are only safety rails.
+- On Cloudflare one alarm invocation may send only 50 external subrequests on Workers Free, and one queued
+  code sends up to 8 Twitch requests. So an invocation processes at most `QUEUE_SUBREQUESTS_PER_INVOCATION`
+  (45) / 8 = 5 codes, and the alarm fires again right away until the pass of that second has its calls. A 429
+  counts every call of the second, over all its invocations. Each invocation waits for its Twitch answers, so
+  on Free the queue drains a few codes per second however high the rate is; the Bun server has no such cap.
+- The rate that triggered a 429 is measured where it is visible. While the queue drains, it is the number of
+  calls in the pass that got the 429: the queue is then the only caller. For a 429 on the direct path, no
+  part of the system sees the global rate (callbacks run in many Worker instances), so the queue takes the
+  entries the giveaway's room wrote in the second before the 429 (`QUEUE_RATE_WINDOW_SECONDS`): about what
+  the token endpoint let through. This costs one room request per burst, not one per callback. It is exact
+  for one big giveaway; with several giveaways at once it sees only that giveaway's share, so the queue
+  starts lower than it could and the additive steps make up the difference. It never starts higher.
 - The page asks for the result every 3 seconds (`GET /api/g/<code>/pending/<ticket>`), at most 2 minutes.
 - An authorization code expires after a few minutes (Twitch does not document the exact time; OAuth
   recommends 10 minutes at most). Codes older than 5 minutes are dropped, and the page shows
   "Enter with Twitch" again.
-- After the first 429 the callback enqueues every code for the next 30 seconds, instead of each request
-  hitting the limit first.
+- While the queue holds a backlog, new callbacks join the queue instead of calling the token endpoint, so they
+  neither overtake the viewers already waiting nor spend the rate the queue drains at. Each enqueue answers
+  until when that holds: the end of the pause, or of the passes the codes ahead still need. A Worker instance
+  that has not queued a code yet learns it from its own first 429.
 
 While the queue is empty, no extra request is made: the normal path is one callback request per entrant.
 
@@ -333,7 +352,8 @@ giveaways(id, code UNIQUE, streamer_id, title, prize, rules_json, status,
 -- token queue (its own Durable Object or SQLite file)
 token_queue(ticket, code, giveaway_id, nonce, received_at, state, result_json,
             PRIMARY KEY (ticket)) WITHOUT ROWID
-queue_stats(id, rate_per_second, cooldown_until, dropped, abandoned_results, lost_claims)
+queue_stats(id, rate_per_second, rate_changed_at, cooldown_until, measure_giveaway_id, measure_until,
+            dropped, abandoned_results, lost_claims)
 
 -- inside each giveaway's room
 room_state(id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds,
@@ -441,7 +461,7 @@ of the id could be brute-forced into a list of who entered.
 ## Open questions
 
 1. What is the real limit of the Twitch token endpoint? Ask on the Twitch developer forum or Discord before
-   launch; it decides how often the queue runs.
+   launch; it tells whether the queue's default rate steps fit or need tuning.
 2. Verify the Workers Paid figures on the Cloudflare pricing page before moving the hosted service to Paid.
 
 ## Decisions (2026-11-20)
@@ -458,6 +478,13 @@ of the id could be brute-forced into a list of who entered.
   static assets or by the VPS server.
 - Hosting targets: Cloudflare and a VPS from one core with ports and a shared contract test suite.
 - Code: public repo `vengex-org/rafflink` on GitHub, license AGPL-3.0.
+
+Token queue drain rate (owner decision, 2026-11-22):
+
+- The queue adapts its rate like TCP AIMD instead of a fixed start rate and a hard cap of 50 per second: a short
+  pause after each 429, then 2/3 of the rate that triggered it, then additive steps until the next 429. Viewers
+  queue behind a backlog instead of calling the token endpoint directly. The details are in "Queue for the token
+  endpoint" above.
 
 Decisions on support and reach (owner decision, 2026-11-21):
 
