@@ -28,6 +28,7 @@ export const validRules: GiveawayRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 export function giveawayInit(id: string, closesAt: number | null = null): GiveawayInit {

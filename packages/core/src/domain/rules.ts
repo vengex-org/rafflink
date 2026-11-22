@@ -11,7 +11,26 @@ export interface GiveawayRules {
   readonly minAccountAgeDays: number | null
   /** Null means any chat message from a winner claims. */
   readonly claimKeyword: string | null
+  /** Null lets winners of the streamer's earlier giveaways enter. */
+  readonly excludeRecentWinners: RecentWinnersRule | null
 }
+
+/** Keeps out the winners of the streamer's last `count` drawn giveaways, or of those drawn in the last `count` days. */
+export interface RecentWinnersRule {
+  readonly kind: (typeof recentWinnersKinds)[number]
+  readonly count: number
+}
+
+export const recentWinnersKinds = ["giveaways", "days"] as const
+
+/** The rule settings {@link parseRules} bounds untrusted rules with. */
+export type RulesConfig = Pick<
+  ResolvedConfig,
+  | "claimKeywordMaxLength"
+  | "ticketsPerGroupMax"
+  | "recentWinnersGiveawaysMax"
+  | "recentWinnersDaysMax"
+>
 
 /** What Twitch told us about a viewer, gathered by the caller before the check. */
 export interface ViewerFacts {
@@ -23,10 +42,17 @@ export interface ViewerFacts {
   readonly isModerator: boolean
   /** Null when unknown; an unknown age fails a minimum. */
   readonly accountAgeDays: number | null
+  /** Why the streamer keeps this account out of the giveaway; null when nothing does. */
+  readonly exclusion: Exclusion | null
 }
+
+/** A reason the account itself may not enter, whatever the rules: on the streamer's block list (or a known chat bot), or a recent winner. */
+export type Exclusion = Extract<IneligibleReason, "blocked" | "recent-winner">
 
 export const ineligibleReasons = [
   "broadcaster",
+  "blocked",
+  "recent-winner",
   "subs-only",
   "followers-only",
   "account-too-young",
@@ -50,6 +76,7 @@ export type RulesIssueCode =
   | "blank"
   | "too-long"
   | "too-large"
+  | "unknown-kind"
 
 /** The first invalid field of untrusted input, as a path like `tickets.vip`. */
 export interface RulesIssue {
@@ -63,6 +90,7 @@ export function evaluateEligibility(
   broadcasterId: string,
 ): EligibilityOutcome {
   if (viewer.userId === broadcasterId) return { eligible: false, reason: "broadcaster" }
+  if (viewer.exclusion !== null) return { eligible: false, reason: viewer.exclusion }
   if (rules.subsOnly && viewer.subTier === null) return { eligible: false, reason: "subs-only" }
   if (rules.followersOnly && !viewer.isFollower) {
     return { eligible: false, reason: "followers-only" }
@@ -79,10 +107,7 @@ export function evaluateEligibility(
 }
 
 /** Parses `rules_json` or a create request body; nothing past this takes unchecked rules. */
-export function parseRules(
-  input: unknown,
-  config: Pick<ResolvedConfig, "claimKeywordMaxLength" | "ticketsPerGroupMax">,
-): Parsed<GiveawayRules, RulesIssue> {
+export function parseRules(input: unknown, config: RulesConfig): Parsed<GiveawayRules, RulesIssue> {
   if (!isRecord(input)) return fail("rules", "not-an-object")
   const tickets = parseTickets(ownValue(input, "tickets"), config.ticketsPerGroupMax)
   if (!tickets.ok) return tickets
@@ -94,12 +119,15 @@ export function parseRules(
   if (!minAccountAgeDays.ok) return minAccountAgeDays
   const claimKeyword = parseClaimKeyword(input, config.claimKeywordMaxLength)
   if (!claimKeyword.ok) return claimKeyword
+  const excludeRecentWinners = parseRecentWinners(input, config)
+  if (!excludeRecentWinners.ok) return excludeRecentWinners
   return ok({
     tickets: tickets.value,
     subsOnly: subsOnly.value,
     followersOnly: followersOnly.value,
     minAccountAgeDays: minAccountAgeDays.value,
     claimKeyword: claimKeyword.value,
+    excludeRecentWinners: excludeRecentWinners.value,
   })
 }
 
@@ -171,6 +199,26 @@ function parseClaimKeyword(
   if (keyword === "") return fail("claimKeyword", "blank")
   if (keyword.length > maxLength) return fail("claimKeyword", "too-long")
   return ok(keyword)
+}
+
+function parseRecentWinners(
+  input: Record<string, unknown>,
+  config: RulesConfig,
+): Parsed<RecentWinnersRule | null, RulesIssue> {
+  const value = ownValue(input, "excludeRecentWinners")
+  if (value === undefined || value === null) return ok(null)
+  if (!isRecord(value)) return fail("excludeRecentWinners", "not-an-object")
+  const kindValue = ownValue(value, "kind")
+  const kind = recentWinnersKinds.find((item) => item === kindValue)
+  if (kind === undefined) return fail("excludeRecentWinners.kind", "unknown-kind")
+  const count = ownValue(value, "count")
+  if (!isPositiveInteger(count)) return fail("excludeRecentWinners.count", "not-a-positive-integer")
+  const max: Readonly<Record<RecentWinnersRule["kind"], number>> = {
+    giveaways: config.recentWinnersGiveawaysMax,
+    days: config.recentWinnersDaysMax,
+  }
+  if (count > max[kind]) return fail("excludeRecentWinners.count", "too-large")
+  return ok({ kind, count })
 }
 
 // Own properties only: a lookup by group or field name must not reach `constructor` or `__proto__`.

@@ -100,6 +100,7 @@ describe("applyAccountsMigrations", () => {
       "0009_closed_at.sql",
       "0010_overlay_theme.sql",
       "0011_moderator_links.sql",
+      "0012_streamer_blocks.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",
@@ -109,6 +110,7 @@ describe("applyAccountsMigrations", () => {
       "referrals",
       "schema_migrations",
       "streamer_overlay",
+      "streamer_blocks",
       "streamer_tokens",
       "streamers",
     ])

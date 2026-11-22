@@ -244,6 +244,12 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "reason.no-tickets": "Tvoja skupina v tejto súťaži nemá žiadne lístky.",
   "reasonHelp.broadcaster": "Na zapojenie sa prihlás iným účtom na Twitchi.",
   "entry.otherAccount": "Použiť iný účet na Twitchi",
+  "reason.blocked": "Do tejto súťaže sa nemôžeš zapojiť.",
+  "reasonHelp.blocked": "Ak máš otázky, opýtaj sa streamera.",
+  "reason.recent-winner":
+    "Vyhral si jednu z posledných súťaží tohto streamera, takže sa do tejto nemôžeš zapojiť.",
+  "reasonHelp.recent-winner":
+    "Zapojiť sa môžeš znova, keď tvoja výhra už nebude medzi jeho poslednými súťažami.",
   "reasonHelp.subs-only": "Predplať si kanál na Twitchi a potom tento odkaz otvor znova.",
   "reasonHelp.followers-only": "Začni kanál sledovať na Twitchi a potom tento odkaz otvor znova.",
   "reasonHelp.account-too-young":
@@ -303,6 +309,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.too-large": "Toto číslo je príliš veľké. Zadaj menšie.",
   "issue.not-a-timestamp": "Zadaj platný dátum a čas.",
   "issue.in-the-past": "Čas ukončenia musí byť v budúcnosti.",
+  "issue.unknown-kind": "Vyber jednu z možností.",
   "issue.wholeDays": "Zadaj celý počet dní, alebo nechaj pole prázdne.",
   "issue.wholeMinutes": "Zadaj celý počet minút, aspoň 1.",
   "issue.pickEnd": "Vyber dátum a čas, kedy zápis končí.",
@@ -320,6 +327,12 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "day.one": "{count} deň",
   "day.few": "{count} dni",
   "day.other": "{count} dní",
+  "recentGiveaways.one": "Výhercovia posledného giveawayu streamera sa nemôžu zapojiť.",
+  "recentGiveaways.few": "Výhercovia posledných {count} giveawayov streamera sa nemôžu zapojiť.",
+  "recentGiveaways.other": "Výhercovia posledných {count} giveawayov streamera sa nemôžu zapojiť.",
+  "recentDays.one": "Výhercovia giveawayov streamera z posledného dňa sa nemôžu zapojiť.",
+  "recentDays.few": "Výhercovia giveawayov streamera z posledných {count} dní sa nemôžu zapojiť.",
+  "recentDays.other": "Výhercovia giveawayov streamera z posledných {count} dní sa nemôžu zapojiť.",
   "entered.one": "Zapísal sa {count} človek",
   "entered.few": "Zapísali sa {count} ľudia",
   "entered.other": "Zapísalo sa {count} ľudí",
@@ -490,6 +503,25 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "dash.deleteData.detail":
     "Všetky giveawaye so zapojenými, výhercami a dôkazom žrebovania, tvoj účet aj uložený Twitch token sa natrvalo vymažú a budeš odhlásený.",
   "dash.deleteData.confirm": "Áno, vymazať všetko",
+  "dash.blocks.title": "Zablokované účty",
+  "dash.blocks.text":
+    "Zablokované účty sa nemôžu zapojiť do žiadneho tvojho giveawayu. Zapojenia, ktoré urobili pred blokom, zostanú. Zoznam sa vymaže spolu s tvojím účtom.",
+  "dash.blocks.count": "Zablokovaných účtov: {count} z {max}",
+  "dash.blocks.none": "Žiadne zablokované účty.",
+  "dash.blocks.label": "Twitch meno na zablokovanie",
+  "dash.blocks.add": "Zablokovať",
+  "dash.blocks.remove": "Odobrať",
+  "dash.blocks.remove.label": "Odobrať {login} zo zoznamu zablokovaných",
+  "dash.blocks.since": "zablokovaný {date}",
+  "dash.blocks.added": "Účet je zablokovaný.",
+  "dash.blocks.exists": "Tento účet už je zablokovaný.",
+  "dash.blocks.removed": "Účet bol odobraný zo zoznamu zablokovaných.",
+  "dash.blocks.invalid-input": "Zadaj Twitch meno.",
+  "dash.blocks.unknown-login": "Účet na Twitchi s týmto menom neexistuje.",
+  "dash.blocks.block-list-full": "Zoznam zablokovaných je plný. Najprv nejaký účet odober.",
+  "dash.blocks.platform-unavailable": "Twitch neodpovedal. Skús to o chvíľu znova.",
+  "dash.blocks.room-unavailable":
+    "Uložené, ale bežiaci giveaway zmenu ešte nedostal. Skús tú istú akciu znova.",
 
   "share.link": "Tvoj odkaz",
   "share.copyLink": "Kopírovať odkaz",
@@ -667,6 +699,19 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Zabráni ľuďom vytvárať nové účty len kvôli súťaži. Keď pole nevyplníš, zapojiť sa môže akýkoľvek účet.",
   "wizard.minAge.fewer": "Menej dní",
   "wizard.minAge.more": "Viac dní",
+  "wizard.recent.legend": "Nezapájať nedávnych víťazov",
+  "wizard.recent.off": "Vypnuté",
+  "wizard.recent.off.help": "Víťazi tvojich predchádzajúcich giveawayov sa môžu zapojiť znova.",
+  "wizard.recent.giveaways": "Posledné giveawaye",
+  "wizard.recent.giveaways.help":
+    "Víťazi tvojich posledných vyžrebovaných giveawayov sa nemôžu zapojiť.",
+  "wizard.recent.days": "Posledné dni",
+  "wizard.recent.days.help":
+    "Víťazi giveawayov, ktoré si vytvoril za posledných pár dní, sa nemôžu zapojiť.",
+  "wizard.recent.count.giveaways": "Koľko giveawayov dozadu",
+  "wizard.recent.count.days": "Koľko dní dozadu",
+  "wizard.recent.fewer": "Menej",
+  "wizard.recent.more": "Viac",
   "wizard.tickets.legend": "Lístky podľa skupiny",
   "wizard.tickets.help":
     "Každá skupina dostane 1 lístok. Viac lístkov znamená väčšiu šancu vyhrať, napríklad 3 pre predplatiteľov. Nechaj to tak, ak majú mať všetci rovnakú šancu.",
@@ -706,6 +751,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "review.notSet": "Nevyplnené",
   "review.everyoneOne": "Každý dostane 1 lístok.",
   "review.ageText": "Účet musí byť starý aspoň {days}.",
+  "review.recent": "Nedávni víťazi",
   "review.endsManual": "Keď ho uzavrieš.",
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Platí aj akákoľvek správa víťaza v chate.",
@@ -749,6 +795,10 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Miestnosti giveawayov: Twitch user ID VIP a moderátorov kanála, uložené na uplatnenie pravidiel tiketov. Mažú sa spolu so zapojeniami giveawayu.",
   "privacy.data.i8":
     "Moderátori, ktorí otvoria odkaz pre moderátora: odkaz ukladá iba hash svojho tajomstva. Keď je odkaz pre moderátorov kanála, moderátor sa prihlási cez Twitch a Rafflink porovná jeho Twitch user ID so zoznamom moderátorov kanála. ID zostane iba v cookie moderátora, nič iné sa o ňom neukladá a žiadny Twitch token sa nedrží.",
+  "privacy.data.i9":
+    "Zablokované účty: streamer môže zablokovať účty vo svojich giveawayoch. Rafflink potom pri účte streamera uloží Twitch user ID a prihlasovacie meno zablokovanej osoby a čas bloku.",
+  "privacy.data.i10":
+    "Nedávni víťazi: keď streamer nezapája nedávnych víťazov, čítajú sa Twitch user ID víťazov jeho predchádzajúcich giveawayov, aby sa odmietli. Nič nové sa pritom neukladá.",
   "privacy.purposes.h": "Prečo a na akom právnom základe",
   "privacy.purposes.i1":
     "Na prevádzku giveawayov, ktoré streameri vytvárajú, a na zapájanie divákov vrátane žrebovania a prevzatia výhry: plnenie zmluvy s tebou, teda služby, o ktorú si požiadal (čl. 6 ods. 1 písm. b) GDPR).",
@@ -767,6 +817,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Logy hostiteľa uchováva prevádzkovateľ alebo jeho poskytovateľ hostingu podľa vlastných podmienok.",
   "privacy.retention.i5":
     "Giveaway (názov, výhra, pravidlá, dátumy, počty zapojených a tiketov), všetci vyžrebovaní, aj tí nahradení novým žrebom, s Twitch ID, prihlasovacím a zobrazovaným menom a stavom prevzatia, Merkleho koreň zoznamu zapojení a zoznam jeho listov (hashe a počty tiketov, bez mien) zostávajú, kým streamer giveaway nevymaže, aby sa dala doručiť výhra a aby si žrebovanie mohol neskôr overiť ktokoľvek. Prevádzkovateľ môže nastaviť počet dní po uzavretí žrebovania, po ktorých sa giveawaye mažú.",
+  "privacy.retention.i6":
+    "Blok (Twitch user ID a prihlasovacie meno) sa uchováva, aby sa daná osoba nezapojila do giveawayov streamera, kým ho streamer neodoberie na prehľade alebo nevymaže svoj účet.",
   "privacy.recipients.h": "Kto ďalší údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje nepredáva. Údaje idú len týmto stranám.",
   "privacy.recipients.i1":

@@ -58,6 +58,7 @@ const rules: GiveawayRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 const giveaway: GiveawayInit = {
@@ -1005,6 +1006,84 @@ describe("GiveawayRoom roles", () => {
     room.replaceRoles(["a"], ["b"])
     room.replaceRoles([], [])
     expect(sql.exec("SELECT COUNT(*) AS c FROM channel_roles", [])[0]?.c).toBe(0)
+  })
+})
+
+describe("GiveawayRoom exclusions", () => {
+  it("reports the exclusions as not loaded until they are, also on a repeated init", () => {
+    const { room } = setup()
+    expect(room.init(giveaway)).toEqual({ exclusionsLoaded: false })
+
+    room.loadExclusions({ blocked: [], recentWinners: [] })
+
+    expect(room.init(giveaway)).toEqual({ exclusionsLoaded: true })
+  })
+
+  it("refuses a blocked account and a recent winner with their own reasons", () => {
+    const { room } = setup()
+    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
+
+    expect(room.enter(viewer("7"))).toEqual({ kind: "not-eligible", reason: "blocked" })
+    expect(room.enter(viewer("8"))).toEqual({ kind: "not-eligible", reason: "recent-winner" })
+    expect(room.enter(viewer("9"))).toMatchObject({ kind: "entered" })
+    expect(room.summary().entrantCount).toBe(1)
+  })
+
+  it("tells a blocked recent winner they are blocked", () => {
+    const { room } = setup()
+    room.loadExclusions({ blocked: ["7"], recentWinners: ["7"] })
+    expect(room.enter(viewer("7"))).toEqual({ kind: "not-eligible", reason: "blocked" })
+  })
+
+  it("refuses a known chat bot by its login in any case", () => {
+    const { room } = setup(giveaway, random, { CHAT_BOT_LOGINS: "nightbot" })
+    expect(room.enter(viewer("7", { login: "NightBot" }))).toEqual({
+      kind: "not-eligible",
+      reason: "blocked",
+    })
+    expect(room.enter(viewer("8", { login: "viewer" }))).toMatchObject({ kind: "entered" })
+  })
+
+  it("replaces the block list and keeps the recent winners", () => {
+    const { room } = setup()
+    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
+
+    room.replaceBlocked(["9"])
+
+    expect(room.enter(viewer("7"))).toMatchObject({ kind: "entered" })
+    expect(room.enter(viewer("8"))).toEqual({ kind: "not-eligible", reason: "recent-winner" })
+    expect(room.enter(viewer("9"))).toEqual({ kind: "not-eligible", reason: "blocked" })
+  })
+
+  it("loads again over what was loaded before", () => {
+    const { room } = setup()
+    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
+    room.loadExclusions({ blocked: [], recentWinners: [] })
+    expect(room.enter(viewer("7"))).toMatchObject({ kind: "entered" })
+    expect(room.enter(viewer("8"))).toMatchObject({ kind: "entered" })
+  })
+
+  it("writes a long block list in chunks within the bound parameter limit", () => {
+    const { room, sql } = setup()
+    const blocked = Array.from({ length: 70 }, (_, index) => `b${index}`)
+
+    room.replaceBlocked(blocked)
+
+    const inserts = sql.statements.filter((statement) =>
+      statement.sql.startsWith("INSERT INTO excluded_users"),
+    )
+    expect(inserts).toHaveLength(3)
+    expect(Math.max(...inserts.map((statement) => statement.params.length))).toBeLessThanOrEqual(
+      100,
+    )
+    expect(count(sql, "excluded_users")).toBe(70)
+  })
+
+  it("leaves an entry made before the block in place", () => {
+    const { room } = setup()
+    room.enter(viewer("7"))
+    room.replaceBlocked(["7"])
+    expect(room.enter(viewer("7"))).toMatchObject({ kind: "already-in" })
   })
 })
 
@@ -1961,7 +2040,7 @@ describe("public summary", () => {
   })
 })
 
-function count(sql: SyncSql, table: "entries" | "channel_roles"): unknown {
+function count(sql: SyncSql, table: "entries" | "channel_roles" | "excluded_users"): unknown {
   return sql.exec(`SELECT COUNT(*) AS c FROM ${table}`, [])[0]?.c
 }
 
@@ -2073,17 +2152,37 @@ describe("GiveawayRoom minute counts", () => {
 describe("GiveawayRoom retention", () => {
   const retentionMs = config.entryRetentionSeconds * 1000
 
-  it("deletes entries and channel roles once the retention time after the close has passed, and nothing before", async () => {
+  it("deletes entries, channel roles and excluded accounts once the retention time after the close has passed, and nothing before", async () => {
     const { room, sql, clock } = await drawnRoom()
     room.replaceRoles(["9"], [])
+    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
 
     clock.advance(retentionMs - 1)
     room.onAlarm()
-    expect([count(sql, "entries"), count(sql, "channel_roles")]).toEqual([3, 1])
+    expect([
+      count(sql, "entries"),
+      count(sql, "channel_roles"),
+      count(sql, "excluded_users"),
+    ]).toEqual([3, 1, 2])
 
     clock.advance(1)
     room.onAlarm()
-    expect([count(sql, "entries"), count(sql, "channel_roles")]).toEqual([0, 0])
+    expect([
+      count(sql, "entries"),
+      count(sql, "channel_roles"),
+      count(sql, "excluded_users"),
+    ]).toEqual([0, 0, 0])
+  })
+
+  it("still deletes the excluded accounts of a room nobody entered", () => {
+    const { room, sql, clock } = setup()
+    room.loadExclusions({ blocked: ["7"], recentWinners: [] })
+    room.close(null)
+
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    expect(count(sql, "excluded_users")).toBe(0)
   })
 
   it("keeps the counts, the status and the picks, and the winner keeps the name but loses the entry and the picture", async () => {

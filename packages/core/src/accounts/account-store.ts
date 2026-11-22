@@ -1,11 +1,10 @@
-import type { ResolvedConfig } from "../config.ts"
 import { cloudflarePlans, type CloudflarePlan } from "../plan/plan-limits.ts"
 import {
   defaultOverlayTheme,
   parseOverlayTheme,
   type OverlayTheme,
 } from "../domain/overlay-theme.ts"
-import { parseRules, type GiveawayRules } from "../domain/rules.ts"
+import { parseRules, type GiveawayRules, type RulesConfig } from "../domain/rules.ts"
 import type { AsyncSql, Instant, SqlRow } from "../ports.ts"
 import { RoomRowError, roomStatuses, RowReader, type RoomStatus } from "../room/rows.ts"
 import {
@@ -14,6 +13,10 @@ import {
   approveStreamerSql,
   activeModeratorLinksSql,
   deleteGiveawayModeratorLinksSql,
+  blockSql,
+  blocksOfStreamerSql,
+  deleteBlockSql,
+  deleteStreamerBlocksSql,
   deleteGiveawaySql,
   deleteStreamerModeratorLinksSql,
   deleteStreamerGiveawaysSql,
@@ -23,13 +26,16 @@ import {
   giveawayByCodeSql,
   giveawayByIdSql,
   giveawaysOfStreamerSql,
+  insertBlockSql,
   insertGiveawaySql,
   insertModeratorLinkSql,
   moderatorLinkByIdSql,
+  openGiveawaysOfStreamerSql,
   ownedGiveawaySql,
   ownedOverlayThemesSql,
   overlayThemesSql,
   pendingStreamersSql,
+  recentDrawnGiveawaysSql,
   recordRetentionFailureSql,
   replaceStreamerTokenSql,
   revokeModeratorLinkSql,
@@ -134,11 +140,23 @@ export interface OwnedOverlayThemes {
   readonly streamer: OverlayTheme
 }
 
+/** An account a streamer keeps out of every one of their giveaways. */
+export interface StreamerBlock {
+  readonly platform: string
+  readonly platformUserId: string
+  /** The login when the block was saved; the account may have been renamed since. */
+  readonly login: string
+  readonly createdAt: Instant
+}
+
+/** `full` when the streamer holds the most blocks allowed; nothing is written then, nor for `exists`. */
+export type AddBlockOutcome = "added" | "exists" | "full"
+
 /** Streamers, their sealed tokens and giveaways over one SQLite database. Every streamer-facing lookup takes the owner. */
 export class AccountStore {
   constructor(
     private readonly sql: AsyncSql,
-    private readonly config: Pick<ResolvedConfig, "claimKeywordMaxLength" | "ticketsPerGroupMax">,
+    private readonly config: RulesConfig,
   ) {}
 
   /** Creates or updates the streamer and replaces their refresh token in one batch. */
@@ -242,6 +260,61 @@ export class AccountStore {
     return rows.map((row) => this.parseGiveaway(row))
   }
 
+  /** Ids of the streamer's giveaways whose mirrored status is still open. */
+  async listOpenGiveawayIds(streamerId: string): Promise<string[]> {
+    const rows = await this.sql.all(openGiveawaysOfStreamerSql, [streamerId])
+    return rows.map((row) => new RowReader("giveaways", row).text("id"))
+  }
+
+  /** Ids of up to `limit` of the streamer's drawn giveaways created at or after `since`, newest first. */
+  async listRecentDrawnGiveawayIds(
+    streamerId: string,
+    since: Instant,
+    limit: number,
+  ): Promise<string[]> {
+    const rows = await this.sql.all(recentDrawnGiveawaysSql, [streamerId, since, limit])
+    return rows.map((row) => new RowReader("giveaways", row).text("id"))
+  }
+
+  /** The streamer's block list, newest first. */
+  async listBlocks(streamerId: string): Promise<StreamerBlock[]> {
+    const rows = await this.sql.all(blocksOfStreamerSql, [streamerId])
+    return rows.map((row) => {
+      const reader = new RowReader("streamer_blocks", row)
+      return {
+        platform: reader.text("platform"),
+        platformUserId: reader.text("platform_user_id"),
+        login: reader.text("login"),
+        createdAt: reader.int("created_at"),
+      }
+    })
+  }
+
+  /** Adds the block while the streamer holds fewer than `max`; a repeat keeps the first. */
+  async addBlock(streamerId: string, block: StreamerBlock, max: number): Promise<AddBlockOutcome> {
+    const inserted = await this.sql.all(insertBlockSql, [
+      streamerId,
+      block.platform,
+      block.platformUserId,
+      block.login,
+      block.createdAt,
+      streamerId,
+      max,
+    ])
+    if (inserted.length === 1) return "added"
+    const existing = await this.sql.all(blockSql, [
+      streamerId,
+      block.platform,
+      block.platformUserId,
+    ])
+    return existing.length === 1 ? "exists" : "full"
+  }
+
+  /** Idempotent: removing a block that is not there changes nothing. */
+  async removeBlock(streamerId: string, platform: string, platformUserId: string): Promise<void> {
+    await this.sql.run(deleteBlockSql, [streamerId, platform, platformUserId])
+  }
+
   /** Removes the giveaway's row with its moderator links, which frees its code; the caller deletes its room first. */
   async deleteGiveaway(giveawayId: string): Promise<void> {
     await this.sql.batch([
@@ -250,10 +323,11 @@ export class AccountStore {
     ])
   }
 
-  /** Removes the streamer with their token, every giveaway row and its moderator links in one batch; the caller deletes the rooms first. */
+  /** Removes the streamer with their token, block list, every giveaway row and its moderator links in one batch; the caller deletes the rooms first. */
   async deleteStreamer(streamerId: string): Promise<void> {
     await this.sql.batch([
       { sql: deleteStreamerModeratorLinksSql, params: [streamerId] },
+      { sql: deleteStreamerBlocksSql, params: [streamerId] },
       { sql: deleteStreamerGiveawaysSql, params: [streamerId] },
       { sql: deleteStreamerTokenSql, params: [streamerId] },
       { sql: deleteStreamerSql, params: [streamerId] },

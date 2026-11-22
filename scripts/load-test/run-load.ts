@@ -49,6 +49,7 @@ const rules: GiveawayRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 const acceptedKinds: readonly string[] = ["entered", "already-in"]

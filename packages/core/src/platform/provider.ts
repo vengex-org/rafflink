@@ -65,6 +65,12 @@ export interface UserProfile {
   readonly profileImageUrl: string | null
 }
 
+/** A platform account found by its login. */
+export interface PlatformAccount {
+  readonly id: string
+  readonly login: string
+}
+
 /** User ids holding each role on a channel. */
 export interface ChannelRoles {
   readonly vips: readonly string[]
@@ -127,6 +133,11 @@ export interface PlatformProvider {
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles>
   /** Whether the user moderates the channel now, asked with the streamer's token. */
   isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
+  /**
+   * The account a login names, with the login as this platform normalises it; `null` when no account
+   * has it or the text is not a login this platform allows. Uses the app's own credentials.
+   */
+  accountByLogin(login: string): Promise<PlatformAccount | null>
   /** The chat of one giveaway's channel, whatever this platform's transport. */
   chatSource(context: ChatContext): ChatSourceFactory
 }

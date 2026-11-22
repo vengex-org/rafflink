@@ -6,6 +6,7 @@ import {
   claimTimeText,
   extraTicketsText,
   peopleText,
+  recentWinnersText,
   ticketText,
   whoCanEnterText,
 } from "../lib/rules-text.ts"
@@ -25,6 +26,7 @@ export function GiveawayFacts({
   const i18n = useI18n()
   const { t } = i18n
   const extraTickets = extraTicketsText(i18n, giveaway.rules.tickets)
+  const recentWinners = recentWinnersText(i18n, giveaway.rules.excludeRecentWinners)
   return (
     <dl className="viewer-facts">
       {kind === "pool" ? (
@@ -34,6 +36,7 @@ export function GiveawayFacts({
           <Fact label={t("giveaway.row.who")} format="text">
             {whoCanEnterText(i18n, giveaway.rules.subsOnly, giveaway.rules.followersOnly)}
             {extraTickets === null ? null : ` ${extraTickets}`}
+            {recentWinners === null ? null : ` ${recentWinners}`}
           </Fact>
           {giveaway.status === "open" ? (
             <Fact label={t("giveaway.row.entries")} format="text">

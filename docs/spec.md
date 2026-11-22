@@ -150,7 +150,12 @@ Same model as common chat giveaway tools, so streamers know it already:
 - Groups: viewer, follower, sub tier 1, tier 2, tier 3, VIP, moderator. Each group has a ticket count.
   0 tickets means the group cannot enter.
 - An entrant gets the tickets of the best group they belong to (not the sum).
-- Optional filters: subscribers only, followers only, minimum account age.
+- Optional filters: subscribers only, followers only, minimum account age, and keeping out the winners of the
+  streamer's last N drawn giveaways or of those drawn in the last N days (a rerolled pick does not count).
+- A per-streamer block list keeps accounts out of every giveaway of the streamer. The streamer enters a login;
+  it is resolved to the platform user id when saved, so a rename does not lift the block. Known chat bots
+  (`CHAT_BOT_LOGINS`) never enter. A blocked viewer reads only "You cannot enter this giveaway". An entry made
+  before the block stays.
 - One entry per platform account. Accounts on different platforms are different entrants.
 
 VIP and moderator groups are in v1. They need the streamer's token, see Streamer token.
@@ -375,6 +380,8 @@ cloudflare_plan(id CHECK (id = 1), plan CHECK (plan IN ('free', 'paid')), change
 moderator_links(id, streamer_id, giveaway_id, token_hash UNIQUE, require_mod, created_at, revoked_at)
 metrics_minute(minute, entries, claims, PRIMARY KEY (minute)) WITHOUT ROWID   -- admin chart, aggregate
 referrals(day, ref, count, PRIMARY KEY (day, ref)) WITHOUT ROWID              -- ?ref= visits, aggregate
+streamer_blocks(streamer_id, platform, platform_user_id, login, created_at,
+                PRIMARY KEY (streamer_id, platform, platform_user_id)) WITHOUT ROWID
 -- indexes for the admin statistics: giveaways(created_at), giveaways(created_at) WHERE status = 'open',
 -- streamers(created_at)
 
@@ -395,6 +402,8 @@ entries(platform, platform_user_id, login, display_name, profile_image_url, grou
         PRIMARY KEY (platform, platform_user_id)) WITHOUT ROWID
 channel_roles(platform, platform_user_id, role, fetched_at,
               PRIMARY KEY (platform, platform_user_id, role)) WITHOUT ROWID
+excluded_users(platform, platform_user_id, reason ('blocked' | 'recent-winner'),
+               PRIMARY KEY (platform, platform_user_id, reason)) WITHOUT ROWID
 draws(n, platform, platform_user_id, drawn_at, claim_until, claimed_at, claimed_via, rerolled,
       leaf_index, drawn_by, rerolled_by, claim_marked_by, PRIMARY KEY (n))
 leaves(chunk, data)
@@ -438,6 +447,9 @@ no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Pl
 - `channel_roles`: VIP and moderator lists, fetched with the streamer's token when entries open and refreshed
   every 5 minutes by a Durable Object alarm while entries are open. A VIP added in the last 5 minutes may
   enter as a plain viewer; the alarm interval is a setting.
+- `excluded_users`: the streamer's block list and the recent winners the rules keep out, copied into the room
+  when it is set up (`room_state.exclusions_loaded`; a room that missed it gets it at the next dashboard call).
+  Each block list edit sends the whole list to every open room of the streamer, so an entry reads no D1 row.
 - `salt` (M2): 16 random bytes per entry, shown only to that entrant, used for the Merkle proof (see The draw).
 
 Viewer access tokens are used during the entry request and then dropped. Rafflink does not store them.
@@ -483,6 +495,8 @@ of the id could be brute-forced into a list of who entered.
 ## Privacy
 
 - Stored per entrant: platform, user id, login, display name, profile picture URL, group, tickets, time (and the salt from M2).
+- A streamer's block list holds the blocked account's user id and login until the streamer removes it or deletes
+  their data. Its copy in a room goes with the entries.
 - Entries and the channel role lists are deleted 30 days after the giveaway closes (`ENTRY_RETENTION_SECONDS`), by
   the room alarm; every pick, rerolled ones included, with the user id, login and display name (copied at pick
   time, no profile picture), counts, Merkle root and leaf list stay with the giveaway.

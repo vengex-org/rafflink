@@ -246,6 +246,12 @@ class LocalRoomStub implements RoomStub {
   init(...args: Parameters<GiveawayRoom["init"]>) {
     return inRoom(() => this.room.init(...args))
   }
+  loadExclusions(...args: Parameters<GiveawayRoom["loadExclusions"]>) {
+    return inRoom(() => this.room.loadExclusions(...args))
+  }
+  replaceBlocked(...args: Parameters<GiveawayRoom["replaceBlocked"]>) {
+    return inRoom(() => this.room.replaceBlocked(...args))
+  }
   enter(...args: Parameters<GiveawayRoom["enter"]>) {
     return inRoom(() => this.room.enter(...args))
   }

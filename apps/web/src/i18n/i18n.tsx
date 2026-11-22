@@ -14,6 +14,8 @@ export type PluralBase =
   | "ticket"
   | "minute"
   | "day"
+  | "recentGiveaways"
+  | "recentDays"
   | "entered"
   | "usageLow"
   | "roleFailures"

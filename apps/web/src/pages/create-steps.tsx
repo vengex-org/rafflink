@@ -8,7 +8,7 @@ import {
 } from "../components/form-fields.tsx"
 import { ClockIcon, HeartIcon, LockIcon, StarIcon, UsersIcon } from "../components/icons.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
-import { claimTimeText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
+import { claimTimeText, recentWinnersText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
 import {
   claimPresets,
   claimSecondsOf,
@@ -18,6 +18,7 @@ import {
   type Ending,
   type Issue,
   type Odds,
+  type RecentWinners,
   type Values,
 } from "./create-values.ts"
 
@@ -142,6 +143,7 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         decreaseLabel={t("wizard.minAge.fewer")}
         increaseLabel={t("wizard.minAge.more")}
       />
+      <RecentWinnersField values={values} setValues={setValues} issue={issue} />
       <TicketsField values={values} setValues={setValues} issue={issue} shown={groups} />
       <StepperField
         name="winnerCount"
@@ -164,6 +166,59 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         error={errorOf(i18n, issue, "claimKeyword")}
         onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
       />
+    </>
+  )
+}
+
+/** Off, or a count of the streamer's last giveaways or days whose winners cannot enter. */
+function RecentWinnersField({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const options: readonly SegmentOption<RecentWinners>[] = [
+    {
+      value: "off",
+      label: t("wizard.recent.off"),
+      icon: null,
+      description: t("wizard.recent.off.help"),
+    },
+    {
+      value: "giveaways",
+      label: t("wizard.recent.giveaways"),
+      icon: null,
+      description: t("wizard.recent.giveaways.help"),
+    },
+    {
+      value: "days",
+      label: t("wizard.recent.days"),
+      icon: null,
+      description: t("wizard.recent.days.help"),
+    },
+  ]
+  return (
+    <>
+      <Segmented
+        name="recentWinners"
+        legend={t("wizard.recent.legend")}
+        help={null}
+        options={options}
+        value={values.recentWinners}
+        onSelect={(recentWinners) => setValues((current) => ({ ...current, recentWinners }))}
+      />
+      {values.recentWinners === "off" ? null : (
+        <StepperField
+          name="excludeRecentWinners.count"
+          label={t(`wizard.recent.count.${values.recentWinners}`)}
+          help={null}
+          min={1}
+          value={values.recentWinnersCount}
+          error={errorOf(i18n, issue, "excludeRecentWinners.count")}
+          onChange={(recentWinnersCount) =>
+            setValues((current) => ({ ...current, recentWinnersCount }))
+          }
+          decreaseLabel={t("wizard.recent.fewer")}
+          increaseLabel={t("wizard.recent.more")}
+        />
+      )}
     </>
   )
 }
@@ -267,6 +322,13 @@ export function ReviewStep({ values }: { readonly values: Values }) {
   const { t } = i18n
   const customTickets = groups.filter((group) => values.tickets[group].trim() !== "1")
   const keyword = values.claimKeyword.trim()
+  const recent =
+    values.recentWinners === "off"
+      ? null
+      : recentWinnersText(i18n, {
+          kind: values.recentWinners,
+          count: Number(values.recentWinnersCount),
+        })
   return (
     <dl className="review">
       <ReviewRow label={t("review.name")} value={textOrNotSet(i18n, values.title)} />
@@ -302,6 +364,7 @@ export function ReviewStep({ values }: { readonly values: Values }) {
           })}
         />
       )}
+      {recent === null ? null : <ReviewRow label={t("review.recent")} value={recent} />}
       <ReviewRow
         label={t("review.end")}
         value={

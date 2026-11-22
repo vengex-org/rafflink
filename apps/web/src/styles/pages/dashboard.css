@@ -44,6 +44,39 @@
   transform: translateY(-50%);
 }
 
+/* The block list: the add form is one row, each blocked account one line with its Remove button. */
+.dash-blocks {
+  margin-top: var(--space-5);
+}
+
+.block-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: end;
+  max-width: 26rem;
+}
+
+.block-add .field {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+
+.block-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.block-list li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--line);
+}
+
 /* Deleting the account is rare and final, so it sits last, apart from the lists. */
 .dash-delete-data {
   margin-top: var(--space-5);

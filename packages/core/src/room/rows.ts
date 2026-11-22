@@ -1,7 +1,6 @@
-import type { ResolvedConfig } from "../config.ts"
 import { parseActor, type Actor } from "../domain/actor.ts"
 import { groups, type Group } from "../domain/groups.ts"
-import { parseRules, type GiveawayRules } from "../domain/rules.ts"
+import { parseRules, type GiveawayRules, type RulesConfig } from "../domain/rules.ts"
 import type { DrandChain } from "../lib/drand.ts"
 import type { Instant, SqlRow } from "../ports.ts"
 
@@ -102,10 +101,7 @@ export interface EntrySummary {
   readonly enteredAt: Instant
 }
 
-export function parseState(
-  row: SqlRow,
-  config: Pick<ResolvedConfig, "claimKeywordMaxLength" | "ticketsPerGroupMax">,
-): RoomState {
+export function parseState(row: SqlRow, config: RulesConfig): RoomState {
   const reader = new RowReader("room_state", row)
   const rules = parseRules(parseJson(reader.text("rules_json")), config)
   if (!rules.ok) throw new RoomRowError("room_state", "rules_json")

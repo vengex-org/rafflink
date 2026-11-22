@@ -1,7 +1,12 @@
 import { parseActor, type Actor } from "@rafflink/core/domain/actor"
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { parseOverlayTheme, type OverlayTheme } from "@rafflink/core/domain/overlay-theme"
-import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
+import {
+  ineligibleReasons,
+  recentWinnersKinds,
+  type GiveawayRules,
+  type RecentWinnersRule,
+} from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
   AdminAccessCountsJson,
@@ -12,6 +17,7 @@ import type {
   AdminStreamersJson,
   AdminUsageJson,
   BadgesJson,
+  BlockListJson,
   DashboardGiveaway,
   EntrantsPage,
   GiveawayOverlayThemesJson,
@@ -137,6 +143,7 @@ export interface CreateGiveawayBody {
     readonly followersOnly: boolean
     readonly minAccountAgeDays: number | undefined
     readonly claimKeyword: string
+    readonly excludeRecentWinners: RecentWinnersRule | null
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
@@ -784,6 +791,58 @@ export function deleteStreamerData(): Promise<DeleteKind | Rejected> {
   return act("/api/dash/account/delete", {}, deleteKinds)
 }
 
+/** One account on the streamer's block list. */
+export type BlockedAccount = BlockListJson["blocks"][number]
+
+/** Why adding to the block list was refused; `room-unavailable` means it was saved but an open giveaway did not get the list yet, and adding the same login again fixes it. */
+export type AddBlockRefusal = (typeof addBlockRefusals)[number]
+
+export type AddBlockResult = "added" | "exists" | AddBlockRefusal | "unauthorized"
+
+export type RemoveBlockResult = "removed" | "room-unavailable" | "unauthorized"
+
+/** The signed-in streamer's block list, newest first, and how many it may hold. */
+export async function getBlocks(): Promise<BlockListJson | "unauthorized"> {
+  const { status, body } = await send("/api/dash/blocks")
+  if (status === 401) return "unauthorized"
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "blocks")
+  return {
+    blocks: list(source, "blocks", parseBlock),
+    blockListMax: num(source, "blockListMax"),
+  }
+}
+
+/** Blocks the Twitch account with `login` (with or without the `@`) from every giveaway of the streamer. */
+export async function addBlock(login: string): Promise<AddBlockResult> {
+  const { status, body } = await postJson("/api/dash/blocks", { login })
+  if (status === 401) return "unauthorized"
+  const source = record(body, "block")
+  if (Object.hasOwn(source, "error")) return oneOf(source, "error", addBlockRefusals)
+  return oneOf(source, "kind", addBlockKinds)
+}
+
+/** `room-unavailable`: removed, but an open giveaway still has the account blocked; removing it again fixes that. */
+export async function removeBlock(platformUserId: string): Promise<RemoveBlockResult> {
+  const { status, body } = await postJson(
+    `/api/dash/blocks/${encodeURIComponent(platformUserId)}/delete`,
+    {},
+  )
+  if (status === 401) return "unauthorized"
+  const source = record(body, "block")
+  if (Object.hasOwn(source, "error")) return oneOf(source, "error", removeBlockRefusals)
+  return oneOf(source, "kind", removeBlockKinds)
+}
+
+function parseBlock(source: Json): BlockedAccount {
+  return {
+    platform: text(source, "platform"),
+    platformUserId: text(source, "platformUserId"),
+    login: text(source, "login"),
+    createdAt: num(source, "createdAt"),
+  }
+}
+
 /** Where the browser downloads a giveaway's winners as CSV; the session cookie goes with the link. */
 export const winnersCsvPath = (id: string) =>
   `/api/dash/giveaways/${encodeURIComponent(id)}/winners.csv`
@@ -792,6 +851,16 @@ export type DeleteKind = (typeof deleteKinds)[number]
 
 const deleteKinds = ["deleted"] as const
 const revokeKinds = ["revoked"] as const
+const addBlockKinds = ["added", "exists"] as const
+const removeBlockKinds = ["removed"] as const
+const removeBlockRefusals = ["room-unavailable"] as const
+const addBlockRefusals = [
+  "invalid-input",
+  "unknown-login",
+  "block-list-full",
+  "platform-unavailable",
+  "room-unavailable",
+] as const
 const streamerAccessKinds = ["approved", "revoked"] as const
 const savedKinds = ["saved"] as const
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
@@ -838,6 +907,7 @@ const issueCodes = [
   "too-large",
   "not-a-timestamp",
   "in-the-past",
+  "unknown-kind",
 ] as const satisfies readonly CreateIssue["code"][]
 const viewerKinds = [
   "signed-out",
@@ -957,7 +1027,15 @@ function parseRules(source: Json): GiveawayRules {
     followersOnly: bool(source, "followersOnly"),
     minAccountAgeDays: nullableNum(source, "minAccountAgeDays"),
     claimKeyword: nullableText(source, "claimKeyword"),
+    excludeRecentWinners:
+      source.excludeRecentWinners === null
+        ? null
+        : parseRecentWinners(child(source, "excludeRecentWinners")),
   }
+}
+
+function parseRecentWinners(source: Json): RecentWinnersRule {
+  return { kind: oneOf(source, "kind", recentWinnersKinds), count: num(source, "count") }
 }
 
 function parseClaim(source: Json): WinnerClaim {

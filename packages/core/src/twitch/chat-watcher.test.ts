@@ -574,6 +574,7 @@ const rules: GiveawayRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 const random: Random = { bytes: (length) => new Uint8Array(length).fill(7) }

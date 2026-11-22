@@ -13,6 +13,7 @@ const rules: GiveawayRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 const viewer: ViewerFacts = {
@@ -22,6 +23,7 @@ const viewer: ViewerFacts = {
   isVip: false,
   isModerator: false,
   accountAgeDays: 400,
+  exclusion: null,
 }
 
 const config = {
@@ -29,6 +31,8 @@ const config = {
   ticketsPerGroupMax: 100,
   defaultClaimSeconds: 300,
   claimSecondsMax: 3600,
+  recentWinnersGiveawaysMax: 10,
+  recentWinnersDaysMax: 90,
 }
 
 const validInput = {
@@ -45,6 +49,29 @@ describe("evaluateEligibility", () => {
     const outcome = evaluateEligibility(
       rules,
       { ...viewer, userId: "999", isModerator: true },
+      "999",
+    )
+    expect(outcome).toEqual({ eligible: false, reason: "broadcaster" })
+  })
+
+  it("refuses a blocked viewer whatever their group", () => {
+    const outcome = evaluateEligibility(
+      rules,
+      { ...viewer, isModerator: true, exclusion: "blocked" },
+      "999",
+    )
+    expect(outcome).toEqual({ eligible: false, reason: "blocked" })
+  })
+
+  it("refuses a recent winner", () => {
+    const outcome = evaluateEligibility(rules, { ...viewer, exclusion: "recent-winner" }, "999")
+    expect(outcome).toEqual({ eligible: false, reason: "recent-winner" })
+  })
+
+  it("tells the broadcaster they are the broadcaster even when excluded", () => {
+    const outcome = evaluateEligibility(
+      rules,
+      { ...viewer, userId: "999", exclusion: "blocked" },
       "999",
     )
     expect(outcome).toEqual({ eligible: false, reason: "broadcaster" })
@@ -175,6 +202,7 @@ describe("parseRules", () => {
         followersOnly: false,
         minAccountAgeDays: null,
         claimKeyword: null,
+        excludeRecentWinners: null,
       },
     })
   })
@@ -321,6 +349,60 @@ describe("parseRules", () => {
   it("measures the keyword length after trimming", () => {
     const padded = ` ${"a".repeat(10)} `
     expect(parseRules({ ...validInput, claimKeyword: padded }, config).ok).toBe(true)
+  })
+})
+
+describe("parseRules recent winners", () => {
+  it("reads an absent or null exclusion as none", () => {
+    for (const excludeRecentWinners of [undefined, null]) {
+      expect(parseRules({ ...validInput, excludeRecentWinners }, config)).toMatchObject({
+        ok: true,
+        value: { excludeRecentWinners: null },
+      })
+    }
+  })
+
+  it("parses the last giveaways and the last days up to their maximum", () => {
+    expect(
+      parseRules({ ...validInput, excludeRecentWinners: { kind: "giveaways", count: 10 } }, config),
+    ).toMatchObject({ ok: true, value: { excludeRecentWinners: { kind: "giveaways", count: 10 } } })
+    expect(
+      parseRules({ ...validInput, excludeRecentWinners: { kind: "days", count: 90 } }, config),
+    ).toMatchObject({ ok: true, value: { excludeRecentWinners: { kind: "days", count: 90 } } })
+  })
+
+  it("refuses a count above the maximum of its kind", () => {
+    expect(
+      parseRules({ ...validInput, excludeRecentWinners: { kind: "giveaways", count: 11 } }, config),
+    ).toEqual({ ok: false, issue: { field: "excludeRecentWinners.count", code: "too-large" } })
+    expect(
+      parseRules({ ...validInput, excludeRecentWinners: { kind: "days", count: 91 } }, config),
+    ).toEqual({ ok: false, issue: { field: "excludeRecentWinners.count", code: "too-large" } })
+  })
+
+  it("refuses a count of 0, a negative, fractional, non-finite or non-number count", () => {
+    for (const count of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "3", null]) {
+      expect(
+        parseRules({ ...validInput, excludeRecentWinners: { kind: "days", count } }, config),
+      ).toEqual({
+        ok: false,
+        issue: { field: "excludeRecentWinners.count", code: "not-a-positive-integer" },
+      })
+    }
+  })
+
+  it("refuses an unknown kind, a prototype key as kind and a non-object", () => {
+    for (const kind of ["weeks", "constructor", "__proto__", "", undefined]) {
+      expect(
+        parseRules({ ...validInput, excludeRecentWinners: { kind, count: 1 } }, config),
+      ).toEqual({ ok: false, issue: { field: "excludeRecentWinners.kind", code: "unknown-kind" } })
+    }
+    for (const excludeRecentWinners of [3, "days", []]) {
+      expect(parseRules({ ...validInput, excludeRecentWinners }, config)).toEqual({
+        ok: false,
+        issue: { field: "excludeRecentWinners", code: "not-an-object" },
+      })
+    }
   })
 })
 

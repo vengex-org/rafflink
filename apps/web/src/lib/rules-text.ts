@@ -26,6 +26,20 @@ export function extraTicketsText(i18n: I18n, tickets: GiveawayRules["tickets"]):
   return i18n.t("extraTickets.some")
 }
 
+/** The sentence about earlier winners who cannot enter; null when the giveaway keeps none out. */
+export function recentWinnersText(
+  i18n: I18n,
+  rule: GiveawayRules["excludeRecentWinners"],
+): string | null {
+  if (rule === null) return null
+  switch (rule.kind) {
+    case "giveaways":
+      return i18n.plural("recentGiveaways", rule.count)
+    case "days":
+      return i18n.plural("recentDays", rule.count)
+  }
+}
+
 export function ticketText(i18n: I18n, count: number): string {
   return count === 0 ? i18n.t("ticket.cannotEnter") : i18n.plural("ticket", count)
 }

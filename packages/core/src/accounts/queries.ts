@@ -14,6 +14,37 @@ export const ownedGiveawaySql = `SELECT ${giveawayColumns} ${giveawayFrom} WHERE
 /** A streamer's giveaways (parameter 1), newest first. */
 export const giveawaysOfStreamerSql = `SELECT ${giveawayColumns} ${giveawayFrom} WHERE g.streamer_id = ? ORDER BY g.created_at DESC, g.id DESC`
 
+/** A streamer's giveaways (parameter 1) that the account store holds as open. */
+export const openGiveawaysOfStreamerSql = `SELECT g.id FROM giveaways g WHERE g.streamer_id = ? AND g.status = 'open'`
+
+/** Ids of a streamer's (parameter 1) drawn giveaways created at or after an instant (parameter 2), newest first; parameter 3 is how many. */
+export const recentDrawnGiveawaysSql = `SELECT id FROM giveaways WHERE streamer_id = ? AND status = 'drawn' AND created_at >= ?
+  ORDER BY created_at DESC, id DESC LIMIT ?`
+
+/** A streamer's (parameter 1) block list, newest first. */
+export const blocksOfStreamerSql = `SELECT platform, platform_user_id, login, created_at FROM streamer_blocks
+  WHERE streamer_id = ? ORDER BY created_at DESC, platform_user_id`
+
+/**
+ * Parameters: streamer id, platform, platform user id, login, created at, streamer id again, the most
+ * blocks a streamer may hold. Inserts only below that count; returns the row when it was inserted.
+ */
+export const insertBlockSql = `INSERT INTO streamer_blocks (streamer_id, platform, platform_user_id, login, created_at)
+  SELECT ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM streamer_blocks WHERE streamer_id = ?) < ?
+  ON CONFLICT (streamer_id, platform, platform_user_id) DO NOTHING
+  RETURNING platform_user_id`
+
+/** Parameters: streamer id, platform, platform user id. */
+export const blockSql =
+  "SELECT 1 AS present FROM streamer_blocks WHERE streamer_id = ? AND platform = ? AND platform_user_id = ?"
+
+/** Parameters: streamer id, platform, platform user id. */
+export const deleteBlockSql =
+  "DELETE FROM streamer_blocks WHERE streamer_id = ? AND platform = ? AND platform_user_id = ?"
+
+/** The block list of a streamer (parameter 1); deleted before the streamer, whom it references. */
+export const deleteStreamerBlocksSql = "DELETE FROM streamer_blocks WHERE streamer_id = ?"
+
 /** Parameters: id, code, streamer id, title, prize, rules, closes at, claim seconds, winner count, overlay token, created at. */
 export const insertGiveawaySql = `INSERT INTO giveaways
   (id, code, streamer_id, title, prize, rules_json, status, closes_at, claim_seconds, winner_count, overlay_token, created_at)

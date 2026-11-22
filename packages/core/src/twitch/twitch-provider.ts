@@ -5,6 +5,7 @@ import type {
   ChannelRoles,
   ChatContext,
   ExchangedCode,
+  PlatformAccount,
   PlatformCapabilities,
   PlatformProvider,
   SignInProof,
@@ -19,6 +20,8 @@ import { eventSubChat, type ChatWatcherConfig } from "./chat-watcher.ts"
 import { TwitchInvalid, type TwitchClient } from "./twitch-client.ts"
 
 export type TwitchProviderConfig = ChannelBadgesConfig & ChatWatcherConfig
+
+const twitchLogin = /^[a-z0-9_]{1,25}$/
 
 const twitchCapabilities: PlatformCapabilities = {
   followerCheck: true,
@@ -113,6 +116,15 @@ export class TwitchProvider implements PlatformProvider {
 
   isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
     return this.client.isModerator(accessToken, broadcasterId, userId)
+  }
+
+  /** Twitch logins are case-insensitive; a leading `@`, as chat writes names, is dropped. */
+  async accountByLogin(login: string): Promise<PlatformAccount | null> {
+    const normalised = login.trim().replace(/^@/, "").toLowerCase()
+    if (!twitchLogin.test(normalised)) return null
+    const ids = await this.client.userIdsByLogin(await this.client.appAccessToken(), [normalised])
+    const id = ids.get(normalised)
+    return id === undefined ? null : { id, login: normalised }
   }
 
   /** An EventSub WebSocket whose sessions are subscribed to the channel's chat with the streamer's token. */

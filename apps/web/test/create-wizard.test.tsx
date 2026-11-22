@@ -358,6 +358,7 @@ describe("create wizard", () => {
         followersOnly: false,
         minAccountAgeDays: 7,
         claimKeyword: "",
+        excludeRecentWinners: null,
       },
       claimSeconds: 300,
       winnerCount: 1,
@@ -406,11 +407,108 @@ describe("create wizard", () => {
         followersOnly: true,
         minAccountAgeDays: 30,
         claimKeyword: "mine",
+        excludeRecentWinners: null,
       },
       closesAt: new Date("2099-01-01T10:00").toISOString(),
       claimSeconds: 600,
       winnerCount: 1,
     })
+  })
+
+  it.each([
+    [
+      "Last giveaways",
+      "How many giveaways back",
+      "giveaways",
+      "Winners of the streamer's last 3 giveaways cannot enter.",
+    ],
+    [
+      "Last days",
+      "How many days back",
+      "days",
+      "Winners of the streamer's giveaways from the last 3 days cannot enter.",
+    ],
+  ] as const)(
+    "keeps recent winners out by %s: reviews the rule and sends it",
+    async (option, countLabel, kind, sentence) => {
+      const requests = mockFetch(withCreate(createdReply))
+      const view = await openWizard()
+      await toRules(view)
+      expect(view.queryByLabelText(countLabel)).toBeNull()
+
+      fireEvent.click(view.getByRole("radio", { name: new RegExp(option) }))
+      expect(inputOf(view.getByLabelText(countLabel)).value).toBe("3")
+      next(view)
+      await view.findByText("Step 3 of 3: Review")
+      expect(view.getByText("Recent winners")).toBeTruthy()
+      expect(view.getByText(sentence)).toBeTruthy()
+      fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+      await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+      const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+      expect(body).toMatchObject({ rules: { excludeRecentWinners: { kind, count: 3 } } })
+    },
+  )
+
+  it("sends no recent-winners rule after the streamer switches it off again", async () => {
+    const requests = mockFetch(withCreate(createdReply))
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(view.getByRole("radio", { name: /Last days/ }))
+    fireEvent.click(view.getByRole("radio", { name: /Off/ }))
+    expect(view.queryByLabelText("How many days back")).toBeNull()
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    expect(view.queryByText("Recent winners")).toBeNull()
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect(body).toMatchObject({ rules: { excludeRecentWinners: null } })
+  })
+
+  it.each(["", "0", "2.5", "-1"])(
+    "stops on the rules step when the recent-winners count is %j",
+    async (typed) => {
+      mockFetch(withCreate(createdReply))
+      const view = await openWizard()
+      await toRules(view)
+      fireEvent.click(view.getByRole("radio", { name: /Last giveaways/ }))
+      fireEvent.change(view.getByLabelText("How many giveaways back"), { target: { value: typed } })
+
+      next(view)
+
+      expect(await view.findByText("Enter a whole number, 1 or more.")).toBeTruthy()
+      expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+      expect(view.getByLabelText("How many giveaways back").getAttribute("aria-invalid")).toBe(
+        "true",
+      )
+    },
+  )
+
+  it("sends the streamer back to the recent-winners count the server refused", async () => {
+    mockFetch(
+      withCreate({
+        status: 400,
+        body: {
+          error: "invalid-input",
+          field: "excludeRecentWinners.count",
+          code: "too-large",
+        },
+      }),
+    )
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(view.getByRole("radio", { name: /Last giveaways/ }))
+    fireEvent.change(view.getByLabelText("How many giveaways back"), { target: { value: "99" } })
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+
+    expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    expect(await view.findByText("This number is too large. Enter a smaller one.")).toBeTruthy()
+    expect(view.getByLabelText("How many giveaways back").getAttribute("aria-invalid")).toBe("true")
   })
 
   it("sends a blank name and prize and reviews them as not set", async () => {

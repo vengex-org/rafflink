@@ -3,21 +3,21 @@ import {
   parseClaimSeconds,
   parseRules,
   type GiveawayRules,
+  type RulesConfig,
   type RulesIssueCode,
 } from "../domain/rules.ts"
 import type { Parsed } from "../lib/parsed.ts"
 import type { Instant } from "../ports.ts"
 
-export type CreateConfig = Pick<
-  ResolvedConfig,
-  | "claimKeywordMaxLength"
-  | "ticketsPerGroupMax"
-  | "defaultClaimSeconds"
-  | "claimSecondsMax"
-  | "titleMaxLength"
-  | "prizeMaxLength"
-  | "drawMaxWinners"
->
+export type CreateConfig = RulesConfig
+  & Pick<
+    ResolvedConfig,
+    | "defaultClaimSeconds"
+    | "claimSecondsMax"
+    | "titleMaxLength"
+    | "prizeMaxLength"
+    | "drawMaxWinners"
+  >
 
 /** A create request that passed the boundary. */
 export interface CreateGiveawayInput {

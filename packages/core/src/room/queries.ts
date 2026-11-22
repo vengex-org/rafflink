@@ -51,9 +51,9 @@ export const shuffleNamesSql = "SELECT display_name FROM entries ORDER BY RANDOM
 /** The sequence number of the newest entry; `head` is NULL when nobody entered. */
 export const headSeqSql = "SELECT MAX(seq) AS head FROM entries"
 
-/** One row while the room still holds personal data of entrants or channel roles; no row once it was deleted. */
+/** One row while the room still holds personal data of entrants, channel roles or excluded accounts; no row once it was deleted. */
 export const retainedDataSql =
-  "SELECT 1 AS present WHERE EXISTS (SELECT 1 FROM entries) OR EXISTS (SELECT 1 FROM channel_roles)"
+  "SELECT 1 AS present WHERE EXISTS (SELECT 1 FROM entries) OR EXISTS (SELECT 1 FROM channel_roles) OR EXISTS (SELECT 1 FROM excluded_users)"
 
 /** Entries written per minute from one instant (parameter 1) up to but not including another (parameter 2); `minute` is the start of the minute. */
 export const entriesPerMinuteSql = `SELECT entered_at / 60000 * 60000 AS minute, COUNT(*) AS c FROM entries

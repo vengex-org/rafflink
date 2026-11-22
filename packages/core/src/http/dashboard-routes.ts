@@ -1,6 +1,11 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import { timingSafeEqual } from "hono/utils/buffer"
-import type { Giveaway, NewGiveaway, StreamerRecord } from "../accounts/account-store.ts"
+import type {
+  Giveaway,
+  NewGiveaway,
+  StreamerBlock,
+  StreamerRecord,
+} from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import { parseOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
 import { generateCode } from "../lib/codes.ts"
@@ -18,10 +23,13 @@ import {
 } from "../plan/plan-limits.ts"
 import { usageAlerts, usageOf, type Usage } from "../plan/usage.ts"
 import { overlaySnapshot, type WinnerPick } from "../room/giveaway-room.ts"
+import { pushBlockList } from "../room/room-exclusions.ts"
 import { deleteGiveaway } from "../room/delete-giveaway.ts"
 import { denseDays, denseMinutes } from "../stats/series.ts"
 import { liveGiveaways } from "../stats/live-giveaways.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
+import { PlatformError } from "../platform/errors.ts"
+import { providerFor, type PlatformAccount } from "../platform/provider.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import {
@@ -35,6 +43,7 @@ import {
   type AdminStatsJson,
   type AdminStreamersJson,
   type AdminUsageJson,
+  type BlockListJson,
   type GiveawayOverlayThemesJson,
   type OverlayThemeJson,
   type OwnerLiveSnapshot,
@@ -153,6 +162,57 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     await deleteGiveaway(deps, giveaway.id)
     console.info("giveaway deleted", { giveawayId: giveaway.id })
     return c.json({ kind: "deleted" })
+  })
+
+  app.get("/api/dash/blocks", async (c) => {
+    const body: BlockListJson = {
+      blocks: await deps.accounts.listBlocks(c.get("streamer").streamerId),
+      blockListMax: deps.config.blockListMax,
+    }
+    c.header("Cache-Control", "no-store")
+    return c.json(body)
+  })
+
+  // The login is looked up once here, so the block holds the account id and a rename does not lift it.
+  // Saving is idempotent, so after `room-unavailable` a repeat sends the list to the rooms again.
+  app.post("/api/dash/blocks", sameOriginJson(deps.config), async (c) => {
+    const { streamerId, platform } = c.get("streamer")
+    const typed = objectField(await readJson(c), "login")
+    const login = typeof typed === "string" && typed.trim() !== "" ? typed.trim() : null
+    if (login === null) return c.json({ error: "invalid-input", field: "login" }, 400)
+    let account: PlatformAccount | null
+    try {
+      account = await providerFor(deps.platforms, platform).accountByLogin(login)
+    } catch (error) {
+      if (!(error instanceof PlatformError)) throw error
+      console.warn("block login lookup failed", {
+        errorClass: errorClass(error),
+        status: error.status,
+      })
+      return c.json({ error: "platform-unavailable" }, 503)
+    }
+    if (account === null) return c.json({ error: "unknown-login" }, 404)
+    const block: StreamerBlock = {
+      platform,
+      platformUserId: account.id,
+      login: account.login,
+      createdAt: deps.clock.now(),
+    }
+    const added = await deps.accounts.addBlock(streamerId, block, deps.config.blockListMax)
+    if (added === "full") return c.json({ error: "block-list-full" }, 409)
+    if ((await pushBlockList(deps, streamerId, platform)) > 0) {
+      return c.json({ error: "room-unavailable" }, 503)
+    }
+    return c.json({ kind: added, block }, added === "added" ? 201 : 200)
+  })
+
+  app.post("/api/dash/blocks/:platformUserId/delete", sameOriginJson(deps.config), async (c) => {
+    const { streamerId, platform } = c.get("streamer")
+    await deps.accounts.removeBlock(streamerId, platform, c.req.param("platformUserId"))
+    if ((await pushBlockList(deps, streamerId, platform)) > 0) {
+      return c.json({ error: "room-unavailable" }, 503)
+    }
+    return c.json({ kind: "removed" })
   })
 
   // Every room goes before the rows, so a failure leaves the account listed and a repeat finishes the job.
