@@ -1,4 +1,5 @@
 import type { ResolvedConfig } from "../config.ts"
+import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import {
   evaluateEligibility,
   type GiveawayRules,
@@ -321,6 +322,11 @@ export type LivePush = LiveSnapshot & { readonly entrantsAfter: EntrantsDelta }
 
 /** {@link LivePush} for the overlay. */
 export type OverlayPush = OverlaySnapshot & { readonly entrantsAfter: EntrantsDelta }
+
+/** What the overlay receives when the streamer saves the style it shows; it carries no snapshot. */
+export interface OverlayThemePush {
+  readonly theme: OverlayTheme
+}
 
 /** One published leaf: the hash of an entry and its tickets, with no name. */
 export interface Leaf {
@@ -934,6 +940,12 @@ export class GiveawayRoom {
     })
     if (outcome.kind === "removed") this.afterWrite()
     return outcome
+  }
+
+  /** Sends the connected overlays a style the streamer saved. The room stores nothing: an overlay that connects later reads the style itself. */
+  pushOverlayTheme(theme: OverlayTheme): void {
+    const push: OverlayThemePush = { theme }
+    this.live.broadcastOverlay(JSON.stringify(push))
   }
 
   /** Entries written per second in the `windowSeconds` before `until`: what the token endpoint let through for this giveaway. */

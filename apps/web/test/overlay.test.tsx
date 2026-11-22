@@ -174,7 +174,10 @@ it("does not load the prize in compact mode, which shows no prize", async () => 
   const view = renderApp("/overlay/gid-1/tok-1?mode=compact")
   await view.findByRole("heading", { level: 1, hidden: true })
 
-  expect(requests.map((request) => request.route)).toEqual(["GET /api/overlay/gid-1/tok-1"])
+  expect(requests.map((request) => request.route).toSorted()).toEqual([
+    "GET /api/overlay/gid-1/tok-1",
+    "GET /api/overlay/gid-1/tok-1/theme",
+  ])
 })
 
 it("does not load the prize while the giveaway is open", async () => {
@@ -183,7 +186,10 @@ it("does not load the prize while the giveaway is open", async () => {
   const view = renderApp("/overlay/gid-1/tok-1")
   await view.findByRole("heading", { level: 1, hidden: true })
 
-  expect(requests.map((request) => request.route)).toEqual(["GET /api/overlay/gid-1/tok-1"])
+  expect(requests.map((request) => request.route).toSorted()).toEqual([
+    "GET /api/overlay/gid-1/tok-1",
+    "GET /api/overlay/gid-1/tok-1/theme",
+  ])
 })
 
 it.each([

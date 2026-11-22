@@ -85,6 +85,9 @@ class DurableObjectRoomStub implements RoomStub {
   entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
     return inRoom(() => this.stub.entriesPerSecondBefore(...args))
   }
+  pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
+    return inRoom(() => this.stub.pushOverlayTheme(...args))
+  }
   liveCounts() {
     return inRoom(() => this.stub.liveCounts())
   }

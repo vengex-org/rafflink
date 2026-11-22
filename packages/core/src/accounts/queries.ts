@@ -112,3 +112,29 @@ export const approveStreamerSql = `UPDATE streamers SET approved_at = COALESCE(a
 /** A streamer id (parameter 1); returns it when the streamer exists. */
 export const revokeStreamerSql =
   "UPDATE streamers SET approved_at = NULL, approved_by = NULL WHERE id = ? RETURNING id"
+
+/** The stored overlay theme of a streamer (parameter 1); no row when none is stored. */
+export const streamerOverlaySql = "SELECT theme_json FROM streamer_overlay WHERE streamer_id = ?"
+
+/** Parameters: streamer id, theme JSON, updated at. */
+export const storeStreamerOverlaySql = `INSERT INTO streamer_overlay (streamer_id, theme_json, updated_at) VALUES (?, ?, ?)
+  ON CONFLICT (streamer_id) DO UPDATE SET
+    theme_json = excluded.theme_json,
+    updated_at = excluded.updated_at`
+
+const overlayThemesSelect = `SELECT g.overlay_theme_json, o.theme_json AS streamer_theme_json
+  FROM giveaways g LEFT JOIN streamer_overlay o ON o.streamer_id = g.streamer_id`
+
+/** A giveaway's own overlay theme and its streamer's, each null when unset, by giveaway id (parameter 1). */
+export const overlayThemesSql = `${overlayThemesSelect} WHERE g.id = ?`
+
+/** {@link overlayThemesSql} for a giveaway id (parameter 1) that belongs to a streamer (parameter 2). */
+export const ownedOverlayThemesSql = `${overlayThemesSelect} WHERE g.id = ? AND g.streamer_id = ?`
+
+/** Parameters: theme JSON or null, giveaway id, streamer id. Returns the id when the giveaway is the streamer's. */
+export const setGiveawayOverlaySql =
+  "UPDATE giveaways SET overlay_theme_json = ? WHERE id = ? AND streamer_id = ? RETURNING id"
+
+/** Ids of a streamer's (parameter 1) giveaways not drawn yet whose overlay shows the streamer's theme. */
+export const streamerThemedGiveawaysSql =
+  "SELECT id FROM giveaways WHERE streamer_id = ? AND status != 'drawn' AND overlay_theme_json IS NULL"

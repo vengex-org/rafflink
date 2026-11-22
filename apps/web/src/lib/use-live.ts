@@ -30,11 +30,13 @@ export function reconnectDelayMs(attempt: number): number {
 
 /**
  * The first snapshot by GET, then every push of the WebSocket on the same path; reconnects with backoff.
- * `parseSnapshot` is the decoder of the caller's audience and must keep its identity across renders.
+ * `parseSnapshot` is the decoder of the caller's audience and must keep its identity across renders, like
+ * `takeOther`, which sees each message first and returns true for one that is not a snapshot and that it handled.
  */
 export function useLive<Snapshot>(
   path: string,
   parseSnapshot: (source: Json) => Snapshot,
+  takeOther: (message: Json) => boolean = takeNone,
 ): LiveState<Snapshot> {
   const [live, setLive] = useState<LiveState<Snapshot>>({ state: "loading" })
 
@@ -51,10 +53,9 @@ export function useLive<Snapshot>(
       let healthy = false
       next.addEventListener("message", (event) => {
         try {
-          const { snapshot, entrantsAfter } = parseLivePush(
-            record(JSON.parse(String(event.data)), "live"),
-            parseSnapshot,
-          )
+          const message = record(JSON.parse(String(event.data)), "live")
+          if (takeOther(message)) return
+          const { snapshot, entrantsAfter } = parseLivePush(message, parseSnapshot)
           healthy = true
           setLive({
             state: "ready",
@@ -109,9 +110,14 @@ export function useLive<Snapshot>(
       if (timer !== null) clearTimeout(timer)
       socket?.close()
     }
-  }, [path, parseSnapshot])
+  }, [path, parseSnapshot, takeOther])
 
   return live
+}
+
+// Module scope keeps its identity, so a caller without other messages does not reopen the socket on every render.
+function takeNone(): boolean {
+  return false
 }
 
 export function socketUrl(path: string): string {

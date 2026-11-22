@@ -12,6 +12,7 @@ import { ConfirmAction } from "./confirm-action.tsx"
 import { CopyLink } from "./copy-field.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Segmented, Stepper, type SegmentOption } from "./form-fields.tsx"
+import { GiveawayOverlayStyle } from "./overlay-style.tsx"
 import {
   CheckCircleIcon,
   CopyIcon,
@@ -541,6 +542,7 @@ function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overl
         >
           {optionedUrl}
         </CopyLink>
+        <GiveawayOverlayStyle id={id} />
       </div>
     </>
   )

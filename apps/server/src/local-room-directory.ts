@@ -275,6 +275,9 @@ class LocalRoomStub implements RoomStub {
   entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
     return inRoom(() => this.room.entriesPerSecondBefore(...args))
   }
+  pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
+    return inRoom(() => this.room.pushOverlayTheme(...args))
+  }
   liveCounts() {
     return inRoom(() => ({ ...this.room.liveCounts(), viewers: this.viewers() }))
   }

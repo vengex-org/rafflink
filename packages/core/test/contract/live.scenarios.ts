@@ -1,5 +1,6 @@
 import { expect } from "bun:test"
 import { globalSubscriberBadgeUrl } from "@rafflink/fake-twitch"
+import { defaultOverlayTheme, type OverlayTheme } from "../../src/domain/overlay-theme.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { moderatorsPath, publicOrigin, scenario, vipsPath, type World } from "./world.ts"
@@ -222,6 +223,25 @@ export function liveScenarios(context: ContractContext): void {
       expect(write.status).toBe(404)
     },
   )
+
+  scenario(context, "the overlay socket gets a style the streamer saves", async (world) => {
+    const target = await world.start()
+    const giveaway = await world.createGiveaway(target)
+    const overlay = world.openSocket<{ readonly theme?: OverlayTheme }>(
+      new URL(`/api/overlay/${giveaway.id}/${giveaway.overlayToken}`, target.url),
+    )
+    await world.waitFor(() => overlay.messages.length >= 1, "the first overlay snapshot")
+    const theme: OverlayTheme = { ...defaultOverlayTheme, accent: "#ff5500" }
+
+    const saved = await giveaway.streamer.postJson("/api/dash/overlay-theme", theme)
+
+    expect(saved.status).toBe(200)
+    await world.waitFor(
+      () => overlay.messages.some((message) => message.theme?.accent === "#ff5500"),
+      "the style push on the overlay socket",
+    )
+    expect(overlay.messages.at(-1)).toEqual({ theme })
+  })
 
   scenario(
     context,

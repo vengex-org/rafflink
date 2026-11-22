@@ -222,6 +222,9 @@ class InProcessRoomStub implements RoomStub {
   async entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
     return this.room.entriesPerSecondBefore(...args)
   }
+  async pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
+    this.room.pushOverlayTheme(...args)
+  }
   async liveCounts() {
     return { ...this.room.liveCounts(), viewers: 0 }
   }

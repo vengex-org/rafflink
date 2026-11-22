@@ -1,5 +1,10 @@
 import type { ResolvedConfig } from "../config.ts"
 import { cloudflarePlans, type CloudflarePlan } from "../plan/plan-limits.ts"
+import {
+  defaultOverlayTheme,
+  parseOverlayTheme,
+  type OverlayTheme,
+} from "../domain/overlay-theme.ts"
 import { parseRules, type GiveawayRules } from "../domain/rules.ts"
 import type { AsyncSql, Instant, SqlRow } from "../ports.ts"
 import { RoomRowError, roomStatuses, RowReader, type RoomStatus } from "../room/rows.ts"
@@ -17,15 +22,21 @@ import {
   giveawaysOfStreamerSql,
   insertGiveawaySql,
   ownedGiveawaySql,
+  ownedOverlayThemesSql,
+  overlayThemesSql,
   pendingStreamersSql,
   recordRetentionFailureSql,
   replaceStreamerTokenSql,
   revokeStreamerSql,
+  setGiveawayOverlaySql,
   setRetentionArmedSql,
   setStatusSql,
   storeCloudflarePlanSql,
+  storeStreamerOverlaySql,
   streamerByIdSql,
   streamerByPlatformUserSql,
+  streamerOverlaySql,
+  streamerThemedGiveawaysSql,
   streamerTokenSql,
   streamerTokensSql,
   unarmedRetentionSql,
@@ -94,6 +105,12 @@ export interface Giveaway {
 export type NewGiveaway = Omit<Giveaway, "platform" | "broadcasterId" | "streamerName" | "status">
 
 export type InsertOutcome = "inserted" | "code-taken"
+
+/** The overlay themes a streamer edits for one giveaway: its own, null while the streamer's applies, and the streamer's. */
+export interface OwnedOverlayThemes {
+  readonly own: OverlayTheme | null
+  readonly streamer: OverlayTheme
+}
 
 /** Streamers, their sealed tokens and giveaways over one SQLite database. Every streamer-facing lookup takes the owner. */
 export class AccountStore {
@@ -282,6 +299,60 @@ export class AccountStore {
     return (await this.sql.all(revokeStreamerSql, [streamerId])).length === 1
   }
 
+  /** The streamer's overlay theme; the default while none is stored. */
+  async streamerOverlayTheme(streamerId: string): Promise<OverlayTheme> {
+    const [row] = await this.sql.all(streamerOverlaySql, [streamerId])
+    return row === undefined
+      ? defaultOverlayTheme
+      : storedTheme(
+          new RowReader("streamer_overlay", row).text("theme_json"),
+          "streamer_overlay",
+          "theme_json",
+        )
+  }
+
+  /** Idempotent: the row keeps only the latest theme. */
+  async storeStreamerOverlayTheme(
+    streamerId: string,
+    theme: OverlayTheme,
+    at: Instant,
+  ): Promise<void> {
+    await this.sql.run(storeStreamerOverlaySql, [streamerId, JSON.stringify(theme), at])
+  }
+
+  /** Ids of the streamer's giveaways not drawn yet that show the streamer's theme, whose overlays a new one reaches. */
+  async streamerThemedGiveaways(streamerId: string): Promise<string[]> {
+    const rows = await this.sql.all(streamerThemedGiveawaysSql, [streamerId])
+    return rows.map((row) => new RowReader("giveaways", row).text("id"))
+  }
+
+  /** Null when the giveaway is not this streamer's. */
+  async ownedOverlayThemes(
+    streamerId: string,
+    giveawayId: string,
+  ): Promise<OwnedOverlayThemes | null> {
+    const [row] = await this.sql.all(ownedOverlayThemesSql, [giveawayId, streamerId])
+    return row === undefined ? null : overlayThemesOf(row)
+  }
+
+  /** What the giveaway's overlay shows: its own theme, else its streamer's, else the default. Not owner-scoped: the caller checked the overlay token. */
+  async overlayThemeOf(giveawayId: string): Promise<OverlayTheme> {
+    const [row] = await this.sql.all(overlayThemesSql, [giveawayId])
+    if (row === undefined) return defaultOverlayTheme
+    const themes = overlayThemesOf(row)
+    return themes.own ?? themes.streamer
+  }
+
+  /** A null theme gives the giveaway back its streamer's. False when the giveaway is not this streamer's. */
+  async setGiveawayOverlayTheme(
+    streamerId: string,
+    giveawayId: string,
+    theme: OverlayTheme | null,
+  ): Promise<boolean> {
+    const json = theme === null ? null : JSON.stringify(theme)
+    return (await this.sql.all(setGiveawayOverlaySql, [json, giveawayId, streamerId])).length === 1
+  }
+
   private async findOne(sql: string, params: readonly string[]): Promise<Giveaway | null> {
     const [row] = await this.sql.all(sql, params)
     return row === undefined ? null : this.parseGiveaway(row)
@@ -289,7 +360,10 @@ export class AccountStore {
 
   private parseGiveaway(row: SqlRow): Giveaway {
     const reader = new RowReader("giveaways", row)
-    const rules = parseRules(parseRulesJson(reader.text("rules_json")), this.config)
+    const rules = parseRules(
+      parseJsonColumn(reader.text("rules_json"), "giveaways", "rules_json"),
+      this.config,
+    )
     if (!rules.ok) throw new RoomRowError("giveaways", "rules_json")
     return {
       id: reader.text("id"),
@@ -335,10 +409,31 @@ function parseStoredToken(row: SqlRow): StoredStreamerToken {
   }
 }
 
-function parseRulesJson(text: string): unknown {
+// The query names `streamer_overlay.theme_json` `streamer_theme_json`; an error names the table's own column.
+function overlayThemesOf(row: SqlRow): OwnedOverlayThemes {
+  const reader = new RowReader("giveaways", row)
+  const own = reader.nullableText("overlay_theme_json")
+  const streamer = reader.nullableText("streamer_theme_json")
+  return {
+    own: own === null ? null : storedTheme(own, "giveaways", "overlay_theme_json"),
+    streamer:
+      streamer === null
+        ? defaultOverlayTheme
+        : storedTheme(streamer, "streamer_overlay", "theme_json"),
+  }
+}
+
+/** The text of a theme column, which must hold a valid theme. */
+function storedTheme(text: string, table: string, column: string): OverlayTheme {
+  const theme = parseOverlayTheme(parseJsonColumn(text, table, column))
+  if (!theme.ok) throw new RoomRowError(table, column)
+  return theme.value
+}
+
+function parseJsonColumn(text: string, table: string, column: string): unknown {
   try {
     return JSON.parse(text)
   } catch {
-    throw new RoomRowError("giveaways", "rules_json")
+    throw new RoomRowError(table, column)
   }
 }

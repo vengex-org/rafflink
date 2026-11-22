@@ -369,7 +369,8 @@ streamers(id, platform, platform_user_id, login, display_name, profile_image_url
 streamer_tokens(streamer_id, refresh_token_enc, scopes, validated_at,
                 PRIMARY KEY (streamer_id))
 giveaways(id, code UNIQUE, streamer_id, title, prize, rules_json, status,
-          closes_at, claim_seconds, overlay_token, created_at)
+          closes_at, claim_seconds, overlay_token, overlay_theme_json, created_at)
+streamer_overlay(streamer_id, theme_json, updated_at, PRIMARY KEY (streamer_id))
 cloudflare_plan(id CHECK (id = 1), plan CHECK (plan IN ('free', 'paid')), changed_at, changed_by)
 metrics_minute(minute, entries, claims, PRIMARY KEY (minute)) WITHOUT ROWID   -- admin chart, aggregate
 referrals(day, ref, count, PRIMARY KEY (day, ref)) WITHOUT ROWID              -- ?ref= visits, aggregate
@@ -406,6 +407,10 @@ no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Pl
 - `giveaways.status` and `room_state.status` are `open`, `closed` or `drawn`. The room owns the status, the
   accounts store mirrors it, and the room alarm retries a mirror that failed.
 - `overlay_token`: the credential of the read-only overlay URL of the live page, compared in constant time.
+- `streamer_overlay.theme_json` and `giveaways.overlay_theme_json`: an `OverlayTheme`, parsed by
+  `parseOverlayTheme`. A giveaway's own style wins over the streamer's; with neither the overlay looks as it did
+  before styles existed. A save pushes the style to the open overlays through the room's overlay broadcast; the
+  room stores none of it.
 - `room_state.seed`: 32 bytes written at the draw: the randomness of the drand round in `drand_round` (a room
   drawn before 0003 holds 32 random bytes and no root; the verify page reports it as unverifiable).
 

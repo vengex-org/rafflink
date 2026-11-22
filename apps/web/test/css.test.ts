@@ -1,11 +1,14 @@
 import { describe, expect, it } from "bun:test"
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join, relative } from "node:path"
+import { overlayFonts } from "@rafflink/core/domain/overlay-theme"
 import { entrantRowHeight } from "../src/components/entrants-table.tsx"
+import { overlayFontFamilies } from "../src/lib/overlay-theme.ts"
 
 const src = join(import.meta.dir, "../src")
 const stylesDir = join(src, "styles")
 const fonts = join(import.meta.dir, "../public/fonts")
+const licenses = join(import.meta.dir, "../public/licenses")
 
 interface Sheet {
   readonly name: string
@@ -117,7 +120,7 @@ describe("stylesheet", () => {
 
   it("loads Geist and Geist Mono from files that exist, swapping in the text first", () => {
     const faces = everySheet.flatMap(({ text }) => blocksOf(text, "@font-face"))
-    expect(faces).toHaveLength(2)
+    expect(faces).toHaveLength(5)
     for (const face of faces) {
       expect(face).toMatch(/font-display:\s*swap/)
       const urls = [...face.matchAll(/url\("\/fonts\/([^"]+)"\)/g)].map((match) => match[1] ?? "")
@@ -126,6 +129,25 @@ describe("stylesheet", () => {
     }
     expect(faces.join("\n")).toContain('font-family: "Geist"')
     expect(faces.join("\n")).toContain('font-family: "Geist Mono"')
+  })
+
+  it("gives every bundled overlay font a face, a rule for its theme value and a license", () => {
+    const overlay = others.find(({ name }) => name === "styles/pages/overlay.css")?.text ?? ""
+    for (const font of overlayFonts) {
+      const family = overlayFontFamilies[font]
+      const faces = everySheet.flatMap(({ text }) => blocksOf(text, "@font-face"))
+      expect([font, faces.some((face) => face.includes(`font-family: "${family}"`))]).toEqual([
+        font,
+        true,
+      ])
+      expect(
+        existsSync(join(licenses, `${family.toLowerCase().replaceAll(" ", "-")}-OFL.txt`)),
+      ).toBe(true)
+      // Geist is the overlay's own font, so the default theme value needs no rule.
+      if (font !== "geist") {
+        expect(rootBlock(overlay, `.overlay[data-font="${font}"]`)).toContain(`"${family}"`)
+      }
+    }
   })
 
   it("narrows a page only through the page width tokens of the Page column", () => {
