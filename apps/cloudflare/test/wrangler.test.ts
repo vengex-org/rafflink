@@ -40,8 +40,12 @@ describe("wrangler.jsonc", () => {
 
   it("sets the rate limits to the config defaults per minute", async () => {
     const { rateLimits } = await readWranglerConfig()
-    const { entryUserLimitPerMinute, entryIpLimitPerMinute, leavesIpLimitPerMinute } =
-      resolveConfig(required)
+    const {
+      entryUserLimitPerMinute,
+      entryIpLimitPerMinute,
+      leavesIpLimitPerMinute,
+      moderatorIpLimitPerMinute,
+    } = resolveConfig(required)
 
     expect(rateLimits.ENTRY_USER_LIMITER).toMatchObject({
       limit: entryUserLimitPerMinute,
@@ -50,6 +54,10 @@ describe("wrangler.jsonc", () => {
     expect(rateLimits.ENTRY_IP_LIMITER).toMatchObject({ limit: entryIpLimitPerMinute, period: 60 })
     expect(rateLimits.LEAVES_IP_LIMITER).toMatchObject({
       limit: leavesIpLimitPerMinute,
+      period: 60,
+    })
+    expect(rateLimits.MODERATOR_IP_LIMITER).toMatchObject({
+      limit: moderatorIpLimitPerMinute,
       period: 60,
     })
   })

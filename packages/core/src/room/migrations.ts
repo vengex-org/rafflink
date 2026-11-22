@@ -7,6 +7,7 @@ import profileImage from "../../schema/room/0006_profile_image.sql" with { type:
 import metricsReported from "../../schema/room/0007_metrics_reported.sql" with { type: "text" }
 import winnerNames from "../../schema/room/0008_winner_names.sql" with { type: "text" }
 import drawCount from "../../schema/room/0009_draw_count.sql" with { type: "text" }
+import actors from "../../schema/room/0010_actors.sql" with { type: "text" }
 
 /**
  * The room schema files in application order; file `NNNN_*.sql` is entry NNNN - 1. An entry never leaves
@@ -22,4 +23,5 @@ export const roomMigrations: readonly string[] = [
   metricsReported,
   winnerNames,
   drawCount,
+  actors,
 ]

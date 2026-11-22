@@ -11,6 +11,7 @@ export const staticSegments = [
   "verify",
   "draw",
   "live",
+  "mod",
   "overlay",
   "g",
 ]
@@ -23,6 +24,14 @@ export const dashboardPath = "/dashboard"
 export const verifyLookupPath = "/verify"
 export const privacyPath = "/privacy"
 export const termsPath = "/terms"
+
+/** Where a moderator link points; the link's token follows after `#`, so it never reaches a server log. */
+export const moderatorOpenPath = "/mod"
+
+/** The live page of a moderator link, which its cookie opens. */
+export function moderatorLivePath(id: string): string {
+  return `/mod/${encodeURIComponent(id)}`
+}
 
 export function livePath(id: string): string {
   return `/live/${encodeURIComponent(id)}`

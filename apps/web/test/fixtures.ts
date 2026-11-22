@@ -54,6 +54,7 @@ export const liveSnapshot: LiveSnapshot = {
   winnerChat: [],
   winnerChatOpen: false,
   picksLeft: 500,
+  actors: { closedBy: null, picks: [] },
   rerollOpen: false,
   rerollBlocked: null,
   roleRefreshFailures: 0,

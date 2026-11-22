@@ -908,6 +908,61 @@ describe("GiveawayRoom claim", () => {
   })
 })
 
+describe("GiveawayRoom actors", () => {
+  it("keeps who closed, drew, rerolled and marked a claim, and leaves them out of the overlay", async () => {
+    const { room } = setup()
+    enterMany(room, ["1", "2", "3"])
+
+    room.close("mod:link1")
+    await room.draw("streamer")
+    await room.reroll(0, "mod:link1")
+    const [, second] = room.picks()
+    if (second === undefined) throw new Error("the reroll added no pick")
+    room.claim(1, second, "manual", "mod:link1")
+
+    expect(room.liveSnapshot().actors).toEqual({
+      closedBy: "mod:link1",
+      picks: [
+        { n: 0, drawnBy: "streamer", rerolledBy: "mod:link1", claimMarkedBy: null },
+        { n: 1, drawnBy: "mod:link1", rerolledBy: null, claimMarkedBy: "mod:link1" },
+      ],
+    })
+    expect(Object.hasOwn(overlaySnapshot(room.liveSnapshot()), "actors")).toBe(false)
+  })
+
+  it("names nobody for the end time's close and for a claim the winner made", async () => {
+    const { room, clock } = setup({ ...giveaway, closesAt: 1000 })
+    enterMany(room, ["1"])
+    clock.advance(1000)
+    room.onAlarm()
+    expect(room.summary().status).toBe("closed")
+    expect((await room.draw("streamer")).kind).toBe("drawn")
+    const [pick] = room.picks()
+    if (pick === undefined) throw new Error("the draw added no pick")
+    room.claim(0, pick, "rafflink", "streamer")
+
+    expect(room.liveSnapshot().actors).toEqual({
+      closedBy: null,
+      picks: [{ n: 0, drawnBy: "streamer", rerolledBy: null, claimMarkedBy: null }],
+    })
+  })
+
+  it("gives the alarm's first pick to whoever pressed Draw while entries were open", async () => {
+    const { room, clock } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ["1", "2"])
+    room.requestDraw("mod:link2")
+    await room.commit()
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
+
+    expect((await room.drawFirst()).kind).toBe("drawn")
+    expect(room.liveSnapshot().actors).toEqual({
+      closedBy: "mod:link2",
+      picks: [{ n: 0, drawnBy: "mod:link2", rerolledBy: null, claimMarkedBy: null }],
+    })
+  })
+})
+
 describe("GiveawayRoom roles", () => {
   it("gives a VIP the VIP tickets once the list is stored", () => {
     const { room } = setup()

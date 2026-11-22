@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import type { ActionActors } from "@rafflink/core/room/giveaway-room"
 import { parseLiveSnapshot, parseOverlaySnapshot } from "../src/api/client.ts"
 import { ApiShapeError } from "../src/api/decode.ts"
 import { liveSnapshot } from "./fixtures.ts"
@@ -73,9 +74,37 @@ describe("parseLiveSnapshot winner chat", () => {
   })
 })
 
+describe("parseLiveSnapshot actors", () => {
+  it("keeps who pressed each action", () => {
+    const actors: ActionActors = {
+      closedBy: "mod:abc",
+      picks: [{ n: 0, drawnBy: "streamer", rerolledBy: null, claimMarkedBy: "mod:abc" }],
+    }
+
+    expect(parseLiveSnapshot({ ...liveSnapshot, actors }).actors).toEqual(actors)
+  })
+
+  it("rejects an actor the room never writes and a snapshot without actors", () => {
+    const { actors: _omitted, ...without } = liveSnapshot
+
+    for (const closedBy of ["mod:", "admin", 3]) {
+      expect(() => parseLiveSnapshot({ ...liveSnapshot, actors: { closedBy, picks: [] } })).toThrow(
+        ApiShapeError,
+      )
+    }
+    expect(() => parseLiveSnapshot(without)).toThrow(ApiShapeError)
+  })
+})
+
 describe("parseOverlaySnapshot", () => {
-  it("reads a snapshot without winnerChat and picksLeft and returns neither", () => {
-    const { winnerChat: _chat, winnerChatOpen: _open, picksLeft: _left, ...overlay } = liveSnapshot
+  it("reads a snapshot without winnerChat, picksLeft and actors and returns none of them", () => {
+    const {
+      winnerChat: _chat,
+      winnerChatOpen: _open,
+      picksLeft: _left,
+      actors: _actors,
+      ...overlay
+    } = liveSnapshot
 
     const parsed = parseOverlaySnapshot(overlay)
 

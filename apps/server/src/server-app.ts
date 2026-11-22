@@ -2,6 +2,7 @@ import { serveStatic, upgradeWebSocket } from "@hono/bun"
 import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
 import { staticCacheControl } from "@rafflink/core/http/static-headers"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import {
@@ -37,14 +38,33 @@ export function createServerApp(options: ServerAppOptions): Hono {
     "/api/live/:id",
     socketRoute(api, rooms, (c) => {
       const id = c.req.param("id") ?? ""
-      return { roomId: id, topic: liveTopic(id), first: () => rooms.liveSnapshotText(id) }
+      return {
+        roomId: id,
+        topic: liveTopic(id),
+        first: () => rooms.liveSnapshotText(id),
+        linkId: null,
+      }
+    }),
+  )
+  app.get(
+    "/api/mod/:id",
+    socketRoute(api, rooms, (c, checked) => {
+      const id = c.req.param("id") ?? ""
+      const linkId = checked.headers.get(moderatorLinkHeader)
+      if (linkId === null) throw new TypeError("the moderator socket route named no link")
+      return { roomId: id, topic: liveTopic(id), first: () => rooms.liveSnapshotText(id), linkId }
     }),
   )
   app.get(
     "/api/overlay/:id/:token",
     socketRoute(api, rooms, (c) => {
       const id = c.req.param("id") ?? ""
-      return { roomId: id, topic: overlayTopic(id), first: () => rooms.overlaySnapshotText(id) }
+      return {
+        roomId: id,
+        topic: overlayTopic(id),
+        first: () => rooms.overlaySnapshotText(id),
+        linkId: null,
+      }
     }),
   )
   app.get(
@@ -52,7 +72,12 @@ export function createServerApp(options: ServerAppOptions): Hono {
     socketRoute(api, rooms, (_c, checked) => {
       const roomId = checked.headers.get(viewerRoomHeader)
       if (roomId === null) throw new TypeError("the viewer socket route named no room")
-      return { roomId, topic: viewerTopic(roomId), first: () => rooms.viewerPushText(roomId) }
+      return {
+        roomId,
+        topic: viewerTopic(roomId),
+        first: () => rooms.viewerPushText(roomId),
+        linkId: null,
+      }
     }),
   )
   for (const prefix of apiPrefixes) app.all(`${prefix}*`, (c) => api.fetch(c.req.raw))
@@ -88,11 +113,15 @@ interface Subscribable {
   subscribe(topic: string): void
 }
 
-/** What a socket is subscribed to and the message it gets on open; `first` runs after the subscribe, so no push falls between the two. */
+/**
+ * What a socket is subscribed to and the message it gets on open; `first` runs after the subscribe, so no
+ * push falls between the two. `linkId` is the moderator link the socket was opened through, else null.
+ */
 interface Subscription {
   readonly roomId: string
   readonly topic: string
   readonly first: () => string
+  readonly linkId: string | null
 }
 
 /**
@@ -108,13 +137,13 @@ function socketRoute(
     if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return next()
     const checked = await api.fetch(c.req.raw)
     if (!checked.ok) return checked
-    const { roomId, topic, first } = subscribe(c, checked)
+    const { roomId, topic, first, linkId } = subscribe(c, checked)
     let detach = keepNothing
     return upgradeWebSocket(() => ({
       onOpen: (_event, ws) => {
         if (!isSubscribable(ws.raw)) throw new TypeError("the socket cannot subscribe to a topic")
         ws.raw.subscribe(topic)
-        detach = rooms.attachSocket(roomId, ws)
+        detach = rooms.attachSocket(roomId, ws, linkId)
         try {
           ws.send(first())
         } catch (error) {

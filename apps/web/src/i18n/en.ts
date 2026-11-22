@@ -984,6 +984,41 @@ export const en = {
   "draw.proof.time":
     "The time the list was fixed comes from the browser that fixed it, not from a server. Someone could fix a list after the round and claim an earlier time. Trust the draw only if you saw the list hash or the link before the round was published.",
   "draw.proof.list": "The draw does not show who belongs on the list. Check the names yourself.",
+  "live.mod.link": "Moderator links",
+  "live.mod.text":
+    "Whoever opens a link can close entries, draw, reroll and mark claims for this giveaway. They cannot change the rules, delete the giveaway or see your account.",
+  "live.mod.who": "Who may use it",
+  "live.mod.who.mods": "Moderators of my channel",
+  "live.mod.who.mods.help":
+    "They sign in with Twitch and Rafflink checks that they moderate your channel.",
+  "live.mod.who.anyone": "Anyone with the link",
+  "live.mod.create": "Create link",
+  "live.mod.new": "New link. Copy it now, it is shown only once.",
+  "live.mod.copy": "Copy moderator link",
+  "live.mod.none": "No moderator link works now.",
+  "live.mod.item": "Link {id}, made at {time}",
+  "live.mod.itemMod": "moderators only",
+  "live.mod.revoke": "Revoke",
+  "live.mod.revokeLabel": "Revoke link {id}",
+  "live.mod.loadFailed": "The links could not be loaded. Try again.",
+  "modResult.revoked": "Link revoked. It stopped working.",
+  "modResult.rejected": "The link was not changed. Try again.",
+  "live.actors.title": "Who did what",
+  "live.actors.closed": "Entries closed by {who}",
+  "live.actors.drawn": "Winner {n} drawn by {who}",
+  "live.actors.rerolled": "Winner {n} replaced by {who}",
+  "live.actors.marked": "Winner {n} marked as claimed by {who}",
+  "live.actors.streamer": "the streamer",
+  "live.actors.moderator": "moderator link {id}",
+  "mod.invalid.title": "This moderator link does not work",
+  "mod.invalid.text":
+    "The streamer revoked it, or it was copied wrong. Ask the streamer for a new link.",
+  "mod.notMod.title": "Only for moderators",
+  "mod.notMod.text":
+    "This link is for moderators of the streamer's channel, and the Twitch account you signed in with is not one.",
+  "mod.rateLimited": "Too many tries from your network. Wait a minute and open the link again.",
+  "signIn.why.moderator":
+    "This moderator link is for moderators of the channel. Sign in with Twitch so Rafflink can check that you are one.",
 } as const satisfies Record<string, string>
 
 export type MessageKey = keyof typeof en

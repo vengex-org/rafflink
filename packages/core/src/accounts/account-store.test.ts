@@ -14,7 +14,11 @@ import {
   type StreamerSignIn,
 } from "./account-store.ts"
 import {
+  activeModeratorLinksSql,
   approvedStreamersSql,
+  deleteGiveawayModeratorLinksSql,
+  deleteStreamerModeratorLinksSql,
+  moderatorLinkByIdSql,
   giveawayByCodeSql,
   giveawayByIdSql,
   giveawaysOfStreamerSql,
@@ -464,6 +468,8 @@ describe("account queries", () => {
     ["a streamer by id", streamerByIdSql, ["s1"]],
     ["the streamers waiting for approval", pendingStreamersSql, [10]],
     ["the approved streamers", approvedStreamersSql, [10]],
+    ["a giveaway's moderator links", activeModeratorLinksSql, ["g1", "s1"]],
+    ["a moderator link by id", moderatorLinkByIdSql, ["m1"]],
   ]
 
   for (const [name, statement, params] of cases) {
@@ -487,6 +493,76 @@ describe("account queries", () => {
     expect(explainPlan(db, giveawaysOfStreamerSql, ["s1"]).join("\n")).toContain(
       "giveaways_by_streamer",
     )
+  })
+})
+
+async function withLink() {
+  const context = await withStreamers()
+  await context.store.insertGiveaway(giveaway())
+  await context.store.insertModeratorLink({
+    id: "m1",
+    streamerId: "s1",
+    giveawayId: "g1",
+    tokenHash: "hash-1",
+    requireMod: true,
+    createdAt: 6000,
+  })
+  return context
+}
+
+const link = {
+  id: "m1",
+  streamerId: "s1",
+  giveawayId: "g1",
+  tokenHash: "hash-1",
+  requireMod: true,
+  createdAt: 6000,
+  revokedAt: null,
+}
+
+describe("AccountStore moderator links", () => {
+  it("finds a link by id and lists it for its owner only", async () => {
+    const { store } = await withLink()
+
+    expect(await store.findModeratorLink("m1")).toEqual(link)
+    expect(await store.findModeratorLink("m2")).toBeNull()
+    expect(await store.listModeratorLinks("s1", "g1")).toEqual([link])
+    expect(await store.listModeratorLinks("s2", "g1")).toEqual([])
+  })
+
+  it("revokes once, keeps the first revocation time and stops listing the link", async () => {
+    const { store } = await withLink()
+
+    expect(await store.revokeModeratorLink("s2", "g1", "m1", 7000)).toBe(false)
+    expect(await store.revokeModeratorLink("s1", "g1", "m1", 7000)).toBe(true)
+    expect(await store.revokeModeratorLink("s1", "g1", "m1", 8000)).toBe(true)
+
+    expect(await store.findModeratorLink("m1")).toEqual({ ...link, revokedAt: 7000 })
+    expect(await store.listModeratorLinks("s1", "g1")).toEqual([])
+  })
+
+  it("deletes a giveaway's links with the giveaway and a streamer's links with the streamer", async () => {
+    const { db, store } = await withLink()
+    db.exec("PRAGMA foreign_keys = ON")
+
+    await store.deleteGiveaway("g1")
+    expect(sqlRows(db, "SELECT id FROM moderator_links")).toEqual([])
+
+    await store.insertGiveaway(giveaway({ id: "g2", code: "FGHJK" }))
+    await store.insertModeratorLink({ ...link, id: "m2", giveawayId: "g2", tokenHash: "hash-2" })
+    await store.deleteStreamer("s1")
+    expect(sqlRows(db, "SELECT id FROM moderator_links")).toEqual([])
+  })
+
+  it("deletes links through the giveaway index", () => {
+    const { db } = setup()
+
+    for (const [statement, param] of [
+      [deleteGiveawayModeratorLinksSql, "g1"],
+      [deleteStreamerModeratorLinksSql, "s1"],
+    ] as const) {
+      expect(explainPlan(db, statement, [param]).join(" ")).toContain("moderator_links_by_giveaway")
+    }
   })
 })
 

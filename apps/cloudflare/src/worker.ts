@@ -53,6 +53,7 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     publicCache: new CacheApiPublicCache(caches.default),
     entryIpLimiter: new RateLimitBindingLimiter(env.ENTRY_IP_LIMITER),
     leavesIpLimiter: new RateLimitBindingLimiter(env.LEAVES_IP_LIMITER),
+    moderatorIpLimiter: new RateLimitBindingLimiter(env.MODERATOR_IP_LIMITER),
     clientAddress: connectingAddress,
   }
   return createWorkerApp({

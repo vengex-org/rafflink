@@ -1,3 +1,4 @@
+import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type MiddlewareHandler } from "hono"
 import type { GiveawayRoomObject } from "./durable-objects/giveaway-room-do.ts"
@@ -14,6 +15,7 @@ export function createWorkerApp(options: WorkerAppOptions): Hono {
   const app = new Hono()
 
   app.get("/api/live/:id", liveSocket(api, rooms))
+  app.get("/api/mod/:id", moderatorSocket(api, rooms))
   app.get("/api/overlay/:id/:token", liveSocket(api, rooms))
   app.get("/api/g/:code/live", viewerSocket(api, rooms))
   app.all("*", (c) => api.fetch(c.req.raw))
@@ -31,6 +33,24 @@ function liveSocket(api: Hono, rooms: WorkerAppOptions["rooms"]): MiddlewareHand
     const checked = await api.fetch(c.req.raw)
     if (!checked.ok) return checked
     return rooms.get(rooms.idFromName(c.req.param("id") ?? "")).fetch(c.req.raw)
+  }
+}
+
+/**
+ * Like {@link liveSocket} for a moderator link's page: the room's object gets the link the route of core
+ * named, in the same header, so revoking the link closes the socket. A header the browser sent is replaced.
+ */
+function moderatorSocket(api: Hono, rooms: WorkerAppOptions["rooms"]): MiddlewareHandler {
+  return async (c, next) => {
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return next()
+    const checked = await api.fetch(c.req.raw)
+    if (!checked.ok) return checked
+    const linkId = checked.headers.get(moderatorLinkHeader)
+    if (linkId === null) throw new TypeError("the moderator socket route named no link")
+    const headers = new Headers(c.req.raw.headers)
+    headers.set(moderatorLinkHeader, linkId)
+    const forwarded = new Request(c.req.raw, { headers })
+    return rooms.get(rooms.idFromName(c.req.param("id") ?? "")).fetch(forwarded)
   }
 }
 

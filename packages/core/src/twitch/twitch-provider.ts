@@ -110,6 +110,10 @@ export class TwitchProvider implements PlatformProvider {
     return this.client.channelRoles(accessToken, broadcasterId)
   }
 
+  isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
+    return this.client.isModerator(accessToken, broadcasterId, userId)
+  }
+
   /** An EventSub WebSocket whose sessions are subscribed to the channel's chat with the streamer's token. */
   chatSource(context: ChatContext): ChatSourceFactory {
     return eventSubChat({

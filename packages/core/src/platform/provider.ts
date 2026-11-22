@@ -122,6 +122,8 @@ export interface PlatformProvider {
   /** The channel's subscriber badges; every tier `null` when the platform could not answer. */
   subscriberBadges(broadcasterId: string): Promise<SubscriberBadges>
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles>
+  /** Whether the user moderates the channel now, asked with the streamer's token. */
+  isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
   /** The chat of one giveaway's channel, whatever this platform's transport. */
   chatSource(context: ChatContext): ChatSourceFactory
 }

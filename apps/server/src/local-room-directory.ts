@@ -68,7 +68,8 @@ export class LocalRoomDirectory implements RoomDirectory {
   private readonly open = new Map<string, OpenRoom>()
   // Each running alarm with the id of its room, so deleting a room waits for its own work.
   private readonly inFlight = new Map<Promise<void>, string>()
-  private readonly sockets = new Map<string, Set<RoomSocket>>()
+  // Each page's socket of a room with the moderator link it was opened through, null for the streamer, overlay and viewers.
+  private readonly sockets = new Map<string, Map<RoomSocket, string | null>>()
   // Rooms deleted in this process: a call that looked the giveaway up before the delete must not create a new file.
   private readonly deleted = new Set<string>()
   private closing = false
@@ -100,22 +101,33 @@ export class LocalRoomDirectory implements RoomDirectory {
       open.db.close()
       this.open.delete(giveawayId)
     }
-    for (const socket of this.sockets.get(giveawayId) ?? []) socket.close(1000, "giveaway deleted")
+    for (const socket of this.sockets.get(giveawayId)?.keys() ?? []) {
+      socket.close(1000, "giveaway deleted")
+    }
     this.sockets.delete(giveawayId)
     const path = join(this.deps.roomsDir, `${giveawayId}${sqliteSuffix}`)
     for (const file of [path, `${path}-wal`, `${path}-shm`]) rmSync(file, { force: true })
   }
 
-  /** Remembers a page's socket of the room, so deleting the room closes it; the returned function forgets it. */
-  attachSocket(giveawayId: string, socket: RoomSocket): () => void {
-    const attached = this.sockets.get(giveawayId) ?? new Set<RoomSocket>()
-    attached.add(socket)
+  /**
+   * Remembers a page's socket of the room, so deleting the room, or revoking the moderator link `linkId` it
+   * was opened through, closes it; the returned function forgets it.
+   */
+  attachSocket(giveawayId: string, socket: RoomSocket, linkId: string | null): () => void {
+    const attached = this.sockets.get(giveawayId) ?? new Map<RoomSocket, string | null>()
+    attached.set(socket, linkId)
     this.sockets.set(giveawayId, attached)
     return () => {
       attached.delete(socket)
       if (attached.size === 0 && this.sockets.get(giveawayId) === attached) {
         this.sockets.delete(giveawayId)
       }
+    }
+  }
+
+  async closeModeratorSockets(giveawayId: string, linkId: string): Promise<void> {
+    for (const [socket, opener] of this.sockets.get(giveawayId) ?? []) {
+      if (opener === linkId) socket.close(policyViolationCloseCode, "moderator link revoked")
     }
   }
 
@@ -211,6 +223,9 @@ export class LocalRoomDirectory implements RoomDirectory {
 
 const sqliteSuffix = ".sqlite"
 
+// RFC 6455: the server ends a socket whose peer is no longer allowed.
+const policyViolationCloseCode = 1008
+
 /** The room's methods as the async stub the HTTP app expects; a locked database is transient, anything else is not. */
 class LocalRoomStub implements RoomStub {
   constructor(
@@ -242,8 +257,8 @@ class LocalRoomStub implements RoomStub {
   leaves() {
     return inRoom(() => this.room.leaves())
   }
-  close() {
-    return inRoom(() => this.room.close())
+  close(...args: Parameters<GiveawayRoom["close"]>) {
+    return inRoom(() => this.room.close(...args))
   }
   requestDraw(...args: Parameters<GiveawayRoom["requestDraw"]>) {
     return inRoom(() => this.room.requestDraw(...args))

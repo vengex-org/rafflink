@@ -572,6 +572,29 @@ describe("channelRoles", () => {
   })
 })
 
+describe("isModerator", () => {
+  it("asks for the one user and tells a moderator from anyone else", async () => {
+    fake.control.setRole("200", "100", "moderator", true)
+    const { accessToken } = await signIn("200", STREAMER_SCOPES)
+
+    expect(await client.isModerator(accessToken, "200", "100")).toBe(true)
+    expect(await client.isModerator(accessToken, "200", "101")).toBe(false)
+    const requests = fake.control.calls.filter(
+      (call) => call.path === "/helix/moderation/moderators",
+    )
+    expect(requests.map((call) => call.query.user_id)).toEqual(["100", "101"])
+  })
+
+  it("classifies a moderator list that stays unavailable", async () => {
+    const { accessToken } = await signIn("200", STREAMER_SCOPES)
+    fake.control.failNext("moderators", 503, 2)
+
+    expect(await rejection(client.isModerator(accessToken, "200", "100"))).toBeInstanceOf(
+      TwitchUnavailable,
+    )
+  })
+})
+
 describe("subscribeChatMessages", () => {
   it("delivers the channel's chat messages to the session", async () => {
     const { accessToken } = await signIn("200", CHAT_SCOPES)

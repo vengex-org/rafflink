@@ -2,7 +2,7 @@ import { useCallback, useId, useState, type ReactNode } from "react"
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { formatClock, useRemainingMs } from "../lib/use-remaining.ts"
-import { useLiveApi } from "../lib/live-api.ts"
+import { useLiveApi, type LiveApi } from "../lib/live-api.ts"
 import { overlayUrl } from "../lib/links.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { useShortcut } from "../lib/use-shortcut.ts"
@@ -11,6 +11,7 @@ import type { useAction } from "../lib/use-action.ts"
 import { ConfirmAction } from "./confirm-action.tsx"
 import { CopyLink } from "./copy-field.tsx"
 import { DonateLink } from "./donate-link.tsx"
+import { ModeratorLinks } from "./moderator-links.tsx"
 import { Segmented, Stepper, type SegmentOption } from "./form-fields.tsx"
 import { GiveawayOverlayStyle } from "./overlay-style.tsx"
 import {
@@ -92,7 +93,10 @@ export function LiveActions({
   )
 }
 
-/** What the streamer sets around the draw: the planned winner count, the entries switch, the overlay link and the way to hide the controls. */
+/**
+ * What the streamer sets around the draw: the planned winner count, the entries switch, the overlay and
+ * moderator links and the way to hide the controls. A moderator link's page has no winner count and no links.
+ */
 export function LiveSettings({
   id,
   busy,
@@ -109,13 +113,25 @@ export function LiveSettings({
 }) {
   const { t } = useI18n()
   const headId = useId()
+  const { setWinnerCount, moderatorLinks } = useLiveApi()
   return (
     <section className="live-card live-settings" aria-labelledby={headId}>
       <h2 id={headId}>{t("live.settings.title")}</h2>
-      <WinnerCountControl id={id} busy={busy} run={run} winnerCount={snapshot.winnerCount} />
+      {setWinnerCount === null ? null : (
+        <WinnerCountControl
+          id={id}
+          busy={busy}
+          run={run}
+          winnerCount={snapshot.winnerCount}
+          setWinnerCount={setWinnerCount}
+        />
+      )}
       <EntriesSwitch id={id} busy={busy} run={run} status={snapshot.status} />
       <span className="live-settings-end">
         {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
+        {moderatorLinks === null ? null : (
+          <ModeratorLinks id={id} busy={busy} run={run} api={moderatorLinks} />
+        )}
         <button type="button" className="live-btn ghost" aria-keyshortcuts="c" onClick={onHide}>
           <EyeOffIcon />
           {t("live.clean.hide")}
@@ -532,9 +548,12 @@ function WinnerCountControl({
   busy,
   run,
   winnerCount,
-}: Doing & { readonly winnerCount: number }) {
+  setWinnerCount,
+}: Doing & {
+  readonly winnerCount: number
+  readonly setWinnerCount: NonNullable<LiveApi["setWinnerCount"]>
+}) {
   const { t } = useI18n()
-  const { setWinnerCount } = useLiveApi()
   const [count, setCount] = useState(String(winnerCount))
   const winners = Number(count)
   const valid = count.trim() !== "" && Number.isInteger(winners) && winners >= 1

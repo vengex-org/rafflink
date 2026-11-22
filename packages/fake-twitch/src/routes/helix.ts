@@ -173,7 +173,11 @@ function listRole(c: Context<HelixEnv>, state: FakeState, role: Role) {
   if (!Number.isInteger(offset) || offset < 0)
     return helixError(c, 400, "The after cursor is not valid")
 
-  const holders = [...(state.roles[role].get(broadcasterId) ?? [])]
+  // Twitch's `user_id` filter answers only the listed users that hold the role.
+  const userIds = c.req.queries("user_id") ?? null
+  const holders = [...(state.roles[role].get(broadcasterId) ?? [])].filter(
+    (userId) => userIds === null || userIds.includes(userId),
+  )
   const page = holders.slice(offset, offset + first).map((userId) => requireUser(state, userId))
   const next = offset + first
   return c.json({

@@ -43,8 +43,33 @@ export const expiredGiveawaysSql =
 /** A giveaway id (parameter 1); its room is deleted separately. */
 export const deleteGiveawaySql = "DELETE FROM giveaways WHERE id = ?"
 
+/** The moderator links of a giveaway (parameter 1); deleted before the giveaway, which they reference. */
+export const deleteGiveawayModeratorLinksSql = "DELETE FROM moderator_links WHERE giveaway_id = ?"
+
+/** The moderator links of a streamer's giveaways (parameter 1); deleted before the giveaways. */
+export const deleteStreamerModeratorLinksSql =
+  "DELETE FROM moderator_links WHERE giveaway_id IN (SELECT id FROM giveaways WHERE streamer_id = ?)"
+
 /** The giveaways of a streamer (parameter 1); deleted before the streamer, whom they reference. */
 export const deleteStreamerGiveawaysSql = "DELETE FROM giveaways WHERE streamer_id = ?"
+
+const moderatorLinkColumns =
+  "id, streamer_id, giveaway_id, token_hash, require_mod, created_at, revoked_at"
+
+/** Parameters: id, streamer id, giveaway id, token hash, require mod (0 or 1), created at. */
+export const insertModeratorLinkSql = `INSERT INTO moderator_links (id, streamer_id, giveaway_id, token_hash, require_mod, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)`
+
+/** The links of a giveaway (parameter 1) of a streamer (parameter 2) that are not revoked, oldest first. */
+export const activeModeratorLinksSql = `SELECT ${moderatorLinkColumns} FROM moderator_links
+  WHERE giveaway_id = ? AND streamer_id = ? AND revoked_at IS NULL ORDER BY created_at, id`
+
+/** A link by id (parameter 1), revoked or not. */
+export const moderatorLinkByIdSql = `SELECT ${moderatorLinkColumns} FROM moderator_links WHERE id = ?`
+
+/** Parameters: revoked at, link id, giveaway id, streamer id. Keeps an earlier revocation; returns the id when the link exists. */
+export const revokeModeratorLinkSql = `UPDATE moderator_links SET revoked_at = COALESCE(revoked_at, ?)
+  WHERE id = ? AND giveaway_id = ? AND streamer_id = ? RETURNING id`
 
 /** A streamer by id (parameter 1), once their giveaways and token are gone. */
 export const deleteStreamerSql = "DELETE FROM streamers WHERE id = ?"

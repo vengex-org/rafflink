@@ -149,6 +149,37 @@ export function endPendingEntry(c: Context, giveaway: PendingGiveaway): void {
   deleteCookie(c, name, { path })
 }
 
+/** Whoever opened a moderator link of one giveaway: the cookie names the link, which every request looks up so a revoked link stops at once. */
+export interface ModeratorSession {
+  readonly linkId: string
+}
+
+// One cookie per giveaway, sent only to that giveaway's moderator routes. Giveaway ids are 32 hex characters.
+function moderatorCookie(giveawayId: string): { name: string; path: string } {
+  return { name: `rl_mod_${giveawayId}`, path: `/api/mod/${giveawayId}` }
+}
+
+export async function startModeratorSession(
+  c: Context,
+  deps: SessionDeps,
+  giveawayId: string,
+  session: ModeratorSession,
+): Promise<void> {
+  const { name, path } = moderatorCookie(giveawayId)
+  await writeCookie(c, deps, name, session, deps.config.sessionTtlSeconds, path)
+}
+
+export async function readModeratorSession(
+  c: Context,
+  deps: SessionDeps,
+  giveawayId: string,
+): Promise<ModeratorSession | null> {
+  if (!hexId.test(giveawayId)) return null
+  return readCookie(c, deps, moderatorCookie(giveawayId).name, (value) =>
+    typeof value.linkId === "string" ? { linkId: value.linkId } : null,
+  )
+}
+
 export async function startOAuthState(
   c: Context,
   deps: SessionDeps,

@@ -1,4 +1,5 @@
 import type { ResolvedConfig } from "../config.ts"
+import { parseActor, type Actor } from "../domain/actor.ts"
 import { groups, type Group } from "../domain/groups.ts"
 import { parseRules, type GiveawayRules } from "../domain/rules.ts"
 import type { DrandChain } from "../lib/drand.ts"
@@ -63,6 +64,10 @@ export type RoomState = {
   readonly drawCount: number
   /** When the alarm tries a requested draw next; null before the first try. */
   readonly drawRetryAt: Instant | null
+  /** Who closed entries; null while open and when the end time closed them. */
+  readonly closedBy: Actor | null
+  /** Who pressed Draw while entries were open; null when nobody did. */
+  readonly drawRequestedBy: Actor | null
 } & (
   | { readonly status: "open"; readonly seed: null; readonly closedAt: null }
   | { readonly status: "closed"; readonly seed: null; readonly closedAt: Instant }
@@ -84,6 +89,11 @@ export interface DrawRow {
   readonly rerolled: boolean
   /** Null for a pick drawn before commitments existed. */
   readonly leafIndex: number | null
+  /** Who pressed the draw or reroll that made this pick; null for picks drawn before actors were kept. */
+  readonly drawnBy: Actor | null
+  readonly rerolledBy: Actor | null
+  /** Who marked the claim by hand; null for any other claim. */
+  readonly claimMarkedBy: Actor | null
 }
 
 export interface EntrySummary {
@@ -124,6 +134,8 @@ export function parseState(
     drawRequested: reader.int("draw_requested") === 1,
     drawCount: reader.int("draw_count"),
     drawRetryAt: reader.nullableInt("draw_retry_at"),
+    closedBy: reader.nullableActor("closed_by"),
+    drawRequestedBy: reader.nullableActor("draw_requested_by"),
   }
   const status = reader.oneOf("status", roomStatuses)
   const seed = reader.nullableBlob("seed")
@@ -153,6 +165,9 @@ export function parseDraw(row: SqlRow): DrawRow {
     claim: parseClaim(claimedAt, claimedVia),
     rerolled: reader.int("rerolled") === 1,
     leafIndex: reader.nullableInt("leaf_index"),
+    drawnBy: reader.nullableActor("drawn_by"),
+    rerolledBy: reader.nullableActor("rerolled_by"),
+    claimMarkedBy: reader.nullableActor("claim_marked_by"),
   }
 }
 
@@ -228,6 +243,14 @@ export class RowReader {
     if (value === null) return null
     if (!(value instanceof Uint8Array)) throw new RoomRowError(this.table, column)
     return new Uint8Array(value)
+  }
+
+  nullableActor(column: string): Actor | null {
+    const value = this.nullableText(column)
+    if (value === null) return null
+    const actor = parseActor(value)
+    if (actor === null) throw new RoomRowError(this.table, column)
+    return actor
   }
 
   oneOf<T extends string>(column: string, allowed: readonly T[]): T {

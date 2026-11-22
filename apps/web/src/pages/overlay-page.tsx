@@ -68,6 +68,7 @@ function Loaded({
     case "failed":
       return <Failed />
     case "unauthorized":
+    case "forbidden":
     case "not-found":
       return <OverlayNotFound />
     case "ready":

@@ -990,4 +990,38 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "draw.proof.time":
     "Čas uzamčení seznamu pochází z prohlížeče, který ho uzamkl, ne ze serveru. Někdo by mohl uzamknout seznam až po kole a tvrdit dřívější čas. Věř losování, jen pokud jsi hash seznamu nebo odkaz viděl před zveřejněním kola.",
   "draw.proof.list": "Losování neukazuje, kdo do seznamu patří. Jména si zkontroluj sám.",
+  "live.mod.link": "Odkazy pro moderátory",
+  "live.mod.text":
+    "Kdo otevře odkaz, může v této soutěži ukončit přihlašování, losovat, losovat znovu a označit výhru jako převzatou. Nemůže měnit pravidla, smazat soutěž ani vidět tvůj účet.",
+  "live.mod.who": "Kdo ho může použít",
+  "live.mod.who.mods": "Moderátoři mého kanálu",
+  "live.mod.who.mods.help": "Přihlásí se přes Twitch a Rafflink ověří, že moderují tvůj kanál.",
+  "live.mod.who.anyone": "Kdokoli s odkazem",
+  "live.mod.create": "Vytvořit odkaz",
+  "live.mod.new": "Nový odkaz. Zkopíruj si ho teď, zobrazí se jen jednou.",
+  "live.mod.copy": "Kopírovat odkaz pro moderátora",
+  "live.mod.none": "Teď nefunguje žádný odkaz pro moderátora.",
+  "live.mod.item": "Odkaz {id}, vytvořený v {time}",
+  "live.mod.itemMod": "jen moderátoři",
+  "live.mod.revoke": "Zrušit",
+  "live.mod.revokeLabel": "Zrušit odkaz {id}",
+  "live.mod.loadFailed": "Odkazy se nepodařilo načíst. Zkus to znovu.",
+  "modResult.revoked": "Odkaz je zrušený a přestal fungovat.",
+  "modResult.rejected": "Odkaz se nezměnil. Zkus to znovu.",
+  "live.actors.title": "Kdo co udělal",
+  "live.actors.closed": "Přihlašování ukončil {who}",
+  "live.actors.drawn": "Vítěze {n} vylosoval {who}",
+  "live.actors.rerolled": "Vítěze {n} nahradil {who}",
+  "live.actors.marked": "Výhru vítěze {n} označil jako převzatou {who}",
+  "live.actors.streamer": "streamer",
+  "live.actors.moderator": "odkaz pro moderátora {id}",
+  "mod.invalid.title": "Tento odkaz pro moderátora nefunguje",
+  "mod.invalid.text":
+    "Streamer ho zrušil nebo se zkopíroval špatně. Popros streamera o nový odkaz.",
+  "mod.notMod.title": "Jen pro moderátory",
+  "mod.notMod.text":
+    "Tento odkaz je pro moderátory streamerova kanálu a Twitch účet, přes který ses přihlásil, mezi ně nepatří.",
+  "mod.rateLimited": "Příliš mnoho pokusů z tvé sítě. Počkej minutu a otevři odkaz znovu.",
+  "signIn.why.moderator":
+    "Tento odkaz je pro moderátory kanálu. Přihlas se přes Twitch, aby Rafflink ověřil, že jsi jedním z nich.",
 }

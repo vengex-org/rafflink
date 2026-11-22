@@ -99,11 +99,13 @@ describe("applyAccountsMigrations", () => {
       "0008_stats.sql",
       "0009_closed_at.sql",
       "0010_overlay_theme.sql",
+      "0011_moderator_links.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",
       "giveaways",
       "metrics_minute",
+      "moderator_links",
       "referrals",
       "schema_migrations",
       "streamer_overlay",

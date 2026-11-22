@@ -155,6 +155,29 @@ export type OwnerLiveSnapshot = LiveSnapshot & {
   readonly donateUrl: string | null
 }
 
+/** A moderator link as the streamer's live page lists it; its secret is shown once, when it is made. */
+export interface ModeratorLinkJson {
+  readonly id: string
+  readonly requireMod: boolean
+  readonly createdAt: Instant
+}
+
+/** The links of one giveaway that still work, oldest first. */
+export interface ModeratorLinksJson {
+  readonly links: readonly ModeratorLinkJson[]
+}
+
+/** A new link and the token its URL carries after `#`; the server keeps only a hash of the secret part. */
+export interface CreatedModeratorLinkJson {
+  readonly link: ModeratorLinkJson
+  readonly token: string
+}
+
+/** What opening a moderator link answers: the giveaway whose moderator page the browser may now load. */
+export interface OpenedModeratorLinkJson {
+  readonly giveawayId: string
+}
+
 /** One page of the entrants table; `more` is true when entrants follow the last row. */
 export interface EntrantsPage {
   readonly rows: readonly Entrant[]
