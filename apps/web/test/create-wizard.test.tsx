@@ -574,6 +574,23 @@ describe("create wizard", () => {
       expect(inputOf(view.getByLabelText("Minimum account age in days (optional)")).value).toBe("7")
     })
 
+    it("moves the keyboard focus to the step heading after going back with a step button", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      const stepOne = view.getByRole("button", { name: "Step 1: Basics" })
+      stepOne.focus()
+
+      fireEvent.click(stepOne)
+
+      expect(
+        (await view.findByRole("heading", { name: "Start with the basics" }))
+          === document.activeElement,
+      ).toBe(true)
+      expect(document.activeElement === document.body).toBe(false)
+    })
+
     it("offers only the done steps as buttons", async () => {
       mockFetch(listed)
       const view = await openWizard()

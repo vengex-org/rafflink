@@ -185,15 +185,23 @@ describe("parseRules", () => {
         ...validInput,
         subsOnly: true,
         followersOnly: true,
-        minAccountAgeDays: 0,
+        minAccountAgeDays: 7,
         claimKeyword: " !claim ",
       },
       config,
     )
     expect(parsed).toMatchObject({
       ok: true,
-      value: { subsOnly: true, followersOnly: true, minAccountAgeDays: 0, claimKeyword: "!claim" },
+      value: { subsOnly: true, followersOnly: true, minAccountAgeDays: 7, claimKeyword: "!claim" },
     })
+  })
+
+  it("reads a minimum account age of 0 as no minimum", () => {
+    const parsed = parseRules({ ...validInput, minAccountAgeDays: 0 }, config)
+    expect(parsed).toMatchObject({ ok: true, value: { minAccountAgeDays: null } })
+    if (!parsed.ok) throw new Error("expected valid rules")
+    const outcome = evaluateEligibility(parsed.value, { ...viewer, accountAgeDays: null }, "999")
+    expect(outcome.eligible).toBe(true)
   })
 
   it("accepts 0 tickets for a group", () => {
