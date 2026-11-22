@@ -258,6 +258,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "issue.not-a-timestamp": "Zadej platné datum a čas.",
   "issue.in-the-past": "Čas ukončení musí být v budoucnosti.",
   "issue.wholeDays": "Zadej celý počet dnů, nebo nech pole prázdné.",
+  "issue.wholeMinutes": "Zadej celý počet minut, aspoň 1.",
   "issue.pickEnd": "Vyber datum a čas, kdy přihlašování končí.",
   "issue.future": "Vyber čas v budoucnosti.",
 
@@ -304,6 +305,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "step.of": "Krok {current} z {total}: {name}",
   "step.allDone": "Hotové všechny {total} kroky",
   "step.list": "Kroky",
+  "step.go": "Krok {number}: {name}",
+  "winners.fewer": "Méně vítězů",
+  "winners.more": "Více vítězů",
 
   "giveaway.stepSignIn": "Přihlášení",
   "giveaway.stepTicket": "Získání losu",
@@ -547,6 +551,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "wizard.minAge.label": "Minimální stáří účtu ve dnech (nepovinné)",
   "wizard.minAge.help":
     "Zabrání lidem zakládat nové účty jen kvůli soutěži. Když pole nevyplníš, zapojit se může jakýkoli účet.",
+  "wizard.minAge.fewer": "Méně dní",
+  "wizard.minAge.more": "Více dní",
   "wizard.tickets.legend": "Losy podle skupiny",
   "wizard.tickets.help":
     "Každá skupina dostane 1 los. Víc losů znamená větší šanci vyhrát, například 3 pro předplatitele. Nech to tak, pokud mají mít všichni stejnou šanci.",
@@ -570,7 +576,10 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "wizard.closesAt.label": "Přihlašování končí",
   "wizard.closesAt.help": "Použije se časové pásmo tohoto zařízení.",
   "wizard.claim.legend": "Kolik času má vítěz na převzetí výhry?",
-  "wizard.claim.help": "Většina streamerů volí 5 minut.",
+  "wizard.claim.custom": "Vlastní",
+  "wizard.claim.minutes": "Počet minut",
+  "wizard.claim.fewer": "Méně minut",
+  "wizard.claim.more": "Více minut",
   "wizard.keyword.label": "Slovo do chatu (nepovinné)",
   "wizard.keyword.help":
     "Vítěz může výhru převzít i napsáním tohoto slova do tvého chatu. Když ho nevyplníš, platí jakákoli zpráva vítěze v chatu.",

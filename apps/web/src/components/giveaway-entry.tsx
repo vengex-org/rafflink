@@ -81,7 +81,7 @@ export function EntryPanel({
   return (
     <>
       {showSteps && !endsFlow ? (
-        <StepIndicator steps={stepNames} current={card === null ? 1 : card.step} />
+        <StepIndicator steps={stepNames} current={card === null ? 1 : card.step} onSelect={null} />
       ) : null}
       <GiveawayState
         tone={card === null ? "info" : card.tone}

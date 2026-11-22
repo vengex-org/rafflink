@@ -46,6 +46,12 @@ export function CreateForm({
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 
+  // Going back skips the checks: the answers stay in `values`, and the next step is checked again on Next.
+  const goBack = (target: Step) => {
+    setIssue(null)
+    setStep(target)
+  }
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (step !== 3) {
@@ -86,7 +92,13 @@ export function CreateForm({
       noValidate
       aria-labelledby="wizard-title"
     >
-      <StepIndicator steps={stepNames} current={step} />
+      <StepIndicator
+        steps={stepNames}
+        current={step}
+        onSelect={(target) => {
+          if (target === 1 || target === 2) goBack(target)
+        }}
+      />
       <div className="wizard-body">
         <StepHeading key={step} icon={stepIcon(step)} text={t(stepQuestion(step))} />
         {issue === null ? null : (
@@ -114,10 +126,7 @@ export function CreateForm({
               key="back"
               type="button"
               className="button text"
-              onClick={() => {
-                setIssue(null)
-                setStep(previous(step))
-              }}
+              onClick={() => goBack(previous(step))}
             >
               <ArrowLeftIcon />
               {t("common.back")}

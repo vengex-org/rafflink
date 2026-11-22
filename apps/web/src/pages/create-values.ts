@@ -10,6 +10,17 @@ export type Ending = "never" | "at-time"
 /** The claim times offered as buttons, in seconds. */
 export const claimPresets = [120, 300, 600] as const
 
+export type ClaimPreset = (typeof claimPresets)[number]
+
+/**
+ * The claim time as answered: a preset, or whole minutes typed by hand. Minutes are fine enough for
+ * a claim window; a value that is not whole minutes (an older giveaway) shows as a fraction to fix.
+ * The upper bound is the server's `CLAIM_SECONDS_MAX`, so its complaint is shown under the field.
+ */
+export type ClaimTime =
+  | { readonly kind: "preset"; readonly seconds: ClaimPreset }
+  | { readonly kind: "custom"; readonly minutes: string }
+
 export interface Values {
   title: string
   prize: string
@@ -18,7 +29,7 @@ export interface Values {
   minAccountAgeDays: string
   ending: Ending
   closesAt: string
-  claimSeconds: number
+  claim: ClaimTime
   claimKeyword: string
   winnerCount: string
 }
@@ -44,7 +55,7 @@ export const initialValues: Values = {
   minAccountAgeDays: "",
   ending: "never",
   closesAt: "",
-  claimSeconds: 300,
+  claim: { kind: "preset", seconds: 300 },
   claimKeyword: "",
   winnerCount: "1",
 }
@@ -67,7 +78,7 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
       moderator: String(rules.tickets.moderator),
     },
     minAccountAgeDays: rules.minAccountAgeDays === null ? "" : String(rules.minAccountAgeDays),
-    claimSeconds: giveaway.claimSeconds,
+    claim: claimOf(giveaway.claimSeconds),
     claimKeyword: rules.claimKeyword ?? "",
   }
 }
@@ -97,6 +108,12 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
       }
       if (!isWholeNumber(values.winnerCount) || Number(values.winnerCount) < 1) {
         return { field: "winnerCount", message: "issue.not-a-positive-integer" }
+      }
+      if (
+        values.claim.kind === "custom"
+        && (!isWholeNumber(values.claim.minutes) || Number(values.claim.minutes) < 1)
+      ) {
+        return { field: "claimSeconds", message: "issue.wholeMinutes" }
       }
       return null
     }
@@ -155,8 +172,25 @@ export function toBody(values: Values): CreateGiveawayBody {
       claimKeyword: values.claimKeyword,
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
-    claimSeconds: values.claimSeconds,
+    claimSeconds: claimSecondsOf(values.claim),
     winnerCount: Number(values.winnerCount),
+  }
+}
+
+/** A preset when `seconds` is one, else the custom minutes. */
+export function claimOf(seconds: number): ClaimTime {
+  const preset = claimPresets.find((candidate) => candidate === seconds)
+  return preset === undefined
+    ? { kind: "custom", minutes: String(seconds / 60) }
+    : { kind: "preset", seconds: preset }
+}
+
+export function claimSecondsOf(claim: ClaimTime): number {
+  switch (claim.kind) {
+    case "preset":
+      return claim.seconds
+    case "custom":
+      return Number(claim.minutes) * 60
   }
 }
 

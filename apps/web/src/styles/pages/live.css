@@ -802,13 +802,15 @@
   font-weight: 600;
 }
 
-.live-draw-count input {
-  width: 5rem;
-  min-height: 3.25rem;
+.live-draw-count .stepper {
   border-color: var(--line-2);
   background: var(--bg);
+}
+
+.live-draw-count .stepper input:not([type="radio"]) {
+  width: 3rem;
+  min-height: 3.25rem;
   font-size: var(--fs-lg);
-  font-weight: 600;
 }
 
 .live-show {
@@ -1471,7 +1473,7 @@ td:nth-child(2) > .entrants-cell {
     font-size: max(0.8125rem, calc(var(--u) * 18));
   }
 
-  .live-draw-count input {
+  .live-draw-count .stepper input:not([type="radio"]) {
     min-height: calc(var(--u) * 52);
     font-size: max(0.875rem, calc(var(--u) * 20));
   }

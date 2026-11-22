@@ -431,7 +431,7 @@ main.container {
   color: var(--ink-2);
 }
 
-/* Steps: a numbered square per step in one row, joined by a line; the current one is lime, a done one is ink. */
+/* Steps: one equal column per step, a numbered square over its name, joined at square height by lines of one length. The current square is lime, a done one is ink with a check, and the lines up to the current step are lime too. */
 
 .steps {
   margin-bottom: var(--space-4);
@@ -447,38 +447,77 @@ main.container {
 }
 
 .steps ol {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .steps li {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.625rem;
   min-width: 0;
-  color: var(--ink-2);
+  color: var(--muted);
   font-size: var(--fs-sm);
   font-weight: 600;
+  text-align: center;
 }
 
-.steps li + li {
-  flex: 1;
-}
-
+/* The line runs between the previous square and this one, 0.5rem clear of each: the previous column's centre is at -50%, and 1.5rem is half the 2rem square plus that gap. */
 .steps li + li::before {
-  flex: 1;
-  min-width: 1rem;
-  height: 1px;
-  margin-inline: var(--space-1);
+  position: absolute;
+  top: calc(1rem - 1px);
+  right: calc(50% + 1.5rem);
+  left: calc(-50% + 1.5rem);
+  height: 2px;
+  border-radius: 1px;
   background: var(--line-2);
   content: "";
 }
 
+.steps li:is([data-state="done"], [data-state="current"])::before {
+  background: var(--accent-line);
+}
+
+.steps li[data-state="done"] {
+  color: var(--ink-2);
+}
+
 .steps li[data-state="current"] {
   color: var(--ink);
+}
+
+.step-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  padding: 0 0.375rem 0.25rem;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+
+.step-link:hover {
+  color: var(--ink);
+}
+
+.step-link:hover .step-name {
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 0.2em;
+}
+
+.steps .step-link:hover .step-marker {
+  border-color: var(--ink-hover);
+  background: var(--ink-hover);
 }
 
 .step-marker {
@@ -487,6 +526,7 @@ main.container {
   place-items: center;
   width: 2rem;
   height: 2rem;
+  margin-bottom: 0.5rem;
   border: 1px solid var(--line-2);
   border-radius: var(--r);
   font-size: var(--fs-sm);
@@ -511,12 +551,15 @@ main.container {
 }
 
 .step-name {
-  white-space: nowrap;
+  max-width: 100%;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 @media (max-width: 30rem) {
-  .steps li:not([data-state="current"]) .step-name {
-    display: none;
+  .steps li {
+    font-size: var(--fs-xs);
   }
 }
 
@@ -576,6 +619,7 @@ fieldset {
 /* A number between a minus and a plus button, framed as one control; the buttons replace the browser's spinner. */
 .stepper {
   display: inline-flex;
+  width: fit-content;
   align-items: stretch;
   overflow: hidden;
   border: 1px solid var(--line-strong);

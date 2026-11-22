@@ -41,7 +41,6 @@ export function VerifyLookupPage() {
             setInvalid(false)
           }}
           type="text"
-          min={null}
         />
         <button type="submit" className="button">
           {t("verifyLookup.submit")}
