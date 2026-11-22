@@ -39,6 +39,17 @@ describe("increasedRate", () => {
     expect(increasedRate(config, rate, 15_500)).toEqual({ perSecond: 80, changedAt: 14_000 })
   })
 
+  it("brings a stored rate outside the rails back inside before a whole interval passed", () => {
+    expect(increasedRate(config, { perSecond: 900, changedAt: 0 }, 1000)).toEqual({
+      perSecond: 200,
+      changedAt: 0,
+    })
+    expect(increasedRate(config, { perSecond: 1, changedAt: 0 }, 1000)).toEqual({
+      perSecond: 5,
+      changedAt: 0,
+    })
+  })
+
   it("stops at the ceiling", () => {
     expect(increasedRate(config, { perSecond: 195, changedAt: 0 }, 60_000)).toEqual({
       perSecond: 200,

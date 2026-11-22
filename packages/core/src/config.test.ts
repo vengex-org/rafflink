@@ -385,6 +385,19 @@ describe("resolveConfig", () => {
     )
   })
 
+  it("rejects a queue rate floor above the ceiling and accepts them equal", () => {
+    expect(
+      failure({ ...required, QUEUE_MIN_RATE_PER_SECOND: "11", QUEUE_MAX_RATE_PER_SECOND: "10" }),
+    ).toMatchObject({ env: "QUEUE_MIN_RATE_PER_SECOND", reason: "above-queue-max-rate" })
+    expect(
+      resolveConfig({
+        ...required,
+        QUEUE_MIN_RATE_PER_SECOND: "10",
+        QUEUE_MAX_RATE_PER_SECOND: "10",
+      }).queueMinRatePerSecond,
+    ).toBe(10)
+  })
+
   it("accepts a ws or wss EventSub URL with its path and rejects any other scheme", () => {
     expect(resolveConfig(required).eventSubUrl).toBe("wss://eventsub.wss.twitch.tv/ws")
     expect(

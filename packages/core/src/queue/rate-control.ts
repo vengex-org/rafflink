@@ -25,7 +25,7 @@ export function decreasedRate(config: RateConfig, triggerPerSecond: number): num
 export function increasedRate(config: RateConfig, rate: DrainRate, now: Instant): DrainRate {
   const intervalMs = config.queueIncreaseIntervalSeconds * 1000
   const steps = Math.floor((now - rate.changedAt) / intervalMs)
-  if (steps <= 0) return rate
+  if (steps <= 0) return { ...rate, perSecond: withinRails(config, rate.perSecond) }
   return {
     perSecond: withinRails(config, rate.perSecond + steps * config.queueIncreaseStepPerSecond),
     changedAt: rate.changedAt + steps * intervalMs,

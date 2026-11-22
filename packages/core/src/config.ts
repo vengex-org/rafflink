@@ -18,6 +18,7 @@ export type ConfigReason =
   | "not-at-least-drand-period"
   | "not-an-admin-entry"
   | "not-below-queue-code-max-age"
+  | "above-queue-max-rate"
   | "not-below-eventsub-connection-max"
   | "not-above-queued-entry-twitch-time"
   | "below-claim-and-reroll-windows"
@@ -213,6 +214,12 @@ export const configSchema = {
     int(1),
     "1",
     "How often the drain rate grows by QUEUE_INCREASE_STEP_PER_SECOND; starting guess",
+  ),
+  queueBacklogLeaseSeconds: withDefault(
+    "QUEUE_BACKLOG_LEASE_SECONDS",
+    int(1),
+    "3",
+    "Longest one enqueue answer keeps an app instance sending new codes to the queue; every later enqueue renews it, so routing follows the backlog within seconds; starting guess",
   ),
   queueSubrequestsPerInvocation: withDefault(
     "QUEUE_SUBREQUESTS_PER_INVOCATION",
@@ -604,6 +611,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     queueDecreasePercent: read(env, configSchema.queueDecreasePercent),
     queueIncreaseStepPerSecond: read(env, configSchema.queueIncreaseStepPerSecond),
     queueIncreaseIntervalSeconds: read(env, configSchema.queueIncreaseIntervalSeconds),
+    queueBacklogLeaseSeconds: read(env, configSchema.queueBacklogLeaseSeconds),
     queueSubrequestsPerInvocation: read(env, configSchema.queueSubrequestsPerInvocation),
     queueRateWindowSeconds: read(env, configSchema.queueRateWindowSeconds),
     entryWriteRetryDelaysMs: read(env, configSchema.entryWriteRetryDelaysMs),
@@ -668,6 +676,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
     throw new ConfigError(configSchema.queuePollMaxSeconds.env, "not-below-queue-code-max-age")
+  }
+  // The rate rails clamp in both directions; a floor above the ceiling has no rate between them.
+  if (config.queueMinRatePerSecond > config.queueMaxRatePerSecond) {
+    throw new ConfigError(configSchema.queueMinRatePerSecond.env, "above-queue-max-rate")
   }
   // A connection is replaced before it reaches its maximum age, so the margin leaves it a positive life.
   if (config.eventSubReconnectMarginSeconds >= config.eventSubConnectionMaxSeconds) {

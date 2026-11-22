@@ -231,8 +231,10 @@ answers 429 or 5xx. Only the token endpoint queues; a Helix failure after the ex
   "Enter with Twitch" again.
 - While the queue holds a backlog, new callbacks join the queue instead of calling the token endpoint, so they
   neither overtake the viewers already waiting nor spend the rate the queue drains at. Each enqueue answers
-  until when that holds: the end of the pause, or of the passes the codes ahead still need. A Worker instance
-  that has not queued a code yet learns it from its own first 429.
+  until when that holds: the end of the pause, or a lease of a few seconds (`QUEUE_BACKLOG_LEASE_SECONDS`)
+  while the codes ahead need more than the next second. Every later enqueue replaces the answer, so routing
+  follows the backlog within seconds. A Worker instance that has not queued a code yet learns it from its own
+  first 429.
 
 While the queue is empty, no extra request is made: the normal path is one callback request per entrant.
 

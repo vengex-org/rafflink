@@ -36,6 +36,7 @@ const config = resolveConfig({
   QUEUE_INCREASE_INTERVAL_SECONDS: "2",
   QUEUE_RATE_WINDOW_SECONDS: "1",
   QUEUE_COOLDOWN_SECONDS: "3",
+  QUEUE_BACKLOG_LEASE_SECONDS: "3",
   QUEUE_CODE_MAX_AGE_SECONDS: "300",
   QUEUE_PROCESSING_TIMEOUT_SECONDS: "60",
 })
@@ -460,20 +461,21 @@ describe("TokenQueue rate", () => {
     expect(queue.stats().cooldownUntil).toBe(pausedUntil)
   })
 
-  it("pauses at the first 429 of a backlog that a 5xx started, and only cuts the rate at the next", async () => {
-    const { queue, clock, calls } = setup(async () => ({ kind: "deferred", cause: "rate-limited" }))
+  it("pauses and cuts at the first 429 of a backlog a 5xx started, and only cuts at the next", async () => {
+    const { queue, clock } = setup(async () => ({ kind: "deferred", cause: "rate-limited" }))
     for (let code = 1; code <= 40; code++) queue.enqueue(item(`c${code}`), "unavailable")
-    clock.advance(1000)
+    clock.advance(10_000)
 
+    // 2 + 5 steps of 4 = 22 calls, all limited: 50 % of 22, and the pause.
     await queue.onAlarm()
     const firstPause = queue.stats().cooldownUntil
     expect(firstPause).toBe(clock.now() + config.queueCooldownSeconds * 1000)
+    expect(queue.stats().ratePerSecond).toBe(11)
 
+    // 11 calls, all limited: 50 % of 11, no new pause.
     clock.advance(config.queueCooldownSeconds * 1000)
     await queue.onAlarm()
-    const callsAfterPause = calls.length
-    expect(queue.stats().cooldownUntil).toBe(firstPause)
-    expect(callsAfterPause).toBeGreaterThan(2)
+    expect(queue.stats()).toMatchObject({ ratePerSecond: 5, cooldownUntil: firstPause })
   })
 
   it("takes the calls of the limited pass as the trigger, not the configured rate", async () => {
@@ -600,7 +602,7 @@ describe("TokenQueue invocations", () => {
     expect(queue.stats().ratePerSecond).toBe(4)
   })
 
-  it("spreads the calls of a pass that ran longer than a second over its seconds", async () => {
+  it("takes the rate the token exchanges were sent at, not how long their answers took", async () => {
     const { queue, clock } = setup(
       async () => {
         clock.advance(1500)
@@ -614,8 +616,27 @@ describe("TokenQueue invocations", () => {
 
     await queue.onAlarm()
 
-    // 20 calls, each moving the clock 1.5 s: 20 / 30 s, below the floor.
-    expect(queue.stats().ratePerSecond).toBe(config.queueMinRatePerSecond)
+    // 20 exchanges sent at once, answered over 30 s: 50 % of 20.
+    expect(queue.stats().ratePerSecond).toBe(10)
+  })
+
+  it("claims with the time after the room answered the measurement", async () => {
+    const { queue, clock, db } = setup(
+      () => new Promise<EntryAttempt>(() => {}),
+      async () => {
+        clock.advance(700)
+        return 20
+      },
+    )
+    queue.enqueue(item("c0"), "rate-limited")
+    clock.advance(config.queueCooldownSeconds * 1000)
+    const beforeMeasure = clock.now()
+
+    void queue.onAlarm()
+    await Bun.sleep(0)
+
+    const claimed = sqlRows(db, "SELECT claimed_at FROM token_queue").map((row) => row.claimed_at)
+    expect(claimed).toEqual([beforeMeasure + 700])
   })
 })
 
@@ -673,6 +694,28 @@ describe("TokenQueue backlog", () => {
 
     // Four codes ahead at two per pass: two more passes before the queue keeps up.
     expect(fifth.queueUntil).toBe(clock.now() + 2000)
+  })
+
+  it("counts the codes one invocation takes when the rate is higher, so new codes do not overtake", () => {
+    const { queue, clock } = setup(
+      async () => entered,
+      async () => 0,
+      1,
+    )
+    queue.enqueue(item("c1"), "unavailable")
+
+    // Rate 2, but one code per invocation: the code ahead needs the next second.
+    expect(queue.enqueue(item("c2"), "unavailable").queueUntil).toBe(clock.now() + 1000)
+  })
+
+  it("caps the lease, so a slow rate that grows soon stops routing new codes to the queue", () => {
+    const { queue, clock } = setup()
+    for (let code = 1; code <= 20; code++) queue.enqueue(item(`c${code}`), "unavailable")
+
+    // 20 codes ahead at 2 per second would be 10 s.
+    expect(queue.enqueue(item("c21"), "unavailable").queueUntil).toBe(
+      clock.now() + config.queueBacklogLeaseSeconds * 1000,
+    )
   })
 
   it("reports no backlog when the next pass takes every queued code", () => {
@@ -746,6 +789,32 @@ describe("token queue schema", () => {
       1_000_000 + config.queueCooldownSeconds * 1000,
     )
     expect(queue.stats()).toMatchObject({ ratePerSecond: 50, dropped: 7, queued: 1 })
+  })
+})
+
+describe("token queue upgrade", () => {
+  it("starts the additive steps of codes waiting at the upgrade from the upgrade, not from 1970", async () => {
+    const db = new Database(":memory:")
+    const sql = new BunSqliteSyncSql(db)
+    applyMigrations(sql, queueMigrations.slice(0, 1))
+    db.exec("INSERT INTO queue_stats (id, rate_per_second) VALUES (1, 20)")
+    db.exec(`INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state)
+      VALUES ('t1', 'c1', 'g1', 'n1', ${Date.now()}, 'queued')`)
+
+    applyMigrations(sql, queueMigrations)
+    const queue = new TokenQueue({
+      sql,
+      alarm: new TestAlarm(),
+      clock: new TestClock(Date.now() + 1000),
+      random: secureRandom,
+      config,
+      process: async () => entered,
+      rooms: { get: () => ({ entriesPerSecondBefore: async () => 0 }) },
+      entriesPerInvocation: config.queueMaxRatePerSecond,
+    })
+    await queue.onAlarm()
+
+    expect(queue.stats().ratePerSecond).toBeLessThan(config.queueMaxRatePerSecond)
   })
 })
 

@@ -20,7 +20,7 @@ import {
 } from "./session.ts"
 
 /**
- * Shared by every request of one app: until when new viewer codes go straight to the queue, as the last
+ * Shared by every request of one app: until when new viewer codes go straight to the queue, as the latest
  * enqueue answered. An app that has not queued a code since goes to the token endpoint first.
  */
 export interface Backlog {
@@ -134,7 +134,8 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
     const item: QueuedCode = { code, giveawayId: giveaway.id, nonce: saved.nonce }
     const queued = async (cause: EnqueueCause) => {
       const enqueued = await deps.queue.enqueue(item, cause)
-      backlog.until = Math.max(backlog.until, enqueued.queueUntil)
+      // The latest answer wins, so a lease ends as soon as the queue says it keeps up.
+      backlog.until = enqueued.queueUntil
       await startPendingEntry(c, deps, giveaway, enqueued.ticket)
       return c.redirect(returnTo(giveaway.code, { kind: "pending", ticket: enqueued.ticket }))
     }

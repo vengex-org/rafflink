@@ -12,3 +12,8 @@ ALTER TABLE queue_stats ADD COLUMN backlog_started_at INTEGER NOT NULL DEFAULT 0
 -- `pass_started_at` is 0 before the first pass of a backlog.
 ALTER TABLE queue_stats ADD COLUMN pass_started_at INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE queue_stats ADD COLUMN pass_calls INTEGER NOT NULL DEFAULT 0;
+
+-- Codes waiting at the upgrade start a backlog now: the additive steps must not count from 1970.
+UPDATE queue_stats SET
+  rate_changed_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000,
+  backlog_started_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000;

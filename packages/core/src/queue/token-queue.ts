@@ -32,6 +32,7 @@ export type QueueConfig = Pick<
   | "queueProcessingTimeoutSeconds"
   | "queueCooldownSeconds"
   | "queueRateWindowSeconds"
+  | "queueBacklogLeaseSeconds"
 >
   & RateConfig
 
@@ -75,8 +76,8 @@ export type EnqueueCause = DeferCause | "backlog"
 export interface Enqueued {
   readonly ticket: string
   /**
-   * Until when new codes belong in the queue: the end of the cooldown, or of the passes the codes ahead still
-   * need, whichever is later. In the past when the next pass takes every waiting code.
+   * Until when new codes belong in the queue: the end of the cooldown, or a short lease while the codes ahead
+   * need more than the next second, whichever is later. In the past when the next second takes them all.
    */
   readonly queueUntil: Instant
 }
@@ -168,11 +169,12 @@ export class TokenQueue {
     })
     this.rearm()
     const stats = this.readStats()
-    const passesAhead = Math.floor(ahead / stats.ratePerSecond)
-    return {
-      ticket,
-      queueUntil: Math.max(stats.cooldownUntil, passesAhead === 0 ? 0 : now + passesAhead * tickMs),
-    }
+    // At least one invocation per second, each taking at most `entriesPerInvocation` codes.
+    const perSecond = Math.min(stats.ratePerSecond, this.entriesPerInvocation)
+    if (ahead < perSecond) return { ticket, queueUntil: stats.cooldownUntil }
+    // Short, so a rate that grows or an invocation that is faster than one per second ends it soon.
+    const seconds = Math.min(Math.ceil(ahead / perSecond), this.config.queueBacklogLeaseSeconds)
+    return { ticket, queueUntil: Math.max(stats.cooldownUntil, now + seconds * 1000) }
   }
 
   /** A finished result stays readable until the sweep removes it, so a lost response can be fetched again. */
@@ -243,46 +245,48 @@ export class TokenQueue {
   // One invocation takes at most `entriesPerInvocation` codes of the current pass; `rearm` calls the next one
   // right away while the pass has calls left.
   private async drain(now: Instant, stats: StoredStats): Promise<void> {
+    let claimedAt = now
     let pass = { startedAt: stats.passStartedAt, calls: stats.passCalls, rate: stats.ratePerSecond }
     if (now >= stats.passStartedAt + tickMs) {
       // Awaited only to measure: a pass that does not measure claims before its first await.
-      const rate =
-        stats.measure === null
-          ? increasedRate(
-              this.config,
-              { perSecond: stats.ratePerSecond, changedAt: stats.rateChangedAt },
-              now,
-            )
-          : await this.measuredRate(now, stats.measure)
+      let rate = increasedRate(
+        this.config,
+        { perSecond: stats.ratePerSecond, changedAt: stats.rateChangedAt },
+        now,
+      )
+      if (stats.measure !== null) {
+        rate = await this.measuredRate(now, stats.measure)
+        claimedAt = this.clock.now()
+      }
       this.writeRate(rate)
-      pass = { startedAt: now, calls: 0, rate: rate.perSecond }
+      pass = { startedAt: claimedAt, calls: 0, rate: rate.perSecond }
     }
     const take = Math.min(pass.rate - pass.calls, this.entriesPerInvocation)
     if (take <= 0) return
     // Claimed before the next await: an invocation that starts while this one waits for Twitch finds nothing to take.
-    const items = this.sql.exec(claimQueuedSql, [now, take]).map(parseQueued)
+    const items = this.sql.exec(claimQueuedSql, [claimedAt, take]).map(parseQueued)
     const calls = pass.calls + items.length
     this.sql.exec("UPDATE queue_stats SET pass_started_at = ?, pass_calls = ? WHERE id = 1", [
       pass.startedAt,
       calls,
     ])
     if (items.length === 0) return
-    const results = await Promise.all(items.map((item) => this.processOne(item, now)))
-    if (results.includes("rate-limited")) this.slowDown(pass.startedAt, calls)
+    const results = await Promise.all(items.map((item) => this.processOne(item, claimedAt)))
+    if (results.includes("rate-limited")) this.slowDown(calls)
   }
 
-  // Every call of the pass so far, over all its invocations, hit the limit together; a pass that ran
-  // longer than a second is spread over its seconds.
-  private slowDown(passStartedAt: Instant, calls: number): void {
+  // Every invocation of a pass claims within the second the pass started, and each code's token exchange is
+  // its first Twitch request, so the pass's calls are the exchanges sent in that second. How long the answers
+  // and the Helix reads behind them took says nothing about the rate the token endpoint saw.
+  private slowDown(calls: number): void {
     const now = this.clock.now()
-    const seconds = Math.max(1, (now - passStartedAt) / 1000)
     const stats = this.readStats()
     const pausedInBacklog = stats.cooldownUntil > stats.backlogStartedAt
     const cooldownUntil = pausedInBacklog
       ? stats.cooldownUntil
       : now + this.config.queueCooldownSeconds * 1000
     this.writeRate({
-      perSecond: decreasedRate(this.config, calls / seconds),
+      perSecond: decreasedRate(this.config, calls),
       changedAt: Math.max(now, cooldownUntil),
     })
     // The pass ends here: the rest of its second would only meet more 429s.
