@@ -24,6 +24,8 @@ import {
   giveawaysOfStreamerSql,
   ownedGiveawaySql,
   pendingStreamersSql,
+  publicHistoryGiveawaysSql,
+  publicHistoryStreamerSql,
   recentDrawnGiveawaysSql,
   streamerByIdSql,
   streamerByPlatformUserSql,
@@ -99,6 +101,7 @@ describe("AccountStore streamers", () => {
       profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
       createdAt: 1000,
       approvedAt: null,
+      publicHistory: false,
     })
     expect(
       sqlRows(db, "SELECT streamer_id, refresh_token_enc, scopes FROM streamer_tokens"),
@@ -117,6 +120,7 @@ describe("AccountStore streamers", () => {
       profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
       createdAt: 1000,
       approvedAt: null,
+      publicHistory: false,
     })
     expect(await store.findStreamer("missing")).toBeNull()
   })
@@ -317,6 +321,7 @@ describe("AccountStore giveaways", () => {
       streamerName: "Streamer",
       status: "open",
       blockListVersion: 0,
+      hiddenFromHistory: false,
     })
   })
 
@@ -475,6 +480,8 @@ describe("account queries", () => {
     ["the approved streamers", approvedStreamersSql, [10]],
     ["a giveaway's moderator links", activeModeratorLinksSql, ["g1", "s1"]],
     ["a moderator link by id", moderatorLinkByIdSql, ["m1"]],
+    ["a public history's streamer by login", publicHistoryStreamerSql, ["twitch", "streamer_a"]],
+    ["a public history's giveaways", publicHistoryGiveawaysSql, ["s1", 20]],
   ]
 
   for (const [name, statement, params] of cases) {

@@ -34,3 +34,8 @@ export type ModeratorSignInOutcome = (typeof moderatorSignInOutcomes)[number]
 export function moderatorOutcomePath(outcome: ModeratorSignInOutcome): string {
   return `${moderatorOpenPath}?moderator=${outcome}`
 }
+
+/** A streamer's public history page; the login is the platform's, in lower case. */
+export function historyPath(platform: string, login: string): string {
+  return `/s/${encodeURIComponent(platform)}/${encodeURIComponent(login)}`
+}

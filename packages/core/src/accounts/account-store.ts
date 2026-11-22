@@ -37,12 +37,16 @@ import {
   ownedOverlayThemesSql,
   overlayThemesSql,
   pendingStreamersSql,
+  publicHistoryGiveawaysSql,
+  publicHistoryStreamerSql,
   recentDrawnGiveawaysSql,
   recordRetentionFailureSql,
   replaceStreamerTokenSql,
   revokeModeratorLinkSql,
   revokeStreamerSql,
   setGiveawayOverlaySql,
+  setHiddenFromHistorySql,
+  setPublicHistorySql,
   setRetentionArmedSql,
   setStatusSql,
   storeCloudflarePlanSql,
@@ -70,6 +74,8 @@ export interface StreamerRecord {
   readonly createdAt: Instant
   /** When an admin approved the account; null while it waits. Only read when OPEN_SIGNUP is false. */
   readonly approvedAt: Instant | null
+  /** The streamer turned on their public history page. */
+  readonly publicHistory: boolean
 }
 
 /** What a streamer sign-in stores: the streamer and their sealed refresh token, written together. */
@@ -118,11 +124,18 @@ export interface Giveaway {
   readonly createdAt: Instant
   /** The streamer's `block_list_version` when the row was read; the room must hold at least this list before an entry. */
   readonly blockListVersion: number
+  /** The streamer keeps the giveaway off their public history page. */
+  readonly hiddenFromHistory: boolean
 }
 
 export type NewGiveaway = Omit<
   Giveaway,
-  "platform" | "broadcasterId" | "streamerName" | "status" | "blockListVersion"
+  | "platform"
+  | "broadcasterId"
+  | "streamerName"
+  | "status"
+  | "blockListVersion"
+  | "hiddenFromHistory"
 >
 
 /** A link that lets whoever opens it act on one giveaway as its moderator; the store keeps a hash of its token, never the token. */
@@ -156,6 +169,17 @@ export interface StreamerBlock {
   /** The login when the block was saved; the account may have been renamed since. */
   readonly login: string
   readonly createdAt: Instant
+}
+
+/** A streamer's public history page as the account store holds it: the streamer and their newest drawn giveaways they did not hide. */
+export interface PublicHistory {
+  readonly streamer: Pick<StreamerRecord, "login" | "displayName">
+  readonly giveaways: readonly HistoryGiveaway[]
+}
+
+/** A drawn giveaway on a public history page; its counts are in its room. */
+export type HistoryGiveaway = Pick<Giveaway, "id" | "code" | "title" | "prize"> & {
+  readonly closedAt: Instant
 }
 
 /** `full` when the streamer holds the most blocks allowed; nothing is written then, nor for `exists`. */
@@ -273,6 +297,50 @@ export class AccountStore {
   async listOpenGiveawayIds(streamerId: string, limit: number): Promise<string[]> {
     const rows = await this.sql.all(openGiveawaysOfStreamerSql, [streamerId, limit])
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
+  }
+
+  /** The public history of the streamer with this login, or null when nobody with it has turned it on. Lists up to `limit` giveaways, newest first. */
+  async findPublicHistory(
+    platform: string,
+    login: string,
+    limit: number,
+  ): Promise<PublicHistory | null> {
+    const [row] = await this.sql.all(publicHistoryStreamerSql, [platform, login])
+    if (row === undefined) return null
+    const streamer = new RowReader("streamers", row)
+    const rows = await this.sql.all(publicHistoryGiveawaysSql, [streamer.text("id"), limit])
+    return {
+      streamer: { login: streamer.text("login"), displayName: streamer.text("display_name") },
+      giveaways: rows.map((giveaway) => {
+        const reader = new RowReader("giveaways", giveaway)
+        return {
+          id: reader.text("id"),
+          code: reader.text("code"),
+          title: reader.nullableText("title"),
+          prize: reader.nullableText("prize"),
+          closedAt: reader.int("closed_at"),
+        }
+      }),
+    }
+  }
+
+  /** Idempotent. */
+  async setPublicHistory(streamerId: string, on: boolean): Promise<void> {
+    await this.sql.run(setPublicHistorySql, [on ? 1 : 0, streamerId])
+  }
+
+  /** Idempotent. False when the giveaway is not this streamer's. */
+  async setHiddenFromHistory(
+    streamerId: string,
+    giveawayId: string,
+    hidden: boolean,
+  ): Promise<boolean> {
+    const rows = await this.sql.all(setHiddenFromHistorySql, [
+      hidden ? 1 : 0,
+      giveawayId,
+      streamerId,
+    ])
+    return rows.length === 1
   }
 
   /** Ids of up to `limit` of the streamer's drawn giveaways created at or after `since`, newest first. */
@@ -545,6 +613,7 @@ export class AccountStore {
       overlayToken: reader.text("overlay_token"),
       createdAt: reader.int("created_at"),
       blockListVersion: reader.int("block_list_version"),
+      hiddenFromHistory: reader.int("hidden_from_history") === 1,
     }
   }
 }
@@ -560,6 +629,7 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     profileImageUrl: reader.nullableText("profile_image_url"),
     createdAt: reader.int("created_at"),
     approvedAt: reader.nullableInt("approved_at"),
+    publicHistory: reader.int("public_history") === 1,
   }
 }
 

@@ -103,6 +103,7 @@ describe("session", () => {
           chatEntry: true,
         },
         chatEntryReady: false,
+        publicHistory: false,
       },
       donateUrl: null,
       operator: null,

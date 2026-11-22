@@ -219,6 +219,19 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("bounds the public history page by the Free plan's subrequests", () => {
+    expect(resolveConfig(required)).toMatchObject({
+      publicHistoryMax: 20,
+      publicHistoryCacheSeconds: 300,
+    })
+    for (const value of ["0", "41"]) {
+      expect(failure({ ...required, PUBLIC_HISTORY_MAX: value })).toMatchObject({
+        env: "PUBLIC_HISTORY_MAX",
+        reason: "out-of-range",
+      })
+    }
+  })
+
   it("rejects an empty entry in a list", () => {
     expect(failure({ ...required, TOKEN_SEAL_KEYS: "a,,b" })).toMatchObject({
       env: "TOKEN_SEAL_KEYS",

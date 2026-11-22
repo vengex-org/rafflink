@@ -29,6 +29,7 @@ export function sessionRoutes(deps: AppDeps): Hono {
               platform: current.session.platform,
               capabilities: providerFor(deps.platforms, current.session.platform).capabilities,
               chatEntryReady: await chatEntryReady(deps, current.session),
+              publicHistory: current.streamer.publicHistory,
             },
       donateUrl: deps.config.donateUrl,
       operator: operatorOf(deps.config),

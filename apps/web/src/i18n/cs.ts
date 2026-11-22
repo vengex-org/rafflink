@@ -35,6 +35,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "notFound.giveaway": "Soutěž nebyla nalezena",
   "notFound.live": "Živá stránka nebyla nalezena",
   "notFound.generic": "Nenalezeno",
+  "notFound.history": "Tento streamer nemá veřejnou historii giveawayů",
 
   "signIn.title": "Přihlášení",
   "signIn.button": "Přihlásit se přes Twitch",
@@ -328,6 +329,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "drawBatch.one": "Vylosovat {count} vítěze",
   "drawBatch.few": "Vylosovat {count} vítěze",
   "drawBatch.other": "Vylosovat {count} vítězů",
+  "winners.one": "{count} vítěz",
+  "winners.few": "{count} vítězové",
+  "winners.other": "{count} vítězů",
   "minute.one": "{count} minuta",
   "minute.few": "{count} minuty",
   "minute.other": "{count} minut",
@@ -560,6 +564,24 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "dash.blocks.platform-unavailable": "Twitch neodpověděl. Zkus to za chvíli znovu.",
   "dash.blocks.room-unavailable":
     "Uloženo, ale běžící giveaway změnu ještě nedostal. Zkus stejnou akci znovu.",
+  "dash.history.title": "Veřejná historie",
+  "dash.history.text":
+    "Veřejná stránka může ukázat tvoje ukončené giveawaye s cenou, datem, počtem přihlášených a počtem vítězů a s odkazem na ověření každého losování. Neuvádí jména přihlášených ani vítězů a vyhledávače ji neindexují. Tlačítkem u ukončeného giveawaye ho ze stránky skryješ.",
+  "dash.history.link": "Otevřít tvoji veřejnou historii",
+  "dash.history.turnOn": "Zapnout veřejnou historii",
+  "dash.history.turnOff": "Vypnout veřejnou historii",
+  "dash.history.saved": "Uloženo. Veřejná stránka může změnu ukázat až za pár minut.",
+  "dash.history.hide": "Skrýt z historie",
+  "dash.history.show": "Ukázat v historii",
+  "dash.history.hide.label": "Skrýt {name} z tvé veřejné historie",
+  "dash.history.show.label": "Ukázat {name} v tvé veřejné historii",
+  "history.title": "Giveawaye streamera {name}",
+  "history.intro":
+    "Ukončené giveawaye tohoto streamera, nejnovější první. Každé losování lze ověřit na jeho stránce ověření. Nikdo z přihlášených ani z vítězů tu není jmenován.",
+  "history.none": "Zatím žádné ukončené giveawaye.",
+  "history.closed": "Přihlašování uzavřeno {date}",
+  "history.verify": "Ověřit losování",
+  "history.verify.label": "Ověřit losování giveawaye {name}",
 
   "share.link": "Tvůj odkaz",
   "share.copyLink": "Kopírovat odkaz",
@@ -911,6 +933,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Streamer, který giveaway vede, vidí jeho účastníky a výherce. Jména účastníků a výherců se zobrazují na živé stránce giveawaye a v overlayi, jejich profilové obrázky na živé stránce.",
   "privacy.recipients.i4":
     "Při losování se čte veřejný maják náhodnosti drand. Neposílají se mu žádné osobní údaje.",
+  "privacy.recipients.i5":
+    "Když streamer zapne veřejnou historii, kdokoli na ní vidí jméno streamera a jeho ukončené giveawaye: název, cenu, datum uzavření a počet přihlášených a vítězů. Stránka neuvádí jména přihlášených ani vítězů a streamer může jednotlivé giveawaye skrýt nebo stránku vypnout.",
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",

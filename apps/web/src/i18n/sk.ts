@@ -35,6 +35,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "notFound.giveaway": "Súťaž sa nenašla",
   "notFound.live": "Živá stránka sa nenašla",
   "notFound.generic": "Nenašlo sa",
+  "notFound.history": "Tento streamer nemá verejnú históriu giveawayov",
 
   "signIn.title": "Prihlásenie",
   "signIn.button": "Prihlásiť sa cez Twitch",
@@ -328,6 +329,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "drawBatch.one": "Vyžrebovať {count} víťaza",
   "drawBatch.few": "Vyžrebovať {count} víťazov",
   "drawBatch.other": "Vyžrebovať {count} víťazov",
+  "winners.one": "{count} víťaz",
+  "winners.few": "{count} víťazi",
+  "winners.other": "{count} víťazov",
   "minute.one": "{count} minúta",
   "minute.few": "{count} minúty",
   "minute.other": "{count} minút",
@@ -560,6 +564,24 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "dash.blocks.platform-unavailable": "Twitch neodpovedal. Skús to o chvíľu znova.",
   "dash.blocks.room-unavailable":
     "Uložené, ale bežiaci giveaway zmenu ešte nedostal. Skús tú istú akciu znova.",
+  "dash.history.title": "Verejná história",
+  "dash.history.text":
+    "Verejná stránka môže ukázať tvoje ukončené giveawaye s cenou, dátumom, počtom zapísaných a počtom víťazov a s odkazom na overenie každého žrebovania. Neuvádza mená zapísaných ani víťazov a vyhľadávače ju neindexujú. Tlačidlom pri ukončenom giveawayi ho zo stránky skryješ.",
+  "dash.history.link": "Otvoriť tvoju verejnú históriu",
+  "dash.history.turnOn": "Zapnúť verejnú históriu",
+  "dash.history.turnOff": "Vypnúť verejnú históriu",
+  "dash.history.saved": "Uložené. Verejná stránka môže zmenu ukázať až o pár minút.",
+  "dash.history.hide": "Skryť z histórie",
+  "dash.history.show": "Ukázať v histórii",
+  "dash.history.hide.label": "Skryť {name} z tvojej verejnej histórie",
+  "dash.history.show.label": "Ukázať {name} v tvojej verejnej histórii",
+  "history.title": "Giveawaye streamera {name}",
+  "history.intro":
+    "Ukončené giveawaye tohto streamera, najnovšie prvé. Každé žrebovanie sa dá overiť na jeho stránke overenia. Nikto zo zapísaných ani z víťazov tu nie je menovaný.",
+  "history.none": "Zatiaľ žiadne ukončené giveawaye.",
+  "history.closed": "Zápis uzavretý {date}",
+  "history.verify": "Overiť žrebovanie",
+  "history.verify.label": "Overiť žrebovanie giveawayu {name}",
 
   "share.link": "Tvoj odkaz",
   "share.copyLink": "Kopírovať odkaz",
@@ -910,6 +932,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Streamer, ktorý giveaway vedie, vidí jeho účastníkov a výhercov. Mená účastníkov a výhercov sa zobrazujú na živej stránke giveawayu a v overlayi, ich profilové obrázky na živej stránke.",
   "privacy.recipients.i4":
     "Pri žrebovaní sa číta verejný maják náhodnosti drand. Neposielajú sa mu žiadne osobné údaje.",
+  "privacy.recipients.i5":
+    "Keď streamer zapne verejnú históriu, ktokoľvek na nej vidí meno streamera a jeho ukončené giveawaye: názov, cenu, dátum uzavretia a počet zapísaných a víťazov. Stránka neuvádza mená zapísaných ani víťazov a streamer môže jednotlivé giveawaye skryť alebo stránku vypnúť.",
   "privacy.cookies.h": "Cookies a lokálne úložisko",
   "privacy.cookies.p1":
     "Rafflink nastavuje iba nevyhnutne potrebné cookies, preto sa nezobrazuje žiadny súhlasový banner. Všetky sú HTTP-only a nepoužívajú sa na nič iné.",

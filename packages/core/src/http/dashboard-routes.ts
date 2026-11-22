@@ -169,6 +169,27 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     return c.json({ kind: "deleted" })
   })
 
+  app.post("/api/dash/history", sameOriginJson(deps.config), async (c) => {
+    const on = objectField(await readJson(c), "on")
+    if (typeof on !== "boolean") return c.json({ error: "invalid-input", field: "on" }, 400)
+    await deps.accounts.setPublicHistory(c.get("streamer").streamerId, on)
+    return c.json({ kind: "saved", on })
+  })
+
+  app.post("/api/dash/giveaways/:id/history", sameOriginJson(deps.config), async (c) => {
+    const hidden = objectField(await readJson(c), "hidden")
+    if (typeof hidden !== "boolean") {
+      return c.json({ error: "invalid-input", field: "hidden" }, 400)
+    }
+    const set = await deps.accounts.setHiddenFromHistory(
+      c.get("streamer").streamerId,
+      c.req.param("id"),
+      hidden,
+    )
+    if (!set) return c.json({ error: "not-found" }, 404)
+    return c.json({ kind: "saved", hidden })
+  })
+
   app.get("/api/dash/blocks", async (c) => {
     const body: BlockListJson = {
       blocks: await deps.accounts.listBlocks(

@@ -1,5 +1,6 @@
 const giveawayColumns = `g.id, g.code, g.streamer_id, s.platform, s.platform_user_id AS broadcaster_id, s.display_name AS streamer_name,
-  g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.winner_count, g.overlay_token, g.created_at, s.block_list_version`
+  g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.winner_count, g.overlay_token, g.created_at, s.block_list_version,
+  g.hidden_from_history`
 const giveawayFrom = "FROM giveaways g JOIN streamers s ON s.id = g.streamer_id"
 
 /** A giveaway by its short code (parameter 1). */
@@ -21,6 +22,22 @@ export const openGiveawaysOfStreamerSql = `SELECT id FROM giveaways WHERE stream
 /** Ids of a streamer's (parameter 1) drawn giveaways created at or after an instant (parameter 2), newest first; parameter 3 is how many. */
 export const recentDrawnGiveawaysSql = `SELECT id FROM giveaways WHERE streamer_id = ? AND status = 'drawn' AND created_at >= ?
   ORDER BY created_at DESC, id DESC LIMIT ?`
+
+/** Parameters: platform, login. The newest streamer with that login whose public history is on; an older row holds a login its account gave up. */
+export const publicHistoryStreamerSql = `SELECT id, login, display_name FROM streamers
+  WHERE platform = ? AND login = ? AND public_history = 1 ORDER BY created_at DESC LIMIT 1`
+
+/** A streamer's (parameter 1) drawn giveaways they did not hide from their public history, newest first; parameter 2 is how many. */
+export const publicHistoryGiveawaysSql = `SELECT id, code, title, prize, closed_at FROM giveaways
+  WHERE streamer_id = ? AND status = 'drawn' AND hidden_from_history = 0
+  ORDER BY created_at DESC, id DESC LIMIT ?`
+
+/** Parameters: 1 or 0, streamer id. */
+export const setPublicHistorySql = "UPDATE streamers SET public_history = ? WHERE id = ?"
+
+/** Parameters: 1 or 0, giveaway id, streamer id. Returns the id when the giveaway is the streamer's. */
+export const setHiddenFromHistorySql =
+  "UPDATE giveaways SET hidden_from_history = ? WHERE id = ? AND streamer_id = ? RETURNING id"
 
 /** A streamer's (parameter 1) block list on one platform (parameter 2), newest first. */
 export const blocksOfStreamerSql = `SELECT platform, platform_user_id, login, created_at FROM streamer_blocks
@@ -130,7 +147,7 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
     validated_at = excluded.validated_at`
 
 const streamerColumns =
-  "id, platform, platform_user_id, login, display_name, profile_image_url, created_at, approved_at"
+  "id, platform, platform_user_id, login, display_name, profile_image_url, created_at, approved_at, public_history"
 
 /** Parameters: platform, platform user id. */
 export const streamerByPlatformUserSql = `SELECT ${streamerColumns} FROM streamers WHERE platform = ? AND platform_user_id = ?`

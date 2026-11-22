@@ -768,3 +768,71 @@ describe("dashboard block list", () => {
     expect(view.queryByLabelText("Twitch username to block")).toBeNull()
   })
 })
+
+describe("dashboard public history", () => {
+  const drawn = { ...dashboardGiveaway, status: "drawn" }
+
+  it("turns the public history on and then links to the page", async () => {
+    let publicHistory = false
+    const requests = mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, publicHistory },
+        }),
+      "POST /api/dash/history": () => {
+        publicHistory = true
+        return ok({ kind: "saved", on: true })
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    expect(view.queryByRole("link", { name: "Open your public history page" })).toBeNull()
+    fireEvent.click(await view.findByRole("button", { name: "Turn on public history" }))
+
+    expect(
+      (await view.findByRole("link", { name: "Open your public history page" })).getAttribute(
+        "href",
+      ),
+    ).toBe("/s/twitch/streamy")
+    expect(view.getByRole("button", { name: "Turn off public history" })).toBeTruthy()
+    expect(requests.find((request) => request.route === "POST /api/dash/history")?.body).toEqual({
+      on: true,
+    })
+  })
+
+  it("hides a finished giveaway from the public history and offers to show it again", async () => {
+    let hidden = false
+    const requests = mockFetch({
+      "GET /api/dash/giveaways": () => ok({ giveaways: [{ ...drawn, hiddenFromHistory: hidden }] }),
+      "POST /api/dash/giveaways/gid-1/history": () => {
+        hidden = true
+        return ok({ kind: "saved", hidden: true })
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(
+      await view.findByRole("button", {
+        name: "Hide Summer giveaway from your public history",
+      }),
+    )
+
+    expect(
+      await view.findByRole("button", { name: "Show Summer giveaway in your public history" }),
+    ).toBeTruthy()
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/giveaways/gid-1/history")?.body,
+    ).toEqual({ hidden: true })
+  })
+
+  it("offers no history button on a giveaway that is not drawn yet", async () => {
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("heading", { name: "Summer giveaway" })).toBeTruthy()
+    expect(view.queryByRole("button", { name: /from your public history/ })).toBeNull()
+  })
+})

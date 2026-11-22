@@ -9,6 +9,7 @@ import { CreatedGiveawayPage, NewGiveawayPage } from "./pages/create-page.tsx"
 import { DashboardPage } from "./pages/dashboard-page.tsx"
 import { DrawPage } from "./pages/draw-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
+import { HistoryPage } from "./pages/history-page.tsx"
 import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
 import { ModeratorLivePage, ModeratorOpenPage } from "./pages/moderator-page.tsx"
@@ -47,6 +48,7 @@ export function AppRoutes() {
           </Route>
           {siteRoutes}
           <Route element={<Layout account={false} />}>
+            <Route path="s/:platform/:login" element={<HistoryPage />} />
             <Route path="g/:code" element={<MovedGiveaway page="giveaway" />} />
             <Route path="g/:code/verify" element={<MovedGiveaway page="verify" />} />
             <Route path=":code" element={<GiveawayPage />} />
