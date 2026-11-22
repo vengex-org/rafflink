@@ -745,6 +745,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "drawResult.beacon-unavailable":
     "Zdroj náhody (drand) sa nepodarilo zastihnúť. Nič sa nevyžrebovalo. Skús to znova.",
   "giveaway.verify.link": "Overiť toto žrebovanie",
+  "viewer.runYourOwn": "Spusti vlastnú súťaž s Rafflinkom",
   "verify.title": "Overenie žrebovania",
   "verify.intro":
     "Vo svojom prehliadači skontroluj, že víťazi vychádzajú zo zoznamu zápisov a z verejného náhodného čísla, ktoré tu nikto neovláda.",

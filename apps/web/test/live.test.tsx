@@ -114,6 +114,15 @@ const entrantsHeading = (view: ReturnType<typeof renderApp>) =>
 const openStage = { name: "Entries are open" }
 
 describe("live page: collecting entries", () => {
+  it("never invites the streamer to run a giveaway", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByRole("heading", openStage)).toBeTruthy()
+    expect(view.queryByRole("link", { name: "Run your own giveaway with Rafflink" })).toBeNull()
+  })
+
   it("renders the snapshot with labelled numbers and then every push of the socket", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 

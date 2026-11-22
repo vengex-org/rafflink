@@ -75,6 +75,15 @@ async function verified(overrides: Record<string, () => Reply | Promise<Reply>> 
 }
 
 describe("verify page", () => {
+  it("invites a viewer to run their own giveaway", async () => {
+    mockFetch(routes())
+
+    const view = renderApp("/g/ABCDE/verify")
+
+    const link = await view.findByRole("link", { name: "Run your own giveaway with Rafflink" })
+    expect(link.getAttribute("href")).toBe("/?ref=giveaway")
+  })
+
   it("shows the root, the round and the entry list link, and the pick of each winner", async () => {
     mockFetch(routes())
 

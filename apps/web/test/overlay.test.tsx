@@ -377,6 +377,15 @@ it("draws the QR code with qr=1 in winner mode before a draw", async () => {
 
 const mark = (view: ReturnType<typeof renderApp>) => view.container.querySelector(".overlay-host")
 
+it("never invites to run a giveaway on the overlay", async () => {
+  routeSnapshot(liveSnapshot)
+
+  const view = renderApp("/overlay/gid-1/tok-1")
+
+  expect(await view.findByText("ABCDE")).toBeTruthy()
+  expect(view.queryByRole("link", { name: "Run your own giveaway with Rafflink" })).toBeNull()
+})
+
 describe("host mark", () => {
   it("stays off while the entry plate shows the host", async () => {
     for (const snapshot of [liveSnapshot, { ...liveSnapshot, status: "closed" as const }]) {
