@@ -159,9 +159,11 @@ export function viewerPushScenarios(context: ContractContext): void {
       const giveaway = await world.createGiveaway(target, { claimSeconds: 1 })
       await world.enter(target, giveaway.code, users.viewer.id)
       await world.enter(target, giveaway.code, users.viewer2.id)
+      // The socket opens before the draw: with one-second windows a slow runner could otherwise
+      // connect after both ended and never see the expired, not yet finished state.
+      const { messages } = openViewerSocket(world, target.url, giveaway)
       await world.closeGiveaway(giveaway)
       await world.drawWinners(giveaway)
-      const { messages } = openViewerSocket(world, target.url, giveaway)
 
       await world.waitFor(
         () => messages.some((message) => message.finished),
