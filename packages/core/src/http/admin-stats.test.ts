@@ -48,15 +48,18 @@ describe("GET /api/admin/stats", () => {
     const running = await start()
     const created = await createGiveaway(running)
     running.rooms.roomFor(created.id)
-    await running.deps.rooms.get(created.id).enter({
-      platformUserId: users.viewer.id,
-      login: users.viewer.login,
-      displayName: users.viewer.displayName,
-      profileImageUrl: null,
-      isFollower: false,
-      subTier: null,
-      accountAgeDays: 100,
-    })
+    await running.deps.rooms.get(created.id).enter(
+      {
+        platformUserId: users.viewer.id,
+        login: users.viewer.login,
+        displayName: users.viewer.displayName,
+        profileImageUrl: null,
+        isFollower: false,
+        subTier: null,
+        accountAgeDays: 100,
+      },
+      { blockListVersion: 0 },
+    )
 
     const body = await stats(created.browser)
 

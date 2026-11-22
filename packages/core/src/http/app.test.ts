@@ -1679,15 +1679,18 @@ async function giveawayWithEntrants(count: number) {
   const created = await createGiveaway(harness)
   const room = harness.rooms.roomFor(created.id)
   for (let index = 1; index <= count; index++) {
-    room.enter({
-      platformUserId: String(index),
-      login: `login${index}`,
-      displayName: `Name${index}`,
-      profileImageUrl: null,
-      isFollower: index === 2,
-      subTier: null,
-      accountAgeDays: 100,
-    })
+    room.enter(
+      {
+        platformUserId: String(index),
+        login: `login${index}`,
+        displayName: `Name${index}`,
+        profileImageUrl: null,
+        isFollower: index === 2,
+        subTier: null,
+        accountAgeDays: 100,
+      },
+      { blockListVersion: 0 },
+    )
   }
   return created
 }

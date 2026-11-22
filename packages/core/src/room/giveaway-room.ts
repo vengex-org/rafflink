@@ -4,7 +4,9 @@ import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import {
   evaluateEligibility,
   type GiveawayRules,
+  type Exclusion,
   type IneligibleReason,
+  type RulesConfig,
   type ViewerFacts,
 } from "../domain/rules.ts"
 import {
@@ -68,31 +70,31 @@ import {
   type RoomStatus,
 } from "./rows.ts"
 
-export type RoomConfig = Pick<
-  ResolvedConfig,
-  | "claimKeywordMaxLength"
-  | "ticketsPerGroupMax"
-  | "roleRefreshSeconds"
-  | "liveIntervalMs"
-  | "liveLastNames"
-  | "liveShuffleNames"
-  | "liveWinnerImages"
-  | "liveEntrantsPerPush"
-  | "liveWinnerChatMax"
-  | "liveRateWindowSeconds"
-  | "mirrorRetrySeconds"
-  | "rerollWindowSeconds"
-  | "entryRetentionSeconds"
-  | "drandChainHash"
-  | "drandGenesisSeconds"
-  | "drandPeriodSeconds"
-  | "drandLeadSeconds"
-  | "commitRetrySeconds"
-  | "commitMaxAttempts"
-  | "drandPublishMarginSeconds"
-  | "drawMaxWinners"
-  | "metricsRetentionHours"
->
+export type RoomConfig = RulesConfig
+  & Pick<
+    ResolvedConfig,
+    | "chatBotLogins"
+    | "roleRefreshSeconds"
+    | "liveIntervalMs"
+    | "liveLastNames"
+    | "liveShuffleNames"
+    | "liveWinnerImages"
+    | "liveEntrantsPerPush"
+    | "liveWinnerChatMax"
+    | "liveRateWindowSeconds"
+    | "mirrorRetrySeconds"
+    | "rerollWindowSeconds"
+    | "entryRetentionSeconds"
+    | "drandChainHash"
+    | "drandGenesisSeconds"
+    | "drandPeriodSeconds"
+    | "drandLeadSeconds"
+    | "commitRetrySeconds"
+    | "commitMaxAttempts"
+    | "drandPublishMarginSeconds"
+    | "drawMaxWinners"
+    | "metricsRetentionHours"
+  >
 
 export interface RoomDeps {
   readonly sql: SyncSql
@@ -122,7 +124,7 @@ export interface GiveawayInit {
 }
 
 /** A viewer entering: who they are on the giveaway's platform and what the platform said about them. */
-export type RoomViewer = Omit<ViewerFacts, "userId" | "isVip" | "isModerator"> & {
+export type RoomViewer = Omit<ViewerFacts, "userId" | "isVip" | "isModerator" | "exclusion"> & {
   readonly platformUserId: string
   readonly login: string
   readonly displayName: string
@@ -130,11 +132,38 @@ export type RoomViewer = Omit<ViewerFacts, "userId" | "isVip" | "isModerator"> &
   readonly profileImageUrl: string | null
 }
 
+/** What {@link GiveawayRoom.init} found: whether the excluded accounts are written, and which block list version the room holds. */
+export interface RoomInitOutcome {
+  readonly exclusionsLoaded: boolean
+  readonly blockListVersion: number
+}
+
+/** The streamer's block list on the giveaway's platform at one `streamers.block_list_version`. */
+export interface BlockList {
+  readonly version: number
+  readonly platformUserIds: readonly string[]
+}
+
+/** The accounts a room keeps out: the streamer's block list and the platform user ids of the winners of the streamer's recent giveaways. */
+export interface RoomExclusions {
+  readonly blocked: BlockList
+  readonly recentWinners: readonly string[]
+}
+
+/** What the caller knows an entry must be checked against: the block list version the account store holds now. */
+export interface EntryExpectation {
+  readonly blockListVersion: number
+}
+
+/** The room cannot check an entry yet; the caller sends what is `missing`, then enters again. */
+export type ExclusionsMissing = "exclusions" | "block-list"
+
 export type EnterOutcome =
   | { readonly kind: "entered"; readonly entry: EntrySummary }
   | { readonly kind: "already-in"; readonly entry: EntrySummary }
   | { readonly kind: "not-eligible"; readonly reason: IneligibleReason }
   | { readonly kind: "closed" }
+  | { readonly kind: "unavailable"; readonly missing: ExclusionsMissing }
 
 export type CloseOutcome =
   | { readonly kind: "closed" }
@@ -424,7 +453,7 @@ export class GiveawayRoom {
   }
 
   /** Creates the room once; a second call with any giveaway changes nothing. */
-  init(giveaway: GiveawayInit): void {
+  init(giveaway: GiveawayInit): RoomInitOutcome {
     this.sql.exec(
       `INSERT INTO room_state
          (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, closes_at, roles_refresh_at, winner_count)
@@ -444,6 +473,30 @@ export class GiveawayRoom {
       ],
     )
     this.reconcile()
+    const state = this.readState()
+    return { exclusionsLoaded: state.exclusionsLoaded, blockListVersion: state.blockListVersion }
+  }
+
+  /** Replaces the recent winners, applies the block list as {@link replaceBlocked} does, and marks the exclusions written. */
+  loadExclusions(exclusions: RoomExclusions): void {
+    const { platform } = this.readState()
+    const removed = this.sql.transaction(() => {
+      this.sql.exec("DELETE FROM excluded_users WHERE reason = 'recent-winner'", [])
+      this.insertExclusions(platform, exclusions.recentWinners, "recent-winner")
+      this.sql.exec("UPDATE room_state SET exclusions_loaded = 1 WHERE id = 1", [])
+      return this.applyBlockList(exclusions.blocked)
+    })
+    if (removed) this.afterWrite()
+  }
+
+  /**
+   * Replaces the streamer's block list; a list older than the one held changes nothing, so a late
+   * write never undoes a newer edit. While entries are open, a blocked account's entry is removed;
+   * once closed, the entrants are what the commitment covers and stay.
+   */
+  replaceBlocked(blocked: BlockList): void {
+    const removed = this.sql.transaction(() => this.applyBlockList(blocked))
+    if (removed) this.afterWrite()
   }
 
   /** Changes how many winners the streamer plans; the draw never reads it. */
@@ -453,13 +506,21 @@ export class GiveawayRoom {
     return { kind: "set" }
   }
 
-  /** One entry per account: a repeat returns the first entry and changes nothing. */
-  enter(viewer: RoomViewer): EnterOutcome {
+  /**
+   * One entry per account: a repeat returns the first entry and changes nothing. Fails closed: until
+   * the excluded accounts are written, or while the room holds an older block list than `expected`,
+   * it answers `unavailable` and writes nothing.
+   */
+  enter(viewer: RoomViewer, expected: EntryExpectation): EnterOutcome {
     const now = this.clock.now()
     const outcome = this.sql.transaction((): EnterOutcome => {
       const state = this.readState()
       if (state.status !== "open" || (state.closesAt !== null && now >= state.closesAt)) {
         return { kind: "closed" }
+      }
+      if (!state.exclusionsLoaded) return { kind: "unavailable", missing: "exclusions" }
+      if (state.blockListVersion < expected.blockListVersion) {
+        return { kind: "unavailable", missing: "block-list" }
       }
       const existing = this.sql.exec(entryOfSql, [state.platform, viewer.platformUserId])[0]
       if (existing !== undefined) return { kind: "already-in", entry: parseEntry(existing) }
@@ -938,16 +999,9 @@ export class GiveawayRoom {
       ...vips.map((id) => [platform, id, "vip", now]),
       ...moderators.map((id) => [platform, id, "moderator", now]),
     ]
-    const tuple = `(${roleColumns.map(() => "?").join(", ")})`
     this.sql.transaction(() => {
       this.sql.exec("DELETE FROM channel_roles", [])
-      for (let from = 0; from < rows.length; from += rolesPerInsert) {
-        const chunk = rows.slice(from, from + rolesPerInsert)
-        this.sql.exec(
-          `INSERT INTO channel_roles (${roleColumns.join(", ")}) VALUES ${chunk.map(() => tuple).join(", ")}`,
-          chunk.flat(),
-        )
-      }
+      this.insertChunked("channel_roles", roleColumns, rows)
       this.sql.exec("UPDATE room_state SET roles_refresh_at = ? WHERE id = 1", [
         now + this.config.roleRefreshSeconds * 1000,
       ])
@@ -1153,6 +1207,69 @@ export class GiveawayRoom {
       isVip: roles.includes("vip"),
       isModerator: roles.includes("moderator"),
       accountAgeDays: viewer.accountAgeDays,
+      exclusion: this.exclusionOf(state, viewer),
+    }
+  }
+
+  // A block outranks a recent win, so a blocked winner is told they are blocked.
+  private exclusionOf(state: RoomState, viewer: RoomViewer): Exclusion | null {
+    if (this.config.chatBotLogins.includes(viewer.login.toLowerCase())) return "blocked"
+    const reasons = this.sql
+      .exec("SELECT reason FROM excluded_users WHERE platform = ? AND platform_user_id = ?", [
+        state.platform,
+        viewer.platformUserId,
+      ])
+      .map((row) => new RowReader("excluded_users", row).oneOf("reason", exclusions))
+    if (reasons.includes("blocked")) return "blocked"
+    return reasons.includes("recent-winner") ? "recent-winner" : null
+  }
+
+  // Runs inside the caller's transaction; true when it removed an entry, so the caller pushes the live pages.
+  private applyBlockList(blocked: BlockList): boolean {
+    const state = this.readState()
+    if (blocked.version < state.blockListVersion) return false
+    this.sql.exec("DELETE FROM excluded_users WHERE reason = 'blocked'", [])
+    this.insertExclusions(state.platform, blocked.platformUserIds, "blocked")
+    this.sql.exec("UPDATE room_state SET block_list_version = ? WHERE id = 1", [blocked.version])
+    if (state.status !== "open") return false
+    let removed = 0
+    let tickets = 0
+    for (const id of blocked.platformUserIds) {
+      const [row] = this.sql.exec(
+        "DELETE FROM entries WHERE platform = ? AND platform_user_id = ? RETURNING tickets",
+        [state.platform, id],
+      )
+      if (row === undefined) continue
+      removed += 1
+      tickets += new RowReader("entries", row).int("tickets")
+    }
+    if (removed === 0) return false
+    this.sql.exec(
+      "UPDATE room_state SET removed_entrants = removed_entrants + ?, ticket_total = ticket_total - ? WHERE id = 1",
+      [removed, tickets],
+    )
+    console.info("blocked entries removed", { giveawayId: state.giveawayId, removed })
+    return true
+  }
+
+  private insertExclusions(platform: string, ids: readonly string[], reason: Exclusion): void {
+    this.insertChunked(
+      "excluded_users",
+      exclusionColumns,
+      ids.map((id) => [platform, id, reason]),
+    )
+  }
+
+  // Each statement binds at most `maxBoundParameters` values; the caller holds the transaction.
+  private insertChunked(table: string, columns: readonly string[], rows: SqlValue[][]): void {
+    const tuple = `(${columns.map(() => "?").join(", ")})`
+    const perInsert = Math.floor(maxBoundParameters / columns.length)
+    for (let from = 0; from < rows.length; from += perInsert) {
+      const chunk = rows.slice(from, from + perInsert)
+      this.sql.exec(
+        `INSERT INTO ${table} (${columns.join(", ")}) VALUES ${chunk.map(() => tuple).join(", ")}`,
+        chunk.flat(),
+      )
     }
   }
 
@@ -1193,6 +1310,7 @@ export class GiveawayRoom {
     this.sql.transaction(() => {
       this.sql.exec("DELETE FROM entries", [])
       this.sql.exec("DELETE FROM channel_roles", [])
+      this.sql.exec("DELETE FROM excluded_users", [])
       this.sql.exec("UPDATE room_state SET entries_deleted = 1 WHERE id = 1", [])
     })
     console.info("room entries deleted", {
@@ -1548,7 +1666,8 @@ const ticketBytes = 8
 const leafRecordBytes = hashBytes + ticketBytes
 
 const roleColumns = ["platform", "platform_user_id", "role", "fetched_at"] as const
-const rolesPerInsert = Math.floor(maxBoundParameters / roleColumns.length)
+const exclusionColumns = ["platform", "platform_user_id", "reason"] as const
+const exclusions: readonly Exclusion[] = ["blocked", "recent-winner"]
 
 const failureColumns = {
   "role-refresh": "role_refresh_failures",

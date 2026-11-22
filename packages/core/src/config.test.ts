@@ -193,6 +193,32 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("reads chat bot logins in lower case, blank as none, and refuses a non-login", () => {
+    expect(resolveConfig(required).chatBotLogins).toContain("nightbot")
+    expect(
+      resolveConfig({ ...required, CHAT_BOT_LOGINS: " NightBot , my_bot " }).chatBotLogins,
+    ).toEqual(["nightbot", "my_bot"])
+    expect(resolveConfig({ ...required, CHAT_BOT_LOGINS: " " }).chatBotLogins).toEqual([])
+    for (const value of ["night bot", "a,,b", "https://twitch.tv/x"]) {
+      expect(failure({ ...required, CHAT_BOT_LOGINS: value })).toMatchObject({
+        env: "CHAT_BOT_LOGINS",
+        reason: "not-a-login",
+      })
+    }
+  })
+
+  it("bounds the recent winners giveaways by the Free plan's subrequests", () => {
+    expect(resolveConfig(required)).toMatchObject({
+      recentWinnersGiveawaysMax: 10,
+      recentWinnersDaysMax: 90,
+      blockListMax: 500,
+    })
+    expect(failure({ ...required, RECENT_WINNERS_GIVEAWAYS_MAX: "21" })).toMatchObject({
+      env: "RECENT_WINNERS_GIVEAWAYS_MAX",
+      reason: "out-of-range",
+    })
+  })
+
   it("rejects an empty entry in a list", () => {
     expect(failure({ ...required, TOKEN_SEAL_KEYS: "a,,b" })).toMatchObject({
       env: "TOKEN_SEAL_KEYS",

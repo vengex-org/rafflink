@@ -1,4 +1,5 @@
 import { bestGroup, groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
+import type { RecentWinnersRule } from "@rafflink/core/domain/rules"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { CreateGiveawayBody } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
@@ -6,6 +7,7 @@ import type { MessageKey } from "../i18n/dictionaries.ts"
 export type Step = 1 | 2 | 3
 export type Audience = "everyone" | "followers" | "subscribers"
 export type Ending = "never" | "at-time"
+export type RecentWinners = "off" | RecentWinnersRule["kind"]
 
 /** The claim times offered as buttons, in seconds. */
 export const claimPresets = [120, 300, 600] as const
@@ -31,6 +33,9 @@ export interface Values {
   closesAt: string
   claim: ClaimTime
   claimKeyword: string
+  recentWinners: RecentWinners
+  /** The count of the recent-winners rule; kept while the rule is off so switching it on again shows it. */
+  recentWinnersCount: string
   winnerCount: string
 }
 
@@ -57,6 +62,8 @@ export const initialValues: Values = {
   closesAt: "",
   claim: { kind: "preset", seconds: 300 },
   claimKeyword: "",
+  recentWinners: "off",
+  recentWinnersCount: "3",
   winnerCount: "1",
 }
 
@@ -80,6 +87,11 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
     minAccountAgeDays: rules.minAccountAgeDays === null ? "" : String(rules.minAccountAgeDays),
     claim: claimOf(giveaway.claimSeconds),
     claimKeyword: rules.claimKeyword ?? "",
+    recentWinners: rules.excludeRecentWinners?.kind ?? "off",
+    recentWinnersCount:
+      rules.excludeRecentWinners === null
+        ? initialValues.recentWinnersCount
+        : String(rules.excludeRecentWinners.count),
   }
 }
 
@@ -106,6 +118,12 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
           message: "issue.wholeDays",
         }
       }
+      if (
+        values.recentWinners !== "off"
+        && (!isWholeNumber(values.recentWinnersCount) || Number(values.recentWinnersCount) < 1)
+      ) {
+        return { field: "excludeRecentWinners.count", message: "issue.not-a-positive-integer" }
+      }
       if (!isWholeNumber(values.winnerCount) || Number(values.winnerCount) < 1) {
         return { field: "winnerCount", message: "issue.not-a-positive-integer" }
       }
@@ -131,6 +149,7 @@ export function stepOfField(field: string): Step {
     || field === "claimSeconds"
     || field === "claimKeyword"
     || field === "winnerCount"
+    || field.startsWith("excludeRecentWinners")
   ) {
     return 2
   }
@@ -170,6 +189,10 @@ export function toBody(values: Values): CreateGiveawayBody {
       minAccountAgeDays:
         values.minAccountAgeDays.trim() === "" ? undefined : Number(values.minAccountAgeDays),
       claimKeyword: values.claimKeyword,
+      excludeRecentWinners:
+        values.recentWinners === "off"
+          ? null
+          : { kind: values.recentWinners, count: Number(values.recentWinnersCount) },
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
     claimSeconds: claimSecondsOf(values.claim),

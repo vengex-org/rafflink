@@ -25,6 +25,7 @@ export const defaultRules: GiveawayRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 export interface GiveawayOptions {

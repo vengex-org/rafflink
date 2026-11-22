@@ -5,6 +5,7 @@ import type {
   ChannelRoles,
   ChatContext,
   ExchangedCode,
+  PlatformAccount,
   PlatformCapabilities,
   PlatformProvider,
   SignInProof,
@@ -16,6 +17,7 @@ import type {
 import type { Clock } from "../ports.ts"
 import { ChannelBadges, type ChannelBadgesConfig } from "./channel-badges.ts"
 import { eventSubChat, type ChatWatcherConfig } from "./chat-watcher.ts"
+import { twitchLoginPattern } from "./lib/login.ts"
 import { TwitchInvalid, type TwitchClient } from "./twitch-client.ts"
 
 export type TwitchProviderConfig = ChannelBadgesConfig & ChatWatcherConfig
@@ -113,6 +115,18 @@ export class TwitchProvider implements PlatformProvider {
 
   isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
     return this.client.isModerator(accessToken, broadcasterId, userId)
+  }
+
+  /** Lower case, as Twitch stores logins; a leading `@`, as chat writes names, is dropped. */
+  parseLogin(text: string): string | null {
+    const login = text.trim().replace(/^@/, "")
+    return twitchLoginPattern.test(login) ? login.toLowerCase() : null
+  }
+
+  async accountByLogin(login: string): Promise<PlatformAccount | null> {
+    const ids = await this.client.userIdsByLogin(await this.client.appAccessToken(), [login])
+    const id = ids.get(login)
+    return id === undefined ? null : { id, login }
   }
 
   /** An EventSub WebSocket whose sessions are subscribed to the channel's chat with the streamer's token. */

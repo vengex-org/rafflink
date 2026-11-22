@@ -155,6 +155,41 @@ describe("giveaway landing", () => {
     expect(await view.findByText(/Everyone can enter\. Subscribers get 3 tickets\./)).toBeTruthy()
   })
 
+  it.each([
+    [{ kind: "giveaways", count: 3 }, /Winners of the streamer's last 3 giveaways cannot enter\./],
+    [{ kind: "giveaways", count: 1 }, /Winners of the streamer's last giveaway cannot enter\./],
+    [
+      { kind: "days", count: 30 },
+      /Winners of the streamer's giveaways from the last 30 days cannot enter\./,
+    ],
+    [
+      { kind: "days", count: 1 },
+      /Winners of the streamer's giveaways from the last day cannot enter\./,
+    ],
+  ])(
+    "says who is kept out as recent winners (%j) next to who can enter",
+    async (rule, sentence) => {
+      mockFetch({
+        "GET /api/g/ABCDE": () =>
+          ok({ ...giveaway, rules: { ...giveaway.rules, excludeRecentWinners: rule } }),
+      })
+
+      const view = renderApp("/ABCDE")
+
+      expect(await view.findByText(sentence)).toBeTruthy()
+      expect(view.getByText(/Everyone can enter\./)).toBeTruthy()
+    },
+  )
+
+  it("adds no recent-winners sentence when the giveaway keeps none out", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE")
+
+    await view.findByText(/Everyone can enter\./)
+    expect(view.queryByText(/cannot enter\./)).toBeNull()
+  })
+
   it("lists the tickets of every group and the claim time under the rules", async () => {
     mockFetch({
       "GET /api/g/ABCDE": () =>
@@ -281,6 +316,34 @@ describe("entry outcomes", () => {
       view.getByText("Subscribe to the channel on Twitch, then open this link again."),
     ).toBeTruthy()
     expect(view.queryByRole("link", { name: "Enter with Twitch" })).toBeNull()
+  })
+
+  it("tells a blocked viewer only that they cannot enter, without naming a block", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE?entry=not-eligible&reason=blocked")
+
+    expect(await view.findByText("You cannot enter this giveaway.")).toBeTruthy()
+    expect(view.getByText("If you have questions, ask the streamer.")).toBeTruthy()
+    expect(view.queryByText(/block/i)).toBeNull()
+    expect(view.queryByRole("link", { name: "Use another Twitch account" })).toBeNull()
+  })
+
+  it("tells a recent winner why they cannot enter and when they can again", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE?entry=not-eligible&reason=recent-winner")
+
+    expect(
+      await view.findByText(
+        "You won one of this streamer's recent giveaways, so you cannot enter this one.",
+      ),
+    ).toBeTruthy()
+    expect(
+      view.getByText(
+        "You can enter again once your win is no longer among their recent giveaways.",
+      ),
+    ).toBeTruthy()
   })
 
   it("greets an entered viewer with You are in and what happens next", async () => {

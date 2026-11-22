@@ -238,6 +238,7 @@ describe("dashboard", () => {
     expect(sections).toEqual([
       { heading: "Running", giveaways: ["Current one"] },
       { heading: "Finished", giveaways: ["Old one"] },
+      { heading: "Blocked accounts", giveaways: [] },
     ])
   })
 
@@ -279,6 +280,28 @@ describe("dashboard", () => {
     expect(inputOf(view.getByLabelText("Moderators")).value).toBe("7")
     expect(inputOf(view.getByLabelText("Minimum account age in days (optional)")).value).toBe("7")
     expect(inputOf(view.getByLabelText("Chat word (optional)")).value).toBe("mine")
+  })
+
+  it("copies the recent-winners rule of a giveaway into the create form", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () =>
+        ok({
+          giveaways: [
+            {
+              ...dashboardGiveaway,
+              rules: { ...rules, excludeRecentWinners: { kind: "days", count: 30 } },
+            },
+          ],
+        }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("link", { name: "Duplicate Summer giveaway" }))
+    await view.findByText("Step 1 of 3: Basics")
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+
+    expect(inputOf(view.getByRole("radio", { name: /Last days/ })).checked).toBe(true)
+    expect(inputOf(view.getByLabelText("How many days back")).value).toBe("30")
   })
 
   it("links Duplicate to the wizard with the id of the giveaway, which refills it after a reload", async () => {
@@ -516,5 +539,232 @@ describe("dashboard history", () => {
 
     expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
     expect(requests.map((request) => request.route)).toContain("POST /api/dash/account/delete")
+  })
+})
+
+const spammer = {
+  platform: "twitch",
+  platformUserId: "u1",
+  login: "spammer",
+  createdAt: 1_700_000_000_000,
+}
+const troll = {
+  platform: "twitch",
+  platformUserId: "u2",
+  login: "troll",
+  createdAt: 1_700_000_100_000,
+}
+
+/** The block list the server holds, answered by GET and changed by the test's own POST routes. */
+function withBlocks(initial: readonly (typeof spammer)[], max = 100) {
+  const state = { blocks: initial }
+  return {
+    state,
+    routes: {
+      ...listed,
+      "GET /api/dash/blocks": () => ok({ blocks: state.blocks, blockListMax: max }),
+    },
+  }
+}
+
+describe("dashboard block list", () => {
+  it("lists the blocked accounts with their date, the count against the limit and a Remove button each", async () => {
+    mockFetch(withBlocks([troll, spammer], 50).routes)
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("heading", { name: "Blocked accounts" })).toBeTruthy()
+    expect(await view.findByText("2 of 50 accounts blocked")).toBeTruthy()
+    const rows = Array.from(
+      view.container.querySelectorAll(".block-list li"),
+      (row) => row.textContent,
+    )
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatch(/^troll\s+blocked Nov 1[45], 2023/)
+    expect(rows[1]).toMatch(/^spammer\s+blocked Nov 1[45], 2023/)
+    expect(view.getByRole("button", { name: "Remove spammer from the block list" })).toBeTruthy()
+  })
+
+  it("says so when no account is blocked", async () => {
+    mockFetch(withBlocks([]).routes)
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByText("No accounts blocked.")).toBeTruthy()
+    expect(view.getByText("0 of 100 accounts blocked")).toBeTruthy()
+  })
+
+  it("shows the block list on the empty dashboard too", async () => {
+    mockFetch({
+      ...empty,
+      "GET /api/dash/blocks": () => ok({ blocks: [spammer], blockListMax: 100 }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    expect(
+      await view.findByRole("button", { name: "Remove spammer from the block list" }),
+    ).toBeTruthy()
+  })
+
+  it("blocks the typed login, clears the field and lists the new account", async () => {
+    const { state, routes } = withBlocks([])
+    const requests = mockFetch({
+      ...routes,
+      "POST /api/dash/blocks": () => {
+        state.blocks = [spammer]
+        return { status: 201, body: { kind: "added", block: spammer } }
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+      target: { value: "@Spammer" },
+    })
+    fireEvent.click(view.getByRole("button", { name: "Block" }))
+
+    expect(await view.findByText("Account blocked.")).toBeTruthy()
+    expect(
+      await view.findByRole("button", { name: "Remove spammer from the block list" }),
+    ).toBeTruthy()
+    expect(inputOf(view.getByLabelText("Twitch username to block")).value).toBe("")
+    expect(requests.find((request) => request.route === "POST /api/dash/blocks")?.body).toEqual({
+      login: "@Spammer",
+    })
+  })
+
+  it("says an account is already blocked", async () => {
+    mockFetch({
+      ...withBlocks([spammer]).routes,
+      "POST /api/dash/blocks": () => ok({ kind: "exists", block: spammer }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+      target: { value: "spammer" },
+    })
+    fireEvent.click(view.getByRole("button", { name: "Block" }))
+
+    expect(await view.findByText("This account is already blocked.")).toBeTruthy()
+  })
+
+  it.each([
+    [400, { error: "invalid-input", field: "login" }, "Enter a Twitch username."],
+    [404, { error: "unknown-login" }, "There is no Twitch account with that username."],
+    [409, { error: "block-list-full" }, "The block list is full. Remove an account first."],
+    [503, { error: "platform-unavailable" }, "Twitch did not answer. Try again in a moment."],
+    [401, { error: "unauthorized" }, "Something went wrong. Try again."],
+  ])("explains a refused block (%d) and keeps what was typed", async (status, body, message) => {
+    mockFetch({ ...withBlocks([]).routes, "POST /api/dash/blocks": () => ({ status, body }) })
+
+    const view = renderApp("/dashboard")
+    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+      target: { value: "nobody" },
+    })
+    fireEvent.click(view.getByRole("button", { name: "Block" }))
+
+    expect(await view.findByText(message)).toBeTruthy()
+    expect(inputOf(view.getByLabelText("Twitch username to block")).value).toBe("nobody")
+  })
+
+  it("lists an account that was saved while a running giveaway did not get the list, and says to repeat", async () => {
+    const { state, routes } = withBlocks([])
+    mockFetch({
+      ...routes,
+      "POST /api/dash/blocks": () => {
+        state.blocks = [spammer]
+        return { status: 503, body: { error: "room-unavailable" } }
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+      target: { value: "spammer" },
+    })
+    fireEvent.click(view.getByRole("button", { name: "Block" }))
+
+    expect(
+      await view.findByText(/Saved, but a running giveaway did not get the change/),
+    ).toBeTruthy()
+    expect(
+      await view.findByRole("button", { name: "Remove spammer from the block list" }),
+    ).toBeTruthy()
+  })
+
+  it("removes an account from the list", async () => {
+    const { state, routes } = withBlocks([troll, spammer])
+    const requests = mockFetch({
+      ...routes,
+      "POST /api/dash/blocks/u1/delete": () => {
+        state.blocks = [troll]
+        return ok({ kind: "removed" })
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Remove spammer from the block list" }))
+
+    expect(await view.findByText("Account removed from the block list.")).toBeTruthy()
+    // The message can render before the reloaded list. A failing toBeNull() on the row's button would
+    // format the React-owned element for seconds, past waitFor's timeout, so no check would follow the
+    // reload; a boolean fails cheaply and waitFor keeps polling.
+    await waitFor(() =>
+      expect(
+        view.queryByRole("button", { name: "Remove spammer from the block list" }) === null,
+      ).toBe(true),
+    )
+    expect(view.getByRole("button", { name: "Remove troll from the block list" })).toBeTruthy()
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/blocks/u1/delete")?.body,
+    ).toEqual({})
+  })
+
+  it("keeps the row and says to try again when a running giveaway did not get the removal", async () => {
+    mockFetch({
+      ...withBlocks([spammer]).routes,
+      "POST /api/dash/blocks/u1/delete": () => ({
+        status: 503,
+        body: { error: "room-unavailable" },
+      }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Remove spammer from the block list" }))
+
+    expect(
+      await view.findByText(/Saved, but a running giveaway did not get the change/),
+    ).toBeTruthy()
+    expect(view.getByRole("button", { name: "Remove spammer from the block list" })).toBeTruthy()
+  })
+
+  it("offers a reload when the block list cannot be loaded", async () => {
+    spyOn(console, "error").mockImplementation(() => {})
+    let calls = 0
+    mockFetch({
+      ...listed,
+      "GET /api/dash/blocks": () => {
+        calls += 1
+        return calls === 1
+          ? { status: 500, body: null }
+          : ok({ blocks: [spammer], blockListMax: 100 })
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    expect(await view.findByText("Something went wrong. Reload the page.")).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "Reload page" }))
+
+    expect(
+      await view.findByRole("button", { name: "Remove spammer from the block list" }),
+    ).toBeTruthy()
+  })
+
+  it("says so when the block list answers without a session instead of hiding it", async () => {
+    mockFetch({ ...listed, "GET /api/dash/blocks": () => ({ status: 401, body: null }) })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByText("Something went wrong. Reload the page.")).toBeTruthy()
+    expect(view.queryByLabelText("Twitch username to block")).toBeNull()
   })
 })

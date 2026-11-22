@@ -24,6 +24,7 @@ import {
   giveawaysOfStreamerSql,
   ownedGiveawaySql,
   pendingStreamersSql,
+  recentDrawnGiveawaysSql,
   streamerByIdSql,
   streamerByPlatformUserSql,
   unarmedRetentionSql,
@@ -312,6 +313,7 @@ describe("AccountStore giveaways", () => {
       broadcasterId: "200",
       streamerName: "Streamer",
       status: "open",
+      blockListVersion: 0,
     })
   })
 
@@ -703,5 +705,125 @@ describe("currentPlan", () => {
     await store.storeCloudflarePlan("free", "1", 0)
 
     expect(await currentPlan(store, paidDefault)).toBe("free")
+  })
+})
+
+describe("AccountStore block list", () => {
+  const block = { platform: "twitch", platformUserId: "300", login: "alt_one", createdAt: 10 }
+
+  it("adds a block once, lists it newest first and keeps each streamer's list apart", async () => {
+    const { store } = await withStreamers()
+
+    expect(await store.addBlock("s1", block, 5)).toBe("added")
+    expect(await store.addBlock("s1", { ...block, login: "renamed", createdAt: 20 }, 5)).toBe(
+      "exists",
+    )
+    const second = { ...block, platformUserId: "301", login: "alt_two", createdAt: 30 }
+    await store.addBlock("s1", second, 5)
+
+    expect(await store.listBlocks("s1", "twitch")).toEqual([second, block])
+    expect(await store.listBlocks("s2", "twitch")).toEqual([])
+  })
+
+  it("refuses a block beyond the most allowed and writes nothing", async () => {
+    const { store } = await withStreamers()
+    await store.addBlock("s1", block, 1)
+
+    expect(await store.addBlock("s1", { ...block, platformUserId: "301" }, 1)).toBe("full")
+    expect(await store.listBlocks("s1", "twitch")).toHaveLength(1)
+    expect(await store.addBlock("s2", { ...block, platformUserId: "301" }, 1)).toBe("added")
+  })
+
+  it("removes a block of the owner only, and a repeat changes nothing", async () => {
+    const { store } = await withStreamers()
+    await store.addBlock("s1", block, 5)
+    await store.addBlock("s2", block, 5)
+
+    await store.removeBlock("s1", "twitch", "300")
+    await store.removeBlock("s1", "twitch", "300")
+
+    expect(await store.listBlocks("s1", "twitch")).toEqual([])
+    expect(await store.listBlocks("s2", "twitch")).toEqual([block])
+  })
+
+  it("moves the block list version at each edit and carries it on the streamer's giveaways", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    await store.addBlock("s1", block, 5)
+    await store.addBlock("s1", { ...block, platformUserId: "301" }, 5)
+    await store.removeBlock("s1", "twitch", "300")
+
+    expect(await store.blockList("s1", "twitch")).toEqual({
+      version: 3,
+      blocks: [{ ...block, platformUserId: "301" }],
+    })
+    expect((await store.findGiveawayById("g1"))?.blockListVersion).toBe(3)
+    expect((await store.blockList("s2", "twitch")).version).toBe(0)
+  })
+
+  it("lists the blocks of one platform only", async () => {
+    const { store } = await withStreamers()
+    await store.addBlock("s1", block, 5)
+    expect(await store.listBlocks("s1", "kick")).toEqual([])
+  })
+
+  it("deletes the block list with the streamer", async () => {
+    const { db, store } = await withStreamers()
+    await store.addBlock("s1", block, 5)
+    await store.addBlock("s2", block, 5)
+
+    await store.deleteStreamer("s1")
+
+    expect(sqlRows(db, "SELECT streamer_id FROM streamer_blocks")).toEqual([{ streamer_id: "s2" }])
+  })
+})
+
+describe("AccountStore giveaways of a streamer by status", () => {
+  it("lists the open giveaways of one streamer", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BCDEF" }))
+    await store.insertGiveaway(giveaway({ id: "g3", code: "CDEFG", streamerId: "s2" }))
+    await store.setStatus("g2", "closed", 0)
+
+    expect(await store.listOpenGiveawayIds("s1", 10)).toEqual(["g1"])
+  })
+
+  it("lists only the newest open giveaways up to the limit", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway({ createdAt: 100 }))
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BCDEF", createdAt: 200 }))
+    await store.insertGiveaway(giveaway({ id: "g3", code: "CDEFG", createdAt: 300 }))
+
+    expect(await store.listOpenGiveawayIds("s1", 2)).toEqual(["g3", "g2"])
+  })
+
+  it("lists the latest drawn giveaways created since an instant, newest first, up to the limit", async () => {
+    const { store } = await withStreamers()
+    const drawn = [
+      { id: "g1", code: "AAAAA", createdAt: 100 },
+      { id: "g2", code: "BBBBB", createdAt: 200 },
+      { id: "g3", code: "CCCCC", createdAt: 300 },
+      { id: "g4", code: "DDDDD", createdAt: 400 },
+    ]
+    for (const item of drawn) {
+      await store.insertGiveaway(giveaway(item))
+      await store.setStatus(item.id, "drawn", item.createdAt)
+    }
+    await store.insertGiveaway(giveaway({ id: "g5", code: "EEEEE", createdAt: 500 }))
+    await store.insertGiveaway(
+      giveaway({ id: "g6", code: "FFFFF", streamerId: "s2", createdAt: 600 }),
+    )
+    await store.setStatus("g6", "drawn", 600)
+
+    expect(await store.listRecentDrawnGiveawayIds("s1", 0, 2)).toEqual(["g4", "g3"])
+    expect(await store.listRecentDrawnGiveawayIds("s1", 200, 10)).toEqual(["g4", "g3", "g2"])
+  })
+
+  it("reads the drawn giveaways through the partial index without a sort", () => {
+    const { db } = setup()
+    const plan = explainPlan(db, recentDrawnGiveawaysSql, ["s1", 0, 10]).join("\n")
+    expect(plan).toContain("giveaways_drawn_by_streamer")
+    expect(plan).not.toContain("TEMP B-TREE")
   })
 })

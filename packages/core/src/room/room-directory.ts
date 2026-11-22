@@ -11,6 +11,8 @@ export type RoomStub = Remote<
   { liveCounts(): LiveCounts } & Pick<
     GiveawayRoom,
     | "init"
+    | "loadExclusions"
+    | "replaceBlocked"
     | "enter"
     | "summary"
     | "entryOf"

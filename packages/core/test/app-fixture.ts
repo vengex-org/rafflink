@@ -111,11 +111,16 @@ export function explainPlan(
 export interface RoomHooks {
   beforeInit: (giveawayId: string) => Promise<void> | void
   beforeEnter: (giveawayId: string) => Promise<void> | void
+  beforeExclusions: (giveawayId: string) => Promise<void> | void
 }
 
 /** Rooms of one test, each over its own in-memory database, behind the async stub the app expects. */
 export class InProcessRooms implements RoomDirectory {
-  readonly hooks: RoomHooks = { beforeInit: () => {}, beforeEnter: () => {} }
+  readonly hooks: RoomHooks = {
+    beforeInit: () => {},
+    beforeEnter: () => {},
+    beforeExclusions: () => {},
+  }
   readonly beacon = new FakeBeacon()
   /** The ids passed to `delete`, in call order. */
   readonly deleted: string[] = []
@@ -171,11 +176,19 @@ class InProcessRoomStub implements RoomStub {
 
   async init(giveaway: GiveawayInit) {
     await this.hooks.beforeInit(this.giveawayId)
-    this.room.init(giveaway)
+    return this.room.init(giveaway)
   }
-  async enter(viewer: Parameters<GiveawayRoom["enter"]>[0]) {
+  async loadExclusions(...args: Parameters<GiveawayRoom["loadExclusions"]>) {
+    await this.hooks.beforeExclusions(this.giveawayId)
+    this.room.loadExclusions(...args)
+  }
+  async replaceBlocked(...args: Parameters<GiveawayRoom["replaceBlocked"]>) {
+    await this.hooks.beforeExclusions(this.giveawayId)
+    this.room.replaceBlocked(...args)
+  }
+  async enter(...args: Parameters<GiveawayRoom["enter"]>) {
     await this.hooks.beforeEnter(this.giveawayId)
-    return this.room.enter(viewer)
+    return this.room.enter(...args)
   }
   async summary() {
     return this.room.summary()
@@ -289,6 +302,7 @@ export const validRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 /** The header a test sets to give a request a client address; the real targets read the one their edge sets. */

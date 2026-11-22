@@ -80,6 +80,12 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async init(...args: Parameters<GiveawayRoom["init"]>) {
     return (await this.opened).room.init(...args)
   }
+  async loadExclusions(...args: Parameters<GiveawayRoom["loadExclusions"]>) {
+    return (await this.opened).room.loadExclusions(...args)
+  }
+  async replaceBlocked(...args: Parameters<GiveawayRoom["replaceBlocked"]>) {
+    return (await this.opened).room.replaceBlocked(...args)
+  }
   async enter(...args: Parameters<GiveawayRoom["enter"]>) {
     return (await this.opened).room.enter(...args)
   }

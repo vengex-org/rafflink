@@ -143,6 +143,8 @@ const privacy: LegalDocument = {
         "privacy.data.i6",
         "privacy.data.i7",
         "privacy.data.i8",
+        "privacy.data.i9",
+        "privacy.data.i10",
       ],
     },
     {
@@ -159,6 +161,7 @@ const privacy: LegalDocument = {
         "privacy.retention.i3",
         "privacy.retention.i4",
         "privacy.retention.i5",
+        "privacy.retention.i6",
       ],
     },
     {

@@ -574,9 +574,12 @@ const rules: GiveawayRules = {
   followersOnly: false,
   minAccountAgeDays: null,
   claimKeyword: null,
+  excludeRecentWinners: null,
 }
 
 const random: Random = { bytes: (length) => new Uint8Array(length).fill(7) }
+
+const current = { blockListVersion: 0 }
 
 function viewer(id: string): RoomViewer {
   return {
@@ -637,6 +640,7 @@ function roomUnderTest(
     beacon: new FakeBeacon(),
   })
   room.init(roomInit(options.claimKeyword ?? null))
+  room.loadExclusions({ blocked: { version: 0, platformUserIds: [] }, recentWinners: [] })
   return {
     db,
     sql,
@@ -661,7 +665,7 @@ async function drawnRoom(options: Parameters<typeof roomUnderTest>[0] = {}) {
   const context = roomUnderTest({ ...options, env: { LIVE_INTERVAL_MS: "1", ...options.env } })
   for (const id of ["1", "2", "3"]) {
     context.clock.advance(1)
-    context.room.enter(viewer(id))
+    context.room.enter(viewer(id), current)
   }
   context.clock.advance(1)
   context.room.close(null)
@@ -793,7 +797,7 @@ describe("chat watch lifetime", () => {
 
   it("does not open for a room that is not drawn", () => {
     const { room, connector } = roomUnderTest()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
 
     expect(connector.sockets).toHaveLength(0)

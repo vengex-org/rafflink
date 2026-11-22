@@ -1,8 +1,18 @@
-import { useDeferredValue, useEffect, type ReactNode } from "react"
+import { useDeferredValue, useEffect, useState, type FormEvent, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { RoomStatus } from "@rafflink/core/room/rows"
-import { deleteGiveaway, deleteStreamerData, listGiveaways, winnersCsvPath } from "../api/client.ts"
+import {
+  addBlock,
+  deleteGiveaway,
+  deleteStreamerData,
+  getBlocks,
+  listGiveaways,
+  removeBlock,
+  winnersCsvPath,
+  type AddBlockResult,
+  type RemoveBlockResult,
+} from "../api/client.ts"
 import { ConfirmAction } from "../components/confirm-action.tsx"
 import { Disclosure } from "../components/disclosure.tsx"
 import { DonateLink } from "../components/donate-link.tsx"
@@ -22,6 +32,7 @@ import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StateCard, type Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
+import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { readNotice } from "../lib/dashboard-notice.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
@@ -125,6 +136,7 @@ function GiveawayList({
             </li>
           </ol>
         </section>
+        <BlockedAccounts />
         <DeleteStreamerData onDeleted={onChanged} />
       </>
     )
@@ -166,6 +178,7 @@ function GiveawayList({
       {rest.length === 0 ? null : (
         <FinishedGiveaways giveaways={rest} canDuplicate={canCreate} onDeleted={onChanged} />
       )}
+      <BlockedAccounts />
       <DeleteStreamerData onDeleted={onChanged} />
     </>
   )
@@ -221,6 +234,112 @@ function FinishedGiveaways({
       )}
     </section>
   )
+}
+
+/** The accounts the streamer keeps out of every giveaway: the list, a login to add and a Remove button per row. */
+function BlockedAccounts() {
+  const i18n = useI18n()
+  const { t } = i18n
+  const { result, reload } = useLoad(getBlocks)
+  const [login, setLogin] = useState("")
+  const { message, busy, run } = useAction()
+  const listed = result.state === "ready" && result.value !== "unauthorized" ? result.value : null
+
+  const add = (event: FormEvent) => {
+    event.preventDefault()
+    void run(() => addBlock(login), addBlockMessage).then((outcome) => {
+      if (outcome === "added" || outcome === "exists" || outcome === "room-unavailable") {
+        setLogin("")
+        reload()
+      }
+    })
+  }
+
+  return (
+    <section className="dash-section dash-blocks" aria-labelledby="dash-blocks">
+      <h2 id="dash-blocks">{t("dash.blocks.title")}</h2>
+      <p>{t("dash.blocks.text")}</p>
+      {result.state === "loading" ? <Loading /> : null}
+      {result.state === "failed"
+      || (result.state === "ready" && result.value === "unauthorized") ? (
+        <>
+          <p role="alert">{t("failed.text")}</p>
+          <button type="button" className="button text" onClick={reload}>
+            {t("common.reloadPage")}
+          </button>
+        </>
+      ) : null}
+      {listed === null ? null : (
+        <>
+          <form className="block-add" onSubmit={add} noValidate>
+            <div className="field">
+              <label htmlFor="block-login">{t("dash.blocks.label")}</label>
+              <input
+                id="block-login"
+                name="login"
+                type="text"
+                autoComplete="off"
+                value={login}
+                onChange={(event) => setLogin(event.currentTarget.value)}
+              />
+            </div>
+            <button type="submit" className="button" disabled={busy}>
+              <PlusIcon />
+              {t("dash.blocks.add")}
+            </button>
+          </form>
+          <p className="muted">
+            {t("dash.blocks.count", {
+              count: i18n.number(listed.blocks.length),
+              max: i18n.number(listed.blockListMax),
+            })}
+          </p>
+          {listed.blocks.length === 0 ? (
+            <p className="muted">{t("dash.blocks.none")}</p>
+          ) : (
+            <ul className="block-list">
+              {listed.blocks.map((block) => (
+                <li key={block.platformUserId}>
+                  <span>
+                    {block.login}
+                    <span className="muted">
+                      {" "}
+                      {t("dash.blocks.since", { date: i18n.date(block.createdAt) })}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="button text"
+                    disabled={busy}
+                    aria-label={t("dash.blocks.remove.label", { login: block.login })}
+                    onClick={() =>
+                      void run(() => removeBlock(block.platformUserId), removeBlockMessage).then(
+                        (outcome) => {
+                          if (outcome === "removed") reload()
+                        },
+                      )
+                    }
+                  >
+                    <TrashIcon />
+                    {t("dash.blocks.remove")}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {message === null ? null : <Status>{t(message)}</Status>}
+    </section>
+  )
+}
+
+function addBlockMessage(outcome: AddBlockResult): MessageKey {
+  return outcome === "unauthorized" ? "action.failed" : `dash.blocks.${outcome}`
+}
+
+function removeBlockMessage(outcome: RemoveBlockResult): MessageKey {
+  return outcome === "unauthorized" ? "action.failed" : `dash.blocks.${outcome}`
 }
 
 /** Deletes every giveaway of the streamer and the account; the list then asks to sign in again. */

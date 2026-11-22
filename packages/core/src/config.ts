@@ -5,6 +5,7 @@ import {
   queuedEntryTwitchRequests,
   queuedEntryTwitchSubrequests,
 } from "./twitch/queued-entry-requests.ts"
+import { twitchLoginPattern } from "./twitch/lib/login.ts"
 
 export type ConfigReason =
   | "missing"
@@ -28,6 +29,7 @@ export type ConfigReason =
   | "below-claim-and-reroll-windows"
   | "fake-twitch-needs-local-public-url"
   | "not-a-cloudflare-plan"
+  | "not-a-login"
 
 /** Why a setting failed; a list entry that is not a secret also names itself. */
 export type ConfigIssue =
@@ -387,6 +389,36 @@ export const configSchema = {
     int(1),
     "64",
     "Most entries the Bun server keeps in its in-memory public cache; the oldest is dropped beyond it; a leaf list is up to about a megabyte, so the default holds about 64 MB at worst; starting guess; the Cloudflare target uses the Cache API and ignores it",
+  ),
+  recentWinnersGiveawaysMax: withDefault(
+    "RECENT_WINNERS_GIVEAWAYS_MAX",
+    int(1, 20),
+    "10",
+    "Most earlier giveaways a streamer can keep the winners of out of a new giveaway, and the most rooms the days option reads; creating such a giveaway reads the winners of each from its room, one Durable Object subrequest apiece, so the bound of 20 stays inside the Free plan's 50 subrequests next to the creation's own calls; 10 is a starting guess",
+  ),
+  recentWinnersDaysMax: withDefault(
+    "RECENT_WINNERS_DAYS_MAX",
+    int(1),
+    "90",
+    "Most days back a streamer can keep earlier winners out of a new giveaway; winners of giveaways deleted by HISTORY_RETENTION_DAYS or by the streamer are gone; starting guess, a season of streams",
+  ),
+  chatBotLogins: withDefault(
+    "CHAT_BOT_LOGINS",
+    loginList,
+    "nightbot,streamelements,moobot,fossabot,streamlabs,wizebot,sery_bot,soundalerts",
+    "Twitch logins of chat bots that are never entered into any giveaway, comma separated, case-insensitive; blank enters every account; the default lists widely used bots; a streamer's own bots go on their block list",
+  ),
+  blockListMax: withDefault(
+    "BLOCK_LIST_MAX",
+    int(1),
+    "500",
+    "Most accounts one streamer can block; a room gets the whole list at each edit; starting guess, far above a list kept by hand",
+  ),
+  blockListPushMax: withDefault(
+    "BLOCK_LIST_PUSH_MAX",
+    int(0, 45),
+    "40",
+    "Most open giveaways, newest first, a block list edit sends the list to, one Durable Object subrequest apiece; the others get it from the entry flow before their next entry; the bound of 45 leaves the edit's own calls room inside the Free plan's 50 subrequests, 40 is a starting guess",
   ),
   claimKeywordMaxLength: withDefault(
     "CLAIM_KEYWORD_MAX_LENGTH",
@@ -782,6 +814,11 @@ export function resolveConfig(env: Env): ResolvedConfig {
     drawMaxWinners: read(env, configSchema.drawMaxWinners),
     publicGiveawayCacheSeconds: read(env, configSchema.publicGiveawayCacheSeconds),
     publicCacheMaxEntries: read(env, configSchema.publicCacheMaxEntries),
+    recentWinnersGiveawaysMax: read(env, configSchema.recentWinnersGiveawaysMax),
+    recentWinnersDaysMax: read(env, configSchema.recentWinnersDaysMax),
+    chatBotLogins: read(env, configSchema.chatBotLogins),
+    blockListMax: read(env, configSchema.blockListMax),
+    blockListPushMax: read(env, configSchema.blockListPushMax),
     claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
     codeInsertRetries: read(env, configSchema.codeInsertRetries),
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
@@ -1039,17 +1076,24 @@ function adminEntry(raw: string): Parsed<AdminEntry, ConfigIssue> {
 
 // Twitch logins are case-insensitive and stored in lower case; a link carries exactly one path segment.
 function loginOf(value: string): string | null {
-  if (twitchLogin.test(value)) return value.toLowerCase()
+  if (twitchLoginPattern.test(value)) return value.toLowerCase()
   if (!URL.canParse(value)) return null
   const { protocol, hostname, pathname } = new URL(value)
   if (protocol !== "https:" || (hostname !== "twitch.tv" && hostname !== "www.twitch.tv")) {
     return null
   }
   const segment = pathname.replace(/^\//, "").replace(/\/$/, "")
-  return twitchLogin.test(segment) ? segment.toLowerCase() : null
+  return twitchLoginPattern.test(segment) ? segment.toLowerCase() : null
 }
 
-const twitchLogin = /^[A-Za-z0-9_]{1,25}$/
+/** Comma separated Twitch logins in lower case; blank is none. */
+function loginList(raw: string): Parsed<readonly string[], ConfigReason> {
+  if (raw.trim() === "") return ok([])
+  return list((part: string): Parsed<string, ConfigReason> => {
+    const value = part.trim()
+    return twitchLoginPattern.test(value) ? ok(value.toLowerCase()) : fail("not-a-login")
+  })(raw)
+}
 
 function list<T>(item: (raw: string) => Parsed<T, ConfigReason>) {
   return (raw: string): Parsed<[T, ...T[]], ConfigReason> => {

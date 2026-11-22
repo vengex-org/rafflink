@@ -244,6 +244,12 @@ export const en = {
   "reason.no-tickets": "Your group gets no tickets in this giveaway.",
   "reasonHelp.broadcaster": "Sign in with a different Twitch account to enter.",
   "entry.otherAccount": "Use another Twitch account",
+  "reason.blocked": "You cannot enter this giveaway.",
+  "reasonHelp.blocked": "If you have questions, ask the streamer.",
+  "reason.recent-winner":
+    "You won one of this streamer's recent giveaways, so you cannot enter this one.",
+  "reasonHelp.recent-winner":
+    "You can enter again once your win is no longer among their recent giveaways.",
   "reasonHelp.subs-only": "Subscribe to the channel on Twitch, then open this link again.",
   "reasonHelp.followers-only": "Follow the channel on Twitch, then open this link again.",
   "reasonHelp.account-too-young":
@@ -302,6 +308,7 @@ export const en = {
   "issue.too-large": "This number is too large. Enter a smaller one.",
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
+  "issue.unknown-kind": "Pick one of the options.",
   "issue.wholeDays": "Enter a whole number of days, or leave it empty.",
   "issue.wholeMinutes": "Enter a whole number of minutes, 1 or more.",
   "issue.pickEnd": "Pick the date and time when entries end.",
@@ -320,6 +327,13 @@ export const en = {
   "day.one": "{count} day",
   "day.few": "{count} days",
   "day.other": "{count} days",
+  "recentGiveaways.one": "Winners of the streamer's last giveaway cannot enter.",
+  "recentGiveaways.few": "Winners of the streamer's last {count} giveaways cannot enter.",
+  "recentGiveaways.other": "Winners of the streamer's last {count} giveaways cannot enter.",
+  "recentDays.one": "Winners of the streamer's giveaways from the last day cannot enter.",
+  "recentDays.few": "Winners of the streamer's giveaways from the last {count} days cannot enter.",
+  "recentDays.other":
+    "Winners of the streamer's giveaways from the last {count} days cannot enter.",
   "entered.one": "{count} person entered",
   "entered.few": "{count} people entered",
   "entered.other": "{count} people entered",
@@ -489,6 +503,25 @@ export const en = {
   "dash.deleteData.detail":
     "Every giveaway with its entrants, winners and draw proof, your account and your stored Twitch token are deleted for good, and you are signed out.",
   "dash.deleteData.confirm": "Yes, delete everything",
+  "dash.blocks.title": "Blocked accounts",
+  "dash.blocks.text":
+    "Blocked accounts cannot enter any of your giveaways. Their entries in giveaways that are still open are removed; entries in closed giveaways stay. The list is deleted with your account.",
+  "dash.blocks.count": "{count} of {max} accounts blocked",
+  "dash.blocks.none": "No accounts blocked.",
+  "dash.blocks.label": "Twitch username to block",
+  "dash.blocks.add": "Block",
+  "dash.blocks.remove": "Remove",
+  "dash.blocks.remove.label": "Remove {login} from the block list",
+  "dash.blocks.since": "blocked {date}",
+  "dash.blocks.added": "Account blocked.",
+  "dash.blocks.exists": "This account is already blocked.",
+  "dash.blocks.removed": "Account removed from the block list.",
+  "dash.blocks.invalid-input": "Enter a Twitch username.",
+  "dash.blocks.unknown-login": "There is no Twitch account with that username.",
+  "dash.blocks.block-list-full": "The block list is full. Remove an account first.",
+  "dash.blocks.platform-unavailable": "Twitch did not answer. Try again in a moment.",
+  "dash.blocks.room-unavailable":
+    "Saved, but a running giveaway did not get the change yet. Try the same action again.",
 
   "share.link": "Your link",
   "share.copyLink": "Copy link",
@@ -664,6 +697,18 @@ export const en = {
     "Stops people from making fresh accounts just to enter. Leave it empty to allow any account.",
   "wizard.minAge.fewer": "Fewer days",
   "wizard.minAge.more": "More days",
+  "wizard.recent.legend": "Keep out recent winners",
+  "wizard.recent.off": "Off",
+  "wizard.recent.off.help": "Winners of your earlier giveaways can enter again.",
+  "wizard.recent.giveaways": "Last giveaways",
+  "wizard.recent.giveaways.help": "Winners of your last few drawn giveaways cannot enter.",
+  "wizard.recent.days": "Last days",
+  "wizard.recent.days.help":
+    "Winners of the giveaways you created in the last few days cannot enter.",
+  "wizard.recent.count.giveaways": "How many giveaways back",
+  "wizard.recent.count.days": "How many days back",
+  "wizard.recent.fewer": "Fewer",
+  "wizard.recent.more": "More",
   "wizard.tickets.legend": "Tickets per group",
   "wizard.tickets.help":
     "Every group gets 1 ticket. More tickets mean a better chance of winning, for example 3 for subscribers. Leave this as it is if everyone should have the same chance.",
@@ -703,6 +748,7 @@ export const en = {
   "review.notSet": "Not set",
   "review.everyoneOne": "Everyone gets 1 ticket.",
   "review.ageText": "Accounts must be at least {days} old.",
+  "review.recent": "Recent winners",
   "review.endsManual": "When you close them.",
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Any chat message from the winner also counts.",
@@ -746,6 +792,10 @@ export const en = {
     "Giveaway rooms: the Twitch user IDs of the channel's VIPs and moderators, stored to apply the ticket rules. They are deleted with the giveaway's entries.",
   "privacy.data.i8":
     "Moderators who open a moderator link: the link stores only a hash of its secret. When a link is for channel moderators, the moderator signs in with Twitch and Rafflink checks the Twitch user ID against the channel's moderators. The ID is kept only in the moderator's cookie, nothing else about them is stored, and no Twitch token is kept.",
+  "privacy.data.i9":
+    "Blocked accounts: a streamer can block accounts from their giveaways. Rafflink then stores the blocked person's Twitch user ID and login name, and the time of the block, with the streamer's account. Each giveaway room of the streamer keeps a copy of the blocked user IDs so it can refuse them. If the person had already entered a giveaway that is still open, that entry is deleted.",
+  "privacy.data.i10":
+    "Recent winners: when a streamer keeps recent winners out, the Twitch user IDs of the winners of their earlier giveaways are copied into the new giveaway's room so it can refuse them.",
   "privacy.purposes.h": "Why and on what legal basis",
   "privacy.purposes.i1":
     "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of a contract with you, the service you asked for (GDPR Article 6(1)(b)).",
@@ -763,6 +813,8 @@ export const en = {
     "Host logs are kept by the operator or its hosting provider under their own terms.",
   "privacy.retention.i5":
     "The giveaway (title, prize, rules, dates, entrant and ticket counts), everyone drawn, rerolled picks included, with Twitch user ID, login name, display name and claim state, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay until the streamer deletes the giveaway, so the prize can be delivered and anyone can check the draw later. The operator may set a number of days after the draw closed when giveaways are deleted.",
+  "privacy.retention.i6":
+    "A block (Twitch user ID and login name) is kept to keep that person out of the streamer's giveaways, until the streamer removes it on the dashboard or deletes their account. The copies of blocked and recent-winner user IDs in a giveaway room are deleted with that giveaway's entries, at most 30 days after it closes.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":

@@ -252,6 +252,25 @@ describe("legal pages", () => {
     }
   })
 
+  it("list the block list as personal data of the blocked person and how long it is kept", () => {
+    browserLanguage("en-US")
+    const view = renderApp("/privacy")
+
+    const text = view.getByRole("article").textContent
+    expect(text).toContain("Blocked accounts: a streamer can block accounts from their giveaways.")
+    expect(text).toContain("the blocked person's Twitch user ID and login name")
+    expect(text).toContain(
+      "until the streamer removes it on the dashboard or deletes their account",
+    )
+    expect(text).toContain(
+      "the Twitch user IDs of the winners of their earlier giveaways are copied into the new giveaway's room",
+    )
+    expect(text).toContain(
+      "are deleted with that giveaway's entries, at most 30 days after it closes",
+    )
+    expect(text).not.toContain("Nothing new is stored")
+  })
+
   it("name the cookies and say no consent banner is needed", () => {
     browserLanguage("en-US")
     const view = renderApp("/privacy")

@@ -1,6 +1,6 @@
 import type { Context } from "hono"
 import { toHex } from "../lib/encoding.ts"
-import type { Giveaway, OwnedOverlayThemes } from "../accounts/account-store.ts"
+import type { Giveaway, OwnedOverlayThemes, StreamerBlock } from "../accounts/account-store.ts"
 import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/plan-limits.ts"
@@ -145,6 +145,12 @@ export interface OverlayThemeJson {
 
 /** What the streamer edits for one giveaway's overlay. */
 export type GiveawayOverlayThemesJson = OwnedOverlayThemes
+
+/** The streamer's block list on the dashboard, newest first; `blockListMax` is how many it may hold. */
+export interface BlockListJson {
+  readonly blocks: readonly StreamerBlock[]
+  readonly blockListMax: number
+}
 
 /** The subscriber badge image of each ticket group a subscriber can be in; `null` when none is known and the page shows a tier chip. */
 export type BadgesJson = SubscriberBadges

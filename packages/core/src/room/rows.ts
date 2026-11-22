@@ -1,7 +1,6 @@
-import type { ResolvedConfig } from "../config.ts"
 import { parseActor, type Actor } from "../domain/actor.ts"
 import { groups, type Group } from "../domain/groups.ts"
-import { parseRules, type GiveawayRules } from "../domain/rules.ts"
+import { parseRules, type GiveawayRules, type RulesConfig } from "../domain/rules.ts"
 import type { DrandChain } from "../lib/drand.ts"
 import type { Instant, SqlRow } from "../ports.ts"
 
@@ -68,6 +67,10 @@ export type RoomState = {
   readonly closedBy: Actor | null
   /** Who pressed Draw while entries were open; null when nobody did. */
   readonly drawRequestedBy: Actor | null
+  /** The excluded accounts are written; until then the room refuses entries. */
+  readonly exclusionsLoaded: boolean
+  /** The version of the streamer's block list the room holds. */
+  readonly blockListVersion: number
 } & (
   | { readonly status: "open"; readonly seed: null; readonly closedAt: null }
   | { readonly status: "closed"; readonly seed: null; readonly closedAt: Instant }
@@ -102,10 +105,7 @@ export interface EntrySummary {
   readonly enteredAt: Instant
 }
 
-export function parseState(
-  row: SqlRow,
-  config: Pick<ResolvedConfig, "claimKeywordMaxLength" | "ticketsPerGroupMax">,
-): RoomState {
+export function parseState(row: SqlRow, config: RulesConfig): RoomState {
   const reader = new RowReader("room_state", row)
   const rules = parseRules(parseJson(reader.text("rules_json")), config)
   if (!rules.ok) throw new RoomRowError("room_state", "rules_json")
@@ -118,7 +118,7 @@ export function parseState(
     rules: rules.value,
     claimSeconds: reader.int("claim_seconds"),
     closesAt: reader.nullableInt("closes_at"),
-    entrantCount: reader.int("entrant_count"),
+    entrantCount: reader.int("entrant_count") - reader.int("removed_entrants"),
     ticketTotal: reader.int("ticket_total"),
     roleRefreshFailures: reader.int("role_refresh_failures"),
     eventSubFailures: reader.int("eventsub_failures"),
@@ -136,6 +136,8 @@ export function parseState(
     drawRetryAt: reader.nullableInt("draw_retry_at"),
     closedBy: reader.nullableActor("closed_by"),
     drawRequestedBy: reader.nullableActor("draw_requested_by"),
+    exclusionsLoaded: reader.int("exclusions_loaded") === 1,
+    blockListVersion: reader.int("block_list_version"),
   }
   const status = reader.oneOf("status", roomStatuses)
   const seed = reader.nullableBlob("seed")
