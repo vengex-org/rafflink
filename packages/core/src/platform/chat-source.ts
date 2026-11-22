@@ -1,9 +1,18 @@
 import type { Instant } from "../ports.ts"
 
-/** A chat message as the room reads it: who wrote it and what, whatever the platform's transport. */
+/** A chat badge as the platform names it: its set (`subscriber`, `vip`) and the version within the set. */
+export interface ChatBadge {
+  readonly setId: string
+  readonly id: string
+}
+
+/** A chat message as the room reads it, whatever the platform's transport. */
 export interface ChatMessage {
   readonly platformUserId: string
+  readonly login: string
+  readonly displayName: string
   readonly text: string
+  readonly badges: readonly ChatBadge[]
 }
 
 /** What a chat source tells the room that owns it. */
@@ -29,5 +38,8 @@ export interface ChatSource {
   onAlarm(): void
 }
 
-/** How a target opens the chat of a room's channel for the room's listener. */
+/** How a provider opens the chat of one channel for a listener. */
 export type ChatSourceFactory = (listener: ChatListener) => ChatSource
+
+/** How a target opens a room's chat: the room names its platform when it first watches. */
+export type ChatOpener = (platform: string, listener: ChatListener) => ChatSource

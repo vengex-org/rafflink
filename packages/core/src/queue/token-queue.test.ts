@@ -85,7 +85,7 @@ function setup(
 }
 
 function item(code: string, giveawayId = "g1"): QueuedCode {
-  return { code, giveawayId, nonce: `nonce-${code}` }
+  return { code, giveawayId, nonce: `nonce-${code}`, codeVerifier: `verifier-${code}` }
 }
 
 function rowCount(db: Database): number {
@@ -161,15 +161,20 @@ describe("TokenQueue results", () => {
     expect(queue.poll(ticket)).toMatchObject({ kind: "done", userId: "1" })
   })
 
-  it("processes the code with its giveaway id and nonce", async () => {
+  it("processes the code with its giveaway id, nonce and PKCE verifier", async () => {
     const { queue, calls } = setup()
-    queue.enqueue({ code: "c1", giveawayId: "g7", nonce: "n7" }, "unavailable")
+    queue.enqueue({ code: "c1", giveawayId: "g7", nonce: "n7", codeVerifier: "v7" }, "unavailable")
 
     await queue.onAlarm()
 
-    expect(calls.map(({ code, giveawayId, nonce }) => ({ code, giveawayId, nonce }))).toEqual([
-      { code: "c1", giveawayId: "g7", nonce: "n7" },
-    ])
+    expect(
+      calls.map(({ code, giveawayId, nonce, codeVerifier }) => ({
+        code,
+        giveawayId,
+        nonce,
+        codeVerifier,
+      })),
+    ).toEqual([{ code: "c1", giveawayId: "g7", nonce: "n7", codeVerifier: "v7" }])
   })
 })
 

@@ -33,15 +33,13 @@ describe("readStreamerSession", () => {
     expect(await streamerSessionOf(session)).toEqual(session)
   })
 
-  it("reads a cookie written before the platform seam as a Twitch session", async () => {
-    expect(await streamerSessionOf({ streamerId: "s1", twitchUserId: "200" })).toEqual({
-      streamerId: "s1",
-      platform: "twitch",
-      platformUserId: "200",
-    })
-  })
-
   it("refuses a cookie with a platform but no platform user id", async () => {
     expect(await streamerSessionOf({ streamerId: "s1", platform: "twitch" })).toBeNull()
+  })
+
+  it("refuses a cookie of a platform the app has no provider for", async () => {
+    expect(
+      await streamerSessionOf({ streamerId: "s1", platform: "myspace", platformUserId: "200" }),
+    ).toBeNull()
   })
 })

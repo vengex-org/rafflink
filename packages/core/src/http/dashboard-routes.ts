@@ -444,7 +444,8 @@ async function withOwnedRoom(
 
 function requireAdmin(deps: AppDeps): MiddlewareHandler<Env> {
   return async (c, next) => {
-    if (!(await deps.admins.isAdmin(c.get("streamer").platformUserId))) {
+    const { platform, platformUserId } = c.get("streamer")
+    if (!(await deps.admins.isAdmin(platform, platformUserId))) {
       return c.json({ error: "forbidden" }, 403)
     }
     return next()
@@ -459,7 +460,7 @@ async function withoutAdmins(
 ): Promise<AdminStreamerListJson> {
   const listed: AdminStreamerJson[] = []
   for (const streamer of streamers) {
-    if (await deps.admins.isAdmin(streamer.platformUserId)) continue
+    if (await deps.admins.isAdmin(streamer.platform, streamer.platformUserId)) continue
     listed.push({
       id: streamer.id,
       login: streamer.login,

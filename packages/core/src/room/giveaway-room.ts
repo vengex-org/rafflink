@@ -22,7 +22,7 @@ import type {
   SyncSql,
 } from "../ports.ts"
 import { maxBoundParameters } from "../ports.ts"
-import type { ChatMessage, ChatSource, ChatSourceFactory } from "../platform/chat-source.ts"
+import type { ChatMessage, ChatOpener, ChatSource } from "../platform/chat-source.ts"
 import {
   claimsPerMinuteSql,
   claimsSinceCountSql,
@@ -92,7 +92,7 @@ export interface RoomDeps {
   readonly random: Random
   readonly config: RoomConfig
   /** Opens the chat of the giveaway's channel while the room watches its winners. */
-  readonly chat: ChatSourceFactory
+  readonly chat: ChatOpener
   /** Where the draw reads the round it committed to at close. */
   readonly beacon: RandomnessBeacon
 }
@@ -362,7 +362,9 @@ export class GiveawayRoom {
   private readonly random: Random
   private readonly config: RoomConfig
   private readonly beacon: RandomnessBeacon
-  private readonly chat: ChatSource
+  private readonly openChat: ChatOpener
+  // Opened on the first watch, when the room knows its platform; lost with the object.
+  private chat: ChatSource | null = null
   private lastPushAt: Instant | null = null
   // Lost with the object; the first push after that carries no rows and the page fetches the gap.
   private lastPushedSeq: number | null = null
@@ -384,11 +386,7 @@ export class GiveawayRoom {
     this.random = deps.random
     this.config = deps.config
     this.beacon = deps.beacon
-    this.chat = deps.chat({
-      onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
-      onUnavailable: (cause) => this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
-      onSchedule: () => this.guarded("alarm", () => this.rearm()),
-    })
+    this.openChat = deps.chat
   }
 
   /** Creates the room once; a second call with any giveaway changes nothing. */
@@ -592,7 +590,7 @@ export class GiveawayRoom {
     if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
     this.guarded("chat", () => {
       this.syncChat()
-      this.chat.onAlarm()
+      this.chat?.onAlarm()
     })
     this.guarded("alarm", () => this.rearm())
     return {
@@ -892,7 +890,7 @@ export class GiveawayRoom {
 
   /** Closes the chat watch and nothing else, for the host that is shutting the room down. */
   closeChat(): void {
-    this.chat.close()
+    this.chat?.close()
   }
 
   /** Counts a failure for the live page and logs it with the giveaway id; `cause` goes to the log untouched. */
@@ -1149,11 +1147,18 @@ export class GiveawayRoom {
   // The watcher runs from the draw until the reroll window after the last pick's claim time ends, as
   // long as a pick is not rerolled and it did not give up for this giveaway. Closing forgets the messages.
   private syncChat(): void {
-    if (this.chatWatchOpen(this.readState())) {
+    const state = this.readState()
+    if (this.chatWatchOpen(state)) {
+      this.chat ??= this.openChat(state.platform, {
+        onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
+        onUnavailable: (cause) =>
+          this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
+        onSchedule: () => this.guarded("alarm", () => this.rearm()),
+      })
       this.chat.open()
       return
     }
-    this.chat.close()
+    this.chat?.close()
     this.forgetWinnerChat()
   }
 
@@ -1356,7 +1361,7 @@ export class GiveawayRoom {
       this.rerollWindowWake(state),
       this.chatWatchWake(state),
       this.retentionDeadline(state),
-      this.chat.wakeAt(),
+      this.chat?.wakeAt() ?? null,
       this.metricsWake(),
     ].filter((at): at is Instant => at !== null)
     if (wakeups.length === 0) this.alarm.clear()

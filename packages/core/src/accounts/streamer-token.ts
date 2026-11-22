@@ -18,7 +18,7 @@ export function streamerTokenAad(platform: string, platformUserId: string): stri
 
 /**
  * Trades the stored refresh token for an access token and stores the refresh token Twitch answered
- * with, when it differs. Throws a `TwitchError` for a Twitch answer and a `SealError` for a token
+ * with, when it differs. Throws a `PlatformError` for a platform answer and a `SealError` for a token
  * that does not open.
  */
 export async function openStreamerAccess(

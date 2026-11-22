@@ -74,14 +74,17 @@ export function parseFollowed(body: unknown): Parsed<boolean, "malformed"> {
 export function parseUserProfile(body: unknown): Parsed<UserProfile, "malformed"> {
   const entry = firstEntry(body)
   if (!entry.ok) return entry
-  const { login, display_name: displayName, created_at: createdAt } = entry.value
-  if (typeof login !== "string" || typeof displayName !== "string") return malformed
+  const { id, login, display_name: displayName, created_at: createdAt } = entry.value
+  if (typeof id !== "string" || typeof login !== "string" || typeof displayName !== "string") {
+    return malformed
+  }
   if (typeof createdAt !== "string") return malformed
   const instant = Date.parse(createdAt)
   if (!Number.isFinite(instant)) return malformed
   return {
     ok: true,
     value: {
+      id,
       login,
       displayName,
       createdAt: instant,

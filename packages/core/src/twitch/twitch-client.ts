@@ -28,14 +28,18 @@ import type {
   SubscriptionGroup,
   TokenValidation,
   UserProfile,
-  VerifiedIdToken,
 } from "../platform/provider.ts"
 
-export { TwitchError, TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "./errors.ts"
+export { TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "./errors.ts"
 export type { TwitchEndpoint } from "./errors.ts"
 
 /** The `fetch` the client sends every call through; the global `fetch` fits. */
 export type TwitchFetch = (input: string | URL, init?: RequestInit) => Promise<Response>
+
+/** The user an `id_token` was issued for, as Twitch's `sub` claim. */
+export interface VerifiedIdToken {
+  readonly userId: string
+}
 
 export class TwitchClient {
   private readonly jwks: ReturnType<typeof createRemoteJWKSet>
@@ -52,7 +56,8 @@ export class TwitchClient {
     })
   }
 
-  authorizeUrl(params: AuthorizeParams): string {
+  /** Twitch has no PKCE for this flow, so a `codeChallenge` is not sent. */
+  authorizeUrl(params: Omit<AuthorizeParams, "codeChallenge">): string {
     const url = new URL("/oauth2/authorize", this.config.twitchIdBaseUrl)
     url.searchParams.set("client_id", this.config.twitchClientId)
     url.searchParams.set("redirect_uri", params.redirectUri)

@@ -251,7 +251,7 @@ describe("streamer sign-in", () => {
   it("refuses a session cookie that was not signed by the app", async () => {
     const response = await harness.app.request("/api/dash/giveaways", {
       headers: {
-        cookie: `rl_streamer=${encodeURIComponent('{"streamerId":"x","twitchUserId":"200","expiresAt":9999999999999}')}`,
+        cookie: `rl_streamer=${encodeURIComponent('{"streamerId":"x","platform":"twitch","platformUserId":"200","expiresAt":9999999999999}')}`,
       },
     })
 

@@ -10,7 +10,6 @@ import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql 
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
 import { FakeBeacon, fakeRandomness } from "../../test/fake-beacon.ts"
 import { idleChat } from "../../test/idle-chat.ts"
-import { eventSubChat } from "./chat-watcher.ts"
 import {
   GiveawayRoom,
   type GiveawayInit,
@@ -152,7 +151,7 @@ function setup(
     clock,
     random: rng,
     config: resolveConfig({ ...baseEnv, ...env }),
-    chat: eventSubChat({ ...idleChat, clock, config }),
+    chat: idleChat(clock, config),
     beacon,
   })
   room.init(init)
@@ -541,7 +540,7 @@ describe("GiveawayRoom requested draw", () => {
       clock,
       random,
       config,
-      chat: eventSubChat({ ...idleChat, clock, config }),
+      chat: idleChat(clock, config),
       beacon: new FakeBeacon(),
     })
 
@@ -1435,7 +1434,7 @@ describe("viewer push", () => {
       clock,
       random,
       config,
-      chat: eventSubChat({ ...idleChat, clock, config }),
+      chat: idleChat(clock, config),
       beacon: new FakeBeacon(),
     })
     const before = hub.viewerMessages.length
@@ -1570,7 +1569,7 @@ describe("public summary", () => {
       clock,
       random,
       config,
-      chat: eventSubChat({ ...idleChat, clock, config }),
+      chat: idleChat(clock, config),
       beacon: new FakeBeacon(),
     })
     clock.advance(899_001)
@@ -1808,7 +1807,7 @@ describe("GiveawayRoom minute counts", () => {
       clock,
       random,
       config,
-      chat: eventSubChat({ ...idleChat, clock, config }),
+      chat: idleChat(clock, config),
       beacon: new FakeBeacon(),
     })
 
@@ -1990,7 +1989,7 @@ describe("GiveawayRoom retention", () => {
       clock,
       random,
       config,
-      chat: eventSubChat({ ...idleChat, clock, config }),
+      chat: idleChat(clock, config),
       beacon: new FakeBeacon(),
     })
 
@@ -2015,7 +2014,7 @@ describe("GiveawayRoom retention", () => {
       clock,
       random,
       config,
-      chat: eventSubChat({ ...idleChat, clock, config }),
+      chat: idleChat(clock, config),
       beacon: new FakeBeacon(),
     })
 
@@ -2318,7 +2317,7 @@ describe("GiveawayRoom commit", () => {
         clock,
         random,
         config,
-        chat: eventSubChat({ ...idleChat, clock, config }),
+        chat: idleChat(clock, config),
         beacon: new FakeBeacon(),
       })
 
@@ -2391,7 +2390,7 @@ function legacyRoom(ids: readonly string[], status: "open" | "closed", rng: Rand
         clock,
         random: rng,
         config,
-        chat: eventSubChat({ ...idleChat, clock, config }),
+        chat: idleChat(clock, config),
         beacon: new FakeBeacon(),
       })
     },
@@ -2734,7 +2733,7 @@ describe("GiveawayRoom populated before the minute counters", () => {
       clock,
       random,
       config: resolveConfig({ ...baseEnv, ...env }),
-      chat: eventSubChat({ ...idleChat, clock, config }),
+      chat: idleChat(clock, config),
       beacon: new FakeBeacon(),
     })
     return { sql, room, clock, alarm }

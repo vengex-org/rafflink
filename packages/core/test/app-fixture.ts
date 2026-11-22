@@ -43,7 +43,6 @@ import { TwitchProvider } from "../src/twitch/twitch-provider.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
 import { FakeBeacon } from "./fake-beacon.ts"
 import { idleChat } from "./idle-chat.ts"
-import { eventSubChat } from "../src/room/chat-watcher.ts"
 
 const accountsSchemaDir = new URL("../schema/accounts/", import.meta.url)
 
@@ -149,7 +148,7 @@ export class InProcessRooms implements RoomDirectory {
       clock: this.clock,
       random: secureRandom,
       config: this.config,
-      chat: eventSubChat({ ...idleChat, clock: this.clock, config: this.config }),
+      chat: idleChat(this.clock, this.config),
       beacon: this.beacon,
     })
     this.rooms.set(giveawayId, room)

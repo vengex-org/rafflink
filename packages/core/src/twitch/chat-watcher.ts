@@ -1,7 +1,7 @@
 import type { ResolvedConfig } from "../config.ts"
 import type { ChatListener, ChatSource, ChatSourceFactory } from "../platform/chat-source.ts"
 import type { Clock, Instant, SocketConnector, TextSocket } from "../ports.ts"
-import { parseEventSubMessage } from "../twitch/lib/parse-eventsub.ts"
+import { parseEventSubMessage } from "./lib/parse-eventsub.ts"
 
 export type ChatWatcherConfig = Pick<
   ResolvedConfig,

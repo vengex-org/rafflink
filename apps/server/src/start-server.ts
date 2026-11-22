@@ -16,7 +16,7 @@ import { deleteExpiredGiveaways } from "@rafflink/core/room/delete-giveaway"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { runRoomAlarm, type RoomAlarmDeps } from "@rafflink/core/room/run-room-alarm"
 import { StatsStore } from "@rafflink/core/stats/stats-store"
-import { subscribeChat } from "@rafflink/core/room/subscribe-chat"
+import { roomChat } from "@rafflink/core/room/room-chat"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { TokenQueue, type TokenQueueStub } from "@rafflink/core/queue/token-queue"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
@@ -75,6 +75,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const keyRing = await openKeyRing(config.tokenSealKeys)
   const platforms = { twitch: new TwitchProvider(twitch, clock, config) }
   const tokenDeps: StreamerTokenDeps = { clock, random, platforms, accounts, keyRing }
+  const connector = new BunSocketConnector()
   const alarmDeps: RoomAlarmDeps = { ...tokenDeps, stats }
 
   const rooms = new LocalRoomDirectory({
@@ -86,8 +87,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     publish: (topic, message) => void server.publish(topic, message),
     subscriberCount: (topic) => server.subscriberCount(topic),
     onAlarm: (giveawayId, room) => runRoomAlarm(alarmDeps, giveawayId, room),
-    connector: new BunSocketConnector(),
-    subscribeChat: (giveawayId, sessionId) => subscribeChat(tokenDeps, giveawayId, sessionId),
+    chat: (giveawayId) => roomChat(tokenDeps, connector, giveawayId),
   })
 
   const queueDb = openDatabase(join(config.dataDir, queueFileName))

@@ -460,10 +460,11 @@ describe("Helix", () => {
     )
   })
 
-  it("reads login, display name and creation time of the token owner", async () => {
+  it("reads id, login, display name and creation time of the token owner", async () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
 
     expect(await client.userProfile(accessToken)).toEqual({
+      id: "100",
       login: "viewer",
       displayName: "Viewer",
       createdAt: Date.parse("2021-03-04T05:06:07Z"),

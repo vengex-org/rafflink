@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway } from "../accounts/account-store.ts"
+import { providerFor } from "../platform/provider.ts"
 import type { ClaimOutcome, PublicSummary, WinnerPick } from "../room/giveaway-room.ts"
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
@@ -82,7 +83,10 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     if (polled.kind === "done") {
       endPendingEntry(c, giveaway)
       if (polled.userId !== null) {
-        await startViewerSession(c, deps, { platform: giveaway.platform, userId: polled.userId })
+        await startViewerSession(c, deps, {
+          platform: providerFor(deps.platforms, giveaway.platform).platform,
+          userId: polled.userId,
+        })
       }
     }
     return c.json(pendingOutcome(polled, ticket))
@@ -143,7 +147,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
       .leafOf({ platform: session.platform, platformUserId: session.userId })
     if (leaf === null) return c.json({ error: "not-entered" }, 404)
     const body: MyLeafJson = {
-      platform: leaf.platform,
+      platform: session.platform,
       platformUserId: leaf.platformUserId,
       tickets: leaf.tickets,
       salt: leaf.salt === null ? null : toHex(leaf.salt),

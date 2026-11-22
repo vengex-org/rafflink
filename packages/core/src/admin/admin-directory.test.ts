@@ -63,14 +63,21 @@ describe("AdminDirectory", () => {
   it("accepts a pinned id without asking Twitch", async () => {
     const admins = directoryOf("200,https://twitch.tv/deputy")
 
-    expect(await admins.isAdmin("200")).toBe(true)
+    expect(await admins.isAdmin("twitch", "200")).toBe(true)
+    expect(twitchCalls()).toBe(0)
+  })
+
+  it("denies a listed id signed in on another platform, without asking Twitch", async () => {
+    const admins = directoryOf("200,https://twitch.tv/deputy")
+
+    expect(await admins.isAdmin("kick", "200")).toBe(false)
     expect(twitchCalls()).toBe(0)
   })
 
   it("denies an id that is not listed, without asking Twitch when no login is configured", async () => {
     const admins = directoryOf("200")
 
-    expect(await admins.isAdmin("300")).toBe(false)
+    expect(await admins.isAdmin("twitch", "300")).toBe(false)
     expect(twitchCalls()).toBe(0)
   })
 
@@ -78,10 +85,10 @@ describe("AdminDirectory", () => {
     const info = spyOn(console, "info").mockImplementation(() => {})
     const admins = directoryOf("Boss,https://www.twitch.tv/deputy/")
 
-    expect(await admins.isAdmin("200")).toBe(true)
+    expect(await admins.isAdmin("twitch", "200")).toBe(true)
     const callsAfterFirst = twitchCalls()
-    expect(await admins.isAdmin("300")).toBe(true)
-    expect(await admins.isAdmin("999")).toBe(false)
+    expect(await admins.isAdmin("twitch", "300")).toBe(true)
+    expect(await admins.isAdmin("twitch", "999")).toBe(false)
 
     expect(twitchCalls()).toBe(callsAfterFirst)
     expect(fake.control.calls.filter((call) => call.path === "/oauth2/token")).toHaveLength(1)
@@ -101,13 +108,13 @@ describe("AdminDirectory", () => {
     const admins = directoryOf("boss")
     fake.control.failNext("token", 503, 1)
 
-    expect(await admins.isAdmin("200")).toBe(false)
+    expect(await admins.isAdmin("twitch", "200")).toBe(false)
     expect(warn).toHaveBeenCalledWith("admin login lookup failed", {
       errorClass: "TwitchUnavailable",
       endpoint: "token",
       status: 503,
     })
-    expect(await admins.isAdmin("200")).toBe(true)
+    expect(await admins.isAdmin("twitch", "200")).toBe(true)
 
     info.mockRestore()
     warn.mockRestore()
@@ -118,7 +125,7 @@ describe("AdminDirectory", () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     const admins = directoryOf("boss,ghost")
 
-    expect(await admins.isAdmin("200")).toBe(true)
+    expect(await admins.isAdmin("twitch", "200")).toBe(true)
 
     expect(warn).toHaveBeenCalledWith("admin logins without a Twitch account", {
       unresolved: ["ghost"],
@@ -132,9 +139,9 @@ describe("AdminDirectory", () => {
     const admins = directoryOf("boss")
 
     const answers = await Promise.all([
-      admins.isAdmin("200"),
-      admins.isAdmin("201"),
-      admins.isAdmin("200"),
+      admins.isAdmin("twitch", "200"),
+      admins.isAdmin("twitch", "201"),
+      admins.isAdmin("twitch", "200"),
     ])
 
     expect(answers).toEqual([true, false, true])

@@ -1,6 +1,6 @@
 import { errorClass } from "../lib/error-class.ts"
 import { providerFor } from "../platform/provider.ts"
-import { TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "../twitch/twitch-client.ts"
+import { PlatformInvalid, PlatformRateLimited, PlatformUnavailable } from "../platform/errors.ts"
 import type { StoredStreamerToken } from "./account-store.ts"
 import { openStreamerAccess, type StreamerTokenDeps } from "./streamer-token.ts"
 
@@ -17,7 +17,7 @@ type Verdict = "valid" | "invalid" | "unavailable"
 // also 400 ("invalid client") and a wrong secret 403: those are setup faults and must not delete tokens.
 const revokedRefreshReason = "Invalid refresh token"
 
-function isRevoked(error: TwitchInvalid): boolean {
+function isRevoked(error: PlatformInvalid): boolean {
   return error.status === 401 || (error.status === 400 && error.reason === revokedRefreshReason)
 }
 
@@ -53,8 +53,8 @@ async function verdictOf(deps: StreamerTokenDeps, token: StoredStreamerToken): P
     const accessToken = await openStreamerAccess(deps, token)
     return (await providerFor(deps.platforms, token.platform).validate(accessToken)).status
   } catch (error) {
-    if (error instanceof TwitchInvalid && isRevoked(error)) return "invalid"
-    if (error instanceof TwitchRateLimited || error instanceof TwitchUnavailable) {
+    if (error instanceof PlatformInvalid && isRevoked(error)) return "invalid"
+    if (error instanceof PlatformRateLimited || error instanceof PlatformUnavailable) {
       return "unavailable"
     }
     throw error

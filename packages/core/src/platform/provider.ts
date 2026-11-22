@@ -1,5 +1,6 @@
 import type { Group } from "../domain/groups.ts"
-import type { Instant } from "../ports.ts"
+import type { Clock, Instant, SocketConnector } from "../ports.ts"
+import type { ChatSourceFactory } from "./chat-source.ts"
 
 /** The streaming platforms the app signs in with; the `platform` column of streamers, giveaways and entries. */
 const platforms = ["twitch"] as const
@@ -31,24 +32,29 @@ export interface AuthorizeParams {
   readonly nonce: string
   readonly scopes: readonly [string, ...string[]]
   readonly redirectUri: string
+  /** The PKCE `code_challenge` (S256) of the sign-in's code verifier; a platform without PKCE ignores it. */
+  readonly codeChallenge: string
   /** Makes the platform show its account picker even when the browser is signed in; off when absent. */
   readonly forceVerify?: boolean
 }
 
+/** The token endpoint's answer to a code or a refresh token. */
 export interface ExchangedCode {
   readonly accessToken: string
   readonly refreshToken: string
-  /** `null` when the code was not requested with the `openid` scope. */
+  /** The OpenID Connect `id_token`; `null` when the platform or the scopes give none. */
   readonly idToken: string | null
 }
 
-/** The user an `id_token` was issued for, as its `sub` claim. */
-export interface VerifiedIdToken {
-  readonly userId: string
+/** What the sign-in callback proves the user with besides the code. */
+export interface SignInProof {
+  /** The nonce the sign-in start sent; an OpenID Connect platform finds it in the `id_token`. */
+  readonly nonce: string
 }
 
 /** The platform user of an access token. */
 export interface UserProfile {
+  readonly id: string
   readonly login: string
   readonly displayName: string
   readonly createdAt: Instant
@@ -71,18 +77,39 @@ export type TokenValidation =
   | { readonly status: "invalid" }
   | { readonly status: "unavailable" }
 
-/** One platform: its sign-in, the viewer facts the rules read, the channel roles and the chat subscription. */
+/** An access token of a giveaway's streamer, with the channel it is for. */
+export interface StreamerAccess {
+  readonly accessToken: string
+  readonly broadcasterId: string
+}
+
+/** What a target gives a provider to open the chat of one giveaway's channel. */
+export interface ChatContext {
+  /** Outbound WebSockets of this target. */
+  readonly connector: SocketConnector
+  readonly clock: Clock
+  readonly streamerAccess: () => Promise<StreamerAccess>
+}
+
+/** One platform: its sign-in, the viewer facts the rules read, the channel roles and the chat source. */
 export interface PlatformProvider {
   readonly platform: Platform
   readonly capabilities: PlatformCapabilities
   /** The scopes each sign-in asks for; the streamer's are stored with the streamer's token. */
   readonly scopes: Readonly<Record<OAuthFlow, readonly [string, ...string[]]>>
   authorizeUrl(params: AuthorizeParams): string
-  /** Not retried: a code is single use, so the caller queues the code instead. */
-  exchangeCode(code: string, redirectUri: string): Promise<ExchangedCode>
+  /**
+   * Trades the sign-in's code, with its PKCE verifier, for tokens. Not retried: a code is single use,
+   * so the caller queues the code instead.
+   */
+  exchangeCode(code: string, redirectUri: string, codeVerifier: string): Promise<ExchangedCode>
+  /**
+   * The user id the exchanged tokens prove. Throws `PlatformIdentityRejected` when they prove none,
+   * for example an `id_token` that is missing or fails verification.
+   */
+  verifySignIn(tokens: ExchangedCode, proof: SignInProof): Promise<string>
   /** The answer's refresh token may differ from the one sent: the caller stores it in its place. */
   refreshTokens(refreshToken: string): Promise<ExchangedCode>
-  verifyIdToken(idToken: string, expectedNonce: string): Promise<VerifiedIdToken>
   userProfile(accessToken: string): Promise<UserProfile>
   validate(accessToken: string): Promise<TokenValidation>
   follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
@@ -95,12 +122,8 @@ export interface PlatformProvider {
   /** The channel's subscriber badges; every tier `null` when the platform could not answer. */
   subscriberBadges(broadcasterId: string): Promise<SubscriberBadges>
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles>
-  /** Subscribes a chat session to the channel's chat messages with the streamer's token. */
-  subscribeChatMessages(
-    accessToken: string,
-    broadcasterId: string,
-    sessionId: string,
-  ): Promise<void>
+  /** The chat of one giveaway's channel, whatever this platform's transport. */
+  chatSource(context: ChatContext): ChatSourceFactory
 }
 
 /** The provider of each platform, as `AppDeps` carries it. */
@@ -119,6 +142,6 @@ export function providerFor(providers: PlatformProviders, platform: string): Pla
   return providers[platform]
 }
 
-function isPlatform(value: string): value is Platform {
+export function isPlatform(value: string): value is Platform {
   return platforms.some((platform) => platform === value)
 }

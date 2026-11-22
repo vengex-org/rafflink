@@ -51,7 +51,11 @@ import {
   type Entrant,
   type EntrySummary,
 } from "@rafflink/core/room/rows"
-import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
+import {
+  isPlatform,
+  type Platform,
+  type PlatformCapabilities,
+} from "@rafflink/core/platform/provider"
 import type { CallbackOutcome } from "@rafflink/core/viewer/outcome"
 import {
   ApiShapeError,
@@ -182,12 +186,18 @@ export async function getSession(): Promise<SessionJson> {
       login: text(streamer, "login"),
       profileImageUrl: nullableText(streamer, "profileImageUrl"),
       canCreate: bool(streamer, "canCreate"),
-      platform: text(streamer, "platform"),
+      platform: platformOf(streamer, "platform"),
       capabilities: capabilitiesOf(child(streamer, "capabilities")),
     },
     donateUrl,
     operator,
   }
+}
+
+function platformOf(source: Json, key: string): Platform {
+  const value = text(source, key)
+  if (!isPlatform(value)) throw new ApiShapeError(key)
+  return value
 }
 
 function capabilitiesOf(source: Json): PlatformCapabilities {
@@ -256,7 +266,7 @@ async function getMyLeaf(base: string): Promise<MyLeafJson | null> {
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "my-leaf")
   return {
-    platform: text(source, "platform"),
+    platform: platformOf(source, "platform"),
     platformUserId: text(source, "platformUserId"),
     tickets: num(source, "tickets"),
     salt: nullableText(source, "salt"),

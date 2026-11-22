@@ -16,7 +16,7 @@ import type { Entrant, EntrySummary, RoomStatus } from "../room/rows.ts"
 import type { GrowthDay, SeriesMinute } from "../stats/series.ts"
 import type { AdminLiveGiveawayJson } from "../stats/live-giveaways.ts"
 import type { ReferralCount } from "../stats/stats-store.ts"
-import type { PlatformCapabilities, SubscriberBadges } from "../platform/provider.ts"
+import type { Platform, PlatformCapabilities, SubscriberBadges } from "../platform/provider.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 
 /**
@@ -92,7 +92,7 @@ export interface LeavesJson {
 
 /** The preimage of the signed-in viewer's own leaf; `salt` is lower-case hex, null until the room commits for an entry written before salts existed. */
 export interface MyLeafJson {
-  readonly platform: string
+  readonly platform: Platform
   readonly platformUserId: string
   readonly tickets: number
   readonly salt: string | null
@@ -115,7 +115,7 @@ export interface SessionJson {
     readonly profileImageUrl: string | null
     /** False while OPEN_SIGNUP is off and no admin has approved the account: it may sign in but not create giveaways. */
     readonly canCreate: boolean
-    readonly platform: string
+    readonly platform: Platform
     /** What the streamer's platform supports, so the create form offers only those rules and entry paths. */
     readonly capabilities: PlatformCapabilities
   } | null

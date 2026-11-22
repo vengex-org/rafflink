@@ -5,7 +5,6 @@ import type { ResolvedConfig } from "@rafflink/core/config"
 import { openKeyRing, type KeyRing } from "@rafflink/core/lib/seal"
 import { systemRandom } from "@rafflink/core/lib/system-ports"
 import type { Clock, Instant } from "@rafflink/core/ports"
-import { eventSubChat } from "@rafflink/core/room/chat-watcher"
 import { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
@@ -79,7 +78,7 @@ beforeEach(async () => {
     clock,
     random: systemRandom,
     config,
-    chat: eventSubChat({ ...idleChat, clock, config }),
+    chat: idleChat(clock, config),
     beacon: new FakeBeacon(),
   })
   room.init(giveawayInit(giveawayId))
