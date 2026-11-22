@@ -22,7 +22,7 @@ import { TwitchInvalid, type TwitchClient } from "./twitch-client.ts"
 
 export type TwitchProviderConfig = ChannelBadgesConfig & ChatWatcherConfig
 
-const twitchCapabilities: PlatformCapabilities = {
+export const twitchCapabilities: PlatformCapabilities = {
   followerCheck: true,
   subTiers: true,
   vip: true,

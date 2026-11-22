@@ -1,6 +1,13 @@
-import { bestGroup, groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
+import {
+  bestGroup,
+  groups,
+  supportedGroups,
+  type Group,
+  type Tickets,
+} from "@rafflink/core/domain/groups"
 import type { GiveawayRules, RecentWinnersRule } from "@rafflink/core/domain/rules"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
+import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import type { CreateGiveawayBody } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 
@@ -74,6 +81,55 @@ export const initialValues: Values = {
   entryWays: "page",
   chatKeyword: defaultChatKeyword,
   winnerCount: "1",
+}
+
+/** What the wizard offers until the session answers; the server refuses a rule the streamer's platform cannot check. */
+export const everyCapability: PlatformCapabilities = {
+  followerCheck: true,
+  subTiers: true,
+  vip: true,
+  accountAge: true,
+  pageEntry: true,
+  chatEntry: true,
+}
+
+/**
+ * The answers as the platform can check them: a group it cannot tell gets 0 tickets, and a filter or entry way it
+ * lacks falls back to one it has. The wizard hides those controls, so an answer kept from elsewhere never reaches the server.
+ */
+export function fitValues(values: Values, capabilities: PlatformCapabilities): Values {
+  const supported = supportedGroups(capabilities)
+  const tickets = { ...values.tickets }
+  for (const group of groups) if (!supported.includes(group)) tickets[group] = "0"
+  return {
+    ...values,
+    tickets,
+    audience: audienceOffered(values.audience, capabilities) ? values.audience : "everyone",
+    minAccountAgeDays: capabilities.accountAge ? values.minAccountAgeDays : "",
+    entryWays: fitEntryWays(values.entryWays, capabilities),
+  }
+}
+
+export function audienceOffered(audience: Audience, capabilities: PlatformCapabilities): boolean {
+  switch (audience) {
+    case "everyone":
+      return true
+    case "followers":
+      return capabilities.followerCheck
+    case "subscribers":
+      return capabilities.subTiers
+  }
+}
+
+export function entryWaysOffered(ways: EntryWays, capabilities: PlatformCapabilities): boolean {
+  switch (ways) {
+    case "page":
+      return capabilities.pageEntry
+    case "page-and-chat":
+      return capabilities.pageEntry && capabilities.chatEntry
+    case "chat":
+      return capabilities.chatEntry
+  }
 }
 
 /** The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. */
@@ -175,13 +231,13 @@ export type Odds =
   | { readonly kind: "noBetter" }
   | { readonly kind: "times"; readonly group: Exclude<Group, "viewer">; readonly times: number }
 
-/** The odds the ticket counts give, or null while a count is not a whole number. */
-export function oddsOf(typed: Values["tickets"]): Odds | null {
-  if (!groups.every((group) => isWholeNumber(typed[group]))) return null
+/** The odds the ticket counts of the `shown` groups give, or null while a count is not a whole number. */
+export function oddsOf(typed: Values["tickets"], shown: readonly Group[]): Odds | null {
+  if (!shown.every((group) => isWholeNumber(typed[group]))) return null
   const tickets = ticketCounts(typed)
   if (tickets.viewer === 0) return { kind: "viewersOut" }
-  if (groups.every((group) => tickets[group] === tickets.viewer)) return { kind: "same" }
-  const best = bestGroup(tickets, groups)
+  if (shown.every((group) => tickets[group] === tickets.viewer)) return { kind: "same" }
+  const best = bestGroup(tickets, shown)
   if (best.group === "viewer" || best.tickets === tickets.viewer) return { kind: "noBetter" }
   return {
     kind: "times",
@@ -229,6 +285,12 @@ export function claimSecondsOf(claim: ClaimTime): number {
     case "custom":
       return Number(claim.minutes) * 60
   }
+}
+
+// Chat only on a platform without page entry, the page only on one without chat entry.
+function fitEntryWays(ways: EntryWays, capabilities: PlatformCapabilities): EntryWays {
+  if (entryWaysOffered(ways, capabilities)) return ways
+  return capabilities.pageEntry ? "page" : "chat"
 }
 
 function entryWaysOf(rules: GiveawayRules): EntryWays {

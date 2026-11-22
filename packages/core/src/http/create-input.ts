@@ -2,11 +2,13 @@ import type { ResolvedConfig } from "../config.ts"
 import {
   parseClaimSeconds,
   parseRules,
+  unsupportedRule,
   type GiveawayRules,
   type RulesConfig,
   type RulesIssueCode,
 } from "../domain/rules.ts"
 import type { Parsed } from "../lib/parsed.ts"
+import type { PlatformCapabilities } from "../platform/provider.ts"
 import type { Instant } from "../ports.ts"
 
 export type CreateConfig = RulesConfig
@@ -37,11 +39,12 @@ export type CreateIssue = {
   readonly code: RulesIssueCode | "not-a-timestamp" | "in-the-past"
 }
 
-/** The first invalid field of an untrusted create body, or the giveaway it describes. */
+/** The first invalid field of an untrusted create body, or the giveaway it describes; rules the streamer's platform cannot check are invalid. */
 export function parseCreateGiveaway(
   body: unknown,
   now: Instant,
   config: CreateConfig,
+  capabilities: PlatformCapabilities,
 ): Parsed<CreateGiveawayInput, CreateIssue> {
   if (!isRecord(body)) return fail("body", "not-an-object")
   const title = parseOptionalText(body, "title", config.titleMaxLength)
@@ -50,6 +53,8 @@ export function parseCreateGiveaway(
   if (!prize.ok) return prize
   const rules = parseRules(withKeywordNull(ownValue(body, "rules")), config)
   if (!rules.ok) return rules
+  const unsupported = unsupportedRule(rules.value, capabilities)
+  if (unsupported !== null) return { ok: false, issue: unsupported }
   const claimSeconds = parseClaimSeconds(ownValue(body, "claimSeconds"), config)
   if (!claimSeconds.ok) return claimSeconds
   const closesAt = parseClosesAt(ownValue(body, "closesAt"), now)

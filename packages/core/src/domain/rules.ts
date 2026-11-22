@@ -1,7 +1,8 @@
 import type { ResolvedConfig } from "../config.ts"
 import type { Parsed } from "../lib/parsed.ts"
+import type { PlatformCapabilities } from "../platform/provider.ts"
 import type { Instant } from "../ports.ts"
-import { bestGroup, groups, type Group, type Tickets } from "./groups.ts"
+import { bestGroup, groups, supportedGroups, type Group, type Tickets } from "./groups.ts"
 
 const msPerDay = 86_400_000
 
@@ -88,6 +89,8 @@ export type RulesIssueCode =
   | "unknown-kind"
   /** Page entry is off and no chat keyword is set, so nobody could enter. */
   | "no-entry-way"
+  /** The giveaway's platform cannot check the rule, so it would hand out the wrong tickets. */
+  | "unsupported"
 
 /** The first invalid field of untrusted input, as a path like `tickets.vip`. */
 export interface RulesIssue {
@@ -147,6 +150,24 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
     chatKeyword: chatKeyword.value,
     pageEntry: pageEntry.value,
   })
+}
+
+/** The first rule the platform cannot check, or null; a group the platform cannot tell must get 0 tickets. */
+export function unsupportedRule(
+  rules: GiveawayRules,
+  capabilities: PlatformCapabilities,
+): RulesIssue | null {
+  if (rules.subsOnly && !capabilities.subTiers) return unsupported("subsOnly")
+  if (rules.followersOnly && !capabilities.followerCheck) return unsupported("followersOnly")
+  if (rules.minAccountAgeDays !== null && !capabilities.accountAge) {
+    return unsupported("minAccountAgeDays")
+  }
+  const supported = supportedGroups(capabilities)
+  const untold = groups.find((group) => !supported.includes(group) && rules.tickets[group] > 0)
+  if (untold !== undefined) return unsupported(`tickets.${untold}`)
+  if (rules.pageEntry && !capabilities.pageEntry) return unsupported("pageEntry")
+  if (rules.chatKeyword !== null && !capabilities.chatEntry) return unsupported("chatKeyword")
+  return null
 }
 
 /** Whole days since the account was created; never negative, so a clock ahead of the platform's does not make an account younger than new. */
@@ -271,6 +292,10 @@ function isNonNegativeInteger(value: unknown): value is number {
 
 function isPositiveInteger(value: unknown): value is number {
   return isNonNegativeInteger(value) && value > 0
+}
+
+function unsupported(field: string): RulesIssue {
+  return { field, code: "unsupported" }
 }
 
 function ok<T>(value: T): Parsed<T, RulesIssue> {

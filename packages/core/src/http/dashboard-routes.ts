@@ -79,9 +79,14 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     if (!(await canCreateGiveaways(deps.config, deps.admins, c.get("account")))) {
       return c.json({ error: "streamer_not_approved" }, 403)
     }
-    const parsed = parseCreateGiveaway(await readJson(c), deps.clock.now(), deps.config)
-    if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
     const streamer = c.get("streamer")
+    const parsed = parseCreateGiveaway(
+      await readJson(c),
+      deps.clock.now(),
+      deps.config,
+      providerFor(deps.platforms, streamer.platform).capabilities,
+    )
+    if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
     const created = await insertWithFreshCode(deps, {
       id: randomId(deps.random),
       streamerId: streamer.streamerId,

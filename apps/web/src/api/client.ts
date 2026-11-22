@@ -922,6 +922,8 @@ const issueCodes = [
   "not-a-timestamp",
   "in-the-past",
   "unknown-kind",
+  "no-entry-way",
+  "unsupported",
 ] as const satisfies readonly CreateIssue["code"][]
 const viewerKinds = [
   "signed-out",

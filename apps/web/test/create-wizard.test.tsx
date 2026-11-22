@@ -582,6 +582,49 @@ describe("create wizard", () => {
     expect(back.getByText("Cup")).toBeTruthy()
   })
 
+  it("offers only the rules a platform without follower lookup, VIP, account age and chat entry can check", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      followerCheck: false,
+      vip: false,
+      accountAge: false,
+      chatEntry: false,
+    }
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": () =>
+        ok({ ...supportedSession, streamer: { ...supportedSession.streamer, capabilities } }),
+    })
+    const view = await openWizard()
+    fillGiveaway(view)
+    await toRules(view)
+
+    expect(view.queryByRole("radio", { name: /Followers only/ })).toBeNull()
+    expect(view.getByRole("radio", { name: /Subscribers only/ })).toBeTruthy()
+    expect(view.queryByLabelText("Minimum account age in days (optional)")).toBeNull()
+    expect(view.queryByLabelText("Followers")).toBeNull()
+    expect(view.queryByLabelText("VIPs")).toBeNull()
+    expect(view.getByLabelText("Subscribers, tier 1")).toBeTruthy()
+    expect(view.queryByRole("radio", { name: /Page and chat/ })).toBeNull()
+    expect(view.getByText("Everyone has the same chance of winning.")).toBeTruthy()
+    fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "2" } })
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect(body).toMatchObject({
+      rules: {
+        tickets: { viewer: 1, follower: 0, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 0, moderator: 2 },
+        followersOnly: false,
+        chatKeyword: null,
+        pageEntry: true,
+      },
+    })
+    expect(body).not.toHaveProperty("rules.minAccountAgeDays")
+  })
+
   it("sends a blank name and prize and reviews them as not set", async () => {
     const requests = mockFetch(withCreate(createdReply))
     const view = await openWizard()
@@ -669,6 +712,12 @@ describe("create wizard", () => {
 
   it.each([
     ["tickets.vip", "not-a-non-negative-integer", "Step 2 of 3: Entry rules", "VIPs"],
+    [
+      "minAccountAgeDays",
+      "unsupported",
+      "Step 2 of 3: Entry rules",
+      "Minimum account age in days (optional)",
+    ],
     ["claimKeyword", "too-long", "Step 2 of 3: Entry rules", "Chat word (optional)"],
     ["title", "blank", "Step 1 of 3: Basics", "Giveaway name (optional)"],
   ])(

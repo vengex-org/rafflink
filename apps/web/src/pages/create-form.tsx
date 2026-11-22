@@ -11,12 +11,15 @@ import {
   UsersIcon,
 } from "../components/icons.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
+import { useStreamerSession } from "../components/streamer-session.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { dashboardPath } from "../lib/routes.ts"
 import { isCreated, markCreated, readDraft, takeReconnectDraft } from "../lib/wizard-draft.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
+  everyCapability,
+  fitValues,
   stepIssue,
   stepOfField,
   toBody,
@@ -59,7 +62,9 @@ export function CreateForm({
     () => readDraft(state) ?? (query.get("step") === "2" ? takeReconnectDraft() : null),
   )
   const [id] = useState(() => saved?.id ?? crypto.randomUUID())
-  const [values, setValues] = useState(saved?.values ?? seed)
+  const [typed, setValues] = useState(saved?.values ?? seed)
+  const capabilities = useStreamerSession().streamer?.capabilities ?? everyCapability
+  const values = fitValues(typed, capabilities)
   const [furthest, setFurthest] = useState<Step>(saved?.furthest ?? 1)
   const wanted = query.get("step")
   const step = clampStep(wanted, furthest)
@@ -69,7 +74,7 @@ export function CreateForm({
 
   // Decided when the wizard opens: the create that finishes this run must not send it to the dashboard.
   const [created] = useState(() => saved !== null && isCreated(saved.id))
-  const draftState = (reached: Step) => ({ draft: { id, values, furthest: reached } })
+  const draftState = (reached: Step) => ({ draft: { id, values: typed, furthest: reached } })
 
   const showStep = (target: Step, mode: "push" | "replace", reached: Step = furthest) =>
     setQuery(
@@ -91,9 +96,9 @@ export function CreateForm({
   )
   useEffect(() => {
     if (created) return
-    const timer = setTimeout(() => saveDraft(values, furthest), saveAfterMs)
+    const timer = setTimeout(() => saveDraft(typed, furthest), saveAfterMs)
     return () => clearTimeout(timer)
-  }, [values, furthest, created])
+  }, [typed, furthest, created])
 
   // An address that asks for a step the answers have not reached, or for none, is corrected in place.
   useEffect(() => {
@@ -174,8 +179,15 @@ export function CreateForm({
           </p>
         )}
         {step === 1 ? <BasicsStep values={values} setValues={setValues} issue={issue} /> : null}
-        {step === 2 ? <RulesStep values={values} setValues={setValues} issue={issue} /> : null}
-        {step === 3 ? <ReviewStep values={values} /> : null}
+        {step === 2 ? (
+          <RulesStep
+            values={values}
+            setValues={setValues}
+            issue={issue}
+            capabilities={capabilities}
+          />
+        ) : null}
+        {step === 3 ? <ReviewStep values={values} capabilities={capabilities} /> : null}
         {step === 3 && issue !== null ? <p className="field-error">{t(issue.message)}</p> : null}
         {failed ? (
           <p role="alert" className="form-alert">
