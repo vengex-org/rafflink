@@ -237,6 +237,24 @@ describe("streamer sign-in", () => {
     )
   })
 
+  it("asks a streamer who granted the chat entry scopes for them again on a normal sign-in", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?scopes=chat-entry")
+
+    const sameBrowser = await browser.request("/auth/twitch/streamer/start")
+    const sessionOnly = await harness.app.request("/auth/twitch/streamer/start", {
+      headers: { cookie: `rl_streamer=${browser.cookie("rl_streamer")}` },
+    })
+    const freshBrowser = await new Browser(harness).request("/auth/twitch/streamer/start")
+
+    expect(scopesOf(sameBrowser)).toContain("moderator:read:followers")
+    expect(scopesOf(sessionOnly)).toContain("moderator:read:followers")
+    expect(scopesOf(freshBrowser)).not.toContain("moderator:read:followers")
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    const [token] = sqlRows(harness.accountsDb, "SELECT scopes FROM streamer_tokens")
+    expect(token?.scopes).toContain("moderator:read:followers")
+  })
+
   it("returns to the page the sign-in was started from", async () => {
     const signIn = await new Browser(harness).signInAs(
       users.streamerA.id,
@@ -877,6 +895,11 @@ describe("viewer entry", () => {
     error.mockRestore()
   })
 })
+
+// The scopes a sign-in start asks Twitch for, read from its redirect.
+function scopesOf(response: Response): string[] | undefined {
+  return new URL(response.headers.get("location") ?? "").searchParams.get("scope")?.split(" ")
+}
 
 async function restart(env: Record<string, string>): Promise<void> {
   await harness.stop()

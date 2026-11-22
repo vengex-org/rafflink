@@ -117,8 +117,10 @@ per address like the leaf list) that answers yes or no for chat entrants only; p
 
 - Scope: `moderator:read:followers` is not part of the base streamer scopes. When a streamer turns chat entry on
   and the stored token lacks it, the wizard offers "Reconnect Twitch" (`/auth/twitch/streamer/start?scopes=chat-entry`,
-  base scopes plus this one). A chat-entry giveaway whose token still lacks it counts every chatter as not
-  following and logs it once.
+  base scopes plus this one); the wizard keeps its answers across the round trip. Twitch grants only the
+  scopes a sign-in asks for, so a later normal sign-in asks for it again when the browser's last sign-in
+  granted it (a signed cookie) or the signed-in streamer's stored token holds it. A chat-entry giveaway whose
+  token still lacks it counts every chatter as not following and logs it once.
 - Helix budget: the follow reads use the streamer's token, whose bucket is 800 points a minute; 15 every 3 s
   is 300. The profile reads use the app token, whose 800 points a minute are shared by every giveaway of the
   installation (and the badge reads); one call per check per giveaway with waiting chatters is 20 a minute, so

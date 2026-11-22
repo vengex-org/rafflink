@@ -18,6 +18,7 @@ import {
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { claimTimeText, recentWinnersText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
 import { chatEntryReconnectPath, dashboardNewPath } from "../lib/routes.ts"
+import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import {
   claimPresets,
@@ -235,7 +236,11 @@ function EntryWaysField({ values, setValues, issue }: StepProps) {
       {usesChat && streamer !== null && !streamer.chatEntryReady ? (
         <div className="help" role="note">
           <p>{t("wizard.reconnect.text")}</p>
-          <a className="button outlined" href={chatEntryReconnectPath(dashboardNewPath())}>
+          <a
+            className="button outlined"
+            href={chatEntryReconnectPath(dashboardNewPath({ step: 2 }))}
+            onClick={() => keepDraftForReconnect(values)}
+          >
             <TwitchIcon />
             {t("wizard.reconnect.button")}
           </a>

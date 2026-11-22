@@ -772,7 +772,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.entry.chat.help":
     "Diváci sa zapoja len napísaním kľúčového slova do tvojho chatu. Stránka ukáže kľúčové slovo a dovolí im overiť si, či sú v súťaži.",
   "wizard.reconnect.text":
-    "Aby Rafflink overil, či ťa divák z chatu sleduje, potrebuje ešte jedno povolenie Twitchu (čítať tvojich sledujúcich). Pripoj Twitch znova a potom súťaž nastav ešte raz.",
+    "Aby Rafflink overil, či ťa divák z chatu sleduje, potrebuje ešte jedno povolenie Twitchu (čítať tvojich sledujúcich). Pripoj Twitch znova, tvoje odpovede ostanú.",
   "wizard.reconnect.button": "Pripojiť Twitch znova",
   "wizard.chatKeyword.label": "Kľúčové slovo na zapojenie",
   "wizard.chatKeyword.help":

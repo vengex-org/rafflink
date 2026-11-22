@@ -552,7 +552,7 @@ describe("create wizard", () => {
 
     const reconnect = await view.findByRole("link", { name: "Reconnect Twitch" })
     expect(reconnect.getAttribute("href")).toBe(
-      "/auth/twitch/streamer/start?scopes=chat-entry&return=%2Fdashboard%2Fnew",
+      "/auth/twitch/streamer/start?scopes=chat-entry&return=%2Fdashboard%2Fnew%3Fstep%3D2",
     )
     cleanup()
     mockFetch({ ...listed, "GET /api/session": session(true) })
@@ -560,6 +560,26 @@ describe("create wizard", () => {
     await toRules(ready)
     fireEvent.click(ready.getByRole("radio", { name: /Page and chat/ }))
     expect(ready.queryByRole("link", { name: "Reconnect Twitch" })).toBeNull()
+  })
+
+  it("keeps the answers across Reconnect Twitch and comes back to the rules step", async () => {
+    mockFetch({ ...listed, "GET /api/session": session(false) })
+    const view = await openWizard()
+    fillGiveaway(view)
+    await toRules(view)
+    fireEvent.click(view.getByRole("radio", { name: /Page and chat/ }))
+    fireEvent.change(view.getByLabelText("Entry keyword"), { target: { value: "!join" } })
+    fireEvent.click(await view.findByRole("link", { name: "Reconnect Twitch" }))
+    cleanup()
+
+    mockFetch({ ...listed, "GET /api/session": session(true) })
+    const back = renderApp("/dashboard/new?step=2")
+
+    expect(await back.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    expect(inputOf(back.getByLabelText("Entry keyword")).value).toBe("!join")
+    next(back)
+    await back.findByText("Step 3 of 3: Review")
+    expect(back.getByText("Cup")).toBeTruthy()
   })
 
   it("sends a blank name and prize and reviews them as not set", async () => {

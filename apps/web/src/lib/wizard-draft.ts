@@ -1,6 +1,6 @@
 import { groups } from "@rafflink/core/domain/groups"
 import { claimPresets, type Step, type Values } from "../pages/create-values.ts"
-import { readSessionStored, writeSessionStored } from "./safe-storage.ts"
+import { readSessionStored, removeSessionStored, writeSessionStored } from "./safe-storage.ts"
 
 /**
  * One run through the create wizard as its history entries keep it: the answers and the furthest step checked,
@@ -14,6 +14,7 @@ export interface Draft {
 }
 
 const createdKey = "rafflink-created-drafts"
+const reconnectKey = "rafflink-reconnect-draft"
 // Enough for every wizard run of a session; the oldest are forgotten after that.
 const createdKept = 50
 
@@ -26,6 +27,24 @@ export function readDraft(state: unknown): Draft | null {
   if (!("furthest" in draft) || !isStep(draft.furthest)) return null
   if (!("values" in draft) || !isValues(draft.values)) return null
   return { id: draft.id, values: draft.values, furthest: draft.furthest }
+}
+
+/** Keeps the answers of the rules step across "Reconnect Twitch", which leaves the page for Twitch and comes back without the history entry. */
+export function keepDraftForReconnect(values: Values): void {
+  const draft: Draft = { id: crypto.randomUUID(), values, furthest: 2 }
+  writeSessionStored(reconnectKey, JSON.stringify(draft))
+}
+
+/** The answers kept before "Reconnect Twitch", once; null when there are none or they do not read as a draft. */
+export function takeReconnectDraft(): Draft | null {
+  const text = readSessionStored(reconnectKey)
+  if (text === null) return null
+  removeSessionStored(reconnectKey)
+  try {
+    return readDraft({ draft: JSON.parse(text) })
+  } catch {
+    return null
+  }
 }
 
 export function isCreated(id: string): boolean {

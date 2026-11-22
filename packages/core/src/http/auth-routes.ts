@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+import { Hono, type Context } from "hono"
 import { streamerTokenAad } from "../accounts/streamer-token.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import { giveawayPath } from "../lib/page-paths.ts"
@@ -23,6 +23,9 @@ import {
   startViewerSession,
   takeOAuthState,
   startPendingEntry,
+  readChatEntryHint,
+  readStreamerSession,
+  writeChatEntryHint,
 } from "./session.ts"
 
 /**
@@ -54,7 +57,9 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     const verifier = codeVerifier(deps.random)
     const returnPath = safeReturnPath(c.req.query("return")) ?? defaultReturnPath
     // `?scopes=chat-entry` is the wizard's "Reconnect Twitch": the base scopes plus the ones chat entry needs.
-    const chatEntry = c.req.query("scopes") === "chat-entry"
+    // Twitch grants only the scopes a sign-in asks for, so a streamer who granted them before is asked again.
+    const chatEntry =
+      c.req.query("scopes") === "chat-entry" || (await grantedChatEntry(c, deps, provider))
     await startOAuthState(c, deps, "streamer", {
       state,
       nonce,
@@ -114,6 +119,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       platform,
       platformUserId: streamer.platformUserId,
     })
+    await writeChatEntryHint(c, deps, saved.chatEntry)
     return c.redirect(saved.returnPath ?? defaultReturnPath)
   })
 
@@ -206,6 +212,19 @@ interface StreamerGrant {
   readonly displayName: string
   readonly profileImageUrl: string | null
   readonly refreshToken: string
+}
+
+// The browser's last sign-in granted them, or the signed-in streamer's stored token holds them.
+async function grantedChatEntry(
+  c: Context,
+  deps: AppDeps,
+  provider: PlatformProvider,
+): Promise<boolean> {
+  if (await readChatEntryHint(c, deps)) return true
+  const session = await readStreamerSession(c, deps)
+  if (session === null || session.platform !== provider.platform) return false
+  const token = await deps.accounts.findStreamerToken(session.streamerId)
+  return token !== null && provider.chatEntryScopes.every((scope) => token.scopes.includes(scope))
 }
 
 function streamerScopes(

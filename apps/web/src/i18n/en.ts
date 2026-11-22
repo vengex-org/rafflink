@@ -767,7 +767,7 @@ export const en = {
   "wizard.entry.chat.help":
     "Viewers enter only by typing a keyword in your chat. The page shows the keyword and lets them check whether they are in.",
   "wizard.reconnect.text":
-    "To check whether a chat entrant follows you, Rafflink needs one more Twitch permission (read your followers). Reconnect Twitch, then set up the giveaway again.",
+    "To check whether a chat entrant follows you, Rafflink needs one more Twitch permission (read your followers). Reconnect Twitch; your answers stay.",
   "wizard.reconnect.button": "Reconnect Twitch",
   "wizard.chatKeyword.label": "Entry keyword",
   "wizard.chatKeyword.help":
