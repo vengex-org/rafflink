@@ -602,8 +602,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "legal.footerLabel": "Právne informácie",
   "legal.updated": "Posledná aktualizácia: {date}",
 
-  "legal.contact.none": "osobu, ktorá ti poslala tento odkaz",
-  "legal.operator.id": "IČO {id}",
+  "legal.operator.id": "identifikačné číslo {id}",
+  "legal.unavailable": "Údaje o tom, kto prevádzkuje túto inštanciu, sa nepodarilo načítať.",
+  "legal.retry": "Skúsiť znova",
 
   "privacy.title": "Zásady ochrany osobných údajov",
   "privacy.intro":
@@ -640,13 +641,13 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Na udržanie prihlásenia cez cookies, ktoré sú na to nevyhnutné. Rafflink nepoužíva reklamu, analytiku ani sledovanie a údaje nepredáva ani neposkytuje na marketing.",
   "privacy.retention.h": "Ako dlho sa údaje uchovávajú",
   "privacy.retention.i1":
-    "Zapojenia (mená, URL obrázkov, skupiny, tikety, časy zapojenia) sa mažú 30 dní po uzavretí giveawayu.",
+    "Zapojenia (mená, URL obrázkov, skupiny, tikety, časy zapojenia) sa mažú najneskôr 30 dní po uzavretí giveawayu; prevádzkovateľ môže nastaviť kratšiu dobu.",
   "privacy.retention.i2":
     "Keď streamer odoberie Rafflinku prístup na Twitchi, vymaže sa iba uložený Twitch token. Účet a giveawaye zostávajú, kým streamer nepožiada prevádzkovateľa o ich vymazanie (pozri kontakt vyššie).",
   "privacy.retention.i3":
     "Prihlasovacie kódy čakajúce vo fronte sa po niekoľkých minútach zahodia.",
   "privacy.retention.i4":
-    "Logy hostiteľa sa uchovávajú tak dlho, ako ich podľa vlastných podmienok uchováva poskytovateľ hostingu.",
+    "Logy hostiteľa uchováva prevádzkovateľ alebo jeho poskytovateľ hostingu podľa vlastných podmienok.",
   "privacy.retention.i5":
     "Zoznam výhercov, Merkleho koreň zoznamu zapojení a zoznam jeho listov (hashe a počty tiketov, bez mien) zostávajú pri giveawayi, aby si žrebovanie mohol neskôr overiť ktokoľvek.",
   "privacy.recipients.h": "Kto ďalší údaje vidí",
@@ -662,18 +663,20 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.cookies.h": "Cookies a lokálne úložisko",
   "privacy.cookies.p1":
     "Rafflink nastavuje iba nevyhnutne potrebné cookies, preto sa nezobrazuje žiadny súhlasový banner. Všetky sú HTTP-only a nepoužívajú sa na nič iné.",
-  "privacy.cookies.i1": "rl_streamer: drží streamera prihláseného, 7 dní.",
+  "privacy.cookies.i1": "rl_streamer: drží streamera prihláseného, predvolene 7 dní.",
   "privacy.cookies.i2":
-    "rl_viewer: umožní vracajúcemu sa divákovi vidieť výsledok bez nového prihlásenia, 30 dní.",
+    "rl_viewer: umožní vracajúcemu sa divákovi vidieť výsledok bez nového prihlásenia, predvolene 30 dní.",
   "privacy.cookies.i3":
-    "rl_oauth_streamer_* a rl_oauth_viewer_*: chránia prihlásenie pred sfalšovaním, 10 minút.",
+    "rl_oauth_streamer_* a rl_oauth_viewer_*: chránia prihlásenie pred sfalšovaním, predvolene 10 minút.",
   "privacy.cookies.i4":
-    "rl_pending_*: umožní prehliadaču, ktorý zaradil zapojenie do fronty, vyzdvihnúť jeho výsledok, 10 minút.",
+    "rl_pending_*: umožní prehliadaču, ktorý zaradil zapojenie do fronty, vyzdvihnúť jeho výsledok, predvolene 10 minút.",
   "privacy.cookies.i5":
     "Lokálne úložisko prehliadača si pamätá tvoj výber jazyka a témy a čistý režim živej stránky. Úložisko relácie drží približne 30 sekúnd kópiu načítanej stránky giveawayu vrátane tvojho stavu v nej. Zariadenie neopúšťa ani jedno.",
   "privacy.rights.h": "Tvoje práva",
   "privacy.rights.p1":
     "Máš práva uvedené nižšie. Napíš na {contact}. Odpovieme do jedného mesiaca.",
+  "privacy.rights.none":
+    "Prevádzkovateľ tejto inštancie tu nezverejnil kontaktné údaje a osoba, ktorá ti poslala odkaz, nemusí byť prevádzkovateľ. Bez kontaktu tu nie je zaručený spôsob, ako tieto práva uplatniť cez túto stránku.",
   "privacy.rights.p2":
     "Prístup Rafflinku môžeš kedykoľvek odobrať aj v nastaveniach Twitchu v časti Connections.",
   "privacy.rights.i1": "Prístup k údajom, ich oprava, obmedzenie spracúvania a prenosnosť.",
@@ -734,6 +737,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Tieto podmienky môžeme zmeniť. Dátum na začiatku ukazuje aktuálnu verziu a používaním služby po zmene ju prijímaš. Giveaway môžeme odstrániť a účet zablokovať, ak porušuje tieto podmienky.",
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Otázky k týmto podmienkam: {contact}.",
+  "terms.contact.none":
+    "Prevádzkovateľ tejto inštancie tu nezverejnil kontaktné údaje. Osoba, ktorá ti poslala odkaz, nemusí byť prevádzkovateľ.",
   "drawResult.round-pending":
     "Náhodné číslo ešte nie je zverejnené. Víťaz sa vyžrebuje sám, hneď ako bude.",
   "drawResult.round-due": "Náhodné číslo už letí. Víťaz sa vyžrebuje sám o chvíľu.",

@@ -415,9 +415,45 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("requires the operator e-mail when the operator is named", () => {
+    expect(failure({ ...required, OPERATOR_NAME: "Example Operator" })).toMatchObject({
+      env: "OPERATOR_EMAIL",
+      reason: "missing",
+    })
+    expect(
+      failure({ ...required, OPERATOR_NAME: "Example Operator", OPERATOR_EMAIL: "  " }),
+    ).toMatchObject({ env: "OPERATOR_EMAIL", reason: "missing" })
+  })
+
+  it("rejects operator details and a legal date without an operator name", () => {
+    const orphans = {
+      OPERATOR_ADDRESS: "1 Example Street",
+      OPERATOR_ID: "12345678",
+      OPERATOR_EMAIL: "legal@example.com",
+      LEGAL_UPDATED: "2026-02-28",
+    }
+    for (const [env, value] of Object.entries(orphans)) {
+      expect(failure({ ...required, [env]: value })).toMatchObject({
+        env,
+        reason: "requires-operator-name",
+      })
+    }
+  })
+
   it("rejects an operator e-mail that is not an address", () => {
-    for (const value of ["legal", "legal@", "@example.com", "legal@example", "a b@example.com"]) {
-      expect(failure({ ...required, OPERATOR_EMAIL: value })).toMatchObject({
+    const invalid = [
+      "legal",
+      "legal@",
+      "@example.com",
+      "legal@example",
+      "a b@example.com",
+      "legal@example.com.",
+      "legal@example..com",
+    ]
+    for (const value of invalid) {
+      expect(
+        failure({ ...required, OPERATOR_NAME: "Example Operator", OPERATOR_EMAIL: value }),
+      ).toMatchObject({
         env: "OPERATOR_EMAIL",
         reason: "not-an-email",
       })
@@ -425,8 +461,24 @@ describe("resolveConfig", () => {
   })
 
   it("rejects a legal update date that is not a real ISO date", () => {
-    for (const value of ["2026-02-30", "2026-2-3", "21.11.2026", "2026-13-01", "tomorrow"]) {
-      expect(failure({ ...required, LEGAL_UPDATED: value })).toMatchObject({
+    const invalid = [
+      "2026-02-30",
+      "2026-2-3",
+      "21.11.2026",
+      "2026-13-01",
+      "tomorrow",
+      "2026-02-28T10:00",
+      "2026-02-28T10:00:00Z",
+    ]
+    for (const value of invalid) {
+      expect(
+        failure({
+          ...required,
+          OPERATOR_NAME: "Example Operator",
+          OPERATOR_EMAIL: "legal@example.com",
+          LEGAL_UPDATED: value,
+        }),
+      ).toMatchObject({
         env: "LEGAL_UPDATED",
         reason: "not-an-iso-date",
       })

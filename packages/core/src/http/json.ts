@@ -100,7 +100,7 @@ export interface OperatorJson {
   readonly name: string
   readonly address: string | null
   readonly id: string | null
-  readonly email: string | null
+  readonly email: string
   readonly legalUpdated: string | null
 }
 

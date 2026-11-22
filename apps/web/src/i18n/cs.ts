@@ -605,8 +605,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "legal.footerLabel": "Právní informace",
   "legal.updated": "Poslední aktualizace: {date}",
 
-  "legal.contact.none": "osobu, která ti poslala tento odkaz",
-  "legal.operator.id": "IČO {id}",
+  "legal.operator.id": "identifikační číslo {id}",
+  "legal.unavailable": "Údaje o tom, kdo tuto instanci provozuje, se nepodařilo načíst.",
+  "legal.retry": "Zkusit znovu",
 
   "privacy.title": "Zásady ochrany osobních údajů",
   "privacy.intro":
@@ -643,12 +644,12 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "K udržení přihlášení pomocí cookies, které jsou k tomu nezbytné. Rafflink nepoužívá reklamu, analytiku ani sledování a údaje neprodává ani nepředává pro marketing.",
   "privacy.retention.h": "Jak dlouho se údaje uchovávají",
   "privacy.retention.i1":
-    "Zapojení (jména, URL obrázků, skupiny, tikety, časy zapojení) se mažou 30 dní po uzavření giveawaye.",
+    "Zapojení (jména, URL obrázků, skupiny, tikety, časy zapojení) se mažou nejpozději 30 dní po uzavření giveawaye; provozovatel může nastavit kratší dobu.",
   "privacy.retention.i2":
     "Když streamer odebere Rafflinku přístup na Twitchi, smaže se jen uložený Twitch token. Účet a giveawaye zůstávají, dokud streamer nepožádá provozovatele o jejich smazání (viz kontakt výše).",
   "privacy.retention.i3": "Přihlašovací kódy čekající ve frontě se po několika minutách zahodí.",
   "privacy.retention.i4":
-    "Logy hostitele se uchovávají tak dlouho, jak je podle vlastních podmínek uchovává poskytovatel hostingu.",
+    "Logy hostitele uchovává provozovatel nebo jeho poskytovatel hostingu podle vlastních podmínek.",
   "privacy.retention.i5":
     "Seznam výherců, Merkleův kořen seznamu zapojení a seznam jeho listů (hashe a počty tiketů, bez jmen) zůstávají u giveawaye, aby losování mohl později ověřit kdokoli.",
   "privacy.recipients.h": "Kdo další údaje vidí",
@@ -664,17 +665,19 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",
-  "privacy.cookies.i1": "rl_streamer: drží streamera přihlášeného, 7 dní.",
+  "privacy.cookies.i1": "rl_streamer: drží streamera přihlášeného, výchozí 7 dní.",
   "privacy.cookies.i2":
-    "rl_viewer: umožní vracejícímu se divákovi vidět výsledek bez nového přihlášení, 30 dní.",
+    "rl_viewer: umožní vracejícímu se divákovi vidět výsledek bez nového přihlášení, výchozí 30 dní.",
   "privacy.cookies.i3":
-    "rl_oauth_streamer_* a rl_oauth_viewer_*: chrání přihlášení před zfalšováním, 10 minut.",
+    "rl_oauth_streamer_* a rl_oauth_viewer_*: chrání přihlášení před zfalšováním, výchozí 10 minut.",
   "privacy.cookies.i4":
-    "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, 10 minut.",
+    "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, výchozí 10 minut.",
   "privacy.cookies.i5":
     "Lokální úložiště prohlížeče si pamatuje tvůj výběr jazyka a motivu a čistý režim živé stránky. Úložiště relace drží přibližně 30 sekund kopii načtené stránky giveawaye včetně tvého stavu v ní. Zařízení neopouští ani jedno.",
   "privacy.rights.h": "Tvá práva",
   "privacy.rights.p1": "Máš práva uvedená níže. Napiš na {contact}. Odpovíme do jednoho měsíce.",
+  "privacy.rights.none":
+    "Provozovatel této instance tu nezveřejnil kontaktní údaje a osoba, která ti poslala odkaz, nemusí být provozovatel. Bez kontaktu tu není zaručený způsob, jak tato práva uplatnit přes tuto stránku.",
   "privacy.rights.p2":
     "Přístup Rafflinku můžeš kdykoli odebrat také v nastavení Twitche v části Connections.",
   "privacy.rights.i1": "Přístup k údajům, jejich oprava, omezení zpracování a přenositelnost.",
@@ -734,6 +737,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Tyto podmínky můžeme změnit. Datum na začátku ukazuje aktuální verzi a používáním služby po změně ji přijímáš. Giveaway můžeme odstranit a účet zablokovat, pokud porušuje tyto podmínky.",
   "terms.contact.h": "Kontakt",
   "terms.contact.p1": "Dotazy k těmto podmínkám: {contact}.",
+  "terms.contact.none":
+    "Provozovatel této instance tu nezveřejnil kontaktní údaje. Osoba, která ti poslala odkaz, nemusí být provozovatel.",
   "drawResult.round-pending":
     "Náhodné číslo ještě není zveřejněné. Vítěz se vylosuje sám, hned jak bude.",
   "drawResult.round-due": "Náhodné číslo už letí. Vítěz se vylosuje sám za chvíli.",

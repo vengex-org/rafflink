@@ -187,7 +187,7 @@ function operatorOf(source: Json): OperatorJson {
     name: text(source, "name"),
     address: nullableText(source, "address"),
     id: nullableText(source, "id"),
-    email: nullableText(source, "email"),
+    email: text(source, "email"),
     legalUpdated: nullableText(source, "legalUpdated"),
   }
 }

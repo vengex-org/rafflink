@@ -6,6 +6,7 @@ import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { repositoryUrl } from "../lib/links.ts"
+import type { Load } from "../lib/use-load.ts"
 
 /** One headed part of a legal text: paragraphs first, then a bullet list. */
 interface Section {
@@ -31,38 +32,44 @@ export function TermsPage() {
 // The other legal text is one click away in the footer every legal page ends with, so the page does not link it again.
 function LegalPage({ document }: { readonly document: LegalDocument }) {
   const { t, rich, date } = useI18n()
-  const { operator, loaded } = useStreamerSession()
+  const { operator: load, reload } = useStreamerSession()
+  const operator = load.state === "ready" ? load.value : null
   const placeholders: Readonly<Record<string, ReactNode>> = {
     operator: operator === null ? "" : operatorDetails(operator, t),
-    contact: operator?.email ?? t("legal.contact.none"),
+    contact: operator?.email ?? "",
     repository: (
       <ExternalLink kind="own" href={repositoryUrl}>
         {repositoryUrl}
       </ExternalLink>
     ),
   }
-  // An instance without an operator gets the generic paragraph; until the session answers, neither shows.
-  const paragraph = (key: MessageKey): MessageKey | null => {
-    const withoutOperator = operatorVariants[key]
-    if (withoutOperator === undefined) return key
-    if (!loaded) return null
-    return operator === null ? withoutOperator : key
-  }
   return (
     <Page width="text" as="article" className="legal">
       <h1>{t(document.title)}</h1>
-      <p className="legal-updated">
-        {t("legal.updated", {
-          date: date(Date.parse(`${operator?.legalUpdated ?? templateUpdated}T00:00`)),
-        })}
-      </p>
+      {load.state === "ready" ? (
+        <p className="legal-updated">
+          {t("legal.updated", {
+            date: date(Date.parse(`${operator?.legalUpdated ?? templateUpdated}T00:00`)),
+          })}
+        </p>
+      ) : null}
       <p>{rich(document.intro, placeholders)}</p>
       {document.sections.map((section) => (
         <section key={section.heading}>
           <h2>{t(section.heading)}</h2>
           {section.paragraphs.map((key) => {
-            const shown = paragraph(key)
-            return shown === null ? null : <p key={key}>{rich(shown, placeholders)}</p>
+            const shown = paragraphFor(key, load)
+            if (shown === null) return null
+            return (
+              <p key={key}>
+                {rich(shown, placeholders)}
+                {shown === "legal.unavailable" ? (
+                  <button type="button" className="button" onClick={reload}>
+                    {t("legal.retry")}
+                  </button>
+                ) : null}
+              </p>
+            )
           })}
           {section.items.length === 0 ? null : (
             <ul>
@@ -80,10 +87,32 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
 /** The day the template texts last changed, as an ISO date. Update it with every edit of the texts. */
 const templateUpdated = "2026-11-22"
 
-/** Paragraphs naming the operator, and what an instance without one shows in their place. */
-const operatorVariants: Readonly<Partial<Record<MessageKey, MessageKey>>> = {
+/** Paragraphs naming the operator or its contact, and what an instance without one shows in their place. */
+const operatorTexts: Readonly<Partial<Record<MessageKey, MessageKey>>> = {
   "privacy.controller.p1": "privacy.controller.none",
   "terms.service.p1": "terms.service.none",
+  "privacy.rights.p1": "privacy.rights.none",
+  "terms.contact.p1": "terms.contact.none",
+}
+
+/** Where a failed session call says so; the other operator paragraphs stay hidden then. */
+const unavailableKeys: ReadonlySet<MessageKey> = new Set([
+  "privacy.controller.p1",
+  "terms.service.p1",
+])
+
+/** Neither the operator text nor the "no operator" text shows until the session call has answered, and a failed call never claims either. */
+function paragraphFor(key: MessageKey, operator: Load<OperatorJson | null>): MessageKey | null {
+  const withoutOperator = operatorTexts[key]
+  if (withoutOperator === undefined) return key
+  switch (operator.state) {
+    case "loading":
+      return null
+    case "failed":
+      return unavailableKeys.has(key) ? "legal.unavailable" : null
+    case "ready":
+      return operator.value === null ? withoutOperator : key
+  }
 }
 
 function operatorDetails(operator: OperatorJson, t: I18n["t"]): string {

@@ -598,8 +598,9 @@ export const en = {
   "legal.footerLabel": "Legal",
   "legal.updated": "Last updated: {date}",
 
-  "legal.contact.none": "the person who shared this link with you",
   "legal.operator.id": "business ID {id}",
+  "legal.unavailable": "The details of who runs this instance could not be loaded.",
+  "legal.retry": "Try again",
 
   "privacy.title": "Privacy policy",
   "privacy.intro":
@@ -636,12 +637,12 @@ export const en = {
     "To keep you signed in with cookies that are strictly necessary for that. Rafflink uses no advertising, no analytics and no tracking, and it does not sell or share data for marketing.",
   "privacy.retention.h": "How long data is kept",
   "privacy.retention.i1":
-    "Entries (names, picture URLs, groups, tickets, entry times) are deleted 30 days after the giveaway closes.",
+    "Entries (names, picture URLs, groups, tickets, entry times) are deleted at most 30 days after the giveaway closes; the operator may set a shorter time.",
   "privacy.retention.i2":
     "When a streamer removes Rafflink's access on Twitch, only the stored Twitch token is deleted. The account and its giveaways stay until the streamer asks the operator to delete them (see the contact above).",
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
   "privacy.retention.i4":
-    "Host logs are kept as long as the hosting provider keeps them under its own terms.",
+    "Host logs are kept by the operator or its hosting provider under their own terms.",
   "privacy.retention.i5":
     "The winner list, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay with the giveaway, so anyone can check the draw later.",
   "privacy.recipients.h": "Who else sees the data",
@@ -657,18 +658,20 @@ export const en = {
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",
-  "privacy.cookies.i1": "rl_streamer: keeps a streamer signed in, 7 days.",
+  "privacy.cookies.i1": "rl_streamer: keeps a streamer signed in, 7 days by default.",
   "privacy.cookies.i2":
-    "rl_viewer: lets a returning viewer see their result without signing in again, 30 days.",
+    "rl_viewer: lets a returning viewer see their result without signing in again, 30 days by default.",
   "privacy.cookies.i3":
-    "rl_oauth_streamer_* and rl_oauth_viewer_*: protect a sign-in against forgery, 10 minutes.",
+    "rl_oauth_streamer_* and rl_oauth_viewer_*: protect a sign-in against forgery, 10 minutes by default.",
   "privacy.cookies.i4":
-    "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes.",
+    "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes by default.",
   "privacy.cookies.i5":
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
   "privacy.rights.h": "Your rights",
   "privacy.rights.p1":
     "You have the rights listed below. Write to {contact}. We answer within one month.",
+  "privacy.rights.none":
+    "This instance's operator has not published contact details here, and the person who shared the link with you may not be the operator. Without a contact there is no promised way to use these rights through this page.",
   "privacy.rights.p2":
     "You can also remove Rafflink's access at any time in your Twitch settings under Connections.",
   "privacy.rights.i1":
@@ -729,6 +732,8 @@ export const en = {
     "We may change these terms. The date at the top shows the current version, and using the service after a change means you accept it. We may remove a giveaway or block an account that breaks these terms.",
   "terms.contact.h": "Contact",
   "terms.contact.p1": "Questions about these terms: {contact}.",
+  "terms.contact.none":
+    "This instance's operator has not published contact details here. The person who shared the link with you may not be the operator.",
   "drawResult.round-pending":
     "The random number is not published yet. The winner is drawn by itself as soon as it is.",
   "drawResult.round-due":

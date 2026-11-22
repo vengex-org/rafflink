@@ -4,7 +4,7 @@ import { useNavigate } from "react-router"
 import { getSession, logout, sessionLost } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useAction } from "../lib/use-action.ts"
-import { useLoad } from "../lib/use-load.ts"
+import { useLoad, type Load } from "../lib/use-load.ts"
 
 export type SignedInStreamer = NonNullable<SessionJson["streamer"]>
 
@@ -14,10 +14,9 @@ export interface StreamerSession {
   readonly streamer: SignedInStreamer | null
   /** The deployment's support page, signed in or not; null while the session is unknown or when `DONATE_URL` is unset. */
   readonly donateUrl: string | null
-  /** Who runs the instance; null while the session is unknown or when `OPERATOR_NAME` is unset. */
-  readonly operator: OperatorJson | null
-  /** False until the session call has answered, so a page can tell "not yet known" from "no operator". */
-  readonly loaded: boolean
+  /** Who runs the instance: null inside `ready` when `OPERATOR_NAME` is unset, never null for a call that has not answered or failed. */
+  readonly operator: Load<OperatorJson | null>
+  readonly reload: () => void
   readonly busy: boolean
   readonly message: MessageKey | null
   readonly signOut: () => void
@@ -26,8 +25,8 @@ export interface StreamerSession {
 const unknownSession: StreamerSession = {
   streamer: null,
   donateUrl: null,
-  operator: null,
-  loaded: false,
+  operator: { state: "loading" },
+  reload: () => {},
   busy: false,
   message: null,
   signOut: () => {},
@@ -47,7 +46,8 @@ export function StreamerSessionProvider({ children }: { readonly children: React
   const streamer = session?.streamer ?? null
   // A deployment fact, so it outlives a logout.
   const donateUrl = result.state === "ready" ? result.value.donateUrl : null
-  const operator = result.state === "ready" ? result.value.operator : null
+  const operator: Load<OperatorJson | null> =
+    result.state === "ready" ? { state: "ready", value: result.value.operator } : result
 
   // A signed-out header has nothing to correct, and a call still in flight already asks the server.
   const signedIn = streamer !== null
@@ -70,7 +70,7 @@ export function StreamerSessionProvider({ children }: { readonly children: React
         streamer,
         donateUrl,
         operator,
-        loaded: result.state !== "loading",
+        reload,
         busy,
         message,
         signOut: () => void signOut(),

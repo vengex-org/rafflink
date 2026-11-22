@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent, within } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
+import type { OperatorJson } from "@rafflink/core/http/json"
+import { act, cleanup, fireEvent, within } from "@testing-library/react"
 import { dictionaries } from "../src/i18n/dictionaries.ts"
 import { languages, type Language } from "../src/i18n/language.ts"
-import { mockFetch, ok } from "./mock-fetch.ts"
+import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 beforeEach(() => {
@@ -27,14 +28,25 @@ const operator = {
   id: "12345678",
   email: "legal@example.com",
   legalUpdated: null,
+} satisfies OperatorJson
+
+const minimalOperator: OperatorJson = {
+  name: "Example Operator",
+  address: null,
+  id: null,
+  email: "legal@example.com",
+  legalUpdated: "2026-02-28",
 }
 
-function withOperator(
-  value:
-    | typeof operator
-    | { name: string; address: null; id: null; email: null; legalUpdated: string },
-) {
+function withOperator(value: OperatorJson) {
   mockFetch({ "GET /api/session": () => ok({ streamer: null, donateUrl: null, operator: value }) })
+}
+
+/** A session call that answers when the test says so. */
+function delayedSession() {
+  const gate = Promise.withResolvers<Reply>()
+  mockFetch({ "GET /api/session": () => gate.promise })
+  return gate.resolve
 }
 
 const titles: Readonly<Record<Language, { privacy: string; terms: string }>> = {
@@ -89,14 +101,8 @@ describe("legal pages", () => {
     }
   })
 
-  it("leave out the business ID and the address an operator did not set and send questions to whoever shared the link", async () => {
-    withOperator({
-      name: "Example Operator",
-      address: null,
-      id: null,
-      email: null,
-      legalUpdated: "2026-02-28",
-    })
+  it("leave out the business ID and the address an operator did not set", async () => {
+    withOperator(minimalOperator)
     browserLanguage("en-US")
 
     const view = renderApp("/privacy")
@@ -104,28 +110,86 @@ describe("legal pages", () => {
     await view.findByText(/controller of your personal data on this instance is Example Operator\./)
     const text = view.getByRole("article").textContent
     expect(text).not.toContain("business ID")
-    expect(text).toContain("Write to the person who shared this link with you.")
+    expect(text).toContain("Write to legal@example.com.")
   })
 
   it("say the operator has published no details when none is configured, in every language", async () => {
     mockFetch({})
     const generic: Readonly<Record<Language, string>> = {
-      en: "contact the person who shared the link with you",
-      sk: "obráť sa na osobu, ktorá ti poslala odkaz",
-      cs: "obrať se na osobu, která ti poslala odkaz",
+      en: "has not published contact details",
+      sk: "nezverejnil kontaktné údaje",
+      cs: "nezveřejnil kontaktní údaje",
     }
     for (const language of languages) {
       browserLanguage(language)
 
       const privacy = renderApp("/privacy")
-      await privacy.findByText(new RegExp(generic[language]))
+      await privacy.findAllByText(new RegExp(generic[language]))
       expect(privacy.getByRole("article").textContent).not.toContain("{operator}")
       cleanup()
 
       const terms = renderApp("/terms")
-      await terms.findByText(new RegExp(generic[language].split(" ").slice(-4).join(" ")))
+      await terms.findAllByText(new RegExp(generic[language]))
       cleanup()
     }
+  })
+
+  it("tell a visitor of an instance without an operator that the one who shared the link may not be the operator", async () => {
+    mockFetch({})
+    browserLanguage("en-US")
+
+    const privacy = renderApp("/privacy")
+
+    await privacy.findByText(/may not be the operator/)
+    expect(privacy.getByRole("article").textContent).not.toContain("We answer within one month")
+    cleanup()
+    const terms = renderApp("/terms")
+    await terms.findByText(/may not be the operator/)
+  })
+
+  it("show no operator, contact, date or generic text while the session call is open", async () => {
+    const answer = delayedSession()
+    browserLanguage("en-US")
+
+    const view = renderApp("/privacy")
+
+    const text = () => view.getByRole("article").textContent
+    expect(text()).not.toContain("controller of your personal data")
+    expect(text()).not.toContain("has not published contact details")
+    expect(text()).not.toContain("Write to")
+    expect(text()).not.toContain("Last updated")
+    await act(async () => {
+      answer(ok({ streamer: null, donateUrl: null, operator }))
+    })
+    await view.findByText(/Last updated/)
+    expect(text()).toContain("legal@example.com")
+  })
+
+  it("say the details could not be loaded when the session call fails, never claim an operator or none, and retry", async () => {
+    spyOn(console, "error").mockImplementation(() => {})
+    let calls = 0
+    mockFetch({
+      "GET /api/session": () => {
+        calls += 1
+        return calls === 1
+          ? { status: 500, body: null }
+          : ok({ streamer: null, donateUrl: null, operator })
+      },
+    })
+    browserLanguage("en-US")
+
+    const view = renderApp("/terms")
+
+    await view.findByText(/could not be loaded/)
+    const text = () => view.getByRole("article").textContent
+    expect(text()).not.toContain("has not published contact details")
+    expect(text()).not.toContain("Questions about these terms")
+    expect(text()).not.toContain("Last updated")
+
+    fireEvent.click(view.getByRole("button", { name: "Try again" }))
+
+    await view.findByText(/This instance is run by Example Operator/)
+    expect(text()).not.toContain("could not be loaded")
   })
 
   it("keep the operator placeholders as markers in the dictionaries, never as values", () => {
@@ -151,13 +215,7 @@ describe("legal pages", () => {
   })
 
   it("show the date the operator configured instead of the template date", async () => {
-    withOperator({
-      name: "Example Operator",
-      address: null,
-      id: null,
-      email: null,
-      legalUpdated: "2026-02-28",
-    })
+    withOperator(minimalOperator)
     browserLanguage("en-US")
 
     const view = renderApp("/terms")

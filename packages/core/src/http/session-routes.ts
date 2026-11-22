@@ -38,7 +38,8 @@ export function sessionRoutes(deps: AppDeps): Hono {
 }
 
 function operatorOf(config: ResolvedConfig): OperatorJson | null {
-  if (config.operatorName === null) return null
+  // resolveConfig sets the e-mail whenever it sets the name.
+  if (config.operatorName === null || config.operatorEmail === null) return null
   return {
     name: config.operatorName,
     address: config.operatorAddress,

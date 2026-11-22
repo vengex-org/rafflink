@@ -152,11 +152,12 @@ no link appears anywhere.
 
 Legal pages: `/privacy` and `/terms` are a generic template that is accurate for any install. Whoever runs an
 instance is the controller of its data and must name themselves. Set `OPERATOR_NAME` (a person or a company) and
-the pages name you; `OPERATOR_ADDRESS`, `OPERATOR_ID` (business or company registration number) and
-`OPERATOR_EMAIL` (where visitors send data requests) add the rest, and `LEGAL_UPDATED` (`YYYY-MM-DD`) sets the
-date shown as the last update. The other `OPERATOR_*` keys apply only with `OPERATOR_NAME`. Without it the pages
-say the operator has published no contact details and point visitors to whoever shared the link. Rafflink sends no
-data to the Rafflink project from any install.
+the pages name you. `OPERATOR_EMAIL` (where visitors send data requests) is then required, because a privacy
+policy has to name a contact. `OPERATOR_ADDRESS` and `OPERATOR_ID` (business or company registration number) add
+the rest, and `LEGAL_UPDATED` (`YYYY-MM-DD`) sets the date shown as the last update. They fail at start without
+`OPERATOR_NAME`. Without any of them the pages say the operator has published no contact details. The retention
+and cookie lifetimes in the texts are the defaults of the matching settings (see `.env.example`); if you change
+them, change the texts too. Rafflink sends no data to the Rafflink project from any install.
 
 ### Server size (VPS)
 

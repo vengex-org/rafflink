@@ -16,6 +16,7 @@ export type ConfigReason =
   | "not-an-https-url"
   | "not-an-email"
   | "not-an-iso-date"
+  | "requires-operator-name"
   | "not-a-header-name"
   | "not-a-chain-hash"
   | "not-at-least-drand-period"
@@ -613,7 +614,7 @@ export const configSchema = {
     "OPERATOR_NAME",
     optional(text),
     "",
-    "Who runs this instance (a person or a company); the privacy policy and the terms name them as the controller of the data and the other OPERATOR_* keys only apply with it; blank shows a generic text saying the operator has published no details; whoever runs an instance is responsible for these texts",
+    "Who runs this instance (a person or a company); the privacy policy and the terms name them as the controller of the data; OPERATOR_EMAIL is then required and the other OPERATOR_* keys and LEGAL_UPDATED only work with it; blank shows a generic text saying the operator has published no details; whoever runs an instance is responsible for these texts",
   ),
   operatorAddress: withDefault(
     "OPERATOR_ADDRESS",
@@ -631,7 +632,7 @@ export const configSchema = {
     "OPERATOR_EMAIL",
     optional(email),
     "",
-    "Contact e-mail of the operator for data requests and questions about the terms; blank tells visitors to ask whoever shared the link",
+    "Contact e-mail of the operator for data requests and questions about the terms; required with OPERATOR_NAME because the privacy policy must name a contact (GDPR Article 13(1)(a))",
   ),
   legalUpdated: withDefault(
     "LEGAL_UPDATED",
@@ -739,6 +740,20 @@ export function resolveConfig(env: Env): ResolvedConfig {
     operatorId: read(env, configSchema.operatorId),
     operatorEmail: read(env, configSchema.operatorEmail),
     legalUpdated: read(env, configSchema.legalUpdated),
+  }
+  // The texts name the controller with a contact, and the other keys describe the named operator.
+  if (config.operatorName === null) {
+    const orphans: [string, string | null][] = [
+      [configSchema.operatorAddress.env, config.operatorAddress],
+      [configSchema.operatorId.env, config.operatorId],
+      [configSchema.operatorEmail.env, config.operatorEmail],
+      [configSchema.legalUpdated.env, config.legalUpdated],
+    ]
+    for (const [key, value] of orphans) {
+      if (value !== null) throw new ConfigError(key, "requires-operator-name")
+    }
+  } else if (config.operatorEmail === null) {
+    throw new ConfigError(configSchema.operatorEmail.env, "missing")
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
