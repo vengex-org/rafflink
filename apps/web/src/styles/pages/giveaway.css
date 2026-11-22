@@ -518,4 +518,5 @@ main.container:has(> .viewer) {
 
 .run-your-own a {
   color: inherit;
+  text-decoration-color: currentColor;
 }
