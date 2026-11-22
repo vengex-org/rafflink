@@ -83,16 +83,6 @@ export const initialValues: Values = {
   winnerCount: "1",
 }
 
-/** What the wizard offers until the session answers; the server refuses a rule the streamer's platform cannot check. */
-export const everyCapability: PlatformCapabilities = {
-  followerCheck: true,
-  subTiers: true,
-  vip: true,
-  accountAge: true,
-  pageEntry: true,
-  chatEntry: true,
-}
-
 /**
  * The answers as the platform can check them: a group it cannot tell gets 0 tickets, and a filter or entry way it
  * lacks falls back to one it has. The wizard hides those controls, so an answer kept from elsewhere never reaches the server.

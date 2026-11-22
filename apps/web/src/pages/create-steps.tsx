@@ -153,7 +153,7 @@ export function RulesStep({
           onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
         />
       ) : null}
-      {values.audience === "subscribers" ? (
+      {audiences.length > 1 && values.audience === "subscribers" ? (
         <p className="help" role="note">
           {t("wizard.audience.subscribers.warning")}
         </p>

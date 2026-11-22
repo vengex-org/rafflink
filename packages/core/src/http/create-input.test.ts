@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { validRules } from "../../test/app-fixture.ts"
 import { resolveConfig } from "../config.ts"
-import { twitchCapabilities } from "../twitch/twitch-provider.ts"
+import { everyCapability } from "../platform/provider.ts"
 import { parseCreateGiveaway, type CreateIssue } from "./create-input.ts"
 
 const config = resolveConfig({
@@ -21,7 +21,7 @@ const now = Date.parse("2026-12-01T10:00:00Z")
 const valid = { title: "Title", prize: "Prize", rules: validRules }
 
 function issue(body: unknown): CreateIssue | null {
-  const parsed = parseCreateGiveaway(body, now, config, twitchCapabilities)
+  const parsed = parseCreateGiveaway(body, now, config, everyCapability)
   return parsed.ok ? null : parsed.issue
 }
 
@@ -32,7 +32,7 @@ const winnerIssue = (code: CreateIssue["code"]): CreateIssue => ({ field: "winne
 describe("winner count", () => {
   it("is one when absent and the number given otherwise, up to the draw maximum", () => {
     const value = (winnerCount: unknown) => {
-      const parsed = parseCreateGiveaway({ ...valid, winnerCount }, now, config, twitchCapabilities)
+      const parsed = parseCreateGiveaway({ ...valid, winnerCount }, now, config, everyCapability)
       return parsed.ok ? parsed.value.winnerCount : null
     }
 
@@ -57,7 +57,7 @@ describe("winner count", () => {
 
 describe("parseCreateGiveaway", () => {
   it("accepts a body with only the required fields and defaults the claim time", () => {
-    expect(parseCreateGiveaway(valid, now, config, twitchCapabilities)).toEqual({
+    expect(parseCreateGiveaway(valid, now, config, everyCapability)).toEqual({
       ok: true,
       value: {
         title: "Title",
@@ -75,7 +75,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, title: "1234567890", prize: "123456789012" },
       now,
       config,
-      twitchCapabilities,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({
@@ -89,7 +89,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, title: "  1234567890  " },
       now,
       config,
-      twitchCapabilities,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { title: "1234567890" } })
@@ -100,7 +100,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, title: "  A  ", prize: " B " },
       now,
       config,
-      twitchCapabilities,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { title: "A", prize: "B" } })
@@ -116,7 +116,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, title: blank, prize: blank },
       now,
       config,
-      twitchCapabilities,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { title: null, prize: null } })
@@ -127,7 +127,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, closesAt: "2026-12-01T12:00:01+02:00" },
       now,
       config,
-      twitchCapabilities,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { closesAt: now + 1000 } })
@@ -245,7 +245,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, rules: { ...validRules, claimKeyword: "" } },
       now,
       config,
-      twitchCapabilities,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { rules: { claimKeyword: null } } })
@@ -256,7 +256,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, rules: { ...validRules, claimKeyword: "12345678" } },
       now,
       config,
-      twitchCapabilities,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { rules: { claimKeyword: "12345678" } } })
@@ -267,7 +267,7 @@ describe("parseCreateGiveaway", () => {
       rules: validRules,
     })
 
-    expect(parseCreateGiveaway(body, now, config, twitchCapabilities)).toMatchObject({
+    expect(parseCreateGiveaway(body, now, config, everyCapability)).toMatchObject({
       ok: true,
       value: { title: null, prize: null },
     })
@@ -276,7 +276,7 @@ describe("parseCreateGiveaway", () => {
 
 describe("rules by platform", () => {
   // Kick: no follower lookup, no VIP and no account age.
-  const kick = { ...twitchCapabilities, followerCheck: false, vip: false, accountAge: false }
+  const kick = { ...everyCapability, followerCheck: false, vip: false, accountAge: false }
   const kickRules = { ...validRules, tickets: { ...validRules.tickets, follower: 0, vip: 0 } }
   const parse = (rules: unknown) => parseCreateGiveaway({ ...valid, rules }, now, config, kick)
 

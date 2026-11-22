@@ -1,4 +1,5 @@
 import type { GiveawayRules } from "@rafflink/core/domain/rules"
+import { everyCapability } from "@rafflink/core/platform/provider"
 import type { DashboardGiveaway, ViewerState } from "@rafflink/core/http/json"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import type { GiveawayView } from "../src/api/client.ts"
@@ -21,6 +22,7 @@ export const giveaway: GiveawayView & { readonly me: ViewerState } = {
   prize: "A gaming chair",
   streamerName: "Streamy",
   rules,
+  capabilities: everyCapability,
   status: "open",
   closesAt: null,
   claimSeconds: 300,

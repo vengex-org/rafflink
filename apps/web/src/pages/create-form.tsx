@@ -12,13 +12,13 @@ import {
 } from "../components/icons.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
+import { everyCapability } from "@rafflink/core/platform/provider"
 import { useI18n } from "../i18n/i18n.tsx"
 import { dashboardPath } from "../lib/routes.ts"
 import { isCreated, markCreated, readDraft, takeReconnectDraft } from "../lib/wizard-draft.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
-  everyCapability,
   fitValues,
   stepIssue,
   stepOfField,
@@ -63,6 +63,7 @@ export function CreateForm({
   )
   const [id] = useState(() => saved?.id ?? crypto.randomUUID())
   const [typed, setValues] = useState(saved?.values ?? seed)
+  // Until the session answers the wizard offers every rule; the server refuses one the platform cannot check.
   const capabilities = useStreamerSession().streamer?.capabilities ?? everyCapability
   const values = fitValues(typed, capabilities)
   const [furthest, setFurthest] = useState<Step>(saved?.furthest ?? 1)

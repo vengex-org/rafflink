@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { groups } from "@rafflink/core/domain/groups"
+import { supportedGroups } from "@rafflink/core/domain/groups"
 import type { GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import {
@@ -102,7 +102,7 @@ export function GiveawayRules({ giveaway }: { readonly giveaway: GiveawayView })
       <div className="viewer-rules-body">
         <p>{t("rules.help")}</p>
         <ul>
-          {groups.map((group) => (
+          {supportedGroups(giveaway.capabilities).map((group) => (
             <li key={group}>
               {t("rules.groupTickets", {
                 group: t(`group.${group}`),

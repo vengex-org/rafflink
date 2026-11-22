@@ -625,6 +625,72 @@ describe("create wizard", () => {
     expect(body).not.toHaveProperty("rules.minAccountAgeDays")
   })
 
+  it("offers no subscriber filter, tier tickets or purchase warning without sub tiers", async () => {
+    const capabilities = { ...supportedSession.streamer.capabilities, subTiers: false }
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": () =>
+        ok({ ...supportedSession, streamer: { ...supportedSession.streamer, capabilities } }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+
+    expect(view.queryByRole("radio", { name: /Subscribers only/ })).toBeNull()
+    expect(view.getByRole("radio", { name: /Followers only/ })).toBeTruthy()
+    expect(view.queryByLabelText("Subscribers, tier 1")).toBeNull()
+    expect(view.queryByText(/A subscription is a paid purchase/)).toBeNull()
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect(body).toMatchObject({
+      rules: { tickets: { sub_t1: 0, sub_t2: 0, sub_t3: 0 }, subsOnly: false },
+    })
+  })
+
+  it("hides the audience choice and its warning when the platform offers only Everyone", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      followerCheck: false,
+      subTiers: false,
+    }
+    mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({ ...supportedSession, streamer: { ...supportedSession.streamer, capabilities } }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+
+    expect(view.queryByRole("radio", { name: /Everyone/ })).toBeNull()
+    expect(view.queryByRole("note")).toBeNull()
+  })
+
+  it("enters by chat only on a platform without page entry", async () => {
+    const capabilities = { ...supportedSession.streamer.capabilities, pageEntry: false }
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": () =>
+        ok({ ...supportedSession, streamer: { ...supportedSession.streamer, capabilities } }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+
+    expect(view.queryByRole("radio", { name: /Giveaway page/ })).toBeNull()
+    expect(view.queryByRole("radio", { name: /Page and chat/ })).toBeNull()
+    expect(inputOf(view.getByRole("radio", { name: /Chat only/ })).checked).toBe(true)
+    expect(inputOf(view.getByLabelText("Entry keyword")).value).toBe("!enter")
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect(body).toMatchObject({ rules: { chatKeyword: "!enter", pageEntry: false } })
+  })
+
   it("sends a blank name and prize and reviews them as not set", async () => {
     const requests = mockFetch(withCreate(createdReply))
     const view = await openWizard()
