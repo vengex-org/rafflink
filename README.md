@@ -127,6 +127,10 @@ The rest of the required config:
   at Twitch on the first admin check, using the app's own credentials; while Twitch does not answer, the
   admin page stays closed. The first lookup logs the resolved ids: copy them into this setting, because an
   id never changes and needs no lookup.
+- `OPEN_SIGNUP` (default `false`): who may create giveaways. With `false`, any Twitch account can sign in, but
+  it can create giveaways only after an admin approves it on the admin page, under "Streamer access"; the
+  accounts in `ADMIN_TWITCH_IDS` are always allowed. Set `true` to let every streamer create giveaways, as the
+  hosted service does. An approval is kept when you switch to `true` and back.
 - `SESSION_SECRET`: a long random string, for example the output of `openssl rand -base64 32`.
 - `TOKEN_SEAL_KEYS`: the key that encrypts stored streamer tokens, written as `<key id>:<32 random bytes in
   base64>`, for example `k1:` followed by the output of `openssl rand -base64 32`. To rotate, put the new key

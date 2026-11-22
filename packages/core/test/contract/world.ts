@@ -227,6 +227,7 @@ export class World {
       TOKEN_SEAL_KEYS: `contract:${toBase64(new Uint8Array(32).fill(3))}`,
       SESSION_SECRET: "contract-session-secret",
       ADMIN_TWITCH_IDS: users.streamer.id,
+      OPEN_SIGNUP: "true",
       PUBLIC_URL: publicOrigin,
       TWITCH_ID_BASE_URL: this.twitch.origin,
       TWITCH_HELIX_BASE_URL: this.twitch.origin,

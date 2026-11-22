@@ -89,6 +89,7 @@ describe("session", () => {
         displayName: users.streamerA.displayName,
         login: users.streamerA.login,
         profileImageUrl: users.streamerA.profileImageUrl,
+        canCreate: true,
       },
       donateUrl: null,
     })

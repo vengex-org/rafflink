@@ -75,6 +75,6 @@ export const donateUrl = "https://ko-fi.com/rafflink"
 
 /** A signed-in streamer on a deployment that names a support page. */
 export const supportedSession = {
-  streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+  streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null, canCreate: true },
   donateUrl,
 }

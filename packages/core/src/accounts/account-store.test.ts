@@ -89,6 +89,8 @@ describe("AccountStore streamers", () => {
       login: "streamer",
       displayName: "Streamer",
       profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
+      createdAt: 1000,
+      approvedAt: null,
     })
     expect(
       sqlRows(db, "SELECT streamer_id, refresh_token_enc, scopes FROM streamer_tokens"),
@@ -105,6 +107,8 @@ describe("AccountStore streamers", () => {
       login: "other",
       displayName: "Streamer",
       profileImageUrl: "https://static-cdn.jtvnw.net/jtv_user_pictures/streamer.png",
+      createdAt: 1000,
+      approvedAt: null,
     })
     expect(await store.findStreamer("missing")).toBeNull()
   })
@@ -148,6 +152,80 @@ describe("AccountStore streamers", () => {
     await store.signInStreamer(signIn({ id: "s2", platform: "kick" }))
 
     expect(sqlRows(db, "SELECT id FROM streamers ORDER BY id")).toHaveLength(2)
+  })
+})
+
+describe("AccountStore streamer access", () => {
+  it("lists new streamers as pending, newest first, and approved ones latest approval first", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn({ id: "s1", platformUserId: "1", now: 1000 }))
+    await store.signInStreamer(signIn({ id: "s2", platformUserId: "2", now: 2000 }))
+    await store.signInStreamer(signIn({ id: "s3", platformUserId: "3", now: 3000 }))
+    await store.approveStreamer("s1", "admin", 5000)
+    await store.approveStreamer("s3", "admin", 6000)
+
+    const access = await store.listStreamerAccess(10)
+
+    expect(access.pending.map((streamer) => streamer.id)).toEqual(["s2"])
+    expect(access.approved.map((streamer) => [streamer.id, streamer.approvedAt])).toEqual([
+      ["s3", 6000],
+      ["s1", 5000],
+    ])
+  })
+
+  it("cuts each list to the limit", async () => {
+    const { store } = setup()
+    for (const id of ["a", "b", "c"]) {
+      await store.signInStreamer(signIn({ id, platformUserId: id, now: id.charCodeAt(0) }))
+    }
+    await store.approveStreamer("a", "admin", 1)
+    await store.approveStreamer("b", "admin", 2)
+
+    const access = await store.listStreamerAccess(1)
+
+    expect(access.approved.map((streamer) => streamer.id)).toEqual(["b"])
+    expect(access.pending.map((streamer) => streamer.id)).toEqual(["c"])
+  })
+
+  it("keeps the first approval when approving again", async () => {
+    const { db, store } = await withStreamers()
+
+    expect(await store.approveStreamer("s1", "admin-1", 5000)).toBe(true)
+    expect(await store.approveStreamer("s1", "admin-2", 9000)).toBe(true)
+
+    expect(sqlRows(db, "SELECT approved_at, approved_by FROM streamers WHERE id = 's1'")).toEqual([
+      { approved_at: 5000, approved_by: "admin-1" },
+    ])
+    expect((await store.findStreamer("s1"))?.approvedAt).toBe(5000)
+  })
+
+  it("revokes an approval and clears who gave it", async () => {
+    const { db, store } = await withStreamers()
+    await store.approveStreamer("s1", "admin-1", 5000)
+
+    expect(await store.revokeStreamer("s1")).toBe(true)
+    expect(await store.revokeStreamer("s1")).toBe(true)
+
+    expect(sqlRows(db, "SELECT approved_at, approved_by FROM streamers WHERE id = 's1'")).toEqual([
+      { approved_at: null, approved_by: null },
+    ])
+  })
+
+  it("reports an unknown streamer instead of approving or revoking it", async () => {
+    const { store } = setup()
+
+    expect(await store.approveStreamer("missing", "admin", 1)).toBe(false)
+    expect(await store.revokeStreamer("missing")).toBe(false)
+  })
+
+  it("keeps the approval across a later sign-in", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn())
+    await store.approveStreamer("s1", "admin", 5000)
+
+    const again = await store.signInStreamer(signIn({ now: 9000 }))
+
+    expect(again.approvedAt).toBe(5000)
   })
 })
 

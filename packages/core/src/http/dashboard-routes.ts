@@ -1,7 +1,8 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import { timingSafeEqual } from "hono/utils/buffer"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
-import type { Giveaway, NewGiveaway } from "../accounts/account-store.ts"
+import type { Giveaway, NewGiveaway, StreamerRecord } from "../accounts/account-store.ts"
+import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import { generateCode } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
@@ -29,6 +30,8 @@ import {
   dashboardGiveaway,
   readJson,
   type AdminPlanJson,
+  type AdminStreamerJson,
+  type AdminStreamersJson,
   type AdminUsageJson,
   type BadgesJson,
   type EntrantsPage,
@@ -39,7 +42,7 @@ import type { StreamerSession } from "./session.ts"
 import { currentStreamer } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 
-type Env = { Variables: { streamer: StreamerSession } }
+type Env = { Variables: { streamer: StreamerSession; account: StreamerRecord } }
 
 export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   const app = new Hono<Env>()
@@ -52,6 +55,9 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   app.use("/api/admin/*", requireStreamer(deps))
 
   app.post("/api/dash/giveaways", async (c) => {
+    if (!(await canCreateGiveaways(deps.config, deps.admins, c.get("account")))) {
+      return c.json({ error: "streamer_not_approved" }, 403)
+    }
     const parsed = parseCreateGiveaway(await readJson(c), deps.clock.now(), deps.config)
     if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
     const streamer = c.get("streamer")
@@ -235,6 +241,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
           ? usageAlerts(usage, deps.config.usageAlertPercent)
           : [],
       alertPercent: deps.config.usageAlertPercent,
+      signupOpen: deps.config.openSignup,
       queue: await deps.queue.stats(),
     }
     return c.json(body)
@@ -257,6 +264,44 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       return c.json({ error: "queue-unavailable" }, 503)
     }
     return c.json({ kind: "switched", plan })
+  })
+
+  app.get("/api/admin/streamers", async (c) => {
+    if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
+      return c.json({ error: "forbidden" }, 403)
+    }
+    c.header("Cache-Control", "no-store")
+    const { pending, approved } = await deps.accounts.listStreamerAccess(
+      deps.config.streamerAccessListMax,
+    )
+    const body: AdminStreamersJson = {
+      pending: await withoutAdmins(deps, pending),
+      approved: await withoutAdmins(deps, approved),
+    }
+    return c.json(body)
+  })
+
+  app.post("/api/admin/streamers/:id/approve", sameOriginJson(deps.config), async (c) => {
+    const { twitchUserId } = c.get("streamer")
+    if (!(await deps.admins.isAdmin(twitchUserId))) return c.json({ error: "forbidden" }, 403)
+    const streamerId = c.req.param("id")
+    if (!(await deps.accounts.approveStreamer(streamerId, twitchUserId, deps.clock.now()))) {
+      return c.json({ error: "not-found" }, 404)
+    }
+    console.info("streamer approved", { streamerId })
+    return c.json({ kind: "approved" })
+  })
+
+  app.post("/api/admin/streamers/:id/revoke", sameOriginJson(deps.config), async (c) => {
+    if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
+      return c.json({ error: "forbidden" }, 403)
+    }
+    const streamerId = c.req.param("id")
+    if (!(await deps.accounts.revokeStreamer(streamerId))) {
+      return c.json({ error: "not-found" }, 404)
+    }
+    console.info("streamer approval revoked", { streamerId })
+    return c.json({ kind: "revoked" })
   })
 
   // OBS has no session: the token in the URL is the whole credential.
@@ -299,6 +344,7 @@ function requireStreamer(deps: AppDeps): MiddlewareHandler<Env> {
     const current = await currentStreamer(c, deps)
     if (current === null) return c.json({ error: "unauthorized" }, 401)
     c.set("streamer", current.session)
+    c.set("account", current.streamer)
     return next()
   }
 }
@@ -317,6 +363,25 @@ async function withOwnedRoom(
   if (giveaway === null) return c.json({ error: "not-found" }, 404)
   if (!(await initRoom(deps, giveaway))) return c.json({ error: "room-unavailable" }, 503)
   return act(giveaway)
+}
+
+/** Admins are always allowed, so they never wait in the lists. */
+async function withoutAdmins(
+  deps: AppDeps,
+  streamers: readonly StreamerRecord[],
+): Promise<AdminStreamerJson[]> {
+  const listed: AdminStreamerJson[] = []
+  for (const streamer of streamers) {
+    if (await deps.admins.isAdmin(streamer.platformUserId)) continue
+    listed.push({
+      id: streamer.id,
+      login: streamer.login,
+      displayName: streamer.displayName,
+      createdAt: streamer.createdAt,
+      approvedAt: streamer.approvedAt,
+    })
+  }
+  return listed
 }
 
 async function insertWithFreshCode(

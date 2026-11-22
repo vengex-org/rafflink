@@ -365,7 +365,7 @@ Cloudflare and one file per giveaway on the VPS.
 ```
 -- accounts store (D1 or accounts.sqlite)
 streamers(id, platform, platform_user_id, login, display_name, profile_image_url, created_at,
-          UNIQUE (platform, platform_user_id))
+          approved_at, approved_by, UNIQUE (platform, platform_user_id))
 streamer_tokens(streamer_id, refresh_token_enc, scopes, validated_at,
                 PRIMARY KEY (streamer_id))
 giveaways(id, code UNIQUE, streamer_id, title, prize, rules_json, status,
@@ -501,6 +501,16 @@ of the id could be brute-forced into a list of who entered.
   static assets or by the VPS server.
 - Hosting targets: Cloudflare and a VPS from one core with ports and a shared contract test suite.
 - Code: public repo `vengex-org/rafflink` on GitHub, license AGPL-3.0.
+
+Who may create giveaways (owner decision, 2026-11-22):
+
+- `OPEN_SIGNUP` (default false) decides it. The hosted service sets it to true and every signed-in streamer may
+  create giveaways. A self-hosted install leaves it false: a new streamer can sign in but gets 403
+  `streamer_not_approved` on creating a giveaway until an admin approves the account on the admin page ("Streamer
+  access": waiting and approved lists, Approve and Revoke). Accounts in `ADMIN_TWITCH_IDS` are always allowed.
+- The approval is `streamers.approved_at` and `approved_by` (migration 0007). `/api/session` tells the web app
+  `canCreate`, and the dashboard shows a waiting notice instead of the create buttons. Revoking keeps the
+  streamer's existing giveaways and stops new ones.
 
 Token queue drain rate (owner decision, 2026-11-22):
 

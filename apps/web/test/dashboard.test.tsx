@@ -289,4 +289,58 @@ describe("dashboard", () => {
     expect(inputOf(view.getByLabelText("5 minutes")).checked).toBe(false)
     expect(inputOf(view.getByLabelText("Minutes")).value).toBe("15")
   })
+
+  it("tells a streamer who waits for approval and offers no way to create", async () => {
+    mockFetch({
+      ...empty,
+      "GET /api/session": () =>
+        ok({
+          streamer: {
+            displayName: "Streamy",
+            login: "streamy",
+            profileImageUrl: null,
+            canCreate: false,
+          },
+          donateUrl: null,
+        }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
+    expect(view.getByText(/has not approved your account/)).toBeTruthy()
+    expect(view.queryByRole("button", { name: "Create giveaway" })).toBeNull()
+  })
+
+  it("keeps the list of a streamer whose approval was revoked and hides New and Duplicate", async () => {
+    mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({
+          streamer: {
+            displayName: "Streamy",
+            login: "streamy",
+            profileImageUrl: null,
+            canCreate: false,
+          },
+          donateUrl: null,
+        }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
+    expect(view.getByRole("heading", { name: "Summer giveaway" })).toBeTruthy()
+    expect(view.queryByRole("button", { name: "New giveaway" })).toBeNull()
+    expect(view.queryByRole("button", { name: "Duplicate Summer giveaway" })).toBeNull()
+  })
+
+  it("shows no notice to a streamer who may create", async () => {
+    mockFetch({ ...empty, "GET /api/session": () => ok(supportedSession) })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("button", { name: "Create giveaway" })).toBeTruthy()
+    expect(view.queryByRole("heading", { name: "Waiting for approval" })).toBeNull()
+  })
 })

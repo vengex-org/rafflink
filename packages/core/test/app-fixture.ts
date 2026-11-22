@@ -311,6 +311,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     TOKEN_SEAL_KEYS: sealKey,
     SESSION_SECRET: "session-secret",
     ADMIN_TWITCH_IDS: users.streamerA.id,
+    OPEN_SIGNUP: "true",
     PUBLIC_URL: "http://localhost",
     TWITCH_ID_BASE_URL: server.url.origin,
     TWITCH_HELIX_BASE_URL: server.url.origin,

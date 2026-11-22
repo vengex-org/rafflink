@@ -71,7 +71,12 @@ describe("verify link in the header and the home footer", () => {
     mockFetch({
       "GET /api/session": () =>
         ok({
-          streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+          streamer: {
+            displayName: "Streamy",
+            login: "streamy",
+            profileImageUrl: null,
+            canCreate: true,
+          },
           donateUrl: null,
         }),
     })

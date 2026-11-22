@@ -1,11 +1,19 @@
 import { useId, useState, type ReactNode } from "react"
-import type { AdminPlanJson } from "@rafflink/core/http/json"
+import type { AdminPlanJson, AdminStreamerJson } from "@rafflink/core/http/json"
 import type { CloudflarePlan } from "@rafflink/core/plan/plan-limits"
 import type { Usage, UsageAlert } from "@rafflink/core/plan/usage"
-import { getAdminUsage, switchPlan, type AdminUsage } from "../api/client.ts"
+import {
+  decideStreamerAccess,
+  getAdminStreamers,
+  getAdminUsage,
+  switchPlan,
+  type AdminUsage,
+  type StreamerAccessKind,
+} from "../api/client.ts"
 import {
   ActivityIcon,
   AlertIcon,
+  CheckIcon,
   ClockIcon,
   CloseIcon,
   CloudIcon,
@@ -78,6 +86,7 @@ function Report({
           <UsageBars usage={report.usage} />
         </section>
         {plan === null ? null : <PlanCard plan={plan} onSwitched={onPlanSwitched} />}
+        {report.signupOpen ? null : <AccessCard />}
         <section className="card" aria-labelledby="queue">
           <h2 id="queue">{t("admin.queue.title")}</h2>
           <p className="muted">{t("admin.queue.hint")}</p>
@@ -240,6 +249,106 @@ function PlanCard({
       <ActiveLimits limits={plan.limits} />
       {message === null ? null : <Status>{t(message)}</Status>}
     </section>
+  )
+}
+
+const accessMessages: Readonly<Record<StreamerAccessKind | "rejected", MessageKey>> = {
+  approved: "admin.access.approvedDone",
+  revoked: "admin.access.revokedDone",
+  rejected: "admin.access.failed",
+}
+
+function AccessCard() {
+  const { t } = useI18n()
+  const { result, reload } = useLoad(getAdminStreamers)
+  const { message, busy, run } = useAction()
+  const decide = async (id: string, decision: "approve" | "revoke") => {
+    const outcome = await run(
+      () => decideStreamerAccess(id, decision),
+      (kind) => accessMessages[kind],
+    )
+    if (outcome !== "failed") reload()
+  }
+  return (
+    <section className="card access-card" aria-labelledby="access">
+      <h2 id="access">{t("admin.access.title")}</h2>
+      <p className="muted">{t("admin.access.hint")}</p>
+      {result.state === "ready" ? (
+        <>
+          <AccessList
+            title="admin.access.pending"
+            empty="admin.access.nonePending"
+            streamers={result.value.pending}
+            action="approve"
+            busy={busy}
+            onDecide={(id, decision) => void decide(id, decision)}
+          />
+          <AccessList
+            title="admin.access.approved"
+            empty="admin.access.noneApproved"
+            streamers={result.value.approved}
+            action="revoke"
+            busy={busy}
+            onDecide={(id, decision) => void decide(id, decision)}
+          />
+        </>
+      ) : result.state === "failed" ? (
+        <Status>{t("admin.access.loadFailed")}</Status>
+      ) : null}
+      {message === null ? null : <Status>{t(message)}</Status>}
+    </section>
+  )
+}
+
+function AccessList({
+  title,
+  empty,
+  streamers,
+  action,
+  busy,
+  onDecide,
+}: {
+  readonly title: MessageKey
+  readonly empty: MessageKey
+  readonly streamers: readonly AdminStreamerJson[]
+  readonly action: "approve" | "revoke"
+  readonly busy: boolean
+  readonly onDecide: (id: string, decision: "approve" | "revoke") => void
+}) {
+  const { t, date } = useI18n()
+  const label = action === "approve" ? "admin.access.approve.label" : "admin.access.revoke.label"
+  return (
+    <>
+      <h3>{t(title)}</h3>
+      {streamers.length === 0 ? (
+        <p className="muted">{t(empty)}</p>
+      ) : (
+        <ul className="access-list">
+          {streamers.map((streamer) => (
+            <li key={streamer.id}>
+              <div>
+                <strong>{streamer.displayName}</strong>{" "}
+                <span className="muted">@{streamer.login}</span>
+                <br />
+                <small className="muted">
+                  {t("admin.access.firstLogin", { date: date(streamer.createdAt) })}
+                </small>
+              </div>
+              <button
+                type="button"
+                className={action === "approve" ? "button" : "button outlined"}
+                disabled={busy}
+                aria-label={t(label, { name: streamer.displayName })}
+                onClick={() => onDecide(streamer.id, action)}
+              >
+                {action === "approve" ? <CheckIcon /> : <CloseIcon />}
+                {t(`admin.access.${action}`)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }
 

@@ -11,13 +11,14 @@ import {
   CheckIcon,
   CopyIcon,
   LinkIcon,
+  LockIcon,
   PlusIcon,
   TvIcon,
 } from "../components/icons.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
-import type { Tone } from "../components/state-card.tsx"
+import { StateCard, type Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -143,8 +144,21 @@ function GiveawayList({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const { donateUrl } = useStreamerSession()
+  const { donateUrl, streamer } = useStreamerSession()
+  // An unknown session is not a refusal: the server still enforces approval on create.
+  const canCreate = streamer === null || streamer.canCreate
+  const create = canCreate ? onCreate : null
   if (giveaways.length === 0) {
+    if (!canCreate) {
+      return (
+        <>
+          <div className="page-head">
+            <h1>{t("dash.title")}</h1>
+          </div>
+          <AwaitingApproval />
+        </>
+      )
+    }
     return (
       <>
         <div className="page-head">
@@ -180,17 +194,20 @@ function GiveawayList({
     <>
       <div className="page-head">
         <h1>{t("dash.title")}</h1>
-        <button type="button" className="button" onClick={() => onCreate(initialValues)}>
-          <PlusIcon />
-          {t("dash.new.button")}
-        </button>
+        {create === null ? null : (
+          <button type="button" className="button" onClick={() => create(initialValues)}>
+            <PlusIcon />
+            {t("dash.new.button")}
+          </button>
+        )}
       </div>
+      {canCreate ? null : <AwaitingApproval />}
       {pinned.length === 0 ? null : (
         <section className="dash-section" aria-labelledby="dash-running">
           <h2 id="dash-running">{t("dash.section.running")}</h2>
           <ul className="giveaways pinned">
             {pinned.map((giveaway) => (
-              <GiveawayItem key={giveaway.id} giveaway={giveaway} pinned onCreate={onCreate} />
+              <GiveawayItem key={giveaway.id} giveaway={giveaway} pinned onCreate={create} />
             ))}
           </ul>
         </section>
@@ -205,13 +222,23 @@ function GiveawayList({
                 key={giveaway.id}
                 giveaway={giveaway}
                 pinned={false}
-                onCreate={onCreate}
+                onCreate={create}
               />
             ))}
           </ul>
         </section>
       )}
     </>
+  )
+}
+
+/** What a signed-in streamer sees while signup is closed and no admin has approved the account. */
+function AwaitingApproval() {
+  const { t } = useI18n()
+  return (
+    <StateCard tone="warning" align="start" icon={<LockIcon />} title={t("dash.access.title")}>
+      <p>{t("dash.access.text")}</p>
+    </StateCard>
   )
 }
 
@@ -234,7 +261,8 @@ function GiveawayItem({
 }: {
   readonly giveaway: DashboardGiveaway
   readonly pinned: boolean
-  readonly onCreate: (seed: Values) => void
+  /** Null when the streamer may not create giveaways, which also takes away duplicating one. */
+  readonly onCreate: ((seed: Values) => void) | null
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -259,15 +287,17 @@ function GiveawayItem({
           <ActivityIcon />
           {t("dash.openLive")}
         </Link>
-        <button
-          type="button"
-          className={pinned ? "button outlined" : "button text"}
-          aria-label={t("dash.duplicate.label", { name })}
-          onClick={() => onCreate(valuesFrom(giveaway))}
-        >
-          <CopyIcon />
-          {t("dash.duplicate")}
-        </button>
+        {onCreate === null ? null : (
+          <button
+            type="button"
+            className={pinned ? "button outlined" : "button text"}
+            aria-label={t("dash.duplicate.label", { name })}
+            onClick={() => onCreate(valuesFrom(giveaway))}
+          >
+            <CopyIcon />
+            {t("dash.duplicate")}
+          </button>
+        )}
       </div>
       <Disclosure icon={<LinkIcon />} summary={t("dash.linkObs")} open={false}>
         <ShareLinks code={giveaway.code} />
