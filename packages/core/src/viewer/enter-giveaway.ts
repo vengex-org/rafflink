@@ -1,10 +1,12 @@
 import { setTimeout } from "node:timers/promises"
 import type { AccountStore, Giveaway } from "../accounts/account-store.ts"
 import type { ResolvedConfig } from "../config.ts"
+import { errorClass } from "../lib/error-class.ts"
 import { jitteredDelay } from "../lib/jittered-delay.ts"
 import type { Clock, RateLimiter, Random } from "../ports.ts"
 import type { QueuedCode } from "../queue/token-queue.ts"
-import type { RoomViewer } from "../room/giveaway-room.ts"
+import type { EnterOutcome, EntryExpectation, RoomViewer } from "../room/giveaway-room.ts"
+import { sendMissingExclusions, type ExclusionTarget } from "../room/room-exclusions.ts"
 import { RoomTransientError, type RoomDirectory } from "../room/room-directory.ts"
 import {
   providerFor,
@@ -24,7 +26,11 @@ import type { EntryAttempt, FinalOutcome } from "./outcome.ts"
 
 export type EntryConfig = Pick<
   ResolvedConfig,
-  "entryWriteRetryDelaysMs" | "entryWriteJitterPercent" | "publicUrl"
+  | "entryWriteRetryDelaysMs"
+  | "entryWriteJitterPercent"
+  | "publicUrl"
+  | "recentWinnersGiveawaysMax"
+  | "blockListPushMax"
 >
 
 export interface EntryDeps {
@@ -39,7 +45,8 @@ export interface EntryDeps {
 }
 
 /** The giveaway fields the routine needs; the sign-in callback has already loaded the giveaway. */
-export type EntryTarget = Pick<Giveaway, "id" | "platform" | "broadcasterId">
+export type EntryTarget = Pick<Giveaway, "id" | "broadcasterId" | "blockListVersion">
+  & ExclusionTarget
 
 /**
  * Steps 2 to 5 of the viewer flow: exchange the code, verify who signed in, read eligibility, write the
@@ -81,7 +88,7 @@ export async function enterGiveaway(
   } catch (error) {
     return platformFailure(error, userId)
   }
-  const outcome = await enterWithRetry(deps, target.id, viewer)
+  const outcome = await enterWithExclusions(deps, target, viewer)
   return final(outcome, userId)
 }
 
@@ -142,17 +149,45 @@ async function readViewer(
   }
 }
 
+// A room that cannot check the entry yet is sent what it misses, once; a room still unable after that
+// gives the viewer a "try again", because letting the entry in could admit an account it keeps out.
+async function enterWithExclusions(
+  deps: EntryDeps,
+  target: EntryTarget,
+  viewer: RoomViewer,
+): Promise<FinalOutcome> {
+  const expected = { blockListVersion: target.blockListVersion }
+  const first = await enterWithRetry(deps, target.id, viewer, expected)
+  if (first.kind !== "unavailable") return first
+  // Every failure here leaves the room refusing and nothing written, so whatever failed, the viewer tries again.
+  try {
+    await sendMissingExclusions(deps, deps.rooms.get(target.id), target, first.missing)
+  } catch (error) {
+    console.warn("room exclusions failed", {
+      giveawayId: target.id,
+      missing: first.missing,
+      errorClass: errorClass(error),
+    })
+    return { kind: "try-again" }
+  }
+  const second = await enterWithRetry(deps, target.id, viewer, expected)
+  if (second.kind !== "unavailable") return second
+  console.warn("room exclusions still missing", { giveawayId: target.id, missing: second.missing })
+  return { kind: "try-again" }
+}
+
 // Retries the room write only while it fails transiently, then gives the viewer a "try again".
 async function enterWithRetry(
   deps: EntryDeps,
   giveawayId: string,
   viewer: RoomViewer,
-): Promise<FinalOutcome> {
+  expected: EntryExpectation,
+): Promise<EnterOutcome | { readonly kind: "try-again" }> {
   const room = deps.rooms.get(giveawayId)
   const delays = deps.config.entryWriteRetryDelaysMs
   for (let attempt = 0; ; attempt++) {
     try {
-      return await room.enter(viewer)
+      return await room.enter(viewer, expected)
     } catch (error) {
       if (!(error instanceof RoomTransientError)) throw error
       const delay = delays[attempt]

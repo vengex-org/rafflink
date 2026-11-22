@@ -48,7 +48,7 @@ async function drawnGiveaway(winnerId: string) {
   const created = await createGiveaway(harness)
   await viewerEntry(winnerId, created.code)
   await created.browser.postJson(`/api/dash/giveaways/${created.id}/close`, {})
-  await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, {})
+  await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, { count: 1 })
   return created
 }
 
@@ -114,12 +114,18 @@ describe("block list", () => {
     expect(await repeat.json()).toMatchObject({ kind: "exists" })
   })
 
-  it("answers 404 for a login without an account and 400 for a missing or blank one", async () => {
+  it("answers 404 for a login without an account and 400 for text that cannot be a login", async () => {
     const browser = await streamer()
 
     expect((await post(browser, "/api/dash/blocks", { login: "nobody_here" })).status).toBe(404)
-    expect((await post(browser, "/api/dash/blocks", { login: "not a login!" })).status).toBe(404)
-    for (const body of [{}, { login: "  " }, { login: 7 }]) {
+    const tooLong = "a".repeat(26)
+    for (const body of [
+      {},
+      { login: "  " },
+      { login: 7 },
+      { login: "not a login!" },
+      { login: tooLong },
+    ]) {
       expect(await (await post(browser, "/api/dash/blocks", body)).json()).toEqual({
         error: "invalid-input",
         field: "login",
@@ -233,7 +239,7 @@ describe("recent winners", () => {
     await viewerEntry(users.viewer.id, first.code)
     await viewerEntry(users.viewer2.id, first.code)
     await first.browser.postJson(`/api/dash/giveaways/${first.id}/close`, {})
-    await first.browser.postJson(`/api/dash/giveaways/${first.id}/draw`, {})
+    await first.browser.postJson(`/api/dash/giveaways/${first.id}/draw`, { count: 1 })
     await first.browser.postJson(`/api/dash/giveaways/${first.id}/reroll`, { n: 0 })
     const [rerolled, standing] = harness.rooms.roomFor(first.id).picks()
     expect([rerolled?.claim.state, standing?.claim.state]).toEqual(["rerolled", "waiting"])
@@ -274,3 +280,75 @@ describe("recent winners", () => {
     expect((await viewerEntry(users.viewer.id, created.code)).get("reason")).toBe("blocked")
   })
 })
+
+describe("a room without its exclusions", () => {
+  it("refuses entries while the exclusions cannot be written, and the next entry writes them", async () => {
+    spyOn(console, "warn").mockImplementation(() => {})
+    const browser = await streamer()
+    await post(browser, "/api/dash/blocks", { login: "viewer_one" })
+    harness.rooms.hooks.beforeExclusions = () => {
+      throw new Error("room down")
+    }
+    const { id, code } = await createGiveaway(harness)
+
+    expect((await viewerEntry(users.viewer2.id, code)).get("entry")).toBe("try-again")
+    expect(harness.rooms.roomFor(id).summary().entrantCount).toBe(0)
+
+    harness.rooms.hooks.beforeExclusions = () => {}
+    expect((await viewerEntry(users.viewer2.id, code)).get("entry")).toBe("entered")
+    expect((await viewerEntry(users.viewer.id, code)).get("reason")).toBe("blocked")
+  })
+})
+
+describe("block list beyond the pushed giveaways", () => {
+  it("sends the list to the newest open giveaways only, and an older one gets it at its next entry", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { BLOCK_LIST_PUSH_MAX: "1" } })
+    const older = await createGiveaway(harness)
+    harness.clock.advance(1000)
+    await createGiveaway(harness)
+    const browser = await streamer()
+
+    await post(browser, "/api/dash/blocks", { login: "viewer_one" })
+
+    expect(harness.rooms.roomFor(older.id).init(initOf(older.id))).toMatchObject({
+      blockListVersion: 0,
+    })
+    expect((await viewerEntry(users.viewer.id, older.code)).get("reason")).toBe("blocked")
+    expect((await viewerEntry(users.viewer2.id, older.code)).get("entry")).toBe("entered")
+  })
+})
+
+describe("blocking an entrant", () => {
+  it("removes their entry from the streamer's open giveaways and keeps it in closed ones", async () => {
+    const open = await createGiveaway(harness)
+    const closed = await createGiveaway(harness)
+    await viewerEntry(users.viewer.id, open.code)
+    await viewerEntry(users.viewer.id, closed.code)
+    await viewerEntry(users.viewer2.id, open.code)
+    await closed.browser.postJson(`/api/dash/giveaways/${closed.id}/close`, {})
+
+    await post(open.browser, "/api/dash/blocks", { login: "viewer_one" })
+
+    const viewer = { platform: "twitch", platformUserId: users.viewer.id }
+    expect(harness.rooms.roomFor(open.id).entryOf(viewer)).toBeNull()
+    expect(harness.rooms.roomFor(open.id).summary().entrantCount).toBe(1)
+    expect(harness.rooms.roomFor(closed.id).entryOf(viewer)).not.toBeNull()
+  })
+})
+
+// The init a dashboard call would send; a repeat init changes nothing and reports the room's versions.
+function initOf(id: string) {
+  const row = sqlRows(harness.accountsDb, "SELECT code FROM giveaways WHERE id = ?", [id])[0]
+  return {
+    id,
+    platform: "twitch",
+    broadcasterId: users.streamerA.id,
+    title: null,
+    code: String(row?.code),
+    rules: validRules,
+    claimSeconds: 300,
+    closesAt: null,
+    winnerCount: 1,
+  }
+}

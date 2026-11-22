@@ -186,9 +186,9 @@ class InProcessRoomStub implements RoomStub {
     await this.hooks.beforeExclusions(this.giveawayId)
     this.room.replaceBlocked(...args)
   }
-  async enter(viewer: Parameters<GiveawayRoom["enter"]>[0]) {
+  async enter(...args: Parameters<GiveawayRoom["enter"]>) {
     await this.hooks.beforeEnter(this.giveawayId)
-    return this.room.enter(viewer)
+    return this.room.enter(...args)
   }
   async summary() {
     return this.room.summary()

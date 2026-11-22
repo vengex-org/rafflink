@@ -10,7 +10,7 @@ import type {
   RerollOutcome,
   RoomInitOutcome,
 } from "../room/giveaway-room.ts"
-import { exclusionsFor } from "../room/room-exclusions.ts"
+import { missingAfterInit, sendMissingExclusions } from "../room/room-exclusions.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
 import type { AppDeps } from "./deps.ts"
 import { objectField, readJson, type BadgesJson, type EntrantsPage } from "./json.ts"
@@ -155,7 +155,7 @@ export async function subscriberBadges(
   return c.json(body)
 }
 
-/** Sets the room up from the account row; false, logged, when the room did not answer. Creation may have written the row and lost the room call, so every route that acts on a room calls it first. */
+/** Sets the room up from the account row; false, logged, when the room did not answer. Creation may have written the row and lost the room call, so every route that acts on a room calls it first. A room that misses its excluded accounts or holds an older block list gets them here: before that it refuses entries, and a close or draw after this sees the blocked entries removed. */
 export async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
   const room = deps.rooms.get(giveaway.id)
   let initialised: RoomInitOutcome
@@ -175,12 +175,16 @@ export async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boole
     console.warn("room init failed", { giveawayId: giveaway.id, errorClass: errorClass(error) })
     return false
   }
-  if (initialised.exclusionsLoaded) return true
+  const missing = missingAfterInit(initialised, giveaway)
+  if (missing === null) return true
   // The recent winners come from the earlier giveaways' rooms, so their failure is a room failure too.
   try {
-    await room.loadExclusions(await exclusionsFor(deps, giveaway))
+    await sendMissingExclusions(deps, room, giveaway, missing)
   } catch (error) {
-    console.warn("room exclusions failed", { giveawayId: giveaway.id, errorClass: errorClass(error) })
+    console.warn("room exclusions failed", {
+      giveawayId: giveaway.id,
+      errorClass: errorClass(error),
+    })
     return false
   }
   return true

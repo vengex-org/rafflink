@@ -154,8 +154,9 @@ Same model as common chat giveaway tools, so streamers know it already:
   streamer's last N drawn giveaways or of those drawn in the last N days (a rerolled pick does not count).
 - A per-streamer block list keeps accounts out of every giveaway of the streamer. The streamer enters a login;
   it is resolved to the platform user id when saved, so a rename does not lift the block. Known chat bots
-  (`CHAT_BOT_LOGINS`) never enter. A blocked viewer reads only "You cannot enter this giveaway". An entry made
-  before the block stays.
+  (`CHAT_BOT_LOGINS`) never enter. A blocked viewer reads only "You cannot enter this giveaway". Blocking removes
+  the account's entry from the streamer's open giveaways; closed and drawn ones keep it, since their entrants
+  are committed.
 - One entry per platform account. Accounts on different platforms are different entrants.
 
 VIP and moderator groups are in v1. They need the streamer's token, see Streamer token.
@@ -448,8 +449,11 @@ no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Pl
   every 5 minutes by a Durable Object alarm while entries are open. A VIP added in the last 5 minutes may
   enter as a plain viewer; the alarm interval is a setting.
 - `excluded_users`: the streamer's block list and the recent winners the rules keep out, copied into the room
-  when it is set up (`room_state.exclusions_loaded`; a room that missed it gets it at the next dashboard call).
-  Each block list edit sends the whole list to every open room of the streamer, so an entry reads no D1 row.
+  when it is set up. Until `room_state.exclusions_loaded` is set the room refuses entries, and the entry flow
+  or the next dashboard call writes them. `streamers.block_list_version` counts block list edits and the room
+  keeps the version it holds: an edit sends the list to the newest `BLOCK_LIST_PUSH_MAX` open rooms, and a room
+  behind the version refuses an entry until the entry flow sends it the list. An entry reads one D1 row (the
+  giveaway, with the version) as before, plus the list only right after an edit the room missed.
 - `salt` (M2): 16 random bytes per entry, shown only to that entrant, used for the Merkle proof (see The draw).
 
 Viewer access tokens are used during the entry request and then dropped. Rafflink does not store them.

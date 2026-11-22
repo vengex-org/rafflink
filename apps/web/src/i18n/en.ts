@@ -505,7 +505,7 @@ export const en = {
   "dash.deleteData.confirm": "Yes, delete everything",
   "dash.blocks.title": "Blocked accounts",
   "dash.blocks.text":
-    "Blocked accounts cannot enter any of your giveaways. Entries they made before the block stay. The list is deleted with your account.",
+    "Blocked accounts cannot enter any of your giveaways. Their entries in giveaways that are still open are removed; entries in closed giveaways stay. The list is deleted with your account.",
   "dash.blocks.count": "{count} of {max} accounts blocked",
   "dash.blocks.none": "No accounts blocked.",
   "dash.blocks.label": "Twitch username to block",
@@ -793,9 +793,9 @@ export const en = {
   "privacy.data.i8":
     "Moderators who open a moderator link: the link stores only a hash of its secret. When a link is for channel moderators, the moderator signs in with Twitch and Rafflink checks the Twitch user ID against the channel's moderators. The ID is kept only in the moderator's cookie, nothing else about them is stored, and no Twitch token is kept.",
   "privacy.data.i9":
-    "Blocked accounts: a streamer can block accounts from their giveaways. Rafflink then stores the blocked person's Twitch user ID and login name, and the time of the block, with the streamer's account.",
+    "Blocked accounts: a streamer can block accounts from their giveaways. Rafflink then stores the blocked person's Twitch user ID and login name, and the time of the block, with the streamer's account. Each giveaway room of the streamer keeps a copy of the blocked user IDs so it can refuse them. If the person had already entered a giveaway that is still open, that entry is deleted.",
   "privacy.data.i10":
-    "Recent winners: when a streamer keeps recent winners out, the Twitch user IDs of the winners of their earlier giveaways are read to refuse them. Nothing new is stored for this.",
+    "Recent winners: when a streamer keeps recent winners out, the Twitch user IDs of the winners of their earlier giveaways are copied into the new giveaway's room so it can refuse them.",
   "privacy.purposes.h": "Why and on what legal basis",
   "privacy.purposes.i1":
     "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of a contract with you, the service you asked for (GDPR Article 6(1)(b)).",
@@ -814,7 +814,7 @@ export const en = {
   "privacy.retention.i5":
     "The giveaway (title, prize, rules, dates, entrant and ticket counts), everyone drawn, rerolled picks included, with Twitch user ID, login name, display name and claim state, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay until the streamer deletes the giveaway, so the prize can be delivered and anyone can check the draw later. The operator may set a number of days after the draw closed when giveaways are deleted.",
   "privacy.retention.i6":
-    "A block (Twitch user ID and login name) is kept to keep that person out of the streamer's giveaways, until the streamer removes it on the dashboard or deletes their account.",
+    "A block (Twitch user ID and login name) is kept to keep that person out of the streamer's giveaways, until the streamer removes it on the dashboard or deletes their account. The copies of blocked and recent-winner user IDs in a giveaway room are deleted with that giveaway's entries, at most 30 days after it closes.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":

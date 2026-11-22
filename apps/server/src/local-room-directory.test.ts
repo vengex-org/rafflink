@@ -8,7 +8,7 @@ import { FakeBeacon, idleChat } from "@rafflink/core/test/contract"
 import { eventSubChat } from "@rafflink/core/twitch/chat-watcher"
 import type { SocketConnector } from "@rafflink/core/ports"
 import type { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
-import { RoomTransientError } from "@rafflink/core/room/room-directory"
+import { RoomTransientError, type RoomStub } from "@rafflink/core/room/room-directory"
 import { giveawayInit, tempDir, testConfig } from "../test/fixtures.ts"
 import {
   LocalRoomDirectory,
@@ -29,6 +29,12 @@ const viewer = {
   subTier: null,
   accountAgeDays: 100,
 } as const
+
+// A room refuses entries until its excluded accounts are written, as the app does after init.
+async function enterAfterExclusions(room: RoomStub) {
+  await room.loadExclusions({ blocked: { version: 0, platformUserIds: [] }, recentWinners: [] })
+  return room.enter(viewer, { blockListVersion: 0 })
+}
 
 let dir: ReturnType<typeof tempDir>
 let directories: LocalRoomDirectory[]
@@ -66,7 +72,7 @@ describe("LocalRoomDirectory", () => {
     await directory.get(id).init(giveawayInit(id))
     await directory.get(otherId).init(giveawayInit(otherId))
 
-    await directory.get(id).enter(viewer)
+    await enterAfterExclusions(directory.get(id))
 
     expect((await directory.get(id).summary()).entrantCount).toBe(1)
     expect((await directory.get(otherId).summary()).entrantCount).toBe(0)
@@ -75,7 +81,7 @@ describe("LocalRoomDirectory", () => {
   it("keeps a room across a restart of the directory", async () => {
     const first = directoryWith()
     await first.get(id).init(giveawayInit(id))
-    await first.get(id).enter(viewer)
+    await enterAfterExclusions(first.get(id))
     await first.close()
 
     const second = directoryWith()
@@ -86,7 +92,7 @@ describe("LocalRoomDirectory", () => {
   it("deletes a room's files, refuses the id from then on without creating a file, and keeps the others", async () => {
     const directory = directoryWith()
     await directory.get(id).init(giveawayInit(id))
-    await directory.get(id).enter(viewer)
+    await enterAfterExclusions(directory.get(id))
     await directory.get(otherId).init(giveawayInit(otherId))
 
     await directory.delete(id)
@@ -195,7 +201,7 @@ describe("LocalRoomDirectory", () => {
     })
     await directory.get(id).init(giveawayInit(id))
 
-    await directory.get(id).enter(viewer)
+    await enterAfterExclusions(directory.get(id))
 
     expect(published.map((item) => item.topic).toSorted()).toEqual(
       [liveTopic(id), overlayTopic(id)].toSorted(),
@@ -231,12 +237,14 @@ describe("LocalRoomDirectory", () => {
     rival.exec("BEGIN IMMEDIATE")
 
     try {
-      await expect(directory.get(id).enter(viewer)).rejects.toBeInstanceOf(RoomTransientError)
+      await expect(enterAfterExclusions(directory.get(id))).rejects.toBeInstanceOf(
+        RoomTransientError,
+      )
     } finally {
       rival.exec("ROLLBACK")
       rival.close()
     }
-    expect((await directory.get(id).enter(viewer)).kind).toBe("entered")
+    expect((await enterAfterExclusions(directory.get(id))).kind).toBe("entered")
   })
 
   it("lets an error that is not a lock pass through unwrapped", async () => {
@@ -320,7 +328,7 @@ describe("LocalRoomDirectory", () => {
     const directory = directoryWith({ chat: () => (_platform, listener) => chat(listener) })
     const room = directory.get(id)
     await room.init(giveawayInit(id))
-    await room.enter(viewer)
+    await enterAfterExclusions(room)
     await room.close(null)
     await room.draw(1, null)
     expect({ opened, closed }).toEqual({ opened: 1, closed: 0 })
@@ -362,7 +370,7 @@ describe("LocalRoomDirectory live counts", () => {
       subscriberCount: (topic) => (topic === viewerTopic(id) ? 3 : topic === liveTopic(id) ? 9 : 0),
     })
     await directory.get(id).init(giveawayInit(id))
-    await directory.get(id).enter(viewer)
+    await enterAfterExclusions(directory.get(id))
 
     expect(await directory.get(id).liveCounts()).toEqual({
       entrants: 1,

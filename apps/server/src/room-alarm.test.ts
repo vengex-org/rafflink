@@ -82,6 +82,7 @@ beforeEach(async () => {
     beacon: new FakeBeacon(),
   })
   room.init(giveawayInit(giveawayId))
+  room.loadExclusions({ blocked: { version: 0, platformUserIds: [] }, recentWinners: [] })
 })
 
 afterEach(async () => {
@@ -134,7 +135,7 @@ describe("runRoomAlarm role refresh", () => {
 
     await runRoomAlarm(deps, giveawayId, room)
 
-    expect(room.enter(viewer)).toMatchObject({
+    expect(room.enter(viewer, { blockListVersion: 0 })).toMatchObject({
       kind: "entered",
       entry: { group: "vip", tickets: 6 },
     })
@@ -254,7 +255,7 @@ describe("runRoomAlarm minute counts", () => {
   it("adds the finished minutes of the room's entries to the account store's counters", async () => {
     await seedStreamerAndGiveaway()
     await runRoomAlarm(deps, giveawayId, room)
-    room.enter(viewer)
+    room.enter(viewer, { blockListVersion: 0 })
     clock.advance(60_000)
 
     await runRoomAlarm(deps, giveawayId, room)
@@ -268,7 +269,7 @@ describe("runRoomAlarm minute counts", () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     await seedStreamerAndGiveaway()
     await runRoomAlarm(deps, giveawayId, room)
-    room.enter(viewer)
+    room.enter(viewer, { blockListVersion: 0 })
     room.close(null)
     accountsDb.run("DROP TABLE metrics_minute")
     clock.advance(60_000)

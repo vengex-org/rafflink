@@ -260,7 +260,8 @@ function BlockedAccounts() {
       <h2 id="dash-blocks">{t("dash.blocks.title")}</h2>
       <p>{t("dash.blocks.text")}</p>
       {result.state === "loading" ? <Loading /> : null}
-      {result.state === "failed" ? (
+      {result.state === "failed"
+      || (result.state === "ready" && result.value === "unauthorized") ? (
         <>
           <p role="alert">{t("failed.text")}</p>
           <button type="button" className="button text" onClick={reload}>

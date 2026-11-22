@@ -132,22 +132,38 @@ export type RoomViewer = Omit<ViewerFacts, "userId" | "isVip" | "isModerator" | 
   readonly profileImageUrl: string | null
 }
 
-/** What {@link GiveawayRoom.init} found: whether the excluded accounts are written, or the caller still has to call `loadExclusions`. */
+/** What {@link GiveawayRoom.init} found: whether the excluded accounts are written, and which block list version the room holds. */
 export interface RoomInitOutcome {
   readonly exclusionsLoaded: boolean
+  readonly blockListVersion: number
 }
 
-/** Platform user ids on the giveaway's platform that may not enter: the streamer's block list and the winners of the streamer's recent giveaways. */
+/** The streamer's block list on the giveaway's platform at one `streamers.block_list_version`. */
+export interface BlockList {
+  readonly version: number
+  readonly platformUserIds: readonly string[]
+}
+
+/** The accounts a room keeps out: the streamer's block list and the platform user ids of the winners of the streamer's recent giveaways. */
 export interface RoomExclusions {
-  readonly blocked: readonly string[]
+  readonly blocked: BlockList
   readonly recentWinners: readonly string[]
 }
+
+/** What the caller knows an entry must be checked against: the block list version the account store holds now. */
+export interface EntryExpectation {
+  readonly blockListVersion: number
+}
+
+/** The room cannot check an entry yet; the caller sends what is `missing`, then enters again. */
+export type ExclusionsMissing = "exclusions" | "block-list"
 
 export type EnterOutcome =
   | { readonly kind: "entered"; readonly entry: EntrySummary }
   | { readonly kind: "already-in"; readonly entry: EntrySummary }
   | { readonly kind: "not-eligible"; readonly reason: IneligibleReason }
   | { readonly kind: "closed" }
+  | { readonly kind: "unavailable"; readonly missing: ExclusionsMissing }
 
 export type CloseOutcome =
   | { readonly kind: "closed" }
@@ -457,29 +473,30 @@ export class GiveawayRoom {
       ],
     )
     this.reconcile()
-    const [row] = this.sql.exec("SELECT exclusions_loaded FROM room_state WHERE id = 1", [])
-    if (row === undefined) throw new Error("room is not initialised")
-    return { exclusionsLoaded: new RowReader("room_state", row).int("exclusions_loaded") === 1 }
+    const state = this.readState()
+    return { exclusionsLoaded: state.exclusionsLoaded, blockListVersion: state.blockListVersion }
   }
 
-  /** Replaces every excluded account and marks them written, in one transaction. */
+  /** Replaces the recent winners, applies the block list as {@link replaceBlocked} does, and marks the exclusions written. */
   loadExclusions(exclusions: RoomExclusions): void {
     const { platform } = this.readState()
-    this.sql.transaction(() => {
-      this.sql.exec("DELETE FROM excluded_users", [])
-      this.insertExclusions(platform, exclusions.blocked, "blocked")
+    const removed = this.sql.transaction(() => {
+      this.sql.exec("DELETE FROM excluded_users WHERE reason = 'recent-winner'", [])
       this.insertExclusions(platform, exclusions.recentWinners, "recent-winner")
       this.sql.exec("UPDATE room_state SET exclusions_loaded = 1 WHERE id = 1", [])
+      return this.applyBlockList(exclusions.blocked)
     })
+    if (removed) this.afterWrite()
   }
 
-  /** Replaces the streamer's block list after an edit; the recent winners stay. An entry made before the block stays too. */
-  replaceBlocked(platformUserIds: readonly string[]): void {
-    const { platform } = this.readState()
-    this.sql.transaction(() => {
-      this.sql.exec("DELETE FROM excluded_users WHERE reason = 'blocked'", [])
-      this.insertExclusions(platform, platformUserIds, "blocked")
-    })
+  /**
+   * Replaces the streamer's block list; a list older than the one held changes nothing, so a late
+   * write never undoes a newer edit. While entries are open, a blocked account's entry is removed;
+   * once closed, the entrants are what the commitment covers and stay.
+   */
+  replaceBlocked(blocked: BlockList): void {
+    const removed = this.sql.transaction(() => this.applyBlockList(blocked))
+    if (removed) this.afterWrite()
   }
 
   /** Changes how many winners the streamer plans; the draw never reads it. */
@@ -489,13 +506,21 @@ export class GiveawayRoom {
     return { kind: "set" }
   }
 
-  /** One entry per account: a repeat returns the first entry and changes nothing. */
-  enter(viewer: RoomViewer): EnterOutcome {
+  /**
+   * One entry per account: a repeat returns the first entry and changes nothing. Fails closed: until
+   * the excluded accounts are written, or while the room holds an older block list than `expected`,
+   * it answers `unavailable` and writes nothing.
+   */
+  enter(viewer: RoomViewer, expected: EntryExpectation): EnterOutcome {
     const now = this.clock.now()
     const outcome = this.sql.transaction((): EnterOutcome => {
       const state = this.readState()
       if (state.status !== "open" || (state.closesAt !== null && now >= state.closesAt)) {
         return { kind: "closed" }
+      }
+      if (!state.exclusionsLoaded) return { kind: "unavailable", missing: "exclusions" }
+      if (state.blockListVersion < expected.blockListVersion) {
+        return { kind: "unavailable", missing: "block-list" }
       }
       const existing = this.sql.exec(entryOfSql, [state.platform, viewer.platformUserId])[0]
       if (existing !== undefined) return { kind: "already-in", entry: parseEntry(existing) }
@@ -1197,6 +1222,34 @@ export class GiveawayRoom {
       .map((row) => new RowReader("excluded_users", row).oneOf("reason", exclusions))
     if (reasons.includes("blocked")) return "blocked"
     return reasons.includes("recent-winner") ? "recent-winner" : null
+  }
+
+  // Runs inside the caller's transaction; true when it removed an entry, so the caller pushes the live pages.
+  private applyBlockList(blocked: BlockList): boolean {
+    const state = this.readState()
+    if (blocked.version < state.blockListVersion) return false
+    this.sql.exec("DELETE FROM excluded_users WHERE reason = 'blocked'", [])
+    this.insertExclusions(state.platform, blocked.platformUserIds, "blocked")
+    this.sql.exec("UPDATE room_state SET block_list_version = ? WHERE id = 1", [blocked.version])
+    if (state.status !== "open") return false
+    let removed = 0
+    let tickets = 0
+    for (const id of blocked.platformUserIds) {
+      const [row] = this.sql.exec(
+        "DELETE FROM entries WHERE platform = ? AND platform_user_id = ? RETURNING tickets",
+        [state.platform, id],
+      )
+      if (row === undefined) continue
+      removed += 1
+      tickets += new RowReader("entries", row).int("tickets")
+    }
+    if (removed === 0) return false
+    this.sql.exec(
+      "UPDATE room_state SET removed_entrants = removed_entrants + ?, ticket_total = ticket_total - ? WHERE id = 1",
+      [removed, tickets],
+    )
+    console.info("blocked entries removed", { giveawayId: state.giveawayId, removed })
+    return true
   }
 
   private insertExclusions(platform: string, ids: readonly string[], reason: Exclusion): void {

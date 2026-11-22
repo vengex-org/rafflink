@@ -5,6 +5,7 @@ import {
   queuedEntryTwitchRequests,
   queuedEntryTwitchSubrequests,
 } from "./twitch/queued-entry-requests.ts"
+import { twitchLoginPattern } from "./twitch/lib/login.ts"
 
 export type ConfigReason =
   | "missing"
@@ -411,7 +412,13 @@ export const configSchema = {
     "BLOCK_LIST_MAX",
     int(1),
     "500",
-    "Most accounts one streamer can block; every open giveaway of the streamer gets the whole list at each edit; starting guess, far above a list kept by hand",
+    "Most accounts one streamer can block; a room gets the whole list at each edit; starting guess, far above a list kept by hand",
+  ),
+  blockListPushMax: withDefault(
+    "BLOCK_LIST_PUSH_MAX",
+    int(0, 45),
+    "40",
+    "Most open giveaways, newest first, a block list edit sends the list to, one Durable Object subrequest apiece; the others get it from the entry flow before their next entry; the bound of 45 leaves the edit's own calls room inside the Free plan's 50 subrequests, 40 is a starting guess",
   ),
   claimKeywordMaxLength: withDefault(
     "CLAIM_KEYWORD_MAX_LENGTH",
@@ -811,6 +818,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     recentWinnersDaysMax: read(env, configSchema.recentWinnersDaysMax),
     chatBotLogins: read(env, configSchema.chatBotLogins),
     blockListMax: read(env, configSchema.blockListMax),
+    blockListPushMax: read(env, configSchema.blockListPushMax),
     claimKeywordMaxLength: read(env, configSchema.claimKeywordMaxLength),
     codeInsertRetries: read(env, configSchema.codeInsertRetries),
     usageWarningThreshold: read(env, configSchema.usageWarningThreshold),
@@ -1068,24 +1076,22 @@ function adminEntry(raw: string): Parsed<AdminEntry, ConfigIssue> {
 
 // Twitch logins are case-insensitive and stored in lower case; a link carries exactly one path segment.
 function loginOf(value: string): string | null {
-  if (twitchLogin.test(value)) return value.toLowerCase()
+  if (twitchLoginPattern.test(value)) return value.toLowerCase()
   if (!URL.canParse(value)) return null
   const { protocol, hostname, pathname } = new URL(value)
   if (protocol !== "https:" || (hostname !== "twitch.tv" && hostname !== "www.twitch.tv")) {
     return null
   }
   const segment = pathname.replace(/^\//, "").replace(/\/$/, "")
-  return twitchLogin.test(segment) ? segment.toLowerCase() : null
+  return twitchLoginPattern.test(segment) ? segment.toLowerCase() : null
 }
-
-const twitchLogin = /^[A-Za-z0-9_]{1,25}$/
 
 /** Comma separated Twitch logins in lower case; blank is none. */
 function loginList(raw: string): Parsed<readonly string[], ConfigReason> {
   if (raw.trim() === "") return ok([])
   return list((part: string): Parsed<string, ConfigReason> => {
     const value = part.trim()
-    return twitchLogin.test(value) ? ok(value.toLowerCase()) : fail("not-a-login")
+    return twitchLoginPattern.test(value) ? ok(value.toLowerCase()) : fail("not-a-login")
   })(raw)
 }
 

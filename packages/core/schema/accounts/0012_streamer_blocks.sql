@@ -8,5 +8,8 @@ CREATE TABLE streamer_blocks (
   PRIMARY KEY (streamer_id, platform, platform_user_id)
 ) WITHOUT ROWID;
 
+-- Counts the edits of the block list. A room holds the version of the list it has, and an entry into a room behind it waits until the list is sent, so a room the edit did not reach still never lets a blocked account in.
+ALTER TABLE streamers ADD COLUMN block_list_version INTEGER NOT NULL DEFAULT 0 CHECK (block_list_version >= 0);
+
 -- A new giveaway reads the winners of the latest drawn giveaways of its streamer, newest first.
 CREATE INDEX giveaways_drawn_by_streamer ON giveaways (streamer_id, created_at, id) WHERE status = 'drawn';

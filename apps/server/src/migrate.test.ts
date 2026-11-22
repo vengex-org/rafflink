@@ -109,8 +109,8 @@ describe("applyAccountsMigrations", () => {
       "moderator_links",
       "referrals",
       "schema_migrations",
-      "streamer_overlay",
       "streamer_blocks",
+      "streamer_overlay",
       "streamer_tokens",
       "streamers",
     ])

@@ -1,5 +1,5 @@
 const giveawayColumns = `g.id, g.code, g.streamer_id, s.platform, s.platform_user_id AS broadcaster_id, s.display_name AS streamer_name,
-  g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.winner_count, g.overlay_token, g.created_at`
+  g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.winner_count, g.overlay_token, g.created_at, s.block_list_version`
 const giveawayFrom = "FROM giveaways g JOIN streamers s ON s.id = g.streamer_id"
 
 /** A giveaway by its short code (parameter 1). */
@@ -14,16 +14,24 @@ export const ownedGiveawaySql = `SELECT ${giveawayColumns} ${giveawayFrom} WHERE
 /** A streamer's giveaways (parameter 1), newest first. */
 export const giveawaysOfStreamerSql = `SELECT ${giveawayColumns} ${giveawayFrom} WHERE g.streamer_id = ? ORDER BY g.created_at DESC, g.id DESC`
 
-/** A streamer's giveaways (parameter 1) that the account store holds as open. */
-export const openGiveawaysOfStreamerSql = `SELECT g.id FROM giveaways g WHERE g.streamer_id = ? AND g.status = 'open'`
+/** Ids of a streamer's (parameter 1) giveaways that the account store holds as open, newest first; parameter 2 is how many. */
+export const openGiveawaysOfStreamerSql = `SELECT id FROM giveaways WHERE streamer_id = ? AND status = 'open'
+  ORDER BY created_at DESC, id DESC LIMIT ?`
 
 /** Ids of a streamer's (parameter 1) drawn giveaways created at or after an instant (parameter 2), newest first; parameter 3 is how many. */
 export const recentDrawnGiveawaysSql = `SELECT id FROM giveaways WHERE streamer_id = ? AND status = 'drawn' AND created_at >= ?
   ORDER BY created_at DESC, id DESC LIMIT ?`
 
-/** A streamer's (parameter 1) block list, newest first. */
+/** A streamer's (parameter 1) block list on one platform (parameter 2), newest first. */
 export const blocksOfStreamerSql = `SELECT platform, platform_user_id, login, created_at FROM streamer_blocks
-  WHERE streamer_id = ? ORDER BY created_at DESC, platform_user_id`
+  WHERE streamer_id = ? AND platform = ? ORDER BY created_at DESC, platform_user_id`
+
+/** The block list version of a streamer (parameter 1). */
+export const blockListVersionSql = "SELECT block_list_version FROM streamers WHERE id = ?"
+
+/** Counts an edit of a streamer's (parameter 1) block list. */
+export const bumpBlockListVersionSql =
+  "UPDATE streamers SET block_list_version = block_list_version + 1 WHERE id = ?"
 
 /**
  * Parameters: streamer id, platform, platform user id, login, created at, streamer id again, the most

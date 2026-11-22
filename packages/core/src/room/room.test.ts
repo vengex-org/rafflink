@@ -14,7 +14,9 @@ import { idleChat } from "../../test/idle-chat.ts"
 import {
   GiveawayRoom,
   overlaySnapshot,
+  type EntryExpectation,
   type GiveawayInit,
+  type RoomExclusions,
   type RoomViewer,
   type ViewerPush,
 } from "./giveaway-room.ts"
@@ -122,6 +124,18 @@ class RecordingSql implements SyncSql {
 
 const random: Random = { bytes: (length) => new Uint8Array(length).fill(7) }
 
+const noExclusions: RoomExclusions = {
+  blocked: { version: 0, platformUserIds: [] },
+  recentWinners: [],
+}
+
+// The block list version every room of these tests holds unless a test changes it.
+const current: EntryExpectation = { blockListVersion: 0 }
+
+function blockList(version: number, platformUserIds: readonly string[]) {
+  return { version, platformUserIds }
+}
+
 function viewer(id: string, overrides: Partial<RoomViewer> = {}): RoomViewer {
   return {
     platformUserId: id,
@@ -139,6 +153,7 @@ function setup(
   init: GiveawayInit = giveaway,
   rng: Random = random,
   env: Record<string, string> = {},
+  exclusions: RoomExclusions | null = noExclusions,
 ) {
   const db = new Database(":memory:")
   const sql = new RecordingSql(new BunSqliteSyncSql(db))
@@ -158,6 +173,7 @@ function setup(
     beacon,
   })
   room.init(init)
+  if (exclusions !== null) room.loadExclusions(exclusions)
   return { room, sql, clock, alarm, hub, beacon }
 }
 
@@ -166,7 +182,7 @@ function advanceToAlarm(clock: TestClock, alarm: TestAlarm): void {
 }
 
 function enterMany(room: GiveawayRoom, ids: readonly string[]): void {
-  for (const id of ids) room.enter(viewer(id))
+  for (const id of ids) room.enter(viewer(id), current)
 }
 
 function picks(sql: SyncSql): SqlRow[] {
@@ -208,9 +224,9 @@ describe("GiveawayRoom entries", () => {
   it("a second entry keeps the first", () => {
     const { room, sql, clock } = setup()
     clock.advance(1000)
-    const first = room.enter(viewer("1"))
+    const first = room.enter(viewer("1"), current)
     clock.advance(5000)
-    const second = room.enter(viewer("1", { isFollower: true, subTier: 3 }))
+    const second = room.enter(viewer("1", { isFollower: true, subTier: 3 }), current)
 
     expect(first).toEqual({
       kind: "entered",
@@ -228,16 +244,16 @@ describe("GiveawayRoom entries", () => {
     const { room } = setup()
     expect(room.close(null)).toEqual({ kind: "closed" })
 
-    expect(room.enter(viewer("1"))).toEqual({ kind: "closed" })
+    expect(room.enter(viewer("1"), current)).toEqual({ kind: "closed" })
     expect(room.summary()).toMatchObject({ status: "closed", entrantCount: 0 })
   })
 
   it("refuses entries from the end time on, before the alarm has run", () => {
     const { room, clock } = setup({ ...giveaway, closesAt: 5000 })
     clock.advance(4999)
-    expect(room.enter(viewer("1")).kind).toBe("entered")
+    expect(room.enter(viewer("1"), current).kind).toBe("entered")
     clock.advance(1)
-    expect(room.enter(viewer("2"))).toEqual({ kind: "closed" })
+    expect(room.enter(viewer("2"), current)).toEqual({ kind: "closed" })
   })
 
   it("closing twice reports the status the second time", () => {
@@ -249,8 +265,8 @@ describe("GiveawayRoom entries", () => {
   it("writes nothing for a viewer who is not eligible", () => {
     const { room, sql } = setup({ ...giveaway, rules: { ...rules, subsOnly: true } })
 
-    expect(room.enter(viewer("1"))).toEqual({ kind: "not-eligible", reason: "subs-only" })
-    expect(room.enter(viewer("broadcaster", { subTier: 1 }))).toEqual({
+    expect(room.enter(viewer("1"), current)).toEqual({ kind: "not-eligible", reason: "subs-only" })
+    expect(room.enter(viewer("broadcaster", { subTier: 1 }), current)).toEqual({
       kind: "not-eligible",
       reason: "broadcaster",
     })
@@ -260,13 +276,13 @@ describe("GiveawayRoom entries", () => {
 
   it("gives the tickets of the best group, not their sum", () => {
     const { room } = setup()
-    const outcome = room.enter(viewer("1", { isFollower: true, subTier: 2 }))
+    const outcome = room.enter(viewer("1", { isFollower: true, subTier: 2 }), current)
     expect(outcome).toMatchObject({ entry: { group: "sub_t2", tickets: 4 } })
   })
 
   it("keeps the first room when init runs again", () => {
     const { room } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.init({ ...giveaway, id: "other", claimSeconds: 10 })
     expect(room.summary()).toMatchObject({ status: "open", entrantCount: 1 })
   })
@@ -274,10 +290,10 @@ describe("GiveawayRoom entries", () => {
   it("keeps the counters equal to the entries", () => {
     const { room, sql } = setup()
     enterMany(room, ["1", "2", "3"])
-    room.enter(viewer("2", { isFollower: true }))
-    room.enter(viewer("4", { isFollower: true }))
+    room.enter(viewer("2", { isFollower: true }), current)
+    room.enter(viewer("4", { isFollower: true }), current)
     room.close(null)
-    room.enter(viewer("5"))
+    room.enter(viewer("5"), current)
 
     const stored = sql.exec("SELECT COUNT(*) AS c, SUM(tickets) AS t FROM entries", [])[0]
     expect(room.summary()).toMatchObject({ entrantCount: stored?.c, ticketTotal: stored?.t })
@@ -523,7 +539,7 @@ describe("GiveawayRoom batch draw", () => {
 
   it("sends the picture of the newest picks only, so a large batch keeps the push small", async () => {
     const { room } = setup(giveaway, random, { LIVE_WINNER_IMAGES: "2" })
-    for (const id of ids) room.enter(viewer(id, { profileImageUrl: `https://pic/${id}` }))
+    for (const id of ids) room.enter(viewer(id, { profileImageUrl: `https://pic/${id}` }), current)
     room.close(null)
     await room.draw(5, null)
 
@@ -969,8 +985,10 @@ describe("GiveawayRoom roles", () => {
     const { room } = setup()
     room.replaceRoles(["7"], ["8"])
 
-    expect(room.enter(viewer("7"))).toMatchObject({ entry: { group: "vip", tickets: 6 } })
-    expect(room.enter(viewer("8"))).toMatchObject({ entry: { group: "moderator", tickets: 7 } })
+    expect(room.enter(viewer("7"), current)).toMatchObject({ entry: { group: "vip", tickets: 6 } })
+    expect(room.enter(viewer("8"), current)).toMatchObject({
+      entry: { group: "moderator", tickets: 7 },
+    })
   })
 
   it("replaces more than one chunk of roles within the bound parameter limit", () => {
@@ -1010,64 +1028,111 @@ describe("GiveawayRoom roles", () => {
 })
 
 describe("GiveawayRoom exclusions", () => {
-  it("reports the exclusions as not loaded until they are, also on a repeated init", () => {
+  it("reports the exclusions and the block list version, also on a repeated init", () => {
+    const { room } = setup(giveaway, random, {}, null)
+    expect(room.init(giveaway)).toEqual({ exclusionsLoaded: false, blockListVersion: 0 })
+
+    room.loadExclusions({ blocked: blockList(3, []), recentWinners: [] })
+
+    expect(room.init(giveaway)).toEqual({ exclusionsLoaded: true, blockListVersion: 3 })
+  })
+
+  it("refuses every entry until the exclusions are written, and writes nothing", () => {
+    const { room } = setup(giveaway, random, {}, null)
+
+    expect(room.enter(viewer("1"), current)).toEqual({
+      kind: "unavailable",
+      missing: "exclusions",
+    })
+    expect(room.summary().entrantCount).toBe(0)
+
+    room.loadExclusions(noExclusions)
+    expect(room.enter(viewer("1"), current)).toMatchObject({ kind: "entered" })
+  })
+
+  it("refuses an entry that expects a newer block list than the room holds", () => {
     const { room } = setup()
-    expect(room.init(giveaway)).toEqual({ exclusionsLoaded: false })
 
-    room.loadExclusions({ blocked: [], recentWinners: [] })
+    expect(room.enter(viewer("1"), { blockListVersion: 1 })).toEqual({
+      kind: "unavailable",
+      missing: "block-list",
+    })
 
-    expect(room.init(giveaway)).toEqual({ exclusionsLoaded: true })
+    room.replaceBlocked(blockList(1, []))
+    expect(room.enter(viewer("1"), { blockListVersion: 1 })).toMatchObject({ kind: "entered" })
   })
 
   it("refuses a blocked account and a recent winner with their own reasons", () => {
     const { room } = setup()
-    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
+    room.loadExclusions({ blocked: blockList(0, ["7"]), recentWinners: ["8"] })
 
-    expect(room.enter(viewer("7"))).toEqual({ kind: "not-eligible", reason: "blocked" })
-    expect(room.enter(viewer("8"))).toEqual({ kind: "not-eligible", reason: "recent-winner" })
-    expect(room.enter(viewer("9"))).toMatchObject({ kind: "entered" })
+    expect(room.enter(viewer("7"), current)).toEqual({ kind: "not-eligible", reason: "blocked" })
+    expect(room.enter(viewer("8"), current)).toEqual({
+      kind: "not-eligible",
+      reason: "recent-winner",
+    })
+    expect(room.enter(viewer("9"), current)).toMatchObject({ kind: "entered" })
     expect(room.summary().entrantCount).toBe(1)
   })
 
   it("tells a blocked recent winner they are blocked", () => {
     const { room } = setup()
-    room.loadExclusions({ blocked: ["7"], recentWinners: ["7"] })
-    expect(room.enter(viewer("7"))).toEqual({ kind: "not-eligible", reason: "blocked" })
+    room.loadExclusions({ blocked: blockList(0, ["7"]), recentWinners: ["7"] })
+    expect(room.enter(viewer("7"), current)).toEqual({ kind: "not-eligible", reason: "blocked" })
   })
 
   it("refuses a known chat bot by its login in any case", () => {
     const { room } = setup(giveaway, random, { CHAT_BOT_LOGINS: "nightbot" })
-    expect(room.enter(viewer("7", { login: "NightBot" }))).toEqual({
+    expect(room.enter(viewer("7", { login: "NightBot" }), current)).toEqual({
       kind: "not-eligible",
       reason: "blocked",
     })
-    expect(room.enter(viewer("8", { login: "viewer" }))).toMatchObject({ kind: "entered" })
+    expect(room.enter(viewer("8", { login: "viewer" }), current)).toMatchObject({
+      kind: "entered",
+    })
   })
 
   it("replaces the block list and keeps the recent winners", () => {
     const { room } = setup()
-    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
+    room.loadExclusions({ blocked: blockList(0, ["7"]), recentWinners: ["8"] })
 
-    room.replaceBlocked(["9"])
+    room.replaceBlocked(blockList(1, ["9"]))
 
-    expect(room.enter(viewer("7"))).toMatchObject({ kind: "entered" })
-    expect(room.enter(viewer("8"))).toEqual({ kind: "not-eligible", reason: "recent-winner" })
-    expect(room.enter(viewer("9"))).toEqual({ kind: "not-eligible", reason: "blocked" })
+    expect(room.enter(viewer("7"), current)).toMatchObject({ kind: "entered" })
+    expect(room.enter(viewer("8"), current)).toEqual({
+      kind: "not-eligible",
+      reason: "recent-winner",
+    })
+    expect(room.enter(viewer("9"), current)).toEqual({ kind: "not-eligible", reason: "blocked" })
   })
 
-  it("loads again over what was loaded before", () => {
+  it("keeps a newer block list when an older one arrives late, also through a load", () => {
     const { room } = setup()
-    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
-    room.loadExclusions({ blocked: [], recentWinners: [] })
-    expect(room.enter(viewer("7"))).toMatchObject({ kind: "entered" })
-    expect(room.enter(viewer("8"))).toMatchObject({ kind: "entered" })
+    room.replaceBlocked(blockList(2, ["9"]))
+
+    room.replaceBlocked(blockList(1, ["7"]))
+    room.loadExclusions({ blocked: blockList(1, ["7"]), recentWinners: ["8"] })
+
+    expect(room.enter(viewer("7"), current)).toMatchObject({ kind: "entered" })
+    expect(room.enter(viewer("9"), current)).toEqual({ kind: "not-eligible", reason: "blocked" })
+    expect(room.enter(viewer("8"), current)).toEqual({
+      kind: "not-eligible",
+      reason: "recent-winner",
+    })
+  })
+
+  it("loads the recent winners again over the ones loaded before", () => {
+    const { room } = setup()
+    room.loadExclusions({ blocked: blockList(0, []), recentWinners: ["8"] })
+    room.loadExclusions(noExclusions)
+    expect(room.enter(viewer("8"), current)).toMatchObject({ kind: "entered" })
   })
 
   it("writes a long block list in chunks within the bound parameter limit", () => {
     const { room, sql } = setup()
     const blocked = Array.from({ length: 70 }, (_, index) => `b${index}`)
 
-    room.replaceBlocked(blocked)
+    room.replaceBlocked(blockList(1, blocked))
 
     const inserts = sql.statements.filter((statement) =>
       statement.sql.startsWith("INSERT INTO excluded_users"),
@@ -1079,11 +1144,35 @@ describe("GiveawayRoom exclusions", () => {
     expect(count(sql, "excluded_users")).toBe(70)
   })
 
-  it("leaves an entry made before the block in place", () => {
+  it("removes the entry of an account blocked while entries are open, with its tickets", () => {
+    const { room, hub, clock } = setup()
+    room.enter(viewer("7", { isFollower: true }), current)
+    room.enter(viewer("8"), current)
+    clock.advance(config.liveIntervalMs)
+    const before = hub.messages.length
+
+    room.replaceBlocked(blockList(1, ["7"]))
+
+    expect(room.entryOf(twitch("7"))).toBeNull()
+    expect(room.summary()).toMatchObject({ entrantCount: 1, ticketTotal: 1 })
+    expect(room.enter(viewer("7"), { blockListVersion: 1 })).toEqual({
+      kind: "not-eligible",
+      reason: "blocked",
+    })
+    expect(room.enter(viewer("9"), { blockListVersion: 1 })).toMatchObject({ kind: "entered" })
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((row) => row.seq)).toEqual([2, 3])
+    expect(hub.messages.length).toBeGreaterThan(before)
+  })
+
+  it("keeps the entry of an account blocked after entries closed", () => {
     const { room } = setup()
-    room.enter(viewer("7"))
-    room.replaceBlocked(["7"])
-    expect(room.enter(viewer("7"))).toMatchObject({ kind: "already-in" })
+    room.enter(viewer("7"), current)
+    room.close(null)
+
+    room.replaceBlocked(blockList(1, ["7"]))
+
+    expect(room.entryOf(twitch("7"))).not.toBeNull()
+    expect(room.summary().entrantCount).toBe(1)
   })
 })
 
@@ -1111,7 +1200,7 @@ describe("GiveawayRoom alarm", () => {
       draw: false,
       metrics: [],
     })
-    expect(room.enter(viewer("1"))).toEqual({ kind: "closed" })
+    expect(room.enter(viewer("1"), current)).toEqual({ kind: "closed" })
   })
 
   it("does not close before the end time", () => {
@@ -1173,11 +1262,11 @@ describe("GiveawayRoom live push", () => {
     const { room, clock, hub, alarm } = setup()
     room.replaceRoles([], [])
 
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(100)
-    room.enter(viewer("2"))
+    room.enter(viewer("2"), current)
     clock.advance(100)
-    room.enter(viewer("3"))
+    room.enter(viewer("3"), current)
 
     expect(hub.messages).toHaveLength(1)
     expect(JSON.parse(hub.messages[0] ?? "")).toMatchObject({ entrantCount: 1 })
@@ -1189,15 +1278,15 @@ describe("GiveawayRoom live push", () => {
     expect(JSON.parse(hub.messages[1] ?? "")).toMatchObject({ entrantCount: 3 })
 
     clock.advance(10)
-    room.enter(viewer("4"))
+    room.enter(viewer("4"), current)
     expect(hub.messages).toHaveLength(2)
   })
 
   it("pushes again once the interval has passed", () => {
     const { room, clock, hub } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(1000)
-    room.enter(viewer("2"))
+    room.enter(viewer("2"), current)
     expect(hub.messages).toHaveLength(2)
   })
 
@@ -1209,7 +1298,7 @@ describe("GiveawayRoom live push", () => {
       throw new Error("socket gone")
     })
 
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
 
     expect(alarm.at).toBe(9000)
     expect(room.summary().entrantCount).toBe(1)
@@ -1220,7 +1309,7 @@ describe("GiveawayRoom live push", () => {
     spyOn(console, "warn").mockImplementation(() => {})
     for (const id of ["1", "2", "3"]) {
       clock.advance(1000)
-      room.enter(viewer(id))
+      room.enter(viewer(id), current)
     }
     room.recordFailure("role-refresh", new Error("helix 503"))
     room.recordFailure("eventsub", new Error("socket closed"))
@@ -1250,7 +1339,7 @@ describe("GiveawayRoom live push", () => {
     const start = clock.now()
     for (const id of ["1", "2", "3", "4"]) {
       clock.advance(500)
-      room.enter(viewer(id))
+      room.enter(viewer(id), current)
     }
 
     // Entered at start + 500, 1000, 1500 and 2000: the window [start + 1000, start + 2000) holds two.
@@ -1284,9 +1373,9 @@ function pushes(hub: TestHub) {
 describe("GiveawayRoom entrants", () => {
   it("numbers entries from 1 in the order they were written and lists them in that order", () => {
     const { room } = setup()
-    room.enter(viewer("30", { subTier: 1 }))
-    room.enter(viewer("10"))
-    room.enter(viewer("20", { isFollower: true }))
+    room.enter(viewer("30", { subTier: 1 }), current)
+    room.enter(viewer("10"), current)
+    room.enter(viewer("20", { isFollower: true }), current)
 
     expect(room.entrants({ afterSeq: 0, limit: 10 })).toEqual([
       {
@@ -1319,8 +1408,8 @@ describe("GiveawayRoom entrants", () => {
   it("lists the profile picture each entrant had at entry, none for an entrant without one", () => {
     const { room } = setup()
     const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/login1.png"
-    room.enter(viewer("1", { profileImageUrl: picture }))
-    room.enter(viewer("2"))
+    room.enter(viewer("1", { profileImageUrl: picture }), current)
+    room.enter(viewer("2"), current)
 
     expect(room.entrants({ afterSeq: 0, limit: 10 }).map((row) => row.profileImageUrl)).toEqual([
       picture,
@@ -1331,7 +1420,7 @@ describe("GiveawayRoom entrants", () => {
   it("carries the winner's profile picture in the live snapshot", async () => {
     const { room } = setup()
     const picture = "https://static-cdn.jtvnw.net/jtv_user_pictures/login1.png"
-    room.enter(viewer("1", { profileImageUrl: picture }))
+    room.enter(viewer("1", { profileImageUrl: picture }), current)
     room.close(null)
     await room.draw(1, null)
 
@@ -1356,10 +1445,10 @@ describe("GiveawayRoom entrants", () => {
   it("gives a repeat entry and a refused entry no sequence number", () => {
     const { room } = setup({ ...giveaway, rules: { ...rules, followersOnly: true } })
 
-    room.enter(viewer("1", { isFollower: true }))
-    room.enter(viewer("1", { isFollower: true }))
-    room.enter(viewer("2"))
-    room.enter(viewer("3", { isFollower: true }))
+    room.enter(viewer("1", { isFollower: true }), current)
+    room.enter(viewer("1", { isFollower: true }), current)
+    room.enter(viewer("2"), current)
+    room.enter(viewer("3", { isFollower: true }), current)
 
     expect(room.entrants({ afterSeq: 0, limit: 10 }).map((row) => [row.seq, row.login])).toEqual([
       [1, "login1"],
@@ -1385,10 +1474,10 @@ describe("GiveawayRoom live push of entrants", () => {
   it("carries no rows in the first push of a room object and the entrants since the last push after that", () => {
     const { room, clock, hub } = setup()
 
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(1000)
-    room.enter(viewer("2"))
-    room.enter(viewer("3"))
+    room.enter(viewer("2"), current)
+    room.enter(viewer("3"), current)
     clock.advance(1000)
     room.onAlarm()
 
@@ -1414,11 +1503,11 @@ describe("GiveawayRoom live push of entrants", () => {
 
   it("sends the entrants of a held push when the alarm fires, not one per entry", () => {
     const { room, clock, hub } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(100)
-    room.enter(viewer("2"))
+    room.enter(viewer("2"), current)
     clock.advance(100)
-    room.enter(viewer("3"))
+    room.enter(viewer("3"), current)
     clock.advance(800)
 
     room.onAlarm()
@@ -1429,13 +1518,13 @@ describe("GiveawayRoom live push of entrants", () => {
 
   it("marks a push truncated when more entrants arrived than one push carries and continues after them", () => {
     const { room, clock, hub } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(100)
     enterMany(room, ["2", "3", "4"])
     clock.advance(900)
     room.onAlarm()
     clock.advance(1000)
-    room.enter(viewer("5"))
+    room.enter(viewer("5"), current)
 
     const [, truncated, next] = pushes(hub)
     expect(truncated.fromSeq).toBe(1)
@@ -1448,7 +1537,7 @@ describe("GiveawayRoom live push of entrants", () => {
 
   it("sends exactly the maximum without marking it truncated", () => {
     const { room, clock, hub } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(100)
     enterMany(room, ["2", "3"])
     clock.advance(900)
@@ -1460,17 +1549,17 @@ describe("GiveawayRoom live push of entrants", () => {
 
   it("keeps the same rows for the next push when a push fails", () => {
     const { room, clock, hub } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(1000)
     spyOn(console, "warn").mockImplementation(() => {})
     const broadcast = spyOn(hub, "broadcast").mockImplementationOnce(() => {
       throw new Error("socket gone")
     })
-    room.enter(viewer("2"))
+    room.enter(viewer("2"), current)
     broadcast.mockRestore()
     clock.advance(1000)
 
-    room.enter(viewer("3"))
+    room.enter(viewer("3"), current)
 
     expect(
       pushes(hub)
@@ -1512,7 +1601,7 @@ describe("GiveawayRoom live push of entrants", () => {
 
   it("keeps the entrants out of the snapshot a GET returns", () => {
     const { room } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
 
     expect(room.liveSnapshot()).not.toHaveProperty("entrantsAfter")
   })
@@ -1521,7 +1610,7 @@ describe("GiveawayRoom live push of entrants", () => {
 describe("GiveawayRoom failures", () => {
   it("logs the giveaway id and the cause and never a viewer name", () => {
     const { room } = setup()
-    room.enter(viewer("1", { login: "secretlogin", displayName: "SecretName" }))
+    room.enter(viewer("1", { login: "secretlogin", displayName: "SecretName" }), current)
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     const cause = new Error("helix 503")
 
@@ -1539,7 +1628,7 @@ describe("GiveawayRoom entryOf", () => {
   it("returns the entry of an entrant and null for anyone else or another platform", () => {
     const { room, clock } = setup()
     clock.advance(1000)
-    room.enter(viewer("1", { subTier: 2 }))
+    room.enter(viewer("1", { subTier: 2 }), current)
 
     expect(room.entryOf(twitch("1"))).toEqual({ group: "sub_t2", tickets: 4, enteredAt: 1000 })
     expect(room.entryOf(twitch("2"))).toBeNull()
@@ -1801,7 +1890,7 @@ describe("public summary", () => {
 
   it("is finished and pushed at the end of the last claim time when no undrawn entrant is left to reroll to", async () => {
     const { room, clock, alarm, hub } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
     await room.draw(1, null)
     room.markMirrored("drawn")
@@ -1904,7 +1993,7 @@ describe("public summary", () => {
 
   it("keeps the live snapshot closed for rerolls when every entrant was drawn", async () => {
     const { room, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
     await room.draw(1, null)
     clock.advance(300_001)
@@ -1936,7 +2025,7 @@ describe("public summary", () => {
 
   it("tells the live snapshot nobody is left to reroll while the window is still open", async () => {
     const { room, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
     await room.draw(1, null)
     clock.advance(300_001)
@@ -1953,7 +2042,7 @@ describe("public summary", () => {
 
   it("names the window as the reason when it is over and nobody is left", async () => {
     const { room, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
     await room.draw(1, null)
     clock.advance(900_001)
@@ -2058,7 +2147,7 @@ describe("GiveawayRoom minute counts", () => {
     const { room, clock, alarm } = quietRoom()
     clock.advance(10_000)
 
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
 
     expect(alarm.at).toBe(minute)
   })
@@ -2066,11 +2155,11 @@ describe("GiveawayRoom minute counts", () => {
   it("reports each finished minute once, with its entries, and not the minute in progress", () => {
     const { room, clock } = quietRoom()
     clock.advance(10_000)
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(10_000)
-    room.enter(viewer("2"))
+    room.enter(viewer("2"), current)
     clock.advance(50_000)
-    room.enter(viewer("3"))
+    room.enter(viewer("3"), current)
     clock.advance(10_000)
 
     expect(room.onAlarm().metrics).toEqual([{ minute: 0, entries: 2, claims: 0 }])
@@ -2083,7 +2172,7 @@ describe("GiveawayRoom minute counts", () => {
   it("reports nothing and keeps the alarm at the end of the minute while that minute is in progress", () => {
     const { room, clock, alarm } = quietRoom()
     clock.advance(10_000)
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(10_000)
 
     expect(room.onAlarm().metrics).toEqual([])
@@ -2092,7 +2181,7 @@ describe("GiveawayRoom minute counts", () => {
 
   it("does not wake the room again once every minute is reported", () => {
     const { room, clock, alarm } = quietRoom()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(minute)
     room.onAlarm()
 
@@ -2101,7 +2190,7 @@ describe("GiveawayRoom minute counts", () => {
 
   it("reports the minutes of a room object that was evicted before the alarm", () => {
     const { room, sql, clock, alarm } = quietRoom()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(minute)
     const revived = new GiveawayRoom({
       sql,
@@ -2130,7 +2219,7 @@ describe("GiveawayRoom minute counts", () => {
 
   it("leaves out minutes older than the retention and does not wake the room for them", () => {
     const { room, clock, alarm } = quietRoom({ METRICS_RETENTION_HOURS: "1" })
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(3 * 3_600_000)
 
     expect(room.onAlarm().metrics).toEqual([])
@@ -2139,11 +2228,11 @@ describe("GiveawayRoom minute counts", () => {
 
   it("counts the entries and claims of the last minute for the admin page", () => {
     const { room, clock } = quietRoom()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(30_000)
-    room.enter(viewer("2"))
+    room.enter(viewer("2"), current)
     clock.advance(40_000)
-    room.enter(viewer("3"))
+    room.enter(viewer("3"), current)
 
     expect(room.liveCounts()).toEqual({ entrants: 3, entriesLastMinute: 2, claimsLastMinute: 0 })
   })
@@ -2155,7 +2244,7 @@ describe("GiveawayRoom retention", () => {
   it("deletes entries, channel roles and excluded accounts once the retention time after the close has passed, and nothing before", async () => {
     const { room, sql, clock } = await drawnRoom()
     room.replaceRoles(["9"], [])
-    room.loadExclusions({ blocked: ["7"], recentWinners: ["8"] })
+    room.loadExclusions({ blocked: blockList(0, ["7"]), recentWinners: ["8"] })
 
     clock.advance(retentionMs - 1)
     room.onAlarm()
@@ -2176,7 +2265,7 @@ describe("GiveawayRoom retention", () => {
 
   it("still deletes the excluded accounts of a room nobody entered", () => {
     const { room, sql, clock } = setup()
-    room.loadExclusions({ blocked: ["7"], recentWinners: [] })
+    room.loadExclusions({ blocked: blockList(0, ["7"]), recentWinners: [] })
     room.close(null)
 
     clock.advance(retentionMs)
@@ -2255,7 +2344,7 @@ describe("GiveawayRoom retention", () => {
 
   it("counts the retention time from the close, not from the entry", () => {
     const { room, sql, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(retentionMs)
     room.onAlarm()
     expect(count(sql, "entries")).toBe(1)
@@ -2272,7 +2361,7 @@ describe("GiveawayRoom retention", () => {
 
   it("sets the alarm to the deadline while data remains and to nothing once it is deleted", async () => {
     const { room, alarm, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     clock.advance(60_000)
     room.onAlarm()
     clock.advance(1000)
@@ -2348,7 +2437,7 @@ describe("GiveawayRoom retention", () => {
 
   it("refuses to draw a closed room whose entries were deleted, and leaves it closed", async () => {
     const { room, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
     clock.advance(retentionMs)
     room.onAlarm()
@@ -2379,7 +2468,7 @@ describe("GiveawayRoom retention", () => {
 
   it("keeps the root, the round and the leaves after the entries are deleted, and does not commit then", async () => {
     const { room, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
     await room.commit()
     const before = { commitment: room.verification().commitment, leaves: room.leaves() }
@@ -2396,7 +2485,7 @@ describe("GiveawayRoom retention", () => {
 
   it("does not commit a closed room whose entries were deleted before it committed", async () => {
     const { room, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     room.close(null)
     clock.advance(retentionMs)
     room.onAlarm()
@@ -2410,7 +2499,7 @@ describe("GiveawayRoom retention", () => {
 
   it("never deletes the entries of an open room", () => {
     const { room, sql, clock } = setup()
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
 
     clock.advance(10 * retentionMs)
     room.onAlarm()
@@ -2738,8 +2827,9 @@ describe("GiveawayRoom of an older database", () => {
   it("lets an entry of the older code enter a room that is still open, and commit later", async () => {
     const { upgrade } = legacyRoom(["1"], "open", countingRandom())
     const room = upgrade()
+    room.loadExclusions(noExclusions)
 
-    expect(room.enter(viewer("2")).kind).toBe("entered")
+    expect(room.enter(viewer("2"), current).kind).toBe("entered")
     room.close(null)
     await room.commit()
 

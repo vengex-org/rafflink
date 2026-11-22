@@ -262,7 +262,13 @@ describe("legal pages", () => {
     expect(text).toContain(
       "until the streamer removes it on the dashboard or deletes their account",
     )
-    expect(text).toContain("the Twitch user IDs of the winners of their earlier giveaways are read")
+    expect(text).toContain(
+      "the Twitch user IDs of the winners of their earlier giveaways are copied into the new giveaway's room",
+    )
+    expect(text).toContain(
+      "are deleted with that giveaway's entries, at most 30 days after it closes",
+    )
+    expect(text).not.toContain("Nothing new is stored")
   })
 
   it("name the cookies and say no consent banner is needed", () => {

@@ -13,6 +13,8 @@ import {
   approveStreamerSql,
   activeModeratorLinksSql,
   deleteGiveawayModeratorLinksSql,
+  bumpBlockListVersionSql,
+  blockListVersionSql,
   blockSql,
   blocksOfStreamerSql,
   deleteBlockSql,
@@ -112,9 +114,14 @@ export interface Giveaway {
   readonly winnerCount: number
   readonly overlayToken: string
   readonly createdAt: Instant
+  /** The streamer's `block_list_version` when the row was read; the room must hold at least this list before an entry. */
+  readonly blockListVersion: number
 }
 
-export type NewGiveaway = Omit<Giveaway, "platform" | "broadcasterId" | "streamerName" | "status">
+export type NewGiveaway = Omit<
+  Giveaway,
+  "platform" | "broadcasterId" | "streamerName" | "status" | "blockListVersion"
+>
 
 /** A link that lets whoever opens it act on one giveaway as its moderator; the store keeps a hash of its token, never the token. */
 export interface ModeratorLink {
@@ -260,9 +267,9 @@ export class AccountStore {
     return rows.map((row) => this.parseGiveaway(row))
   }
 
-  /** Ids of the streamer's giveaways whose mirrored status is still open. */
-  async listOpenGiveawayIds(streamerId: string): Promise<string[]> {
-    const rows = await this.sql.all(openGiveawaysOfStreamerSql, [streamerId])
+  /** Ids of up to `limit` of the streamer's giveaways whose mirrored status is still open, newest first. */
+  async listOpenGiveawayIds(streamerId: string, limit: number): Promise<string[]> {
+    const rows = await this.sql.all(openGiveawaysOfStreamerSql, [streamerId, limit])
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
   }
 
@@ -276,9 +283,23 @@ export class AccountStore {
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
   }
 
-  /** The streamer's block list, newest first. */
-  async listBlocks(streamerId: string): Promise<StreamerBlock[]> {
-    const rows = await this.sql.all(blocksOfStreamerSql, [streamerId])
+  /**
+   * The streamer's block list on one platform with its version. The version is read first, so an edit
+   * in between leaves a list newer than its version, which a room only reloads once more.
+   */
+  async blockList(
+    streamerId: string,
+    platform: string,
+  ): Promise<{ version: number; blocks: StreamerBlock[] }> {
+    const [row] = await this.sql.all(blockListVersionSql, [streamerId])
+    if (row === undefined) throw new RoomRowError("streamers", "id")
+    const version = new RowReader("streamers", row).int("block_list_version")
+    return { version, blocks: await this.listBlocks(streamerId, platform) }
+  }
+
+  /** The streamer's block list on one platform, newest first. */
+  async listBlocks(streamerId: string, platform: string): Promise<StreamerBlock[]> {
+    const rows = await this.sql.all(blocksOfStreamerSql, [streamerId, platform])
     return rows.map((row) => {
       const reader = new RowReader("streamer_blocks", row)
       return {
@@ -290,8 +311,13 @@ export class AccountStore {
     })
   }
 
-  /** Adds the block while the streamer holds fewer than `max`; a repeat keeps the first. */
+  /**
+   * Adds the block while the streamer holds fewer than `max`; a repeat keeps the first. The version
+   * moves first: a lost insert after it only makes rooms reload an unchanged list, while the other
+   * order could leave a block that no room is told to load.
+   */
   async addBlock(streamerId: string, block: StreamerBlock, max: number): Promise<AddBlockOutcome> {
+    await this.sql.run(bumpBlockListVersionSql, [streamerId])
     const inserted = await this.sql.all(insertBlockSql, [
       streamerId,
       block.platform,
@@ -310,8 +336,9 @@ export class AccountStore {
     return existing.length === 1 ? "exists" : "full"
   }
 
-  /** Idempotent: removing a block that is not there changes nothing. */
+  /** Idempotent: removing a block that is not there changes only the version, as in {@link addBlock}. */
   async removeBlock(streamerId: string, platform: string, platformUserId: string): Promise<void> {
+    await this.sql.run(bumpBlockListVersionSql, [streamerId])
     await this.sql.run(deleteBlockSql, [streamerId, platform, platformUserId])
   }
 
@@ -515,6 +542,7 @@ export class AccountStore {
       winnerCount: reader.int("winner_count"),
       overlayToken: reader.text("overlay_token"),
       createdAt: reader.int("created_at"),
+      blockListVersion: reader.int("block_list_version"),
     }
   }
 }

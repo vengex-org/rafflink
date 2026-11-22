@@ -753,4 +753,13 @@ describe("dashboard block list", () => {
       await view.findByRole("button", { name: "Remove spammer from the block list" }),
     ).toBeTruthy()
   })
+
+  it("says so when the block list answers without a session instead of hiding it", async () => {
+    mockFetch({ ...listed, "GET /api/dash/blocks": () => ({ status: 401, body: null }) })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByText("Something went wrong. Reload the page.")).toBeTruthy()
+    expect(view.queryByLabelText("Twitch username to block")).toBeNull()
+  })
 })

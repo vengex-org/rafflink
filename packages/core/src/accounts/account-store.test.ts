@@ -313,6 +313,7 @@ describe("AccountStore giveaways", () => {
       broadcasterId: "200",
       streamerName: "Streamer",
       status: "open",
+      blockListVersion: 0,
     })
   })
 
@@ -720,8 +721,8 @@ describe("AccountStore block list", () => {
     const second = { ...block, platformUserId: "301", login: "alt_two", createdAt: 30 }
     await store.addBlock("s1", second, 5)
 
-    expect(await store.listBlocks("s1")).toEqual([second, block])
-    expect(await store.listBlocks("s2")).toEqual([])
+    expect(await store.listBlocks("s1", "twitch")).toEqual([second, block])
+    expect(await store.listBlocks("s2", "twitch")).toEqual([])
   })
 
   it("refuses a block beyond the most allowed and writes nothing", async () => {
@@ -729,7 +730,7 @@ describe("AccountStore block list", () => {
     await store.addBlock("s1", block, 1)
 
     expect(await store.addBlock("s1", { ...block, platformUserId: "301" }, 1)).toBe("full")
-    expect(await store.listBlocks("s1")).toHaveLength(1)
+    expect(await store.listBlocks("s1", "twitch")).toHaveLength(1)
     expect(await store.addBlock("s2", { ...block, platformUserId: "301" }, 1)).toBe("added")
   })
 
@@ -741,8 +742,29 @@ describe("AccountStore block list", () => {
     await store.removeBlock("s1", "twitch", "300")
     await store.removeBlock("s1", "twitch", "300")
 
-    expect(await store.listBlocks("s1")).toEqual([])
-    expect(await store.listBlocks("s2")).toEqual([block])
+    expect(await store.listBlocks("s1", "twitch")).toEqual([])
+    expect(await store.listBlocks("s2", "twitch")).toEqual([block])
+  })
+
+  it("moves the block list version at each edit and carries it on the streamer's giveaways", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    await store.addBlock("s1", block, 5)
+    await store.addBlock("s1", { ...block, platformUserId: "301" }, 5)
+    await store.removeBlock("s1", "twitch", "300")
+
+    expect(await store.blockList("s1", "twitch")).toEqual({
+      version: 3,
+      blocks: [{ ...block, platformUserId: "301" }],
+    })
+    expect((await store.findGiveawayById("g1"))?.blockListVersion).toBe(3)
+    expect((await store.blockList("s2", "twitch")).version).toBe(0)
+  })
+
+  it("lists the blocks of one platform only", async () => {
+    const { store } = await withStreamers()
+    await store.addBlock("s1", block, 5)
+    expect(await store.listBlocks("s1", "kick")).toEqual([])
   })
 
   it("deletes the block list with the streamer", async () => {
@@ -764,7 +786,16 @@ describe("AccountStore giveaways of a streamer by status", () => {
     await store.insertGiveaway(giveaway({ id: "g3", code: "CDEFG", streamerId: "s2" }))
     await store.setStatus("g2", "closed", 0)
 
-    expect(await store.listOpenGiveawayIds("s1")).toEqual(["g1"])
+    expect(await store.listOpenGiveawayIds("s1", 10)).toEqual(["g1"])
+  })
+
+  it("lists only the newest open giveaways up to the limit", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway({ createdAt: 100 }))
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BCDEF", createdAt: 200 }))
+    await store.insertGiveaway(giveaway({ id: "g3", code: "CDEFG", createdAt: 300 }))
+
+    expect(await store.listOpenGiveawayIds("s1", 2)).toEqual(["g3", "g2"])
   })
 
   it("lists the latest drawn giveaways created since an instant, newest first, up to the limit", async () => {

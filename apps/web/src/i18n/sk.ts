@@ -505,7 +505,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "dash.deleteData.confirm": "Áno, vymazať všetko",
   "dash.blocks.title": "Zablokované účty",
   "dash.blocks.text":
-    "Zablokované účty sa nemôžu zapojiť do žiadneho tvojho giveawayu. Zapojenia, ktoré urobili pred blokom, zostanú. Zoznam sa vymaže spolu s tvojím účtom.",
+    "Zablokované účty sa nemôžu zapojiť do žiadneho tvojho giveawayu. Ich zapojenia v ešte otvorených giveawayoch sa odstránia, v uzavretých zostanú. Zoznam sa vymaže spolu s tvojím účtom.",
   "dash.blocks.count": "Zablokovaných účtov: {count} z {max}",
   "dash.blocks.none": "Žiadne zablokované účty.",
   "dash.blocks.label": "Twitch meno na zablokovanie",
@@ -796,9 +796,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i8":
     "Moderátori, ktorí otvoria odkaz pre moderátora: odkaz ukladá iba hash svojho tajomstva. Keď je odkaz pre moderátorov kanála, moderátor sa prihlási cez Twitch a Rafflink porovná jeho Twitch user ID so zoznamom moderátorov kanála. ID zostane iba v cookie moderátora, nič iné sa o ňom neukladá a žiadny Twitch token sa nedrží.",
   "privacy.data.i9":
-    "Zablokované účty: streamer môže zablokovať účty vo svojich giveawayoch. Rafflink potom pri účte streamera uloží Twitch user ID a prihlasovacie meno zablokovanej osoby a čas bloku.",
+    "Zablokované účty: streamer môže zablokovať účty vo svojich giveawayoch. Rafflink potom pri účte streamera uloží Twitch user ID a prihlasovacie meno zablokovanej osoby a čas bloku. Každá miestnosť giveawayu streamera si drží kópiu zablokovaných user ID, aby ich mohla odmietnuť. Ak sa osoba už zapojila do giveawayu, ktorý je ešte otvorený, jej záznam sa vymaže.",
   "privacy.data.i10":
-    "Nedávni víťazi: keď streamer nezapája nedávnych víťazov, čítajú sa Twitch user ID víťazov jeho predchádzajúcich giveawayov, aby sa odmietli. Nič nové sa pritom neukladá.",
+    "Nedávni víťazi: keď streamer nezapája nedávnych víťazov, Twitch user ID víťazov jeho predchádzajúcich giveawayov sa skopírujú do miestnosti nového giveawayu, aby ich mohla odmietnuť.",
   "privacy.purposes.h": "Prečo a na akom právnom základe",
   "privacy.purposes.i1":
     "Na prevádzku giveawayov, ktoré streameri vytvárajú, a na zapájanie divákov vrátane žrebovania a prevzatia výhry: plnenie zmluvy s tebou, teda služby, o ktorú si požiadal (čl. 6 ods. 1 písm. b) GDPR).",
@@ -818,7 +818,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.retention.i5":
     "Giveaway (názov, výhra, pravidlá, dátumy, počty zapojených a tiketov), všetci vyžrebovaní, aj tí nahradení novým žrebom, s Twitch ID, prihlasovacím a zobrazovaným menom a stavom prevzatia, Merkleho koreň zoznamu zapojení a zoznam jeho listov (hashe a počty tiketov, bez mien) zostávajú, kým streamer giveaway nevymaže, aby sa dala doručiť výhra a aby si žrebovanie mohol neskôr overiť ktokoľvek. Prevádzkovateľ môže nastaviť počet dní po uzavretí žrebovania, po ktorých sa giveawaye mažú.",
   "privacy.retention.i6":
-    "Blok (Twitch user ID a prihlasovacie meno) sa uchováva, aby sa daná osoba nezapojila do giveawayov streamera, kým ho streamer neodoberie na prehľade alebo nevymaže svoj účet.",
+    "Blok (Twitch user ID a prihlasovacie meno) sa uchováva, aby sa daná osoba nezapojila do giveawayov streamera, kým ho streamer neodoberie na prehľade alebo nevymaže svoj účet. Kópie zablokovaných user ID a user ID nedávnych víťazov v miestnosti giveawayu sa vymažú spolu so záznamami toho giveawayu, najneskôr 30 dní po jeho uzavretí.",
   "privacy.recipients.h": "Kto ďalší údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje nepredáva. Údaje idú len týmto stranám.",
   "privacy.recipients.i1":

@@ -166,7 +166,10 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
 
   app.get("/api/dash/blocks", async (c) => {
     const body: BlockListJson = {
-      blocks: await deps.accounts.listBlocks(c.get("streamer").streamerId),
+      blocks: await deps.accounts.listBlocks(
+        c.get("streamer").streamerId,
+        c.get("streamer").platform,
+      ),
       blockListMax: deps.config.blockListMax,
     }
     c.header("Cache-Control", "no-store")
@@ -177,12 +180,13 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   // Saving is idempotent, so after `room-unavailable` a repeat sends the list to the rooms again.
   app.post("/api/dash/blocks", sameOriginJson(deps.config), async (c) => {
     const { streamerId, platform } = c.get("streamer")
+    const provider = providerFor(deps.platforms, platform)
     const typed = objectField(await readJson(c), "login")
-    const login = typeof typed === "string" && typed.trim() !== "" ? typed.trim() : null
+    const login = typeof typed === "string" ? provider.parseLogin(typed) : null
     if (login === null) return c.json({ error: "invalid-input", field: "login" }, 400)
     let account: PlatformAccount | null
     try {
-      account = await providerFor(deps.platforms, platform).accountByLogin(login)
+      account = await provider.accountByLogin(login)
     } catch (error) {
       if (!(error instanceof PlatformError)) throw error
       console.warn("block login lookup failed", {
