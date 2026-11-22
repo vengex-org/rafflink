@@ -1,6 +1,6 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { SQLiteError, type Database } from "bun:sqlite"
-import { mkdirSync, readdirSync } from "node:fs"
+import { mkdirSync, readdirSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { GiveawayRoom, overlaySnapshot, type RoomConfig } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
@@ -72,6 +72,20 @@ export class LocalRoomDirectory implements RoomDirectory {
     return new LocalRoomStub(this.roomFor(giveawayId), () =>
       this.deps.subscriberCount(viewerTopic(giveawayId)),
     )
+  }
+
+  /** Stops the room's chat and alarm, closes its database and removes its file with the write-ahead log files beside it. */
+  async delete(giveawayId: string): Promise<void> {
+    if (!giveawayIdPattern.test(giveawayId)) throw new RangeError("not a giveaway id")
+    const open = this.open.get(giveawayId)
+    if (open !== undefined) {
+      open.room.closeChat()
+      open.alarm.clear()
+      open.db.close()
+      this.open.delete(giveawayId)
+    }
+    const path = join(this.deps.roomsDir, `${giveawayId}${sqliteSuffix}`)
+    for (const file of [path, `${path}-wal`, `${path}-shm`]) rmSync(file, { force: true })
   }
 
   /** The outcome a viewer's page connecting now starts from, as the JSON text of a push. */
@@ -219,6 +233,9 @@ class LocalRoomStub implements RoomStub {
   }
   picks() {
     return inRoom(() => this.room.picks())
+  }
+  removeWinnerName(...args: Parameters<GiveawayRoom["removeWinnerName"]>) {
+    return inRoom(() => this.room.removeWinnerName(...args))
   }
   markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return inRoom(() => this.room.markMirrored(...args))

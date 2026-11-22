@@ -12,7 +12,15 @@ export class DurableObjectRoomDirectory implements RoomDirectory {
 
   // The stub is made per call of `get`: it belongs to the request that asked for the room.
   get(giveawayId: string): RoomStub {
-    return new DurableObjectRoomStub(this.namespace.get(this.namespace.idFromName(giveawayId)))
+    return new DurableObjectRoomStub(this.stubOf(giveawayId))
+  }
+
+  delete(giveawayId: string): Promise<void> {
+    return inRoom(() => this.stubOf(giveawayId).destroy())
+  }
+
+  private stubOf(giveawayId: string): DurableObjectStub<GiveawayRoomObject> {
+    return this.namespace.get(this.namespace.idFromName(giveawayId))
   }
 }
 
@@ -64,6 +72,9 @@ class DurableObjectRoomStub implements RoomStub {
   }
   picks() {
     return inRoom(() => this.stub.picks())
+  }
+  removeWinnerName(...args: Parameters<GiveawayRoom["removeWinnerName"]>) {
+    return inRoom(() => this.stub.removeWinnerName(...args))
   }
   markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return inRoom(() => this.stub.markMirrored(...args))

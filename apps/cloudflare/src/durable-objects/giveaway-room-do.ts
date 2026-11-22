@@ -26,11 +26,23 @@ const viewerTag = "viewer"
  * hibernating WebSockets of the object; the storage alarm runs {@link runRoomAlarm}.
  */
 export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
-  private readonly opened: Promise<OpenRoom>
+  // Replaced by `destroy`, which leaves the object over empty storage.
+  private opened: Promise<OpenRoom>
 
   constructor(ctx: DurableObjectState, env: WorkerEnv) {
     super(ctx, env)
     this.opened = ctx.blockConcurrencyWhile(() => this.open())
+  }
+
+  /** Ends the chat and the pages' sockets, then deletes the alarm and every stored row; the next call finds an empty room. */
+  async destroy(): Promise<void> {
+    const { room } = await this.opened
+    room.closeChat()
+    for (const socket of this.ctx.getWebSockets()) socket.close(1000, "giveaway deleted")
+    await this.ctx.storage.deleteAlarm()
+    await this.ctx.storage.deleteAll()
+    this.opened = this.ctx.blockConcurrencyWhile(() => this.open())
+    await this.opened
   }
 
   async init(...args: Parameters<GiveawayRoom["init"]>) {
@@ -77,6 +89,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   }
   async picks() {
     return (await this.opened).room.picks()
+  }
+  async removeWinnerName(...args: Parameters<GiveawayRoom["removeWinnerName"]>) {
+    return (await this.opened).room.removeWinnerName(...args)
   }
   async markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return (await this.opened).room.markMirrored(...args)

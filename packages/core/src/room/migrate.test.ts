@@ -126,4 +126,25 @@ describe("applyMigrations", () => {
       expect(closedAt(roomBefore("open", null, "NULL"))).toBeNull()
     })
   })
+
+  describe("the winner names of rooms that picked before they were stored", () => {
+    it("copies the name of a winner whose entry is still there, and leaves a swept winner nameless", () => {
+      const sql = roomBefore("drawn", 5000, "x'00'")
+      sql.exec(
+        "INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at) VALUES (1, 'twitch', 'kept', 'kept_login', 'Kept', 'viewer', 1, 1000)",
+        [],
+      )
+      sql.exec(
+        "INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until) VALUES (0, 'twitch', 'kept', 9000, 9500), (1, 'twitch', 'swept', 9000, 9500)",
+        [],
+      )
+
+      applyMigrations(sql, roomMigrations)
+
+      expect(sql.exec("SELECT n, login, display_name FROM draws ORDER BY n", [])).toEqual([
+        { n: 0, login: "kept_login", display_name: "Kept" },
+        { n: 1, login: null, display_name: null },
+      ])
+    })
+  })
 })

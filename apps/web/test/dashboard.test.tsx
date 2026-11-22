@@ -425,3 +425,88 @@ describe("dashboard", () => {
     expect(view.queryByRole("link", { name: "New giveaway" })).toBeNull()
   })
 })
+
+describe("dashboard history", () => {
+  const finished = [
+    { ...dashboardGiveaway, id: "a", code: "AAAAA", title: "Spring keyboard", status: "drawn" },
+    { ...dashboardGiveaway, id: "b", code: "BBBBB", title: "Winter mouse", status: "drawn" },
+  ]
+
+  it("offers the winners of a finished giveaway as a CSV download, and none for a running one", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () => ok({ giveaways: [dashboardGiveaway, ...finished] }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    const links = await view.findAllByRole("link", { name: /Winners as CSV/ })
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/api/dash/giveaways/a/winners.csv",
+      "/api/dash/giveaways/b/winners.csv",
+    ])
+    expect(links.every((link) => link.hasAttribute("download"))).toBe(true)
+  })
+
+  it("narrows the finished giveaways to a search by name, prize or code", async () => {
+    mockFetch({ "GET /api/dash/giveaways": () => ok({ giveaways: finished }) })
+
+    const view = renderApp("/dashboard")
+    const search = await view.findByRole("searchbox", { name: "Search finished giveaways" })
+    fireEvent.change(search, { target: { value: "winter" } })
+
+    await waitFor(() =>
+      expect(view.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+        "Winter mouse",
+      ]),
+    )
+    fireEvent.change(search, { target: { value: "AAAAA" } })
+    await waitFor(() =>
+      expect(view.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+        "Spring keyboard",
+      ]),
+    )
+    fireEvent.change(search, { target: { value: "nothing like it" } })
+    expect(await view.findByText("No finished giveaway matches your search.")).toBeTruthy()
+  })
+
+  it("deletes a giveaway once the streamer confirms and lists the rest again", async () => {
+    let giveaways = finished
+    const requests = mockFetch({
+      "GET /api/dash/giveaways": () => ok({ giveaways }),
+      "POST /api/dash/giveaways/a/delete": () => {
+        giveaways = finished.slice(1)
+        return ok({ kind: "deleted" })
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Delete Spring keyboard" }))
+    fireEvent.click(view.getByRole("button", { name: "Yes, delete it" }))
+
+    await waitFor(() =>
+      expect(view.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+        "Winter mouse",
+      ]),
+    )
+    expect(requests.map((request) => request.route)).toContain("POST /api/dash/giveaways/a/delete")
+  })
+
+  it("deletes all of the streamer's data once confirmed and then asks to sign in", async () => {
+    let signedIn = true
+    const requests = mockFetch({
+      "GET /api/dash/giveaways": () =>
+        signedIn ? ok({ giveaways: finished }) : { status: 401, body: { error: "unauthorized" } },
+      "POST /api/dash/account/delete": () => {
+        signedIn = false
+        return ok({ kind: "deleted" })
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Delete all my data" }))
+    fireEvent.click(view.getByRole("button", { name: "Yes, delete everything" }))
+
+    expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
+    expect(requests.map((request) => request.route)).toContain("POST /api/dash/account/delete")
+  })
+})

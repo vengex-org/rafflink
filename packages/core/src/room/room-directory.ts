@@ -25,6 +25,7 @@ export type RoomStub = Remote<
     | "reroll"
     | "claim"
     | "picks"
+    | "removeWinnerName"
     | "markMirrored"
     | "liveSnapshot"
     | "entriesPerSecondBefore"
@@ -34,6 +35,8 @@ export type RoomStub = Remote<
 /** Finds the room of a giveaway. Any implementation returns a stub for the same room on every call with the same id. */
 export interface RoomDirectory {
   get(giveawayId: string): RoomStub
+  /** Removes the room's storage and its alarm; a later `get` with the same id finds an empty room. */
+  delete(giveawayId: string): Promise<void>
 }
 
 /**

@@ -1,12 +1,22 @@
-import { useEffect, type ReactNode } from "react"
+import { useDeferredValue, useEffect, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { RoomStatus } from "@rafflink/core/room/rows"
-import { listGiveaways } from "../api/client.ts"
+import { deleteGiveaway, deleteStreamerData, listGiveaways, winnersCsvPath } from "../api/client.ts"
+import { ConfirmAction } from "../components/confirm-action.tsx"
 import { Disclosure } from "../components/disclosure.tsx"
 import { DonateLink } from "../components/donate-link.tsx"
-import { ActivityIcon, CopyIcon, LinkIcon, LockIcon, PlusIcon } from "../components/icons.tsx"
-import { Failed, Loading, SignIn } from "../components/notice.tsx"
+import {
+  ActivityIcon,
+  CopyIcon,
+  DownloadIcon,
+  LinkIcon,
+  LockIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon,
+} from "../components/icons.tsx"
+import { Failed, Loading, SignIn, Status } from "../components/notice.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StateCard, type Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
@@ -15,13 +25,16 @@ import { useI18n } from "../i18n/i18n.tsx"
 import { readNotice } from "../lib/dashboard-notice.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
 import { dashboardNewPath, livePath } from "../lib/routes.ts"
+import { useAction } from "../lib/use-action.ts"
 import { useLoad } from "../lib/use-load.ts"
+import { useSearchQuery } from "../lib/use-search-query.ts"
 
 /** The signed-in streamer's giveaways for the screen under it; the sign-in prompt, a loading state or a failure otherwise. */
 export function DashboardGate({
   children,
 }: {
-  readonly children: (giveaways: readonly DashboardGiveaway[]) => ReactNode
+  /** `reload` fetches the list again, after a change the list shows. */
+  readonly children: (giveaways: readonly DashboardGiveaway[], reload: () => void) => ReactNode
 }) {
   const { result, reload } = useLoad(listGiveaways)
   switch (result.state) {
@@ -33,7 +46,7 @@ export function DashboardGate({
       return result.value === "unauthorized" ? (
         <SignIn why="signIn.why.dashboard" />
       ) : (
-        children(result.value)
+        children(result.value, reload)
       )
   }
 }
@@ -43,7 +56,9 @@ export function DashboardPage() {
   const notApproved = readNotice(useLocation().state)?.kind === "not-approved"
   return (
     <DashboardGate>
-      {(giveaways) => <GiveawayList giveaways={giveaways} approved={!notApproved} />}
+      {(giveaways, reload) => (
+        <GiveawayList giveaways={giveaways} approved={!notApproved} onChanged={reload} />
+      )}
     </DashboardGate>
   )
 }
@@ -51,10 +66,13 @@ export function DashboardPage() {
 function GiveawayList({
   giveaways,
   approved,
+  onChanged,
 }: {
   readonly giveaways: readonly DashboardGiveaway[]
   /** False once the server refused a create with `streamer_not_approved`; the session, once loaded, has the last word. */
   readonly approved: boolean
+  /** Runs after a giveaway or the whole account was deleted. */
+  readonly onChanged: () => void
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -76,6 +94,7 @@ function GiveawayList({
             <h1>{t("dash.title")}</h1>
           </div>
           <AwaitingApproval />
+          <DeleteStreamerData onDeleted={onChanged} />
         </>
       )
     }
@@ -105,6 +124,7 @@ function GiveawayList({
             </li>
           </ol>
         </section>
+        <DeleteStreamerData onDeleted={onChanged} />
       </>
     )
   }
@@ -127,28 +147,109 @@ function GiveawayList({
           <h2 id="dash-running">{t("dash.section.running")}</h2>
           <ul className="giveaways pinned">
             {pinned.map((giveaway) => (
-              <GiveawayItem key={giveaway.id} giveaway={giveaway} pinned canDuplicate={canCreate} />
+              <GiveawayItem
+                key={giveaway.id}
+                giveaway={giveaway}
+                pinned
+                canDuplicate={canCreate}
+                onDeleted={onChanged}
+              />
             ))}
           </ul>
         </section>
       )}
       {rest.length === 0 || donateUrl === null ? null : <SupportNote url={donateUrl} />}
       {rest.length === 0 ? null : (
-        <section className="dash-section" aria-labelledby="dash-drawn">
-          <h2 id="dash-drawn">{t("dash.section.drawn")}</h2>
-          <ul className="giveaways drawn">
-            {rest.map((giveaway) => (
-              <GiveawayItem
-                key={giveaway.id}
-                giveaway={giveaway}
-                pinned={false}
-                canDuplicate={canCreate}
-              />
-            ))}
-          </ul>
-        </section>
+        <FinishedGiveaways giveaways={rest} canDuplicate={canCreate} onDeleted={onChanged} />
       )}
+      <DeleteStreamerData onDeleted={onChanged} />
     </>
+  )
+}
+
+/** The drawn giveaways, newest first, narrowed by a search over name, prize and code that `?q=` keeps. */
+function FinishedGiveaways({
+  giveaways,
+  canDuplicate,
+  onDeleted,
+}: {
+  readonly giveaways: readonly DashboardGiveaway[]
+  readonly canDuplicate: boolean
+  readonly onDeleted: () => void
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const [query, setQuery] = useSearchQuery()
+  const searched = useDeferredValue(query).trim().toLowerCase()
+  const found = giveaways.filter((giveaway) =>
+    [giveawayDisplayName(i18n, giveaway), giveaway.prize ?? "", giveaway.code].some((text) =>
+      text.toLowerCase().includes(searched),
+    ),
+  )
+  return (
+    <section className="dash-section" aria-labelledby="dash-drawn">
+      <h2 id="dash-drawn">{t("dash.section.drawn")}</h2>
+      <div className="dash-search">
+        <SearchIcon />
+        <input
+          type="search"
+          value={query}
+          autoComplete="off"
+          placeholder={t("dash.search.placeholder")}
+          aria-label={t("dash.search.label")}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+      </div>
+      {found.length === 0 ? (
+        <p className="muted">{t("dash.search.none")}</p>
+      ) : (
+        <ul className="giveaways drawn">
+          {found.map((giveaway) => (
+            <GiveawayItem
+              key={giveaway.id}
+              giveaway={giveaway}
+              pinned={false}
+              canDuplicate={canDuplicate}
+              onDeleted={onDeleted}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** Deletes every giveaway of the streamer and the account; the list then asks to sign in again. */
+function DeleteStreamerData({ onDeleted }: { readonly onDeleted: () => void }) {
+  const { t } = useI18n()
+  const { reload: reloadSession } = useStreamerSession()
+  const { message, busy, run } = useAction()
+  return (
+    <div className="dash-delete-data">
+      <h2>{t("dash.deleteData.title")}</h2>
+      <p>{t("dash.deleteData.text")}</p>
+      <ConfirmAction
+        icon={<TrashIcon />}
+        label={t("dash.deleteData.button")}
+        question={t("dash.deleteData.question")}
+        detail={t("dash.deleteData.detail")}
+        confirmLabel={t("dash.deleteData.confirm")}
+        busy={busy}
+        disabled={false}
+        className="button outlined"
+        shortcut={null}
+        onConfirm={() =>
+          void run(deleteStreamerData, (outcome) =>
+            outcome === "deleted" ? null : "action.failed",
+          ).then((outcome) => {
+            if (outcome !== "deleted") return
+            reloadSession()
+            onDeleted()
+          })
+        }
+      />
+      {message === null ? null : <Status>{t(message)}</Status>}
+    </div>
   )
 }
 
@@ -178,14 +279,17 @@ function GiveawayItem({
   giveaway,
   pinned,
   canDuplicate,
+  onDeleted,
 }: {
   readonly giveaway: DashboardGiveaway
   readonly pinned: boolean
   /** False when the streamer may not create giveaways, which also takes away duplicating one. */
   readonly canDuplicate: boolean
+  readonly onDeleted: () => void
 }) {
   const i18n = useI18n()
   const { t } = i18n
+  const { message, busy, run } = useAction()
   const name = giveawayDisplayName(i18n, giveaway)
   // An untitled giveaway is already named by its prize, so the prize line would repeat it.
   const prizeLine = giveaway.title === null ? null : giveaway.prize
@@ -217,7 +321,43 @@ function GiveawayItem({
             {t("dash.duplicate")}
           </Link>
         ) : null}
+        {giveaway.status === "drawn" ? (
+          <a
+            className="button text"
+            href={winnersCsvPath(giveaway.id)}
+            download
+            aria-label={t("dash.csv.label", { name })}
+          >
+            <DownloadIcon />
+            {t("dash.csv")}
+          </a>
+        ) : null}
+        <ConfirmAction
+          icon={<TrashIcon />}
+          label={
+            <>
+              {t("dash.delete")}
+              <span className="sr-only"> {name}</span>
+            </>
+          }
+          question={t("dash.delete.question", { name })}
+          detail={t("dash.delete.detail")}
+          confirmLabel={t("dash.delete.confirm")}
+          busy={busy}
+          disabled={false}
+          className="button text"
+          shortcut={null}
+          onConfirm={() =>
+            void run(
+              () => deleteGiveaway(giveaway.id),
+              (outcome) => (outcome === "deleted" ? null : "action.failed"),
+            ).then((outcome) => {
+              if (outcome === "deleted") onDeleted()
+            })
+          }
+        />
       </div>
+      {message === null ? null : <Status>{t(message)}</Status>}
       <Disclosure icon={<LinkIcon />} summary={t("dash.linkObs")} open={false}>
         <ShareLinks code={giveaway.code} />
         <ObsSteps giveaway={giveaway} />

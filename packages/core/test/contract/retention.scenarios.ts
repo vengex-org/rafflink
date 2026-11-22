@@ -1,7 +1,7 @@
 import { expect } from "bun:test"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext } from "./target.ts"
-import { scenario } from "./world.ts"
+import { publicOrigin, scenario } from "./world.ts"
 
 // The retention time must cover the claim and reroll windows, so these shrink with it.
 const shortRetention = {
@@ -13,7 +13,7 @@ const shortRetention = {
 export function retentionScenarios(context: ContractContext): void {
   scenario(
     context,
-    "the entrants' data is deleted after the retention time while the counts and the winner stay",
+    "the entrants' data is deleted after the retention time while the counts and the winner with its name stay",
     async (world) => {
       const target = await world.start(shortRetention)
       const giveaway = await world.createGiveaway(target)
@@ -37,10 +37,44 @@ export function retentionScenarios(context: ContractContext): void {
         entrantCount: 1,
         ticketTotal: 1,
         lastNames: [],
-        winners: [{ n: 0, entrySeq: null, displayName: null }],
+        winners: [{ n: 0, entrySeq: null, displayName: users.viewer.displayName }],
       })
       const entrants = await giveaway.streamer.request(`/api/live/${giveaway.id}/entrants?after=0`)
       expect(await entrants.json()).toEqual({ rows: [], more: false })
+    },
+  )
+
+  scenario(
+    context,
+    "a deleted giveaway is gone from the dashboard, its pages and its code, and another streamer cannot delete it",
+    async (world) => {
+      const target = await world.start()
+      const giveaway = await world.createGiveaway(target)
+      await world.enter(target, giveaway.code, users.viewer.id)
+      await world.closeGiveaway(giveaway)
+      await world.drawWinners(giveaway)
+      const other = await world.createGiveaway(target, {
+        streamer: await world.signInStreamer(target, users.otherStreamer.id),
+      })
+      const deleteOf = (streamer: typeof giveaway.streamer, id: string) =>
+        streamer.request(`/api/dash/giveaways/${id}/delete`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: publicOrigin },
+          body: "{}",
+        })
+
+      const refused = await deleteOf(other.streamer, giveaway.id)
+      const deleted = await deleteOf(giveaway.streamer, giveaway.id)
+
+      expect(refused.status).toBe(404)
+      expect(deleted.status).toBe(200)
+      expect((await giveaway.streamer.request(`/api/live/${giveaway.id}`)).status).toBe(404)
+      expect((await giveaway.streamer.request(`/api/g/${giveaway.code}/verify`)).status).toBe(404)
+      const list: { giveaways: unknown[] } = await (
+        await giveaway.streamer.request("/api/dash/giveaways")
+      ).json()
+      expect(list.giveaways).toEqual([])
+      expect((await other.streamer.request(`/api/live/${other.id}`)).status).toBe(200)
     },
   )
 

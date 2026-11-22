@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite"
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
+import { readdirSync } from "node:fs"
 import { join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
@@ -80,6 +81,29 @@ describe("LocalRoomDirectory", () => {
     const second = directoryWith()
 
     expect((await second.get(id).summary()).entrantCount).toBe(1)
+  })
+
+  it("deletes a room's files and stops its alarm, so a later get finds an empty room and the others stay", async () => {
+    const directory = directoryWith()
+    await directory.get(id).init(giveawayInit(id))
+    await directory.get(id).enter(viewer)
+    await directory.get(otherId).init(giveawayInit(otherId))
+
+    await directory.delete(id)
+
+    expect(readdirSync(join(dir.path, "rooms")).filter((name) => name.startsWith(id))).toEqual([])
+    await expect(directory.get(id).summary()).rejects.toThrow("room is not initialised")
+    expect((await directory.get(otherId).summary()).status).toBe("open")
+  })
+
+  it("deletes a room that is not open in this process", async () => {
+    const first = directoryWith()
+    await first.get(id).init(giveawayInit(id))
+    await first.close()
+
+    await directoryWith().delete(id)
+
+    expect(readdirSync(join(dir.path, "rooms"))).toEqual([])
   })
 
   it("refuses an id that is not a giveaway id, so no file is named by it", () => {

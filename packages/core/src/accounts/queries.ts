@@ -35,6 +35,17 @@ export const recordRetentionFailureSql =
 /** A giveaway id (parameter 1). */
 export const setRetentionArmedSql = "UPDATE giveaways SET retention_armed = 1 WHERE id = ?"
 
+/** Ids of giveaways that are no longer open and were created before an instant (parameter 1), oldest first; parameter 2 is how many. */
+export const expiredGiveawaysSql =
+  "SELECT id FROM giveaways WHERE created_at < ? AND status != 'open' ORDER BY created_at, id LIMIT ?"
+
+/** A giveaway id (parameter 1); its room is deleted separately. */
+export const deleteGiveawaySql = "DELETE FROM giveaways WHERE id = ?"
+
+/** A streamer id (parameter 1), for the three deletes that remove the account: giveaways first, which reference the streamer. */
+export const deleteStreamerGiveawaysSql = "DELETE FROM giveaways WHERE streamer_id = ?"
+export const deleteStreamerSql = "DELETE FROM streamers WHERE id = ?"
+
 /** Parameters: id, platform, platform user id, login, display name, profile image URL, created at. */
 export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, profile_image_url, created_at)
   VALUES (?, ?, ?, ?, ?, ?, ?)

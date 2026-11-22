@@ -7,7 +7,11 @@ import {
   cloudflarePlanSql,
   approvedStreamersSql,
   approveStreamerSql,
+  deleteGiveawaySql,
+  deleteStreamerGiveawaysSql,
+  deleteStreamerSql,
   deleteStreamerTokenSql,
+  expiredGiveawaysSql,
   giveawayByCodeSql,
   giveawayByIdSql,
   giveawaysOfStreamerSql,
@@ -197,6 +201,26 @@ export class AccountStore {
   async listGiveaways(streamerId: string): Promise<Giveaway[]> {
     const rows = await this.sql.all(giveawaysOfStreamerSql, [streamerId])
     return rows.map((row) => this.parseGiveaway(row))
+  }
+
+  /** Removes the giveaway's row, which frees its code; the caller deletes its room first. */
+  async deleteGiveaway(giveawayId: string): Promise<void> {
+    await this.sql.run(deleteGiveawaySql, [giveawayId])
+  }
+
+  /** Removes the streamer with their token and every giveaway row in one batch; the caller deletes the rooms first. */
+  async deleteStreamer(streamerId: string): Promise<void> {
+    await this.sql.batch([
+      { sql: deleteStreamerGiveawaysSql, params: [streamerId] },
+      { sql: deleteStreamerTokenSql, params: [streamerId] },
+      { sql: deleteStreamerSql, params: [streamerId] },
+    ])
+  }
+
+  /** Ids of up to `limit` giveaways that are no longer open and were created before `before`, oldest first. */
+  async listExpiredGiveaways(before: Instant, limit: number): Promise<string[]> {
+    const rows = await this.sql.all(expiredGiveawaysSql, [before, limit])
+    return rows.map((row) => new RowReader("giveaways", row).text("id"))
   }
 
   /** Idempotent mirror of the room's status. */

@@ -19,6 +19,42 @@
   margin-top: var(--space-3);
 }
 
+/* The search over the finished giveaways: the icon sits inside the box. */
+.dash-search {
+  position: relative;
+  max-width: 26rem;
+  margin-bottom: var(--space-3);
+}
+
+.dash-search input {
+  padding-inline-start: 2.75rem;
+}
+
+.dash-search .icon {
+  position: absolute;
+  top: 50%;
+  left: 0.875rem;
+  color: var(--muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+/* Deleting the account is rare and final, so it sits last, apart from the lists. */
+.dash-delete-data {
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.dash-delete-data > h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-body);
+}
+
+.dash-delete-data > .button {
+  color: var(--danger);
+}
+
 /* Both lists share one column track so their cards line up; a card keeps its own height, so opening one
    card's links does not stretch its neighbour. */
 .giveaways {
