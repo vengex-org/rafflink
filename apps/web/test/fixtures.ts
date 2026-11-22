@@ -73,9 +73,28 @@ export const claimedAtText = new Intl.DateTimeFormat("en", {
 
 export const donateUrl = "https://ko-fi.com/rafflink"
 
+/** The platform fields of a Twitch streamer's session. */
+export const twitchPlatform = {
+  platform: "twitch",
+  capabilities: {
+    followerCheck: true,
+    subTiers: true,
+    vip: true,
+    accountAge: true,
+    pageEntry: true,
+    chatEntry: false,
+  },
+}
+
 /** A signed-in streamer on a deployment that names a support page. */
 export const supportedSession = {
-  streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null, canCreate: true },
+  streamer: {
+    displayName: "Streamy",
+    login: "streamy",
+    profileImageUrl: null,
+    canCreate: true,
+    ...twitchPlatform,
+  },
   donateUrl,
   operator: null,
 }

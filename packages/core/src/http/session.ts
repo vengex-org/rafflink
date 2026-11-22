@@ -1,6 +1,7 @@
 import type { Context } from "hono"
 import { deleteCookie, getCookie, getSignedCookie, setSignedCookie } from "hono/cookie"
 import type { ResolvedConfig } from "../config.ts"
+import type { OAuthFlow } from "../platform/provider.ts"
 import type { Clock, Instant } from "../ports.ts"
 
 export type SessionConfig = Pick<
@@ -18,10 +19,11 @@ export interface SessionDeps {
   readonly clock: Clock
 }
 
-/** A signed-in streamer. `twitchUserId` is what `ADMIN_TWITCH_IDS` lists. */
+/** A signed-in streamer. On Twitch, `platformUserId` is what `ADMIN_TWITCH_IDS` lists. */
 export interface StreamerSession {
   readonly streamerId: string
-  readonly twitchUserId: string
+  readonly platform: string
+  readonly platformUserId: string
 }
 
 /** A viewer who signed in: the cookie holds who they are on which platform and no token. */
@@ -41,8 +43,6 @@ export interface PendingEntry {
   readonly ticket: string
   readonly giveawayId: string
 }
-
-export type OAuthFlow = "streamer" | "viewer"
 
 /** What the sign-in start remembers for the callback. `giveawayCode` is set for the viewer flow, `returnPath` for the streamer flow. */
 export interface OAuthState {
@@ -81,9 +81,16 @@ export async function readStreamerSession(
   deps: SessionDeps,
 ): Promise<StreamerSession | null> {
   return readCookie(c, deps, cookieNames.streamer, (value) => {
-    const { streamerId, twitchUserId } = value
-    if (typeof streamerId !== "string" || typeof twitchUserId !== "string") return null
-    return { streamerId, twitchUserId }
+    const { streamerId, platform, platformUserId, twitchUserId } = value
+    if (typeof streamerId !== "string") return null
+    if (typeof platform === "string" && typeof platformUserId === "string") {
+      return { streamerId, platform, platformUserId }
+    }
+    // Cookies written before the platform seam hold only the Twitch user id; they expire within the session TTL.
+    if (typeof twitchUserId === "string") {
+      return { streamerId, platform: "twitch", platformUserId: twitchUserId }
+    }
+    return null
   })
 }
 

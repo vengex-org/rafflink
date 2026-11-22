@@ -39,9 +39,11 @@ import type { RoomDirectory, RoomStub } from "../src/room/room-directory.ts"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "../src/sqlite-bun.ts"
 import { StatsStore } from "../src/stats/stats-store.ts"
 import { TwitchClient } from "../src/twitch/twitch-client.ts"
+import { TwitchProvider } from "../src/twitch/twitch-provider.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
 import { FakeBeacon } from "./fake-beacon.ts"
 import { idleChat } from "./idle-chat.ts"
+import { eventSubChat } from "../src/room/chat-watcher.ts"
 
 const accountsSchemaDir = new URL("../schema/accounts/", import.meta.url)
 
@@ -147,7 +149,7 @@ export class InProcessRooms implements RoomDirectory {
       clock: this.clock,
       random: secureRandom,
       config: this.config,
-      chat: idleChat,
+      chat: eventSubChat({ ...idleChat, clock: this.clock, config: this.config }),
       beacon: this.beacon,
     })
     this.rooms.set(giveawayId, room)
@@ -343,13 +345,14 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const accounts = new AccountStore(accountsSql, config)
   const rooms = new InProcessRooms(clock, config)
   const twitch = new TwitchClient(config, fetch)
+  const platforms = { twitch: new TwitchProvider(twitch, clock, config) }
   const usage = new StubUsageMeter()
   const planQueue = options.target === "bun" ? null : new RecordingPlanQueue()
   const queueDb = new Database(":memory:")
   const queueSql = new BunSqliteSyncSql(queueDb)
   applyMigrations(queueSql, queueMigrations)
   const entryUserLimiter = new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, 60_000)
-  const entryDeps = { config, clock, random, twitch, accounts, rooms, entryUserLimiter }
+  const entryDeps = { config, clock, random, platforms, accounts, rooms, entryUserLimiter }
   const queue = new TokenQueue({
     sql: queueSql,
     alarm: new TestAlarm(),

@@ -1,8 +1,7 @@
 import type { ResolvedConfig } from "../config.ts"
+import type { ChatListener, ChatSource, ChatSourceFactory } from "../platform/chat-source.ts"
 import type { Clock, Instant, SocketConnector, TextSocket } from "../ports.ts"
-import { parseEventSubMessage, type ChatMessage } from "../twitch/lib/parse-eventsub.ts"
-
-export type { ChatMessage } from "../twitch/lib/parse-eventsub.ts"
+import { parseEventSubMessage } from "../twitch/lib/parse-eventsub.ts"
 
 export type ChatWatcherConfig = Pick<
   ResolvedConfig,
@@ -22,14 +21,17 @@ export interface ChatLink {
   readonly subscribe: (sessionId: string) => Promise<void>
 }
 
-export interface ChatWatcherDeps extends ChatLink {
+/** What the Twitch chat source is built from: the target's link, with the room's clock and config. */
+export interface EventSubChatDeps extends ChatLink {
   readonly clock: Clock
   readonly config: ChatWatcherConfig
-  readonly onMessage: (message: ChatMessage) => void
-  /** Called once when the watcher gives up; the watcher is closed by then. */
-  readonly onUnavailable: (cause: unknown) => void
-  /** Called when a connection event moved {@link ChatWatcher.wakeAt}, so the owner can re-arm its alarm. */
-  readonly onSchedule: () => void
+}
+
+export interface ChatWatcherDeps extends EventSubChatDeps, ChatListener {}
+
+/** Twitch's chat source: an EventSub watcher for each room that opens one. */
+export function eventSubChat(deps: EventSubChatDeps): ChatSourceFactory {
+  return (listener) => new ChatWatcher({ ...deps, ...listener })
 }
 
 export type ChatConnectionLostReason =
@@ -68,7 +70,7 @@ interface Live {
  * {@link ChatWatcher.onAlarm} at {@link ChatWatcher.wakeAt}, which drives the keepalive check, the retry
  * after a failure and the replacement of a connection before it reaches its maximum age.
  */
-export class ChatWatcher {
+export class ChatWatcher implements ChatSource {
   private running = false
   private handshake: Handshake | null = null
   private live: Live | null = null

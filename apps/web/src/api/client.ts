@@ -51,6 +51,7 @@ import {
   type Entrant,
   type EntrySummary,
 } from "@rafflink/core/room/rows"
+import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import type { CallbackOutcome } from "@rafflink/core/viewer/outcome"
 import {
   ApiShapeError,
@@ -181,9 +182,22 @@ export async function getSession(): Promise<SessionJson> {
       login: text(streamer, "login"),
       profileImageUrl: nullableText(streamer, "profileImageUrl"),
       canCreate: bool(streamer, "canCreate"),
+      platform: text(streamer, "platform"),
+      capabilities: capabilitiesOf(child(streamer, "capabilities")),
     },
     donateUrl,
     operator,
+  }
+}
+
+function capabilitiesOf(source: Json): PlatformCapabilities {
+  return {
+    followerCheck: bool(source, "followerCheck"),
+    subTiers: bool(source, "subTiers"),
+    vip: bool(source, "vip"),
+    accountAge: bool(source, "accountAge"),
+    pageEntry: bool(source, "pageEntry"),
+    chatEntry: bool(source, "chatEntry"),
   }
 }
 

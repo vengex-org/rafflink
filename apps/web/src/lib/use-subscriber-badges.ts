@@ -1,5 +1,5 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
-import type { SubscriberBadges } from "@rafflink/core/twitch/channel-badges"
+import type { SubscriberBadges } from "@rafflink/core/platform/provider"
 import { useEffect, useState } from "react"
 import { getBadges } from "../api/client.ts"
 

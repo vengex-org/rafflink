@@ -22,12 +22,7 @@ import type {
   SyncSql,
 } from "../ports.ts"
 import { maxBoundParameters } from "../ports.ts"
-import {
-  ChatWatcher,
-  type ChatLink,
-  type ChatMessage,
-  type ChatWatcherConfig,
-} from "./chat-watcher.ts"
+import type { ChatMessage, ChatSource, ChatSourceFactory } from "../platform/chat-source.ts"
 import {
   claimsPerMinuteSql,
   claimsSinceCountSql,
@@ -88,7 +83,6 @@ export type RoomConfig = Pick<
   | "drawMaxWinners"
   | "metricsRetentionHours"
 >
-  & ChatWatcherConfig
 
 export interface RoomDeps {
   readonly sql: SyncSql
@@ -97,8 +91,8 @@ export interface RoomDeps {
   readonly clock: Clock
   readonly random: Random
   readonly config: RoomConfig
-  /** How this target reaches Twitch chat while the room watches its winners. */
-  readonly chat: ChatLink
+  /** Opens the chat of the giveaway's channel while the room watches its winners. */
+  readonly chat: ChatSourceFactory
   /** Where the draw reads the round it committed to at close. */
   readonly beacon: RandomnessBeacon
 }
@@ -368,7 +362,7 @@ export class GiveawayRoom {
   private readonly random: Random
   private readonly config: RoomConfig
   private readonly beacon: RandomnessBeacon
-  private readonly chat: ChatWatcher
+  private readonly chat: ChatSource
   private lastPushAt: Instant | null = null
   // Lost with the object; the first push after that carries no rows and the page fetches the gap.
   private lastPushedSeq: number | null = null
@@ -390,10 +384,7 @@ export class GiveawayRoom {
     this.random = deps.random
     this.config = deps.config
     this.beacon = deps.beacon
-    this.chat = new ChatWatcher({
-      ...deps.chat,
-      clock: deps.clock,
-      config: deps.config,
+    this.chat = deps.chat({
       onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
       onUnavailable: (cause) => this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
       onSchedule: () => this.guarded("alarm", () => this.rearm()),
@@ -1204,7 +1195,7 @@ export class GiveawayRoom {
   }
 
   private showWinnerChat(message: ChatMessage): boolean {
-    const row = this.sql.exec(winnerChatNameSql, [message.chatterUserId])[0]
+    const row = this.sql.exec(winnerChatNameSql, [message.platformUserId])[0]
     if (row === undefined) return false
     this.winnerChatSeq += 1
     const line: WinnerChatLine = {
@@ -1213,7 +1204,7 @@ export class GiveawayRoom {
       text: message.text,
       at: this.clock.now(),
     }
-    this.winnerChat = [...this.winnerChat, { chatterUserId: message.chatterUserId, line }].slice(
+    this.winnerChat = [...this.winnerChat, { chatterUserId: message.platformUserId, line }].slice(
       -this.config.liveWinnerChatMax,
     )
     return true
@@ -1221,7 +1212,7 @@ export class GiveawayRoom {
 
   private claimFromChat(message: ChatMessage): boolean {
     const pick = this.sql.exec(waitingPickOfChatterSql, [
-      message.chatterUserId,
+      message.platformUserId,
       this.clock.now(),
     ])[0]
     if (pick === undefined) return false
@@ -1235,7 +1226,7 @@ export class GiveawayRoom {
     }
     const outcome = this.claim(
       new RowReader("draws", pick).int("n"),
-      { platform: state.platform, platformUserId: message.chatterUserId },
+      { platform: state.platform, platformUserId: message.platformUserId },
       "chat",
     )
     return outcome.kind === "claimed"

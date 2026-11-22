@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { stubClipboard } from "./clipboard.ts"
-import { dashboardGiveaway, donateUrl, rules, supportedSession } from "./fixtures.ts"
+import {
+  dashboardGiveaway,
+  donateUrl,
+  rules,
+  supportedSession,
+  twitchPlatform,
+} from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { inputOf } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
@@ -340,6 +346,7 @@ describe("dashboard", () => {
             login: "streamy",
             profileImageUrl: null,
             canCreate: false,
+            ...twitchPlatform,
           },
           donateUrl: null,
           operator: null,
@@ -363,6 +370,7 @@ describe("dashboard", () => {
             login: "streamy",
             profileImageUrl: null,
             canCreate: false,
+            ...twitchPlatform,
           },
           donateUrl: null,
           operator: null,

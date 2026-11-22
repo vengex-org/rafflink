@@ -14,9 +14,9 @@ import {
   TwitchRateLimited,
   TwitchUnavailable,
   TwitchClient,
-  type SubscriptionGroup,
   type TwitchFetch,
 } from "./twitch-client.ts"
+import type { SubscriptionGroup } from "../platform/provider.ts"
 
 const redirectUri = "http://localhost/callback"
 const viewer: FakeUser = {

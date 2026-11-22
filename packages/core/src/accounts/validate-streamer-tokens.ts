@@ -1,4 +1,5 @@
 import { errorClass } from "../lib/error-class.ts"
+import { providerFor } from "../platform/provider.ts"
 import { TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "../twitch/twitch-client.ts"
 import type { StoredStreamerToken } from "./account-store.ts"
 import { openStreamerAccess, type StreamerTokenDeps } from "./streamer-token.ts"
@@ -50,7 +51,7 @@ export async function validateStreamerTokens(deps: StreamerTokenDeps): Promise<V
 async function verdictOf(deps: StreamerTokenDeps, token: StoredStreamerToken): Promise<Verdict> {
   try {
     const accessToken = await openStreamerAccess(deps, token)
-    return (await deps.twitch.validate(accessToken)).status
+    return (await providerFor(deps.platforms, token.platform).validate(accessToken)).status
   } catch (error) {
     if (error instanceof TwitchInvalid && isRevoked(error)) return "invalid"
     if (error instanceof TwitchRateLimited || error instanceof TwitchUnavailable) {

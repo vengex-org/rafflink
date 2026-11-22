@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono"
 import type { StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import type { ResolvedConfig } from "../config.ts"
+import { providerFor } from "../platform/provider.ts"
 import type { AppDeps } from "./deps.ts"
 import type { OperatorJson, SessionJson } from "./json.ts"
 import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
@@ -22,6 +23,8 @@ export function sessionRoutes(deps: AppDeps): Hono {
               login: current.streamer.login,
               profileImageUrl: current.streamer.profileImageUrl,
               canCreate: await canCreateGiveaways(deps.config, deps.admins, current.streamer),
+              platform: current.streamer.platform,
+              capabilities: providerFor(deps.platforms, current.streamer.platform).capabilities,
             },
       donateUrl: deps.config.donateUrl,
       operator: operatorOf(deps.config),

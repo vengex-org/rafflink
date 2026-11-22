@@ -6,16 +6,16 @@ import type { Clock, RateLimiter, Random } from "../ports.ts"
 import type { QueuedCode } from "../queue/token-queue.ts"
 import type { RoomViewer } from "../room/giveaway-room.ts"
 import { RoomTransientError, type RoomDirectory } from "../room/room-directory.ts"
-import { redirectUri, viewerCallbackPath } from "../twitch/redirect.ts"
 import {
-  TwitchInvalid,
-  TwitchRateLimited,
-  TwitchUnavailable,
+  providerFor,
   type ExchangedCode,
+  type PlatformProvider,
+  type PlatformProviders,
   type SubscriptionGroup,
-  type TwitchClient,
   type VerifiedIdToken,
-} from "../twitch/twitch-client.ts"
+} from "../platform/provider.ts"
+import { callbackPath, redirectUri } from "../platform/redirect.ts"
+import { TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "../twitch/twitch-client.ts"
 import type { EntryAttempt, FinalOutcome } from "./outcome.ts"
 
 export type EntryConfig = Pick<
@@ -27,7 +27,7 @@ export interface EntryDeps {
   readonly config: EntryConfig
   readonly clock: Clock
   readonly random: Random
-  readonly twitch: TwitchClient
+  readonly platforms: PlatformProviders
   readonly accounts: AccountStore
   readonly rooms: RoomDirectory
   /** Limits verified sign-ins per platform user, so a viewer's retries cannot flood the room; it runs after the code exchange and the ID-token check, so those Twitch calls are not saved. */
@@ -47,9 +47,13 @@ export async function enterGiveaway(
   target: EntryTarget,
   item: Pick<QueuedCode, "code" | "nonce">,
 ): Promise<EntryAttempt> {
+  const provider = providerFor(deps.platforms, target.platform)
   let tokens: ExchangedCode
   try {
-    tokens = await deps.twitch.exchangeCode(item.code, redirectUri(deps.config, viewerCallbackPath))
+    tokens = await provider.exchangeCode(
+      item.code,
+      redirectUri(deps.config, callbackPath(provider.platform, "viewer")),
+    )
   } catch (error) {
     if (error instanceof TwitchRateLimited) return { kind: "deferred", cause: "rate-limited" }
     if (error instanceof TwitchUnavailable) return { kind: "deferred", cause: "unavailable" }
@@ -59,7 +63,7 @@ export async function enterGiveaway(
 
   let verified: VerifiedIdToken
   try {
-    verified = await deps.twitch.verifyIdToken(tokens.idToken, item.nonce)
+    verified = await provider.verifyIdToken(tokens.idToken, item.nonce)
   } catch (error) {
     return twitchFailure(error, null)
   }
@@ -70,7 +74,7 @@ export async function enterGiveaway(
 
   let viewer: RoomViewer
   try {
-    viewer = await readViewer(deps, target, tokens.accessToken, userId)
+    viewer = await readViewer(deps.clock, provider, target, tokens.accessToken, userId)
   } catch (error) {
     return twitchFailure(error, userId)
   }
@@ -113,13 +117,14 @@ function twitchFailure(error: unknown, userId: string | null): EntryAttempt {
 }
 
 async function readViewer(
-  deps: EntryDeps,
+  clock: Clock,
+  provider: PlatformProvider,
   target: EntryTarget,
   accessToken: string,
   userId: string,
 ): Promise<RoomViewer> {
-  const profile = await deps.twitch.userProfile(accessToken)
-  const accountAgeDays = Math.max(0, Math.floor((deps.clock.now() - profile.createdAt) / msPerDay))
+  const profile = await provider.userProfile(accessToken)
+  const accountAgeDays = Math.max(0, Math.floor((clock.now() - profile.createdAt) / msPerDay))
   const identity = {
     platformUserId: userId,
     login: profile.login,
@@ -131,8 +136,8 @@ async function readViewer(
     return { ...identity, isFollower: false, subTier: null, accountAgeDays }
   }
   const [isFollower, tier] = await Promise.all([
-    deps.twitch.follows(accessToken, target.broadcasterId, userId),
-    deps.twitch.subscriptionTier(accessToken, target.broadcasterId, userId),
+    provider.follows(accessToken, target.broadcasterId, userId),
+    provider.subscriptionTier(accessToken, target.broadcasterId, userId),
   ])
   return {
     ...identity,

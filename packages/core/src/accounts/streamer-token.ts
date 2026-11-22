@@ -1,12 +1,12 @@
 import type { Clock, Random } from "../ports.ts"
 import { openSecret, sealSecret, type KeyRing } from "../lib/seal.ts"
-import type { TwitchClient } from "../twitch/twitch-client.ts"
+import { providerFor, type PlatformProviders } from "../platform/provider.ts"
 import type { AccountStore, StoredStreamerToken } from "./account-store.ts"
 
 export interface StreamerTokenDeps {
   readonly clock: Clock
   readonly random: Random
-  readonly twitch: TwitchClient
+  readonly platforms: PlatformProviders
   readonly accounts: AccountStore
   readonly keyRing: KeyRing
 }
@@ -27,7 +27,7 @@ export async function openStreamerAccess(
 ): Promise<string> {
   const aad = streamerTokenAad(token.platform, token.platformUserId)
   const refreshToken = await openSecret(deps.keyRing, token.sealedRefreshToken, aad)
-  const refreshed = await deps.twitch.refreshTokens(refreshToken)
+  const refreshed = await providerFor(deps.platforms, token.platform).refreshTokens(refreshToken)
   if (refreshed.refreshToken !== refreshToken) {
     const sealed = await sealSecret(deps.keyRing, refreshed.refreshToken, aad, deps.random)
     await deps.accounts.replaceStreamerToken(token.streamerId, sealed, deps.clock.now())

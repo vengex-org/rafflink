@@ -7,6 +7,9 @@ export async function subscribeChat(
   giveawayId: string,
   sessionId: string,
 ): Promise<void> {
-  const { accessToken, broadcasterId } = await openGiveawayStreamerAccess(deps, giveawayId)
-  await deps.twitch.subscribeChatMessages(accessToken, broadcasterId, sessionId)
+  const { provider, accessToken, broadcasterId } = await openGiveawayStreamerAccess(
+    deps,
+    giveawayId,
+  )
+  await provider.subscribeChatMessages(accessToken, broadcasterId, sessionId)
 }

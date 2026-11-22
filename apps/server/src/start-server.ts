@@ -21,6 +21,7 @@ import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { TokenQueue, type TokenQueueStub } from "@rafflink/core/queue/token-queue"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
+import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
 import { existsSync, mkdirSync, readdirSync } from "node:fs"
@@ -72,7 +73,8 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const stats = new StatsStore(accountsSql, config)
   const twitch = new TwitchClient(config, fetch)
   const keyRing = await openKeyRing(config.tokenSealKeys)
-  const tokenDeps: StreamerTokenDeps = { clock, random, twitch, accounts, keyRing }
+  const platforms = { twitch: new TwitchProvider(twitch, clock, config) }
+  const tokenDeps: StreamerTokenDeps = { clock, random, platforms, accounts, keyRing }
   const alarmDeps: RoomAlarmDeps = { ...tokenDeps, stats }
 
   const rooms = new LocalRoomDirectory({
@@ -95,7 +97,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     config,
     clock,
     random,
-    twitch,
+    platforms,
     accounts,
     rooms,
     entryUserLimiter: new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, rateWindowMs),

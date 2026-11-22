@@ -1,10 +1,8 @@
 import type { ResolvedConfig } from "../config.ts"
 import { errorClass } from "../lib/error-class.ts"
 import type { Clock, Instant } from "../ports.ts"
-import { TwitchError, type SubscriptionGroup, type TwitchClient } from "./twitch-client.ts"
-
-/** The image of each subscription tier's badge; `null` when no image is known for the tier. */
-export type SubscriberBadges = Readonly<Record<SubscriptionGroup, string | null>>
+import type { SubscriberBadges } from "../platform/provider.ts"
+import { TwitchError, type TwitchClient } from "./twitch-client.ts"
 
 export type ChannelBadgesConfig = Pick<ResolvedConfig, "channelBadgesTtlSeconds">
 

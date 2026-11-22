@@ -1,10 +1,5 @@
 import type { Parsed } from "../../lib/parsed.ts"
-
-/** A chat message as the watcher hands it on: who wrote it and what. Nothing else of the message is read. */
-export interface ChatMessage {
-  readonly chatterUserId: string
-  readonly text: string
-}
+import type { ChatMessage } from "../../platform/chat-source.ts"
 
 /** The EventSub WebSocket messages the watcher acts on; any other message type is `ignored`. */
 export type EventSubMessage =
@@ -77,7 +72,7 @@ function parseChatNotification(
   if (typeof chatterUserId !== "string" || typeof message.text !== "string") return malformed
   return {
     ok: true,
-    value: { kind: "notification", chat: { chatterUserId, text: message.text } },
+    value: { kind: "notification", chat: { platformUserId: chatterUserId, text: message.text } },
   }
 }
 

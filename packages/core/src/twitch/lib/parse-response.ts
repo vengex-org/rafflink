@@ -1,4 +1,4 @@
-import type { Instant } from "../../ports.ts"
+import type { ExchangedCode, UserProfile } from "../../platform/provider.ts"
 import type { Parsed } from "../../lib/parsed.ts"
 import { twitchImageUrl } from "./image-url.ts"
 
@@ -6,22 +6,6 @@ export type Malformed = Parsed<never, "malformed">
 
 /** Subscription tier as Twitch writes it. */
 export type Tier = "1000" | "2000" | "3000"
-
-export interface ExchangedCode {
-  readonly accessToken: string
-  readonly refreshToken: string
-  /** `null` when the code was not requested with the `openid` scope. */
-  readonly idToken: string | null
-}
-
-/** The Helix user of an access token. */
-export interface UserProfile {
-  readonly login: string
-  readonly displayName: string
-  readonly createdAt: Instant
-  /** `null` when Twitch sent no picture on its image host. */
-  readonly profileImageUrl: string | null
-}
 
 /** A Helix user found by login. */
 export interface UserLogin {

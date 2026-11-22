@@ -5,6 +5,7 @@ import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
 import { runRoomAlarm } from "@rafflink/core/room/run-room-alarm"
 import { subscribeChat } from "@rafflink/core/room/subscribe-chat"
+import { eventSubChat } from "@rafflink/core/room/chat-watcher"
 import { DurableObjectAlarm } from "../adapters/durable-object-alarm.ts"
 import { DurableObjectSocketConnector } from "../adapters/durable-object-socket-connector.ts"
 import { DurableObjectSyncSql } from "../adapters/durable-object-sync-sql.ts"
@@ -170,10 +171,12 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
       random: runtime.random,
       config: runtime.config,
       beacon: runtime.beacon,
-      chat: {
+      chat: eventSubChat({
         connector: new DurableObjectSocketConnector(),
         subscribe: (sessionId) => subscribeChat(runtime, this.giveawayId(), sessionId),
-      },
+        clock: runtime.clock,
+        config: runtime.config,
+      }),
     })
     room.armAlarm()
     return { room, runtime }

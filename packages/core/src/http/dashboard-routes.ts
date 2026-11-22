@@ -29,7 +29,7 @@ import { mirrorStatus } from "../room/mirror-status.ts"
 import { denseDays, denseMinutes } from "../stats/series.ts"
 import { liveGiveaways } from "../stats/live-giveaways.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
-import { ChannelBadges } from "../twitch/channel-badges.ts"
+import { providerFor } from "../platform/provider.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import {
@@ -56,7 +56,6 @@ type Env = { Variables: { streamer: StreamerSession; account: StreamerRecord } }
 
 export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   const app = new Hono<Env>()
-  const badges = new ChannelBadges(deps.twitch, deps.clock, deps.config)
 
   app.use("/api/live/:id", webSocketOrigin(deps.config, { allowMissing: false }))
   app.use("/api/overlay/:id/:token", webSocketOrigin(deps.config, { allowMissing: true }))
@@ -274,7 +273,9 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       c.req.param("id"),
     )
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
-    const body: BadgesJson = await badges.of(giveaway.broadcasterId)
+    const body: BadgesJson = await providerFor(deps.platforms, giveaway.platform).subscriberBadges(
+      giveaway.broadcasterId,
+    )
     c.header("Cache-Control", "no-store")
     return c.json(body)
   })
@@ -311,11 +312,11 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
 
   // The admin pays for the plan in the Cloudflare dashboard first; this only tells the app which limits apply.
   app.post("/api/admin/plan", sameOriginJson(deps.config), async (c) => {
-    const { twitchUserId } = c.get("streamer")
+    const { platformUserId } = c.get("streamer")
     if (deps.planQueue === null) return c.json({ error: "not-found" }, 404)
     const plan = planField(await readJson(c))
     if (plan === null) return c.json({ error: "invalid-input", field: "plan" }, 400)
-    await deps.accounts.storeCloudflarePlan(plan, twitchUserId, deps.clock.now())
+    await deps.accounts.storeCloudflarePlan(plan, platformUserId, deps.clock.now())
     console.info("cloudflare plan switched", { plan })
     try {
       await deps.planQueue.usePlan(plan)
@@ -342,9 +343,9 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   })
 
   app.post("/api/admin/streamers/:id/approve", sameOriginJson(deps.config), async (c) => {
-    const { twitchUserId } = c.get("streamer")
+    const { platformUserId } = c.get("streamer")
     const streamerId = c.req.param("id")
-    if (!(await deps.accounts.approveStreamer(streamerId, twitchUserId, deps.clock.now()))) {
+    if (!(await deps.accounts.approveStreamer(streamerId, platformUserId, deps.clock.now()))) {
       return c.json({ error: "not-found" }, 404)
     }
     console.info("streamer approved", { streamerId })
@@ -443,7 +444,7 @@ async function withOwnedRoom(
 
 function requireAdmin(deps: AppDeps): MiddlewareHandler<Env> {
   return async (c, next) => {
-    if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
+    if (!(await deps.admins.isAdmin(c.get("streamer").platformUserId))) {
       return c.json({ error: "forbidden" }, 403)
     }
     return next()

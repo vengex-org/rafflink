@@ -17,9 +17,10 @@ import { FakeBeacon } from "../../test/fake-beacon.ts"
 import {
   ChatConnectionLost,
   ChatWatcher,
-  type ChatMessage,
+  eventSubChat,
   type ChatWatcherConfig,
 } from "./chat-watcher.ts"
+import type { ChatMessage } from "../platform/chat-source.ts"
 import { GiveawayRoom, type GiveawayInit, type RoomViewer } from "./giveaway-room.ts"
 import { applyMigrations } from "./migrate.ts"
 import { roomMigrations } from "./migrations.ts"
@@ -190,7 +191,7 @@ describe("ChatWatcher connection", () => {
     socket?.receive(chat("42", "!claim"))
 
     expect(subscriptions.sessions).toEqual(["session-1"])
-    expect(messages).toEqual([{ chatterUserId: "42", text: "!claim" }])
+    expect(messages).toEqual([{ platformUserId: "42", text: "!claim" }])
   })
 
   it("hands on nothing but chat notifications", async () => {
@@ -316,7 +317,7 @@ describe("ChatWatcher session_reconnect", () => {
 
     expect(old?.closed).toBe(true)
     expect(subscriptions.sessions).toEqual(["session-1"])
-    expect(messages).toEqual([{ chatterUserId: "42", text: "!claim" }])
+    expect(messages).toEqual([{ platformUserId: "42", text: "!claim" }])
   })
 
   it("keeps listening on the old socket until the new one is welcomed", async () => {
@@ -326,7 +327,7 @@ describe("ChatWatcher session_reconnect", () => {
     old?.receive(reconnect("wss://twitch.test/ws?reconnect=1"))
     old?.receive(chat("42", "before the switch"))
 
-    expect(messages).toEqual([{ chatterUserId: "42", text: "before the switch" }])
+    expect(messages).toEqual([{ platformUserId: "42", text: "before the switch" }])
   })
 
   it("ignores a reconnect URL that is not a WebSocket URL", async () => {
@@ -360,7 +361,7 @@ describe("ChatWatcher connection age", () => {
 
     expect(old?.closed).toBe(true)
     expect(subscriptions.sessions).toEqual(["session-1", "session-2"])
-    expect(messages).toEqual([{ chatterUserId: "42", text: "!claim" }])
+    expect(messages).toEqual([{ platformUserId: "42", text: "!claim" }])
     expect(watcher.wakeAt()).toBe(840_000 + 15_000)
   })
 })
@@ -589,7 +590,7 @@ function roomUnderTest(
     clock,
     random,
     config,
-    chat: chatLink,
+    chat: eventSubChat({ ...chatLink, clock, config }),
     beacon: new FakeBeacon(),
   })
   room.init(roomInit(options.claimKeyword ?? null))
@@ -836,7 +837,12 @@ describe("chat watch lifetime", () => {
       clock,
       random,
       config,
-      chat: { connector: revivedConnector, subscribe: new Subscriptions().subscribe },
+      chat: eventSubChat({
+        connector: revivedConnector,
+        subscribe: new Subscriptions().subscribe,
+        clock,
+        config,
+      }),
       beacon: new FakeBeacon(),
     })
 

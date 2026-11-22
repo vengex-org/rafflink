@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { setTimeout } from "node:timers/promises"
 import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import { installFakeSocket } from "./fake-socket.ts"
-import { donateUrl, giveaway, supportedSession } from "./fixtures.ts"
+import { donateUrl, giveaway, supportedSession, twitchPlatform } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -19,6 +19,7 @@ const signedIn = {
         login: "streamy",
         profileImageUrl: null,
         canCreate: true,
+        ...twitchPlatform,
       },
       donateUrl: null,
       operator: null,
@@ -55,6 +56,7 @@ describe("header session", () => {
             login: "streamy",
             profileImageUrl: picture,
             canCreate: true,
+            ...twitchPlatform,
           },
           donateUrl: null,
           operator: null,
@@ -174,6 +176,7 @@ describe("header session", () => {
                 login: "streamy",
                 profileImageUrl: null,
                 canCreate: true,
+                ...twitchPlatform,
               },
               donateUrl: null,
               operator: null,

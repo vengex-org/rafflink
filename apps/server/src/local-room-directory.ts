@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { GiveawayRoom, overlaySnapshot, type RoomConfig } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
+import { eventSubChat, type ChatWatcherConfig } from "@rafflink/core/room/chat-watcher"
 import {
   RoomTransientError,
   type RoomDirectory,
@@ -18,7 +19,7 @@ import { TimerAlarm } from "./timer-alarm.ts"
 export interface LocalRoomDirectoryDeps {
   /** Holds one SQLite file per giveaway, named by its id. */
   readonly roomsDir: string
-  readonly config: RoomConfig
+  readonly config: RoomConfig & ChatWatcherConfig
   readonly clock: Clock
   readonly random: Random
   /** Where the rooms read the drand round their draw is seeded with. */
@@ -183,10 +184,12 @@ export class LocalRoomDirectory implements RoomDirectory {
       random: this.deps.random,
       config: this.deps.config,
       beacon: this.deps.beacon,
-      chat: {
+      chat: eventSubChat({
         connector: this.deps.connector,
         subscribe: (sessionId) => this.deps.subscribeChat(giveawayId, sessionId),
-      },
+        clock: this.deps.clock,
+        config: this.deps.config,
+      }),
     })
     this.open.set(giveawayId, { room, alarm, db })
     return room
