@@ -1,17 +1,23 @@
+import type { ReactElement } from "react"
 import { Link, useSearchParams } from "react-router"
 import { DonateLink } from "../components/donate-link.tsx"
-import { HomeCards } from "../components/home-cards.tsx"
-import { HomeHow } from "../components/home-how.tsx"
-import { HomeStage } from "../components/home-stage.tsx"
-import { AlertIcon, CloudIcon, GithubIcon, LockIcon, TwitchIcon } from "../components/icons.tsx"
+import { AlertIcon, TwitchIcon } from "../components/icons.tsx"
 import { StateCard } from "../components/state-card.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl, setupGuideUrl } from "../lib/links.ts"
 
+/**
+ * The seam between this repository and a hosted deployment: a build may replace this whole module, so the three
+ * exports are its contract.
+ */
+
+/** Extra top-level routes of the deployment, rendered before the catch-all routes. */
+export const siteRoutes: ReactElement | null = null
+
 export function HomePage() {
-  const { t, rich } = useI18n()
+  const { t } = useI18n()
   const [query] = useSearchParams()
   const problem = signInProblem(query.get("signin"))
   const { streamer, donateUrl } = useStreamerSession()
@@ -29,48 +35,17 @@ export function HomePage() {
               <p role="alert">{t(problem)}</p>
             </StateCard>
           )}
-          <div className="home-hero-top">
-            <h1>{rich("home.title", { highlight: <mark>{t("home.title.highlight")}</mark> })}</h1>
-            <div>
-              <p className="home-sub">{t("home.text")}</p>
-              <div className="home-actions">
-                <Link className="button home-cta" to="/dashboard">
-                  {streamer === null ? <TwitchIcon /> : null}
-                  {t(streamer === null ? "home.login" : "nav.myGiveaways")}
-                </Link>
-                <Link className="button outlined home-cta" to="/demo">
-                  {t("home.demo")}
-                </Link>
-              </div>
-              <p className="home-reads">{t("home.reads")}</p>
-            </div>
+          <h1>{t("home.title")}</h1>
+          <p className="home-sub">{t("home.text")}</p>
+          <div className="home-actions">
+            <Link className="button home-cta" to="/dashboard">
+              {streamer === null ? <TwitchIcon /> : null}
+              {t(streamer === null ? "home.login" : "nav.myGiveaways")}
+            </Link>
           </div>
-          <HomeStage />
-          <ul className="home-trust">
-            <li>
-              <GithubIcon />
-              {t("home.trust.openSource")}
-            </li>
-            <li>
-              <CloudIcon />
-              {t("home.trust.cloudflare")}
-            </li>
-            <li>
-              <LockIcon />
-              {t("home.trust.noTracking")}
-            </li>
-            {donateUrl === null ? null : (
-              <li>
-                <DonateLink url={donateUrl}>
-                  {t(isKoFi(donateUrl) ? "home.trust.supportKoFi" : "home.trust.support")}
-                </DonateLink>
-              </li>
-            )}
-          </ul>
+          <p className="home-reads">{t("home.reads")}</p>
         </div>
       </section>
-      <HomeHow />
-      <HomeCards />
       <footer className="home-footer">
         <div className="home-wrap home-footer-row">
           <span className="brand">
@@ -85,10 +60,25 @@ export function HomePage() {
             <Link to="/verify">{t("nav.verify")}</Link>
             <Link to="/privacy">{t("legal.privacy")}</Link>
             <Link to="/terms">{t("legal.terms")}</Link>
+            {donateUrl === null ? null : (
+              <DonateLink url={donateUrl}>
+                {t(isKoFi(donateUrl) ? "home.trust.supportKoFi" : "home.trust.support")}
+              </DonateLink>
+            )}
           </nav>
         </div>
       </footer>
     </div>
+  )
+}
+
+export function SiteNav() {
+  const { t } = useI18n()
+  return (
+    <nav aria-label={t("nav.main")} className="app-nav">
+      <a href={setupGuideUrl}>{t("nav.selfHost")}</a>
+      <a href={repositoryUrl}>{t("nav.github")}</a>
+    </nav>
   )
 }
 

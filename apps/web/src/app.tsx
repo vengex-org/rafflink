@@ -4,14 +4,13 @@ import { NotFound } from "./components/notice.tsx"
 import { I18nProvider } from "./i18n/i18n.tsx"
 import { AdminPage } from "./pages/admin-page.tsx"
 import { DashboardPage } from "./pages/dashboard-page.tsx"
-import { DemoPage } from "./pages/demo-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
-import { HomePage } from "./pages/home-page.tsx"
 import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
 import { OverlayPage } from "./pages/overlay-page.tsx"
 import { VerifyLookupPage } from "./pages/verify-lookup-page.tsx"
 import { VerifyPage } from "./pages/verify-page.tsx"
+import { HomePage, siteRoutes } from "./site/site.tsx"
 
 export function AppRoutes() {
   return (
@@ -28,7 +27,7 @@ export function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path="*" element={<NotFound title="notFound.page" />} />
         </Route>
-        <Route path="demo" element={<DemoPage />} />
+        {siteRoutes}
         <Route element={<Layout account={false} />}>
           <Route path="g/:code" element={<GiveawayPage />} />
           <Route path="g/:code/verify" element={<VerifyPage />} />

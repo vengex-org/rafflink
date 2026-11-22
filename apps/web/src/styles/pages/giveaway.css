@@ -507,38 +507,3 @@ main.container:has(> .viewer) {
     background: none;
   }
 }
-
-/* The demo: a label, one sentence, the view switch and the replay button above a real viewer page or live page */
-
-.demo-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-
-.demo-strip {
-  padding: var(--space-2) var(--gutter);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.demo-switch {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.demo-bar p {
-  flex: 1 1 14rem;
-  margin: 0;
-  color: var(--ink-2);
-  font-size: 0.875rem;
-}
-
-.demo-drawing {
-  display: block;
-  margin: 0;
-  color: var(--ink-2);
-  font-weight: 600;
-}

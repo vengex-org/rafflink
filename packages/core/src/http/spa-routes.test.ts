@@ -53,13 +53,13 @@ describe("page routes", () => {
     const privacy = await app.request("/privacy")
     const terms = await app.request("/terms")
     const dashboard = await app.request("/dashboard")
-    const demo = await app.request("/demo")
+    const verify = await app.request("/verify")
 
     expect(home.headers.get("x-robots-tag")).toBeNull()
     expect(privacy.headers.get("x-robots-tag")).toBeNull()
     expect(terms.headers.get("x-robots-tag")).toBeNull()
     expect(dashboard.headers.get("x-robots-tag")).toBe("noindex, nofollow")
-    expect(demo.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+    expect(verify.headers.get("x-robots-tag")).toBe("noindex, nofollow")
   })
 
   it("keeps an unknown API path a JSON 404", async () => {

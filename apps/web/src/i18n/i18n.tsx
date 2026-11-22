@@ -80,11 +80,7 @@ function createI18n(language: Language, setLanguage: (language: Language) => voi
     language,
     setLanguage,
     t,
-    rich: (key, nodes) =>
-      dictionary[key].split(markers).map((part, index) => {
-        const name = markerName(part)
-        return <Fragment key={index}>{name === null ? part : nodes[name]}</Fragment>
-      }),
+    rich: (key, nodes) => richParts(dictionary[key], nodes),
     plural: (base, count, params = {}) =>
       t(`${base}.${pluralForm(rules.select(count))}`, { ...params, count: numbers.format(count) }),
     number: (value) => numbers.format(value),
@@ -101,7 +97,8 @@ function markerName(part: string): string | null {
   return part.startsWith("{") && part.endsWith("}") ? part.slice(1, -1) : null
 }
 
-function fill(template: string, params: Params): string {
+/** The template with every `{name}` marker replaced by its value in `params`; a missing value throws. */
+export function fill(template: string, params: Params): string {
   return template
     .split(markers)
     .map((part) => {
@@ -112,6 +109,14 @@ function fill(template: string, params: Params): string {
       return String(value)
     })
     .join("")
+}
+
+/** The template as React nodes, with every `{name}` marker replaced by its node in `nodes`. */
+export function richParts(template: string, nodes: Readonly<Record<string, ReactNode>>): ReactNode {
+  return template.split(markers).map((part, index) => {
+    const name = markerName(part)
+    return <Fragment key={index}>{name === null ? part : nodes[name]}</Fragment>
+  })
 }
 
 function pluralForm(rule: Intl.LDMLPluralRule): PluralForm {

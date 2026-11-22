@@ -154,7 +154,7 @@ describe("legal footer links", () => {
   })
 
   it("sit in the footer of every other page with the shared layout", () => {
-    for (const path of ["/demo", "/privacy"]) {
+    for (const path of ["/verify", "/privacy"]) {
       const view = renderApp(path)
 
       const footer = within(view.getByRole("navigation", { name: "Legal" }))
