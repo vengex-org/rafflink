@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, within } from "@testing-library/react"
-import { donateUrl, supportedSession } from "./fixtures.ts"
+import { donateUrl, supportedSession, twitchPlatform } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -51,6 +51,7 @@ describe("home page", () => {
             login: "streamy",
             profileImageUrl: null,
             canCreate: true,
+            ...twitchPlatform,
           },
           donateUrl: null,
           operator: null,

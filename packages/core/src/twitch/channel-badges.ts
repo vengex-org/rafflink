@@ -1,10 +1,9 @@
 import type { ResolvedConfig } from "../config.ts"
 import { errorClass } from "../lib/error-class.ts"
 import type { Clock, Instant } from "../ports.ts"
-import { TwitchError, type SubscriptionGroup, type TwitchClient } from "./twitch-client.ts"
-
-/** The image of each subscription tier's badge; `null` when no image is known for the tier. */
-export type SubscriberBadges = Readonly<Record<SubscriptionGroup, string | null>>
+import type { SubscriberBadges } from "../platform/provider.ts"
+import { PlatformError } from "../platform/errors.ts"
+import type { TwitchClient } from "./twitch-client.ts"
 
 export type ChannelBadgesConfig = Pick<ResolvedConfig, "channelBadgesTtlSeconds">
 
@@ -68,7 +67,7 @@ export class ChannelBadges {
         sub_t3: own.sub_t3 ?? fallback,
       }
     } catch (error) {
-      if (!(error instanceof TwitchError)) throw error
+      if (!(error instanceof PlatformError)) throw error
       console.warn("channel badges unavailable", { broadcasterId, errorClass: errorClass(error) })
       return null
     }

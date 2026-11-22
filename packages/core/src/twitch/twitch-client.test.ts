@@ -14,9 +14,9 @@ import {
   TwitchRateLimited,
   TwitchUnavailable,
   TwitchClient,
-  type SubscriptionGroup,
   type TwitchFetch,
 } from "./twitch-client.ts"
+import type { SubscriptionGroup } from "../platform/provider.ts"
 
 const redirectUri = "http://localhost/callback"
 const viewer: FakeUser = {
@@ -460,10 +460,11 @@ describe("Helix", () => {
     )
   })
 
-  it("reads login, display name and creation time of the token owner", async () => {
+  it("reads id, login, display name and creation time of the token owner", async () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
 
     expect(await client.userProfile(accessToken)).toEqual({
+      id: "100",
       login: "viewer",
       displayName: "Viewer",
       createdAt: Date.parse("2021-03-04T05:06:07Z"),

@@ -1,5 +1,4 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
-import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { armRetentionAlarms } from "@rafflink/core/room/arm-retention"
@@ -52,7 +51,6 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     planQueue: durableObjectPlanQueue(env.QUEUE),
     usage: createUsageMeter(runtime.config, runtime.clock, (input, init) => fetch(input, init)),
     publicCache: new CacheApiPublicCache(caches.default),
-    admins: new AdminDirectory(runtime.config, runtime.twitch),
     entryIpLimiter: new RateLimitBindingLimiter(env.ENTRY_IP_LIMITER),
     leavesIpLimiter: new RateLimitBindingLimiter(env.LEAVES_IP_LIMITER),
     clientAddress: connectingAddress,

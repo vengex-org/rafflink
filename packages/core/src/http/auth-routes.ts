@@ -5,8 +5,10 @@ import { giveawayPath } from "../lib/page-paths.ts"
 import { randomId } from "../lib/random-id.ts"
 import { sealSecret } from "../lib/seal.ts"
 import type { Instant } from "../ports.ts"
-import { redirectUri, streamerCallbackPath, viewerCallbackPath } from "../twitch/redirect.ts"
-import { TwitchError, TwitchInvalid } from "../twitch/twitch-client.ts"
+import { PlatformError, PlatformIdentityRejected } from "../platform/errors.ts"
+import { codeChallenge, codeVerifier } from "../platform/pkce.ts"
+import { providerFor, type PlatformProvider } from "../platform/provider.ts"
+import { callbackPath, redirectUri } from "../platform/redirect.ts"
 import { enterGiveaway } from "../viewer/enter-giveaway.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { QueuedCode, EnqueueCause } from "../queue/token-queue.ts"
@@ -14,6 +16,7 @@ import type { AppDeps } from "./deps.ts"
 import { outcomeQuery } from "./json.ts"
 import { defaultReturnPath, safeReturnPath } from "./return-path.ts"
 import {
+  type OAuthState,
   startOAuthState,
   startStreamerSession,
   startViewerSession,
@@ -29,24 +32,39 @@ export interface Backlog {
   until: Instant
 }
 
-const streamerScopes = ["openid", "channel:read:vips", "moderation:read", "user:read:chat"] as const
-const viewerScopes = ["openid", "user:read:subscriptions", "user:read:follows"] as const
-
-const platform = "twitch"
-
 export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
   const app = new Hono()
+  for (const provider of Object.values(deps.platforms)) {
+    app.route("/", platformAuthRoutes(deps, backlog, provider))
+  }
+  return app
+}
 
-  app.get("/auth/twitch/streamer/start", async (c) => {
+// The sign-in starts and callbacks of one platform, under its name: `/auth/twitch/streamer/start` for Twitch.
+function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformProvider): Hono {
+  const app = new Hono()
+  const { platform } = provider
+  const streamerCallbackPath = callbackPath(platform, "streamer")
+  const viewerCallbackPath = callbackPath(platform, "viewer")
+
+  app.get(`/auth/${platform}/streamer/start`, async (c) => {
     const state = randomId(deps.random)
     const nonce = randomId(deps.random)
+    const verifier = codeVerifier(deps.random)
     const returnPath = safeReturnPath(c.req.query("return")) ?? defaultReturnPath
-    await startOAuthState(c, deps, "streamer", { state, nonce, giveawayCode: null, returnPath })
+    await startOAuthState(c, deps, "streamer", {
+      state,
+      nonce,
+      codeVerifier: verifier,
+      giveawayCode: null,
+      returnPath,
+    })
     return c.redirect(
-      deps.twitch.authorizeUrl({
+      provider.authorizeUrl({
         state,
         nonce,
-        scopes: streamerScopes,
+        codeChallenge: await codeChallenge(verifier),
+        scopes: provider.scopes.streamer,
         redirectUri: redirectUri(deps.config, streamerCallbackPath),
       }),
     )
@@ -66,7 +84,7 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
     }
     let signIn: StreamerGrant
     try {
-      signIn = await exchangeStreamer(deps, code, saved.nonce)
+      signIn = await exchangeStreamer(deps, provider, code, saved)
     } catch (error) {
       return c.redirect(`/?signin=${signInFailure(error)}`)
     }
@@ -83,33 +101,37 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
         streamerTokenAad(platform, signIn.userId),
         deps.random,
       ),
-      scopes: streamerScopes.join(" "),
+      scopes: provider.scopes.streamer.join(" "),
       now: deps.clock.now(),
     })
     await startStreamerSession(c, deps, {
       streamerId: streamer.id,
-      twitchUserId: streamer.platformUserId,
+      platform,
+      platformUserId: streamer.platformUserId,
     })
     return c.redirect(saved.returnPath ?? defaultReturnPath)
   })
 
-  app.get("/auth/twitch/viewer/start", async (c) => {
+  app.get(`/auth/${platform}/viewer/start`, async (c) => {
     const code = c.req.query("giveaway")
     const giveaway = code === undefined ? null : await deps.accounts.findGiveawayByCode(code)
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const state = randomId(deps.random)
     const nonce = randomId(deps.random)
+    const verifier = codeVerifier(deps.random)
     await startOAuthState(c, deps, "viewer", {
       state,
       nonce,
+      codeVerifier: verifier,
       giveawayCode: giveaway.code,
       returnPath: null,
     })
     return c.redirect(
-      deps.twitch.authorizeUrl({
+      provider.authorizeUrl({
         state,
         nonce,
-        scopes: viewerScopes,
+        codeChallenge: await codeChallenge(verifier),
+        scopes: provider.scopes.viewer,
         redirectUri: redirectUri(deps.config, viewerCallbackPath),
         forceVerify: c.req.query("force_verify") === "true",
       }),
@@ -139,7 +161,12 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
       return c.redirect(returnTo(giveaway.code, { kind: "rate-limited" }))
     }
 
-    const item: QueuedCode = { code, giveawayId: giveaway.id, nonce: saved.nonce }
+    const item: QueuedCode = {
+      code,
+      giveawayId: giveaway.id,
+      nonce: saved.nonce,
+      codeVerifier: saved.codeVerifier,
+    }
     const queued = async (cause: EnqueueCause) => {
       const enqueued = await deps.queue.enqueue(item, cause)
       // The latest answer wins, so a lease ends as soon as the queue says it keeps up.
@@ -153,7 +180,10 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
     const attempt = await enterGiveaway(deps, giveaway, item)
     if (attempt.kind === "deferred") return queued(attempt.cause)
     if (attempt.userId !== null)
-      await startViewerSession(c, deps, { platform: giveaway.platform, userId: attempt.userId })
+      await startViewerSession(c, deps, {
+        platform: providerFor(deps.platforms, giveaway.platform).platform,
+        userId: attempt.userId,
+      })
     return c.redirect(returnTo(giveaway.code, attempt.outcome))
   })
 
@@ -170,16 +200,17 @@ interface StreamerGrant {
 
 async function exchangeStreamer(
   deps: AppDeps,
+  provider: PlatformProvider,
   code: string,
-  nonce: string,
+  saved: Pick<OAuthState, "nonce" | "codeVerifier">,
 ): Promise<StreamerGrant> {
-  const tokens = await deps.twitch.exchangeCode(
+  const tokens = await provider.exchangeCode(
     code,
-    redirectUri(deps.config, streamerCallbackPath),
+    redirectUri(deps.config, callbackPath(provider.platform, "streamer")),
+    saved.codeVerifier,
   )
-  if (tokens.idToken === null) throw new TwitchInvalid("id-token", null)
-  const { userId } = await deps.twitch.verifyIdToken(tokens.idToken, nonce)
-  const profile = await deps.twitch.userProfile(tokens.accessToken)
+  const userId = await provider.verifySignIn(tokens, { nonce: saved.nonce })
+  const profile = await provider.userProfile(tokens.accessToken)
   return {
     userId,
     login: profile.login,
@@ -190,10 +221,8 @@ async function exchangeStreamer(
 }
 
 function signInFailure(error: unknown): "invalid-state" | "try-again" {
-  if (!(error instanceof TwitchError)) throw error
-  return error instanceof TwitchInvalid && error.endpoint === "id-token"
-    ? "invalid-state"
-    : "try-again"
+  if (!(error instanceof PlatformError)) throw error
+  return error instanceof PlatformIdentityRejected ? "invalid-state" : "try-again"
 }
 
 function returnTo(giveawayCode: string | null, outcome: CallbackOutcome): string {

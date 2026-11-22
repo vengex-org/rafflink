@@ -16,11 +16,12 @@ import { deleteExpiredGiveaways } from "@rafflink/core/room/delete-giveaway"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { runRoomAlarm, type RoomAlarmDeps } from "@rafflink/core/room/run-room-alarm"
 import { StatsStore } from "@rafflink/core/stats/stats-store"
-import { subscribeChat } from "@rafflink/core/room/subscribe-chat"
+import { roomChat } from "@rafflink/core/room/room-chat"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { TokenQueue, type TokenQueueStub } from "@rafflink/core/queue/token-queue"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
+import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
 import { existsSync, mkdirSync, readdirSync } from "node:fs"
@@ -72,7 +73,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const stats = new StatsStore(accountsSql, config)
   const twitch = new TwitchClient(config, fetch)
   const keyRing = await openKeyRing(config.tokenSealKeys)
-  const tokenDeps: StreamerTokenDeps = { clock, random, twitch, accounts, keyRing }
+  const platforms = { twitch: new TwitchProvider(twitch, clock, config) }
+  const tokenDeps: StreamerTokenDeps = { clock, random, platforms, accounts, keyRing }
+  const connector = new BunSocketConnector()
   const alarmDeps: RoomAlarmDeps = { ...tokenDeps, stats }
 
   const rooms = new LocalRoomDirectory({
@@ -84,8 +87,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     publish: (topic, message) => void server.publish(topic, message),
     subscriberCount: (topic) => server.subscriberCount(topic),
     onAlarm: (giveawayId, room) => runRoomAlarm(alarmDeps, giveawayId, room),
-    connector: new BunSocketConnector(),
-    subscribeChat: (giveawayId, sessionId) => subscribeChat(tokenDeps, giveawayId, sessionId),
+    chat: (giveawayId) => roomChat(tokenDeps, connector, giveawayId),
   })
 
   const queueDb = openDatabase(join(config.dataDir, queueFileName))
@@ -95,7 +97,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     config,
     clock,
     random,
-    twitch,
+    platforms,
     accounts,
     rooms,
     entryUserLimiter: new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, rateWindowMs),

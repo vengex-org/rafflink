@@ -12,6 +12,7 @@ import { toBase64 } from "../lib/encoding.ts"
 import { openKeyRing, openSecret, sealSecret, type KeyRing } from "../lib/seal.ts"
 import { BunSqliteAsyncSql } from "../sqlite-bun.ts"
 import { TwitchClient, type TwitchFetch } from "../twitch/twitch-client.ts"
+import { TwitchProvider } from "../twitch/twitch-provider.ts"
 import { AccountStore } from "./account-store.ts"
 import { streamerTokenAad, type StreamerTokenDeps } from "./streamer-token.ts"
 import { validateStreamerTokens } from "./validate-streamer-tokens.ts"
@@ -75,10 +76,12 @@ function configFor(origin: string, overrides: Record<string, string>): ResolvedC
 }
 
 function deps(twitchFetch: TwitchFetch = fetch, twitchConfig = config): StreamerTokenDeps {
+  const clock = new TestClock(5000)
+  const client = new TwitchClient(twitchConfig, twitchFetch)
   return {
-    clock: new TestClock(5000),
+    clock,
     random: secureRandom,
-    twitch: new TwitchClient(twitchConfig, twitchFetch),
+    platforms: { twitch: new TwitchProvider(client, clock, twitchConfig) },
     accounts,
     keyRing,
   }
@@ -92,7 +95,7 @@ function fetchExcept(pathSuffix: string, answer: () => Promise<Response>): Twitc
 /** Signs the fake user in and stores their sealed refresh token as streamer `id`; returns that refresh token. */
 async function storeStreamer(id: string, userId: string, sealedAs = userId): Promise<string> {
   fake.control.signInAs(userId)
-  const { twitch } = deps()
+  const twitch = new TwitchClient(config, fetch)
   const authorize = await fetch(
     twitch.authorizeUrl({ state: "s", nonce: "n", scopes: ["openid"], redirectUri }),
     { redirect: "manual" },

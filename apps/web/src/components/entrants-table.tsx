@@ -2,7 +2,7 @@ import { Fragment, useDeferredValue, useId, useMemo, useRef, useState, type Reac
 import { useParams } from "react-router"
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
-import type { SubscriberBadges } from "@rafflink/core/twitch/channel-badges"
+import type { SubscriberBadges } from "@rafflink/core/platform/provider"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { orderEntrants, searchEntrants, type ListedEntrant } from "../lib/entrant-list.ts"
 import { useEntrants } from "../lib/use-entrants.ts"

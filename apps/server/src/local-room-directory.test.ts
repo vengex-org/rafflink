@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { FakeBeacon, idleChat } from "@rafflink/core/test/contract"
+import { eventSubChat } from "@rafflink/core/twitch/chat-watcher"
 import type { SocketConnector } from "@rafflink/core/ports"
 import type { GiveawayRoom } from "@rafflink/core/room/giveaway-room"
 import { RoomTransientError } from "@rafflink/core/room/room-directory"
@@ -52,8 +53,7 @@ function directoryWith(overrides: Partial<LocalRoomDirectoryDeps> = {}): LocalRo
     publish: () => {},
     subscriberCount: () => 0,
     onAlarm: async () => {},
-    connector: idleChat.connector,
-    subscribeChat: idleChat.subscribe,
+    chat: () => idleChat(systemClock, testConfig()),
     ...overrides,
   })
   directories.push(directory)
@@ -281,7 +281,13 @@ describe("LocalRoomDirectory", () => {
         return { close: () => void (closed += 1) }
       },
     }
-    const directory = directoryWith({ connector })
+    const chat = eventSubChat({
+      connector,
+      subscribe: async () => {},
+      clock: systemClock,
+      config: testConfig(),
+    })
+    const directory = directoryWith({ chat: () => (_platform, listener) => chat(listener) })
     const room = directory.get(id)
     await room.init(giveawayInit(id))
     await room.enter(viewer)

@@ -101,7 +101,10 @@ describe("GET /api/admin/stats", () => {
     const admin = await adminBrowser(running)
     const minute = startOfMinute(running.clock.now()) - minuteMs
     await running.deps.stats.addMinutes([{ minute, entries: 4, claims: 1 }], running.clock.now())
-    running.queue.enqueue({ code: "c", giveawayId: "g", nonce: "n" }, "rate-limited")
+    running.queue.enqueue(
+      { code: "c", giveawayId: "g", nonce: "n", codeVerifier: "v" },
+      "rate-limited",
+    )
 
     const body = await stats(admin)
 

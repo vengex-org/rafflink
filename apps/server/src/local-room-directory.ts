@@ -5,12 +5,13 @@ import { join } from "node:path"
 import { GiveawayRoom, overlaySnapshot, type RoomConfig } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
+import type { ChatOpener } from "@rafflink/core/platform/chat-source"
 import {
   RoomTransientError,
   type RoomDirectory,
   type RoomStub,
 } from "@rafflink/core/room/room-directory"
-import type { Clock, Random, RandomnessBeacon, SocketConnector } from "@rafflink/core/ports"
+import type { Clock, Random, RandomnessBeacon } from "@rafflink/core/ports"
 import { BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { openDatabase } from "./database.ts"
 import { TimerAlarm } from "./timer-alarm.ts"
@@ -29,9 +30,8 @@ export interface LocalRoomDirectoryDeps {
   readonly subscriberCount: (topic: string) => number
   /** Runs when a room's alarm fires; its error is logged and goes no further. */
   readonly onAlarm: (giveawayId: string, room: GiveawayRoom) => Promise<void>
-  readonly connector: SocketConnector
-  /** Subscribes an EventSub session to the chat of a giveaway's channel. */
-  readonly subscribeChat: (giveawayId: string, sessionId: string) => Promise<void>
+  /** Opens the chat of a giveaway's room. */
+  readonly chat: (giveawayId: string) => ChatOpener
 }
 
 /** The pub/sub topic of a room's live pages. */
@@ -183,10 +183,7 @@ export class LocalRoomDirectory implements RoomDirectory {
       random: this.deps.random,
       config: this.deps.config,
       beacon: this.deps.beacon,
-      chat: {
-        connector: this.deps.connector,
-        subscribe: (sessionId) => this.deps.subscribeChat(giveawayId, sessionId),
-      },
+      chat: this.deps.chat(giveawayId),
     })
     this.open.set(giveawayId, { room, alarm, db })
     return room

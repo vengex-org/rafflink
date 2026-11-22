@@ -18,7 +18,7 @@ export const claimQueuedSql = `UPDATE token_queue SET state = 'processing', clai
   WHERE ticket IN (
     SELECT ticket FROM token_queue WHERE state = 'queued' ORDER BY received_at, ticket LIMIT ?
   )
-  RETURNING ticket, code, giveaway_id, nonce`
+  RETURNING ticket, code, giveaway_id, nonce, code_verifier`
 
 /** Returns one claimed row to the queue (parameters: ticket, claim time); no row comes back when the claim was lost. */
 export const requeueClaimedSql = `UPDATE token_queue SET state = 'queued', claimed_at = NULL

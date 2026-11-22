@@ -1,10 +1,5 @@
 import type { Parsed } from "../../lib/parsed.ts"
-
-/** A chat message as the watcher hands it on: who wrote it and what. Nothing else of the message is read. */
-export interface ChatMessage {
-  readonly chatterUserId: string
-  readonly text: string
-}
+import type { ChatBadge, ChatMessage } from "../../platform/chat-source.ts"
 
 /** The EventSub WebSocket messages the watcher acts on; any other message type is `ignored`. */
 export type EventSubMessage =
@@ -73,12 +68,42 @@ function parseChatNotification(
 ): Parsed<EventSubMessage, "malformed"> {
   const { event } = payload
   if (!isRecord(event) || !isRecord(event.message)) return malformed
-  const { chatter_user_id: chatterUserId, message } = event
-  if (typeof chatterUserId !== "string" || typeof message.text !== "string") return malformed
+  const {
+    chatter_user_id: platformUserId,
+    chatter_user_login: login,
+    chatter_user_name: displayName,
+    message,
+  } = event
+  if (
+    typeof platformUserId !== "string"
+    || typeof login !== "string"
+    || typeof displayName !== "string"
+    || typeof message.text !== "string"
+  ) {
+    return malformed
+  }
+  const badges = parseBadges(event.badges)
+  if (badges === null) return malformed
   return {
     ok: true,
-    value: { kind: "notification", chat: { chatterUserId, text: message.text } },
+    value: {
+      kind: "notification",
+      chat: { platformUserId, login, displayName, text: message.text, badges },
+    },
   }
+}
+
+// Twitch writes each badge as `{ set_id, id, info }`; `info` (the months of a sub badge) is not read.
+function parseBadges(value: unknown): ChatBadge[] | null {
+  if (!Array.isArray(value)) return null
+  const badges: ChatBadge[] = []
+  for (const badge of value) {
+    if (!isRecord(badge) || typeof badge.set_id !== "string" || typeof badge.id !== "string") {
+      return null
+    }
+    badges.push({ setId: badge.set_id, id: badge.id })
+  }
+  return badges
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

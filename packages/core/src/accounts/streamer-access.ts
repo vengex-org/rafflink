@@ -8,8 +8,8 @@ export type StreamerAccessConfig = Pick<ResolvedConfig, "openSignup">
 export async function canCreateGiveaways(
   config: StreamerAccessConfig,
   admins: Pick<AdminDirectory, "isAdmin">,
-  streamer: Pick<StreamerRecord, "platformUserId" | "approvedAt">,
+  streamer: Pick<StreamerRecord, "platform" | "platformUserId" | "approvedAt">,
 ): Promise<boolean> {
   if (config.openSignup || streamer.approvedAt !== null) return true
-  return admins.isAdmin(streamer.platformUserId)
+  return admins.isAdmin(streamer.platform, streamer.platformUserId)
 }

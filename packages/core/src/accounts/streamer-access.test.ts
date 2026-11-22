@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test"
 import { canCreateGiveaways } from "./streamer-access.ts"
 
-const streamer = { platformUserId: "200", approvedAt: null }
+const streamer = { platform: "twitch", platformUserId: "200", approvedAt: null }
 const noAdmins = { isAdmin: async () => false }
-const admins = { isAdmin: async (id: string) => id === "200" }
+const admins = {
+  isAdmin: async (platform: string, id: string) => platform === "twitch" && id === "200",
+}
 
 describe("canCreateGiveaways", () => {
   it("allows everyone while signup is open", async () => {

@@ -1,4 +1,5 @@
 import { openStreamerAccess, type StreamerTokenDeps } from "../accounts/streamer-token.ts"
+import { providerFor, type PlatformProvider } from "../platform/provider.ts"
 
 /** The streamer's token is gone: the sign-in was never stored, or the hourly validation deleted it. */
 export class StreamerTokenMissing extends Error {}
@@ -7,11 +8,12 @@ export class StreamerTokenMissing extends Error {}
 export class GiveawayMissing extends Error {}
 
 export interface GiveawayStreamerAccess {
+  readonly provider: PlatformProvider
   readonly accessToken: string
   readonly broadcasterId: string
 }
 
-/** An access token of the giveaway's streamer, with the channel it is for. */
+/** An access token of the giveaway's streamer, with the channel it is for and its platform's provider. */
 export async function openGiveawayStreamerAccess(
   deps: StreamerTokenDeps,
   giveawayId: string,
@@ -21,6 +23,7 @@ export async function openGiveawayStreamerAccess(
   const token = await deps.accounts.findStreamerToken(giveaway.streamerId)
   if (token === null) throw new StreamerTokenMissing()
   return {
+    provider: providerFor(deps.platforms, giveaway.platform),
     accessToken: await openStreamerAccess(deps, token),
     broadcasterId: giveaway.broadcasterId,
   }

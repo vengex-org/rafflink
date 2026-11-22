@@ -1,4 +1,4 @@
-import type { Instant } from "../../ports.ts"
+import type { ExchangedCode, UserProfile } from "../../platform/provider.ts"
 import type { Parsed } from "../../lib/parsed.ts"
 import { twitchImageUrl } from "./image-url.ts"
 
@@ -6,22 +6,6 @@ export type Malformed = Parsed<never, "malformed">
 
 /** Subscription tier as Twitch writes it. */
 export type Tier = "1000" | "2000" | "3000"
-
-export interface ExchangedCode {
-  readonly accessToken: string
-  readonly refreshToken: string
-  /** `null` when the code was not requested with the `openid` scope. */
-  readonly idToken: string | null
-}
-
-/** The Helix user of an access token. */
-export interface UserProfile {
-  readonly login: string
-  readonly displayName: string
-  readonly createdAt: Instant
-  /** `null` when Twitch sent no picture on its image host. */
-  readonly profileImageUrl: string | null
-}
 
 /** A Helix user found by login. */
 export interface UserLogin {
@@ -90,14 +74,17 @@ export function parseFollowed(body: unknown): Parsed<boolean, "malformed"> {
 export function parseUserProfile(body: unknown): Parsed<UserProfile, "malformed"> {
   const entry = firstEntry(body)
   if (!entry.ok) return entry
-  const { login, display_name: displayName, created_at: createdAt } = entry.value
-  if (typeof login !== "string" || typeof displayName !== "string") return malformed
+  const { id, login, display_name: displayName, created_at: createdAt } = entry.value
+  if (typeof id !== "string" || typeof login !== "string" || typeof displayName !== "string") {
+    return malformed
+  }
   if (typeof createdAt !== "string") return malformed
   const instant = Date.parse(createdAt)
   if (!Number.isFinite(instant)) return malformed
   return {
     ok: true,
     value: {
+      id,
       login,
       displayName,
       createdAt: instant,

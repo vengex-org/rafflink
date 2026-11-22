@@ -12,6 +12,7 @@ import { runRoomAlarm, type RoomAlarmDeps } from "@rafflink/core/room/run-room-a
 import { StatsStore } from "@rafflink/core/stats/stats-store"
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
+import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import {
   FakeBeacon,
   idleChat,
@@ -63,7 +64,7 @@ beforeEach(async () => {
   deps = {
     clock,
     random: systemRandom,
-    twitch: new TwitchClient(config, fetch),
+    platforms: { twitch: new TwitchProvider(new TwitchClient(config, fetch), clock, config) },
     accounts,
     keyRing,
     stats: new StatsStore(accountsSql, config),
@@ -77,7 +78,7 @@ beforeEach(async () => {
     clock,
     random: systemRandom,
     config,
-    chat: idleChat,
+    chat: idleChat(clock, config),
     beacon: new FakeBeacon(),
   })
   room.init(giveawayInit(giveawayId))
@@ -104,7 +105,14 @@ async function createGiveaway(): Promise<void> {
 }
 
 async function seedStreamerAndGiveaway(): Promise<void> {
-  await seedStreamer(twitch, deps.twitch, accounts, keyRing, "streamer-1", users.streamer.id)
+  await seedStreamer(
+    twitch,
+    new TwitchClient(config, fetch),
+    accounts,
+    keyRing,
+    "streamer-1",
+    users.streamer.id,
+  )
   await createGiveaway()
 }
 

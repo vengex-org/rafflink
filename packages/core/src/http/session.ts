@@ -1,6 +1,7 @@
 import type { Context } from "hono"
 import { deleteCookie, getCookie, getSignedCookie, setSignedCookie } from "hono/cookie"
 import type { ResolvedConfig } from "../config.ts"
+import { isPlatform, type OAuthFlow, type Platform } from "../platform/provider.ts"
 import type { Clock, Instant } from "../ports.ts"
 
 export type SessionConfig = Pick<
@@ -18,15 +19,16 @@ export interface SessionDeps {
   readonly clock: Clock
 }
 
-/** A signed-in streamer. `twitchUserId` is what `ADMIN_TWITCH_IDS` lists. */
+/** A signed-in streamer. On Twitch, `platformUserId` is what `ADMIN_TWITCH_IDS` lists. */
 export interface StreamerSession {
   readonly streamerId: string
-  readonly twitchUserId: string
+  readonly platform: Platform
+  readonly platformUserId: string
 }
 
 /** A viewer who signed in: the cookie holds who they are on which platform and no token. */
 export interface ViewerSession {
-  readonly platform: string
+  readonly platform: Platform
   readonly userId: string
 }
 
@@ -42,12 +44,12 @@ export interface PendingEntry {
   readonly giveawayId: string
 }
 
-export type OAuthFlow = "streamer" | "viewer"
-
 /** What the sign-in start remembers for the callback. `giveawayCode` is set for the viewer flow, `returnPath` for the streamer flow. */
 export interface OAuthState {
   readonly state: string
   readonly nonce: string
+  /** The PKCE verifier whose challenge the sign-in start sent; the code exchange proves it. */
+  readonly codeVerifier: string
   readonly giveawayCode: string | null
   readonly returnPath: string | null
 }
@@ -81,9 +83,10 @@ export async function readStreamerSession(
   deps: SessionDeps,
 ): Promise<StreamerSession | null> {
   return readCookie(c, deps, cookieNames.streamer, (value) => {
-    const { streamerId, twitchUserId } = value
-    if (typeof streamerId !== "string" || typeof twitchUserId !== "string") return null
-    return { streamerId, twitchUserId }
+    const { streamerId, platform, platformUserId } = value
+    if (typeof streamerId !== "string" || typeof platformUserId !== "string") return null
+    if (typeof platform !== "string" || !isPlatform(platform)) return null
+    return { streamerId, platform, platformUserId }
   })
 }
 
@@ -105,7 +108,8 @@ export async function readViewerSession(
 ): Promise<ViewerSession | null> {
   return readCookie(c, deps, cookieNames.viewer, (value) => {
     const { platform, userId } = value
-    return typeof platform === "string" && typeof userId === "string" ? { platform, userId } : null
+    if (typeof platform !== "string" || !isPlatform(platform)) return null
+    return typeof userId === "string" ? { platform, userId } : null
   })
 }
 
@@ -176,7 +180,7 @@ async function dropOlderOAuthStates(c: Context, deps: SessionDeps, flow: OAuthFl
 }
 
 /**
- * Reads the state cookie of the sign-in whose `state` came back from Twitch and removes it, so a
+ * Reads the state cookie of the sign-in whose `state` came back from the platform and removes it, so a
  * callback can be answered once per sign-in start. A state of another shape has no cookie.
  */
 export async function takeOAuthState(
@@ -188,11 +192,12 @@ export async function takeOAuthState(
   if (returnedState === undefined || !hexId.test(returnedState)) return null
   const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
-    const { state, nonce, giveawayCode, returnPath } = value
+    const { state, nonce, codeVerifier, giveawayCode, returnPath } = value
     if (typeof state !== "string" || typeof nonce !== "string") return null
+    if (typeof codeVerifier !== "string") return null
     if (giveawayCode !== null && typeof giveawayCode !== "string") return null
     if (returnPath !== null && typeof returnPath !== "string") return null
-    return { state, nonce, giveawayCode, returnPath }
+    return { state, nonce, codeVerifier, giveawayCode, returnPath }
   })
   deleteCookie(c, name, { path: "/" })
   return saved

@@ -1,7 +1,6 @@
 import { setTimeout } from "node:timers/promises"
 import { createRemoteJWKSet, customFetch, errors, jwtVerify, type JWTPayload } from "jose"
 import type { ResolvedConfig } from "../config.ts"
-import type { Group } from "../domain/groups.ts"
 import type { Parsed } from "../lib/parsed.ts"
 import {
   TwitchInvalid,
@@ -20,48 +19,27 @@ import {
   parseUserLogins,
   parseUserProfile,
   parseValidated,
-  type ExchangedCode,
   type Tier,
-  type UserProfile,
 } from "./lib/parse-response.ts"
+import type {
+  AuthorizeParams,
+  ChannelRoles,
+  ExchangedCode,
+  SubscriptionGroup,
+  TokenValidation,
+  UserProfile,
+} from "../platform/provider.ts"
 
-export { TwitchError, TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "./errors.ts"
+export { TwitchInvalid, TwitchRateLimited, TwitchUnavailable } from "./errors.ts"
 export type { TwitchEndpoint } from "./errors.ts"
-export type { ExchangedCode, UserProfile } from "./lib/parse-response.ts"
 
 /** The `fetch` the client sends every call through; the global `fetch` fits. */
 export type TwitchFetch = (input: string | URL, init?: RequestInit) => Promise<Response>
-
-export type SubscriptionGroup = Extract<Group, "sub_t1" | "sub_t2" | "sub_t3">
-
-export interface AuthorizeParams {
-  readonly state: string
-  readonly nonce: string
-  readonly scopes: readonly [string, ...string[]]
-  readonly redirectUri: string
-  /** Makes Twitch show its account picker even when the browser is signed in; off when absent. */
-  readonly forceVerify?: boolean
-}
 
 /** The user an `id_token` was issued for, as Twitch's `sub` claim. */
 export interface VerifiedIdToken {
   readonly userId: string
 }
-
-/** User ids holding each role on a channel. */
-export interface ChannelRoles {
-  readonly vips: readonly string[]
-  readonly moderators: readonly string[]
-}
-
-/**
- * Answer of the hourly token check. `invalid` is only a 401; any other failure is `unavailable`, so a
- * caller keeps the token (spec AC-22).
- */
-export type TokenValidation =
-  | { readonly status: "valid"; readonly userId: string }
-  | { readonly status: "invalid" }
-  | { readonly status: "unavailable" }
 
 export class TwitchClient {
   private readonly jwks: ReturnType<typeof createRemoteJWKSet>
@@ -78,7 +56,8 @@ export class TwitchClient {
     })
   }
 
-  authorizeUrl(params: AuthorizeParams): string {
+  /** Twitch has no PKCE for this flow, so a `codeChallenge` is not sent. */
+  authorizeUrl(params: Omit<AuthorizeParams, "codeChallenge">): string {
     const url = new URL("/oauth2/authorize", this.config.twitchIdBaseUrl)
     url.searchParams.set("client_id", this.config.twitchClientId)
     url.searchParams.set("redirect_uri", params.redirectUri)

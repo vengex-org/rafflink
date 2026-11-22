@@ -1,6 +1,7 @@
 import { errorClass } from "../lib/error-class.ts"
 import type { ResolvedConfig } from "../config.ts"
-import { TwitchError, type TwitchClient } from "../twitch/twitch-client.ts"
+import { PlatformError } from "../platform/errors.ts"
+import type { TwitchClient } from "../twitch/twitch-client.ts"
 
 export type AdminConfig = Pick<ResolvedConfig, "admins">
 
@@ -17,15 +18,17 @@ export class AdminDirectory {
     private readonly twitch: Pick<TwitchClient, "appAccessToken" | "userIdsByLogin">,
   ) {}
 
-  async isAdmin(twitchUserId: string): Promise<boolean> {
-    if (this.config.admins.some((entry) => entry.kind === "id" && entry.id === twitchUserId)) {
+  /** Admins are Twitch accounts (`ADMIN_TWITCH_IDS`): a user of any other platform is none. */
+  async isAdmin(platform: string, platformUserId: string): Promise<boolean> {
+    if (platform !== "twitch") return false
+    if (this.config.admins.some((entry) => entry.kind === "id" && entry.id === platformUserId)) {
       return true
     }
     if (this.logins().length === 0) return false
     try {
-      return (await this.loginIds()).has(twitchUserId)
+      return (await this.loginIds()).has(platformUserId)
     } catch (error) {
-      if (!(error instanceof TwitchError)) throw error
+      if (!(error instanceof PlatformError)) throw error
       console.warn("admin login lookup failed", {
         errorClass: errorClass(error),
         endpoint: error.endpoint,

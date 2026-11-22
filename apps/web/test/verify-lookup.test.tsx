@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, waitFor, within } from "@testing-library/react"
-import { giveaway } from "./fixtures.ts"
+import { giveaway, twitchPlatform } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -76,6 +76,7 @@ describe("verify link in the header and the home footer", () => {
             login: "streamy",
             profileImageUrl: null,
             canCreate: true,
+            ...twitchPlatform,
           },
           donateUrl: null,
           operator: null,

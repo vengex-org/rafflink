@@ -47,6 +47,7 @@ export interface QueuedCode {
   readonly code: string
   readonly giveawayId: string
   readonly nonce: string
+  readonly codeVerifier: string
 }
 
 export interface QueueDeps {
@@ -163,9 +164,9 @@ export class TokenQueue {
       if (cause === "rate-limited") this.recordRateLimited(1, now)
       const waiting = this.waitingCount()
       this.sql.exec(
-        `INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state)
-         VALUES (?, ?, ?, ?, ?, 'queued')`,
-        [ticket, item.code, item.giveawayId, item.nonce, now],
+        `INSERT INTO token_queue (ticket, code, giveaway_id, nonce, code_verifier, received_at, state)
+         VALUES (?, ?, ?, ?, ?, ?, 'queued')`,
+        [ticket, item.code, item.giveawayId, item.nonce, item.codeVerifier, now],
       )
       if (waiting > 0) return waiting
       // A new backlog: the additive steps count from now, not from the end of the previous one.
@@ -499,5 +500,6 @@ function parseQueued(row: SqlRow): QueuedItem {
     code: reader.text("code"),
     giveawayId: reader.text("giveaway_id"),
     nonce: reader.text("nonce"),
+    codeVerifier: reader.text("code_verifier"),
   }
 }

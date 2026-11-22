@@ -6,16 +6,20 @@ import type { Clock, RateLimiter, Random } from "../ports.ts"
 import type { QueuedCode } from "../queue/token-queue.ts"
 import type { RoomViewer } from "../room/giveaway-room.ts"
 import { RoomTransientError, type RoomDirectory } from "../room/room-directory.ts"
-import { redirectUri, viewerCallbackPath } from "../twitch/redirect.ts"
 import {
-  TwitchInvalid,
-  TwitchRateLimited,
-  TwitchUnavailable,
+  providerFor,
   type ExchangedCode,
+  type PlatformProvider,
+  type PlatformProviders,
   type SubscriptionGroup,
-  type TwitchClient,
-  type VerifiedIdToken,
-} from "../twitch/twitch-client.ts"
+} from "../platform/provider.ts"
+import {
+  PlatformError,
+  PlatformIdentityRejected,
+  PlatformRateLimited,
+  PlatformUnavailable,
+} from "../platform/errors.ts"
+import { callbackPath, redirectUri } from "../platform/redirect.ts"
 import type { EntryAttempt, FinalOutcome } from "./outcome.ts"
 
 export type EntryConfig = Pick<
@@ -27,10 +31,10 @@ export interface EntryDeps {
   readonly config: EntryConfig
   readonly clock: Clock
   readonly random: Random
-  readonly twitch: TwitchClient
+  readonly platforms: PlatformProviders
   readonly accounts: AccountStore
   readonly rooms: RoomDirectory
-  /** Limits verified sign-ins per platform user, so a viewer's retries cannot flood the room; it runs after the code exchange and the ID-token check, so those Twitch calls are not saved. */
+  /** Limits verified sign-ins per platform user, so a viewer's retries cannot flood the room; it runs after the code exchange and the identity check, so those platform calls are not saved. */
   readonly entryUserLimiter: RateLimiter
 }
 
@@ -38,41 +42,44 @@ export interface EntryDeps {
 export type EntryTarget = Pick<Giveaway, "id" | "platform" | "broadcasterId">
 
 /**
- * Steps 2 to 5 of the viewer flow: exchange the code, verify the id_token, read eligibility, write the
- * entry. Only a failed exchange is `deferred`: a code is single use, so after it succeeded a Twitch
+ * Steps 2 to 5 of the viewer flow: exchange the code, verify who signed in, read eligibility, write the
+ * entry. Only a failed exchange is `deferred`: a code is single use, so after it succeeded a platform
  * failure ends in `try-again` and the viewer signs in anew.
  */
 export async function enterGiveaway(
   deps: EntryDeps,
   target: EntryTarget,
-  item: Pick<QueuedCode, "code" | "nonce">,
+  item: Pick<QueuedCode, "code" | "nonce" | "codeVerifier">,
 ): Promise<EntryAttempt> {
+  const provider = providerFor(deps.platforms, target.platform)
   let tokens: ExchangedCode
   try {
-    tokens = await deps.twitch.exchangeCode(item.code, redirectUri(deps.config, viewerCallbackPath))
+    tokens = await provider.exchangeCode(
+      item.code,
+      redirectUri(deps.config, callbackPath(provider.platform, "viewer")),
+      item.codeVerifier,
+    )
   } catch (error) {
-    if (error instanceof TwitchRateLimited) return { kind: "deferred", cause: "rate-limited" }
-    if (error instanceof TwitchUnavailable) return { kind: "deferred", cause: "unavailable" }
-    return twitchFailure(error, null)
+    if (error instanceof PlatformRateLimited) return { kind: "deferred", cause: "rate-limited" }
+    if (error instanceof PlatformUnavailable) return { kind: "deferred", cause: "unavailable" }
+    return platformFailure(error, null)
   }
-  if (tokens.idToken === null) return final({ kind: "invalid-state" }, null)
 
-  let verified: VerifiedIdToken
+  let userId: string
   try {
-    verified = await deps.twitch.verifyIdToken(tokens.idToken, item.nonce)
+    userId = await provider.verifySignIn(tokens, { nonce: item.nonce })
   } catch (error) {
-    return twitchFailure(error, null)
+    return platformFailure(error, null)
   }
-  const { userId } = verified
   if (!(await deps.entryUserLimiter.allow(`${target.platform}:${userId}`))) {
     return final({ kind: "rate-limited" }, userId)
   }
 
   let viewer: RoomViewer
   try {
-    viewer = await readViewer(deps, target, tokens.accessToken, userId)
+    viewer = await readViewer(deps.clock, provider, target, tokens.accessToken, userId)
   } catch (error) {
-    return twitchFailure(error, userId)
+    return platformFailure(error, userId)
   }
   const outcome = await enterWithRetry(deps, target.id, viewer)
   return final(outcome, userId)
@@ -97,42 +104,35 @@ function final(outcome: FinalOutcome, userId: string | null): EntryAttempt {
   return { kind: "final", outcome, userId }
 }
 
-// A Twitch call that gave no usable answer after the code was spent; anything else is a bug and propagates.
-function twitchFailure(error: unknown, userId: string | null): EntryAttempt {
-  if (error instanceof TwitchInvalid && error.endpoint === "id-token") {
-    return final({ kind: "invalid-state" }, userId)
-  }
-  if (
-    error instanceof TwitchInvalid
-    || error instanceof TwitchRateLimited
-    || error instanceof TwitchUnavailable
-  ) {
-    return final({ kind: "try-again" }, userId)
-  }
+// A platform call that gave no usable answer after the code was spent; anything else is a bug and propagates.
+function platformFailure(error: unknown, userId: string | null): EntryAttempt {
+  if (error instanceof PlatformIdentityRejected) return final({ kind: "invalid-state" }, userId)
+  if (error instanceof PlatformError) return final({ kind: "try-again" }, userId)
   throw error
 }
 
 async function readViewer(
-  deps: EntryDeps,
+  clock: Clock,
+  provider: PlatformProvider,
   target: EntryTarget,
   accessToken: string,
   userId: string,
 ): Promise<RoomViewer> {
-  const profile = await deps.twitch.userProfile(accessToken)
-  const accountAgeDays = Math.max(0, Math.floor((deps.clock.now() - profile.createdAt) / msPerDay))
+  const profile = await provider.userProfile(accessToken)
+  const accountAgeDays = Math.max(0, Math.floor((clock.now() - profile.createdAt) / msPerDay))
   const identity = {
     platformUserId: userId,
     login: profile.login,
     displayName: profile.displayName,
     profileImageUrl: profile.profileImageUrl,
   }
-  // The broadcaster is refused by the room whatever Twitch says, so their follow and sub are not asked.
+  // The broadcaster is refused by the room whatever the platform says, so their follow and sub are not asked.
   if (userId === target.broadcasterId) {
     return { ...identity, isFollower: false, subTier: null, accountAgeDays }
   }
   const [isFollower, tier] = await Promise.all([
-    deps.twitch.follows(accessToken, target.broadcasterId, userId),
-    deps.twitch.subscriptionTier(accessToken, target.broadcasterId, userId),
+    provider.follows(accessToken, target.broadcasterId, userId),
+    provider.subscriptionTier(accessToken, target.broadcasterId, userId),
   ])
   return {
     ...identity,

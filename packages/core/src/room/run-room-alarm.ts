@@ -73,8 +73,11 @@ async function refreshRoles(
   room: GiveawayRoom,
 ): Promise<void> {
   try {
-    const { accessToken, broadcasterId } = await openGiveawayStreamerAccess(deps, giveawayId)
-    const roles = await deps.twitch.channelRoles(accessToken, broadcasterId)
+    const { provider, accessToken, broadcasterId } = await openGiveawayStreamerAccess(
+      deps,
+      giveawayId,
+    )
+    const roles = await provider.channelRoles(accessToken, broadcasterId)
     room.replaceRoles(roles.vips, roles.moderators)
   } catch (error) {
     room.recordFailure("role-refresh", error)
