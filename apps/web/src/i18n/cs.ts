@@ -571,6 +571,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.draw.title": "Přihlašování je uzavřené",
   "live.draw.text": "{people}. Vylosuj vítěze, až budeš připravený.",
   "live.draw.count": "Plánovaný počet vítězů",
+  "live.draw.batchCount": "Vítězů najednou",
+  "live.draw.batchInvalid": "Zadej 1 až {most}",
   "live.draw.nobody": "Nikdo se nepřihlásil, není koho losovat.",
   "live.draw.random": "Vítěz se vybere náhodně ze všech přihlášených.",
   "live.draw.label": "Vylosovat vítěze",

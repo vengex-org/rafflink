@@ -287,16 +287,25 @@
   font-weight: 500;
 }
 
+/* Segments shrink to share the row, so a batch of hundreds stays inside the stage. */
 .live-progress {
   display: flex;
+  flex: 0 1 auto;
   gap: 0.5rem;
+  min-width: 0;
   margin: 0 0 0 auto;
   padding: 0;
   list-style: none;
 }
 
+.live-progress[data-dense="true"] {
+  flex-grow: 1;
+  gap: 1px;
+}
+
 .live-progress li {
-  width: 3rem;
+  flex: 0 1 3rem;
+  min-width: 2px;
   height: 0.5rem;
   border-radius: 4px;
   background: var(--line-2);

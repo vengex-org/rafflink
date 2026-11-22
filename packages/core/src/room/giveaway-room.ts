@@ -75,6 +75,7 @@ export type RoomConfig = Pick<
   | "liveIntervalMs"
   | "liveLastNames"
   | "liveShuffleNames"
+  | "liveWinnerImages"
   | "liveEntrantsPerPush"
   | "liveWinnerChatMax"
   | "liveRateWindowSeconds"
@@ -231,7 +232,7 @@ export interface LiveWinner {
   readonly entrySeq: number | null
   /** Kept with the pick after the entry is gone; null for a pick whose entry was deleted before names were kept. */
   readonly displayName: string | null
-  /** Null when the entry is gone or has no picture. */
+  /** Null when the entry is gone, has no picture, or the pick is older than the newest `LIVE_WINNER_IMAGES`. */
   readonly profileImageUrl: string | null
   readonly claimUntil: Instant
   readonly claim: WinnerClaim
@@ -293,6 +294,8 @@ export type LiveSnapshot = OverlaySnapshot & {
   readonly winnerChat: readonly WinnerChatLine[]
   /** The chat watch is running, so a winner's message can still appear in `winnerChat`; false once it ended or gave up. */
   readonly winnerChatOpen: boolean
+  /** How many more picks `DRAW_MAX_WINNERS` lets the room hold, rerolled picks counted; a batch larger than this is refused. */
+  readonly picksLeft: number
 }
 
 /** A winner as every viewer's page sees them: the platform user id lets the page compare it with its own viewer, and nothing else identifies the person. */
@@ -752,7 +755,16 @@ export class GiveawayRoom {
 
   /** Draws the requested first batch of a closed room and nothing else: a room that is already drawn is refused, so the alarm never adds a pick. */
   async drawFirst(): Promise<DrawOutcome> {
-    return this.drawOpening(this.readState().drawCount)
+    const outcome = await this.drawOpening(this.readState().drawCount)
+    // A batch over the limit never fits, so the alarm stops asking and the streamer draws fewer.
+    if (outcome.kind === "pick-limit") {
+      this.sql.exec(
+        "UPDATE room_state SET draw_requested = 0, draw_retry_at = NULL WHERE id = 1",
+        [],
+      )
+      this.afterWrite()
+    }
+    return outcome
   }
 
   private async drawOpening(count: number): Promise<DrawOutcome> {
@@ -988,7 +1000,12 @@ export class GiveawayRoom {
     const lastNames = this.sql
       .exec(lastNamesSql, [this.config.liveLastNames])
       .map((row) => new RowReader("entries", row).text("display_name"))
-    const winners = this.readPickRows().map((row) => liveWinner(row, now))
+    const rows = this.readPickRows()
+    const withImages = rows.length - this.config.liveWinnerImages
+    const winners = rows.map((row, index) => {
+      const winner = liveWinner(row, now)
+      return index < withImages ? { ...winner, profileImageUrl: null } : winner
+    })
     return {
       ...summarize(state),
       title: state.title,
@@ -999,6 +1016,7 @@ export class GiveawayRoom {
       winners,
       winnerChat: this.winnerChat.map((entry) => entry.line),
       winnerChatOpen: this.chatWatchOpen(state),
+      picksLeft: Math.max(0, this.config.drawMaxWinners - winners.length),
       ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
@@ -1505,6 +1523,7 @@ const failureColumns = {
 export function overlaySnapshot({
   winnerChat: _winnerChat,
   winnerChatOpen: _winnerChatOpen,
+  picksLeft: _picksLeft,
   ...rest
 }: LiveSnapshot): OverlaySnapshot {
   return rest

@@ -572,7 +572,18 @@ Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
   `DRAW_MAX_WINNERS`, default cap 500). The room computes them as the same picks `count` single presses would make and
   writes them in one transaction; a batch that would pass the cap is refused whole, and one that runs out of entrants
   stops at the last. A press before the round is published keeps its count in `room_state.draw_count` for the alarm.
-  The live page offers "Draw N" up to the planned winners still missing; the overlay lists a large batch on one plate.
+  The live page offers "Draw N" with a stepper from 1 up to the planned winners still missing, the entrants left and
+  `picksLeft` (the picks `DRAW_MAX_WINNERS` still allows, rerolled ones counted, sent in the live snapshot only); the
+  overlay lists a batch of more than 3 on one plate with the newest 24 names. A requested batch the alarm finds over the
+  limit drops the request. The room and the verify page share one draw loop (`drawLeafPicks` with a start pick and the
+  leaves earlier picks took).
+- Batch draw measurements (#65, 2026-11-22, local Bun on Windows, 10 000 entrants, one batch of 500 picks, display
+  names of 20 characters, Twitch picture URLs): the room's `draw(500)` takes 75 to 80 ms including the 500 inserts; the
+  verify page's replay of 500 picks over 10 000 leaves takes about 90 ms. The live snapshot was 126 KB, 124 KB of it the
+  winners (about 250 bytes each). Only the newest `LIVE_WINNER_IMAGES` (24) picks now carry a picture URL, which brings
+  the snapshot to 75 KB (about 145 bytes a winner); the push right after a close also carries up to
+  `LIVE_ENTRANTS_PER_PUSH` new entrants and reached 122 KB. Both stay far under the 1 MiB WebSocket message limit of
+  Cloudflare, so no further cut was made.
 - Draw shuffle (owner decision, 2026-11-21): while a draw is pending the stage and the OBS overlay flash entrant names in
   the winner slot, and every later pick shuffles for at least 1.5 s before it shows. The names are a random sample of
   up to `LIVE_SHUFFLE_NAMES` entrants in the snapshot (`shuffleNames`, while the room is closed and asked to draw or

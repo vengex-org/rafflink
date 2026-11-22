@@ -1,5 +1,5 @@
 import { expect } from "bun:test"
-import { drawLeafPicks } from "../../src/lib/draw.ts"
+import { drawLeafPicks, fromFirstPick } from "../../src/lib/draw.ts"
 import { quicknet } from "../../src/lib/drand.ts"
 import { fromHex, toHex } from "../../src/lib/encoding.ts"
 import { leafHash, merkleRoot } from "../../src/lib/merkle.ts"
@@ -179,7 +179,12 @@ export function commitmentScenarios(context: ContractContext): void {
       expect(world.drand.requested).toContain(round)
       const verify = await verifyOf(target, giveaway.code)
       const leaves = await leavesOf(target, giveaway.code)
-      const expected = await drawLeafPicks(await world.drand.seedOf(round), leaves.tickets, 3)
+      const expected = await drawLeafPicks(
+        await world.drand.seedOf(round),
+        leaves.tickets,
+        3,
+        fromFirstPick,
+      )
       expect(verify.picks).toEqual(
         expected.map((pick) => ({ n: pick.n, leafIndex: pick.leafIndex, rerolled: pick.n === 0 })),
       )

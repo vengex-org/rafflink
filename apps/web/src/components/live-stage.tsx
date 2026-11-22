@@ -203,6 +203,9 @@ function DrawnStage({
   )
 }
 
+/** Above this many winners the progress segments drop their gaps and fill the row, so they stay wide enough to see. */
+const denseProgressFrom = 20
+
 /** One segment per winner still in the draw: settled ones filled, the one on the plate in the accent. */
 function Progress({
   standing,
@@ -214,7 +217,11 @@ function Progress({
   const i18n = useI18n()
   const { t } = i18n
   return (
-    <ol className="live-progress" aria-label={t("live.progress")}>
+    <ol
+      className="live-progress"
+      aria-label={t("live.progress")}
+      data-dense={standing.length > denseProgressFrom}
+    >
       {standing.map((winner) => (
         <li key={winner.n} data-state={segmentState(winner, current)}>
           <span className="sr-only">

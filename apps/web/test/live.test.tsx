@@ -401,6 +401,54 @@ describe("live page: drawing", () => {
     )
   })
 
+  it("draws the number of winners typed in the batch stepper, and refuses one above the batch", async () => {
+    const requests = mockDrawn({
+      "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 10, winnerCount: 7 }),
+      [drawPath]: () => ok({ kind: "drawn", picks: [3, 4] }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    const input = await view.findByLabelText("Winners at once")
+    expect((input as HTMLInputElement).value).toBe("4")
+    fireEvent.change(input, { target: { value: "5" } })
+    const refused = view.getByRole("button", { name: "Pick 1 to 4" })
+    expect((refused as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(input, { target: { value: "2" } })
+    fireEvent.click(view.getByRole("button", { name: "Draw 2 winners" }))
+
+    await waitFor(() =>
+      expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: { count: 2 } }),
+    )
+  })
+
+  it("packs the progress segments of a large batch so they share the row", async () => {
+    const many = Array.from({ length: 25 }, (_, n) => ({
+      n,
+      entrySeq: null,
+      displayName: `W${n}`,
+      profileImageUrl: null,
+      claimUntil: 1,
+      claim: { state: "expired" as const },
+    }))
+    mockDrawn({ "GET /api/live/gid-1": () => ok({ ...drawn, winners: many }) })
+
+    const view = renderApp("/live/gid-1")
+    const progress = await view.findByRole("list", { name: "Winners drawn" })
+
+    expect(progress.dataset.dense).toBe("true")
+    expect(progress.children).toHaveLength(25)
+  })
+
+  it("offers no batch above the picks the room can still hold", async () => {
+    mockDrawn({
+      "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 10, winnerCount: 7, picksLeft: 2 }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByRole("button", { name: "Draw 2 winners" })).toBeTruthy()
+  })
+
   it("offers no batch past the entrants left, and none for a single missing winner", async () => {
     mockDrawn({ "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 5, winnerCount: 9 }) })
     const view = renderApp("/live/gid-1")

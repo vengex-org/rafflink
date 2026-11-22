@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { resolveConfig } from "../config.ts"
 import { defaultOverlayTheme } from "../domain/overlay-theme.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
-import { drawLeafPicks, drawWinners } from "../lib/draw.ts"
+import { drawLeafPicks, fromFirstPick, drawWinners } from "../lib/draw.ts"
 import { quicknet, roundTime } from "../lib/drand.ts"
 import { toHex } from "../lib/encoding.ts"
 import { leafHash, merkleRoot } from "../lib/merkle.ts"
@@ -13,6 +13,7 @@ import { FakeBeacon, fakeRandomness } from "../../test/fake-beacon.ts"
 import { idleChat } from "../../test/idle-chat.ts"
 import {
   GiveawayRoom,
+  overlaySnapshot,
   type GiveawayInit,
   type RoomViewer,
   type ViewerPush,
@@ -465,7 +466,7 @@ describe("GiveawayRoom batch draw", () => {
     await room.draw(5)
 
     const tickets = room.leaves()?.map((leaf) => leaf.tickets) ?? []
-    const replay = await drawLeafPicks(new Uint8Array(32).fill(7), tickets, 5)
+    const replay = await drawLeafPicks(new Uint8Array(32).fill(7), tickets, 5, fromFirstPick)
     expect(room.verification().picks).toEqual(
       replay.map((pick) => ({ n: pick.n, leafIndex: pick.leafIndex, rerolled: false })),
     )
@@ -508,6 +509,28 @@ describe("GiveawayRoom batch draw", () => {
     expect(await room.draw(1)).toMatchObject({ kind: "drawn" })
   })
 
+  it("tells the live page how many picks the limit still allows, rerolled ones counted, and hides it from the overlay", async () => {
+    const { room } = setup(giveaway, random, { DRAW_MAX_WINNERS: "5" })
+    enterMany(room, ids)
+    room.close()
+    await room.draw(2)
+    await room.reroll(0)
+
+    expect(room.liveSnapshot().picksLeft).toBe(2)
+    expect(overlaySnapshot(room.liveSnapshot())).not.toHaveProperty("picksLeft")
+  })
+
+  it("sends the picture of the newest picks only, so a large batch keeps the push small", async () => {
+    const { room } = setup(giveaway, random, { LIVE_WINNER_IMAGES: "2" })
+    for (const id of ids) room.enter(viewer(id, { profileImageUrl: `https://pic/${id}` }))
+    room.close()
+    await room.draw(5)
+
+    const images = room.liveSnapshot().winners.map((winner) => winner.profileImageUrl)
+    expect(images.slice(0, 3)).toEqual([null, null, null])
+    expect(images.slice(3).every((url) => url?.startsWith("https://pic/"))).toBe(true)
+  })
+
   it("refuses a first batch larger than the pick limit and leaves the room closed", async () => {
     const { room, sql } = setup(giveaway, random, { DRAW_MAX_WINNERS: "3" })
     enterMany(room, ids)
@@ -529,6 +552,22 @@ describe("GiveawayRoom batch draw", () => {
     expect(room.onAlarm().draw).toBe(true)
     expect((await room.drawFirst()).kind).toBe("drawn")
     expect(picks(sql).map((row) => row.n)).toEqual([0, 1, 2, 3])
+  })
+
+  it("drops a requested batch over the pick limit, so the alarm stops trying it", async () => {
+    const { room, sql, clock } = setup()
+    clock.advance(genesisMs)
+    enterMany(room, ids)
+    room.requestDraw(4)
+    sql.exec("UPDATE room_state SET draw_count = ?", [config.drawMaxWinners + 1])
+    await room.commit()
+    clock.advance(roundTimeOf(room) + 500 - clock.now())
+
+    expect(room.onAlarm().draw).toBe(true)
+    expect(await room.drawFirst()).toEqual({ kind: "pick-limit" })
+    expect(room.liveSnapshot().drawRequested).toBe(false)
+    expect(room.onAlarm().draw).toBe(false)
+    expect(picks(sql)).toEqual([])
   })
 
   it("keeps the batch of a press made before the round was published", async () => {
@@ -2678,6 +2717,7 @@ describe("GiveawayRoom draw with drand", () => {
       fakeRandomness,
       leaves.map((leaf) => leaf.tickets),
       3,
+      fromFirstPick,
     )
 
     expect(room.verification().picks).toEqual(

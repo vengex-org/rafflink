@@ -570,6 +570,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.draw.title": "Zápis je uzavretý",
   "live.draw.text": "{people}. Vyžrebuj víťaza, keď budeš pripravený.",
   "live.draw.count": "Plánovaný počet víťazov",
+  "live.draw.batchCount": "Víťazov naraz",
+  "live.draw.batchInvalid": "Zadaj 1 až {most}",
   "live.draw.nobody": "Nikto sa nezapísal, nie je koho žrebovať.",
   "live.draw.random": "Víťaz sa vyberie náhodne spomedzi všetkých zapísaných.",
   "live.draw.label": "Vyžrebovať víťaza",

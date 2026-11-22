@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto"
 import { describe, expect, it } from "bun:test"
 import {
   drawLeafPicks,
+  fromFirstPick,
   drawWinners,
   indexFromDigest,
   pickWinner,
@@ -149,8 +150,14 @@ describe("pickWinners", () => {
     )
   })
 
-  it("a batch from pick 0 equals the list draw the verify page replays", async () => {
-    expect(await pickWinners(seed, 0, 25, many, [])).toEqual(await drawWinners(seed, many, 25))
+  it("a run that starts after earlier picks continues the run from pick 0", async () => {
+    const tickets = many.map((entry) => entry.tickets)
+    const whole = await drawLeafPicks(seed, tickets, 25, fromFirstPick)
+    const earlier = new Set(whole.slice(0, 7).map((pick) => pick.leafIndex))
+
+    expect(await drawLeafPicks(seed, tickets, 18, { first: 7, excludedLeaves: earlier })).toEqual(
+      whole.slice(7),
+    )
   })
 
   it("stops when no tickets remain, with fewer picks than asked", async () => {
@@ -188,12 +195,12 @@ describe("indexFromDigest", () => {
 // Expected picks come from an independent implementation (Python hmac) of the same sampling.
 describe("drawLeafPicks", () => {
   it("picks the known leaves for a known seed", async () => {
-    expect(await drawLeafPicks(seed, [5, 2, 1], 3)).toEqual([
+    expect(await drawLeafPicks(seed, [5, 2, 1], 3, fromFirstPick)).toEqual([
       { n: 0, leafIndex: 0 },
       { n: 1, leafIndex: 1 },
       { n: 2, leafIndex: 2 },
     ])
-    expect(await drawLeafPicks(seed, Array(10).fill(1), 4)).toEqual([
+    expect(await drawLeafPicks(seed, Array(10).fill(1), 4, fromFirstPick)).toEqual([
       { n: 0, leafIndex: 8 },
       { n: 1, leafIndex: 0 },
       { n: 2, leafIndex: 7 },
@@ -207,7 +214,7 @@ describe("drawLeafPicks", () => {
       (pair) => Number.parseInt(pair, 16),
     )
 
-    expect(await drawLeafPicks(randomness, [3, 1, 4, 1, 5, 9, 2, 6], 5)).toEqual([
+    expect(await drawLeafPicks(randomness, [3, 1, 4, 1, 5, 9, 2, 6], 5, fromFirstPick)).toEqual([
       { n: 0, leafIndex: 0 },
       { n: 1, leafIndex: 2 },
       { n: 2, leafIndex: 3 },
@@ -217,13 +224,13 @@ describe("drawLeafPicks", () => {
   })
 
   it("stops when no tickets remain", async () => {
-    expect(await drawLeafPicks(seed, [2, 1], 5)).toHaveLength(2)
-    expect(await drawLeafPicks(seed, [], 3)).toEqual([])
+    expect(await drawLeafPicks(seed, [2, 1], 5, fromFirstPick)).toHaveLength(2)
+    expect(await drawLeafPicks(seed, [], 3, fromFirstPick)).toEqual([])
   })
 
   it("rejects a count that is not a non-negative safe integer", async () => {
     for (const count of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      await expect(drawLeafPicks(seed, [1], count)).rejects.toThrow(RangeError)
+      await expect(drawLeafPicks(seed, [1], count, fromFirstPick)).rejects.toThrow(RangeError)
     }
   })
 
@@ -236,6 +243,7 @@ describe("drawLeafPicks", () => {
         seed,
         sorted.map((entry) => entry.tickets),
         3,
+        fromFirstPick,
       ),
     )
     for (const winner of winners) {

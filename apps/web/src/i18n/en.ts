@@ -568,6 +568,8 @@ export const en = {
   "live.draw.title": "Entries are closed",
   "live.draw.text": "{people}. Draw the winner when you are ready.",
   "live.draw.count": "Planned winners",
+  "live.draw.batchCount": "Winners at once",
+  "live.draw.batchInvalid": "Pick 1 to {most}",
   "live.draw.nobody": "Nobody entered, so there is nobody to draw.",
   "live.draw.random": "The winner is picked at random from everyone who entered.",
   "live.draw.label": "Draw winner",
