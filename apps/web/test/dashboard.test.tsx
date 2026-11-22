@@ -275,17 +275,18 @@ describe("dashboard", () => {
     expect(inputOf(view.getByLabelText("Chat word (optional)")).value).toBe("mine")
   })
 
-  it("keeps a claim time outside the presets as a selected extra option", async () => {
+  it("preselects Custom with the minutes for a claim time outside the presets", async () => {
     mockFetch({
       "GET /api/dash/giveaways": () =>
-        ok({ giveaways: [{ ...dashboardGiveaway, claimSeconds: 90 }] }),
+        ok({ giveaways: [{ ...dashboardGiveaway, claimSeconds: 900 }] }),
     })
 
     const view = renderApp("/dashboard")
     fireEvent.click(await view.findByRole("button", { name: "Duplicate Summer giveaway" }))
     fireEvent.click(await view.findByRole("button", { name: "Next" }))
 
-    expect(inputOf(view.getByLabelText("1:30 minutes")).checked).toBe(true)
+    expect(inputOf(view.getByLabelText("Custom")).checked).toBe(true)
     expect(inputOf(view.getByLabelText("5 minutes")).checked).toBe(false)
+    expect(inputOf(view.getByLabelText("Minutes")).value).toBe("15")
   })
 })

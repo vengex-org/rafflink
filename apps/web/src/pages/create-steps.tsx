@@ -11,7 +11,9 @@ import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { claimTimeText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
 import {
   claimPresets,
+  claimSecondsOf,
   oddsOf,
+  type ClaimPreset,
   type Audience,
   type Ending,
   type Issue,
@@ -53,7 +55,6 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
         label={t("wizard.title.label")}
         help={t("wizard.title.help")}
         type="text"
-        min={null}
         value={values.title}
         error={errorOf(i18n, issue, "title")}
         onChange={(title) => setValues((current) => ({ ...current, title }))}
@@ -63,7 +64,6 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
         label={t("wizard.prize.label")}
         help={t("wizard.prize.help")}
         type="text"
-        min={null}
         value={values.prize}
         error={errorOf(i18n, issue, "prize")}
         onChange={(prize) => setValues((current) => ({ ...current, prize }))}
@@ -82,7 +82,6 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
           label={t("wizard.closesAt.label")}
           help={t("wizard.closesAt.help")}
           type="datetime-local"
-          min={null}
           value={values.closesAt}
           error={errorOf(i18n, issue, "closesAt")}
           onChange={(closesAt) => setValues((current) => ({ ...current, closesAt }))}
@@ -115,16 +114,6 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
       description: t("wizard.audience.subscribers.help"),
     },
   ]
-  const presets: readonly number[] = claimPresets
-  const offered = presets.includes(values.claimSeconds)
-    ? presets
-    : [...presets, values.claimSeconds]
-  const claimOptions: readonly SegmentOption<number>[] = offered.map((seconds) => ({
-    value: seconds,
-    label: claimTimeText(i18n, seconds),
-    icon: null,
-    description: "",
-  }))
   return (
     <>
       <Segmented
@@ -135,43 +124,37 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         value={values.audience}
         onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
       />
-      <TextField
+      <StepperField
         name="minAccountAgeDays"
         label={t("wizard.minAge.label")}
         help={t("wizard.minAge.help")}
-        type="number"
         min={0}
         value={values.minAccountAgeDays}
         error={errorOf(i18n, issue, "minAccountAgeDays")}
         onChange={(minAccountAgeDays) =>
           setValues((current) => ({ ...current, minAccountAgeDays }))
         }
+        decreaseLabel={t("wizard.minAge.fewer")}
+        increaseLabel={t("wizard.minAge.more")}
       />
       <TicketsField values={values} setValues={setValues} issue={issue} shown={groups} />
-      <TextField
+      <StepperField
         name="winnerCount"
         label={t("wizard.winners.label")}
         help={t("wizard.winners.help")}
-        type="number"
         min={1}
         value={values.winnerCount}
         error={errorOf(i18n, issue, "winnerCount")}
         onChange={(winnerCount) => setValues((current) => ({ ...current, winnerCount }))}
+        decreaseLabel={t("winners.fewer")}
+        increaseLabel={t("winners.more")}
       />
-      <Segmented
-        name="claimSeconds"
-        legend={t("wizard.claim.legend")}
-        help={t("wizard.claim.help")}
-        options={claimOptions}
-        value={values.claimSeconds}
-        onSelect={(claimSeconds) => setValues((current) => ({ ...current, claimSeconds }))}
-      />
+      <ClaimField values={values} setValues={setValues} issue={issue} />
       <TextField
         name="claimKeyword"
         label={t("wizard.keyword.label")}
         help={t("wizard.keyword.help")}
         type="text"
-        min={null}
         value={values.claimKeyword}
         error={errorOf(i18n, issue, "claimKeyword")}
         onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
@@ -200,6 +183,7 @@ export function TicketsField({
             key={group}
             name={`tickets.${group}`}
             label={t(`group.${group}`)}
+            help={null}
             min={0}
             value={values.tickets[group]}
             error={errorOf(i18n, issue, `tickets.${group}`)}
@@ -216,6 +200,60 @@ export function TicketsField({
       </div>
       {odds === null ? null : <output className="odds">{oddsText(i18n, odds)}</output>}
     </fieldset>
+  )
+}
+
+/** The claim time: a preset, or Custom with a minutes stepper under the presets. */
+function ClaimField({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const { claim } = values
+  const options: readonly SegmentOption<ClaimPreset | "custom">[] = [
+    ...claimPresets.map((seconds) => ({
+      value: seconds,
+      label: claimTimeText(i18n, seconds),
+      icon: null,
+      description: "",
+    })),
+    { value: "custom", label: t("wizard.claim.custom"), icon: null, description: "" },
+  ]
+  const error = errorOf(i18n, issue, "claimSeconds")
+  return (
+    <>
+      <Segmented
+        name="claimSeconds"
+        legend={t("wizard.claim.legend")}
+        help={null}
+        options={options}
+        value={claim.kind === "preset" ? claim.seconds : "custom"}
+        onSelect={(choice) =>
+          setValues((current) => ({
+            ...current,
+            claim:
+              choice === "custom"
+                ? { kind: "custom", minutes: String(claimSecondsOf(current.claim) / 60) }
+                : { kind: "preset", seconds: choice },
+          }))
+        }
+      />
+      {claim.kind === "custom" ? (
+        <StepperField
+          name="claimMinutes"
+          label={t("wizard.claim.minutes")}
+          help={null}
+          min={1}
+          value={claim.minutes}
+          error={error}
+          onChange={(minutes) =>
+            setValues((current) => ({ ...current, claim: { kind: "custom", minutes } }))
+          }
+          decreaseLabel={t("wizard.claim.fewer")}
+          increaseLabel={t("wizard.claim.more")}
+        />
+      ) : error === null ? null : (
+        <p className="field-error">{error}</p>
+      )}
+    </>
   )
 }
 
@@ -271,7 +309,7 @@ export function ReviewStep({ values }: { readonly values: Values }) {
       <ReviewRow
         label={t("review.claim")}
         value={t("review.claimText", {
-          time: claimTimeText(i18n, values.claimSeconds),
+          time: claimTimeText(i18n, claimSecondsOf(values.claim)),
           chat: keyword === "" ? t("review.anyChat") : t("review.keywordChat", { keyword }),
         })}
       />

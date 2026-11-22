@@ -7,6 +7,7 @@ import { stubClipboard } from "./clipboard.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { claimedAt, claimedAtText, donateUrl, giveaway, liveSnapshot } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
+import { inputOf } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
 
 let restoreSocket = () => {}
@@ -451,6 +452,34 @@ describe("live page: drawing", () => {
     const view = renderApp("/live/gid-1")
 
     expect(await view.findByLabelText("Planned winners")).toBeTruthy()
+  })
+
+  it("steps the planned winner count with the buttons, never below 1, and saves it", async () => {
+    const requests = mockLive({
+      "GET /api/live/gid-1": () => ok(liveSnapshot),
+      "POST /api/dash/giveaways/gid-1/winners": () => ok({ kind: "set" }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    const count = inputOf(await view.findByLabelText("Planned winners"))
+    const fewer = view.getByRole("button", { name: "Fewer winners" })
+    expect(fewer.hasAttribute("disabled")).toBe(true)
+    expect(view.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(true)
+
+    fireEvent.click(view.getByRole("button", { name: "More winners" }))
+    fireEvent.click(view.getByRole("button", { name: "More winners" }))
+    fireEvent.click(fewer)
+    expect(count.value).toBe("2")
+    fireEvent.click(view.getByRole("button", { name: "Save" }))
+
+    expect(await view.findByText("Winner count saved.")).toBeTruthy()
+    expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/winners")?.body).toEqual({
+      count: 2,
+    })
+    fewer.focus()
+    fireEvent.click(fewer)
+    expect(count.value).toBe("1")
+    expect(document.activeElement === count).toBe(true)
   })
 
   it.each(["0", "-1", "1.5", ""])("does not save %p as the winner count", async (count) => {

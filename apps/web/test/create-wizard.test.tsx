@@ -47,6 +47,11 @@ async function toReview(view: RenderResult) {
   await view.findByText("Step 3 of 3: Review")
 }
 
+async function toRules(view: RenderResult) {
+  next(view)
+  await view.findByText("Step 2 of 3: Entry rules")
+}
+
 describe("create wizard", () => {
   it("starts at step 1 and cancels back to the list", async () => {
     mockFetch(listed)
@@ -544,5 +549,229 @@ describe("create wizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
 
     expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
+  })
+
+  describe("step indicator", () => {
+    it("goes back to an earlier step and keeps every answer", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      fillGiveaway(view)
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      fireEvent.change(view.getByLabelText("Minimum account age in days (optional)"), {
+        target: { value: "7" },
+      })
+
+      fireEvent.click(view.getByRole("button", { name: "Step 1: Basics" }))
+
+      expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+      expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Cup")
+      expect(inputOf(view.getByLabelText("What does the winner get? (optional)")).value).toBe(
+        "A chair",
+      )
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      expect(inputOf(view.getByLabelText("Minimum account age in days (optional)")).value).toBe("7")
+    })
+
+    it("moves the keyboard focus to the step heading after going back with a step button", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      const stepOne = view.getByRole("button", { name: "Step 1: Basics" })
+      stepOne.focus()
+
+      fireEvent.click(stepOne)
+
+      expect(
+        (await view.findByRole("heading", { name: "Start with the basics" }))
+          === document.activeElement,
+      ).toBe(true)
+      expect(document.activeElement === document.body).toBe(false)
+    })
+
+    it("offers only the done steps as buttons", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      const stepButtons = () =>
+        Array.from(view.getByRole("list", { name: "Steps" }).querySelectorAll("button"), (button) =>
+          button.getAttribute("aria-label"),
+        )
+      expect(stepButtons()).toEqual([])
+
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      expect(stepButtons()).toEqual(["Step 1: Basics"])
+
+      next(view)
+      await view.findByText("Step 3 of 3: Review")
+      expect(stepButtons()).toEqual(["Step 1: Basics", "Step 2: Entry rules"])
+    })
+
+    it("marks the current step with aria-current", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+
+      const items = view.getByRole("list", { name: "Steps" }).querySelectorAll("li")
+      expect(Array.from(items, (item) => item.getAttribute("aria-current"))).toEqual([
+        null,
+        "step",
+        null,
+      ])
+    })
+
+    it("checks the step again on Next after going back to it", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      fireEvent.click(view.getByRole("button", { name: "Step 1: Basics" }))
+      await view.findByText("Step 1 of 3: Basics")
+
+      fireEvent.click(view.getByRole("radio", { name: /At a set time/ }))
+      next(view)
+
+      expect(view.getByText("Pick the date and time when entries end.")).toBeTruthy()
+      expect(view.getByText("Step 1 of 3: Basics")).toBeTruthy()
+    })
+  })
+
+  describe("number steppers", () => {
+    it("steps the winner count with the buttons, never below 1, and then focuses the count", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      const winners = inputOf(view.getByLabelText("How many winners?"))
+      const fewer = view.getByRole("button", { name: "Fewer winners" })
+      expect(fewer.hasAttribute("disabled")).toBe(true)
+
+      fireEvent.click(view.getByRole("button", { name: "More winners" }))
+      expect(winners.value).toBe("2")
+      fewer.focus()
+      fireEvent.click(fewer)
+
+      expect(winners.value).toBe("1")
+      expect(fewer.hasAttribute("disabled")).toBe(true)
+      expect(document.activeElement === winners).toBe(true)
+    })
+
+    it("takes a typed account age and steps it by one day", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      next(view)
+      await view.findByText("Step 2 of 3: Entry rules")
+      const age = inputOf(view.getByLabelText("Minimum account age in days (optional)"))
+      expect(age.value).toBe("")
+      expect(view.getByRole("button", { name: "Fewer days" }).hasAttribute("disabled")).toBe(true)
+
+      fireEvent.change(age, { target: { value: "30" } })
+      fireEvent.click(view.getByRole("button", { name: "More days" }))
+      expect(age.value).toBe("31")
+      fireEvent.click(view.getByRole("button", { name: "Fewer days" }))
+      fireEvent.click(view.getByRole("button", { name: "Fewer days" }))
+      expect(age.value).toBe("29")
+    })
+  })
+
+  describe("claim time", () => {
+    it("has no help line and shows the minutes stepper only for Custom, starting at the preset", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      await toRules(view)
+      expect(view.queryByText("Most streams use 5 minutes.")).toBeNull()
+      expect(view.queryByLabelText("Minutes")).toBeNull()
+
+      fireEvent.click(view.getByRole("radio", { name: "Custom" }))
+
+      expect(inputOf(view.getByLabelText("Minutes")).value).toBe("5")
+      expect(view.getByRole("button", { name: "More minutes" })).toBeTruthy()
+    })
+
+    it("hides the minutes stepper again when a preset is picked", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      await toRules(view)
+      fireEvent.click(view.getByRole("radio", { name: "Custom" }))
+
+      fireEvent.click(view.getByRole("radio", { name: "10 minutes" }))
+
+      expect(view.queryByLabelText("Minutes")).toBeNull()
+    })
+
+    it("reviews the custom minutes and sends them in seconds", async () => {
+      const requests = mockFetch(withCreate(createdReply))
+      const view = await openWizard()
+      await toRules(view)
+      fireEvent.click(view.getByRole("radio", { name: "Custom" }))
+      fireEvent.change(view.getByLabelText("Minutes"), { target: { value: "45" } })
+      next(view)
+      await view.findByText("Step 3 of 3: Review")
+
+      expect(view.getByText(/^45 minutes\./)).toBeTruthy()
+      fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+      await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+      const sent = requests.find((request) => request.route === "POST /api/dash/giveaways")
+      expect(sent?.body).toMatchObject({ claimSeconds: 2700 })
+    })
+
+    it("keeps Custom and its minutes when the streamer goes back from the review", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      await toRules(view)
+      fireEvent.click(view.getByRole("radio", { name: "Custom" }))
+      fireEvent.change(view.getByLabelText("Minutes"), { target: { value: "45" } })
+      next(view)
+      await view.findByText("Step 3 of 3: Review")
+
+      fireEvent.click(view.getByRole("button", { name: "Step 2: Entry rules" }))
+
+      await view.findByText("Step 2 of 3: Entry rules")
+      expect(inputOf(view.getByRole("radio", { name: "Custom" })).checked).toBe(true)
+      expect(inputOf(view.getByLabelText("Minutes")).value).toBe("45")
+    })
+
+    it.each([
+      ["0", "0"],
+      ["a fraction", "1.5"],
+      ["empty", ""],
+    ])("stays on step 2 for custom minutes of %s", async (_name, value) => {
+      mockFetch(listed)
+      const view = await openWizard()
+      await toRules(view)
+      fireEvent.click(view.getByRole("radio", { name: "Custom" }))
+      fireEvent.change(view.getByLabelText("Minutes"), { target: { value } })
+
+      next(view)
+
+      expect(view.getByText("Enter a whole number of minutes, 1 or more.")).toBeTruthy()
+      expect(view.getByLabelText("Minutes").getAttribute("aria-invalid")).toBe("true")
+      expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    })
+
+    it("shows the server's refusal of the custom time under the minutes", async () => {
+      mockFetch(
+        withCreate({
+          status: 400,
+          body: { error: "invalid-input", field: "claimSeconds", code: "too-large" },
+        }),
+      )
+      const view = await openWizard()
+      await toRules(view)
+      fireEvent.click(view.getByRole("radio", { name: "Custom" }))
+      fireEvent.change(view.getByLabelText("Minutes"), { target: { value: "2000" } })
+      next(view)
+      await view.findByText("Step 3 of 3: Review")
+
+      fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+
+      expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
+      expect(view.getByLabelText("Minutes").getAttribute("aria-invalid")).toBe("true")
+      expect(view.getByText("This number is too large. Enter a smaller one.")).toBeTruthy()
+    })
   })
 })

@@ -11,7 +11,7 @@ import type { useAction } from "../lib/use-action.ts"
 import { ConfirmAction } from "./confirm-action.tsx"
 import { CopyLink } from "./copy-field.tsx"
 import { DonateLink } from "./donate-link.tsx"
-import { Segmented, type SegmentOption } from "./form-fields.tsx"
+import { Segmented, Stepper, type SegmentOption } from "./form-fields.tsx"
 import {
   CheckCircleIcon,
   CopyIcon,
@@ -463,14 +463,16 @@ function WinnerCountControl({
   return (
     <div className="live-draw-count">
       <label htmlFor="winner-count">{t("live.draw.count")}</label>
-      <input
+      <Stepper
         id="winner-count"
-        type="number"
-        autoComplete="off"
-        min={1}
+        name="winnerCount"
         value={count}
-        aria-invalid={!valid}
-        onChange={(event) => setCount(event.currentTarget.value)}
+        min={1}
+        invalid={!valid}
+        describedBy={null}
+        onChange={setCount}
+        decreaseLabel={t("winners.fewer")}
+        increaseLabel={t("winners.more")}
       />
       <button
         type="button"

@@ -257,6 +257,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.not-a-timestamp": "Zadaj platný dátum a čas.",
   "issue.in-the-past": "Čas ukončenia musí byť v budúcnosti.",
   "issue.wholeDays": "Zadaj celý počet dní, alebo nechaj pole prázdne.",
+  "issue.wholeMinutes": "Zadaj celý počet minút, aspoň 1.",
   "issue.pickEnd": "Vyber dátum a čas, kedy zápis končí.",
   "issue.future": "Vyber čas v budúcnosti.",
 
@@ -303,6 +304,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "step.of": "Krok {current} z {total}: {name}",
   "step.allDone": "Hotové všetky {total} kroky",
   "step.list": "Kroky",
+  "step.go": "Krok {number}: {name}",
+  "winners.fewer": "Menej víťazov",
+  "winners.more": "Viac víťazov",
 
   "giveaway.stepSignIn": "Prihlásenie",
   "giveaway.stepTicket": "Získanie lístka",
@@ -545,6 +549,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.minAge.label": "Minimálny vek účtu v dňoch (nepovinné)",
   "wizard.minAge.help":
     "Zabráni ľuďom vytvárať nové účty len kvôli súťaži. Keď pole nevyplníš, zapojiť sa môže akýkoľvek účet.",
+  "wizard.minAge.fewer": "Menej dní",
+  "wizard.minAge.more": "Viac dní",
   "wizard.tickets.legend": "Lístky podľa skupiny",
   "wizard.tickets.help":
     "Každá skupina dostane 1 lístok. Viac lístkov znamená väčšiu šancu vyhrať, napríklad 3 pre predplatiteľov. Nechaj to tak, ak majú mať všetci rovnakú šancu.",
@@ -567,7 +573,10 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.closesAt.label": "Zápis končí",
   "wizard.closesAt.help": "Použije sa časové pásmo tohto zariadenia.",
   "wizard.claim.legend": "Koľko času má víťaz na prevzatie výhry?",
-  "wizard.claim.help": "Väčšina streamerov volí 5 minút.",
+  "wizard.claim.custom": "Vlastný",
+  "wizard.claim.minutes": "Počet minút",
+  "wizard.claim.fewer": "Menej minút",
+  "wizard.claim.more": "Viac minút",
   "wizard.keyword.label": "Slovo do chatu (nepovinné)",
   "wizard.keyword.help":
     "Víťaz môže výhru prevziať aj napísaním tohto slova do tvojho chatu. Keď ho nevyplníš, platí akákoľvek správa víťaza v chate.",

@@ -256,6 +256,7 @@ export const en = {
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.wholeDays": "Enter a whole number of days, or leave it empty.",
+  "issue.wholeMinutes": "Enter a whole number of minutes, 1 or more.",
   "issue.pickEnd": "Pick the date and time when entries end.",
   "issue.future": "Pick a time in the future.",
 
@@ -303,6 +304,9 @@ export const en = {
   "step.of": "Step {current} of {total}: {name}",
   "step.allDone": "All {total} steps done",
   "step.list": "Steps",
+  "step.go": "Step {number}: {name}",
+  "winners.fewer": "Fewer winners",
+  "winners.more": "More winners",
 
   "giveaway.stepSignIn": "Sign in",
   "giveaway.stepTicket": "Get your ticket",
@@ -541,6 +545,8 @@ export const en = {
   "wizard.minAge.label": "Minimum account age in days (optional)",
   "wizard.minAge.help":
     "Stops people from making fresh accounts just to enter. Leave it empty to allow any account.",
+  "wizard.minAge.fewer": "Fewer days",
+  "wizard.minAge.more": "More days",
   "wizard.tickets.legend": "Tickets per group",
   "wizard.tickets.help":
     "Every group gets 1 ticket. More tickets mean a better chance of winning, for example 3 for subscribers. Leave this as it is if everyone should have the same chance.",
@@ -563,7 +569,10 @@ export const en = {
   "wizard.closesAt.label": "Entries end at",
   "wizard.closesAt.help": "This uses the time zone of this device.",
   "wizard.claim.legend": "How long does a winner have to claim the prize?",
-  "wizard.claim.help": "Most streams use 5 minutes.",
+  "wizard.claim.custom": "Custom",
+  "wizard.claim.minutes": "Minutes",
+  "wizard.claim.fewer": "Fewer minutes",
+  "wizard.claim.more": "More minutes",
   "wizard.keyword.label": "Chat word (optional)",
   "wizard.keyword.help":
     "A winner can also claim by typing this word in your chat. Leave it empty and any chat message from the winner counts.",

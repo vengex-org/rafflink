@@ -157,7 +157,7 @@ function parseMinAccountAgeDays(input: Record<string, unknown>): Parsed<number |
   const value = ownValue(input, "minAccountAgeDays")
   if (value === undefined || value === null) return ok(null)
   if (!isNonNegativeInteger(value)) return fail("minAccountAgeDays", "not-a-non-negative-integer")
-  return ok(value)
+  return ok(value === 0 ? null : value)
 }
 
 function parseClaimKeyword(
