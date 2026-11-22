@@ -234,6 +234,7 @@ function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: PublicSummar
     prize: giveaway.prize,
     streamerName: giveaway.streamerName,
     rules: giveaway.rules,
+    capabilities: providerFor(deps.platforms, giveaway.platform).capabilities,
     status: summary.status,
     closesAt: summary.closesAt,
     claimSeconds: giveaway.claimSeconds,

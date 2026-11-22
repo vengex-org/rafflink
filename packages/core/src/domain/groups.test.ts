@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { bestGroup, type Tickets } from "./groups.ts"
+import { bestGroup, supportedGroups, type Tickets } from "./groups.ts"
 
 const tickets: Tickets = {
   viewer: 1,
@@ -28,5 +28,35 @@ describe("bestGroup", () => {
   it("returns 0 tickets when every member group has 0", () => {
     const none: Tickets = { ...tickets, viewer: 0, follower: 0 }
     expect(bestGroup(none, ["viewer", "follower"]).tickets).toBe(0)
+  })
+})
+
+describe("supportedGroups", () => {
+  const all = {
+    followerCheck: true,
+    subTiers: true,
+    vip: true,
+    accountAge: true,
+    pageEntry: true,
+    chatEntry: true,
+  }
+
+  it("keeps every group on a platform that can tell them all", () => {
+    expect(supportedGroups(all)).toEqual([
+      "viewer",
+      "follower",
+      "sub_t1",
+      "sub_t2",
+      "sub_t3",
+      "vip",
+      "moderator",
+    ])
+  })
+
+  it("drops the groups the platform cannot tell, keeping viewers and moderators", () => {
+    expect(supportedGroups({ ...all, followerCheck: false, subTiers: false, vip: false })).toEqual([
+      "viewer",
+      "moderator",
+    ])
   })
 })

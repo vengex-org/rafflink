@@ -16,6 +16,7 @@ import { drandChain, roundTime } from "../lib/drand.ts"
 import { openSecret } from "../lib/seal.ts"
 import { RoomTransientError } from "../room/room-directory.ts"
 import { oauthStatesPerFlow } from "./session.ts"
+import { everyCapability } from "../platform/provider.ts"
 
 let harness: Harness
 
@@ -300,6 +301,48 @@ describe("streamer sign-in", () => {
     expect(response.status).toBe(401)
   })
 
+  it("refuses a rule the streamer's platform cannot check and writes nothing", async () => {
+    await harness.stop()
+    harness = await createHarness({ capabilities: { followerCheck: false } })
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const response = await browser.postJson("/api/dash/giveaways", {
+      title: "T",
+      prize: "P",
+      rules: {
+        ...validRules,
+        tickets: { ...validRules.tickets, follower: 0 },
+        followersOnly: true,
+      },
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      error: "invalid-input",
+      field: "followersOnly",
+      code: "unsupported",
+    })
+    expect(sqlRows(harness.accountsDb, "SELECT id FROM giveaways")).toHaveLength(0)
+  })
+
+  it("lists only the groups the platform can tell on the giveaway page", async () => {
+    await harness.stop()
+    harness = await createHarness({ capabilities: { vip: false } })
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    const created = await browser.postJson("/api/dash/giveaways", {
+      title: "T",
+      prize: "P",
+      rules: { ...validRules, tickets: { ...validRules.tickets, vip: 0 } },
+    })
+    const { giveaway }: { giveaway: { code: string } } = await created.json()
+
+    const page = await (await harness.app.request(`/api/g/${giveaway.code}`)).json()
+
+    expect(page).toMatchObject({ capabilities: { ...everyCapability, vip: false } })
+  })
+
   it("refuses an expired session", async () => {
     const browser = new Browser(harness)
     await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
@@ -578,6 +621,7 @@ describe("creating a giveaway", () => {
       prize: "Prize",
       streamerName: users.streamerA.displayName,
       rules: validRules,
+      capabilities: everyCapability,
       status: "open",
       closesAt: null,
       claimSeconds: 300,

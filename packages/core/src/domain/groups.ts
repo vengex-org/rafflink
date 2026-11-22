@@ -1,3 +1,5 @@
+import type { PlatformCapabilities } from "../platform/provider.ts"
+
 /** The ticket groups of a giveaway, in the order a tie between equal ticket counts resolves (later wins). */
 export const groups = [
   "viewer",
@@ -29,4 +31,25 @@ export function bestGroup(tickets: Tickets, memberOf: readonly Group[]): BestGro
     }
   }
   return best
+}
+
+/** The groups a platform can tell a viewer is in; every platform knows viewers and the channel's moderators. */
+export function supportedGroups(capabilities: PlatformCapabilities): readonly Group[] {
+  return groups.filter((group) => isSupported(group, capabilities))
+}
+
+function isSupported(group: Group, capabilities: PlatformCapabilities): boolean {
+  switch (group) {
+    case "viewer":
+    case "moderator":
+      return true
+    case "follower":
+      return capabilities.followerCheck
+    case "sub_t1":
+    case "sub_t2":
+    case "sub_t3":
+      return capabilities.subTiers
+    case "vip":
+      return capabilities.vip
+  }
 }

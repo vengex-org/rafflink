@@ -19,6 +19,7 @@ import { MemoryRateLimiter } from "../src/lib/memory-rate-limiter.ts"
 import { openKeyRing } from "../src/lib/seal.ts"
 import type { PlanQueue } from "../src/plan/current-plan.ts"
 import type { CloudflarePlan } from "../src/plan/plan-limits.ts"
+import { everyCapability, type PlatformCapabilities } from "../src/platform/provider.ts"
 import type {
   Alarm,
   Clock,
@@ -335,6 +336,20 @@ export interface HarnessOptions {
   readonly random?: Random
   /** `bun`: no Cloudflare plan, like the Bun server; the default is like the Cloudflare Worker. */
   readonly target?: "cloudflare" | "bun"
+  /** Turns off what Twitch can check, to stand in for a platform that cannot; Twitch's own when absent. */
+  readonly capabilities?: Partial<PlatformCapabilities>
+}
+
+// Twitch with fewer capabilities, the stand-in for another platform's rules.
+class LimitedTwitchProvider extends TwitchProvider {
+  constructor(
+    client: TwitchClient,
+    clock: TestClock,
+    config: ResolvedConfig,
+    override readonly capabilities: PlatformCapabilities,
+  ) {
+    super(client, clock, config)
+  }
 }
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
@@ -372,7 +387,15 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const accounts = new AccountStore(accountsSql, config)
   const rooms = new InProcessRooms(clock, config)
   const twitch = new TwitchClient(config, fetch)
-  const platforms = { twitch: new TwitchProvider(twitch, clock, config) }
+  const platforms = {
+    twitch:
+      options.capabilities === undefined
+        ? new TwitchProvider(twitch, clock, config)
+        : new LimitedTwitchProvider(twitch, clock, config, {
+            ...everyCapability,
+            ...options.capabilities,
+          }),
+  }
   const usage = new StubUsageMeter()
   const planQueue = options.target === "bun" ? null : new RecordingPlanQueue()
   const queueDb = new Database(":memory:")

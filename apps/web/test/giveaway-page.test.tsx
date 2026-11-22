@@ -205,6 +205,25 @@ describe("giveaway landing", () => {
     expect(view.getByText(/Some viewers get extra tickets/)).toBeTruthy()
   })
 
+  it("lists only the groups the giveaway's platform can tell", async () => {
+    const capabilities = { ...giveaway.capabilities, followerCheck: false, vip: false }
+    mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({
+          ...giveaway,
+          capabilities,
+          rules: { ...giveaway.rules, tickets: { ...giveaway.rules.tickets, follower: 0, vip: 0 } },
+        }),
+    })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Subscribers, tier 2: 4 tickets")).toBeTruthy()
+    expect(view.getByText("Moderators: 7 tickets")).toBeTruthy()
+    expect(view.queryByText(/^Followers:/)).toBeNull()
+    expect(view.queryByText(/^VIPs:/)).toBeNull()
+  })
+
   it("offers one Enter with Twitch button and no step count before the sign-in starts", async () => {
     mockFetch(giveawayRoute)
 

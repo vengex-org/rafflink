@@ -315,6 +315,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "issue.not-a-timestamp": "Zadej platné datum a čas.",
   "issue.in-the-past": "Čas ukončení musí být v budoucnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
+  "issue.unsupported": "Tvoje streamovací platforma tohle pravidlo neumí ověřit. Vypni ho.",
   "issue.wholeDays": "Zadej celý počet dnů, nebo nech pole prázdné.",
   "issue.wholeMinutes": "Zadej celý počet minut, aspoň 1.",
   "issue.pickEnd": "Vyber datum a čas, kdy přihlašování končí.",

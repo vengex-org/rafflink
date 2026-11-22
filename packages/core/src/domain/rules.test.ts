@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test"
+import type { PlatformCapabilities } from "../platform/provider.ts"
 import {
   accountAgeDays,
   evaluateEligibility,
   isEntryMessage,
   parseClaimSeconds,
   parseRules,
+  unsupportedRule,
   type GiveawayRules,
   type ViewerFacts,
 } from "./rules.ts"
@@ -449,6 +451,83 @@ describe("parseRules recent winners", () => {
         issue: { field: "excludeRecentWinners", code: "not-an-object" },
       })
     }
+  })
+})
+
+describe("unsupportedRule", () => {
+  const twitch: PlatformCapabilities = {
+    followerCheck: true,
+    subTiers: true,
+    vip: true,
+    accountAge: true,
+    pageEntry: true,
+    chatEntry: true,
+  }
+  // Kick: no follower lookup, no VIP and no account age.
+  const kick: PlatformCapabilities = {
+    ...twitch,
+    followerCheck: false,
+    vip: false,
+    accountAge: false,
+  }
+  const kickRules: GiveawayRules = { ...rules, tickets: { ...rules.tickets, follower: 0, vip: 0 } }
+
+  it("accepts every rule on a platform that can check them all", () => {
+    const everything: GiveawayRules = {
+      ...rules,
+      subsOnly: true,
+      followersOnly: true,
+      minAccountAgeDays: 30,
+      chatKeyword: "!enter",
+    }
+    expect(unsupportedRule(everything, twitch)).toBeNull()
+  })
+
+  it("accepts rules that leave out what the platform cannot check", () => {
+    expect(unsupportedRule(kickRules, kick)).toBeNull()
+  })
+
+  it("refuses followers only, a minimum account age and VIP tickets on Kick", () => {
+    expect(unsupportedRule({ ...kickRules, followersOnly: true }, kick)).toEqual({
+      field: "followersOnly",
+      code: "unsupported",
+    })
+    expect(unsupportedRule({ ...kickRules, minAccountAgeDays: 1 }, kick)).toEqual({
+      field: "minAccountAgeDays",
+      code: "unsupported",
+    })
+    expect(
+      unsupportedRule({ ...kickRules, tickets: { ...kickRules.tickets, vip: 1 } }, kick),
+    ).toEqual({ field: "tickets.vip", code: "unsupported" })
+    expect(
+      unsupportedRule({ ...kickRules, tickets: { ...kickRules.tickets, follower: 1 } }, kick),
+    ).toEqual({ field: "tickets.follower", code: "unsupported" })
+  })
+
+  it("refuses subscribers only and tier tickets without sub tiers", () => {
+    const noTiers: PlatformCapabilities = { ...twitch, subTiers: false }
+    const tierless: GiveawayRules = {
+      ...rules,
+      tickets: { ...rules.tickets, sub_t1: 0, sub_t2: 0, sub_t3: 0 },
+    }
+    expect(unsupportedRule(tierless, noTiers)).toBeNull()
+    expect(unsupportedRule({ ...tierless, subsOnly: true }, noTiers)).toEqual({
+      field: "subsOnly",
+      code: "unsupported",
+    })
+    expect(
+      unsupportedRule({ ...tierless, tickets: { ...tierless.tickets, sub_t2: 2 } }, noTiers),
+    ).toEqual({ field: "tickets.sub_t2", code: "unsupported" })
+  })
+
+  it("refuses an entry way the platform does not offer", () => {
+    expect(unsupportedRule(rules, { ...twitch, pageEntry: false })).toEqual({
+      field: "pageEntry",
+      code: "unsupported",
+    })
+    expect(
+      unsupportedRule({ ...rules, chatKeyword: "!enter" }, { ...twitch, chatEntry: false }),
+    ).toEqual({ field: "chatKeyword", code: "unsupported" })
   })
 })
 

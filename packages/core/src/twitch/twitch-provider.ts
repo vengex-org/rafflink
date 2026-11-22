@@ -1,18 +1,19 @@
 import type { ChatSourceFactory } from "../platform/chat-source.ts"
 import { PlatformIdentityRejected } from "../platform/errors.ts"
-import type {
-  AuthorizeParams,
-  ChannelRoles,
-  ChatContext,
-  ExchangedCode,
-  PlatformAccount,
-  PlatformCapabilities,
-  PlatformProvider,
-  SignInProof,
-  SubscriberBadges,
-  SubscriptionGroup,
-  TokenValidation,
-  UserProfile,
+import {
+  everyCapability,
+  type AuthorizeParams,
+  type ChannelRoles,
+  type ChatContext,
+  type ExchangedCode,
+  type PlatformAccount,
+  type PlatformCapabilities,
+  type PlatformProvider,
+  type SignInProof,
+  type SubscriberBadges,
+  type SubscriptionGroup,
+  type TokenValidation,
+  type UserProfile,
 } from "../platform/provider.ts"
 import type { Clock } from "../ports.ts"
 import { ChannelBadges, type ChannelBadgesConfig } from "./channel-badges.ts"
@@ -22,19 +23,10 @@ import { TwitchInvalid, type TwitchClient } from "./twitch-client.ts"
 
 export type TwitchProviderConfig = ChannelBadgesConfig & ChatWatcherConfig
 
-const twitchCapabilities: PlatformCapabilities = {
-  followerCheck: true,
-  subTiers: true,
-  vip: true,
-  accountAge: true,
-  pageEntry: true,
-  chatEntry: true,
-}
-
 /** Twitch behind the platform seam: the Helix client, the scopes of both sign-ins, the badge cache and EventSub chat. */
 export class TwitchProvider implements PlatformProvider {
   readonly platform = "twitch"
-  readonly capabilities = twitchCapabilities
+  readonly capabilities: PlatformCapabilities = everyCapability
   readonly scopes = {
     streamer: ["openid", "channel:read:vips", "moderation:read", "user:read:chat"],
     viewer: ["openid", "user:read:subscriptions", "user:read:follows"],

@@ -31,6 +31,8 @@ export interface PublicGiveaway {
   /** The streamer's display name. */
   readonly streamerName: string
   readonly rules: GiveawayRules
+  /** What the giveaway's platform can check, so the page explains only the groups it can tell. */
+  readonly capabilities: PlatformCapabilities
   readonly status: RoomStatus
   readonly closesAt: Instant | null
   readonly claimSeconds: number

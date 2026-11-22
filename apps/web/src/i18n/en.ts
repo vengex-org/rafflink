@@ -312,6 +312,7 @@ export const en = {
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.unknown-kind": "Pick one of the options.",
+  "issue.unsupported": "Your streaming platform cannot check this rule. Turn it off.",
   "issue.wholeDays": "Enter a whole number of days, or leave it empty.",
   "issue.wholeMinutes": "Enter a whole number of minutes, 1 or more.",
   "issue.pickEnd": "Pick the date and time when entries end.",

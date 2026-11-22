@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react"
-import { groups, type Group } from "@rafflink/core/domain/groups"
+import { supportedGroups, type Group } from "@rafflink/core/domain/groups"
+import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import {
   Segmented,
   StepperField,
@@ -21,8 +22,10 @@ import { chatEntryReconnectPath, dashboardNewPath } from "../lib/routes.ts"
 import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import {
+  audienceOffered,
   claimPresets,
   claimSecondsOf,
+  entryWaysOffered,
   oddsOf,
   type ClaimPreset,
   type Audience,
@@ -104,10 +107,20 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
   )
 }
 
-export function RulesStep({ values, setValues, issue }: StepProps) {
+/** What the streamer's platform can check; the step offers only those filters, groups and entry ways. */
+interface CapabilitiesProps {
+  readonly capabilities: PlatformCapabilities
+}
+
+export function RulesStep({
+  values,
+  setValues,
+  issue,
+  capabilities,
+}: StepProps & CapabilitiesProps) {
   const i18n = useI18n()
   const { t } = i18n
-  const audiences: readonly SegmentOption<Audience>[] = [
+  const allAudiences: readonly SegmentOption<Audience>[] = [
     {
       value: "everyone",
       label: t("wizard.audience.everyone"),
@@ -127,36 +140,46 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
       description: t("wizard.audience.subscribers.help"),
     },
   ]
+  const audiences = allAudiences.filter((option) => audienceOffered(option.value, capabilities))
   return (
     <>
-      <Segmented
-        name="audience"
-        legend={t("wizard.q.audience")}
-        help={null}
-        options={audiences}
-        value={values.audience}
-        onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
-      />
-      {values.audience === "subscribers" ? (
+      {audiences.length > 1 ? (
+        <Segmented
+          name="audience"
+          legend={t("wizard.q.audience")}
+          help={null}
+          options={audiences}
+          value={values.audience}
+          onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
+        />
+      ) : null}
+      {audiences.length > 1 && values.audience === "subscribers" ? (
         <p className="help" role="note">
           {t("wizard.audience.subscribers.warning")}
         </p>
       ) : null}
-      <StepperField
-        name="minAccountAgeDays"
-        label={t("wizard.minAge.label")}
-        help={t("wizard.minAge.help")}
-        min={0}
-        value={values.minAccountAgeDays}
-        error={errorOf(i18n, issue, "minAccountAgeDays")}
-        onChange={(minAccountAgeDays) =>
-          setValues((current) => ({ ...current, minAccountAgeDays }))
-        }
-        decreaseLabel={t("wizard.minAge.fewer")}
-        increaseLabel={t("wizard.minAge.more")}
-      />
+      {capabilities.accountAge ? (
+        <StepperField
+          name="minAccountAgeDays"
+          label={t("wizard.minAge.label")}
+          help={t("wizard.minAge.help")}
+          min={0}
+          value={values.minAccountAgeDays}
+          error={errorOf(i18n, issue, "minAccountAgeDays")}
+          onChange={(minAccountAgeDays) =>
+            setValues((current) => ({ ...current, minAccountAgeDays }))
+          }
+          decreaseLabel={t("wizard.minAge.fewer")}
+          increaseLabel={t("wizard.minAge.more")}
+        />
+      ) : null}
       <RecentWinnersField values={values} setValues={setValues} issue={issue} />
-      <TicketsField values={values} setValues={setValues} issue={issue} shown={groups} />
+      <TicketsField
+        values={values}
+        setValues={setValues}
+        issue={issue}
+        shown={supportedGroups(capabilities)}
+      />
       <StepperField
         name="winnerCount"
         label={t("wizard.winners.label")}
@@ -178,7 +201,12 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         error={errorOf(i18n, issue, "claimKeyword")}
         onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
       />
-      <EntryWaysField values={values} setValues={setValues} issue={issue} />
+      <EntryWaysField
+        values={values}
+        setValues={setValues}
+        issue={issue}
+        capabilities={capabilities}
+      />
     </>
   )
 }
@@ -187,11 +215,11 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
  * Page entry, the chat keyword, or both, with the keyword field under the choice. A streamer whose token
  * lacks the scopes chat entry needs is asked to reconnect Twitch, so the follow of a chat entrant can be read.
  */
-function EntryWaysField({ values, setValues, issue }: StepProps) {
+function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & CapabilitiesProps) {
   const i18n = useI18n()
   const { t } = i18n
   const { streamer } = useStreamerSession()
-  const options: readonly SegmentOption<EntryWays>[] = [
+  const allOptions: readonly SegmentOption<EntryWays>[] = [
     {
       value: "page",
       label: t("wizard.entry.page"),
@@ -211,6 +239,7 @@ function EntryWaysField({ values, setValues, issue }: StepProps) {
       description: t("wizard.entry.chat.help"),
     },
   ]
+  const options = allOptions.filter((option) => entryWaysOffered(option.value, capabilities))
   const usesChat = values.entryWays !== "page"
   return (
     <>
@@ -312,7 +341,7 @@ export function TicketsField({
 }: StepProps & { readonly shown: readonly Group[] }) {
   const i18n = useI18n()
   const { t } = i18n
-  const odds = oddsOf(values.tickets)
+  const odds = oddsOf(values.tickets, shown)
   return (
     <fieldset className="field">
       <legend>{t("wizard.tickets.legend")}</legend>
@@ -397,10 +426,15 @@ function ClaimField({ values, setValues, issue }: StepProps) {
   )
 }
 
-export function ReviewStep({ values }: { readonly values: Values }) {
+export function ReviewStep({
+  values,
+  capabilities,
+}: { readonly values: Values } & CapabilitiesProps) {
   const i18n = useI18n()
   const { t } = i18n
-  const customTickets = groups.filter((group) => values.tickets[group].trim() !== "1")
+  const customTickets = supportedGroups(capabilities).filter(
+    (group) => values.tickets[group].trim() !== "1",
+  )
   const keyword = values.claimKeyword.trim()
   const recent =
     values.recentWinners === "off"

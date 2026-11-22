@@ -30,6 +30,16 @@ export interface PlatformCapabilities {
   readonly chatEntry: boolean
 }
 
+/** A platform that can check every rule and offers both entry ways. */
+export const everyCapability: PlatformCapabilities = {
+  followerCheck: true,
+  subTiers: true,
+  vip: true,
+  accountAge: true,
+  pageEntry: true,
+  chatEntry: true,
+}
+
 export interface AuthorizeParams {
   readonly state: string
   readonly nonce: string

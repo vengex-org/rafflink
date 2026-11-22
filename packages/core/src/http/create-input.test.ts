@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { validRules } from "../../test/app-fixture.ts"
 import { resolveConfig } from "../config.ts"
+import { everyCapability } from "../platform/provider.ts"
 import { parseCreateGiveaway, type CreateIssue } from "./create-input.ts"
 
 const config = resolveConfig({
@@ -20,7 +21,7 @@ const now = Date.parse("2026-12-01T10:00:00Z")
 const valid = { title: "Title", prize: "Prize", rules: validRules }
 
 function issue(body: unknown): CreateIssue | null {
-  const parsed = parseCreateGiveaway(body, now, config)
+  const parsed = parseCreateGiveaway(body, now, config, everyCapability)
   return parsed.ok ? null : parsed.issue
 }
 
@@ -31,7 +32,7 @@ const winnerIssue = (code: CreateIssue["code"]): CreateIssue => ({ field: "winne
 describe("winner count", () => {
   it("is one when absent and the number given otherwise, up to the draw maximum", () => {
     const value = (winnerCount: unknown) => {
-      const parsed = parseCreateGiveaway({ ...valid, winnerCount }, now, config)
+      const parsed = parseCreateGiveaway({ ...valid, winnerCount }, now, config, everyCapability)
       return parsed.ok ? parsed.value.winnerCount : null
     }
 
@@ -56,7 +57,7 @@ describe("winner count", () => {
 
 describe("parseCreateGiveaway", () => {
   it("accepts a body with only the required fields and defaults the claim time", () => {
-    expect(parseCreateGiveaway(valid, now, config)).toEqual({
+    expect(parseCreateGiveaway(valid, now, config, everyCapability)).toEqual({
       ok: true,
       value: {
         title: "Title",
@@ -74,6 +75,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, title: "1234567890", prize: "123456789012" },
       now,
       config,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({
@@ -83,13 +85,23 @@ describe("parseCreateGiveaway", () => {
   })
 
   it("measures the length after trimming", () => {
-    const parsed = parseCreateGiveaway({ ...valid, title: "  1234567890  " }, now, config)
+    const parsed = parseCreateGiveaway(
+      { ...valid, title: "  1234567890  " },
+      now,
+      config,
+      everyCapability,
+    )
 
     expect(parsed).toMatchObject({ ok: true, value: { title: "1234567890" } })
   })
 
   it("trims the title and the prize", () => {
-    const parsed = parseCreateGiveaway({ ...valid, title: "  A  ", prize: " B " }, now, config)
+    const parsed = parseCreateGiveaway(
+      { ...valid, title: "  A  ", prize: " B " },
+      now,
+      config,
+      everyCapability,
+    )
 
     expect(parsed).toMatchObject({ ok: true, value: { title: "A", prize: "B" } })
   })
@@ -100,7 +112,12 @@ describe("parseCreateGiveaway", () => {
     ["empty", ""],
     ["only spaces", " \t"],
   ])("treats a title and a prize that are %s as not set", (_name, blank) => {
-    const parsed = parseCreateGiveaway({ ...valid, title: blank, prize: blank }, now, config)
+    const parsed = parseCreateGiveaway(
+      { ...valid, title: blank, prize: blank },
+      now,
+      config,
+      everyCapability,
+    )
 
     expect(parsed).toMatchObject({ ok: true, value: { title: null, prize: null } })
   })
@@ -110,6 +127,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, closesAt: "2026-12-01T12:00:01+02:00" },
       now,
       config,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { closesAt: now + 1000 } })
@@ -227,6 +245,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, rules: { ...validRules, claimKeyword: "" } },
       now,
       config,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { rules: { claimKeyword: null } } })
@@ -237,6 +256,7 @@ describe("parseCreateGiveaway", () => {
       { ...valid, rules: { ...validRules, claimKeyword: "12345678" } },
       now,
       config,
+      everyCapability,
     )
 
     expect(parsed).toMatchObject({ ok: true, value: { rules: { claimKeyword: "12345678" } } })
@@ -247,9 +267,42 @@ describe("parseCreateGiveaway", () => {
       rules: validRules,
     })
 
-    expect(parseCreateGiveaway(body, now, config)).toMatchObject({
+    expect(parseCreateGiveaway(body, now, config, everyCapability)).toMatchObject({
       ok: true,
       value: { title: null, prize: null },
+    })
+  })
+})
+
+describe("rules by platform", () => {
+  // Kick: no follower lookup, no VIP and no account age.
+  const kick = { ...everyCapability, followerCheck: false, vip: false, accountAge: false }
+  const kickRules = { ...validRules, tickets: { ...validRules.tickets, follower: 0, vip: 0 } }
+  const parse = (rules: unknown) => parseCreateGiveaway({ ...valid, rules }, now, config, kick)
+
+  it("accepts rules a Kick giveaway can check", () => {
+    expect(parse(kickRules)).toMatchObject({ ok: true, value: { rules: kickRules } })
+  })
+
+  it("refuses followers only, VIP tickets and a minimum account age on Kick", () => {
+    expect(parse({ ...kickRules, followersOnly: true })).toEqual({
+      ok: false,
+      issue: { field: "followersOnly", code: "unsupported" },
+    })
+    expect(parse({ ...kickRules, tickets: { ...kickRules.tickets, vip: 2 } })).toEqual({
+      ok: false,
+      issue: { field: "tickets.vip", code: "unsupported" },
+    })
+    expect(parse({ ...kickRules, minAccountAgeDays: 7 })).toEqual({
+      ok: false,
+      issue: { field: "minAccountAgeDays", code: "unsupported" },
+    })
+  })
+
+  it("reports a malformed rule before an unsupported one", () => {
+    expect(parse({ ...kickRules, followersOnly: true, subsOnly: "yes" })).toEqual({
+      ok: false,
+      issue: { field: "subsOnly", code: "not-a-boolean" },
     })
   })
 })
