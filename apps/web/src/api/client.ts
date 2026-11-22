@@ -144,6 +144,10 @@ export interface CreateGiveawayBody {
     readonly minAccountAgeDays: number | undefined
     readonly claimKeyword: string
     readonly excludeRecentWinners: RecentWinnersRule | null
+    /** Null when viewers enter on the page only. */
+    readonly chatKeyword: string | null
+    /** False for a chat-only giveaway. */
+    readonly pageEntry: boolean
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
@@ -203,6 +207,7 @@ export async function getSession(): Promise<SessionJson> {
       canCreate: bool(streamer, "canCreate"),
       platform: platformOf(streamer, "platform"),
       capabilities: capabilitiesOf(child(streamer, "capabilities")),
+      chatEntryReady: bool(streamer, "chatEntryReady"),
     },
     donateUrl,
     operator,
@@ -339,6 +344,7 @@ export function parseGiveawayLoad(source: Json): GiveawayLoad {
       claimSeconds: num(source, "claimSeconds"),
       entrantCount: num(source, "entrantCount"),
       finished: bool(source, "finished"),
+      chatEntryOff: bool(source, "chatEntryOff"),
       poll: {
         intervalMs: num(child(source, "poll"), "intervalMs"),
         maxMs: num(child(source, "poll"), "maxMs"),
@@ -417,6 +423,14 @@ export function entryFromQuery(query: URLSearchParams): EntryResult | null {
 
 export async function claimPrize(code: string): Promise<ClaimKind | Rejected> {
   return act(`/api/g/${encodeURIComponent(code)}/claim`, {}, claimKinds)
+}
+
+/** "Am I in?" by login, for a viewer who entered in chat; the server answers yes or no and nothing else. */
+export async function isLoginEntered(code: string, login: string): Promise<boolean> {
+  const query = new URLSearchParams({ login })
+  const { status, body } = await send(`/api/g/${encodeURIComponent(code)}/entered?${query}`)
+  if (status !== 200) throw new ApiError(status)
+  return bool(record(body, "entered"), "entered")
 }
 
 export async function listGiveaways(): Promise<DashboardGiveaway[] | "unauthorized"> {
@@ -1031,6 +1045,8 @@ function parseRules(source: Json): GiveawayRules {
       source.excludeRecentWinners === null
         ? null
         : parseRecentWinners(child(source, "excludeRecentWinners")),
+    chatKeyword: nullableText(source, "chatKeyword"),
+    pageEntry: bool(source, "pageEntry"),
   }
 }
 
@@ -1160,6 +1176,7 @@ function parseSharedSnapshotFields(source: Json) {
     shuffleNames: textList(source, "shuffleNames"),
     now: num(source, "now"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
+    chatEntryOff: bool(source, "chatEntryOff"),
   }
 }
 

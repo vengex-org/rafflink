@@ -6,9 +6,20 @@ import {
   TextField,
   type SegmentOption,
 } from "../components/form-fields.tsx"
-import { ClockIcon, HeartIcon, LockIcon, StarIcon, UsersIcon } from "../components/icons.tsx"
+import {
+  ClockIcon,
+  HeartIcon,
+  LinkIcon,
+  LockIcon,
+  StarIcon,
+  TwitchIcon,
+  UsersIcon,
+} from "../components/icons.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { claimTimeText, recentWinnersText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
+import { chatEntryReconnectPath, dashboardNewPath } from "../lib/routes.ts"
+import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
+import { useStreamerSession } from "../components/streamer-session.tsx"
 import {
   claimPresets,
   claimSecondsOf,
@@ -16,6 +27,7 @@ import {
   type ClaimPreset,
   type Audience,
   type Ending,
+  type EntryWays,
   type Issue,
   type Odds,
   type RecentWinners,
@@ -166,6 +178,74 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         error={errorOf(i18n, issue, "claimKeyword")}
         onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
       />
+      <EntryWaysField values={values} setValues={setValues} issue={issue} />
+    </>
+  )
+}
+
+/**
+ * Page entry, the chat keyword, or both, with the keyword field under the choice. A streamer whose token
+ * lacks the scopes chat entry needs is asked to reconnect Twitch, so the follow of a chat entrant can be read.
+ */
+function EntryWaysField({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const { streamer } = useStreamerSession()
+  const options: readonly SegmentOption<EntryWays>[] = [
+    {
+      value: "page",
+      label: t("wizard.entry.page"),
+      icon: <LinkIcon />,
+      description: t("wizard.entry.page.help"),
+    },
+    {
+      value: "page-and-chat",
+      label: t("wizard.entry.both"),
+      icon: <TwitchIcon />,
+      description: t("wizard.entry.both.help"),
+    },
+    {
+      value: "chat",
+      label: t("wizard.entry.chat"),
+      icon: <TwitchIcon />,
+      description: t("wizard.entry.chat.help"),
+    },
+  ]
+  const usesChat = values.entryWays !== "page"
+  return (
+    <>
+      <Segmented
+        name="entryWays"
+        legend={t("wizard.entry.legend")}
+        help={null}
+        options={options}
+        value={values.entryWays}
+        onSelect={(entryWays) => setValues((current) => ({ ...current, entryWays }))}
+      />
+      {usesChat ? (
+        <TextField
+          name="chatKeyword"
+          label={t("wizard.chatKeyword.label")}
+          help={t("wizard.chatKeyword.help")}
+          type="text"
+          value={values.chatKeyword}
+          error={errorOf(i18n, issue, "chatKeyword")}
+          onChange={(chatKeyword) => setValues((current) => ({ ...current, chatKeyword }))}
+        />
+      ) : null}
+      {usesChat && streamer !== null && !streamer.chatEntryReady ? (
+        <div className="help" role="note">
+          <p>{t("wizard.reconnect.text")}</p>
+          <a
+            className="button outlined"
+            href={chatEntryReconnectPath(dashboardNewPath({ step: 2 }))}
+            onClick={() => keepDraftForReconnect(values)}
+          >
+            <TwitchIcon />
+            {t("wizard.reconnect.button")}
+          </a>
+        </div>
+      ) : null}
     </>
   )
 }
@@ -373,6 +453,7 @@ export function ReviewStep({ values }: { readonly values: Values }) {
             : i18n.dateTime(new Date(values.closesAt).getTime())
         }
       />
+      <ReviewRow label={t("review.entry")} value={entryWaysText(i18n, values)} />
       <ReviewRow label={t("review.winners")} value={i18n.number(Number(values.winnerCount))} />
       <ReviewRow
         label={t("review.claim")}
@@ -383,6 +464,18 @@ export function ReviewStep({ values }: { readonly values: Values }) {
       />
     </dl>
   )
+}
+
+function entryWaysText(i18n: I18n, values: Values): string {
+  const keyword = values.chatKeyword.trim()
+  switch (values.entryWays) {
+    case "page":
+      return i18n.t("review.entryPage")
+    case "page-and-chat":
+      return i18n.t("review.entryBoth", { keyword })
+    case "chat":
+      return i18n.t("review.entryChat", { keyword })
+  }
 }
 
 function textOrNotSet(i18n: I18n, text: string): string {

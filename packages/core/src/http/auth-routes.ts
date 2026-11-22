@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+import { Hono, type Context } from "hono"
 import { streamerTokenAad } from "../accounts/streamer-token.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import { giveawayPath } from "../lib/page-paths.ts"
@@ -23,6 +23,9 @@ import {
   startViewerSession,
   takeOAuthState,
   startPendingEntry,
+  readChatEntryHint,
+  readStreamerSession,
+  writeChatEntryHint,
 } from "./session.ts"
 
 /**
@@ -53,6 +56,10 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     const nonce = randomId(deps.random)
     const verifier = codeVerifier(deps.random)
     const returnPath = safeReturnPath(c.req.query("return")) ?? defaultReturnPath
+    // `?scopes=chat-entry` is the wizard's "Reconnect Twitch": the base scopes plus the ones chat entry needs.
+    // Twitch grants only the scopes a sign-in asks for, so a streamer who granted them before is asked again.
+    const chatEntry =
+      c.req.query("scopes") === "chat-entry" || (await grantedChatEntry(c, deps, provider))
     await startOAuthState(c, deps, "streamer", {
       state,
       nonce,
@@ -60,13 +67,14 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: null,
       returnPath,
       moderatorLinkId: null,
+      chatEntry,
     })
     return c.redirect(
       provider.authorizeUrl({
         state,
         nonce,
         codeChallenge: await codeChallenge(verifier),
-        scopes: provider.scopes.streamer,
+        scopes: streamerScopes(provider, chatEntry),
         redirectUri: redirectUri(deps.config, streamerCallbackPath),
       }),
     )
@@ -103,7 +111,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
         streamerTokenAad(platform, signIn.userId),
         deps.random,
       ),
-      scopes: provider.scopes.streamer.join(" "),
+      scopes: streamerScopes(provider, saved.chatEntry).join(" "),
       now: deps.clock.now(),
     })
     await startStreamerSession(c, deps, {
@@ -111,6 +119,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       platform,
       platformUserId: streamer.platformUserId,
     })
+    await writeChatEntryHint(c, deps, saved.chatEntry)
     return c.redirect(saved.returnPath ?? defaultReturnPath)
   })
 
@@ -128,6 +137,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: giveaway.code,
       returnPath: null,
       moderatorLinkId: null,
+      chatEntry: false,
     })
     return c.redirect(
       provider.authorizeUrl({
@@ -202,6 +212,27 @@ interface StreamerGrant {
   readonly displayName: string
   readonly profileImageUrl: string | null
   readonly refreshToken: string
+}
+
+// The browser's last sign-in granted them, or the signed-in streamer's stored token holds them.
+async function grantedChatEntry(
+  c: Context,
+  deps: AppDeps,
+  provider: PlatformProvider,
+): Promise<boolean> {
+  if (await readChatEntryHint(c, deps)) return true
+  const session = await readStreamerSession(c, deps)
+  if (session === null || session.platform !== provider.platform) return false
+  const token = await deps.accounts.findStreamerToken(session.streamerId)
+  return token !== null && provider.chatEntryScopes.every((scope) => token.scopes.includes(scope))
+}
+
+function streamerScopes(
+  provider: PlatformProvider,
+  chatEntry: boolean,
+): readonly [string, ...string[]] {
+  const base = provider.scopes.streamer
+  return chatEntry ? [...base, ...provider.chatEntryScopes] : base
 }
 
 async function exchangeStreamer(

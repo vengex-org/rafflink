@@ -6,6 +6,7 @@ export type TwitchEndpoint =
   | "validate"
   | "subscriptions"
   | "followed"
+  | "followers"
   | "users"
   | "vips"
   | "moderators"

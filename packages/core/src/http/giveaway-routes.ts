@@ -10,6 +10,7 @@ import { readPublicCache, writePublicCache } from "./public-cache.ts"
 import { toHex } from "../lib/encoding.ts"
 import {
   verifyJson,
+  type EnteredJson,
   type LeavesJson,
   type MyLeafJson,
   type PublicGiveaway,
@@ -90,6 +91,25 @@ export function giveawayRoutes(deps: AppDeps): Hono {
       }
     }
     return c.json(pendingOutcome(polled, ticket))
+  })
+
+  // "Am I in?" for a viewer who entered by chat and never signed in: yes or no for one login, nothing else
+  // about the entrants, and nothing at all about page entrants. Each answer wakes the room, so it shares the
+  // leaves limit with its own counter per address.
+  app.get("/api/g/:code/entered", async (c) => {
+    c.header("Cache-Control", "no-store")
+    const address = deps.clientAddress(c.req.raw)
+    if (address !== null && !(await deps.leavesIpLimiter.allow(`entered:${address}`))) {
+      return c.json({ error: "rate-limited" }, 429)
+    }
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    const login = providerFor(deps.platforms, giveaway.platform).parseLogin(
+      c.req.query("login") ?? "",
+    )
+    if (login === null) return c.json({ error: "invalid-login" }, 400)
+    const body: EnteredJson = { entered: await deps.rooms.get(giveaway.id).hasChatEntrant(login) }
+    return c.json(body)
   })
 
   app.get("/api/g/:code/verify", async (c) => {
@@ -219,6 +239,7 @@ function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: PublicSummar
     claimSeconds: giveaway.claimSeconds,
     entrantCount: summary.entrantCount,
     finished: summary.finished,
+    chatEntryOff: summary.chatEntryOff,
     poll: {
       intervalMs: deps.config.queuePollSeconds * 1000,
       maxMs: deps.config.queuePollMaxSeconds * 1000,

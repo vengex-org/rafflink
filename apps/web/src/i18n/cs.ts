@@ -242,6 +242,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "reason.followers-only": "Tato soutěž je jen pro sledující.",
   "reason.account-too-young": "Tvůj účet na Twitchi je pro tuto soutěž příliš nový.",
   "reason.no-tickets": "Tvoje skupina v této soutěži nemá žádné losy.",
+  "reason.page-entry-off": "Do této soutěže se dá zapojit jen přes chat streamu.",
+  "reasonHelp.page-entry-off":
+    "Pro zapojení napiš do chatu streamu klíčové slovo, které vidíš na této stránce.",
   "reasonHelp.broadcaster": "Pro zapojení se přihlas jiným účtem na Twitchi.",
   "entry.otherAccount": "Použít jiný účet na Twitchi",
   "reason.blocked": "Do této soutěže se nemůžeš zapojit.",
@@ -308,6 +311,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "issue.blank": "Toto pole nesmí být prázdné.",
   "issue.too-long": "Text je příliš dlouhý. Zkrať ho.",
   "issue.too-large": "Toto číslo je příliš velké. Zadej menší.",
+  "issue.no-entry-way": "Diváci se musí mít jak zapojit: přes stránku, přes chat nebo obojím.",
   "issue.not-a-timestamp": "Zadej platné datum a čas.",
   "issue.in-the-past": "Čas ukončení musí být v budoucnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
@@ -537,6 +541,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
 
   "live.reconnecting": "Znovu se připojuji k živému přenosu…",
   "live.chatOff.title": "Sledování chatu je vypnuté",
+  "live.chatEntryOff.text":
+    "Zapojení přes chat je vypnuté: Rafflink teď neumí číst tvůj chat, takže napsání klíčového slova nikoho nezapojí. Pokud soutěž bere zapojení přes stránku, diváci se mohou zapojit tam.",
   "live.chatOff.text":
     "Převzetí přes chat není dostupné: Rafflink teď neumí číst tvůj chat, takže vítězové nemohou výhru převzít napsáním do něj. Až ti vítěz řekne, že je tady, stiskni u jeho jména Označit jako převzaté.",
   "live.open.title": "Přihlašování je otevřené",
@@ -759,6 +765,32 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Platí i jakákoli zpráva vítěze v chatu.",
   "review.keywordChat": "Vítěz může napsat i „{keyword}“ do tvého chatu.",
+  "wizard.entry.legend": "Jak se diváci zapojí",
+  "wizard.entry.page": "Stránka soutěže",
+  "wizard.entry.page.help": "Diváci se přihlásí přes Twitch na stránce soutěže.",
+  "wizard.entry.both": "Stránka i chat",
+  "wizard.entry.both.help": "Diváci se mohou zapojit i napsáním klíčového slova do tvého chatu.",
+  "wizard.entry.chat": "Jen chat",
+  "wizard.entry.chat.help":
+    "Diváci se zapojí jen napsáním klíčového slova do tvého chatu. Stránka ukáže klíčové slovo a dovolí jim ověřit si, jestli jsou v soutěži.",
+  "wizard.reconnect.text":
+    "Aby Rafflink ověřil, jestli tě divák z chatu sleduje, potřebuje ještě jedno oprávnění Twitche (číst tvoje sledující). Připoj Twitch znovu, tvoje odpovědi zůstanou.",
+  "wizard.reconnect.button": "Připojit Twitch znovu",
+  "wizard.chatKeyword.label": "Klíčové slovo pro zapojení",
+  "wizard.chatKeyword.help":
+    "Zpráva v chatu, která začíná tímto slovem, diváka zapojí se stejnými pravidly a losy jako stránka. Rafflink do tvého chatu nikdy nepíše.",
+  "review.entry": "Zapojení",
+  "review.entryPage": "Na stránce soutěže.",
+  "review.entryBoth": "Na stránce soutěže nebo napsáním „{keyword}“ do tvého chatu.",
+  "review.entryChat": "Jen napsáním „{keyword}“ do tvého chatu.",
+  "giveaway.chatEntry": "Nebo napiš {keyword} do chatu kanálu {name} a zapojíš se.",
+  "giveaway.lookup.legend": "Zapojení přes chat",
+  "giveaway.lookup.label": "Tvoje jméno na Twitchi",
+  "giveaway.lookup.button": "Jsem v soutěži?",
+  "giveaway.lookup.yes": "{login} je v soutěži.",
+  "giveaway.lookup.no":
+    "{login} zatím v soutěži není. Zapojení z chatu se může ukázat až za minutu.",
+  "giveaway.lookup.failed": "Kontrola se nepovedla. Zkus to znovu.",
 
   "legal.privacy": "Ochrana soukromí",
   "legal.terms": "Podmínky",
@@ -791,7 +823,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i4":
     "Všichni vylosovaní, i ti nahrazení novým losem: Twitch ID uživatele, přihlašovací a zobrazované jméno, výsledek losování a to, zda a jak byla výhra převzata. ID uživatele zůstává u losu i poté, co bylo jméno nahrazeno slovem „removed“.",
   "privacy.data.i5":
-    "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují.",
+    "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo klíčové slovo pro zapojení a převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují. Když napíšeš klíčové slovo, uloží se tvoje Twitch ID, přihlašovací jméno, zobrazované jméno a role z tvých odznaků v chatu, dokud se zapojení nezkontroluje; pak jsi v soutěži stejně jako ze stránky a sledování kanálu se ověří tokenem streamera.",
   "privacy.data.i6":
     "Technické údaje: hostitel zpracovává tvou IP adresu a údaje o požadavku, aby stránku doručil a ochránil ji před zneužitím, například omezeními rychlosti.",
   "privacy.data.i7":
@@ -843,6 +875,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, výchozí 10 minut.",
   "privacy.cookies.i5":
     "Lokální úložiště prohlížeče si pamatuje tvůj výběr jazyka a motivu a čistý režim živé stránky. Úložiště relace drží přibližně 30 sekund kopii načtené stránky giveawaye včetně tvého stavu v ní. Zařízení neopouští ani jedno.",
+  "privacy.cookies.i7":
+    "rl_chat_entry: pamatuje si, že poslední přihlášení streamera v tomto prohlížeči povolilo číst sledující kanálu pro zapojení přes chat, aby ho další přihlášení žádalo znovu; 400 dní, zůstává i po odhlášení.",
   "privacy.cookies.i6":
     "rl_mod_*: umožní tomu, kdo otevřel odkaz pro moderátora, používat stránku moderátora daného giveawaye, výchozí 7 dní nebo dokud streamer odkaz nezruší. rl_mod_pending: pamatuje si, který odkaz čeká na přihlášení moderátora přes Twitch, výchozí 10 minut.",
   "privacy.rights.h": "Tvá práva",

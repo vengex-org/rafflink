@@ -45,6 +45,8 @@ export interface AuthorizeParams {
 export interface ExchangedCode {
   readonly accessToken: string
   readonly refreshToken: string
+  /** How long the access token lives from the answer on. */
+  readonly expiresInSeconds: number
   /** The OpenID Connect `id_token`; `null` when the platform or the scopes give none. */
   readonly idToken: string | null
 }
@@ -106,6 +108,8 @@ export interface PlatformProvider {
   readonly capabilities: PlatformCapabilities
   /** The scopes each sign-in asks for; the streamer's are stored with the streamer's token. */
   readonly scopes: Readonly<Record<SignInPurpose, readonly [string, ...string[]]>>
+  /** The streamer scopes chat entry needs on top of `scopes.streamer`; asked only when the streamer turns chat entry on. */
+  readonly chatEntryScopes: readonly string[]
   authorizeUrl(params: AuthorizeParams): string
   /**
    * Trades the sign-in's code, with its PKCE verifier, for tokens. Not retried: a code is single use,
@@ -122,6 +126,10 @@ export interface PlatformProvider {
   userProfile(accessToken: string): Promise<UserProfile>
   validate(accessToken: string): Promise<TokenValidation>
   follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
+  /** Whether `userId` follows the channel, asked with the streamer's token instead of the viewer's. */
+  channelFollower(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
+  /** The profiles of the accounts that exist among `userIds`; a missing account is absent from the answer. */
+  userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]>
   /** The tier group of the viewer's subscription, `null` when not subscribed. */
   subscriptionTier(
     accessToken: string,

@@ -28,7 +28,7 @@ const twitchCapabilities: PlatformCapabilities = {
   vip: true,
   accountAge: true,
   pageEntry: true,
-  chatEntry: false,
+  chatEntry: true,
 }
 
 /** Twitch behind the platform seam: the Helix client, the scopes of both sign-ins, the badge cache and EventSub chat. */
@@ -40,6 +40,8 @@ export class TwitchProvider implements PlatformProvider {
     viewer: ["openid", "user:read:subscriptions", "user:read:follows"],
     moderator: ["openid"],
   } as const
+  // The follow of a chat entrant is read with the streamer's token.
+  readonly chatEntryScopes = ["moderator:read:followers"] as const
   private readonly badges: ChannelBadges
 
   constructor(
@@ -95,6 +97,14 @@ export class TwitchProvider implements PlatformProvider {
 
   follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
     return this.client.follows(accessToken, broadcasterId, userId)
+  }
+
+  channelFollower(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
+    return this.client.channelFollower(accessToken, broadcasterId, userId)
+  }
+
+  async userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]> {
+    return this.client.userProfilesById(await this.client.appAccessToken(), userIds)
   }
 
   subscriptionTier(

@@ -37,6 +37,8 @@ export interface PublicGiveaway {
   readonly entrantCount: number
   /** The draw is done and no pick can still be replaced by a reroll; the page then opens no push socket. */
   readonly finished: boolean
+  /** The chat watch gave up while entries are open, so the page does not offer the chat keyword. */
+  readonly chatEntryOff: boolean
   /** How the page polls a queued entry: every `intervalMs`, for at most `maxMs`. */
   readonly poll: { readonly intervalMs: number; readonly maxMs: number }
 }
@@ -99,6 +101,11 @@ export interface MyLeafJson {
   readonly salt: string | null
 }
 
+/** The answer of the "Am I in?" lookup by login. */
+export interface EnteredJson {
+  readonly entered: boolean
+}
+
 /** Who runs the instance, as the privacy policy and the terms name them (the `OPERATOR_*` keys); `legalUpdated` is `LEGAL_UPDATED`, null when unset. */
 export interface OperatorJson {
   readonly name: string
@@ -119,6 +126,8 @@ export interface SessionJson {
     readonly platform: Platform
     /** What the streamer's platform supports, so the create form offers only those rules and entry paths. */
     readonly capabilities: PlatformCapabilities
+    /** The stored token holds the scopes chat entry needs; false asks the streamer to reconnect before turning it on. */
+    readonly chatEntryReady: boolean
   } | null
   readonly donateUrl: string | null
   readonly operator: OperatorJson | null

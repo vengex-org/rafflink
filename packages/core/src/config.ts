@@ -1,11 +1,11 @@
 import { publicDrandUrls, quicknet } from "./lib/drand.ts"
 import type { Parsed } from "./lib/parsed.ts"
 import { cloudflarePlans, type CloudflarePlan } from "./plan/plan-limits.ts"
+import { twitchLoginPattern } from "./twitch/lib/login.ts"
 import {
   queuedEntryTwitchRequests,
   queuedEntryTwitchSubrequests,
 } from "./twitch/queued-entry-requests.ts"
-import { twitchLoginPattern } from "./twitch/lib/login.ts"
 
 export type ConfigReason =
   | "missing"
@@ -131,6 +131,18 @@ export const configSchema = {
     int(1),
     "300",
     "Refresh of the VIP and moderator lists while entries are open; spec AC-13",
+  ),
+  chatEntryCheckSeconds: withDefault(
+    "CHAT_ENTRY_CHECK_SECONDS",
+    int(1),
+    "3",
+    "Wait between two checks of the chatters who typed the entry keyword: each check reads their profiles and up to CHAT_ENTRY_FOLLOWER_CHECKS follows; starting guess",
+  ),
+  chatEntryFollowerChecks: withDefault(
+    "CHAT_ENTRY_FOLLOWER_CHECKS",
+    int(1),
+    "15",
+    "Most follow reads one check of chat entrants sends with the streamer's token; 15 every 3 seconds is 300 of the 800 Helix points a minute the streamer's token has, and with a retried 503 each, a token refresh and the profile read it stays inside the 45 subrequests of a Cloudflare Free invocation",
   ),
   liveIntervalMs: withDefault(
     "LIVE_INTERVAL_MS",
@@ -424,7 +436,7 @@ export const configSchema = {
     "CLAIM_KEYWORD_MAX_LENGTH",
     int(1),
     "32",
-    "Longest claim keyword a streamer can set; starting guess",
+    "Longest claim keyword and chat entry keyword a streamer can set; starting guess",
   ),
   codeInsertRetries: withDefault(
     "CODE_INSERT_RETRIES",
@@ -502,7 +514,7 @@ export const configSchema = {
     "LEAVES_IP_LIMIT_PER_MINUTE",
     int(1),
     "20",
-    "Leaf list downloads one client address may make per minute when the list is not in the cache; each wakes the giveaway's room and carries up to a megabyte; a verify page loads it once, so this is a loose backstop (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
+    'Leaf list downloads one client address may make per minute when the list is not in the cache, and apart from those as many "Am I in?" lookups by login; each wakes the giveaway\'s room and a leaf list carries up to a megabyte; a verify page loads it once and a viewer looks up a login a few times, so this is a loose backstop (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal',
   ),
   moderatorIpLimitPerMinute: withDefault(
     "MODERATOR_IP_LIMIT_PER_MINUTE",
@@ -771,6 +783,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     devFakeTwitch: read(env, configSchema.devFakeTwitch),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
+    chatEntryCheckSeconds: read(env, configSchema.chatEntryCheckSeconds),
+    chatEntryFollowerChecks: read(env, configSchema.chatEntryFollowerChecks),
     liveIntervalMs: read(env, configSchema.liveIntervalMs),
     liveLastNames: read(env, configSchema.liveLastNames),
     liveShuffleNames: read(env, configSchema.liveShuffleNames),

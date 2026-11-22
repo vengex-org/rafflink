@@ -196,6 +196,9 @@ class InProcessRoomStub implements RoomStub {
   async entryOf(...args: Parameters<GiveawayRoom["entryOf"]>) {
     return this.room.entryOf(...args)
   }
+  async hasChatEntrant(...args: Parameters<GiveawayRoom["hasChatEntrant"]>) {
+    return this.room.hasChatEntrant(...args)
+  }
   async entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
     return this.room.entrants(...args)
   }
@@ -303,6 +306,8 @@ export const validRules = {
   minAccountAgeDays: null,
   claimKeyword: null,
   excludeRecentWinners: null,
+  chatKeyword: null,
+  pageEntry: true,
 }
 
 /** The header a test sets to give a request a client address; the real targets read the one their edge sets. */

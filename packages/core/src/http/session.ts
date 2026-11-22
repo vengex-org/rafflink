@@ -56,6 +56,8 @@ export interface OAuthState {
   readonly giveawayCode: string | null
   readonly returnPath: string | null
   readonly moderatorLinkId: string | null
+  /** The streamer sign-in asked for the chat entry scopes too; false for every other sign-in. */
+  readonly chatEntry: boolean
 }
 
 const cookieNames = {
@@ -107,6 +109,29 @@ export async function startStreamerSession(
 export function endStreamerSession(c: Context): void {
   deleteCookie(c, cookieNames.streamer, { path: "/" })
 }
+
+/** Whether the last streamer sign-in in this browser granted the chat entry scopes, so the next one asks for them again. */
+export async function readChatEntryHint(c: Context, deps: SessionDeps): Promise<boolean> {
+  const hint = await readCookie(c, deps, chatEntryHintCookie, (value) =>
+    value.chatEntry === true ? true : null,
+  )
+  return hint === true
+}
+
+/** Remembers after a streamer sign-in whether it granted the chat entry scopes; a logout keeps it. */
+export async function writeChatEntryHint(
+  c: Context,
+  deps: SessionDeps,
+  granted: boolean,
+): Promise<void> {
+  if (granted)
+    await writeCookie(c, deps, chatEntryHintCookie, { chatEntry: true }, chatEntryHintSeconds)
+  else deleteCookie(c, chatEntryHintCookie, { path: "/" })
+}
+
+const chatEntryHintCookie = "rl_chat_entry"
+// Browsers keep a cookie at most 400 days.
+const chatEntryHintSeconds = 400 * 86_400
 
 export async function readViewerSession(
   c: Context,
@@ -260,13 +285,15 @@ export async function takeOAuthState(
   if (returnedState === undefined || !hexId.test(returnedState)) return null
   const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
-    const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId } = value
+    const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, chatEntry } =
+      value
     if (typeof state !== "string" || typeof nonce !== "string") return null
     if (typeof codeVerifier !== "string") return null
     if (giveawayCode !== null && typeof giveawayCode !== "string") return null
     if (returnPath !== null && typeof returnPath !== "string") return null
     if (moderatorLinkId !== null && typeof moderatorLinkId !== "string") return null
-    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId }
+    if (typeof chatEntry !== "boolean") return null
+    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, chatEntry }
   })
   deleteCookie(c, name, { path: "/" })
   return saved

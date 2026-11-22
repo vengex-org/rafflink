@@ -2,6 +2,7 @@ import { setTimeout } from "node:timers/promises"
 import type { AccountStore, Giveaway } from "../accounts/account-store.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { errorClass } from "../lib/error-class.ts"
+import { accountAgeDays as ageInDays } from "../domain/rules.ts"
 import { jitteredDelay } from "../lib/jittered-delay.ts"
 import type { Clock, RateLimiter, Random } from "../ports.ts"
 import type { QueuedCode } from "../queue/token-queue.ts"
@@ -99,8 +100,6 @@ export async function enterQueuedCode(deps: EntryDeps, item: QueuedCode): Promis
   return enterGiveaway(deps, giveaway, item)
 }
 
-const msPerDay = 86_400_000
-
 const tierNumbers: Readonly<Record<SubscriptionGroup, 1 | 2 | 3>> = {
   sub_t1: 1,
   sub_t2: 2,
@@ -126,7 +125,7 @@ async function readViewer(
   userId: string,
 ): Promise<RoomViewer> {
   const profile = await provider.userProfile(accessToken)
-  const accountAgeDays = Math.max(0, Math.floor((clock.now() - profile.createdAt) / msPerDay))
+  const accountAgeDays = ageInDays(clock.now(), profile.createdAt)
   const identity = {
     platformUserId: userId,
     login: profile.login,

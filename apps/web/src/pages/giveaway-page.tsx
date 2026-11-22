@@ -2,6 +2,7 @@ import { useCallback, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import type { ViewerState } from "@rafflink/core/http/json"
 import { entryFromQuery, type GiveawayView } from "../api/client.ts"
+import { ChatEntry } from "../components/chat-entry.tsx"
 import { GiveawayCode } from "../components/giveaway-code.tsx"
 import { ClaimPanel } from "../components/giveaway-claim.tsx"
 import { EntryPanel } from "../components/giveaway-entry.tsx"
@@ -80,6 +81,8 @@ function GiveawayDetails({
   const channelUrl = twitchChannelUrl(giveaway.streamerName)
   const isWinner = me.kind === "won"
   const isIn = entered !== null && !isWinner && giveaway.status !== "drawn"
+  // A chat-only giveaway offers no sign-in while entries are open: the chat keyword and the lookup are the way in.
+  const chatOnlyOpen = !giveaway.rules.pageEntry && giveaway.status === "open" && !isIn
 
   return (
     <Page width="compact" as="article" className="viewer">
@@ -88,7 +91,7 @@ function GiveawayDetails({
       <div aria-live="polite" className="viewer-outcome">
         {me.kind === "won" ? (
           <ClaimPanel code={code} win={me} giveaway={giveaway} />
-        ) : (
+        ) : chatOnlyOpen ? null : (
           <EntryPanel
             entry={entry}
             tickets={tickets}
@@ -100,6 +103,14 @@ function GiveawayDetails({
           />
         )}
       </div>
+      {giveaway.rules.chatKeyword === null || isIn || isWinner ? null : (
+        <ChatEntry
+          code={code}
+          keyword={giveaway.rules.chatKeyword}
+          streamerName={giveaway.streamerName}
+          open={giveaway.status === "open" && !giveaway.chatEntryOff}
+        />
+      )}
       <div className="viewer-details">
         {isIn ? null : <GiveawayFacts kind={isWinner ? "pool" : "entry"} giveaway={giveaway} />}
         <GiveawayRules giveaway={giveaway} />

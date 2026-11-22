@@ -170,6 +170,7 @@ const previewSnapshot: OverlaySnapshot = {
   ticketTotal: 128,
   winnerCount: 1,
   chatClaimUnavailable: false,
+  chatEntryOff: false,
   rerollOpen: false,
   rerollBlocked: null,
   title: null,

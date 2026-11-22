@@ -92,6 +92,38 @@ export function helixRoutes(state: FakeState, eventSubRoutes: Hono<HelixEnv>): H
     return c.json({ total: data.length, data, pagination: {} })
   })
 
+  // Only the follower filtered by `user_id`: the room asks about one chatter at a time.
+  app.get("/channels/followers", (c) => {
+    const failure = scriptedHelixFailure(c, state, "followers")
+    if (failure) return failure
+    const missingScope = requireScope(c, "moderator:read:followers")
+    if (missingScope) return missingScope
+
+    const broadcasterId = c.req.query("broadcaster_id")
+    const userId = c.req.query("user_id")
+    if (broadcasterId === undefined || userId === undefined) {
+      return helixError(c, 400, "Missing required parameter broadcaster_id or user_id")
+    }
+    if (broadcasterId !== c.get("token").userId) {
+      return helixError(c, 403, "The user in the access token is not a moderator of the channel")
+    }
+    const follower = state.follows.has(pairKey(userId, broadcasterId))
+      ? state.users.get(userId)
+      : undefined
+    const data =
+      follower === undefined
+        ? []
+        : [
+            {
+              user_id: follower.id,
+              user_login: follower.login,
+              user_name: follower.displayName,
+              followed_at: follower.createdAt,
+            },
+          ]
+    return c.json({ total: data.length, data, pagination: {} })
+  })
+
   app.get("/users", (c) => {
     const failure = scriptedHelixFailure(c, state, "users")
     if (failure) return failure
@@ -196,7 +228,7 @@ export const globalSubscriberBadgeUrl =
 
 // Twitch names a channel's badge versions by months subscribed, and the first of a tier by the tier: "0" for tier 1, "2000" and "3000" for the others.
 const tiers: readonly Tier[] = ["1000", "2000", "3000"]
-const tierVersionIds: Readonly<Record<Tier, string>> = {
+export const tierVersionIds: Readonly<Record<Tier, string>> = {
   "1000": "0",
   "2000": "2000",
   "3000": "3000",

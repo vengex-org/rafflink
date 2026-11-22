@@ -28,6 +28,7 @@ export function sessionRoutes(deps: AppDeps): Hono {
               canCreate: await canCreateGiveaways(deps.config, deps.admins, current.streamer),
               platform: current.session.platform,
               capabilities: providerFor(deps.platforms, current.session.platform).capabilities,
+              chatEntryReady: await chatEntryReady(deps, current.session),
             },
       donateUrl: deps.config.donateUrl,
       operator: operatorOf(deps.config),
@@ -41,6 +42,12 @@ export function sessionRoutes(deps: AppDeps): Hono {
   })
 
   return app
+}
+
+async function chatEntryReady(deps: AppDeps, session: StreamerSession): Promise<boolean> {
+  const token = await deps.accounts.findStreamerToken(session.streamerId)
+  const needed = providerFor(deps.platforms, session.platform).chatEntryScopes
+  return token !== null && needed.every((scope) => token.scopes.includes(scope))
 }
 
 function operatorOf(config: ResolvedConfig): OperatorJson | null {

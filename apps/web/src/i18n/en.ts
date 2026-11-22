@@ -242,6 +242,8 @@ export const en = {
   "reason.followers-only": "This giveaway is for followers only.",
   "reason.account-too-young": "Your Twitch account is too new for this giveaway.",
   "reason.no-tickets": "Your group gets no tickets in this giveaway.",
+  "reason.page-entry-off": "This giveaway takes entries in the stream chat only.",
+  "reasonHelp.page-entry-off": "Type the keyword shown on this page in the stream chat to enter.",
   "reasonHelp.broadcaster": "Sign in with a different Twitch account to enter.",
   "entry.otherAccount": "Use another Twitch account",
   "reason.blocked": "You cannot enter this giveaway.",
@@ -306,6 +308,7 @@ export const en = {
   "issue.blank": "This field cannot be empty.",
   "issue.too-long": "This is too long. Make it shorter.",
   "issue.too-large": "This number is too large. Enter a smaller one.",
+  "issue.no-entry-way": "Viewers need a way to enter: the page, the chat or both.",
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.unknown-kind": "Pick one of the options.",
@@ -536,6 +539,8 @@ export const en = {
 
   "live.reconnecting": "Reconnecting to the live feed…",
   "live.chatOff.title": "Chat watch is off",
+  "live.chatEntryOff.text":
+    "Chat entry is off: Rafflink cannot read your chat right now, so typing the keyword enters nobody. Viewers can still enter on the giveaway page if it takes page entries.",
   "live.chatOff.text":
     "Chat claim unavailable: Rafflink cannot read your chat right now, so winners cannot claim by typing there. When a winner tells you they are in, press Mark as claimed next to their name.",
   "live.open.title": "Entries are open",
@@ -753,6 +758,32 @@ export const en = {
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Any chat message from the winner also counts.",
   "review.keywordChat": 'The winner can also type "{keyword}" in your chat.',
+  "wizard.entry.legend": "How viewers enter",
+  "wizard.entry.page": "Giveaway page",
+  "wizard.entry.page.help": "Viewers sign in with Twitch on the giveaway page.",
+  "wizard.entry.both": "Page and chat",
+  "wizard.entry.both.help": "Viewers can also enter by typing a keyword in your chat.",
+  "wizard.entry.chat": "Chat only",
+  "wizard.entry.chat.help":
+    "Viewers enter only by typing a keyword in your chat. The page shows the keyword and lets them check whether they are in.",
+  "wizard.reconnect.text":
+    "To check whether a chat entrant follows you, Rafflink needs one more Twitch permission (read your followers). Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.button": "Reconnect Twitch",
+  "wizard.chatKeyword.label": "Entry keyword",
+  "wizard.chatKeyword.help":
+    "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
+  "review.entry": "Entry",
+  "review.entryPage": "On the giveaway page.",
+  "review.entryBoth": 'On the giveaway page or by typing "{keyword}" in your chat.',
+  "review.entryChat": 'Only by typing "{keyword}" in your chat.',
+  "giveaway.chatEntry": "Or type {keyword} in the chat of {name} to enter.",
+  "giveaway.lookup.legend": "Entered by chat?",
+  "giveaway.lookup.label": "Your Twitch login",
+  "giveaway.lookup.button": "Am I in?",
+  "giveaway.lookup.yes": "{login} is in the giveaway.",
+  "giveaway.lookup.no":
+    "{login} is not in the giveaway yet. A chat entry can take a minute to show up.",
+  "giveaway.lookup.failed": "The check did not work. Try again.",
 
   "legal.privacy": "Privacy",
   "legal.terms": "Terms",
@@ -785,7 +816,7 @@ export const en = {
   "privacy.data.i4":
     'Everyone drawn, rerolled picks included: Twitch user ID, login name, display name, the draw result and whether and how the prize was claimed. The user ID stays with the pick also after the name was replaced with "removed".',
   "privacy.data.i5":
-    "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
+    "Chat messages: read in memory to recognise the entry keyword and a winner's claim, and to show the winner's messages on the live page. They are never stored or logged. Typing the entry keyword stores your Twitch user ID, login, display name and the roles your chat badges show until the entry is checked; then you are an entrant like on the page, and the follow is checked with the streamer's token.",
   "privacy.data.i6":
     "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example with rate limits.",
   "privacy.data.i7":
@@ -837,6 +868,8 @@ export const en = {
     "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes by default.",
   "privacy.cookies.i5":
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
+  "privacy.cookies.i7":
+    "rl_chat_entry: remembers that the last streamer sign-in in this browser allowed reading the channel's followers for chat entry, so the next sign-in asks for it again; 400 days, kept when signing out.",
   "privacy.cookies.i6":
     "rl_mod_*: lets whoever opened a moderator link use that giveaway's moderator page, 7 days by default or until the streamer revokes the link. rl_mod_pending: remembers which link waits for the moderator's Twitch sign-in, 10 minutes by default.",
   "privacy.rights.h": "Your rights",

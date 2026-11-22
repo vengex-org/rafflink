@@ -11,6 +11,8 @@ export interface GiveawayStreamerAccess {
   readonly provider: PlatformProvider
   readonly accessToken: string
   readonly broadcasterId: string
+  /** The scopes the streamer granted, so a caller can skip a call the token may not make. */
+  readonly scopes: readonly string[]
 }
 
 /** An access token of the giveaway's streamer, with the channel it is for and its platform's provider. */
@@ -26,5 +28,6 @@ export async function openGiveawayStreamerAccess(
     provider: providerFor(deps.platforms, giveaway.platform),
     accessToken: await openStreamerAccess(deps, token),
     broadcasterId: giveaway.broadcasterId,
+    scopes: token.scopes,
   }
 }

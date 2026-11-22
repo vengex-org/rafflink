@@ -242,6 +242,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "reason.followers-only": "Táto súťaž je len pre sledovateľov.",
   "reason.account-too-young": "Tvoj účet na Twitchi je pre túto súťaž príliš nový.",
   "reason.no-tickets": "Tvoja skupina v tejto súťaži nemá žiadne lístky.",
+  "reason.page-entry-off": "Do tejto súťaže sa dá zapojiť len cez chat streamu.",
+  "reasonHelp.page-entry-off":
+    "Na zapojenie napíš do chatu streamu kľúčové slovo, ktoré vidíš na tejto stránke.",
   "reasonHelp.broadcaster": "Na zapojenie sa prihlás iným účtom na Twitchi.",
   "entry.otherAccount": "Použiť iný účet na Twitchi",
   "reason.blocked": "Do tejto súťaže sa nemôžeš zapojiť.",
@@ -307,6 +310,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.blank": "Toto pole nesmie byť prázdne.",
   "issue.too-long": "Text je príliš dlhý. Skráť ho.",
   "issue.too-large": "Toto číslo je príliš veľké. Zadaj menšie.",
+  "issue.no-entry-way":
+    "Diváci sa musia mať ako zapojiť: cez stránku, cez chat alebo oboma spôsobmi.",
   "issue.not-a-timestamp": "Zadaj platný dátum a čas.",
   "issue.in-the-past": "Čas ukončenia musí byť v budúcnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
@@ -536,6 +541,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
 
   "live.reconnecting": "Znovu sa pripájam k živému prenosu…",
   "live.chatOff.title": "Sledovanie chatu je vypnuté",
+  "live.chatEntryOff.text":
+    "Zapojenie cez chat je vypnuté: Rafflink teraz nevie čítať tvoj chat, takže napísanie kľúčového slova nikoho nezapojí. Ak súťaž berie zapojenie cez stránku, diváci sa môžu zapojiť tam.",
   "live.chatOff.text":
     "Prevzatie cez chat nie je dostupné: Rafflink teraz nevie čítať tvoj chat, takže víťazi výhru nemôžu prevziať napísaním doň. Keď ti víťaz povie, že je tu, stlač pri jeho mene Označiť ako prevzaté.",
   "live.open.title": "Zápis je otvorený",
@@ -756,6 +763,32 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Platí aj akákoľvek správa víťaza v chate.",
   "review.keywordChat": "Víťaz môže napísať aj „{keyword}“ do tvojho chatu.",
+  "wizard.entry.legend": "Ako sa diváci zapoja",
+  "wizard.entry.page": "Stránka súťaže",
+  "wizard.entry.page.help": "Diváci sa prihlásia cez Twitch na stránke súťaže.",
+  "wizard.entry.both": "Stránka aj chat",
+  "wizard.entry.both.help": "Diváci sa môžu zapojiť aj napísaním kľúčového slova do tvojho chatu.",
+  "wizard.entry.chat": "Len chat",
+  "wizard.entry.chat.help":
+    "Diváci sa zapoja len napísaním kľúčového slova do tvojho chatu. Stránka ukáže kľúčové slovo a dovolí im overiť si, či sú v súťaži.",
+  "wizard.reconnect.text":
+    "Aby Rafflink overil, či ťa divák z chatu sleduje, potrebuje ešte jedno povolenie Twitchu (čítať tvojich sledujúcich). Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.button": "Pripojiť Twitch znova",
+  "wizard.chatKeyword.label": "Kľúčové slovo na zapojenie",
+  "wizard.chatKeyword.help":
+    "Správa v chate, ktorá začína týmto slovom, diváka zapojí s rovnakými pravidlami a lístkami ako stránka. Rafflink do tvojho chatu nikdy nepíše.",
+  "review.entry": "Zapojenie",
+  "review.entryPage": "Na stránke súťaže.",
+  "review.entryBoth": "Na stránke súťaže alebo napísaním „{keyword}“ do tvojho chatu.",
+  "review.entryChat": "Len napísaním „{keyword}“ do tvojho chatu.",
+  "giveaway.chatEntry": "Alebo napíš {keyword} do chatu kanála {name} a zapojíš sa.",
+  "giveaway.lookup.legend": "Zapojenie cez chat",
+  "giveaway.lookup.label": "Tvoje meno na Twitchi",
+  "giveaway.lookup.button": "Som v súťaži?",
+  "giveaway.lookup.yes": "{login} je v súťaži.",
+  "giveaway.lookup.no":
+    "{login} zatiaľ v súťaži nie je. Zapojenie z chatu sa môže ukázať až o minútu.",
+  "giveaway.lookup.failed": "Kontrola nevyšla. Skús to znova.",
 
   "legal.privacy": "Ochrana súkromia",
   "legal.terms": "Podmienky",
@@ -788,7 +821,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i4":
     "Všetci vyžrebovaní, aj tí nahradení novým žrebom: Twitch ID používateľa, prihlasovacie a zobrazované meno, výsledok žrebovania a to, či a ako bola výhra prevzatá. ID používateľa zostáva pri žrebe aj po tom, čo bolo meno nahradené slovom „removed“.",
   "privacy.data.i5":
-    "Správy z chatu: čítajú sa len v pamäti, aby sa rozpoznalo prevzatie výhry a aby sa na živej stránke ukázali správy výhercu. Nikdy sa neukladajú ani nelogujú.",
+    "Správy z chatu: čítajú sa len v pamäti, aby sa rozpoznalo kľúčové slovo na zapojenie a prevzatie výhry a aby sa na živej stránke ukázali správy výhercu. Nikdy sa neukladajú ani nelogujú. Keď napíšeš kľúčové slovo, uloží sa tvoje Twitch ID, prihlasovacie meno, zobrazované meno a roly z tvojich odznakov v chate, kým sa zapojenie neskontroluje; potom si v súťaži rovnako ako zo stránky a sledovanie kanála sa overí tokenom streamera.",
   "privacy.data.i6":
     "Technické údaje: hostiteľ spracúva tvoju IP adresu a údaje o požiadavke, aby stránku doručil a ochránil pred zneužitím, napríklad obmedzeniami rýchlosti.",
   "privacy.data.i7":
@@ -841,6 +874,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "rl_pending_*: umožní prehliadaču, ktorý zaradil zapojenie do fronty, vyzdvihnúť jeho výsledok, predvolene 10 minút.",
   "privacy.cookies.i5":
     "Lokálne úložisko prehliadača si pamätá tvoj výber jazyka a témy a čistý režim živej stránky. Úložisko relácie drží približne 30 sekúnd kópiu načítanej stránky giveawayu vrátane tvojho stavu v nej. Zariadenie neopúšťa ani jedno.",
+  "privacy.cookies.i7":
+    "rl_chat_entry: pamätá si, že posledné prihlásenie streamera v tomto prehliadači povolilo čítať sledujúcich kanála pre zapojenie cez chat, aby ho ďalšie prihlásenie pýtalo znova; 400 dní, ostáva aj po odhlásení.",
   "privacy.cookies.i6":
     "rl_mod_*: umožní tomu, kto otvoril odkaz pre moderátora, používať stránku moderátora daného giveawayu, predvolene 7 dní alebo kým streamer odkaz nezruší. rl_mod_pending: pamätá si, ktorý odkaz čaká na prihlásenie moderátora cez Twitch, predvolene 10 minút.",
   "privacy.rights.h": "Tvoje práva",

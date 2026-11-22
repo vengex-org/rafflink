@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import {
+  accountAgeDays,
   evaluateEligibility,
+  isEntryMessage,
   parseClaimSeconds,
   parseRules,
   type GiveawayRules,
@@ -14,6 +16,8 @@ const rules: GiveawayRules = {
   minAccountAgeDays: null,
   claimKeyword: null,
   excludeRecentWinners: null,
+  chatKeyword: null,
+  pageEntry: true,
 }
 
 const viewer: ViewerFacts = {
@@ -203,7 +207,49 @@ describe("parseRules", () => {
         minAccountAgeDays: null,
         claimKeyword: null,
         excludeRecentWinners: null,
+        chatKeyword: null,
+        pageEntry: true,
       },
+    })
+  })
+
+  it("keeps page entry on unless it is turned off, and only next to a chat keyword", () => {
+    expect(
+      parseRules({ ...validInput, pageEntry: false, chatKeyword: "!enter" }, config),
+    ).toMatchObject({
+      ok: true,
+      value: { pageEntry: false, chatKeyword: "!enter" },
+    })
+    expect(parseRules({ ...validInput, pageEntry: false }, config)).toEqual({
+      ok: false,
+      issue: { field: "pageEntry", code: "no-entry-way" },
+    })
+    expect(parseRules({ ...validInput, pageEntry: "no" }, config)).toEqual({
+      ok: false,
+      issue: { field: "pageEntry", code: "not-a-boolean" },
+    })
+  })
+
+  it("parses a trimmed chat keyword and checks it like the claim keyword", () => {
+    expect(parseRules({ ...validInput, chatKeyword: " !enter " }, config)).toMatchObject({
+      ok: true,
+      value: { chatKeyword: "!enter" },
+    })
+    expect(parseRules({ ...validInput, chatKeyword: null }, config)).toMatchObject({
+      ok: true,
+      value: { chatKeyword: null },
+    })
+    expect(parseRules({ ...validInput, chatKeyword: " " }, config)).toEqual({
+      ok: false,
+      issue: { field: "chatKeyword", code: "blank" },
+    })
+    expect(parseRules({ ...validInput, chatKeyword: 1 }, config)).toEqual({
+      ok: false,
+      issue: { field: "chatKeyword", code: "not-a-string" },
+    })
+    expect(parseRules({ ...validInput, chatKeyword: "a".repeat(11) }, config)).toEqual({
+      ok: false,
+      issue: { field: "chatKeyword", code: "too-long" },
     })
   })
 
@@ -403,6 +449,29 @@ describe("parseRules recent winners", () => {
         issue: { field: "excludeRecentWinners", code: "not-an-object" },
       })
     }
+  })
+})
+
+describe("isEntryMessage", () => {
+  it("matches the keyword alone or as the first word, in any letter case", () => {
+    expect(isEntryMessage("!enter", "!enter")).toBe(true)
+    expect(isEntryMessage("  !ENTER  ", "!enter")).toBe(true)
+    expect(isEntryMessage("!enter please", "!Enter")).toBe(true)
+  })
+
+  it("refuses the keyword inside another word or later in the message", () => {
+    expect(isEntryMessage("!entering", "!enter")).toBe(false)
+    expect(isEntryMessage("do !enter", "!enter")).toBe(false)
+    expect(isEntryMessage("", "!enter")).toBe(false)
+  })
+})
+
+describe("accountAgeDays", () => {
+  it("counts whole days and never goes below 0", () => {
+    const day = 86_400_000
+    expect(accountAgeDays(10 * day - 1, 0)).toBe(9)
+    expect(accountAgeDays(10 * day, 0)).toBe(10)
+    expect(accountAgeDays(0, day)).toBe(0)
   })
 })
 

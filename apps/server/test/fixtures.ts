@@ -29,6 +29,8 @@ export const validRules: GiveawayRules = {
   minAccountAgeDays: null,
   claimKeyword: null,
   excludeRecentWinners: null,
+  chatKeyword: null,
+  pageEntry: true,
 }
 
 export function giveawayInit(id: string, closesAt: number | null = null): GiveawayInit {

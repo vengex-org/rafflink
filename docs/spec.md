@@ -101,7 +101,34 @@ shows no plan switch.
   claimed" on the live page. It works for any pick that is neither claimed nor rerolled, also after the claim
   time, and is recorded as `manual`.
 
-**Chat watch.** Rafflink reads chat from the draw until the giveaway is finished: the reroll window
+**Chat entry (#60).** The wizard offers page entry, a chat keyword (default `!enter`), or both; chat only refuses
+a page entry with the reason `page-entry-off`. While entries are open the room watches chat over the same
+EventSub socket as the claims, and a message that starts with the keyword queues the chatter once; repeats,
+entrants and the broadcaster are ignored and Rafflink never posts to chat. The sub tier, VIP and moderator come
+from the chat badges (or the stored role lists). The room alarm checks the queue every
+`CHAT_ENTRY_CHECK_SECONDS`: one `GET /helix/users?id=` with the app token for up to 100 chatters (account age,
+picture), plus `GET /helix/channels/followers?user_id=` with the streamer's token only for chatters whose follow
+changes the outcome, at most `CHAT_ENTRY_FOLLOWER_CHECKS` per check. Then the chatter enters by the same rules as
+a page entry (`entries.via = chat`) and is one entrant with a page entry of the same account. At the close the
+room asks one last profile read (no follows) for whoever still waits and holds the commit for two check periods;
+the commit enters the rest as not following and with an unknown account age, so a followers-only or minimum-age
+rule refuses them. The giveaway page has an "Am I in?" lookup by login (`GET /api/g/:code/entered`, rate limited
+per address like the leaf list) that answers yes or no for chat entrants only; page entrants are never found.
+
+- Scope: `moderator:read:followers` is not part of the base streamer scopes. When a streamer turns chat entry on
+  and the stored token lacks it, the wizard offers "Reconnect Twitch" (`/auth/twitch/streamer/start?scopes=chat-entry`,
+  base scopes plus this one); the wizard keeps its answers across the round trip. Twitch grants only the
+  scopes a sign-in asks for, so a later normal sign-in asks for it again when the browser's last sign-in
+  granted it (a signed cookie) or the signed-in streamer's stored token holds it. A chat-entry giveaway whose
+  token still lacks it counts every chatter as not following and logs it once.
+- Helix budget: the follow reads use the streamer's token, whose bucket is 800 points a minute; 15 every 3 s
+  is 300. The profile reads use the app token, whose 800 points a minute are shared by every giveaway of the
+  installation (and the badge reads); one call per check per giveaway with waiting chatters is 20 a minute, so
+  about 40 giveaways taking chat entries at once fill it.
+- The process keeps the streamer's access token for 90% of its announced lifetime, so the checks do not refresh
+  it each time.
+
+**Chat watch.** Besides chat entry, Rafflink reads chat from the draw until the giveaway is finished: the reroll window
 (`REROLL_WINDOW_SECONDS`, default one hour) after the latest claim time of a pick that is not rerolled. Claims
 happen only in the claim window; the rest of the watch shows the winners' newest messages on the live page:
 
@@ -266,7 +293,8 @@ While the queue is empty, no extra request is made: the normal path is one callb
 ### Streamer flow
 
 Code flow with `openid channel:read:vips moderation:read user:read:chat` (`user:read:chat` for the chat
-claim). Rafflink keeps the streamer's refresh token
+claim and chat entry); the reconnect for chat entry adds `moderator:read:followers` (see Chat entry). The
+granted scopes are stored with the token. Rafflink keeps the streamer's refresh token
 (confidential clients get refresh tokens that do not expire). Twitch requires apps that keep an OAuth session
 to call `GET id.twitch.tv/oauth2/validate` at start and every hour. A Cron Trigger validates every stored
 streamer token hourly (a timer on the VPS) and deletes the ones that return 401; a 5xx, a 429 or a network

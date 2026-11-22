@@ -161,8 +161,8 @@ export function operationsScenarios(context: ContractContext): void {
     },
   )
 
-  // A deleted token is no longer refreshed or validated, so the second job run reaches Twitch only for
-  // the token that was kept.
+  // A deleted token is no longer refreshed or validated, so the second job run validates only the token
+  // that was kept, with the access token the first run left in the process.
   scenario(
     context,
     "the hourly validation deletes a revoked streamer token and keeps the others",
@@ -177,7 +177,7 @@ export function operationsScenarios(context: ContractContext): void {
       const validationsBefore = world.twitchCalls("/oauth2/validate")
       await target.runValidateJob()
 
-      expect(world.twitchCalls("/oauth2/token") - refreshesBefore).toBe(1)
+      expect(world.twitchCalls("/oauth2/token") - refreshesBefore).toBe(0)
       expect(world.twitchCalls("/oauth2/validate") - validationsBefore).toBe(1)
     },
   )

@@ -10,6 +10,8 @@ export const rules: GiveawayRules = {
   minAccountAgeDays: null,
   claimKeyword: null,
   excludeRecentWinners: null,
+  chatKeyword: null,
+  pageEntry: true,
 }
 
 /** The body of `GET /api/g/ABCDE` for a viewer who has not signed in. */
@@ -24,6 +26,7 @@ export const giveaway: GiveawayView & { readonly me: ViewerState } = {
   claimSeconds: 300,
   entrantCount: 42,
   finished: false,
+  chatEntryOff: false,
   poll: { intervalMs: 10, maxMs: 80 },
   me: { kind: "signed-out" },
 }
@@ -65,6 +68,7 @@ export const liveSnapshot: LiveSnapshot = {
   shuffleNames: [],
   now: 1_700_000_000_000,
   chatClaimUnavailable: false,
+  chatEntryOff: false,
 }
 
 /** A claim time and how the English interface writes it with its date, in the zone the test runs in. */
@@ -85,8 +89,9 @@ export const twitchPlatform = {
     vip: true,
     accountAge: true,
     pageEntry: true,
-    chatEntry: false,
+    chatEntry: true,
   },
+  chatEntryReady: true,
 }
 
 /** A signed-in streamer on a deployment that names a support page. */

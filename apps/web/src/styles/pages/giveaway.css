@@ -363,6 +363,24 @@ main.container:has(> .viewer) {
   color: var(--danger);
 }
 
+/* Chat entry: the keyword to type and the "Am I in?" lookup by login. */
+
+.chat-entry {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.chat-lookup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-1);
+}
+
+.chat-lookup .field {
+  flex: 1 1 12rem;
+}
+
 /* Detail rows */
 
 /* The details card: the fact rows and the rules row in one card, so the page shows one block of details, not two. */

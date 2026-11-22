@@ -1,5 +1,5 @@
 import type { Parsed } from "../../lib/parsed.ts"
-import type { ChatBadge, ChatMessage } from "../../platform/chat-source.ts"
+import type { ChatMessage, ChatterRoles } from "../../platform/chat-source.ts"
 
 /** The EventSub WebSocket messages the watcher acts on; any other message type is `ignored`. */
 export type EventSubMessage =
@@ -82,28 +82,49 @@ function parseChatNotification(
   ) {
     return malformed
   }
-  const badges = parseBadges(event.badges)
-  if (badges === null) return malformed
+  const roles = parseBadges(event.badges)
+  if (roles === null) return malformed
   return {
     ok: true,
     value: {
       kind: "notification",
-      chat: { platformUserId, login, displayName, text: message.text, badges },
+      chat: { platformUserId, login, displayName, text: message.text, roles },
     },
   }
 }
 
 // Twitch writes each badge as `{ set_id, id, info }`; `info` (the months of a sub badge) is not read.
-function parseBadges(value: unknown): ChatBadge[] | null {
+function parseBadges(value: unknown): ChatterRoles | null {
   if (!Array.isArray(value)) return null
-  const badges: ChatBadge[] = []
+  let roles: ChatterRoles = { subTier: null, isVip: false, isModerator: false }
   for (const badge of value) {
     if (!isRecord(badge) || typeof badge.set_id !== "string" || typeof badge.id !== "string") {
       return null
     }
-    badges.push({ setId: badge.set_id, id: badge.id })
+    switch (badge.set_id) {
+      case "subscriber":
+        roles = { ...roles, subTier: subscriberTier(badge.id) }
+        break
+      // A founder shows this badge instead of the subscriber one while subscribed; it names no tier.
+      case "founder":
+        roles = { ...roles, subTier: roles.subTier ?? 1 }
+        break
+      case "vip":
+        roles = { ...roles, isVip: true }
+        break
+      case "moderator":
+        roles = { ...roles, isModerator: true }
+        break
+    }
   }
-  return badges
+  return roles
+}
+
+// A subscriber badge id counts months, and from tier 2 up starts at the tier: "0", "3" for tier 1, "2000", "2003" for tier 2, "3012" for tier 3.
+function subscriberTier(id: string): 1 | 2 | 3 {
+  const version = Number(id)
+  if (version >= 3000) return 3
+  return version >= 2000 ? 2 : 1
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

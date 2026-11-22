@@ -13,7 +13,7 @@ import {
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { dashboardPath } from "../lib/routes.ts"
-import { isCreated, markCreated, readDraft } from "../lib/wizard-draft.ts"
+import { isCreated, markCreated, readDraft, takeReconnectDraft } from "../lib/wizard-draft.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
@@ -53,10 +53,13 @@ export function CreateForm({
 }) {
   const { t } = useI18n()
   const { state } = useLocation()
-  const [saved] = useState(() => readDraft(state))
+  const [query, setQuery] = useSearchParams()
+  // Coming back from "Reconnect Twitch" lands on the rules step with no history entry; the answers wait in session storage.
+  const [saved] = useState(
+    () => readDraft(state) ?? (query.get("step") === "2" ? takeReconnectDraft() : null),
+  )
   const [id] = useState(() => saved?.id ?? crypto.randomUUID())
   const [values, setValues] = useState(saved?.values ?? seed)
-  const [query, setQuery] = useSearchParams()
   const [furthest, setFurthest] = useState<Step>(saved?.furthest ?? 1)
   const wanted = query.get("step")
   const step = clampStep(wanted, furthest)

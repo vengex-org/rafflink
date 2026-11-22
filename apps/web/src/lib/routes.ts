@@ -67,6 +67,11 @@ export function streamerSignInPath(returnTo: string): string {
 
 /** A moderator's sign-in for the link that just asked for it; the server remembers which link in a cookie. */
 export const moderatorSignInPath = "/auth/twitch/moderator/start"
+/** Signs the streamer in again with the scopes chat entry needs, then back to `returnTo`. */
+export function chatEntryReconnectPath(returnTo: string): string {
+  const query = new URLSearchParams({ scopes: "chat-entry", return: returnTo })
+  return withQuery("/auth/twitch/streamer/start", query)
+}
 
 export function viewerSignInPath(code: string): string {
   return `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`

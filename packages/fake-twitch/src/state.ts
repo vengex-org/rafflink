@@ -31,6 +31,7 @@ export type FailableEndpoint =
   | "token"
   | "subscriptions"
   | "followed"
+  | "followers"
   | "users"
   | "vips"
   | "moderators"
