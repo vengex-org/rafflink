@@ -101,6 +101,8 @@ export interface SessionJson {
     readonly displayName: string
     readonly login: string
     readonly profileImageUrl: string | null
+    /** False while OPEN_SIGNUP is off and no admin has approved the account: it may sign in but not create giveaways. */
+    readonly canCreate: boolean
   } | null
   readonly donateUrl: string | null
 }
@@ -149,7 +151,32 @@ export interface AdminUsageJson {
   /** The daily limits today's requests reached `alertPercent` of. */
   readonly alerts: readonly UsageAlert[]
   readonly alertPercent: number
+  /** OPEN_SIGNUP: every streamer may create giveaways, so the page shows no access lists. */
+  readonly signupOpen: boolean
   readonly queue: QueueStats
+}
+
+/** A streamer in the admin's access lists. `id` is the account id the approve and revoke calls take. */
+export interface AdminStreamerJson {
+  readonly id: string
+  readonly login: string
+  readonly displayName: string
+  /** First sign-in. */
+  readonly createdAt: number
+  /** Null while the account waits for approval. */
+  readonly approvedAt: number | null
+}
+
+/** One access list, newest first. `truncated`: more streamers exist than STREAMER_ACCESS_LIST_MAX shows. */
+export interface AdminStreamerListJson {
+  readonly streamers: readonly AdminStreamerJson[]
+  readonly truncated: boolean
+}
+
+/** Who waits for approval and who is approved; admins are in neither list. */
+export interface AdminStreamersJson {
+  readonly pending: AdminStreamerListJson
+  readonly approved: AdminStreamerListJson
 }
 
 export function verifyJson(verification: Verification): VerifyJson {

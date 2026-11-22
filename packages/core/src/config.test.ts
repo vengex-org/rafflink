@@ -358,6 +358,16 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("keeps signup closed unless OPEN_SIGNUP is true and rejects any other value", () => {
+    expect(resolveConfig(required).openSignup).toBe(false)
+    expect(resolveConfig({ ...required, OPEN_SIGNUP: "true" }).openSignup).toBe(true)
+    expect(resolveConfig({ ...required, OPEN_SIGNUP: "false" }).openSignup).toBe(false)
+    expect(failure({ ...required, OPEN_SIGNUP: "yes" })).toMatchObject({
+      env: "OPEN_SIGNUP",
+      reason: "not-a-boolean",
+    })
+  })
+
   it("leaves the support link null when unset or blank and accepts only an https URL", () => {
     expect(resolveConfig(required).donateUrl).toBeNull()
     expect(resolveConfig({ ...required, DONATE_URL: "  " }).donateUrl).toBeNull()

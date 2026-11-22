@@ -14,7 +14,12 @@ afterEach(() => {
 const signedIn = {
   "GET /api/session": () =>
     ok({
-      streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+      streamer: {
+        displayName: "Streamy",
+        login: "streamy",
+        profileImageUrl: null,
+        canCreate: true,
+      },
       donateUrl: null,
     }),
 }
@@ -44,7 +49,12 @@ describe("header session", () => {
     mockFetch({
       "GET /api/session": () =>
         ok({
-          streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: picture },
+          streamer: {
+            displayName: "Streamy",
+            login: "streamy",
+            profileImageUrl: picture,
+            canCreate: true,
+          },
           donateUrl: null,
         }),
     })
@@ -157,7 +167,12 @@ describe("header session", () => {
         sessionCalls += 1
         return sessionCalls === 1
           ? ok({
-              streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+              streamer: {
+                displayName: "Streamy",
+                login: "streamy",
+                profileImageUrl: null,
+                canCreate: true,
+              },
               donateUrl: null,
             })
           : { status: 500, body: { error: "unavailable" } }

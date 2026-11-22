@@ -27,6 +27,7 @@ export function sessionScenarios(context: ContractContext): void {
         displayName: users.streamer.displayName,
         login: users.streamer.login,
         profileImageUrl: users.streamer.profileImageUrl,
+        canCreate: true,
       },
       donateUrl: null,
     })

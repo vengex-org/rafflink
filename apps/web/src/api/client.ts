@@ -3,6 +3,9 @@ import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rul
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
   AdminPlanJson,
+  AdminStreamerJson,
+  AdminStreamerListJson,
+  AdminStreamersJson,
   AdminUsageJson,
   BadgesJson,
   DashboardGiveaway,
@@ -134,6 +137,8 @@ export type CreateResult =
     }
   | { readonly kind: "invalid"; readonly field: string; readonly code: CreateIssue["code"] }
   | { readonly kind: "unauthorized" }
+  /** 403 `streamer_not_approved`: signup is closed and no admin approved the account. */
+  | { readonly kind: "not-approved" }
 
 export type AdminUsage = AdminUsageJson
 
@@ -168,6 +173,7 @@ export async function getSession(): Promise<SessionJson> {
       displayName: text(streamer, "displayName"),
       login: text(streamer, "login"),
       profileImageUrl: nullableText(streamer, "profileImageUrl"),
+      canCreate: bool(streamer, "canCreate"),
     },
     donateUrl,
   }
@@ -370,6 +376,9 @@ export async function createGiveaway(input: CreateGiveawayBody): Promise<CreateR
     body: JSON.stringify(input),
   })
   if (status === 401) return { kind: "unauthorized" }
+  if (status === 403 && record(body, "refusal").error === "streamer_not_approved") {
+    return { kind: "not-approved" }
+  }
   if (status === 400) {
     const source = record(body, "issue")
     return {
@@ -469,6 +478,7 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
     plan: source.plan === null ? null : parsePlan(child(source, "plan")),
     alerts: list(source, "alerts", parseAlert),
     alertPercent: num(source, "alertPercent"),
+    signupOpen: bool(source, "signupOpen"),
     queue: parseQueue(child(source, "queue")),
   }
 }
@@ -486,6 +496,34 @@ export async function switchPlan(
   return answerKind(source, switchPlanKinds)
 }
 
+export async function getAdminStreamers(): Promise<AdminStreamersJson> {
+  const { status, body } = await send("/api/admin/streamers")
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "streamers")
+  return {
+    pending: parseStreamerList(child(source, "pending")),
+    approved: parseStreamerList(child(source, "approved")),
+  }
+}
+
+function parseStreamerList(source: Json): AdminStreamerListJson {
+  return {
+    streamers: list(source, "streamers", parseAdminStreamer),
+    truncated: bool(source, "truncated"),
+  }
+}
+
+/** Approves or revokes a streamer's right to create giveaways; `rejected` when the server refused or the streamer is unknown. */
+export function decideStreamerAccess(
+  id: string,
+  decision: "approve" | "revoke",
+): Promise<StreamerAccessKind | Rejected> {
+  return act(`/api/admin/streamers/${encodeURIComponent(id)}/${decision}`, {}, streamerAccessKinds)
+}
+
+export type StreamerAccessKind = (typeof streamerAccessKinds)[number]
+
+const streamerAccessKinds = ["approved", "revoked"] as const
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
 const switchPlanKinds = ["switched"] as const
 const setWinnerKinds = ["set"] as const satisfies readonly SetWinnerCountKind[]
@@ -811,6 +849,16 @@ function parseOverridden(source: Json): PlanLimitOverrides {
     workerRequestsPerDay: bool(source, "workerRequestsPerDay"),
     doRequestsPerDay: bool(source, "doRequestsPerDay"),
     subrequestsPerInvocation: bool(source, "subrequestsPerInvocation"),
+  }
+}
+
+function parseAdminStreamer(source: Json): AdminStreamerJson {
+  return {
+    id: text(source, "id"),
+    login: text(source, "login"),
+    displayName: text(source, "displayName"),
+    createdAt: num(source, "createdAt"),
+    approvedAt: nullableNum(source, "approvedAt"),
   }
 }
 

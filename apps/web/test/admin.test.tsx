@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -46,8 +46,18 @@ const freeUsage = (workers: number, durableObjects = 5) => ({
 })
 
 function adminAnswer(overrides: Record<string, unknown> = {}) {
-  return ok({ usage: null, plan: null, alerts: [], alertPercent: 70, queue, ...overrides })
+  return ok({
+    usage: null,
+    plan: null,
+    alerts: [],
+    alertPercent: 70,
+    signupOpen: true,
+    queue,
+    ...overrides,
+  })
 }
+
+const list = (streamers: readonly unknown[], truncated = false) => ({ streamers, truncated })
 
 describe("admin page", () => {
   it("shows the usage as bars with a sentence and the queue counters with labels", async () => {
@@ -261,5 +271,123 @@ describe("admin page", () => {
     const view = renderApp("/admin")
 
     expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
+  })
+  describe("streamer access", () => {
+    const waiting = {
+      id: "s-wait",
+      login: "newbie",
+      displayName: "Newbie",
+      createdAt: 1_700_000_000_000,
+      approvedAt: null,
+    }
+    const allowed = { ...waiting, id: "s-ok", login: "oldie", displayName: "Oldie", approvedAt: 1 }
+
+    it("tells the admin when a list is cut", async () => {
+      mockFetch({
+        "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
+        "GET /api/admin/streamers": () =>
+          ok({ pending: list([waiting], true), approved: list([]) }),
+      })
+
+      const view = renderApp("/admin")
+
+      expect(
+        await view.findByText("More streamers exist than are listed. The newest are shown."),
+      ).toBeTruthy()
+    })
+
+    it("shows no access section while signup is open", async () => {
+      mockFetch({ "GET /api/admin/usage": () => adminAnswer() })
+
+      const view = renderApp("/admin")
+
+      expect(await view.findByRole("heading", { name: "Entry line" })).toBeTruthy()
+      expect(view.queryByRole("heading", { name: "Streamer access" })).toBeNull()
+    })
+
+    it("lists waiting and approved streamers with their login and first sign-in", async () => {
+      mockFetch({
+        "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
+        "GET /api/admin/streamers": () =>
+          ok({ pending: list([waiting]), approved: list([allowed]) }),
+      })
+
+      const view = renderApp("/admin")
+
+      const section = await view.findByRole("region", { name: "Streamer access" })
+      await within(section).findByText("Newbie")
+      expect(within(section).getByText("@newbie")).toBeTruthy()
+      expect(within(section).getAllByText(/^First sign-in /)).toHaveLength(2)
+      expect(within(section).getByText("Oldie")).toBeTruthy()
+      expect(within(section).getByRole("button", { name: "Approve Newbie" })).toBeTruthy()
+      expect(within(section).getByRole("button", { name: "Revoke Oldie" })).toBeTruthy()
+    })
+
+    it("approves a waiting streamer and reloads the lists", async () => {
+      let approved = false
+      const requests = mockFetch({
+        "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
+        "GET /api/admin/streamers": () =>
+          ok(
+            approved
+              ? { pending: list([]), approved: list([{ ...waiting, approvedAt: 2 }]) }
+              : { pending: list([waiting]), approved: list([]) },
+          ),
+        "POST /api/admin/streamers/s-wait/approve": () => {
+          approved = true
+          return ok({ kind: "approved" })
+        },
+      })
+
+      const view = renderApp("/admin")
+      fireEvent.click(await view.findByRole("button", { name: "Approve Newbie" }))
+
+      expect(await view.findByRole("button", { name: "Revoke Newbie" })).toBeTruthy()
+      expect(view.getByText("Approved.")).toBeTruthy()
+      expect(requests.map((request) => request.route)).toContain(
+        "POST /api/admin/streamers/s-wait/approve",
+      )
+    })
+
+    it("revokes an approved streamer", async () => {
+      let revoked = false
+      mockFetch({
+        "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
+        "GET /api/admin/streamers": () =>
+          ok(
+            revoked
+              ? { pending: list([allowed]), approved: list([]) }
+              : { pending: list([]), approved: list([allowed]) },
+          ),
+        "POST /api/admin/streamers/s-ok/revoke": () => {
+          revoked = true
+          return ok({ kind: "revoked" })
+        },
+      })
+
+      const view = renderApp("/admin")
+      fireEvent.click(await view.findByRole("button", { name: "Revoke Oldie" }))
+
+      expect(await view.findByRole("button", { name: "Approve Oldie" })).toBeTruthy()
+      expect(view.getByText("Approval revoked.")).toBeTruthy()
+    })
+
+    it("says so when the server refuses the decision", async () => {
+      mockFetch({
+        "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
+        "GET /api/admin/streamers": () => ok({ pending: list([waiting]), approved: list([]) }),
+        "POST /api/admin/streamers/s-wait/approve": () => ({
+          status: 404,
+          body: { error: "not-found" },
+        }),
+      })
+
+      const view = renderApp("/admin")
+      fireEvent.click(await view.findByRole("button", { name: "Approve Newbie" }))
+
+      expect(
+        await view.findByText("The change did not go through. Reload the page and try again."),
+      ).toBeTruthy()
+    })
   })
 })

@@ -127,6 +127,10 @@ The rest of the required config:
   at Twitch on the first admin check, using the app's own credentials; while Twitch does not answer, the
   admin page stays closed. The first lookup logs the resolved ids: copy them into this setting, because an
   id never changes and needs no lookup.
+- `OPEN_SIGNUP` (default `false`): who may create giveaways. With `false`, any Twitch account can sign in, but
+  it can create giveaways only after an admin approves it on the admin page, under "Streamer access"; the
+  accounts in `ADMIN_TWITCH_IDS` are always allowed. Set `true` to let every streamer create giveaways, as the
+  hosted service does. An approval is kept when you switch to `true` and back.
 - `SESSION_SECRET`: a long random string, for example the output of `openssl rand -base64 32`.
 - `TOKEN_SEAL_KEYS`: the key that encrypts stored streamer tokens, written as `<key id>:<32 random bytes in
   base64>`, for example `k1:` followed by the output of `openssl rand -base64 32`. To rotate, put the new key
@@ -205,6 +209,10 @@ git pull
 cd apps/server
 docker compose up -d --build
 ```
+
+Streamers that signed in before the approval feature existed wait for approval after this upgrade, so they
+cannot create giveaways until an admin approves them on the admin page. Set `OPEN_SIGNUP=true` to keep
+today's behavior.
 
 The Bun server limits viewer sign-in callbacks per client address (`ENTRY_IP_LIMIT_PER_MINUTE`, 60 by
 default) and its logs carry a request id only. Which address it counts depends on `CLIENT_IP_HEADER`:
@@ -389,7 +397,9 @@ refresh loop at three requests a second. 30 is a starting guess; raise it if man
 `/auth/*` is not covered, because the free plan has one rule.
 
 To upgrade, pull the new code, run `bun run build`, apply new migrations with
-`bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`.
+`bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`. Apply the migrations
+first: the new code reads columns that only the migration adds. After the upgrade that introduced streamer
+approval, streamers that signed in earlier wait for approval unless `OPEN_SIGNUP` is `true`.
 
 ## Security headers, link previews and OBS
 

@@ -5,14 +5,18 @@ import type { AsyncSql, Instant, SqlRow } from "../ports.ts"
 import { RoomRowError, roomStatuses, RowReader, type RoomStatus } from "../room/rows.ts"
 import {
   cloudflarePlanSql,
+  approvedStreamersSql,
+  approveStreamerSql,
   deleteStreamerTokenSql,
   giveawayByCodeSql,
   giveawayByIdSql,
   giveawaysOfStreamerSql,
   insertGiveawaySql,
   ownedGiveawaySql,
+  pendingStreamersSql,
   recordRetentionFailureSql,
   replaceStreamerTokenSql,
+  revokeStreamerSql,
   setRetentionArmedSql,
   setStatusSql,
   storeCloudflarePlanSql,
@@ -33,6 +37,10 @@ export interface StreamerRecord {
   readonly displayName: string
   /** Null when the streamer has no picture on Twitch's image host. */
   readonly profileImageUrl: string | null
+  /** First sign-in. */
+  readonly createdAt: Instant
+  /** When an admin approved the account; null while it waits. Only read when OPEN_SIGNUP is false. */
+  readonly approvedAt: Instant | null
 }
 
 /** What a streamer sign-in stores: the streamer and their sealed refresh token, written together. */
@@ -229,6 +237,27 @@ export class AccountStore {
     await this.sql.run(storeCloudflarePlanSql, [plan, at, changedBy])
   }
 
+  /** Streamers waiting for approval and approved ones, each newest first and cut to `limit`. */
+  async listStreamerAccess(
+    limit: number,
+  ): Promise<{ pending: StreamerRecord[]; approved: StreamerRecord[] }> {
+    const [pending, approved] = await Promise.all([
+      this.sql.all(pendingStreamersSql, [limit]),
+      this.sql.all(approvedStreamersSql, [limit]),
+    ])
+    return { pending: pending.map(parseStreamer), approved: approved.map(parseStreamer) }
+  }
+
+  /** Idempotent: an earlier approval keeps its time and approver. False when no such streamer exists. */
+  async approveStreamer(streamerId: string, approvedBy: string, at: Instant): Promise<boolean> {
+    return (await this.sql.all(approveStreamerSql, [at, approvedBy, streamerId])).length === 1
+  }
+
+  /** Idempotent. False when no such streamer exists. */
+  async revokeStreamer(streamerId: string): Promise<boolean> {
+    return (await this.sql.all(revokeStreamerSql, [streamerId])).length === 1
+  }
+
   private async findOne(sql: string, params: readonly string[]): Promise<Giveaway | null> {
     const [row] = await this.sql.all(sql, params)
     return row === undefined ? null : this.parseGiveaway(row)
@@ -267,6 +296,8 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     login: reader.text("login"),
     displayName: reader.text("display_name"),
     profileImageUrl: reader.nullableText("profile_image_url"),
+    createdAt: reader.int("created_at"),
+    approvedAt: reader.nullableInt("approved_at"),
   }
 }
 

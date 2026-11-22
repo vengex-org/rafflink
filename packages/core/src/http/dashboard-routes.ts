@@ -1,7 +1,8 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import { timingSafeEqual } from "hono/utils/buffer"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
-import type { Giveaway, NewGiveaway } from "../accounts/account-store.ts"
+import type { Giveaway, NewGiveaway, StreamerRecord } from "../accounts/account-store.ts"
+import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import { generateCode } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
@@ -29,6 +30,9 @@ import {
   dashboardGiveaway,
   readJson,
   type AdminPlanJson,
+  type AdminStreamerJson,
+  type AdminStreamerListJson,
+  type AdminStreamersJson,
   type AdminUsageJson,
   type BadgesJson,
   type EntrantsPage,
@@ -39,7 +43,7 @@ import type { StreamerSession } from "./session.ts"
 import { currentStreamer } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 
-type Env = { Variables: { streamer: StreamerSession } }
+type Env = { Variables: { streamer: StreamerSession; account: StreamerRecord } }
 
 export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   const app = new Hono<Env>()
@@ -49,9 +53,12 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   app.use("/api/overlay/:id/:token", webSocketOrigin(deps.config, { allowMissing: true }))
   app.use("/api/dash/*", requireStreamer(deps))
   app.use("/api/live/*", requireStreamer(deps))
-  app.use("/api/admin/*", requireStreamer(deps))
+  app.use("/api/admin/*", requireStreamer(deps), requireAdmin(deps))
 
   app.post("/api/dash/giveaways", async (c) => {
+    if (!(await canCreateGiveaways(deps.config, deps.admins, c.get("account")))) {
+      return c.json({ error: "streamer_not_approved" }, 403)
+    }
     const parsed = parseCreateGiveaway(await readJson(c), deps.clock.now(), deps.config)
     if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
     const streamer = c.get("streamer")
@@ -221,9 +228,6 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   })
 
   app.get("/api/admin/usage", async (c) => {
-    if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
-      return c.json({ error: "forbidden" }, 403)
-    }
     const plan = await activePlan(deps)
     const usage =
       plan === "unavailable" ? plan : await adminUsage(deps, plan === null ? null : plan.limits)
@@ -235,6 +239,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
           ? usageAlerts(usage, deps.config.usageAlertPercent)
           : [],
       alertPercent: deps.config.usageAlertPercent,
+      signupOpen: deps.config.openSignup,
       queue: await deps.queue.stats(),
     }
     return c.json(body)
@@ -243,7 +248,6 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   // The admin pays for the plan in the Cloudflare dashboard first; this only tells the app which limits apply.
   app.post("/api/admin/plan", sameOriginJson(deps.config), async (c) => {
     const { twitchUserId } = c.get("streamer")
-    if (!(await deps.admins.isAdmin(twitchUserId))) return c.json({ error: "forbidden" }, 403)
     if (deps.planQueue === null) return c.json({ error: "not-found" }, 404)
     const plan = planField(await readJson(c))
     if (plan === null) return c.json({ error: "invalid-input", field: "plan" }, 400)
@@ -257,6 +261,39 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       return c.json({ error: "queue-unavailable" }, 503)
     }
     return c.json({ kind: "switched", plan })
+  })
+
+  app.get("/api/admin/streamers", async (c) => {
+    c.header("Cache-Control", "no-store")
+    // Admins are never listed, so the query reads one row per possible admin more than the page shows.
+    const max = deps.config.streamerAccessListMax
+    const { pending, approved } = await deps.accounts.listStreamerAccess(
+      max + deps.config.admins.length + 1,
+    )
+    const body: AdminStreamersJson = {
+      pending: await withoutAdmins(deps, pending, max),
+      approved: await withoutAdmins(deps, approved, max),
+    }
+    return c.json(body)
+  })
+
+  app.post("/api/admin/streamers/:id/approve", sameOriginJson(deps.config), async (c) => {
+    const { twitchUserId } = c.get("streamer")
+    const streamerId = c.req.param("id")
+    if (!(await deps.accounts.approveStreamer(streamerId, twitchUserId, deps.clock.now()))) {
+      return c.json({ error: "not-found" }, 404)
+    }
+    console.info("streamer approved", { streamerId })
+    return c.json({ kind: "approved" })
+  })
+
+  app.post("/api/admin/streamers/:id/revoke", sameOriginJson(deps.config), async (c) => {
+    const streamerId = c.req.param("id")
+    if (!(await deps.accounts.revokeStreamer(streamerId))) {
+      return c.json({ error: "not-found" }, 404)
+    }
+    console.info("streamer approval revoked", { streamerId })
+    return c.json({ kind: "revoked" })
   })
 
   // OBS has no session: the token in the URL is the whole credential.
@@ -299,6 +336,7 @@ function requireStreamer(deps: AppDeps): MiddlewareHandler<Env> {
     const current = await currentStreamer(c, deps)
     if (current === null) return c.json({ error: "unauthorized" }, 401)
     c.set("streamer", current.session)
+    c.set("account", current.streamer)
     return next()
   }
 }
@@ -317,6 +355,35 @@ async function withOwnedRoom(
   if (giveaway === null) return c.json({ error: "not-found" }, 404)
   if (!(await initRoom(deps, giveaway))) return c.json({ error: "room-unavailable" }, 503)
   return act(giveaway)
+}
+
+function requireAdmin(deps: AppDeps): MiddlewareHandler<Env> {
+  return async (c, next) => {
+    if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
+      return c.json({ error: "forbidden" }, 403)
+    }
+    return next()
+  }
+}
+
+/** Admins are always allowed, so they never wait in the lists. One row over `max` marks the list as cut. */
+async function withoutAdmins(
+  deps: AppDeps,
+  streamers: readonly StreamerRecord[],
+  max: number,
+): Promise<AdminStreamerListJson> {
+  const listed: AdminStreamerJson[] = []
+  for (const streamer of streamers) {
+    if (await deps.admins.isAdmin(streamer.platformUserId)) continue
+    listed.push({
+      id: streamer.id,
+      login: streamer.login,
+      displayName: streamer.displayName,
+      createdAt: streamer.createdAt,
+      approvedAt: streamer.approvedAt,
+    })
+  }
+  return { streamers: listed.slice(0, max), truncated: listed.length > max }
 }
 
 async function insertWithFreshCode(

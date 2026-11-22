@@ -51,13 +51,14 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
     scopes = excluded.scopes,
     validated_at = excluded.validated_at`
 
+const streamerColumns =
+  "id, platform, platform_user_id, login, display_name, profile_image_url, created_at, approved_at"
+
 /** Parameters: platform, platform user id. */
-export const streamerByPlatformUserSql =
-  "SELECT id, platform, platform_user_id, login, display_name, profile_image_url FROM streamers WHERE platform = ? AND platform_user_id = ?"
+export const streamerByPlatformUserSql = `SELECT ${streamerColumns} FROM streamers WHERE platform = ? AND platform_user_id = ?`
 
 /** A streamer by id (parameter 1). */
-export const streamerByIdSql =
-  "SELECT id, platform, platform_user_id, login, display_name, profile_image_url FROM streamers WHERE id = ?"
+export const streamerByIdSql = `SELECT ${streamerColumns} FROM streamers WHERE id = ?`
 
 const streamerTokenSelect = `SELECT t.streamer_id, s.platform, s.platform_user_id, t.refresh_token_enc
   FROM streamer_tokens t JOIN streamers s ON s.id = t.streamer_id`
@@ -84,3 +85,16 @@ export const storeCloudflarePlanSql = `INSERT INTO cloudflare_plan (id, plan, ch
     plan = excluded.plan,
     changed_at = excluded.changed_at,
     changed_by = excluded.changed_by`
+
+/** Streamers an admin has not approved, newest sign-up first. Parameter 1: how many. */
+export const pendingStreamersSql = `SELECT ${streamerColumns} FROM streamers WHERE approved_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ?`
+
+/** Streamers an admin approved, latest approval first. Parameter 1: how many. */
+export const approvedStreamersSql = `SELECT ${streamerColumns} FROM streamers WHERE approved_at IS NOT NULL ORDER BY approved_at DESC, created_at DESC, id DESC LIMIT ?`
+
+/** Parameters: approved at, approved by (the admin's Twitch user id), streamer id. Keeps an earlier approval; returns the id when the streamer exists. */
+export const approveStreamerSql = `UPDATE streamers SET approved_at = COALESCE(approved_at, ?), approved_by = COALESCE(approved_by, ?) WHERE id = ? RETURNING id`
+
+/** A streamer id (parameter 1); returns it when the streamer exists. */
+export const revokeStreamerSql =
+  "UPDATE streamers SET approved_at = NULL, approved_by = NULL WHERE id = ? RETURNING id"

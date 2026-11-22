@@ -97,6 +97,18 @@ export const configSchema = {
     "Who may open the admin page (spec AC-23), comma separated: numeric Twitch user ids, logins, or channel links such as https://twitch.tv/<login>; pin the ids, because logins are looked up at Twitch on first use",
   ),
   publicUrl: required("PUBLIC_URL", url, "Public origin of the service, used for OAuth redirects"),
+  openSignup: withDefault(
+    "OPEN_SIGNUP",
+    bool,
+    "false",
+    "true lets every Twitch account that signs in create giveaways, as on the hosted service; false makes a new streamer wait until an admin approves the account on the admin page. Accounts in ADMIN_TWITCH_IDS are always allowed",
+  ),
+  streamerAccessListMax: withDefault(
+    "STREAMER_ACCESS_LIST_MAX",
+    int(1),
+    "200",
+    "Most pending and most approved streamers the admin page lists, newest first; starting guess, one screen of names",
+  ),
   devFakeTwitch: withDefault(
     "DEV_FAKE_TWITCH",
     bool,
@@ -605,6 +617,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     sessionSecret: read(env, configSchema.sessionSecret),
     admins: read(env, configSchema.admins),
     publicUrl: read(env, configSchema.publicUrl),
+    openSignup: read(env, configSchema.openSignup),
+    streamerAccessListMax: read(env, configSchema.streamerAccessListMax),
     devFakeTwitch: read(env, configSchema.devFakeTwitch),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),

@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { systemClock } from "@rafflink/core/lib/system-ports"
@@ -95,6 +95,7 @@ describe("applyAccountsMigrations", () => {
       "0004_retention_attempts.sql",
       "0005_profile_image.sql",
       "0006_cloudflare_plan.sql",
+      "0007_streamer_access.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",
@@ -102,6 +103,27 @@ describe("applyAccountsMigrations", () => {
       "schema_migrations",
       "streamer_tokens",
       "streamers",
+    ])
+  })
+
+  it("leaves streamers that signed in before 0007 waiting for approval", () => {
+    const before = join(dir, "before-0007")
+    mkdirSync(before)
+    for (const name of readdirSync(coreAccountsSchemaDir())) {
+      if (!name.startsWith("0007"))
+        copyFileSync(join(coreAccountsSchemaDir(), name), join(before, name))
+    }
+    applyAccountsMigrations(db, before, systemClock)
+    db.run(
+      "INSERT INTO streamers (id, platform, platform_user_id, login, display_name, created_at) VALUES ('s1', 'twitch', '200', 'old', 'Old', 1)",
+    )
+
+    expect(applyAccountsMigrations(db, coreAccountsSchemaDir(), systemClock)).toEqual([
+      "0007_streamer_access.sql",
+    ])
+
+    expect(db.query("SELECT approved_at, approved_by FROM streamers").all()).toEqual([
+      { approved_at: null, approved_by: null },
     ])
   })
 

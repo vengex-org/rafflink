@@ -46,7 +46,12 @@ describe("home page", () => {
     const requests = mockFetch({
       "GET /api/session": () =>
         ok({
-          streamer: { displayName: "Streamy", login: "streamy", profileImageUrl: null },
+          streamer: {
+            displayName: "Streamy",
+            login: "streamy",
+            profileImageUrl: null,
+            canCreate: true,
+          },
           donateUrl: null,
         }),
     })

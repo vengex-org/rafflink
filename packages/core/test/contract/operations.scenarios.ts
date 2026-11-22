@@ -1,7 +1,7 @@
 import { expect } from "bun:test"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext } from "./target.ts"
-import { publicOrigin, scenario } from "./world.ts"
+import { defaultRules, publicOrigin, scenario } from "./world.ts"
 
 const switchTo = (plan: string, origin = publicOrigin): RequestInit => ({
   method: "POST",
@@ -71,6 +71,56 @@ export function operationsScenarios(context: ContractContext): void {
         expect(switched.status).toBe(404)
         expect(page).toMatchObject({ plan: null })
       }
+    },
+  )
+
+  scenario(
+    context,
+    "with signup closed a streamer creates giveaways only after an admin approves the account",
+    async (world) => {
+      const target = await world.start({ OPEN_SIGNUP: "false" })
+      const admin = await world.signInStreamer(target, users.streamer.id)
+      const other = await world.signInStreamer(target, users.otherStreamer.id)
+      const input = {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "Giveaway", prize: "Prize", rules: defaultRules }),
+      }
+      const decide = (id: string, action: "approve" | "revoke") =>
+        admin.request(`/api/admin/streamers/${id}/${action}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: publicOrigin },
+          body: "{}",
+        })
+
+      const refused = await other.request("/api/dash/giveaways", input)
+      const adminCreated = await admin.request("/api/dash/giveaways", input)
+      const listed: { pending: { streamers: { id: string; login: string }[] } } = await (
+        await admin.request("/api/admin/streamers")
+      ).json()
+      const id = listed.pending.streamers[0]?.id ?? ""
+      const approved = await decide(id, "approve")
+      const created = await other.request("/api/dash/giveaways", input)
+      const createdBody: { giveaway: { id: string } } = await created.json()
+      const revoked = await decide(id, "revoke")
+      const refusedAgain = await other.request("/api/dash/giveaways", input)
+      const closed = await other.request(`/api/dash/giveaways/${createdBody.giveaway.id}/close`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      })
+
+      expect(refused.status).toBe(403)
+      expect(await refused.json()).toEqual({ error: "streamer_not_approved" })
+      expect(adminCreated.status).toBe(201)
+      expect(listed.pending.streamers.map((streamer) => streamer.login)).toEqual([
+        users.otherStreamer.login,
+      ])
+      expect(approved.status).toBe(200)
+      expect(created.status).toBe(201)
+      expect(revoked.status).toBe(200)
+      expect(refusedAgain.status).toBe(403)
+      expect(closed.status).toBe(200)
     },
   )
 
