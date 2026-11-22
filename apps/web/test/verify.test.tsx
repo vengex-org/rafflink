@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent } from "@testing-library/react"
+import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
@@ -69,7 +69,7 @@ function routes(overrides: Record<string, () => Reply | Promise<Reply>> = {}) {
 
 async function verified(overrides: Record<string, () => Reply | Promise<Reply>> = {}) {
   mockFetch(routes(overrides))
-  const view = renderApp("/g/ABCDE/verify")
+  const view = renderApp("/ABCDE/verify")
   fireEvent.click(await view.findByRole("button", { name: "Verify" }))
   return view
 }
@@ -78,7 +78,7 @@ describe("verify page", () => {
   it("invites a viewer to run their own giveaway", async () => {
     mockFetch(routes())
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     const link = await view.findByRole("link", { name: "Run your own giveaway with Rafflink" })
     expect(link.getAttribute("href")).toBe("/?ref=giveaway")
@@ -87,7 +87,7 @@ describe("verify page", () => {
   it("shows the root, the round and the entry list link, and the pick of each winner", async () => {
     mockFetch(routes())
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(await view.findByRole("heading", { level: 1, name: "Verify this draw" })).toBeTruthy()
     expect(view.getByText(drawn.commitment.merkleRoot)).toBeTruthy()
@@ -115,6 +115,34 @@ describe("verify page", () => {
         "The winners follow from the list and the random number of drand round 1000000.",
       ),
     ).toBeTruthy()
+  })
+
+  it("puts the run into the address, replacing the history entry", async () => {
+    const view = await verified()
+
+    await view.findByText("The Merkle root of the list is the published root.")
+
+    await waitFor(() => expect(view.address()).toBe("/ABCDE/verify?run=1"))
+    view.back()
+    expect(view.address()).toBe("/ABCDE/verify?run=1")
+  })
+
+  it("runs the check on open when the address asks for it", async () => {
+    mockFetch(routes())
+
+    const view = renderApp("/ABCDE/verify?run=1")
+
+    expect(await view.findByText("The Merkle root of the list is the published root.")).toBeTruthy()
+    expect(view.address()).toBe("/ABCDE/verify?run=1")
+  })
+
+  it("waits for the button when the address does not ask for the run", async () => {
+    mockFetch(routes())
+
+    const view = renderApp("/ABCDE/verify")
+    await view.findByRole("button", { name: "Verify" })
+
+    expect(view.queryByText("The Merkle root of the list is the published root.")).toBeNull()
   })
 
   it("checks the BLS signature of the round as its own line", async () => {
@@ -210,7 +238,7 @@ describe("verify page", () => {
   it("shows the winner count, when the list was fixed and that the streamer may reroll", async () => {
     mockFetch(routes())
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(await view.findByText("Planned winners")).toBeTruthy()
     expect(view.getByText("List fixed at")).toBeTruthy()
@@ -231,7 +259,7 @@ describe("verify page", () => {
     }
     mockFetch(routes({ "GET /api/g/ABCDE/verify": () => ok(rerolls) }))
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(await view.findByText("Rerolled picks: 1.")).toBeTruthy()
     expect(view.getByText("Pick 1 is entry 1 of the list. (rerolled)")).toBeTruthy()
@@ -305,7 +333,7 @@ describe("verify page", () => {
   it("asks a signed-out visitor to sign in to check their own entry", async () => {
     mockFetch(routes())
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(
       await view.findByText(/Sign in on the giveaway page with the account you entered with/),
@@ -344,7 +372,7 @@ describe("verify page", () => {
       "GET /api/g/ABCDE/my-leaf": () => signedOut,
     })
 
-    const open = renderApp("/g/ABCDE/verify")
+    const open = renderApp("/ABCDE/verify")
     expect(await open.findByText(/Entries are still open/)).toBeTruthy()
     cleanup()
 
@@ -353,7 +381,7 @@ describe("verify page", () => {
         ok({ ...drawn, status: "closed", commitment: null, picks: [] }),
       "GET /api/g/ABCDE/my-leaf": () => signedOut,
     })
-    const closed = renderApp("/g/ABCDE/verify")
+    const closed = renderApp("/ABCDE/verify")
     expect(await closed.findByText(/the list is being fixed/)).toBeTruthy()
   })
 
@@ -363,7 +391,7 @@ describe("verify page", () => {
       "GET /api/g/ABCDE/my-leaf": () => signedOut,
     })
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(await view.findByText(/drawn before draws could be verified/)).toBeTruthy()
     expect(view.queryByRole("button", { name: "Verify" })).toBeNull()
@@ -372,7 +400,7 @@ describe("verify page", () => {
   it("waits when the list is not published yet although the root is", async () => {
     mockFetch(routes({ "GET /api/g/ABCDE/leaves": () => ({ status: 409, body: {} }) }))
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(await view.findByText(/the list is being fixed/)).toBeTruthy()
   })
@@ -384,7 +412,7 @@ describe("verify page", () => {
   ])("shows the failure page for %s", async (_name, body) => {
     mockFetch(routes({ "GET /api/g/ABCDE/leaves": () => ok(body) }))
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(await view.findByText("Something went wrong. Reload the page.")).toBeTruthy()
   })
@@ -392,18 +420,18 @@ describe("verify page", () => {
   it("shows the failure page when the viewer's leaf cannot be read", async () => {
     mockFetch(routes({ "GET /api/g/ABCDE/my-leaf": () => ({ status: 500, body: {} }) }))
 
-    const view = renderApp("/g/ABCDE/verify")
+    const view = renderApp("/ABCDE/verify")
 
     expect(await view.findByText("Something went wrong. Reload the page.")).toBeTruthy()
   })
 
   it("answers not found for a giveaway that does not exist", async () => {
     mockFetch({
-      "GET /api/g/NOPE0/verify": () => ({ status: 404, body: { error: "not-found" } }),
-      "GET /api/g/NOPE0/my-leaf": () => signedOut,
+      "GET /api/g/ZZZZZ/verify": () => ({ status: 404, body: { error: "not-found" } }),
+      "GET /api/g/ZZZZZ/my-leaf": () => signedOut,
     })
 
-    const view = renderApp("/g/NOPE0/verify")
+    const view = renderApp("/ZZZZZ/verify")
 
     expect(await view.findByRole("heading", { level: 1, name: "Giveaway not found" })).toBeTruthy()
   })
@@ -411,17 +439,17 @@ describe("verify page", () => {
   it("links a drawn giveaway to its verify page", async () => {
     mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, status: "drawn" }) })
 
-    const view = renderApp("/g/ABCDE")
+    const view = renderApp("/ABCDE")
 
     expect((await view.findByRole("link", { name: "Verify this draw" })).getAttribute("href")).toBe(
-      "/g/ABCDE/verify",
+      "/ABCDE/verify",
     )
   })
 
   it("does not link an open giveaway to a verify page", async () => {
     mockFetch({ "GET /api/g/ABCDE": () => ok(giveaway) })
 
-    const view = renderApp("/g/ABCDE")
+    const view = renderApp("/ABCDE")
 
     await view.findByRole("heading", { level: 1 })
     expect(view.queryByRole("link", { name: "Verify this draw" })).toBeNull()

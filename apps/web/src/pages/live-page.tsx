@@ -1,5 +1,5 @@
 import { useCallback, useId, useState, type ReactNode } from "react"
-import { useParams } from "react-router"
+import { useParams, useSearchParams } from "react-router"
 import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { liveSnapshotPath, parseLiveSnapshot } from "../api/client.ts"
 import { ActivityIcon, AlertIcon, EyeOffIcon } from "../components/icons.tsx"
@@ -25,7 +25,7 @@ export function LivePage() {
   const { id } = useParams()
   return id === undefined ? (
     <Plain>
-      <NotFound title="notFound.giveaway" />
+      <NotFound title="notFound.live" />
     </Plain>
   ) : (
     <Loaded id={id} />
@@ -61,7 +61,7 @@ function Loaded({ id }: { readonly id: string }) {
     case "not-found":
       return (
         <Plain>
-          <NotFound title="notFound.giveaway" />
+          <NotFound title="notFound.live" />
         </Plain>
       )
     case "ready":
@@ -260,13 +260,28 @@ function Problems({ snapshot }: { readonly snapshot: LiveSnapshot }) {
 
 const liveCleanModeKey = "rafflink-live-clean"
 
-/** Clean mode hides the controls for the stream. The choice is stored; the c key flips it unless the streamer is typing or a question is open. */
+/**
+ * Clean mode hides the controls for the stream. The choice is stored; the c key flips it unless the streamer is typing or a question is open.
+ * A link with `?clean=1` (or `0`) opens the page in that mode whatever is stored; flipping it from then on is the stored choice again.
+ */
 function useCleanMode(storageKey: string): readonly [boolean, () => void] {
-  const [clean, setClean] = useState(() => readStored(storageKey) === "1")
+  const [params, setParams] = useSearchParams()
+  const [clean, setClean] = useState(() => {
+    const linked = params.get("clean")
+    return linked === null ? readStored(storageKey) === "1" : linked === "1"
+  })
   const toggle = useCallback(() => {
     writeStored(storageKey, clean ? "0" : "1")
     setClean(!clean)
-  }, [clean, storageKey])
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        next.delete("clean")
+        return next
+      },
+      { replace: true },
+    )
+  }, [clean, storageKey, setParams])
   useShortcut("c", toggle)
   return [clean, toggle]
 }

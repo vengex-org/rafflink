@@ -1,9 +1,10 @@
-import type { ReactNode } from "react"
-import { Link } from "react-router"
+import { ViewTransition, type ReactNode } from "react"
+import { Link, useLocation } from "react-router"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import type { GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { shareUrl } from "../lib/links.ts"
+import { homePath } from "../lib/routes.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
 import { CopyButton } from "./copy-field.tsx"
 import { SettingsMenu } from "./header-controls.tsx"
@@ -18,20 +19,25 @@ export function LiveFrame({
   readonly children: ReactNode
 }) {
   const { t } = useI18n()
+  const { pathname } = useLocation()
   return (
     <div className="live-frame">
       <a href="#main" className="skip-link">
         {t("nav.skip")}
       </a>
       <header className="live-top">{bar}</header>
-      <main id="main">{children}</main>
+      <main id="main">
+        <ViewTransition key={pathname} default="none" enter="page-fade" exit="page-fade">
+          {children}
+        </ViewTransition>
+      </main>
     </div>
   )
 }
 
 export function LiveBrand() {
   return (
-    <Link to="/" className="live-brand">
+    <Link to={homePath} className="live-brand">
       <span className="live-mark" aria-hidden="true">
         <b>R</b>
       </span>

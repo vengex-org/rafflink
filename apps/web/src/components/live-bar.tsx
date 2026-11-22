@@ -6,7 +6,7 @@ import { useLiveApi } from "../lib/live-api.ts"
 import { overlayUrl } from "../lib/links.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { useShortcut } from "../lib/use-shortcut.ts"
-import { overlayModes, withOverlayOptions, type OverlayMode } from "../lib/overlay-options.ts"
+import { overlayModes, type OverlayMode } from "../lib/overlay-options.ts"
 import type { useAction } from "../lib/use-action.ts"
 import { ConfirmAction } from "./confirm-action.tsx"
 import { CopyLink } from "./copy-field.tsx"
@@ -507,7 +507,7 @@ function OverlayLink({ id, overlayToken }: { readonly id: string; readonly overl
     { value: "off", label: t("live.overlay.qr.off"), icon: null, description: "" },
     { value: "on", label: t("live.overlay.qr.on"), icon: null, description: "" },
   ]
-  const optionedUrl = withOverlayOptions(overlayUrl(id, overlayToken), { mode, qr })
+  const optionedUrl = overlayUrl(id, overlayToken, { mode, qr })
   return (
     <>
       <button type="button" className="live-btn ghost" popoverTarget={popoverId}>

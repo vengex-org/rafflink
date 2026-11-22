@@ -43,7 +43,7 @@ it("never offers the support page to a viewer, even after a draw", async () => {
     "GET /api/session": () => ok(supportedSession),
   })
 
-  const view = renderApp("/g/ABCDE")
+  const view = renderApp("/ABCDE")
 
   await view.findByRole("heading", { level: 1 })
   expect(view.queryByRole("link", { name: /Support/ })).toBeNull()
@@ -54,7 +54,7 @@ describe("run-your-own invitation", () => {
   it("invites a viewer to the home page of the same instance with the referral marker", async () => {
     mockFetch(giveawayRoute)
 
-    const view = renderApp("/g/ABCDE")
+    const view = renderApp("/ABCDE")
 
     const link = await view.findByRole("link", { name: "Run your own giveaway with Rafflink" })
     expect(link.getAttribute("href")).toBe("/?ref=giveaway")
@@ -264,7 +264,7 @@ describe("entry outcomes", () => {
   it("explains why a viewer cannot enter and what would let them in", async () => {
     mockFetch(giveawayRoute)
 
-    const view = renderApp("/g/ABCDE?entry=not-eligible&reason=subs-only")
+    const view = renderApp("/ABCDE?entry=not-eligible&reason=subs-only")
 
     expect(await view.findByText("This giveaway is for subscribers only.")).toBeTruthy()
     expect(
@@ -362,44 +362,41 @@ describe("entry outcomes", () => {
   })
 
   it("replaces the address with the plain page path once the queued entry settled", async () => {
-    window.history.replaceState(null, "", "/g/ABCDE?entry=pending&ticket=T1")
     mockFetch({
       ...giveawayRoute,
       "GET /api/g/ABCDE/pending/T1": () =>
         ok({ kind: "entered", entry: { group: "viewer", tickets: 1, enteredAt: 1 } }),
     })
 
-    const view = renderApp("/g/ABCDE?entry=pending&ticket=T1")
+    const view = renderApp("/ABCDE?entry=pending&ticket=T1")
+    expect(view.address()).toBe("/ABCDE?entry=pending&ticket=T1")
 
     expect(await view.findByRole("heading", { name: "You are in" })).toBeTruthy()
-    expect(window.location.pathname).toBe("/g/ABCDE")
-    expect(window.location.search).toBe("")
+    await waitFor(() => expect(view.address()).toBe("/ABCDE"))
   })
 
   it("replaces the address too when the poll runs past its maximum", async () => {
-    window.history.replaceState(null, "", "/g/ABCDE?entry=pending&ticket=T1")
     mockFetch({
       ...giveawayRoute,
       "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "pending", ticket: "T1" }),
     })
 
-    const view = renderApp("/g/ABCDE?entry=pending&ticket=T1")
+    const view = renderApp("/ABCDE?entry=pending&ticket=T1")
 
     expect(await view.findByRole("link", { name: "Enter with Twitch" })).toBeTruthy()
-    expect(window.location.search).toBe("")
+    await waitFor(() => expect(view.address()).toBe("/ABCDE"))
   })
 
   it("keeps other query parameters when it forgets the entry", async () => {
-    window.history.replaceState(null, "", "/g/ABCDE?entry=pending&ticket=T1&utm=x")
     mockFetch({
       ...giveawayRoute,
       "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "closed" }),
     })
 
-    const view = renderApp("/g/ABCDE?entry=pending&ticket=T1&utm=x")
+    const view = renderApp("/ABCDE?entry=pending&ticket=T1&utm=x")
 
     expect(await view.findByRole("heading", { name: "Sorry, giveaway closed." })).toBeTruthy()
-    expect(window.location.search).toBe("?utm=x")
+    await waitFor(() => expect(view.address()).toBe("/ABCDE?utm=x"))
   })
 
   it("trusts the server state over a dropped outcome left in the address", async () => {

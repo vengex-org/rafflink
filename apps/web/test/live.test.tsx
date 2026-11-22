@@ -1071,6 +1071,27 @@ describe("live page: clean mode", () => {
     expect(again.queryByRole("region", settings)).toBeNull()
   })
 
+  it("opens in clean mode from ?clean=1, and flipping stores the new choice and drops the parameter", async () => {
+    expect(window.localStorage.getItem("rafflink-live-clean")).toBeNull()
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1?clean=1")
+    fireEvent.click(await view.findByRole("button", { name: "Show controls" }))
+
+    expect(view.getByRole("region", settings)).toBeTruthy()
+    expect(window.localStorage.getItem("rafflink-live-clean")).toBe("0")
+    await waitFor(() => expect(view.address()).toBe("/live/gid-1"))
+  })
+
+  it("opens with the controls from ?clean=0 although clean mode is stored", async () => {
+    window.localStorage.setItem("rafflink-live-clean", "1")
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
+
+    const view = renderApp("/live/gid-1?clean=0")
+
+    expect(await view.findByRole("region", settings)).toBeTruthy()
+  })
+
   it("starts with the bar when nothing was stored", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
@@ -1373,7 +1394,7 @@ describe("live page: access and connection", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByText("Giveaway not found")).toBeTruthy()
+    expect(await view.findByText("Live page not found")).toBeTruthy()
   })
 
   it("reconnects after the socket drops and says so meanwhile", async () => {
@@ -1531,7 +1552,7 @@ describe("live page: its own frame", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByText("Giveaway not found")).toBeTruthy()
+    expect(await view.findByText("Live page not found")).toBeTruthy()
     expect(view.container.querySelectorAll("main#main")).toHaveLength(1)
     expect(view.getByRole("banner").textContent).toContain("Rafflink")
     // The app frame's text column belongs to the app layout, not to the live page's own grid.

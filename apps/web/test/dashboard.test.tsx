@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { cleanup, fireEvent } from "@testing-library/react"
+import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { stubClipboard } from "./clipboard.ts"
 import { dashboardGiveaway, donateUrl, rules, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
@@ -39,7 +39,7 @@ describe("dashboard", () => {
       "Share the link. Paste it in your chat. Viewers sign in with Twitch to enter.",
       "Draw live. Close entries and pick the winner on your stream.",
     ])
-    fireEvent.click(view.getByRole("button", { name: "Create giveaway" }))
+    fireEvent.click(view.getByRole("link", { name: "Create giveaway" }))
     expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
   })
 
@@ -259,7 +259,7 @@ describe("dashboard", () => {
     })
 
     const view = renderApp("/dashboard")
-    fireEvent.click(await view.findByRole("button", { name: "Duplicate Summer giveaway" }))
+    fireEvent.click(await view.findByRole("link", { name: "Duplicate Summer giveaway" }))
 
     expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
     expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Summer giveaway")
@@ -275,6 +275,46 @@ describe("dashboard", () => {
     expect(inputOf(view.getByLabelText("Chat word (optional)")).value).toBe("mine")
   })
 
+  it("links Duplicate to the wizard with the id of the giveaway, which refills it after a reload", async () => {
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard")
+    const duplicate = await view.findByRole("link", { name: "Duplicate Summer giveaway" })
+
+    expect(duplicate.getAttribute("href")).toBe("/dashboard/new?from=gid-1")
+    fireEvent.click(duplicate)
+    expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+    expect(view.address()).toBe("/dashboard/new?from=gid-1")
+    view.unmount()
+
+    const reloaded = renderApp("/dashboard/new?from=gid-1")
+    await reloaded.findByText("Step 1 of 3: Basics")
+    expect(inputOf(reloaded.getByLabelText("Giveaway name (optional)")).value).toBe(
+      "Summer giveaway",
+    )
+  })
+
+  it("starts the wizard blank when the giveaway to copy is not in the list", async () => {
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard/new?from=other")
+    await view.findByText("Step 1 of 3: Basics")
+
+    expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("")
+  })
+
+  it("offers sign-in on the wizard and brings the streamer back to it", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () => ({ status: 401, body: { error: "unauthorized" } }),
+    })
+
+    const view = renderApp("/dashboard/new?from=gid-1")
+
+    expect(
+      (await view.findByRole("link", { name: "Sign in with Twitch" })).getAttribute("href"),
+    ).toBe("/auth/twitch/streamer/start?return=%2Fdashboard%2Fnew%3Ffrom%3Dgid-1")
+  })
+
   it("preselects Custom with the minutes for a claim time outside the presets", async () => {
     mockFetch({
       "GET /api/dash/giveaways": () =>
@@ -282,7 +322,7 @@ describe("dashboard", () => {
     })
 
     const view = renderApp("/dashboard")
-    fireEvent.click(await view.findByRole("button", { name: "Duplicate Summer giveaway" }))
+    fireEvent.click(await view.findByRole("link", { name: "Duplicate Summer giveaway" }))
     fireEvent.click(await view.findByRole("button", { name: "Next" }))
 
     expect(inputOf(view.getByLabelText("Custom")).checked).toBe(true)
@@ -310,7 +350,7 @@ describe("dashboard", () => {
 
     expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
     expect(view.getByText(/has not approved your account/)).toBeTruthy()
-    expect(view.queryByRole("button", { name: "Create giveaway" })).toBeNull()
+    expect(view.queryByRole("link", { name: "Create giveaway" })).toBeNull()
   })
 
   it("keeps the list of a streamer whose approval was revoked and hides New and Duplicate", async () => {
@@ -333,8 +373,8 @@ describe("dashboard", () => {
 
     expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
     expect(view.getByRole("heading", { name: "Summer giveaway" })).toBeTruthy()
-    expect(view.queryByRole("button", { name: "New giveaway" })).toBeNull()
-    expect(view.queryByRole("button", { name: "Duplicate Summer giveaway" })).toBeNull()
+    expect(view.queryByRole("link", { name: "New giveaway" })).toBeNull()
+    expect(view.queryByRole("link", { name: "Duplicate Summer giveaway" })).toBeNull()
   })
 
   it("shows no notice to a streamer who may create", async () => {
@@ -342,8 +382,28 @@ describe("dashboard", () => {
 
     const view = renderApp("/dashboard")
 
-    expect(await view.findByRole("button", { name: "Create giveaway" })).toBeTruthy()
+    expect(await view.findByRole("link", { name: "Create giveaway" })).toBeTruthy()
     expect(view.queryByRole("heading", { name: "Waiting for approval" })).toBeNull()
+  })
+
+  it("lets a session that allows creating outrank an old refusal and clears the refusal from the history entry", async () => {
+    mockFetch({ ...listed, "GET /api/session": () => ok(supportedSession) })
+
+    const view = renderApp("/dashboard", { kind: "not-approved" })
+
+    expect(await view.findByRole("link", { name: "New giveaway" })).toBeTruthy()
+    expect(view.queryByRole("heading", { name: "Waiting for approval" })).toBeNull()
+    await waitFor(() => expect(view.state()).toBeNull())
+  })
+
+  it("keeps the refusal while the session is unknown, and after a reload of the page", async () => {
+    mockFetch(listed)
+
+    const view = renderApp("/dashboard", { kind: "not-approved" })
+
+    expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
+    expect(view.queryByRole("link", { name: "New giveaway" })).toBeNull()
+    expect(view.state()).toEqual({ kind: "not-approved" })
   })
 
   it("shows the waiting notice when the server refuses a create the session allowed", async () => {
@@ -356,12 +416,12 @@ describe("dashboard", () => {
     })
 
     const view = renderApp("/dashboard")
-    fireEvent.click(await view.findByRole("button", { name: "Duplicate Summer giveaway" }))
+    fireEvent.click(await view.findByRole("link", { name: "Duplicate Summer giveaway" }))
     fireEvent.click(await view.findByRole("button", { name: "Next" }))
     fireEvent.click(await view.findByRole("button", { name: "Next" }))
     fireEvent.click(await view.findByRole("button", { name: "Start giveaway" }))
 
     expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
-    expect(view.queryByRole("button", { name: "New giveaway" })).toBeNull()
+    expect(view.queryByRole("link", { name: "New giveaway" })).toBeNull()
   })
 })

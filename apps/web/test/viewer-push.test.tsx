@@ -560,7 +560,7 @@ describe("viewer page: reload window", () => {
       ...pageRoute({ kind: "signed-out" }),
       "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "entered", entry }),
     })
-    const first = renderApp("/g/ABCDE?entry=pending&ticket=T1")
+    const first = renderApp("/ABCDE?entry=pending&ticket=T1")
     await first.findByRole("heading", { name: "You are in" })
     cleanup()
 
@@ -577,7 +577,7 @@ describe("viewer page: reload window", () => {
         ok({ ...giveaway, me: ++loads === 1 ? { kind: "signed-out" } : enteredAsU1 }),
       "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "entered", entry }),
     })
-    const view = renderApp("/g/ABCDE?entry=pending&ticket=T1")
+    const view = renderApp("/ABCDE?entry=pending&ticket=T1")
     await view.findByRole("heading", { name: "You are in" })
     await waitFor(() => expect(pageLoads(requests)).toBe(2))
     const socket = await connected()
@@ -593,7 +593,7 @@ describe("viewer page: reload window", () => {
       ...pageRoute({ kind: "signed-out" }),
       "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "not-eligible", reason: "followers-only" }),
     })
-    const view = renderApp("/g/ABCDE?entry=pending&ticket=T1")
+    const view = renderApp("/ABCDE?entry=pending&ticket=T1")
     await view.findByRole("heading", { name: "You cannot enter" })
     await new Promise((resolve) => setTimeout(resolve, 100))
 

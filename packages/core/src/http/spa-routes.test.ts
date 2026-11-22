@@ -40,6 +40,18 @@ describe("page routes", () => {
     expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
   })
 
+  it.each([
+    ["the old /g/<code> link", (code: string) => `/g/${code}`, (code: string) => `/${code}`],
+    ["the verify page", (code: string) => `/${code}/verify`, (code: string) => `/${code}/verify`],
+  ])("previews a giveaway at %s with its canonical link", async (_, pathOf, canonicalOf) => {
+    const created = await createGiveaway(harness, users.streamerA.id, { title: "Cup" })
+
+    const html = await (await app.request(pathOf(created.code))).text()
+
+    expect(html).toContain("<title>Cup</title>")
+    expect(html).toContain(`href="http://localhost${canonicalOf(created.code)}"`)
+  })
+
   it("names a giveaway without a title after its code", async () => {
     const created = await createGiveaway(harness, users.streamerA.id, { title: undefined })
 

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useEffectEvent, useRef, useState, type FormEvent, type ReactNode } from "react"
+import { Link, Navigate, useLocation, useSearchParams } from "react-router"
 import { createGiveaway, type CreateResult } from "../api/client.ts"
 import {
   ArrowLeftIcon,
@@ -11,6 +12,8 @@ import {
 } from "../components/icons.tsx"
 import { StepIndicator } from "../components/step-indicator.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
+import { dashboardPath } from "../lib/routes.ts"
+import { isCreated, markCreated, readDraft } from "../lib/wizard-draft.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
@@ -24,34 +27,80 @@ import {
 
 type Created = Extract<CreateResult, { kind: "created" }>
 
+// Long enough that typing is one write to the history entry.
+const saveAfterMs = 400
+
 const stepNames = ["wizard.step.basics", "wizard.step.rules", "wizard.step.review"] as const
 
-/** Creates a giveaway in three steps; each step is checked before the next, and the server's complaint sends the streamer back to its step. */
+/**
+ * Creates a giveaway in three steps; each step is checked before the next, and the server's complaint sends the streamer back to its step.
+ * The step is the `?step=` of the address: Next and Back add a history entry, so the browser's back button walks the steps.
+ * The answers and the furthest step checked are kept in the history entries, so Back, Forward and a reload restore them;
+ * an address typed by hand has none, and opens the first step. Once the giveaway exists, an entry of the same run sends
+ * the streamer to the dashboard instead of showing a form that would create it a second time.
+ */
 export function CreateForm({
   seed,
   onCreated,
   onUnauthorized,
   onNotApproved,
-  onCancel,
 }: {
   /** The answers the form starts with. */
   readonly seed: Values
   readonly onCreated: (created: Created) => void
   readonly onUnauthorized: () => void
   readonly onNotApproved: () => void
-  readonly onCancel: () => void
 }) {
   const { t } = useI18n()
-  const [values, setValues] = useState(seed)
-  const [step, setStep] = useState<Step>(1)
+  const { state } = useLocation()
+  const [saved] = useState(() => readDraft(state))
+  const [id] = useState(() => saved?.id ?? crypto.randomUUID())
+  const [values, setValues] = useState(saved?.values ?? seed)
+  const [query, setQuery] = useSearchParams()
+  const [furthest, setFurthest] = useState<Step>(saved?.furthest ?? 1)
+  const wanted = query.get("step")
+  const step = clampStep(wanted, furthest)
   const [issue, setIssue] = useState<Issue | null>(null)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 
+  // Decided when the wizard opens: the create that finishes this run must not send it to the dashboard.
+  const [created] = useState(() => saved !== null && isCreated(saved.id))
+  const draftState = (reached: Step) => ({ draft: { id, values, furthest: reached } })
+
+  const showStep = (target: Step, mode: "push" | "replace", reached: Step = furthest) =>
+    setQuery(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (target === 1) next.delete("step")
+        else next.set("step", String(target))
+        return next
+      },
+      { replace: mode === "replace", state: draftState(reached) },
+    )
+
+  // The entry the streamer is on keeps the answers typed since the last step change, a moment after typing pauses.
+  const saveDraft = useEffectEvent((answers: Values, reached: Step) =>
+    setQuery((current) => current, {
+      replace: true,
+      state: { draft: { id, values: answers, furthest: reached } },
+    }),
+  )
+  useEffect(() => {
+    if (created) return
+    const timer = setTimeout(() => saveDraft(values, furthest), saveAfterMs)
+    return () => clearTimeout(timer)
+  }, [values, furthest, created])
+
+  // An address that asks for a step the answers have not reached, or for none, is corrected in place.
+  useEffect(() => {
+    if (wanted !== null && wanted !== String(step)) showStep(step, "replace")
+  })
+
   // Going back skips the checks: the answers stay in `values`, and the next step is checked again on Next.
   const goBack = (target: Step) => {
     setIssue(null)
-    setStep(target)
+    showStep(target, "push")
   }
 
   const submit = async (event: FormEvent) => {
@@ -59,7 +108,14 @@ export function CreateForm({
     if (step !== 3) {
       const problem = stepIssue(step, values, Date.now())
       setIssue(problem)
-      if (problem === null) setStep(following(step))
+      if (problem === null) {
+        const target = following(step)
+        const reached = furthest > target ? furthest : target
+        setFurthest(reached)
+        // The entry left behind keeps the answers of this step.
+        showStep(step, "replace")
+        showStep(target, "push", reached)
+      }
       return
     }
     setBusy(true)
@@ -69,11 +125,12 @@ export function CreateForm({
       switch (result.kind) {
         case "created":
           setIssue(null)
+          markCreated(id)
           onCreated(result)
           return
         case "invalid":
           setIssue({ field: result.field, message: `issue.${result.code}` })
-          setStep(stepOfField(result.field))
+          showStep(stepOfField(result.field), "replace")
           return
         case "unauthorized":
           onUnauthorized()
@@ -89,6 +146,8 @@ export function CreateForm({
       setBusy(false)
     }
   }
+
+  if (created) return <Navigate replace to={dashboardPath} />
 
   return (
     <form
@@ -122,10 +181,10 @@ export function CreateForm({
         ) : null}
         <div className="actions wizard-actions">
           {step === 1 ? (
-            <button type="button" className="button text" onClick={onCancel}>
+            <Link className="button text" to={dashboardPath}>
               <CloseIcon />
               {t("common.cancel")}
-            </button>
+            </Link>
           ) : (
             <button
               key="back"
@@ -166,6 +225,23 @@ function StepHeading({ icon, text }: { readonly icon: ReactNode; readonly text: 
       {text}
     </h2>
   )
+}
+
+/** The step the address asks for, never one past what the answers have reached. */
+function clampStep(wanted: string | null, furthest: Step): Step {
+  const asked = stepOfQuery(wanted)
+  return asked > furthest ? furthest : asked
+}
+
+function stepOfQuery(wanted: string | null): Step {
+  switch (wanted) {
+    case "2":
+      return 2
+    case "3":
+      return 3
+    default:
+      return 1
+  }
 }
 
 function stepQuestion(step: Step) {

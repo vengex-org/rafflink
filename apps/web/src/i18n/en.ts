@@ -32,6 +32,7 @@ export const en = {
   "notFound.home": "Go to the home page",
   "notFound.page": "Page not found",
   "notFound.giveaway": "Giveaway not found",
+  "notFound.live": "Live page not found",
   "notFound.generic": "Not found",
 
   "signIn.title": "Sign in",

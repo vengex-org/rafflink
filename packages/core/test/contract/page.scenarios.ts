@@ -114,7 +114,7 @@ function staticPageScenarios(context: ContractContext): void {
       const target = await world.start()
       const giveaway = await world.createGiveaway(target)
 
-      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`]) {
+      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`, `/${giveaway.code}/verify`]) {
         const response = await page(target, path)
         const html = await response.text()
 
@@ -136,7 +136,7 @@ function injectedPageScenarios(context: ContractContext): void {
       const target = await world.start()
       const giveaway = await world.createGiveaway(target)
 
-      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`]) {
+      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`, `/${giveaway.code}/verify`]) {
         const response = await page(target, path)
         const html = await response.text()
 
@@ -147,7 +147,7 @@ function injectedPageScenarios(context: ContractContext): void {
           `<meta name="twitter:description" content="Win Prize from ${users.streamer.displayName}. Sign in with Twitch to join." />`,
         )
         expect(html).toContain(
-          `<meta property="og:url" content="http://localhost/${giveaway.code}" />`,
+          `<meta property="og:url" content="http://localhost${path.endsWith("/verify") ? `/${giveaway.code}/verify` : `/${giveaway.code}`}" />`,
         )
         expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
         expect(response.headers.get("content-security-policy")).toContain(inlineScriptSource)

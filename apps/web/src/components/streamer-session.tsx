@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useNavigate } from "react-router"
 import { getSession, logout, sessionLost } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
+import { homePath } from "../lib/routes.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLoad, type Load } from "../lib/use-load.ts"
 
@@ -61,7 +62,7 @@ export function StreamerSessionProvider({ children }: { readonly children: React
     const outcome = await run(logout, () => "nav.loggedOut")
     if (outcome === "failed") return
     setLoggedOut(true)
-    navigate("/")
+    navigate(homePath, { replace: true })
   }
 
   return (

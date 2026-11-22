@@ -20,11 +20,3 @@ export function readOverlayOptions(params: URLSearchParams): OverlayOptions {
     qr: params.get("qr") === "1",
   }
 }
-
-/** The overlay URL with the options that differ from the defaults. */
-export function withOverlayOptions(url: string, { mode, qr }: OverlayOptions): string {
-  const next = new URL(url)
-  if (mode !== "auto") next.searchParams.set("mode", mode)
-  if (qr) next.searchParams.set("qr", "1")
-  return next.href
-}

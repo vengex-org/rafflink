@@ -44,11 +44,12 @@ export interface PendingEntry {
 
 export type OAuthFlow = "streamer" | "viewer"
 
-/** What the sign-in start remembers for the callback. `giveawayCode` is set for the viewer flow. */
+/** What the sign-in start remembers for the callback. `giveawayCode` is set for the viewer flow, `returnPath` for the streamer flow. */
 export interface OAuthState {
   readonly state: string
   readonly nonce: string
   readonly giveawayCode: string | null
+  readonly returnPath: string | null
 }
 
 const cookieNames = {
@@ -187,10 +188,11 @@ export async function takeOAuthState(
   if (returnedState === undefined || !hexId.test(returnedState)) return null
   const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
-    const { state, nonce, giveawayCode } = value
+    const { state, nonce, giveawayCode, returnPath } = value
     if (typeof state !== "string" || typeof nonce !== "string") return null
     if (giveawayCode !== null && typeof giveawayCode !== "string") return null
-    return { state, nonce, giveawayCode }
+    if (returnPath !== null && typeof returnPath !== "string") return null
+    return { state, nonce, giveawayCode, returnPath }
   })
   deleteCookie(c, name, { path: "/" })
   return saved

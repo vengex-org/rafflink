@@ -1,8 +1,8 @@
 import type { LeavesJson, MyLeafJson } from "@rafflink/core/http/json"
 import { publicDrandUrls, roundPath } from "@rafflink/core/lib/drand"
 import { errorClass } from "@rafflink/core/lib/error-class"
-import { useCallback, useState, type ReactNode } from "react"
-import { Link, useParams } from "react-router"
+import { useCallback, useEffect, useEffectEvent, useState, type ReactNode } from "react"
+import { Link, useSearchParams } from "react-router"
 import { getVerifyLoad, type VerifyLoad } from "../api/client.ts"
 import {
   AlertIcon,
@@ -12,26 +12,27 @@ import {
   ShuffleIcon,
 } from "../components/icons.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
+import { GiveawayCode } from "../components/giveaway-code.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
 import { RunYourOwn } from "../components/run-your-own.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
+import { giveawayPath } from "../lib/routes.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { verifyDraw, type Commitment, type OwnEntry, type Verdict } from "../lib/verify-draw.ts"
 
 export function VerifyPage() {
-  const { code } = useParams()
-  return code === undefined ? <NotFound title="notFound.giveaway" /> : <Loaded code={code} />
+  return <GiveawayCode page="verify">{(code) => <Loaded code={code} />}</GiveawayCode>
 }
 
 function Loaded({ code }: { readonly code: string }) {
   const load = useCallback(() => getVerifyLoad(code), [code])
-  const { result } = useLoad(load)
+  const { result, reload } = useLoad(load)
   switch (result.state) {
     case "loading":
       return <Loading />
     case "failed":
-      return <Failed />
+      return <Failed onReload={reload} />
     case "ready":
       return result.value === null ? (
         <NotFound title="notFound.giveaway" />
@@ -48,7 +49,7 @@ function Verify({ code, load }: { readonly code: string; readonly load: VerifyLo
   return (
     <Page width="text" as="article" className="verify">
       <header>
-        <Link className="button text small" to={`/g/${code}`}>
+        <Link className="button text small" to={giveawayPath(code)}>
           <ArrowLeftIcon />
           {t("verify.back")}
         </Link>
@@ -154,9 +155,11 @@ function Checker({
   readonly code: string
 }) {
   const { t } = useI18n()
-  const [run, setRun] = useState<Run>({ state: "idle" })
-  const start = () => {
-    setRun({ state: "running" })
+  const [query, setQuery] = useSearchParams()
+  // A link with `?run=1` opens the page with the check already running.
+  const [opened] = useState(() => query.get("run") === "1")
+  const [run, setRun] = useState<Run>({ state: opened ? "running" : "idle" })
+  const check = () =>
     verifyDraw({ verify: load.verify, commitment, leaves, mine }).then(
       (verdict) => setRun({ state: "done", verdict }),
       (error: unknown) => {
@@ -164,6 +167,22 @@ function Checker({
         setRun({ state: "failed" })
       },
     )
+  const checkWhenOpened = useEffectEvent(() => {
+    if (opened) void check()
+  })
+  useEffect(() => checkWhenOpened(), [])
+  const start = () => {
+    setRun({ state: "running" })
+    // The check is part of the address, so a shared link runs it.
+    setQuery(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.set("run", "1")
+        return next
+      },
+      { replace: true },
+    )
+    void check()
   }
   return (
     <>
@@ -280,7 +299,7 @@ function Mine({
       <h2>{t("verify.mine.title")}</h2>
       {mine === null ? (
         <p>
-          {t("verify.mine.signedOut")} <Link to={`/g/${code}`}>{t("verify.back")}</Link>
+          {t("verify.mine.signedOut")} <Link to={giveawayPath(code)}>{t("verify.back")}</Link>
         </p>
       ) : (
         <>

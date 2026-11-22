@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent, type RenderResult } from "@testing-library/react"
+import { cleanup, fireEvent, waitFor, type RenderResult } from "@testing-library/react"
 import { stubClipboard } from "./clipboard.ts"
 import { dashboardGiveaway } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { inputOf } from "./queries.ts"
+import { initialValues } from "../src/pages/create-values.ts"
+import { markCreated, readDraft } from "../src/lib/wizard-draft.ts"
 import { renderApp } from "./render-app.tsx"
 
 afterEach(() => {
@@ -21,9 +23,8 @@ function withCreate(reply: Reply) {
   return { ...listed, "POST /api/dash/giveaways": () => reply }
 }
 
-async function openWizard(): Promise<RenderResult> {
-  const view = renderApp("/dashboard")
-  fireEvent.click(await view.findByRole("button", { name: "New giveaway" }))
+async function openWizard() {
+  const view = renderApp("/dashboard/new")
   await view.findByText("Step 1 of 3: Basics")
   return view
 }
@@ -58,9 +59,10 @@ describe("create wizard", () => {
     const view = await openWizard()
 
     expect(view.getByRole("heading", { name: "Start with the basics" })).toBeTruthy()
-    fireEvent.click(view.getByRole("button", { name: "Cancel" }))
+    fireEvent.click(view.getByRole("link", { name: "Cancel" }))
 
     expect(await view.findByRole("heading", { name: "My giveaways" })).toBeTruthy()
+    expect(view.address()).toBe("/dashboard")
   })
 
   it("lists the three steps in the indicator", async () => {
@@ -459,7 +461,7 @@ describe("create wizard", () => {
     expect(await view.findByText("Copied!")).toBeTruthy()
     expect(copied).toEqual(["http://rafflink.test/ABCDE"])
 
-    fireEvent.click(view.getByRole("button", { name: "Back to my giveaways" }))
+    fireEvent.click(view.getByRole("link", { name: "Back to my giveaways" }))
     expect(await view.findByRole("heading", { name: "My giveaways" })).toBeTruthy()
   })
 
@@ -549,6 +551,192 @@ describe("create wizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
 
     expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
+  })
+
+  describe("address", () => {
+    it("puts each step in the address, and the back button walks the steps and keeps the answers", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      expect(view.address()).toBe("/dashboard/new")
+      fillGiveaway(view)
+
+      await toRules(view)
+      expect(view.address()).toBe("/dashboard/new?step=2")
+      next(view)
+      await view.findByText("Step 3 of 3: Review")
+      expect(view.address()).toBe("/dashboard/new?step=3")
+
+      view.back()
+      expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
+      view.back()
+      expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+      expect(view.address()).toBe("/dashboard/new")
+      expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Cup")
+    })
+
+    it("pushes the earlier step when the streamer goes back with the Back button", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      await toRules(view)
+
+      fireEvent.click(view.getByRole("button", { name: "Back" }))
+
+      expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+      expect(view.address()).toBe("/dashboard/new")
+      view.back()
+      expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    })
+
+    it.each(["/dashboard/new?step=3", "/dashboard/new?step=2&from=gid-1"])(
+      "opens the first step and corrects the address when a reload asks for %s, whose answers are gone",
+      async (path) => {
+        mockFetch(listed)
+        const view = renderApp(path)
+
+        expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+        const corrected = path.endsWith("from=gid-1")
+          ? "/dashboard/new?from=gid-1"
+          : "/dashboard/new"
+        await waitFor(() => expect(view.address()).toBe(corrected))
+      },
+    )
+
+    it.each(["0", "4", "x", ""])("opens the first step for ?step=%s", async (step) => {
+      mockFetch(listed)
+      const view = renderApp(`/dashboard/new?step=${step}`)
+
+      expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+      await waitFor(() => expect(view.address()).toBe("/dashboard/new"))
+    })
+
+    it("replaces the review step with the created page, so back from it never shows the review again", async () => {
+      mockFetch(withCreate(createdReply))
+      const view = renderApp("/dashboard")
+      fireEvent.click(await view.findByRole("link", { name: "New giveaway" }))
+      await view.findByText("Step 1 of 3: Basics")
+      await toReview(view)
+
+      fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+
+      expect(await view.findByRole("heading", { name: "Your giveaway is live!" })).toBeTruthy()
+      expect(view.address()).toBe("/dashboard/created/gid-1")
+      view.back()
+      expect(await view.findByRole("heading", { name: "My giveaways" })).toBeTruthy()
+      expect(view.address()).toBe("/dashboard")
+      expect(view.queryByText(/Step \d of 3/)).toBeNull()
+    })
+
+    it("restores the answers and the step from the history entry after a reload", async () => {
+      mockFetch(listed)
+      const draft = { id: "run-1", furthest: 3, values: { ...initialValues, title: "Cup" } }
+
+      const view = renderApp("/dashboard/new?step=3", { draft })
+
+      expect(await view.findByText("Step 3 of 3: Review")).toBeTruthy()
+      expect(view.getByText("Cup")).toBeTruthy()
+      expect(view.address()).toBe("/dashboard/new?step=3")
+    })
+
+    it("keeps the answers typed on a step in the history entry once typing pauses", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+
+      fillGiveaway(view)
+
+      await waitFor(() => expect(readDraft(view.state())?.values.title).toBe("Cup"))
+      expect(readDraft(view.state())?.furthest).toBe(1)
+      expect(view.address()).toBe("/dashboard/new")
+    })
+
+    it("leaves the answers of a step in its entry when going on, so back finds them after a reload", async () => {
+      mockFetch(listed)
+      const view = await openWizard()
+      fillGiveaway(view)
+      await toRules(view)
+
+      view.back()
+
+      await view.findByText("Step 1 of 3: Basics")
+      expect(readDraft(view.state())?.values.title).toBe("Cup")
+      expect(readDraft(view.state())?.furthest).toBe(1)
+    })
+
+    it("does not offer a form for a run whose giveaway was already created", async () => {
+      mockFetch(listed)
+      markCreated("run-2")
+      const draft = { id: "run-2", furthest: 2, values: initialValues }
+
+      const view = renderApp("/dashboard/new?step=2", { draft })
+
+      expect(await view.findByRole("heading", { name: "My giveaways" })).toBeTruthy()
+      expect(view.address()).toBe("/dashboard")
+      expect(view.queryByRole("button", { name: "Start giveaway" })).toBeNull()
+    })
+
+    it("opens a fresh form for a run that was not created", async () => {
+      mockFetch(listed)
+      const draft = { id: "run-3", furthest: 1, values: initialValues }
+
+      const view = renderApp("/dashboard/new", { draft })
+
+      expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+    })
+
+    it("ignores a history state that is not a draft", async () => {
+      mockFetch(listed)
+
+      const view = renderApp("/dashboard/new?step=2", { draft: { id: 7, furthest: 2 } })
+
+      expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
+    })
+
+    it("opens a created page by its address with the giveaway from the list and no warnings", async () => {
+      mockFetch(listed)
+
+      const view = renderApp("/dashboard/created/gid-1")
+
+      expect(await view.findByRole("heading", { name: "Your giveaway is live!" })).toBeTruthy()
+      expect(view.queryByRole("alert")).toBeNull()
+    })
+
+    it("shows the warnings of the creation again after a reload of the created page", async () => {
+      mockFetch(listed)
+
+      const view = renderApp("/dashboard/created/gid-1", {
+        kind: "created",
+        roomReady: false,
+        usageLow: 1200,
+      })
+
+      expect(await view.findByText(/only 1,200 requests left for today/)).toBeTruthy()
+      expect(view.getByText(/not fully ready yet/)).toBeTruthy()
+    })
+
+    it("answers not found for a created page of a giveaway the streamer does not have", async () => {
+      mockFetch(listed)
+
+      const view = renderApp("/dashboard/created/other")
+
+      expect(await view.findByRole("heading", { name: "Giveaway not found" })).toBeTruthy()
+    })
+
+    it("replaces the step with the one of a field the server refused", async () => {
+      mockFetch(
+        withCreate({
+          status: 400,
+          body: { error: "invalid-input", field: "title", code: "blank" },
+        }),
+      )
+      const view = await openWizard()
+      await toReview(view)
+
+      fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+      await view.findByText("Step 1 of 3: Basics")
+
+      expect(view.address()).toBe("/dashboard/new")
+      view.back()
+      expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    })
   })
 
   describe("step indicator", () => {
