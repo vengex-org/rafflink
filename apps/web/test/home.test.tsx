@@ -122,7 +122,8 @@ describe("home page", () => {
       const link = footer.getByRole("link", { name })
       expect(link.getAttribute("target")).toBe("_blank")
       expect(link.getAttribute("rel")).toBe("noopener")
-      expect(link.getAttribute("aria-describedby")).not.toBeNull()
+      const hint = document.getElementById(link.getAttribute("aria-describedby") ?? "")
+      expect(hint?.textContent).toBe("Opens in a new tab")
     }
     expect(footer.getByRole("link", { name: "Privacy" }).hasAttribute("target")).toBe(false)
     expect(footer.getByRole("link", { name: "Verify a draw" }).getAttribute("href")).toBe("/verify")
