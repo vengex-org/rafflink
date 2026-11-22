@@ -155,7 +155,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
 
   const validateTimer = setInterval(() => void runValidation(), config.validatePeriodSeconds * 1000)
   void runValidation()
-  const historyTimer = setInterval(() => void runHistoryRetention(), historySweepMs)
+  const historyDays = config.historyRetentionDays
+  const historyTimer =
+    historyDays === null
+      ? null
+      : setInterval(() => void runHistoryRetention(historyDays), historySweepMs)
   void runQueue()
   await rooms.reviveAll()
 
@@ -163,7 +167,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     url: server.url,
     stop: async () => {
       clearInterval(validateTimer)
-      clearInterval(historyTimer)
+      if (historyTimer !== null) clearInterval(historyTimer)
       queueAlarm.clear()
       await server.stop(true)
       await rooms.close()
@@ -180,9 +184,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     }
   }
 
-  async function runHistoryRetention(): Promise<void> {
+  async function runHistoryRetention(days: number): Promise<void> {
     try {
-      const deleted = await deleteExpiredGiveaways({ accounts, rooms, clock, config })
+      const deleted = await deleteExpiredGiveaways({ accounts, rooms, clock, config }, days)
       console.info("history retention sweep", { deleted })
     } catch (error) {
       console.error("history retention sweep failed", { errorClass: errorClass(error) })

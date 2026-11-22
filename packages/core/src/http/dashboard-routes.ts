@@ -106,7 +106,13 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       const outcome = await deps.rooms.get(giveaway.id).close()
       switch (outcome.kind) {
         case "closed":
-          await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "closed")
+          await mirrorStatus(
+            deps.rooms.get(giveaway.id),
+            deps.accounts,
+            giveaway.id,
+            "closed",
+            deps.clock.now(),
+          )
           return c.json({ kind: "closed" })
         case "not-open":
           return c.json({ kind: "not-open", status: outcome.status }, 409)
@@ -137,12 +143,12 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       const answer = async (outcome: DrawOutcome, retried: boolean): Promise<Response> => {
         switch (outcome.kind) {
           case "drawn":
-            await mirrorStatus(room, deps.accounts, giveaway.id, "drawn")
+            await mirrorStatus(room, deps.accounts, giveaway.id, "drawn", deps.clock.now())
             return c.json({ kind: "drawn", n: outcome.winner.n })
           case "not-closed": {
             const requested = await room.requestDraw()
             if (requested.kind === "requested") {
-              await mirrorStatus(room, deps.accounts, giveaway.id, "closed")
+              await mirrorStatus(room, deps.accounts, giveaway.id, "closed", deps.clock.now())
               return c.json({ kind: requested.kind }, 202)
             }
             // Entries closed between the two calls; the press still means a draw.

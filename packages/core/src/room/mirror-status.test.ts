@@ -27,7 +27,7 @@ describe("mirrorStatus", () => {
   it("writes the account store first and then tells the room", async () => {
     const { accounts, room, calls } = setup()
 
-    await mirrorStatus(room, accounts, "g1", "closed")
+    await mirrorStatus(room, accounts, "g1", "closed", 0)
 
     expect(calls).toEqual(["setStatus g1 closed", "markMirrored closed"])
   })
@@ -36,7 +36,7 @@ describe("mirrorStatus", () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     const { accounts, room, calls } = setup({ setStatus: new TypeError("db down") })
 
-    await mirrorStatus(room, accounts, "g1", "drawn")
+    await mirrorStatus(room, accounts, "g1", "drawn", 0)
 
     expect(calls).toEqual(["setStatus g1 drawn"])
     expect(warn).toHaveBeenCalledWith("status mirror failed", {
@@ -50,7 +50,7 @@ describe("mirrorStatus", () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     const { accounts, room } = setup({ markMirrored: new RangeError("room gone") })
 
-    await mirrorStatus(room, accounts, "g1", "closed")
+    await mirrorStatus(room, accounts, "g1", "closed", 0)
 
     expect(warn).toHaveBeenCalledWith("mirror mark failed", {
       giveawayId: "g1",

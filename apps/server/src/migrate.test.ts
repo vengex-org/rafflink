@@ -97,6 +97,7 @@ describe("applyAccountsMigrations", () => {
       "0006_cloudflare_plan.sql",
       "0007_streamer_access.sql",
       "0008_stats.sql",
+      "0009_closed_at.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",

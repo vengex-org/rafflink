@@ -690,7 +690,7 @@ export const en = {
   "privacy.data.i3":
     "Entrants: Twitch user ID, login name, display name, the URL of the Twitch profile picture, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4":
-    "Winners: login name and display name, the draw result and whether and how the prize was claimed.",
+    'Everyone drawn, rerolled picks included: Twitch user ID, login name, display name, the draw result and whether and how the prize was claimed. The user ID stays with the pick also after the name was replaced with "removed".',
   "privacy.data.i5":
     "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
   "privacy.data.i6":
@@ -706,14 +706,14 @@ export const en = {
     "To keep you signed in with cookies that are strictly necessary for that. Rafflink uses no advertising, no analytics tools and no tracking, and it does not sell or share data for marketing. It keeps only aggregate counts that contain no personal data, such as visits per referral label per day and entries and claims per minute.",
   "privacy.retention.h": "How long data is kept",
   "privacy.retention.i1":
-    "Entries of viewers who did not win (names, picture URLs, groups, tickets, entry times) are deleted at most 30 days after the giveaway closes; the operator may set a shorter time. A winner's entry loses its picture URL, group and entry time at the same moment.",
+    "Entries (Twitch user IDs, names, picture URLs, groups, tickets, entry times, salts) are deleted at most 30 days after the giveaway closes; the operator may set a shorter time. This deletes the entries of the people drawn too; their user ID and names stay with their pick, rerolled picks included (see below).",
   "privacy.retention.i2":
     "When a streamer removes Rafflink's access on Twitch, only the stored Twitch token is deleted. The account and its giveaways stay until the streamer deletes them on the dashboard, one giveaway or all data at once, or asks the operator to (see the contact above).",
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
   "privacy.retention.i4":
     "Host logs are kept by the operator or its hosting provider under their own terms.",
   "privacy.retention.i5":
-    "The giveaway (title, prize, rules, dates, entrant and ticket counts), its winners with login name, display name and claim state, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay until the streamer deletes the giveaway, so the prize can be delivered and anyone can check the draw later. The operator may set a number of days after which giveaways are deleted.",
+    "The giveaway (title, prize, rules, dates, entrant and ticket counts), everyone drawn, rerolled picks included, with Twitch user ID, login name, display name and claim state, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay until the streamer deletes the giveaway, so the prize can be delivered and anyone can check the draw later. The operator may set a number of days after the draw closed when giveaways are deleted.",
   "privacy.recipients.h": "Who else sees the data",
   "privacy.recipients.p1": "Rafflink does not sell data. Data goes only to these parties.",
   "privacy.recipients.i1":

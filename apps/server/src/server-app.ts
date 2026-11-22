@@ -17,7 +17,7 @@ export interface ServerAppOptions {
   /** Where a socket gets its first message. */
   readonly rooms: Pick<
     LocalRoomDirectory,
-    "viewerPushText" | "liveSnapshotText" | "overlaySnapshotText"
+    "viewerPushText" | "liveSnapshotText" | "overlaySnapshotText" | "attachSocket"
   >
   /** Mounted under {@link fakeTwitchPrefixes} in dev only. */
   readonly fakeTwitch: Hono | null
@@ -35,24 +35,24 @@ export function createServerApp(options: ServerAppOptions): Hono {
 
   app.get(
     "/api/live/:id",
-    socketRoute(api, (c) => {
+    socketRoute(api, rooms, (c) => {
       const id = c.req.param("id") ?? ""
-      return { topic: liveTopic(id), first: () => rooms.liveSnapshotText(id) }
+      return { roomId: id, topic: liveTopic(id), first: () => rooms.liveSnapshotText(id) }
     }),
   )
   app.get(
     "/api/overlay/:id/:token",
-    socketRoute(api, (c) => {
+    socketRoute(api, rooms, (c) => {
       const id = c.req.param("id") ?? ""
-      return { topic: overlayTopic(id), first: () => rooms.overlaySnapshotText(id) }
+      return { roomId: id, topic: overlayTopic(id), first: () => rooms.overlaySnapshotText(id) }
     }),
   )
   app.get(
     "/api/g/:code/live",
-    socketRoute(api, (_c, checked) => {
+    socketRoute(api, rooms, (_c, checked) => {
       const roomId = checked.headers.get(viewerRoomHeader)
       if (roomId === null) throw new TypeError("the viewer socket route named no room")
-      return { topic: viewerTopic(roomId), first: () => rooms.viewerPushText(roomId) }
+      return { roomId, topic: viewerTopic(roomId), first: () => rooms.viewerPushText(roomId) }
     }),
   )
   for (const prefix of apiPrefixes) app.all(`${prefix}*`, (c) => api.fetch(c.req.raw))
@@ -78,6 +78,9 @@ function isPagePath(pathname: string): boolean {
   return pathname.endsWith("/") || pathname === "/index.html"
 }
 
+// What a socket that never opened has to forget when it closes.
+const keepNothing = (): void => {}
+
 // RFC 6455: the server hit an unexpected condition and cannot serve the socket.
 const internalErrorCloseCode = 1011
 
@@ -87,6 +90,7 @@ interface Subscribable {
 
 /** What a socket is subscribed to and the message it gets on open; `first` runs after the subscribe, so no push falls between the two. */
 interface Subscription {
+  readonly roomId: string
   readonly topic: string
   readonly first: () => string
 }
@@ -97,17 +101,20 @@ interface Subscription {
  */
 function socketRoute(
   api: Hono,
+  rooms: Pick<LocalRoomDirectory, "attachSocket">,
   subscribe: (c: Context, checked: Response) => Subscription,
 ): MiddlewareHandler {
   return async (c, next) => {
     if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return next()
     const checked = await api.fetch(c.req.raw)
     if (!checked.ok) return checked
-    const { topic, first } = subscribe(c, checked)
+    const { roomId, topic, first } = subscribe(c, checked)
+    let detach = keepNothing
     return upgradeWebSocket(() => ({
       onOpen: (_event, ws) => {
         if (!isSubscribable(ws.raw)) throw new TypeError("the socket cannot subscribe to a topic")
         ws.raw.subscribe(topic)
+        detach = rooms.attachSocket(roomId, ws)
         try {
           ws.send(first())
         } catch (error) {
@@ -115,6 +122,7 @@ function socketRoute(
           ws.close(internalErrorCloseCode)
         }
       },
+      onClose: () => detach(),
     }))(c, next)
   }
 }

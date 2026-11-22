@@ -50,7 +50,7 @@ async function setup(closedIds: readonly string[]) {
       overlayToken: "o",
       createdAt: index,
     })
-    await accounts.setStatus(id, "closed")
+    await accounts.setStatus(id, "closed", 0)
     await rooms.get(id).init({
       id,
       platform: "twitch",

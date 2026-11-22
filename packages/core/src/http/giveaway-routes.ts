@@ -96,9 +96,12 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     return c.json(verifyJson(verification))
   })
 
-  app.get("/api/g/:code/leaves", async (c) => {
+  // The Merkle root in the path names the list: a code freed by a deleted giveaway and given to a new one
+  // never serves the old list from a cache, here or in a browser.
+  app.get("/api/g/:code/leaves/:root", async (c) => {
     const code = c.req.param("code")
-    const key = `${deps.config.publicUrl}/api/g/${encodeURIComponent(code)}/leaves`
+    const root = c.req.param("root")
+    const key = `${deps.config.publicUrl}/api/g/${encodeURIComponent(code)}/leaves/${encodeURIComponent(root)}`
     const cached = await readPublicCache(deps, key, deps.config.leavesCacheSeconds)
     if (cached !== null) return immutableJson(c, cached)
     const address = deps.clientAddress(c.req.raw)
@@ -108,10 +111,16 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     }
     const giveaway = await deps.accounts.findGiveawayByCode(code)
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
-    const leaves = await deps.rooms.get(giveaway.id).leaves()
+    const room = deps.rooms.get(giveaway.id)
+    const leaves = await room.leaves()
     if (leaves === null) {
       c.header("Cache-Control", "no-store")
       return c.json({ error: "not-committed" }, 409)
+    }
+    const { commitment } = await room.verification()
+    if (commitment === null || toHex(commitment.merkleRoot) !== root) {
+      c.header("Cache-Control", "no-store")
+      return c.json({ error: "not-found" }, 404)
     }
     const body: LeavesJson = {
       hashes: leaves.map((leaf) => toHex(leaf.hash)),

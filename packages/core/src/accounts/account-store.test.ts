@@ -352,10 +352,26 @@ describe("AccountStore giveaways", () => {
     const { store } = await withStreamers()
     await store.insertGiveaway(giveaway())
 
-    await store.setStatus("g1", "closed")
-    await store.setStatus("g1", "closed")
+    await store.setStatus("g1", "closed", 0)
+    await store.setStatus("g1", "closed", 0)
 
     expect(await store.findGiveawayById("g1")).toMatchObject({ status: "closed" })
+  })
+
+  it("keeps the first close time and lists only drawn giveaways that closed before an instant, earliest first", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 0 }))
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 0 }))
+    await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 0 }))
+    await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", createdAt: 0 }))
+    await store.setStatus("g1", "closed", 20)
+    await store.setStatus("g1", "drawn", 90)
+    await store.setStatus("g2", "drawn", 10)
+    await store.setStatus("g3", "closed", 5)
+
+    expect(await store.listExpiredGiveaways(50, 10)).toEqual(["g2", "g1"])
+    expect(await store.listExpiredGiveaways(20, 10)).toEqual(["g2"])
+    expect(await store.listExpiredGiveaways(50, 1)).toEqual(["g2"])
   })
 
   it("lists closed giveaways whose retention was not armed, oldest first, and no more than the limit", async () => {
@@ -364,9 +380,9 @@ describe("AccountStore giveaways", () => {
     await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 1 }))
     await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 2 }))
     await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", createdAt: 0 }))
-    await store.setStatus("g1", "closed")
-    await store.setStatus("g2", "drawn")
-    await store.setStatus("g3", "closed")
+    await store.setStatus("g1", "closed", 0)
+    await store.setStatus("g2", "drawn", 0)
+    await store.setStatus("g3", "closed", 0)
 
     expect(await store.listUnarmedRetention(10, 5)).toEqual(["g2", "g3", "g1"])
     expect(await store.listUnarmedRetention(2, 5)).toEqual(["g2", "g3"])
@@ -376,8 +392,8 @@ describe("AccountStore giveaways", () => {
     const { store } = await withStreamers()
     await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 1 }))
     await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 2 }))
-    await store.setStatus("g1", "closed")
-    await store.setStatus("g2", "closed")
+    await store.setStatus("g1", "closed", 0)
+    await store.setStatus("g2", "closed", 0)
 
     await store.markRetentionArmed("g1")
     await store.markRetentionArmed("g1")
@@ -390,7 +406,7 @@ describe("AccountStore giveaways", () => {
     await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 1 }))
     await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 2 }))
     await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 3 }))
-    for (const id of ["g1", "g2", "g3"]) await store.setStatus(id, "closed")
+    for (const id of ["g1", "g2", "g3"]) await store.setStatus(id, "closed", 0)
 
     expect(await store.recordRetentionFailure("g1")).toBe(1)
     expect(await store.recordRetentionFailure("g1")).toBe(2)

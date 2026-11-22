@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
   createGiveaway,
@@ -18,7 +18,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  spyOn(console, "info").mockRestore()
+  mock.restore()
   await harness.stop()
 })
 
@@ -195,35 +195,40 @@ describe("removing a winner's name", () => {
 describe("history retention", () => {
   const dayMs = 86_400_000
 
-  it("deletes giveaways that are no longer open once HISTORY_RETENTION_DAYS have passed since creation, and keeps the others", async () => {
-    await harness.stop()
-    harness = await createHarness({ env: { HISTORY_RETENTION_DAYS: "2" } })
+  it("deletes drawn giveaways that closed more than the given days ago, and keeps open, undrawn and recent ones", async () => {
     const old = await drawnGiveaway()
+    const undrawn = await createGiveaway(harness, users.streamerB.id)
+    await undrawn.browser.postJson(`/api/dash/giveaways/${undrawn.id}/close`, {})
     const stillOpen = await createGiveaway(harness, users.streamerB.id)
     harness.clock.advance(2 * dayMs + 1)
     const recent = await drawnGiveaway()
 
-    expect(await deleteExpiredGiveaways(harness.deps)).toBe(1)
+    expect(await deleteExpiredGiveaways(harness.deps, 2)).toBe(1)
 
     expect(giveawayRows(old.id)).toEqual([])
-    expect([giveawayRows(stillOpen.id), giveawayRows(recent.id)]).toEqual([
+    expect([undrawn.id, stillOpen.id, recent.id].map(giveawayRows)).toEqual([
+      [{ id: undrawn.id }],
       [{ id: stillOpen.id }],
       [{ id: recent.id }],
     ])
     expect(harness.rooms.deleted).toEqual([old.id])
   })
 
-  it("deletes nothing while HISTORY_RETENTION_DAYS is unset", async () => {
-    await drawnGiveaway()
-    harness.clock.advance(10_000 * dayMs)
+  it("counts the days from the close, not from the creation", async () => {
+    const created = await createGiveaway(harness)
+    harness.clock.advance(3 * dayMs)
+    const viewer = new Browser(harness)
+    await viewer.signInAs(users.viewer.id, `/auth/twitch/viewer/start?giveaway=${created.code}`)
+    await created.browser.postJson(`/api/dash/giveaways/${created.id}/close`, {})
+    await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, {})
+    harness.clock.advance(dayMs)
 
-    expect(await deleteExpiredGiveaways(harness.deps)).toBe(0)
-    expect(harness.rooms.deleted).toEqual([])
+    expect(await deleteExpiredGiveaways(harness.deps, 2)).toBe(0)
+    harness.clock.advance(dayMs + 1)
+    expect(await deleteExpiredGiveaways(harness.deps, 2)).toBe(1)
   })
 
   it("goes on with the next giveaway when one room fails", async () => {
-    await harness.stop()
-    harness = await createHarness({ env: { HISTORY_RETENTION_DAYS: "1" } })
     const failing = await drawnGiveaway()
     const other = await drawnGiveaway()
     harness.clock.advance(dayMs + 1)
@@ -234,7 +239,7 @@ describe("history retention", () => {
     })
     const warn = spyOn(console, "warn").mockImplementation(() => {})
 
-    expect(await deleteExpiredGiveaways(harness.deps)).toBe(1)
+    expect(await deleteExpiredGiveaways(harness.deps, 1)).toBe(1)
 
     expect(giveawayRows(failing.id)).toHaveLength(1)
     expect(giveawayRows(other.id)).toEqual([])
@@ -242,6 +247,5 @@ describe("history retention", () => {
       giveawayId: failing.id,
       errorClass: "Error",
     })
-    warn.mockRestore()
   })
 })

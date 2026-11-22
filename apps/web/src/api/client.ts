@@ -211,15 +211,15 @@ export async function getVerifyLoad(code: string): Promise<VerifyLoad | null> {
   if (status !== 200) throw new ApiError(status)
   const verify = parseVerify(record(body, "verify"))
   const [leaves, mine] = await Promise.all([
-    verify.commitment === null ? null : getLeaves(base),
+    verify.commitment === null ? null : getLeaves(base, verify.commitment.merkleRoot),
     getMyLeaf(base),
   ])
   return { verify, leaves, mine }
 }
 
 // 409 is a room that has not committed yet.
-async function getLeaves(base: string): Promise<LeavesJson | null> {
-  const { status, body } = await send(`${base}/leaves`)
+async function getLeaves(base: string, merkleRoot: string): Promise<LeavesJson | null> {
+  const { status, body } = await send(`${base}/leaves/${merkleRoot}`)
   if (status === 409) return null
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "leaves")

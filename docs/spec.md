@@ -465,10 +465,10 @@ of the id could be brute-forced into a list of who entered.
 
 - Stored per entrant: platform, user id, login, display name, profile picture URL, group, tickets, time (and the salt from M2).
 - Entries and the channel role lists are deleted 30 days after the giveaway closes (`ENTRY_RETENTION_SECONDS`), by
-  the room alarm; the winner list with each winner's login and display name (copied at pick time, no profile
-  picture), counts, Merkle root and leaf list stay with the giveaway.
+  the room alarm; every pick, rerolled ones included, with the user id, login and display name (copied at pick
+  time, no profile picture), counts, Merkle root and leaf list stay with the giveaway.
 - A giveaway stays until its streamer deletes it, or all their data, on the dashboard, or until
-  `HISTORY_RETENTION_DAYS` after its creation when the operator sets it. An admin can replace one winner's name with
+  `HISTORY_RETENTION_DAYS` after its close, once drawn, when the operator sets it. An admin can replace one winner's name with
   "removed" on request.
 - Rafflink asks only for read scopes and never posts to chat.
 - Chat is read from the draw until the giveaway is finished. Messages are matched in memory and never stored or logged.

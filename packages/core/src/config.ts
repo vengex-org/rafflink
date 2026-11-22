@@ -440,7 +440,7 @@ export const configSchema = {
     "HISTORY_RETENTION_DAYS",
     optional(int(1)),
     "",
-    "Days after its creation a giveaway that is no longer open is deleted with its winners and draw proof by the hourly sweep; blank keeps every giveaway until its streamer deletes it, which is what the privacy page promises by default",
+    "Days after its close a drawn giveaway is deleted with its winners and draw proof by the hourly sweep; blank keeps every giveaway until its streamer deletes it and runs no sweep, which is what the privacy page promises by default",
   ),
   historyRetentionSweepBatch: withDefault(
     "HISTORY_RETENTION_SWEEP_BATCH",

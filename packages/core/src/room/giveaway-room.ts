@@ -241,6 +241,7 @@ export interface WinnerPick extends LiveWinner, Identity {
   readonly drawnAt: Instant
 }
 
+/** What {@link GiveawayRoom.removeWinnerName} did: replaced the names, or found no pick with that number. */
 export type RemoveWinnerNameOutcome =
   | { readonly kind: "removed" }
   | { readonly kind: "unknown-pick" }
@@ -1455,7 +1456,7 @@ interface ChatterLine {
 // A round is published at its time; the alarm waits this long more so the first try finds it.
 const drawLagMs = 500
 
-// What a removed winner is called from then on, in every language; the issue fixes the word.
+// What a removed winner is called from then on, in every language; the privacy page quotes the word.
 const removedName = "removed"
 
 // 128 bits, enough that a published leaf cannot be matched to an id by trying ids.

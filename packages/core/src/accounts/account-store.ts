@@ -217,15 +217,15 @@ export class AccountStore {
     ])
   }
 
-  /** Ids of up to `limit` giveaways that are no longer open and were created before `before`, oldest first. */
-  async listExpiredGiveaways(before: Instant, limit: number): Promise<string[]> {
-    const rows = await this.sql.all(expiredGiveawaysSql, [before, limit])
+  /** Ids of up to `limit` drawn giveaways that closed before `closedBefore`, earliest close first. */
+  async listExpiredGiveaways(closedBefore: Instant, limit: number): Promise<string[]> {
+    const rows = await this.sql.all(expiredGiveawaysSql, [closedBefore, limit])
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
   }
 
-  /** Idempotent mirror of the room's status. */
-  async setStatus(giveawayId: string, status: RoomStatus): Promise<void> {
-    await this.sql.run(setStatusSql, [status, giveawayId])
+  /** Idempotent mirror of the room's status; the first status past open also stores `at` as the close time. */
+  async setStatus(giveawayId: string, status: RoomStatus, at: Instant): Promise<void> {
+    await this.sql.run(setStatusSql, [status, status === "open" ? null : at, giveawayId])
   }
 
   /**

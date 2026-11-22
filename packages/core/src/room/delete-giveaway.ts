@@ -5,6 +5,7 @@ import type { Clock } from "../ports.ts"
 import { dayMs } from "../stats/time.ts"
 import type { RoomDirectory } from "./room-directory.ts"
 
+/** What deleting a giveaway reaches: its row in the account store and its room. */
 export interface DeleteGiveawayDeps {
   readonly accounts: Pick<AccountStore, "deleteGiveaway" | "listExpiredGiveaways">
   readonly rooms: Pick<RoomDirectory, "delete">
@@ -20,18 +21,17 @@ export async function deleteGiveaway(deps: DeleteGiveawayDeps, giveawayId: strin
 }
 
 /**
- * Deletes up to `HISTORY_RETENTION_SWEEP_BATCH` giveaways that are no longer open and were created more than
- * `HISTORY_RETENTION_DAYS` ago; nothing while the setting is blank. A giveaway that fails is logged and the
- * next sweep tries it again. Returns how many were deleted.
+ * Deletes up to `HISTORY_RETENTION_SWEEP_BATCH` drawn giveaways that closed more than `days` ago, the set
+ * `HISTORY_RETENTION_DAYS`. A giveaway that fails is logged and the next sweep tries it again. Returns how many
+ * were deleted.
  */
 export async function deleteExpiredGiveaways(
   deps: DeleteGiveawayDeps & {
     readonly clock: Clock
-    readonly config: Pick<ResolvedConfig, "historyRetentionDays" | "historyRetentionSweepBatch">
+    readonly config: Pick<ResolvedConfig, "historyRetentionSweepBatch">
   },
+  days: number,
 ): Promise<number> {
-  const days = deps.config.historyRetentionDays
-  if (days === null) return 0
   const before = deps.clock.now() - days * dayMs
   let deleted = 0
   for (const giveawayId of await deps.accounts.listExpiredGiveaways(

@@ -98,13 +98,16 @@ async function armRetention(env: WorkerEnv): Promise<void> {
   }
 }
 
+// Unset HISTORY_RETENTION_DAYS keeps every giveaway, so the sweep neither runs nor logs.
 async function deleteExpiredHistory(env: WorkerEnv): Promise<void> {
   try {
     const runtime = await runtimeOf(env)
-    const deleted = await deleteExpiredGiveaways({
-      ...runtime,
-      rooms: new DurableObjectRoomDirectory(env.ROOMS),
-    })
+    const days = runtime.config.historyRetentionDays
+    if (days === null) return
+    const deleted = await deleteExpiredGiveaways(
+      { ...runtime, rooms: new DurableObjectRoomDirectory(env.ROOMS) },
+      days,
+    )
     console.info("history retention sweep", { deleted })
   } catch (error) {
     console.error("history retention sweep failed", { errorClass: errorClass(error) })

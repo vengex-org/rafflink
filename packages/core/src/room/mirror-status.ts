@@ -1,5 +1,6 @@
 import type { AccountStore } from "../accounts/account-store.ts"
 import { errorClass } from "../lib/error-class.ts"
+import type { Instant } from "../ports.ts"
 import type { RoomStatus } from "./rows.ts"
 
 /** The room as the route (an async stub) and the alarm (the room itself) both reach it. */
@@ -16,9 +17,10 @@ export async function mirrorStatus(
   accounts: Pick<AccountStore, "setStatus">,
   giveawayId: string,
   status: RoomStatus,
+  now: Instant,
 ): Promise<void> {
   try {
-    await accounts.setStatus(giveawayId, status)
+    await accounts.setStatus(giveawayId, status, now)
   } catch (error) {
     console.warn("status mirror failed", { giveawayId, status, errorClass: errorClass(error) })
     return
