@@ -12,7 +12,7 @@ import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl, setupGuideUrl } from "../lib/links.ts"
-import { dashboardPath, privacyPath, termsPath, verifyLookupPath } from "../lib/routes.ts"
+import { dashboardPath, drawPath, privacyPath, termsPath, verifyLookupPath } from "../lib/routes.ts"
 import { useConsumedParam } from "../lib/use-consumed-param.ts"
 
 /** Extra top-level routes of the deployment, rendered before the catch-all routes. */
@@ -63,6 +63,7 @@ export function HomePage() {
               {t("home.footer.guide")}
             </ExternalLink>
             <Link to={verifyLookupPath}>{t("nav.verify")}</Link>
+            <Link to={drawPath}>{t("nav.draw")}</Link>
             <Link to={privacyPath}>{t("legal.privacy")}</Link>
             <Link to={termsPath}>{t("legal.terms")}</Link>
             {donateUrl === null ? null : (

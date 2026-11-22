@@ -7,6 +7,7 @@ import { parseLanguage } from "./i18n/language.ts"
 import { AdminPage } from "./pages/admin-page.tsx"
 import { CreatedGiveawayPage, NewGiveawayPage } from "./pages/create-page.tsx"
 import { DashboardPage } from "./pages/dashboard-page.tsx"
+import { DrawPage } from "./pages/draw-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
 import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
@@ -34,6 +35,7 @@ export function AppRoutes() {
             <Route path="privacy" caseSensitive element={<PrivacyPage />} />
             <Route path="terms" caseSensitive element={<TermsPage />} />
             <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
+            <Route path="draw" caseSensitive element={<DrawPage />} />
             <Route index element={<HomePage />} />
             <Route path="*" element={<NotFound title="notFound.page" />} />
           </Route>

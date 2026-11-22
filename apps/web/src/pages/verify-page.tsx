@@ -118,7 +118,8 @@ function Facts({
   )
 }
 
-function Fact({
+/** One row of a `verify-facts` list; `mono` sets hashes and ids in the monospace face. */
+export function Fact({
   label,
   mono,
   children,

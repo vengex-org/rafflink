@@ -1,6 +1,6 @@
 import type { OverlayOptions } from "./overlay-options.ts"
 
-export { giveawayPath, verifyPath } from "@rafflink/core/lib/page-paths"
+export { drawPath, giveawayPath, verifyPath } from "@rafflink/core/lib/page-paths"
 
 /** The first segments of the pages that are not giveaways; their canonical spelling is lowercase. `g` is the old giveaway link. */
 export const staticSegments = [
@@ -9,6 +9,7 @@ export const staticSegments = [
   "privacy",
   "terms",
   "verify",
+  "draw",
   "live",
   "overlay",
   "g",

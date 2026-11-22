@@ -872,4 +872,53 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "verify.mine.found": "Tvoj zápis je zápis {leaf} zo zoznamu, s {tickets} tiketmi.",
   "verify.mine.won": "Si výber {n}.",
   "verify.mine.missing": "Tvoj zápis nie je v zozname.",
+  "nav.draw": "Žrebovanie zo zoznamu",
+  "draw.title": "Žrebovanie zo zoznamu",
+  "draw.intro":
+    "Vlož mená, uzamkni zoznam a víťazov vyberie verejné kolo drand. Ktokoľvek s odkazom si žrebovanie skontroluje vo vlastnom prehliadači. Bez prihlásenia.",
+  "draw.form.title": "Názov (nepovinný)",
+  "draw.form.titleTooLong": "Názov môže mať najviac {max} znakov.",
+  "draw.form.names": "Mená",
+  "draw.form.namesHelp":
+    "Jedno meno na riadok, najviac {max}. Meno, ktoré sa opakuje, sa počíta raz.",
+  "draw.form.count": "Mená: {count}. Vynechané opakovania: {repeats}.",
+  "draw.form.empty": "Pridaj aspoň jedno meno.",
+  "draw.form.tooMany": "Zoznam je príliš dlhý. Limit je {max} mien.",
+  "draw.form.winners": "Víťazi",
+  "draw.form.winnersInvalid": "Vyber od 1 do {max} víťazov.",
+  "draw.commit": "Uzamknúť zoznam",
+  "draw.badLink": "Tento odkaz na žrebovanie je poškodený alebo neúplný.",
+  "draw.file.label": "Súbor so zoznamom",
+  "draw.file.help": "Zoznam bol na odkaz príliš dlhý. Otvor súbor so zoznamom, ktorý k nemu patrí.",
+  "draw.file.invalid": "Toto nie je súbor so zoznamom.",
+  "draw.mismatch":
+    "Mená nesedia s hashom zoznamu. Odkaz alebo súbor niekto zmenil, takže sa nič nežrebuje.",
+  "draw.facts.names": "Mená",
+  "draw.facts.winners": "Víťazi",
+  "draw.facts.hash": "Hash zoznamu",
+  "draw.facts.roundAt": "Kolo zverejnené",
+  "draw.facts.committed": "Zoznam uzamknutý (podľa hodín prehliadača, ktorý ho uzamkol)",
+  "draw.early":
+    "Podľa tohto zoznamu bol uzamknutý až po zverejnení kola drand {round}, takže žrebovaniu sa nedá veriť.",
+  "draw.waiting": "Víťazi sa vyžrebujú, keď sa zverejní kolo drand {round}.",
+  "draw.drawn": "Víťazi vychádzajú zo zoznamu a z náhodného čísla kola drand {round}.",
+  "draw.invalid": "Podpis kola drand {round} nie je platný, takže sa žiadni víťazi nezobrazia.",
+  "draw.unavailable": "Kolo drand {round} sa nepodarilo načítať. Skús to neskôr.",
+  "draw.retry": "Skúsiť znova",
+  "draw.share.label": "Odkaz na zdieľanie",
+  "draw.share.copy": "Skopírovať odkaz na zdieľanie",
+  "draw.share.withNames":
+    "Odkaz obsahuje mená. Každý, kto ho otvorí, ich uvidí a dostane tých istých víťazov.",
+  "draw.share.noNames":
+    "Zoznam je na odkaz príliš dlhý. Zdieľaj odkaz spolu so súborom so zoznamom.",
+  "draw.download": "Stiahnuť súbor so zoznamom",
+  "draw.new": "Nové žrebovanie",
+  "draw.proof.title": "Čo to dokazuje",
+  "draw.proof.covers":
+    "Víťazi vychádzajú presne z týchto mien a z náhodného čísla kola drand. Ktokoľvek ich môže prepočítať a nikto to číslo nepozná, kým sa kolo nezverejní.",
+  "draw.proof.private":
+    "Mená zostávajú v tvojom prehliadači. Opustia ho iba v odkaze alebo v súbore, ktorý zdieľaš.",
+  "draw.proof.time":
+    "Čas uzamknutia zoznamu pochádza z prehliadača, ktorý ho uzamkol, nie zo servera. Niekto by mohol uzamknúť zoznam až po kole a tvrdiť skorší čas. Ver žrebovaniu, iba ak si hash zoznamu alebo odkaz videl pred zverejnením kola.",
+  "draw.proof.list": "Žrebovanie neukazuje, kto do zoznamu patrí. Mená si skontroluj sám.",
 }

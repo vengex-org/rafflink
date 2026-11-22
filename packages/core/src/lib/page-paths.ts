@@ -7,3 +7,6 @@ export function giveawayPath(code: string): string {
 export function verifyPath(code: string): string {
   return `${giveawayPath(code)}/verify`
 }
+
+/** The draw from a pasted list, which needs no account. */
+export const drawPath = "/draw"

@@ -6,7 +6,7 @@ import { errorClass } from "../lib/error-class.ts"
 import type { Clock, RateLimiter } from "../ports.ts"
 import { parseReferral } from "../stats/referral.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
-import { giveawayPath, verifyPath } from "../lib/page-paths.ts"
+import { drawPath, giveawayPath, verifyPath } from "../lib/page-paths.ts"
 import { inlineScriptHashes, renderSpaHtml, type PageMeta } from "../lib/spa-html.ts"
 import { isApiPath } from "./api-paths.ts"
 import { contentSecurityPolicy } from "./security-headers.ts"
@@ -23,6 +23,13 @@ export interface SpaDeps {
   readonly entryIpLimiter: RateLimiter
   readonly clientAddress: (request: Request) => string | null
   readonly stats: Pick<StatsStore, "countReferral">
+}
+
+// The preview of a shared list draw; the list itself is in the fragment, which never reaches the server.
+const drawText = {
+  title: "Draw from a list",
+  description:
+    "Paste names and a public drand round picks the winners. Anyone can check the draw in the browser. No sign-in.",
 }
 
 const giveawayRoute = new RegExp(`^/(?:g/)?([${codeAlphabet}]{${codeLength}})(/verify)?$`)
@@ -51,7 +58,7 @@ export function spaRoutes(deps: SpaDeps, loadTemplate: SpaTemplateLoader): Hono 
     const image = `${publicUrl}/og.png`
     const meta: PageMeta =
       giveaway === null
-        ? { url: `${publicUrl}${pathname}`, image, text: null }
+        ? { url: `${publicUrl}${pathname}`, image, text: pathname === drawPath ? drawText : null }
         : {
             url: `${publicUrl}${canonicalPath(giveaway.code)}`,
             image,
