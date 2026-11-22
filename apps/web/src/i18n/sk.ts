@@ -468,6 +468,24 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "dash.duplicate.label": "Duplikovať {name}",
   "dash.section.running": "Prebiehajúce",
   "dash.section.drawn": "Ukončené",
+  "dash.search.label": "Hľadať v ukončených giveawayoch",
+  "dash.search.placeholder": "Hľadaj podľa názvu, výhry alebo kódu",
+  "dash.search.none": "Hľadaniu nezodpovedá žiadny ukončený giveaway.",
+  "dash.csv": "Výhercovia ako CSV",
+  "dash.csv.label": "Výhercovia ako CSV, {name}",
+  "dash.delete": "Vymazať",
+  "dash.delete.question": "Vymazať {name}?",
+  "dash.delete.detail":
+    "Giveaway sa natrvalo vymaže aj so zapojenými, výhercami a dôkazom žrebovania a jeho odkaz prestane fungovať.",
+  "dash.delete.confirm": "Áno, vymazať",
+  "dash.deleteData.title": "Tvoje údaje",
+  "dash.deleteData.text":
+    "Môžeš vymazať všetky giveawaye, ktoré si vytvoril, spolu so svojím účtom v Rafflinku.",
+  "dash.deleteData.button": "Vymazať všetky moje údaje",
+  "dash.deleteData.question": "Vymazať všetky tvoje údaje?",
+  "dash.deleteData.detail":
+    "Všetky giveawaye so zapojenými, výhercami a dôkazom žrebovania, tvoj účet aj uložený Twitch token sa natrvalo vymažú a budeš odhlásený.",
+  "dash.deleteData.confirm": "Áno, vymazať všetko",
 
   "share.link": "Tvoj odkaz",
   "share.copyLink": "Kopírovať odkaz",
@@ -675,7 +693,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Streameri: Twitch refresh token, uložený šifrovane. Vďaka nemu Rafflink počas giveawayu číta zoznam VIP a moderátorov kanála a chat.",
   "privacy.data.i3":
     "Účastníci: Twitch user ID, prihlasovacie meno, zobrazované meno, URL profilového obrázka na Twitchi, skupina, ktorá dala tikety (divák, follower, úroveň predplatiteľa, VIP alebo moderátor), počet tiketov, čas zapojenia a náhodná hodnota (salt), vďaka ktorej je žrebovanie overiteľné. Kontrola follow a predplatného použije tvoj Twitch token jedenkrát a token sa neukladá.",
-  "privacy.data.i4": "Výhercovia: výsledok žrebovania a to, či a ako bola výhra prevzatá.",
+  "privacy.data.i4":
+    "Všetci vyžrebovaní, aj tí nahradení novým žrebom: Twitch ID používateľa, prihlasovacie a zobrazované meno, výsledok žrebovania a to, či a ako bola výhra prevzatá. ID používateľa zostáva pri žrebe aj po tom, čo bolo meno nahradené slovom „removed“.",
   "privacy.data.i5":
     "Správy z chatu: čítajú sa len v pamäti, aby sa rozpoznalo prevzatie výhry a aby sa na živej stránke ukázali správy výhercu. Nikdy sa neukladajú ani nelogujú.",
   "privacy.data.i6":
@@ -691,15 +710,15 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Na udržanie prihlásenia cez cookies, ktoré sú na to nevyhnutné. Rafflink nepoužíva reklamu, analytické nástroje ani sledovanie a údaje nepredáva ani neposkytuje na marketing. Uchováva len súhrnné počty, ktoré neobsahujú osobné údaje, napríklad návštevy podľa značky zdroja za deň a zápisy a prevzatia za minútu.",
   "privacy.retention.h": "Ako dlho sa údaje uchovávajú",
   "privacy.retention.i1":
-    "Zapojenia (mená, URL obrázkov, skupiny, tikety, časy zapojenia) sa mažú najneskôr 30 dní po uzavretí giveawayu; prevádzkovateľ môže nastaviť kratšiu dobu.",
+    "Zapojenia (Twitch ID používateľov, mená, URL obrázkov, skupiny, tikety, časy zapojenia, soli) sa mažú najneskôr 30 dní po uzavretí giveawayu; prevádzkovateľ môže nastaviť kratšiu dobu. Vymažú sa aj zapojenia vyžrebovaných; ich ID a mená zostávajú pri žrebe, aj pri tých nahradených novým žrebom (pozri nižšie).",
   "privacy.retention.i2":
-    "Keď streamer odoberie Rafflinku prístup na Twitchi, vymaže sa iba uložený Twitch token. Účet a giveawaye zostávajú, kým streamer nepožiada prevádzkovateľa o ich vymazanie (pozri kontakt vyššie).",
+    "Keď streamer odoberie Rafflinku prístup na Twitchi, vymaže sa iba uložený Twitch token. Účet a giveawaye zostávajú, kým ich streamer nevymaže na svojom prehľade, jeden giveaway alebo všetky údaje naraz, alebo kým o to nepožiada prevádzkovateľa (pozri kontakt vyššie).",
   "privacy.retention.i3":
     "Prihlasovacie kódy čakajúce vo fronte sa po niekoľkých minútach zahodia.",
   "privacy.retention.i4":
     "Logy hostiteľa uchováva prevádzkovateľ alebo jeho poskytovateľ hostingu podľa vlastných podmienok.",
   "privacy.retention.i5":
-    "Zoznam výhercov, Merkleho koreň zoznamu zapojení a zoznam jeho listov (hashe a počty tiketov, bez mien) zostávajú pri giveawayi, aby si žrebovanie mohol neskôr overiť ktokoľvek.",
+    "Giveaway (názov, výhra, pravidlá, dátumy, počty zapojených a tiketov), všetci vyžrebovaní, aj tí nahradení novým žrebom, s Twitch ID, prihlasovacím a zobrazovaným menom a stavom prevzatia, Merkleho koreň zoznamu zapojení a zoznam jeho listov (hashe a počty tiketov, bez mien) zostávajú, kým streamer giveaway nevymaže, aby sa dala doručiť výhra a aby si žrebovanie mohol neskôr overiť ktokoľvek. Prevádzkovateľ môže nastaviť počet dní po uzavretí žrebovania, po ktorých sa giveawaye mažú.",
   "privacy.recipients.h": "Kto ďalší údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje nepredáva. Údaje idú len týmto stranám.",
   "privacy.recipients.i1":
@@ -730,7 +749,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.rights.p2":
     "Prístup Rafflinku môžeš kedykoľvek odobrať aj v nastaveniach Twitchu v časti Connections.",
   "privacy.rights.i1": "Prístup k údajom, ich oprava, obmedzenie spracúvania a prenosnosť.",
-  "privacy.rights.i2": "Vymazanie, napríklad záznamu o výhercovi, ktorý po giveawayi zostáva.",
+  "privacy.rights.i2":
+    "Vymazanie, napríklad mena výhercu, ktoré po giveawayi zostáva: prevádzkovateľ ho nahradí slovom „removed“ a žrebovanie zostane overiteľné.",
   "privacy.rights.i3": "Námietka proti spracúvaniu na základe nášho oprávneného záujmu.",
   "privacy.rights.i4":
     "Sťažnosť dozornému orgánu na ochranu osobných údajov v krajine, kde žiješ alebo pracuješ, alebo kde si myslíš, že boli porušené tvoje práva. Na Slovensku je to Úrad na ochranu osobných údajov SR.",

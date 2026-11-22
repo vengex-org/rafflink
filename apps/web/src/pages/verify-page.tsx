@@ -113,7 +113,9 @@ function Facts({
         </ExternalLink>
       </Fact>
       <Fact label={t("verify.facts.leaves")}>
-        <a href={`/api/g/${encodeURIComponent(code)}/leaves`}>{t("verify.facts.leavesLink")}</a>
+        <a href={`/api/g/${encodeURIComponent(code)}/leaves/${commitment.merkleRoot}`}>
+          {t("verify.facts.leavesLink")}
+        </a>
       </Fact>
     </dl>
   )

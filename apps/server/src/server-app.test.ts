@@ -13,6 +13,7 @@ afterEach(() => {
 const unusedText = (): string => {
   throw new Error("not this socket")
 }
+const keepSocket = () => () => {}
 
 describe("viewer socket", () => {
   it("builds the first message after the subscribe, so a push made while it is built arrives", async () => {
@@ -28,6 +29,7 @@ describe("viewer socket", () => {
     const app = createServerApp({
       api,
       rooms: {
+        attachSocket: keepSocket,
         liveSnapshotText: unusedText,
         overlaySnapshotText: unusedText,
         viewerPushText: () => {
@@ -69,6 +71,7 @@ describe.each([
     const app = createServerApp({
       api,
       rooms: {
+        attachSocket: keepSocket,
         viewerPushText: unusedText,
         liveSnapshotText: name === "live" ? read : unusedText,
         overlaySnapshotText: name === "overlay" ? read : unusedText,
@@ -100,6 +103,7 @@ describe("a socket whose first message cannot be built", () => {
     const app = createServerApp({
       api,
       rooms: {
+        attachSocket: keepSocket,
         viewerPushText: unusedText,
         overlaySnapshotText: unusedText,
         liveSnapshotText: () => {

@@ -436,6 +436,18 @@ export const configSchema = {
     "5",
     "Failed sweeps after which the hourly cron stops waking the room of a closed giveaway and logs an error; a failing room sorts behind the others meanwhile; starting guess, about five hours of hourly runs",
   ),
+  historyRetentionDays: withDefault(
+    "HISTORY_RETENTION_DAYS",
+    optional(int(1)),
+    "",
+    "Days after its close a drawn giveaway is deleted with its winners and draw proof by the hourly sweep; blank keeps every giveaway until its streamer deletes it and runs no sweep, which is what the privacy page promises by default",
+  ),
+  historyRetentionSweepBatch: withDefault(
+    "HISTORY_RETENTION_SWEEP_BATCH",
+    int(1),
+    "100",
+    "Most expired giveaways one hourly sweep deletes while HISTORY_RETENTION_DAYS is set; each costs one room request and one account store write; starting guess, the same as ENTRY_RETENTION_SWEEP_BATCH",
+  ),
   entryUserLimitPerMinute: withDefault(
     "ENTRY_USER_LIMIT_PER_MINUTE",
     int(1),
@@ -760,6 +772,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     entryRetentionSeconds: read(env, configSchema.entryRetentionSeconds),
     entryRetentionSweepBatch: read(env, configSchema.entryRetentionSweepBatch),
     entryRetentionSweepMaxAttempts: read(env, configSchema.entryRetentionSweepMaxAttempts),
+    historyRetentionDays: read(env, configSchema.historyRetentionDays),
+    historyRetentionSweepBatch: read(env, configSchema.historyRetentionSweepBatch),
     entryUserLimitPerMinute: read(env, configSchema.entryUserLimitPerMinute),
     entryIpLimitPerMinute: read(env, configSchema.entryIpLimitPerMinute),
     leavesIpLimitPerMinute: read(env, configSchema.leavesIpLimitPerMinute),

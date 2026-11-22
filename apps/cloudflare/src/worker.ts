@@ -3,6 +3,7 @@ import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { armRetentionAlarms } from "@rafflink/core/room/arm-retention"
+import { deleteExpiredGiveaways } from "@rafflink/core/room/delete-giveaway"
 import type { Hono } from "hono"
 import { CacheApiPublicCache } from "./adapters/cache-api-public-cache.ts"
 import { createUsageMeter } from "./adapters/cloudflare-usage-meter.ts"
@@ -30,6 +31,7 @@ export default {
   async scheduled(_controller: ScheduledController, env: WorkerEnv, ctx: ExecutionContext) {
     ctx.waitUntil(validateTokens(env))
     ctx.waitUntil(armRetention(env))
+    ctx.waitUntil(deleteExpiredHistory(env))
   },
 }
 
@@ -93,5 +95,21 @@ async function armRetention(env: WorkerEnv): Promise<void> {
     console.info("retention sweep", { woken })
   } catch (error) {
     console.error("retention sweep failed", { errorClass: errorClass(error) })
+  }
+}
+
+// Unset HISTORY_RETENTION_DAYS keeps every giveaway, so the sweep neither runs nor logs.
+async function deleteExpiredHistory(env: WorkerEnv): Promise<void> {
+  try {
+    const runtime = await runtimeOf(env)
+    const days = runtime.config.historyRetentionDays
+    if (days === null) return
+    const deleted = await deleteExpiredGiveaways(
+      { ...runtime, rooms: new DurableObjectRoomDirectory(env.ROOMS) },
+      days,
+    )
+    console.info("history retention sweep", { deleted })
+  } catch (error) {
+    console.error("history retention sweep failed", { errorClass: errorClass(error) })
   }
 }

@@ -15,8 +15,14 @@ async function verifyOf(target: ContractTarget, code: string): Promise<VerifyJso
   return response.json()
 }
 
+// The leaves URL names the published root, read from the verify answer.
+async function leavesUrl(target: ContractTarget, code: string): Promise<URL> {
+  const root = (await verifyOf(target, code)).commitment?.merkleRoot ?? ""
+  return new URL(`/api/g/${code}/leaves/${root}`, target.url)
+}
+
 async function leavesOf(target: ContractTarget, code: string): Promise<LeavesJson> {
-  const response = await fetch(new URL(`/api/g/${code}/leaves`, target.url))
+  const response = await fetch(await leavesUrl(target, code))
   expect(response.status).toBe(200)
   return response.json()
 }
@@ -60,7 +66,7 @@ export function commitmentScenarios(context: ContractContext): void {
       await enterAndClose(world, target, giveaway)
 
       const verify = await verifyOf(target, giveaway.code)
-      const leavesResponse = await fetch(new URL(`/api/g/${giveaway.code}/leaves`, target.url))
+      const leavesResponse = await fetch(await leavesUrl(target, giveaway.code))
       const leavesText = await leavesResponse.text()
       const leaves: LeavesJson = JSON.parse(leavesText)
 

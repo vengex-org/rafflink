@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite"
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
+import { readdirSync } from "node:fs"
 import { join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
@@ -80,6 +81,67 @@ describe("LocalRoomDirectory", () => {
     const second = directoryWith()
 
     expect((await second.get(id).summary()).entrantCount).toBe(1)
+  })
+
+  it("deletes a room's files, refuses the id from then on without creating a file, and keeps the others", async () => {
+    const directory = directoryWith()
+    await directory.get(id).init(giveawayInit(id))
+    await directory.get(id).enter(viewer)
+    await directory.get(otherId).init(giveawayInit(otherId))
+
+    await directory.delete(id)
+
+    expect(() => directory.get(id)).toThrow("the giveaway room was deleted")
+    expect(readdirSync(join(dir.path, "rooms")).filter((name) => name.startsWith(id))).toEqual([])
+    expect((await directory.get(otherId).summary()).status).toBe("open")
+  })
+
+  it("closes the sockets of a deleted room only, and forgets a socket that detached", async () => {
+    const directory = directoryWith()
+    await directory.get(id).init(giveawayInit(id))
+    const closed: string[] = []
+    const socket = (name: string) => ({ close: () => void closed.push(name) })
+    directory.attachSocket(id, socket("live"))
+    const detach = directory.attachSocket(id, socket("gone"))
+    directory.attachSocket(otherId, socket("other"))
+    detach()
+
+    await directory.delete(id)
+
+    expect(closed).toEqual(["live"])
+  })
+
+  it("waits for the room's running alarm work before it closes the database", async () => {
+    const first = directoryWith()
+    await first.get(id).init(giveawayInit(id))
+    await first.close()
+    const steps: string[] = []
+    const { promise: release, resolve } = Promise.withResolvers<void>()
+    const directory = directoryWith({
+      onAlarm: async (_giveawayId, room) => {
+        steps.push("alarm started")
+        await release
+        room.summary()
+        steps.push("alarm finished")
+      },
+    })
+    const reviving = directory.reviveAll()
+
+    const deleting = directory.delete(id).then(() => steps.push("deleted"))
+    resolve()
+    await Promise.all([reviving, deleting])
+
+    expect(steps).toEqual(["alarm started", "alarm finished", "deleted"])
+  })
+
+  it("deletes a room that is not open in this process", async () => {
+    const first = directoryWith()
+    await first.get(id).init(giveawayInit(id))
+    await first.close()
+
+    await directoryWith().delete(id)
+
+    expect(readdirSync(join(dir.path, "rooms"))).toEqual([])
   })
 
   it("refuses an id that is not a giveaway id, so no file is named by it", () => {

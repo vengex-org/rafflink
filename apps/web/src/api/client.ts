@@ -211,15 +211,15 @@ export async function getVerifyLoad(code: string): Promise<VerifyLoad | null> {
   if (status !== 200) throw new ApiError(status)
   const verify = parseVerify(record(body, "verify"))
   const [leaves, mine] = await Promise.all([
-    verify.commitment === null ? null : getLeaves(base),
+    verify.commitment === null ? null : getLeaves(base, verify.commitment.merkleRoot),
     getMyLeaf(base),
   ])
   return { verify, leaves, mine }
 }
 
 // 409 is a room that has not committed yet.
-async function getLeaves(base: string): Promise<LeavesJson | null> {
-  const { status, body } = await send(`${base}/leaves`)
+async function getLeaves(base: string, merkleRoot: string): Promise<LeavesJson | null> {
+  const { status, body } = await send(`${base}/leaves/${merkleRoot}`)
   if (status === 409) return null
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "leaves")
@@ -599,6 +599,23 @@ export function decideStreamerAccess(
 
 export type StreamerAccessKind = (typeof streamerAccessKinds)[number]
 
+/** Deletes one of the streamer's giveaways with its room, winners and draw proof. */
+export function deleteGiveaway(id: string): Promise<DeleteKind | Rejected> {
+  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/delete`, {}, deleteKinds)
+}
+
+/** Deletes every giveaway of the signed-in streamer and the account itself, which also ends the session. */
+export function deleteStreamerData(): Promise<DeleteKind | Rejected> {
+  return act("/api/dash/account/delete", {}, deleteKinds)
+}
+
+/** Where the browser downloads a giveaway's winners as CSV; the session cookie goes with the link. */
+export const winnersCsvPath = (id: string) =>
+  `/api/dash/giveaways/${encodeURIComponent(id)}/winners.csv`
+
+export type DeleteKind = (typeof deleteKinds)[number]
+
+const deleteKinds = ["deleted"] as const
 const streamerAccessKinds = ["approved", "revoked"] as const
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
 const switchPlanKinds = ["switched"] as const

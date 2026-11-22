@@ -116,6 +116,8 @@ export interface RoomHooks {
 export class InProcessRooms implements RoomDirectory {
   readonly hooks: RoomHooks = { beforeInit: () => {}, beforeEnter: () => {} }
   readonly beacon = new FakeBeacon()
+  /** The ids passed to `delete`, in call order. */
+  readonly deleted: string[] = []
   private readonly rooms = new Map<string, GiveawayRoom>()
 
   constructor(
@@ -125,6 +127,11 @@ export class InProcessRooms implements RoomDirectory {
 
   get(giveawayId: string): RoomStub {
     return new InProcessRoomStub(giveawayId, this.roomFor(giveawayId), this.hooks)
+  }
+
+  async delete(giveawayId: string): Promise<void> {
+    this.rooms.delete(giveawayId)
+    this.deleted.push(giveawayId)
   }
 
   /** The real room, for assertions the stub does not offer. */
@@ -201,6 +208,9 @@ class InProcessRoomStub implements RoomStub {
   }
   async picks() {
     return this.room.picks()
+  }
+  async removeWinnerName(n: number) {
+    return this.room.removeWinnerName(n)
   }
   async markMirrored(status: Parameters<GiveawayRoom["markMirrored"]>[0]) {
     this.room.markMirrored(status)

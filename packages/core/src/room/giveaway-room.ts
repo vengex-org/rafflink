@@ -226,7 +226,7 @@ export interface LiveWinner {
   readonly n: number
   /** The `seq` of the winner's entrant row; null when the entry is gone. */
   readonly entrySeq: number | null
-  /** Null when the entry is gone. */
+  /** Kept with the pick after the entry is gone; null for a pick whose entry was deleted before names were kept. */
   readonly displayName: string | null
   /** Null when the entry is gone or has no picture. */
   readonly profileImageUrl: string | null
@@ -235,7 +235,16 @@ export interface LiveWinner {
 }
 
 /** A pick with who it went to. */
-export interface WinnerPick extends LiveWinner, Identity {}
+export interface WinnerPick extends LiveWinner, Identity {
+  /** Same lifetime as {@link LiveWinner.displayName}. */
+  readonly login: string | null
+  readonly drawnAt: Instant
+}
+
+/** What {@link GiveawayRoom.removeWinnerName} did: replaced the names, or found no pick with that number. */
+export type RemoveWinnerNameOutcome =
+  | { readonly kind: "removed" }
+  | { readonly kind: "unknown-pick" }
 
 /**
  * Whether the streamer can still reroll an unclaimed pick, and why not. `rerollBlocked` is `null`
@@ -908,12 +917,34 @@ export class GiveawayRoom {
     const now = this.clock.now()
     return this.readPickRows().map((row) => {
       const draw = parseDraw(row)
+      const reader = new RowReader("draws", row)
       return {
         ...liveWinner(row, now),
         platform: draw.platform,
         platformUserId: draw.platformUserId,
+        login: reader.nullableText("login"),
+        drawnAt: reader.int("drawn_at"),
       }
     })
+  }
+
+  /** Replaces the names of pick `n`, and of its entry while that exists, with "removed" and drops the entry's picture, for a winner who asked the operator to be removed. The pick, its claim and the draw proof stay. */
+  removeWinnerName(n: number): RemoveWinnerNameOutcome {
+    const outcome = this.sql.transaction((): RemoveWinnerNameOutcome => {
+      const [pick] = this.sql.exec(
+        "UPDATE draws SET login = ?, display_name = ? WHERE n = ? RETURNING platform, platform_user_id",
+        [removedName, removedName, n],
+      )
+      if (pick === undefined) return { kind: "unknown-pick" }
+      const reader = new RowReader("draws", pick)
+      this.sql.exec(
+        "UPDATE entries SET login = ?, display_name = ?, profile_image_url = NULL WHERE platform = ? AND platform_user_id = ?",
+        [removedName, removedName, reader.text("platform"), reader.text("platform_user_id")],
+      )
+      return { kind: "removed" }
+    })
+    if (outcome.kind === "removed") this.afterWrite()
+    return outcome
   }
 
   /** Entries written per second in the `windowSeconds` before `until`: what the token endpoint let through for this giveaway. */
@@ -983,7 +1014,7 @@ export class GiveawayRoom {
 
   private readPickRows(): SqlRow[] {
     return this.sql.exec(
-      `SELECT d.n, d.platform, d.platform_user_id, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, e.display_name, e.profile_image_url, e.seq
+      `SELECT d.n, d.platform, d.platform_user_id, d.drawn_at, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, d.login, d.display_name, e.profile_image_url, e.seq
        FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
        ORDER BY d.n`,
       [],
@@ -1056,9 +1087,12 @@ export class GiveawayRoom {
     }
   }
 
+  // The names are copied from the entry, so they outlive the entries' retention.
   private insertPick(winner: Winner, now: Instant, claimSeconds: number): void {
+    const entry = "FROM entries WHERE platform = ? AND platform_user_id = ?"
     this.sql.exec(
-      "INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until, leaf_index) VALUES (?, ?, ?, ?, ?, ?)",
+      `INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until, leaf_index, login, display_name)
+       VALUES (?, ?, ?, ?, ?, ?, (SELECT login ${entry}), (SELECT display_name ${entry}))`,
       [
         winner.n,
         winner.platform,
@@ -1066,6 +1100,10 @@ export class GiveawayRoom {
         now,
         now + claimSeconds * 1000,
         winner.leafIndex,
+        winner.platform,
+        winner.platformUserId,
+        winner.platform,
+        winner.platformUserId,
       ],
     )
   }
@@ -1418,6 +1456,9 @@ interface ChatterLine {
 // A round is published at its time; the alarm waits this long more so the first try finds it.
 const drawLagMs = 500
 
+// What a removed winner is called from then on, in every language; the privacy page quotes the word.
+const removedName = "removed"
+
 // 128 bits, enough that a published leaf cannot be matched to an id by trying ids.
 const saltBytes = 16
 
@@ -1522,7 +1563,7 @@ function liveWinner(row: SqlRow, now: Instant): LiveWinner {
   return {
     n: draw.n,
     entrySeq: new RowReader("entries", row).nullableInt("seq"),
-    displayName: new RowReader("entries", row).nullableText("display_name"),
+    displayName: new RowReader("draws", row).nullableText("display_name"),
     profileImageUrl: new RowReader("entries", row).nullableText("profile_image_url"),
     claimUntil: draw.claimUntil,
     claim: winnerClaim(draw, now),

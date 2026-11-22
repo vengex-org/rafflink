@@ -4,6 +4,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway, NewGiveaway, StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import { generateCode } from "../lib/codes.ts"
+import { csvText } from "../lib/csv.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
 import { UsageUnavailable } from "../lib/usage-unavailable.ts"
@@ -21,7 +22,9 @@ import {
   type ClaimOutcome,
   type DrawOutcome,
   type RerollOutcome,
+  type WinnerPick,
 } from "../room/giveaway-room.ts"
+import { deleteGiveaway } from "../room/delete-giveaway.ts"
 import { mirrorStatus } from "../room/mirror-status.ts"
 import { denseDays, denseMinutes } from "../stats/series.ts"
 import { liveGiveaways } from "../stats/live-giveaways.ts"
@@ -45,7 +48,7 @@ import {
 } from "./json.ts"
 import { sameOriginJson } from "./origin.ts"
 import { readPublicCache, writePublicCache } from "./public-cache.ts"
-import type { StreamerSession } from "./session.ts"
+import { endStreamerSession, type StreamerSession } from "./session.ts"
 import { currentStreamer } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 
@@ -103,7 +106,13 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       const outcome = await deps.rooms.get(giveaway.id).close()
       switch (outcome.kind) {
         case "closed":
-          await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, "closed")
+          await mirrorStatus(
+            deps.rooms.get(giveaway.id),
+            deps.accounts,
+            giveaway.id,
+            "closed",
+            deps.clock.now(),
+          )
           return c.json({ kind: "closed" })
         case "not-open":
           return c.json({ kind: "not-open", status: outcome.status }, 409)
@@ -134,12 +143,12 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       const answer = async (outcome: DrawOutcome, retried: boolean): Promise<Response> => {
         switch (outcome.kind) {
           case "drawn":
-            await mirrorStatus(room, deps.accounts, giveaway.id, "drawn")
+            await mirrorStatus(room, deps.accounts, giveaway.id, "drawn", deps.clock.now())
             return c.json({ kind: "drawn", n: outcome.winner.n })
           case "not-closed": {
             const requested = await room.requestDraw()
             if (requested.kind === "requested") {
-              await mirrorStatus(room, deps.accounts, giveaway.id, "closed")
+              await mirrorStatus(room, deps.accounts, giveaway.id, "closed", deps.clock.now())
               return c.json({ kind: requested.kind }, 202)
             }
             // Entries closed between the two calls; the press still means a draw.
@@ -194,6 +203,43 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       return c.json({ kind: outcome.kind }, manualClaimStatus[outcome.kind])
     }),
   )
+
+  app.get("/api/dash/giveaways/:id/winners.csv", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const picks = await deps.rooms.get(giveaway.id).picks()
+      c.header("Cache-Control", "no-store")
+      c.header(
+        "Content-Disposition",
+        `attachment; filename="rafflink-${giveaway.code}-winners.csv"`,
+      )
+      return c.body(winnersCsv(giveaway, picks), 200, {
+        "Content-Type": "text/csv; charset=utf-8",
+      })
+    }),
+  )
+
+  app.post("/api/dash/giveaways/:id/delete", sameOriginJson(deps.config), async (c) => {
+    const giveaway = await deps.accounts.findOwnedGiveaway(
+      c.get("streamer").streamerId,
+      c.req.param("id"),
+    )
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    await deleteGiveaway(deps, giveaway.id)
+    console.info("giveaway deleted", { giveawayId: giveaway.id })
+    return c.json({ kind: "deleted" })
+  })
+
+  // Every room goes before the rows, so a failure leaves the account listed and a repeat finishes the job.
+  app.post("/api/dash/account/delete", sameOriginJson(deps.config), async (c) => {
+    const { streamerId } = c.get("streamer")
+    for (const giveaway of await deps.accounts.listGiveaways(streamerId)) {
+      await deps.rooms.delete(giveaway.id)
+    }
+    await deps.accounts.deleteStreamer(streamerId)
+    endStreamerSession(c)
+    console.info("streamer data deleted", { streamerId })
+    return c.json({ kind: "deleted" })
+  })
 
   app.get("/api/live/:id", (c) =>
     withOwnedRoom(c, deps, async (giveaway) => {
@@ -314,6 +360,26 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     return c.json({ kind: "revoked" })
   })
 
+  // A winner who asks the operator to be removed: the giveaway is named by the code its link shows.
+  app.post(
+    "/api/admin/giveaways/:code/winners/:n/remove-name",
+    sameOriginJson(deps.config),
+    async (c) => {
+      const n = integerQuery(c.req.param("n"), 0, 0)
+      if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
+      const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+      if (giveaway === null) return c.json({ error: "not-found" }, 404)
+      const outcome = await deps.rooms.get(giveaway.id).removeWinnerName(n)
+      switch (outcome.kind) {
+        case "removed":
+          console.info("winner name removed", { giveawayId: giveaway.id, n })
+          return c.json({ kind: outcome.kind })
+        case "unknown-pick":
+          return c.json({ kind: outcome.kind }, 404)
+      }
+    },
+  )
+
   // OBS has no session: the token in the URL is the whole credential.
   app.get("/api/overlay/:id/:token", async (c) => {
     const giveaway = await deps.accounts.findGiveawayById(c.req.param("id"))
@@ -402,6 +468,22 @@ async function withoutAdmins(
     })
   }
   return { streamers: listed.slice(0, max), truncated: listed.length > max }
+}
+
+// One row per pick, rerolled ones included; instants are ISO 8601 in UTC.
+function winnersCsv(giveaway: Giveaway, picks: readonly WinnerPick[]): string {
+  return csvText([
+    ["pick", "login", "display_name", "prize", "drawn_at", "claim", "claimed_at"],
+    ...picks.map((pick) => [
+      String(pick.n + 1),
+      pick.login ?? "",
+      pick.displayName ?? "",
+      giveaway.prize ?? "",
+      new Date(pick.drawnAt).toISOString(),
+      pick.claim.state,
+      pick.claim.state === "claimed" ? new Date(pick.claim.at).toISOString() : "",
+    ]),
+  ])
 }
 
 async function insertWithFreshCode(

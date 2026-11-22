@@ -21,8 +21,9 @@ export const insertGiveawaySql = `INSERT INTO giveaways
   ON CONFLICT (code) DO NOTHING
   RETURNING id`
 
-/** Parameters: status, giveaway id. */
-export const setStatusSql = "UPDATE giveaways SET status = ? WHERE id = ?"
+/** Parameters: status, the close time to keep unless one is stored (NULL for open), giveaway id. */
+export const setStatusSql =
+  "UPDATE giveaways SET status = ?, closed_at = COALESCE(closed_at, ?) WHERE id = ?"
 
 /** Ids of giveaways the room reported as no longer open and the retention sweep has not woken yet, fewest failed sweeps first, then oldest. Parameters: attempts below which a giveaway is tried, how many. */
 export const unarmedRetentionSql =
@@ -34,6 +35,19 @@ export const recordRetentionFailureSql =
 
 /** A giveaway id (parameter 1). */
 export const setRetentionArmedSql = "UPDATE giveaways SET retention_armed = 1 WHERE id = ?"
+
+/** Ids of drawn giveaways that closed before an instant (parameter 1), earliest close first; parameter 2 is how many. */
+export const expiredGiveawaysSql =
+  "SELECT id FROM giveaways WHERE status = 'drawn' AND closed_at < ? ORDER BY closed_at, id LIMIT ?"
+
+/** A giveaway id (parameter 1); its room is deleted separately. */
+export const deleteGiveawaySql = "DELETE FROM giveaways WHERE id = ?"
+
+/** The giveaways of a streamer (parameter 1); deleted before the streamer, whom they reference. */
+export const deleteStreamerGiveawaysSql = "DELETE FROM giveaways WHERE streamer_id = ?"
+
+/** A streamer by id (parameter 1), once their giveaways and token are gone. */
+export const deleteStreamerSql = "DELETE FROM streamers WHERE id = ?"
 
 /** Parameters: id, platform, platform user id, login, display name, profile image URL, created at. */
 export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, profile_image_url, created_at)

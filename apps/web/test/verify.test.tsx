@@ -40,6 +40,7 @@ const drawn = {
     { n: 2, leafIndex: 1, rerolled: false },
   ],
 }
+const leavesRoute = `GET /api/g/ABCDE/leaves/${drawn.commitment.merkleRoot}`
 const round = {
   round: 1_000_000,
   randomness: "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
@@ -60,7 +61,7 @@ const signedOut: Reply = { status: 401, body: { error: "unauthorized" } }
 function routes(overrides: Record<string, () => Reply | Promise<Reply>> = {}) {
   return {
     "GET /api/g/ABCDE/verify": () => ok(drawn),
-    "GET /api/g/ABCDE/leaves": () => ok(leaves),
+    [leavesRoute]: () => ok(leaves),
     "GET /api/g/ABCDE/my-leaf": () => signedOut,
     [first]: () => ok(round),
     ...overrides,
@@ -96,7 +97,7 @@ describe("verify page", () => {
       `https://api.drand.sh/${chainHash}/public/1000000`,
     )
     expect(view.getByRole("link", { name: "Open the entry list" }).getAttribute("href")).toBe(
-      "/api/g/ABCDE/leaves",
+      leavesRoute.slice(4),
     )
     expect(view.getByText("Pick 1 is entry 1 of the list.")).toBeTruthy()
     expect(view.getByText("Pick 2 is entry 3 of the list.")).toBeTruthy()
@@ -181,7 +182,10 @@ describe("verify page", () => {
   it("says the root does not match when the published root is not the root of the list", async () => {
     const forged = { ...drawn, commitment: { ...drawn.commitment, merkleRoot: "00".repeat(32) } }
 
-    const view = await verified({ "GET /api/g/ABCDE/verify": () => ok(forged) })
+    const view = await verified({
+      "GET /api/g/ABCDE/verify": () => ok(forged),
+      [`GET /api/g/ABCDE/leaves/${"00".repeat(32)}`]: () => ok(leaves),
+    })
 
     expect(
       await view.findByText("The Merkle root of the list is not the published root."),
@@ -190,7 +194,7 @@ describe("verify page", () => {
 
   it("says the root does not match when tickets were moved between leaves after the commit", async () => {
     const view = await verified({
-      "GET /api/g/ABCDE/leaves": () => ok({ ...leaves, tickets: [4, 0, 7] }),
+      [leavesRoute]: () => ok({ ...leaves, tickets: [4, 0, 7] }),
     })
 
     expect(
@@ -398,7 +402,7 @@ describe("verify page", () => {
   })
 
   it("waits when the list is not published yet although the root is", async () => {
-    mockFetch(routes({ "GET /api/g/ABCDE/leaves": () => ({ status: 409, body: {} }) }))
+    mockFetch(routes({ [leavesRoute]: () => ({ status: 409, body: {} }) }))
 
     const view = renderApp("/ABCDE/verify")
 
@@ -410,7 +414,7 @@ describe("verify page", () => {
     ["a hash that is not 64 hex characters", { hashes: ["abc", "def", "ghi"], tickets: [3, 1, 7] }],
     ["a ticket count that is not a whole number", { hashes: leaves.hashes, tickets: [3, 1.5, 7] }],
   ])("shows the failure page for %s", async (_name, body) => {
-    mockFetch(routes({ "GET /api/g/ABCDE/leaves": () => ok(body) }))
+    mockFetch(routes({ [leavesRoute]: () => ok(body) }))
 
     const view = renderApp("/ABCDE/verify")
 

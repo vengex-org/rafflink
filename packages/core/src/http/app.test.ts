@@ -2019,12 +2019,23 @@ async function committedGiveaway() {
   return { ...created, viewer }
 }
 
+// A well-formed root that no giveaway has.
+const noRoot = "00".repeat(32)
+
+// The leaves URL of a giveaway names its published root.
+async function leavesPath(code: string): Promise<string> {
+  const verify: { commitment: { merkleRoot: string } | null } = await (
+    await new Browser(harness).request(`/api/g/${code}/verify`)
+  ).json()
+  return `/api/g/${code}/leaves/${verify.commitment?.merkleRoot ?? noRoot}`
+}
+
 describe("draw commitment", () => {
   it("answers 404 for a code that does not exist, on every verification route", async () => {
     const browser = new Browser(harness)
     await viewerSignIn(users.viewer.id, (await createGiveaway(harness)).code, browser)
 
-    for (const path of ["verify", "leaves", "my-leaf"]) {
+    for (const path of ["verify", `leaves/${noRoot}`, "my-leaf"]) {
       const response = await browser.request(`/api/g/NOPE0/${path}`)
       expect(response.status).toBe(404)
     }
@@ -2034,7 +2045,7 @@ describe("draw commitment", () => {
     const { code } = await createGiveaway(harness)
 
     const verify = await new Browser(harness).request(`/api/g/${code}/verify`)
-    const leaves = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const leaves = await new Browser(harness).request(`/api/g/${code}/leaves/${noRoot}`)
 
     expect(await verify.json()).toEqual({
       status: "open",
@@ -2053,7 +2064,7 @@ describe("draw commitment", () => {
     const { code } = await committedGiveaway()
 
     const verify = await new Browser(harness).request(`/api/g/${code}/verify`)
-    const leaves = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const leaves = await new Browser(harness).request(await leavesPath(code))
     const body: { commitment: { merkleRoot: string; chainHash: string; round: number } } =
       await verify.json()
     const list: { hashes: string[]; tickets: number[] } = await leaves.json()
@@ -2069,11 +2080,12 @@ describe("draw commitment", () => {
 
   it("serves a repeat download of the leaves from the cache without reading the account store or waking the room", async () => {
     const { code } = await committedGiveaway()
-    const first = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const path = await leavesPath(code)
+    const first = await new Browser(harness).request(path)
     const lookup = spyOn(harness.deps.accounts, "findGiveawayByCode")
     const wake = spyOn(harness.deps.rooms, "get")
 
-    const second = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const second = await new Browser(harness).request(path)
 
     expect(await second.text()).toBe(await first.text())
     expect(second.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
@@ -2083,21 +2095,32 @@ describe("draw commitment", () => {
 
   it("does not cache the answer of a room that has not committed", async () => {
     const { code, id } = await createGiveaway(harness)
-    const early = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const early = await new Browser(harness).request(`/api/g/${code}/leaves/${noRoot}`)
     expect(early.status).toBe(409)
     harness.rooms.roomFor(id).close()
     await harness.rooms.roomFor(id).commit()
 
-    const later = await new Browser(harness).request(`/api/g/${code}/leaves`)
+    const later = await new Browser(harness).request(await leavesPath(code))
 
     expect(later.status).toBe(200)
+  })
+
+  it("answers 404 for a root that is not the giveaway's, and caches nothing for it", async () => {
+    const { code } = await committedGiveaway()
+
+    const other = await new Browser(harness).request(`/api/g/${code}/leaves/${noRoot}`)
+    const again = await new Browser(harness).request(`/api/g/${code}/leaves/${noRoot}`)
+
+    expect([other.status, again.status]).toEqual([404, 404])
+    expect(other.headers.get("cache-control")).toBe("no-store")
   })
 
   it("refuses a download beyond the limit from one address before waking the room, and lets another address in", async () => {
     await restart({ LEAVES_CACHE_SECONDS: "0", LEAVES_IP_LIMIT_PER_MINUTE: "1" })
     const { code } = await committedGiveaway()
+    const path = await leavesPath(code)
     const from = (address: string) =>
-      new Browser(harness).request(`/api/g/${code}/leaves`, {
+      new Browser(harness).request(path, {
         headers: { [testAddressHeader]: address },
       })
     expect((await from("203.0.113.7")).status).toBe(200)
@@ -2124,7 +2147,7 @@ describe("draw commitment", () => {
     const body: { salt: string } = await mine.json()
     const publicText =
       (await (await new Browser(harness).request(`/api/g/${code}/verify`)).text())
-      + (await (await new Browser(harness).request(`/api/g/${code}/leaves`)).text())
+      + (await (await new Browser(harness).request(await leavesPath(code))).text())
       + JSON.stringify(await pageOf(undefined, code))
 
     expect(mine.status).toBe(200)

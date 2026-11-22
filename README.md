@@ -364,7 +364,13 @@ Twitch requires. If you change `VALIDATE_PERIOD_SECONDS`, change the cron to mat
 agree. The same cron wakes the rooms of closed giveaways once, up to `ENTRY_RETENTION_SWEEP_BATCH` per
 run, so each arms the alarm that deletes the entrants' data `ENTRY_RETENTION_SECONDS` after the close. A room
 that fails sorts behind the others and is given up, with an error log, after `ENTRY_RETENTION_SWEEP_MAX_ATTEMPTS`
-failed runs.
+failed runs. Winners keep their login and display name after that, for as long as the giveaway exists. If you set
+`HISTORY_RETENTION_DAYS`, the same cron (an hourly timer on the Bun server) also deletes up to
+`HISTORY_RETENTION_SWEEP_BATCH` drawn giveaways per run that closed more than that many days ago; unset, no
+sweep runs and giveaways stay until the streamer deletes them on the dashboard.
+
+An admin can replace one winner's name with "removed" when the winner asks, by a same-origin JSON `POST` to
+`/api/admin/giveaways/<code>/winners/<pick number from 0>/remove-name` while signed in as that admin.
 
 Optional usage meter: the Cloudflare free plan allows 100,000 Worker requests a day. To show the day's use on
 the admin page and warn streamers when fewer than 25,000 are left, add `CLOUDFLARE_ACCOUNT_ID` as a var and
@@ -408,7 +414,8 @@ seconds old.
 The home page is one Worker request itself. The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
 `/api/g/<code>` request when it shows winners, to read the prize; the giveaway pages make no session request.
 
-The leaf list of a committed giveaway (`/api/g/CODE/leaves`, up to a megabyte) is kept in the same cache for
+The leaf list of a committed giveaway (`/api/g/CODE/leaves/ROOT`, up to a megabyte, where `ROOT` is the published
+Merkle root, so a code reused after a deletion never serves an old list) is kept in the same cache for
 `LEAVES_CACHE_SECONDS`. A download that misses the cache wakes the giveaway's room, so each client address may make
 `LEAVES_IP_LIMIT_PER_MINUTE` of them (the `LEAVES_IP_LIMITER` binding on Cloudflare, whose limit comes from
 `wrangler.jsonc`). On a `workers.dev` address the cache stores nothing, so the limit is the only guard there.

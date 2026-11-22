@@ -1862,7 +1862,7 @@ describe("GiveawayRoom retention", () => {
     expect([count(sql, "entries"), count(sql, "channel_roles")]).toEqual([0, 0])
   })
 
-  it("keeps the counts, the status and the picks, and the winner loses only the name and the entry", async () => {
+  it("keeps the counts, the status and the picks, and the winner keeps the name but loses the entry and the picture", async () => {
     const { room, clock, winner } = await drawnRoom()
 
     clock.advance(retentionMs)
@@ -1874,12 +1874,60 @@ describe("GiveawayRoom retention", () => {
         n: 0,
         platformUserId: winner.platformUserId,
         entrySeq: null,
-        displayName: null,
+        login: `login${winner.platformUserId}`,
+        displayName: `Name${winner.platformUserId}`,
         profileImageUrl: null,
       },
     ])
+    expect(room.liveSnapshot().winners).toMatchObject([
+      { displayName: `Name${winner.platformUserId}` },
+    ])
     expect(room.entryOf(winner)).toBeNull()
     expect(room.liveSnapshot().lastNames).toEqual([])
+  })
+
+  it("replaces one winner's name and picture with removed on request, in the pick and in the entry", async () => {
+    const { room, winner } = await drawnRoom()
+
+    expect(room.removeWinnerName(0)).toEqual({ kind: "removed" })
+
+    expect(room.picks()).toMatchObject([
+      { n: 0, login: "removed", displayName: "removed", profileImageUrl: null },
+    ])
+    expect(
+      room.entrants({ afterSeq: 0, limit: 10 }).filter((row) => row.login === "removed"),
+    ).toHaveLength(1)
+    expect(room.entryOf(winner)).not.toBeNull()
+    expect(room.removeWinnerName(5)).toEqual({ kind: "unknown-pick" })
+  })
+
+  it("keeps no name of an entrant who did not win", async () => {
+    const { room, sql, clock, winner } = await drawnRoom()
+
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    const names = sql.exec("SELECT login, display_name FROM draws", [])
+    expect(names).toEqual([
+      {
+        login: `login${winner.platformUserId}`,
+        display_name: `Name${winner.platformUserId}`,
+      },
+    ])
+    expect(count(sql, "entries")).toBe(0)
+  })
+
+  it("keeps the name of a rerolled winner with the pick", async () => {
+    const { room, clock } = await drawnRoom()
+    await room.reroll(0)
+
+    clock.advance(retentionMs)
+    room.onAlarm()
+
+    expect(room.picks().map((pick) => pick.displayName)).toEqual(
+      room.picks().map((pick) => `Name${pick.platformUserId}`),
+    )
+    expect(room.picks()).toHaveLength(2)
   })
 
   it("counts the retention time from the close, not from the entry", () => {

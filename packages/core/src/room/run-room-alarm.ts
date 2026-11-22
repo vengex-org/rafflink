@@ -21,7 +21,7 @@ export async function runRoomAlarm(
   if (duties.commit) await commitRoom(giveawayId, room)
   if (duties.draw) await drawRoom(deps, giveawayId, room)
   if (duties.mirrorStatus !== null)
-    await mirrorStatus(room, deps.accounts, giveawayId, duties.mirrorStatus)
+    await mirrorStatus(room, deps.accounts, giveawayId, duties.mirrorStatus, deps.clock.now())
 }
 
 // Not retried: the room has moved past these minutes, so a lost write is a gap in the admin chart, logged here.
@@ -59,7 +59,8 @@ async function drawRoom(
 ): Promise<void> {
   try {
     const outcome = await room.drawFirst()
-    if (outcome.kind === "drawn") await mirrorStatus(room, deps.accounts, giveawayId, "drawn")
+    if (outcome.kind === "drawn")
+      await mirrorStatus(room, deps.accounts, giveawayId, "drawn", deps.clock.now())
   } catch (error) {
     console.warn("room draw failed", { giveawayId, errorClass: errorClass(error) })
   }

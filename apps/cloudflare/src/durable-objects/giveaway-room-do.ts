@@ -26,11 +26,30 @@ const viewerTag = "viewer"
  * hibernating WebSockets of the object; the storage alarm runs {@link runRoomAlarm}.
  */
 export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
-  private readonly opened: Promise<OpenRoom>
+  // Replaced by a rejection once `destroy` ran, so no later call writes into the emptied storage.
+  private opened: Promise<OpenRoom>
+  private destroyed = false
 
   constructor(ctx: DurableObjectState, env: WorkerEnv) {
     super(ctx, env)
     this.opened = ctx.blockConcurrencyWhile(() => this.open())
+  }
+
+  /** Ends the chat and the pages' sockets, then deletes the alarm and every stored row; every later call of this object fails. A repeat does nothing. */
+  async destroy(): Promise<void> {
+    if (this.destroyed) return
+    const { room } = await this.opened
+    await this.ctx.blockConcurrencyWhile(async () => {
+      this.destroyed = true
+      const gone = Promise.reject(new Error("the giveaway room was deleted"))
+      // Handled here so the rejection is not reported as unhandled; each later call awaits it and fails.
+      gone.catch(() => {})
+      this.opened = gone
+      room.closeChat()
+      for (const socket of this.ctx.getWebSockets()) socket.close(1000, "giveaway deleted")
+      await this.ctx.storage.deleteAlarm()
+      await this.ctx.storage.deleteAll()
+    })
   }
 
   async init(...args: Parameters<GiveawayRoom["init"]>) {
@@ -78,6 +97,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async picks() {
     return (await this.opened).room.picks()
   }
+  async removeWinnerName(...args: Parameters<GiveawayRoom["removeWinnerName"]>) {
+    return (await this.opened).room.removeWinnerName(...args)
+  }
   async markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return (await this.opened).room.markMirrored(...args)
   }
@@ -119,6 +141,8 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   }
 
   override async alarm(): Promise<void> {
+    // A deleted room has nothing to do, and a throw would make the runtime retry the alarm.
+    if (this.destroyed) return
     const { room, runtime } = await this.opened
     const giveawayId = this.giveawayId()
     try {

@@ -5,6 +5,7 @@ import commitRetry from "../../schema/room/0004_commit_retry.sql" with { type: "
 import drawRequested from "../../schema/room/0005_draw_requested.sql" with { type: "text" }
 import profileImage from "../../schema/room/0006_profile_image.sql" with { type: "text" }
 import metricsReported from "../../schema/room/0007_metrics_reported.sql" with { type: "text" }
+import winnerNames from "../../schema/room/0008_winner_names.sql" with { type: "text" }
 
 /**
  * The room schema files in application order; file `NNNN_*.sql` is entry NNNN - 1. An entry never leaves
@@ -18,4 +19,5 @@ export const roomMigrations: readonly string[] = [
   drawRequested,
   profileImage,
   metricsReported,
+  winnerNames,
 ]

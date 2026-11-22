@@ -12,6 +12,7 @@ import { MemoryPublicCache } from "@rafflink/core/lib/memory-public-cache"
 import { MemoryRateLimiter } from "@rafflink/core/lib/memory-rate-limiter"
 import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
+import { deleteExpiredGiveaways } from "@rafflink/core/room/delete-giveaway"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { runRoomAlarm, type RoomAlarmDeps } from "@rafflink/core/room/run-room-alarm"
 import { StatsStore } from "@rafflink/core/stats/stats-store"
@@ -53,6 +54,8 @@ const queueFileName = "queue.sqlite"
 const roomsDirName = "rooms"
 // The entry limits are per minute.
 const rateWindowMs = 60_000
+// Hourly, like the Cloudflare cron of wrangler.jsonc that runs the same sweep.
+const historySweepMs = 3_600_000
 
 /** Opens the data folder, starts the timers and listens. With `config.devFakeTwitch` the fake Twitch answers at the Twitch URLs. */
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
@@ -152,6 +155,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
 
   const validateTimer = setInterval(() => void runValidation(), config.validatePeriodSeconds * 1000)
   void runValidation()
+  const historyDays = config.historyRetentionDays
+  const historyTimer =
+    historyDays === null
+      ? null
+      : setInterval(() => void runHistoryRetention(historyDays), historySweepMs)
   void runQueue()
   await rooms.reviveAll()
 
@@ -159,6 +167,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     url: server.url,
     stop: async () => {
       clearInterval(validateTimer)
+      if (historyTimer !== null) clearInterval(historyTimer)
       queueAlarm.clear()
       await server.stop(true)
       await rooms.close()
@@ -172,6 +181,15 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       console.info("streamer token validation", await validateStreamerTokens(tokenDeps))
     } catch (error) {
       console.error("streamer token validation failed", { errorClass: errorClass(error) })
+    }
+  }
+
+  async function runHistoryRetention(days: number): Promise<void> {
+    try {
+      const deleted = await deleteExpiredGiveaways({ accounts, rooms, clock, config }, days)
+      console.info("history retention sweep", { deleted })
+    } catch (error) {
+      console.error("history retention sweep failed", { errorClass: errorClass(error) })
     }
   }
 }

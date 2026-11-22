@@ -1,6 +1,6 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { SQLiteError, type Database } from "bun:sqlite"
-import { mkdirSync, readdirSync } from "node:fs"
+import { mkdirSync, readdirSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { GiveawayRoom, overlaySnapshot, type RoomConfig } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
@@ -49,6 +49,11 @@ export function viewerTopic(giveawayId: string): string {
   return `viewers:${giveawayId}`
 }
 
+/** A page's socket of a room, as the directory closes it when the room is deleted. */
+export interface RoomSocket {
+  close(code?: number, reason?: string): void
+}
+
 interface OpenRoom {
   readonly room: GiveawayRoom
   readonly alarm: TimerAlarm
@@ -61,7 +66,11 @@ const giveawayIdPattern = /^[0-9a-f]{32}$/
 /** Rooms in this process, each over its own SQLite file; a file is opened on first use and kept open. */
 export class LocalRoomDirectory implements RoomDirectory {
   private readonly open = new Map<string, OpenRoom>()
-  private readonly inFlight = new Set<Promise<void>>()
+  // Each running alarm with the id of its room, so deleting a room waits for its own work.
+  private readonly inFlight = new Map<Promise<void>, string>()
+  private readonly sockets = new Map<string, Set<RoomSocket>>()
+  // Rooms deleted in this process: a call that looked the giveaway up before the delete must not create a new file.
+  private readonly deleted = new Set<string>()
   private closing = false
 
   constructor(private readonly deps: LocalRoomDirectoryDeps) {
@@ -72,6 +81,42 @@ export class LocalRoomDirectory implements RoomDirectory {
     return new LocalRoomStub(this.roomFor(giveawayId), () =>
       this.deps.subscriberCount(viewerTopic(giveawayId)),
     )
+  }
+
+  /**
+   * Stops the room's chat and alarm, waits for its running alarm work, closes its pages' sockets and its
+   * database, and removes its file with the write-ahead log files beside it. Any later call for the id fails.
+   */
+  async delete(giveawayId: string): Promise<void> {
+    if (!giveawayIdPattern.test(giveawayId)) throw new RangeError("not a giveaway id")
+    this.deleted.add(giveawayId)
+    const open = this.open.get(giveawayId)
+    if (open !== undefined) {
+      open.room.closeChat()
+      open.alarm.clear()
+      const running = [...this.inFlight].flatMap(([run, id]) => (id === giveawayId ? [run] : []))
+      await Promise.allSettled(running)
+      open.alarm.clear() // finished alarm work may have armed the next one
+      open.db.close()
+      this.open.delete(giveawayId)
+    }
+    for (const socket of this.sockets.get(giveawayId) ?? []) socket.close(1000, "giveaway deleted")
+    this.sockets.delete(giveawayId)
+    const path = join(this.deps.roomsDir, `${giveawayId}${sqliteSuffix}`)
+    for (const file of [path, `${path}-wal`, `${path}-shm`]) rmSync(file, { force: true })
+  }
+
+  /** Remembers a page's socket of the room, so deleting the room closes it; the returned function forgets it. */
+  attachSocket(giveawayId: string, socket: RoomSocket): () => void {
+    const attached = this.sockets.get(giveawayId) ?? new Set<RoomSocket>()
+    attached.add(socket)
+    this.sockets.set(giveawayId, attached)
+    return () => {
+      attached.delete(socket)
+      if (attached.size === 0 && this.sockets.get(giveawayId) === attached) {
+        this.sockets.delete(giveawayId)
+      }
+    }
   }
 
   /** The outcome a viewer's page connecting now starts from, as the JSON text of a push. */
@@ -105,7 +150,7 @@ export class LocalRoomDirectory implements RoomDirectory {
       room.closeChat()
       alarm.clear()
     }
-    await Promise.allSettled(this.inFlight)
+    await Promise.allSettled(this.inFlight.keys())
     for (const { alarm, db } of this.open.values()) {
       alarm.clear() // finished alarm work may have armed the next one
       db.close()
@@ -118,6 +163,7 @@ export class LocalRoomDirectory implements RoomDirectory {
     const existing = this.open.get(giveawayId)
     if (existing !== undefined) return existing.room
     if (!giveawayIdPattern.test(giveawayId)) throw new RangeError("not a giveaway id")
+    if (this.deleted.has(giveawayId)) throw new Error("the giveaway room was deleted")
     const db = openDatabase(join(this.deps.roomsDir, `${giveawayId}${sqliteSuffix}`))
     const sql = new BunSqliteSyncSql(db)
     applyMigrations(sql, roomMigrations)
@@ -149,7 +195,7 @@ export class LocalRoomDirectory implements RoomDirectory {
   private async fire(giveawayId: string, room: GiveawayRoom): Promise<void> {
     if (this.closing) return
     const run = this.runAlarm(giveawayId, room)
-    this.inFlight.add(run)
+    this.inFlight.set(run, giveawayId)
     await run
     this.inFlight.delete(run)
   }
@@ -219,6 +265,9 @@ class LocalRoomStub implements RoomStub {
   }
   picks() {
     return inRoom(() => this.room.picks())
+  }
+  removeWinnerName(...args: Parameters<GiveawayRoom["removeWinnerName"]>) {
+    return inRoom(() => this.room.removeWinnerName(...args))
   }
   markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return inRoom(() => this.room.markMirrored(...args))
