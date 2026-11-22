@@ -1,15 +1,13 @@
 import { cpSync } from "node:fs"
-import { join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { join } from "node:path"
 import { securityHeaders } from "@rafflink/core/http/security-headers"
 import { headersFile } from "@rafflink/core/http/static-headers"
 import { inlineScriptHashes } from "@rafflink/core/lib/spa-html"
+import { resolveDirs } from "./resolve-dirs.ts"
 
 // Runs after `bun build`: adds the files the bundler does not know and the `_headers` of Cloudflare assets.
 // Another repo building this app passes its own output and public directories: `finish-build.ts [distDir] [publicDir]`.
-const [distArg, publicArg] = Bun.argv.slice(2)
-const dist = resolve(distArg ?? fileURLToPath(new URL("../dist/", import.meta.url)))
-const publicDir = resolve(publicArg ?? fileURLToPath(new URL("../public/", import.meta.url)))
+const { dist, publicDir } = resolveDirs(Bun.argv.slice(2))
 
 // The bundler copies only the files `index.html` links; the manifest names the rest.
 cpSync(publicDir, dist, { recursive: true })

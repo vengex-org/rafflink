@@ -1,3 +1,7 @@
+/**
+ * The seam between this repository and a hosted deployment: a build may replace this whole module, and its exports
+ * are the contract.
+ */
 import type { ReactElement } from "react"
 import { Link, useSearchParams } from "react-router"
 import { DonateLink } from "../components/donate-link.tsx"
@@ -7,11 +11,6 @@ import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl, setupGuideUrl } from "../lib/links.ts"
-
-/**
- * The seam between this repository and a hosted deployment: a build may replace this whole module, so the three
- * exports are its contract.
- */
 
 /** Extra top-level routes of the deployment, rendered before the catch-all routes. */
 export const siteRoutes: ReactElement | null = null

@@ -516,6 +516,8 @@ Decisions on support and reach (owner decision, 2026-11-21):
   in the settings panel of the streamer's live page, hidden with the controls. It reaches the web app in the
   `/api/session` answer and in the owner's `/api/live/:id` answer; viewer pages and the overlay
   never show it (owner decision, 2026-11-22).
+- The home page of this repository is intentionally plain. A hosted deployment replaces the one module
+  `apps/web/src/site/site.tsx` at build time, which exports `HomePage`, `SiteNav` and `siteRoutes`.
 - The OBS overlay shows the host it is served from, with the logo mark, on a small plate under the plates while a
   draw runs and after it. It stays off while the entry plate already shows the host and on the blank winner-only
   overlay before a draw.

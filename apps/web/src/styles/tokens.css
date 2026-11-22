@@ -55,7 +55,7 @@
   --overlay-edge: rgb(250 250 250 / 0.14);
   --overlay-scrim: rgb(9 9 11 / 0.8);
 
-  /* The phone frame of the home page illustration is dark in both themes. */
+  /* The phone frame of the hosted site's illustration is dark in both themes; only a site seam module uses it. */
   --device: #18181b;
   --shadow-device: 0 50px 90px -30px rgb(24 24 27 / 0.5), 0 0 0 1px rgb(24 24 27 / 0.4);
 

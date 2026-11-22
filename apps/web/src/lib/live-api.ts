@@ -20,7 +20,7 @@ export type LiveApi = typeof clientLiveApi
 
 const liveApi = createContext<LiveApi>(clientLiveApi)
 
-/** The demo supplies its own, so the live buttons act on a simulated giveaway. */
+/** A hosted demo (site seam) supplies its own, so the live buttons act on a simulated giveaway. */
 export const LiveApiProvider = liveApi.Provider
 
 export const useLiveApi = () => useContext(liveApi)

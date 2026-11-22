@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { Link, Outlet, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
+import { SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
-import { SiteNav } from "../site/site.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { AppFrame } from "./page.tsx"
 import { SettingsMenu } from "./header-controls.tsx"
@@ -28,7 +28,7 @@ export function Layout({
   readonly children?: ReactNode | undefined
 }) {
   const { t } = useI18n()
-  // The home page ends with its own footer and keeps the marketing links in its bar.
+  // The home page ends with its own footer and renders SiteNav in its bar.
   const isHome = useLocation().pathname === "/"
   const showFooter = !isHome
   const page = (
