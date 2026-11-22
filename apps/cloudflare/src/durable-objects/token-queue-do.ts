@@ -1,5 +1,7 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { DurableObject } from "cloudflare:workers"
+import { currentPlan } from "@rafflink/core/plan/current-plan"
+import { planLimits, type CloudflarePlan } from "@rafflink/core/plan/plan-limits"
 import { queueMigrations } from "@rafflink/core/queue/migrations"
 import { entriesPerInvocation, TokenQueue } from "@rafflink/core/queue/token-queue"
 import { applyMigrations } from "@rafflink/core/room/migrate"
@@ -27,6 +29,12 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
   }
   async stats() {
     return (await this.queue).stats()
+  }
+  /** Pushed by the admin plan switch, so no alarm invocation reads the plan from D1. */
+  async usePlan(plan: CloudflarePlan) {
+    const { config } = await runtimeOf(this.env)
+    const queue = await this.queue
+    queue.useEntriesPerInvocation(entriesPerInvocation(planLimits(plan, config)))
   }
 
   override async alarm(): Promise<void> {
@@ -62,8 +70,22 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
       config,
       process: (item) => enterQueuedCode(entryDeps, item),
       rooms: entryDeps.rooms,
-      // An alarm invocation on Workers Free may send only a few dozen external subrequests.
-      entriesPerInvocation: entriesPerInvocation(config),
+      // An alarm invocation may send only as many external subrequests as the plan allows.
+      entriesPerInvocation: entriesPerInvocation(planLimits(await this.startPlan(), config)),
     })
+  }
+
+  // Read once per start of the object; a switch while it runs arrives through `usePlan`.
+  private async startPlan(): Promise<CloudflarePlan> {
+    const { config, accounts } = await runtimeOf(this.env)
+    try {
+      return await currentPlan(accounts, config)
+    } catch (error) {
+      // The queue must still drain; the configured plan applies until the next start or switch.
+      console.warn("cloudflare plan unavailable, CLOUDFLARE_PLAN applies", {
+        errorClass: errorClass(error),
+      })
+      return config.cloudflarePlan
+    }
   }
 }

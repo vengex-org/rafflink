@@ -18,8 +18,12 @@ export type StartTarget = (env: Record<string, string>, webDir: string) => Promi
  */
 export type PageServing = "injected-previews" | "static"
 
+/** Whether the target runs on a Cloudflare plan the admin page switches (`switchable`) or has none (`none`). */
+export type PlanSwitching = "switchable" | "none"
+
 export interface ContractContext {
   readonly targetName: string
   readonly pages: PageServing
+  readonly plans: PlanSwitching
   readonly startTarget: StartTarget
 }

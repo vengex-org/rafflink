@@ -318,7 +318,17 @@ failed runs.
 Optional usage meter: the Cloudflare free plan allows 100,000 Worker requests a day. To show the day's use on
 the admin page and warn streamers when fewer than 25,000 are left, add `CLOUDFLARE_ACCOUNT_ID` as a var and
 set `CLOUDFLARE_API_TOKEN` (a token with the Account Analytics read permission) as a secret. Without them the
-meter reports no limit. On a paid plan raise `WORKER_REQUEST_LIMIT` and `DURABLE_OBJECT_REQUEST_LIMIT`.
+meter reports no limit. The admin page warns once a day's Worker or Durable Object requests reach
+`USAGE_ALERT_PERCENT` (70) of the daily limit.
+
+Cloudflare plan: the app assumes Workers Free (`CLOUDFLARE_PLAN=free`) until an admin switches the plan on the
+admin page. Cloudflare cannot upgrade on its own, so moving to Paid takes two steps: pay for Workers Paid in
+the Cloudflare dashboard, then switch to Paid on the admin page. The switch is stored in D1 and reaches the
+token queue at once, without a deploy. On Paid the meter shows the day's requests without a daily cap (Paid
+includes 10 million Worker and 1 million Durable Object requests a month and bills the rest), and the queue
+sends up to 9,000 subrequests per alarm invocation instead of 45. `WORKER_REQUEST_LIMIT`,
+`DURABLE_OBJECT_REQUEST_LIMIT` and `QUEUE_SUBREQUESTS_PER_INVOCATION` override the plan's values when set,
+for example a self-imposed daily cap on Paid. The Bun server has no Cloudflare plan and shows no switch.
 Scripts, styles, icons and the app pages are static assets that Cloudflare serves without the Worker. Only
 `/api/*`, `/auth/*` and the pages search engines index (`/`, `/privacy` and `/terms`) count as Worker requests;
 the Worker writes `PUBLIC_URL` into the canonical and Open Graph tags of those pages. A giveaway page load makes one such request, and the

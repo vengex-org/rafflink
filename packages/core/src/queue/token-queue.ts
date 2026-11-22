@@ -1,6 +1,7 @@
 import { errorClass } from "../lib/error-class.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { randomId } from "../lib/random-id.ts"
+import type { PlanLimits } from "../plan/plan-limits.ts"
 import type { Alarm, Clock, Instant, Random, Remote, SqlRow, SyncSql } from "../ports.ts"
 import type { RoomStub } from "../room/room-directory.ts"
 import { queuedEntryTwitchSubrequests } from "../twitch/queued-entry-requests.ts"
@@ -55,16 +56,15 @@ export interface QueueDeps {
   readonly rooms: { get(giveawayId: string): Pick<RoomStub, "entriesPerSecondBefore"> }
   /**
    * The most codes one alarm invocation processes; a pass with more calls continues in the next invocation
-   * right away. See {@link entriesPerInvocation} for a runtime that caps subrequests per invocation.
+   * right away. See {@link entriesPerInvocation} for a runtime that caps subrequests per invocation, and
+   * {@link TokenQueue.useEntriesPerInvocation} to change it while the queue runs.
    */
   readonly entriesPerInvocation: number
 }
 
 /** The codes whose Twitch requests fit the subrequests one invocation may send. */
-export function entriesPerInvocation(
-  config: Pick<ResolvedConfig, "queueSubrequestsPerInvocation">,
-): number {
-  return Math.floor(config.queueSubrequestsPerInvocation / queuedEntryTwitchSubrequests)
+export function entriesPerInvocation(limits: Pick<PlanLimits, "subrequestsPerInvocation">): number {
+  return Math.floor(limits.subrequestsPerInvocation / queuedEntryTwitchSubrequests)
 }
 
 /**
@@ -123,7 +123,7 @@ export class TokenQueue {
   private readonly config: QueueConfig
   private readonly process: QueueDeps["process"]
   private readonly rooms: QueueDeps["rooms"]
-  private readonly entriesPerInvocation: number
+  private entriesPerInvocation: number
 
   constructor(deps: QueueDeps) {
     this.sql = deps.sql
@@ -138,6 +138,11 @@ export class TokenQueue {
       "INSERT INTO queue_stats (id, rate_per_second) VALUES (1, ?) ON CONFLICT (id) DO NOTHING",
       [this.config.queueMinRatePerSecond],
     )
+  }
+
+  /** From the next alarm invocation on, each takes at most `entries` codes; a plan switch calls it. */
+  useEntriesPerInvocation(entries: number): void {
+    this.entriesPerInvocation = entries
   }
 
   enqueue(item: QueuedCode, cause: EnqueueCause): Enqueued {

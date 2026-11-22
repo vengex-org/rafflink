@@ -2,6 +2,9 @@ import type { Context } from "hono"
 import { toHex } from "../lib/encoding.ts"
 import type { Giveaway } from "../accounts/account-store.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
+import type { CloudflarePlan, PlanLimits } from "../plan/plan-limits.ts"
+import type { Usage, UsageAlert } from "../plan/usage.ts"
+import type { QueueStats } from "../queue/token-queue.ts"
 import type { Instant } from "../ports.ts"
 import type {
   LiveSnapshot,
@@ -129,6 +132,24 @@ export type OwnerLiveSnapshot = LiveSnapshot & {
 export interface EntrantsPage {
   readonly rows: readonly Entrant[]
   readonly more: boolean
+}
+
+/** The Cloudflare plan the app assumes and the limits it applies. */
+export interface AdminPlanJson {
+  readonly current: CloudflarePlan
+  readonly limits: PlanLimits
+}
+
+/** What the admin page shows. */
+export interface AdminUsageJson {
+  /** Null: the target has no daily limit. "unavailable": the usage source did not answer. */
+  readonly usage: Usage | null | "unavailable"
+  /** Null on a target without a Cloudflare plan. */
+  readonly plan: AdminPlanJson | null
+  /** The daily limits today's requests reached `alertPercent` of. */
+  readonly alerts: readonly UsageAlert[]
+  readonly alertPercent: number
+  readonly queue: QueueStats
 }
 
 export function verifyJson(verification: Verification): VerifyJson {

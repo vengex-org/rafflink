@@ -23,7 +23,7 @@ afterEach(() => {
   info.mockRestore()
 })
 
-defineContract("bun", "injected-previews", async (env, webDir) => {
+defineContract("bun", "injected-previews", "none", async (env, webDir) => {
   const dir = tempDir()
   const config = resolveConfig({
     ...env,

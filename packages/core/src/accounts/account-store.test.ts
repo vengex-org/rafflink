@@ -3,6 +3,7 @@ import { describe, expect, it } from "bun:test"
 import { accountsSchema, explainPlan, sqlRows, validRules } from "../../test/app-fixture.ts"
 import { resolveConfig } from "../config.ts"
 import type { SqlValue } from "../ports.ts"
+import { currentPlan } from "../plan/current-plan.ts"
 import { RoomRowError } from "../room/rows.ts"
 import { BunSqliteAsyncSql } from "../sqlite-bun.ts"
 import {
@@ -387,5 +388,45 @@ describe("account queries", () => {
     expect(explainPlan(db, giveawaysOfStreamerSql, ["s1"]).join("\n")).toContain(
       "giveaways_by_streamer",
     )
+  })
+})
+
+describe("AccountStore cloudflare plan", () => {
+  it("has no stored plan until one is stored, then keeps only the latest", async () => {
+    const { db, store } = setup()
+    expect(await store.storedCloudflarePlan()).toBeNull()
+
+    await store.storeCloudflarePlan("paid", "1", 1_000)
+    expect(await store.storedCloudflarePlan()).toBe("paid")
+    await store.storeCloudflarePlan("free", "2", 2_000)
+
+    expect(await store.storedCloudflarePlan()).toBe("free")
+    expect(sqlRows(db, "SELECT plan, changed_at, changed_by FROM cloudflare_plan")).toEqual([
+      { plan: "free", changed_at: 2_000, changed_by: "2" },
+    ])
+  })
+
+  it("lets the table hold only free or paid in its one row", () => {
+    const { db } = setup()
+    const insert = (id: number, plan: string) =>
+      db.run(
+        "INSERT INTO cloudflare_plan (id, plan, changed_at, changed_by) VALUES (?, ?, 0, '1')",
+        [id, plan],
+      )
+
+    expect(() => insert(1, "pro")).toThrow()
+    expect(() => insert(2, "paid")).toThrow()
+  })
+})
+
+describe("currentPlan", () => {
+  it("takes the stored plan over CLOUDFLARE_PLAN and falls back to it", async () => {
+    const { store } = setup()
+    const paidDefault = { cloudflarePlan: "paid" } as const
+    expect(await currentPlan(store, paidDefault)).toBe("paid")
+
+    await store.storeCloudflarePlan("free", "1", 0)
+
+    expect(await currentPlan(store, paidDefault)).toBe("free")
   })
 })

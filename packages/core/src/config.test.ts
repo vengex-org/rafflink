@@ -43,6 +43,11 @@ describe("resolveConfig", () => {
     expect(config.queueMaxRatePerSecond).toBe(500)
     expect(config.entryWriteRetryDelaysMs).toEqual([200, 500, 1000])
     expect(config.usageWarningThreshold).toBe(25_000)
+    expect(config.cloudflarePlan).toBe("free")
+    expect(config.usageAlertPercent).toBe(70)
+    expect(config.workerRequestLimit).toBeNull()
+    expect(config.durableObjectRequestLimit).toBeNull()
+    expect(config.queueSubrequestsPerInvocation).toBeNull()
     expect(config.titleMaxLength).toBe(100)
     expect(config.prizeMaxLength).toBe(200)
     expect(config.dataDir).toBe("./data")
@@ -282,6 +287,40 @@ describe("resolveConfig", () => {
     })
     expect(failure({ ...required, ENTRY_WRITE_JITTER_PERCENT: "101" })).toMatchObject({
       env: "ENTRY_WRITE_JITTER_PERCENT",
+      reason: "out-of-range",
+    })
+  })
+
+  it("takes the Cloudflare plan free or paid and rejects any other name", () => {
+    expect(resolveConfig({ ...required, CLOUDFLARE_PLAN: "paid" }).cloudflarePlan).toBe("paid")
+    for (const bad of ["Paid", "pro", ""]) {
+      expect(failure({ ...required, CLOUDFLARE_PLAN: bad })).toMatchObject({
+        env: "CLOUDFLARE_PLAN",
+        reason: "not-a-cloudflare-plan",
+      })
+    }
+  })
+
+  it("keeps the usage alert a percent from 1 to 100", () => {
+    expect(resolveConfig({ ...required, USAGE_ALERT_PERCENT: "100" }).usageAlertPercent).toBe(100)
+    for (const bad of ["0", "101"]) {
+      expect(failure({ ...required, USAGE_ALERT_PERCENT: bad })).toMatchObject({
+        env: "USAGE_ALERT_PERCENT",
+        reason: "out-of-range",
+      })
+    }
+  })
+
+  it("reads a limit override when set and rejects a subrequest budget below one queued code", () => {
+    const config = resolveConfig({
+      ...required,
+      WORKER_REQUEST_LIMIT: "90000",
+      QUEUE_SUBREQUESTS_PER_INVOCATION: "8",
+    })
+    expect(config.workerRequestLimit).toBe(90_000)
+    expect(config.queueSubrequestsPerInvocation).toBe(8)
+    expect(failure({ ...required, QUEUE_SUBREQUESTS_PER_INVOCATION: "7" })).toMatchObject({
+      env: "QUEUE_SUBREQUESTS_PER_INVOCATION",
       reason: "out-of-range",
     })
   })

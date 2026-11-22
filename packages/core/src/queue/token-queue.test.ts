@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { explainPlan, secureRandom, sqlRows, TestAlarm, TestClock } from "../../test/app-fixture.ts"
 import { resolveConfig } from "../config.ts"
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
+import { planLimits } from "../plan/plan-limits.ts"
 import { applyMigrations } from "../room/migrate.ts"
 import type { EntryAttempt } from "../viewer/outcome.ts"
 import { queueMigrations } from "./migrations.ts"
@@ -555,8 +556,8 @@ describe("TokenQueue rate", () => {
 
 describe("TokenQueue invocations", () => {
   it("fits the Twitch requests of the codes of one invocation into the subrequest budget", () => {
-    expect(entriesPerInvocation({ queueSubrequestsPerInvocation: 45 })).toBe(5)
-    expect(entriesPerInvocation({ queueSubrequestsPerInvocation: 8 })).toBe(1)
+    expect(entriesPerInvocation({ subrequestsPerInvocation: 45 })).toBe(5)
+    expect(entriesPerInvocation({ subrequestsPerInvocation: 8 })).toBe(1)
   })
 
   it("splits a pass over invocations of at most the budget and continues it right away", async () => {
@@ -582,6 +583,24 @@ describe("TokenQueue invocations", () => {
     expect(perInvocation).toEqual([3, 3, 3, 1])
     await queue.onAlarm()
     expect(calls).toHaveLength(10)
+  })
+
+  it("takes the Paid budget from the next invocation after a plan switch", async () => {
+    const { queue, clock, calls } = setup(
+      async () => entered,
+      async () => 40,
+      entriesPerInvocation(planLimits("free", config)),
+    )
+    queue.enqueue(item("c0"), "rate-limited")
+    for (let code = 1; code <= 30; code++) queue.enqueue(item(`c${code}`), "backlog")
+    clock.advance(config.queueCooldownSeconds * 1000)
+
+    await queue.onAlarm()
+    queue.useEntriesPerInvocation(entriesPerInvocation(planLimits("paid", config)))
+    await queue.onAlarm()
+
+    // 50 % of the measured 40 is a pass of 20: 5 on Free, then the other 15 in one Paid invocation.
+    expect(calls).toHaveLength(20)
   })
 
   it("takes every call of the second, over all invocations, as the rate that hit the limit", async () => {

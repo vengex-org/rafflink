@@ -2,6 +2,8 @@ import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
+  AdminPlanJson,
+  AdminUsageJson,
   BadgesJson,
   DashboardGiveaway,
   EntrantsPage,
@@ -13,7 +15,8 @@ import type {
   ViewerState,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
-import type { Usage } from "@rafflink/core/ports"
+import { cloudflarePlans, type CloudflarePlan } from "@rafflink/core/plan/plan-limits"
+import { usageAlertLimits, type Usage, type UsageAlert } from "@rafflink/core/plan/usage"
 import type {
   ClaimOutcome,
   CloseOutcome,
@@ -128,11 +131,7 @@ export type CreateResult =
   | { readonly kind: "invalid"; readonly field: string; readonly code: CreateIssue["code"] }
   | { readonly kind: "unauthorized" }
 
-export interface AdminUsage {
-  /** Null: the target has no daily limit. "unavailable": the usage source did not answer. */
-  readonly usage: Usage | null | "unavailable"
-  readonly queue: QueueStats
-}
+export type AdminUsage = AdminUsageJson
 
 /** What the verify page reads: the public facts, the leaf list once the room committed, and the viewer's own leaf when they entered. */
 export interface VerifyLoad {
@@ -461,10 +460,22 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
   if (status === 403) return "forbidden"
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "admin")
-  return { usage: parseUsage(source), queue: parseQueue(child(source, "queue")) }
+  return {
+    usage: parseUsage(source),
+    plan: source.plan === null ? null : parsePlan(child(source, "plan")),
+    alerts: list(source, "alerts", parseAlert),
+    alertPercent: num(source, "alertPercent"),
+    queue: parseQueue(child(source, "queue")),
+  }
+}
+
+/** Tells the app which Cloudflare plan the account is on; the payment happens in the Cloudflare dashboard. */
+export async function switchPlan(plan: CloudflarePlan): Promise<"switched" | Rejected> {
+  return act("/api/admin/plan", { plan }, switchPlanKinds)
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
+const switchPlanKinds = ["switched"] as const
 const setWinnerKinds = ["set"] as const satisfies readonly SetWinnerCountKind[]
 const drawKinds = [
   "drawn",
@@ -762,7 +773,28 @@ function parseUsage(source: Json): Usage | null | "unavailable" {
 }
 
 function parseQuota(source: Json): Usage["workerRequests"] {
-  return { used: num(source, "used"), limit: num(source, "limit") }
+  return { used: num(source, "used"), limit: nullableNum(source, "limit") }
+}
+
+function parsePlan(source: Json): AdminPlanJson {
+  const limits = child(source, "limits")
+  return {
+    current: oneOf(source, "current", cloudflarePlans),
+    limits: {
+      workerRequestsPerDay: nullableNum(limits, "workerRequestsPerDay"),
+      doRequestsPerDay: nullableNum(limits, "doRequestsPerDay"),
+      workerRequestsPerMonth: nullableNum(limits, "workerRequestsPerMonth"),
+      doRequestsPerMonth: nullableNum(limits, "doRequestsPerMonth"),
+      subrequestsPerInvocation: num(limits, "subrequestsPerInvocation"),
+    },
+  }
+}
+
+function parseAlert(source: Json): UsageAlert {
+  return {
+    limit: oneOf(source, "limit", usageAlertLimits),
+    percent: num(source, "percent"),
+  }
 }
 
 function parseQueue(source: Json): QueueStats {

@@ -17,15 +17,17 @@ import { toBase64 } from "../src/lib/encoding.ts"
 import { MemoryPublicCache } from "../src/lib/memory-public-cache.ts"
 import { MemoryRateLimiter } from "../src/lib/memory-rate-limiter.ts"
 import { openKeyRing } from "../src/lib/seal.ts"
+import type { PlanQueue } from "../src/plan/current-plan.ts"
+import type { CloudflarePlan } from "../src/plan/plan-limits.ts"
 import type {
   Alarm,
   Clock,
+  DayRequests,
   Instant,
   LiveHub,
   Random,
   SqlRow,
   SqlValue,
-  Usage,
   UsageMeter,
 } from "../src/ports.ts"
 import { queueMigrations } from "../src/queue/migrations.ts"
@@ -211,11 +213,21 @@ class InProcessRoomStub implements RoomStub {
 }
 
 export class StubUsageMeter implements UsageMeter {
-  usage: Usage | null = null
+  usage: DayRequests | null = null
   failure: Error | null = null
-  async today(): Promise<Usage | null> {
+  async today(): Promise<DayRequests | null> {
     if (this.failure !== null) throw this.failure
     return this.usage
+  }
+}
+
+/** Records every plan a switch pushed; `failure` makes the next pushes throw. */
+export class RecordingPlanQueue implements PlanQueue {
+  readonly plans: CloudflarePlan[] = []
+  failure: Error | null = null
+  async usePlan(plan: CloudflarePlan): Promise<void> {
+    if (this.failure !== null) throw this.failure
+    this.plans.push(plan)
   }
 }
 
@@ -266,6 +278,8 @@ export interface Harness {
   readonly clock: TestClock
   readonly rooms: InProcessRooms
   readonly usage: StubUsageMeter
+  /** Null for a harness like the Bun server, without a Cloudflare plan. */
+  readonly planQueue: RecordingPlanQueue | null
   readonly accountsDb: Database
   readonly queue: TokenQueue
   readonly queueDb: Database
@@ -276,6 +290,8 @@ export interface Harness {
 export interface HarnessOptions {
   readonly env?: Readonly<Record<string, string>>
   readonly random?: Random
+  /** `bun`: no Cloudflare plan, like the Bun server; the default is like the Cloudflare Worker. */
+  readonly target?: "cloudflare" | "bun"
 }
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
@@ -312,6 +328,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const rooms = new InProcessRooms(clock, config)
   const twitch = new TwitchClient(config, fetch)
   const usage = new StubUsageMeter()
+  const planQueue = options.target === "bun" ? null : new RecordingPlanQueue()
   const queueDb = new Database(":memory:")
   const queueSql = new BunSqliteSyncSql(queueDb)
   applyMigrations(queueSql, queueMigrations)
@@ -331,6 +348,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     ...entryDeps,
     queue: asRemote(queue),
     usage,
+    planQueue,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
     keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),
@@ -346,6 +364,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     clock,
     rooms,
     usage,
+    planQueue,
     accountsDb,
     queue,
     queueDb,

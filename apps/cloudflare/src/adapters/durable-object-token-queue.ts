@@ -1,3 +1,4 @@
+import type { PlanQueue } from "@rafflink/core/plan/current-plan"
 import type { TokenQueue, TokenQueueStub } from "@rafflink/core/queue/token-queue"
 import type { TokenQueueDO } from "../durable-objects/token-queue-do.ts"
 
@@ -14,4 +15,9 @@ export function durableObjectTokenQueue(
     poll: (...args: Parameters<TokenQueue["poll"]>) => stub().poll(...args),
     stats: () => stub().stats(),
   }
+}
+
+/** The same queue object, told about a plan switch so its next alarm invocation takes the plan's budget. */
+export function durableObjectPlanQueue(namespace: DurableObjectNamespace<TokenQueueDO>): PlanQueue {
+  return { usePlan: (plan) => namespace.get(namespace.idFromName(queueObjectName)).usePlan(plan) }
 }

@@ -20,3 +20,18 @@ export function originAllowed(
 ): boolean {
   return origin === undefined ? allowMissing : origin === config.publicUrl
 }
+
+/**
+ * CSRF guard of a state-changing admin call: the request must come from a page of this origin, so a missing
+ * `Origin` is refused too, and carry a JSON body, which a cross-site form cannot send without a CORS preflight.
+ */
+export function sameOriginJson(config: OriginConfig): MiddlewareHandler {
+  return async (c, next) => {
+    if (!originAllowed(config, c.req.header("origin"), false)) {
+      return c.json({ error: "forbidden-origin" }, 403)
+    }
+    const type = c.req.header("content-type")?.split(";")[0]?.trim().toLowerCase()
+    if (type !== "application/json") return c.json({ error: "unsupported-media-type" }, 415)
+    return next()
+  }
+}

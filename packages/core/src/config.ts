@@ -1,5 +1,6 @@
 import { publicDrandUrls, quicknet } from "./lib/drand.ts"
 import type { Parsed } from "./lib/parsed.ts"
+import { cloudflarePlans, type CloudflarePlan } from "./plan/plan-limits.ts"
 import {
   queuedEntryTwitchRequests,
   queuedEntryTwitchSubrequests,
@@ -23,6 +24,7 @@ export type ConfigReason =
   | "not-above-queued-entry-twitch-time"
   | "below-claim-and-reroll-windows"
   | "fake-twitch-needs-local-public-url"
+  | "not-a-cloudflare-plan"
 
 /** Why a setting failed; a list entry that is not a secret also names itself. */
 export type ConfigIssue =
@@ -223,9 +225,9 @@ export const configSchema = {
   ),
   queueSubrequestsPerInvocation: withDefault(
     "QUEUE_SUBREQUESTS_PER_INVOCATION",
-    int(queuedEntryTwitchSubrequests),
-    "45",
-    "External subrequests one queue alarm invocation may send on Cloudflare; a pass larger than the codes that fit spreads over several invocations. Workers Free allows 50 per invocation, 45 leaves headroom; the Bun target ignores it",
+    optional(int(queuedEntryTwitchSubrequests)),
+    "",
+    "External subrequests one queue alarm invocation may send on Cloudflare; a pass larger than the codes that fit spreads over several invocations. Blank takes the value of the current Cloudflare plan (Free 45 of 50, Paid 9000 of 10000, see packages/core/src/plan/plan-limits.ts); set it only when the Worker's subrequest limit differs, for example a lower `limits.subrequests` in wrangler; the Bun target ignores it",
   ),
   queueRateWindowSeconds: withDefault(
     "QUEUE_RATE_WINDOW_SECONDS",
@@ -563,17 +565,29 @@ export const configSchema = {
     "5000",
     "Timeout of the Analytics call behind the admin page and the creation warning; starting guess",
   ),
+  cloudflarePlan: withDefault(
+    "CLOUDFLARE_PLAN",
+    cloudflarePlan,
+    "free",
+    "Cloudflare Workers plan (free or paid) the usage meter and the token queue assume until an admin switches it on the admin page, which stores the choice in the accounts database; only the Cloudflare target reads it",
+  ),
   workerRequestLimit: withDefault(
     "WORKER_REQUEST_LIMIT",
-    int(1),
-    "100000",
-    "Worker requests per UTC day the usage meter compares against; Cloudflare Workers Free plan limit, raise it on a paid plan",
+    optional(int(1)),
+    "",
+    "Worker requests per UTC day the usage meter compares against, overriding the plan (Free 100,000, Paid no daily limit); blank takes the plan's value; only the Cloudflare target reads it",
   ),
   durableObjectRequestLimit: withDefault(
     "DURABLE_OBJECT_REQUEST_LIMIT",
-    int(1),
-    "100000",
-    "Durable Object requests per UTC day the usage meter compares against; Cloudflare Free plan limit, raise it on a paid plan",
+    optional(int(1)),
+    "",
+    "Durable Object requests per UTC day the usage meter compares against, overriding the plan (Free 100,000, Paid no daily limit); blank takes the plan's value; only the Cloudflare target reads it",
+  ),
+  usageAlertPercent: withDefault(
+    "USAGE_ALERT_PERCENT",
+    int(1, 100),
+    "70",
+    "The admin page warns once today's Worker or Durable Object requests reach this percent of the daily limit, so there is time to pay for Workers Paid and switch; the owner's choice",
   ),
   donateUrl: withDefault(
     "DONATE_URL",
@@ -671,6 +685,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     cloudflareUsageTimeoutMs: read(env, configSchema.cloudflareUsageTimeoutMs),
     workerRequestLimit: read(env, configSchema.workerRequestLimit),
     durableObjectRequestLimit: read(env, configSchema.durableObjectRequestLimit),
+    cloudflarePlan: read(env, configSchema.cloudflarePlan),
+    usageAlertPercent: read(env, configSchema.usageAlertPercent),
     donateUrl: read(env, configSchema.donateUrl),
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
@@ -753,9 +769,14 @@ function text(raw: string): Parsed<string, ConfigReason> {
 }
 
 /** A blank value means the setting is not used. */
-function optional(item: (raw: string) => Parsed<string, ConfigReason>) {
-  return (raw: string): Parsed<string | null, ConfigReason> =>
-    raw.trim() === "" ? ok(null) : item(raw)
+function optional<T>(item: (raw: string) => Parsed<T, ConfigReason>) {
+  return (raw: string): Parsed<T | null, ConfigReason> => (raw.trim() === "" ? ok(null) : item(raw))
+}
+
+function cloudflarePlan(raw: string): Parsed<CloudflarePlan, ConfigReason> {
+  const value = raw.trim()
+  const plan = cloudflarePlans.find((candidate) => candidate === value)
+  return plan === undefined ? fail("not-a-cloudflare-plan") : ok(plan)
 }
 
 function bool(raw: string): Parsed<boolean, ConfigReason> {

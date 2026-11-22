@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { Browser, createHarness, users, validRules, type Harness } from "../../test/app-fixture.ts"
 import { UsageUnavailable } from "../lib/usage-unavailable.ts"
-import type { Usage } from "../ports.ts"
+import type { DayRequests } from "../ports.ts"
 
 let harness: Harness
 let browser: Browser
@@ -16,12 +16,9 @@ afterEach(async () => {
   await harness.stop()
 })
 
-function usageWithRemaining(remaining: number): Usage {
-  const limit = 100_000
-  return {
-    workerRequests: { used: limit - remaining, limit },
-    doRequests: { used: 0, limit },
-  }
+// Free allows 100,000 Worker requests a day.
+function usageWithRemaining(remaining: number): DayRequests {
+  return { workerRequests: 100_000 - remaining, doRequests: 0 }
 }
 
 async function createWarnings(): Promise<unknown> {
@@ -72,6 +69,23 @@ describe("usage warning at giveaway creation", () => {
     harness.usage.usage = null
 
     expect(await createWarnings()).toEqual([])
+  })
+
+  it("does not warn on Paid, which caps no day, unless WORKER_REQUEST_LIMIT sets a cap", async () => {
+    harness.accountsDb.exec(
+      "INSERT INTO cloudflare_plan (id, plan, changed_at, changed_by) VALUES (1, 'paid', 0, 'admin')",
+    )
+    harness.usage.usage = usageWithRemaining(0)
+    expect(await createWarnings()).toEqual([])
+
+    await harness.stop()
+    harness = await createHarness({
+      env: { CLOUDFLARE_PLAN: "paid", WORKER_REQUEST_LIMIT: "100000" },
+    })
+    browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    harness.usage.usage = usageWithRemaining(5)
+    expect(await createWarnings()).toEqual([{ kind: "worker-requests-low", remaining: 5 }])
   })
 
   it("still creates the giveaway when the usage cannot be read", async () => {

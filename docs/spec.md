@@ -50,10 +50,29 @@ budget), and over a limit entries fail. So the hosted service:
   when the admin page opens and when a giveaway is created, and shows the remaining budget on the admin
   page. Counting every request in D1 would cost about 12,000 D1 writes per giveaway against a free limit of
   100,000 per day, so nothing is counted per request;
-- moves to Paid on the first day that uses more than 50% of any daily limit;
+- moves to Paid on the first day that uses 70% (USAGE_ALERT_PERCENT) of any daily limit, when the admin page warns;
+- warns the admin on the admin page once the day's Worker or Durable Object requests reach 70%
+  (`USAGE_ALERT_PERCENT`, the owner's choice of 2026-11-22) of the daily limit, naming the limit and the
+  percentage, with the hint to switch to Paid after paying;
 - warns a streamer at giveaway creation when less than 25,000 Worker requests are left for the day.
 
-This applies to the Cloudflare target only. The VPS target has no daily request limit and reports no usage.
+**Plan switch (decided 2026-11-22).** Cloudflare cannot upgrade an account on its own, so the move to Paid
+is manual: the owner pays for Workers Paid in the Cloudflare dashboard, then switches the plan on the admin
+page (Free or Paid, with a confirm step). The choice is stored in the accounts store (`cloudflare_plan`);
+until the first switch `CLOUDFLARE_PLAN` (default `free`) applies. Every consumer reads the limits of the
+current plan at runtime, without a deploy:
+
+- the usage meter compares against the plan's daily limits. Free: 100,000 Worker and 100,000 Durable Object
+  requests a day. Paid has no daily cap, only a monthly allowance that is billed beyond it, so the admin page
+  shows the day's count without a bar and lists the monthly allowance, and nothing alerts;
+- the token queue Durable Object reads the plan once when it starts, and the switch pushes the new plan to it,
+  so no alarm invocation reads D1. Free budgets 45 of its 50 subrequests per invocation, Paid 9,000 of its
+  default 10,000;
+- `WORKER_REQUEST_LIMIT`, `DURABLE_OBJECT_REQUEST_LIMIT` and `QUEUE_SUBREQUESTS_PER_INVOCATION` override the
+  plan's value when set.
+
+This applies to the Cloudflare target only. The VPS target has no daily request limit, reports no usage and
+shows no plan switch.
 
 ## Users and flow
 
@@ -214,8 +233,8 @@ answers 429 or 5xx. Only the token endpoint queues; a Helix failure after the ex
   (`QUEUE_INCREASE_INTERVAL_SECONDS`) until the next 429 cuts it to 2/3 again, without another pause.
   `QUEUE_MIN_RATE_PER_SECOND` and `QUEUE_MAX_RATE_PER_SECOND` are only safety rails.
 - On Cloudflare one alarm invocation may send only 50 external subrequests on Workers Free, and one queued
-  code sends up to 8 Twitch requests. So an invocation processes at most `QUEUE_SUBREQUESTS_PER_INVOCATION`
-  (45) / 8 = 5 codes, and the alarm fires again right away until the pass of that second has its calls. A 429
+  code sends up to 8 Twitch requests. So an invocation processes at most the plan's subrequest budget (Free
+  45, see Hosting) / 8 = 5 codes, and the alarm fires again right away until the pass of that second has its calls. A 429
   counts every call of the second, over all its invocations. Each invocation waits for its Twitch answers, so
   on Free the queue drains a few codes per second however high the rate is; the Bun server has no such cap.
 - The rate that triggered a 429 is measured where it is visible. While the queue drains, it is the number of
@@ -329,9 +348,10 @@ Worker requests are the bottleneck: **about 4 giveaways of 12,000 entries per da
 whole Rafflink deployment**, not per streamer. Smaller giveaways scale linearly (about 2 Worker requests per
 entrant). Peak 400 requests per second is well under the 1,000 per second soft limit of one Durable Object.
 
-Above free: Workers Paid at 5 USD per month raises the Worker limit to 10 million requests per month and DO
-requests to 1 million per month plus 0.15 USD per million (Workers and CPU paid figures from memory; check
-the pricing page before deciding). That is roughly 400 giveaways of 12,000 entries per month for 5 USD. When
+Above free: Workers Paid at 5 USD per month removes the daily caps and includes 10 million Worker requests a
+month (then 0.30 USD per million) and 1 million DO requests a month (then 0.15 USD per million), and allows
+10,000 subrequests per invocation by default (Cloudflare docs, read 2026-11-22: workers/platform/limits,
+workers/platform/pricing, durable-objects/platform/pricing). That is roughly 400 giveaways of 12,000 entries per month for 5 USD. When
 to move the hosted service to Paid: see Hosting.
 
 A load test at 500 entries per second against one Durable Object is a v1 acceptance check.
@@ -350,6 +370,7 @@ streamer_tokens(streamer_id, refresh_token_enc, scopes, validated_at,
                 PRIMARY KEY (streamer_id))
 giveaways(id, code UNIQUE, streamer_id, title, prize, rules_json, status,
           closes_at, claim_seconds, overlay_token, created_at)
+cloudflare_plan(id CHECK (id = 1), plan CHECK (plan IN ('free', 'paid')), changed_at, changed_by)
 
 -- token queue (its own Durable Object or SQLite file)
 token_queue(ticket, code, giveaway_id, nonce, received_at, state, result_json,
