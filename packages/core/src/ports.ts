@@ -107,21 +107,15 @@ export type Remote<T> = {
     : never
 }
 
-/** Requests used against a daily limit. */
-export interface Quota {
-  readonly used: number
-  readonly limit: number
+/** Requests counted in the current UTC day. */
+export interface DayRequests {
+  readonly workerRequests: number
+  readonly doRequests: number
 }
 
-/** The current UTC day's use of the target's daily limits. */
-export interface Usage {
-  readonly workerRequests: Quota
-  readonly doRequests: Quota
-}
-
-/** Reads the day's usage. Any implementation returns null when the target has no daily limit. */
+/** Reads the day's requests. Any implementation returns null when the target counts none (no daily limit). */
 export interface UsageMeter {
-  today(): Promise<Usage | null>
+  today(): Promise<DayRequests | null>
 }
 
 /**

@@ -94,8 +94,15 @@ describe("applyAccountsMigrations", () => {
       "0003_winner_count.sql",
       "0004_retention_attempts.sql",
       "0005_profile_image.sql",
+      "0006_cloudflare_plan.sql",
     ])
-    expect(tables()).toEqual(["giveaways", "schema_migrations", "streamer_tokens", "streamers"])
+    expect(tables()).toEqual([
+      "cloudflare_plan",
+      "giveaways",
+      "schema_migrations",
+      "streamer_tokens",
+      "streamers",
+    ])
   })
 
   it("applies nothing for an empty directory", () => {

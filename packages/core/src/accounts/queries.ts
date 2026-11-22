@@ -74,3 +74,13 @@ export const replaceStreamerTokenSql =
 
 /** The token of a streamer (parameter 1). */
 export const deleteStreamerTokenSql = "DELETE FROM streamer_tokens WHERE streamer_id = ?"
+
+/** The plan an admin switched to; no row when nobody has. */
+export const cloudflarePlanSql = "SELECT plan FROM cloudflare_plan WHERE id = 1"
+
+/** Parameters: plan, changed at, changed by (the admin's Twitch user id). */
+export const storeCloudflarePlanSql = `INSERT INTO cloudflare_plan (id, plan, changed_at, changed_by) VALUES (1, ?, ?, ?)
+  ON CONFLICT (id) DO UPDATE SET
+    plan = excluded.plan,
+    changed_at = excluded.changed_at,
+    changed_by = excluded.changed_by`

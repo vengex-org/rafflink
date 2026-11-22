@@ -1,25 +1,33 @@
-import type { ReactNode } from "react"
-import type { Usage } from "@rafflink/core/ports"
-import { getAdminUsage, type AdminUsage } from "../api/client.ts"
+import { useId, useState, type ReactNode } from "react"
+import type { AdminPlanJson } from "@rafflink/core/http/json"
+import type { CloudflarePlan } from "@rafflink/core/plan/plan-limits"
+import type { Usage, UsageAlert } from "@rafflink/core/plan/usage"
+import { getAdminUsage, switchPlan, type AdminUsage } from "../api/client.ts"
 import {
   ActivityIcon,
   AlertIcon,
   ClockIcon,
+  CloseIcon,
+  CloudIcon,
   DatabaseIcon,
   LockIcon,
   ServerIcon,
   UsersIcon,
 } from "../components/icons.tsx"
 import { Stat } from "../components/live-parts.tsx"
-import { Failed, Loading, SignIn } from "../components/notice.tsx"
+import { Failed, Loading, SignIn, Status } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
+import { SegmentRow } from "../components/segment-row.tsx"
 import { StateCard } from "../components/state-card.tsx"
+import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
+import { cloudflarePlansUrl } from "../lib/links.ts"
+import { useAction } from "../lib/use-action.ts"
 import { useLoad } from "../lib/use-load.ts"
 
 export function AdminPage() {
   const { t } = useI18n()
-  const { result } = useLoad(getAdminUsage)
+  const { result, reload } = useLoad(getAdminUsage)
   switch (result.state) {
     case "loading":
       return <Loading />
@@ -42,24 +50,34 @@ export function AdminPage() {
           </Page>
         )
       }
-      return <Report report={result.value} />
+      return <Report report={result.value} onPlanSwitched={reload} />
   }
 }
 
-function Report({ report }: { readonly report: AdminUsage }) {
+function Report({
+  report,
+  onPlanSwitched,
+}: {
+  readonly report: AdminUsage
+  readonly onPlanSwitched: () => void
+}) {
   const i18n = useI18n()
   const { t } = i18n
-  const { queue } = report
+  const { queue, plan } = report
   return (
     <>
       <div className="page-head">
         <h1>{t("admin.title")}</h1>
       </div>
+      {report.alerts.length === 0 ? null : (
+        <UsageAlerts alerts={report.alerts} onFree={plan?.current === "free"} />
+      )}
       <div className="card-grid">
         <section className="card" aria-labelledby="usage">
           <h2 id="usage">{t("admin.usage.title")}</h2>
           <UsageBars usage={report.usage} />
         </section>
+        {plan === null ? null : <PlanCard plan={plan} onSwitched={onPlanSwitched} />}
         <section className="card" aria-labelledby="queue">
           <h2 id="queue">{t("admin.queue.title")}</h2>
           <p className="muted">{t("admin.queue.hint")}</p>
@@ -105,6 +123,174 @@ function Report({ report }: { readonly report: AdminUsage }) {
   )
 }
 
+const alertMessages: Readonly<Record<UsageAlert["limit"], MessageKey>> = {
+  "worker-requests": "admin.alert.workerRequests",
+  "do-requests": "admin.alert.doRequests",
+}
+
+function UsageAlerts({
+  alerts,
+  onFree,
+}: {
+  readonly alerts: readonly UsageAlert[]
+  readonly onFree: boolean
+}) {
+  const { t, number } = useI18n()
+  return (
+    <section role="alert" className="card banner usage-alert" data-tone="warning">
+      <span className="state-icon">
+        <AlertIcon />
+      </span>
+      <h2>{t("admin.alert.title")}</h2>
+      {alerts.map((alert) => (
+        <p key={alert.limit}>{t(alertMessages[alert.limit], { percent: number(alert.percent) })}</p>
+      ))}
+      {onFree ? <p>{t("admin.alert.hint")}</p> : null}
+    </section>
+  )
+}
+
+const planQuestions: Readonly<
+  Record<CloudflarePlan, { question: MessageKey; detail: MessageKey; confirm: MessageKey }>
+> = {
+  paid: {
+    question: "admin.plan.paid.question",
+    detail: "admin.plan.paid.detail",
+    confirm: "admin.plan.paid.confirm",
+  },
+  free: {
+    question: "admin.plan.free.question",
+    detail: "admin.plan.free.detail",
+    confirm: "admin.plan.free.confirm",
+  },
+}
+
+const switchMessages: Readonly<Record<Awaited<ReturnType<typeof switchPlan>>, MessageKey>> = {
+  switched: "admin.plan.switched",
+  "queue-unavailable": "admin.plan.queueUnavailable",
+  rejected: "admin.plan.failed",
+}
+
+// A choice in the switch only asks; the plan changes after the confirm step below it.
+function PlanCard({
+  plan,
+  onSwitched,
+}: {
+  readonly plan: AdminPlanJson
+  readonly onSwitched: () => void
+}) {
+  const { t } = useI18n()
+  const questionId = useId()
+  const [pending, setPending] = useState<CloudflarePlan | null>(null)
+  const { message, busy, run } = useAction()
+  const confirm = async (target: CloudflarePlan) => {
+    const outcome = await run(
+      () => switchPlan(target),
+      (kind) => switchMessages[kind],
+    )
+    setPending(null)
+    // The server stores the plan before it tells the queue, so both outcomes show the stored plan.
+    if (outcome === "switched" || outcome === "queue-unavailable") onSwitched()
+  }
+  return (
+    <section className="card plan-card" aria-labelledby="plan">
+      <h2 id="plan">{t("admin.plan.title")}</h2>
+      <p className="muted">
+        {t("admin.plan.hint")}{" "}
+        <a href={cloudflarePlansUrl} target="_blank" rel="noreferrer">
+          {t("admin.plan.link")}
+        </a>
+      </p>
+      <SegmentRow
+        name="cloudflare-plan"
+        options={[
+          { value: "free", label: t("admin.plan.free"), icon: null },
+          { value: "paid", label: t("admin.plan.paid"), icon: <CloudIcon /> },
+        ]}
+        value={pending ?? plan.current}
+        onSelect={(value) => setPending(value === plan.current ? null : value)}
+        labels="shown"
+      />
+      {pending === null ? null : (
+        <section className="plan-confirm" aria-labelledby={questionId}>
+          <h3 id={questionId}>{t(planQuestions[pending].question)}</h3>
+          <p>{t(planQuestions[pending].detail)}</p>
+          <div className="actions">
+            <button
+              type="button"
+              className="button text"
+              disabled={busy}
+              onClick={() => setPending(null)}
+            >
+              <CloseIcon />
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              className="button"
+              disabled={busy}
+              onClick={() => void confirm(pending)}
+            >
+              <CloudIcon />
+              {t(planQuestions[pending].confirm)}
+            </button>
+          </div>
+        </section>
+      )}
+      <ActiveLimits limits={plan.limits} />
+      {message === null ? null : <Status>{t(message)}</Status>}
+    </section>
+  )
+}
+
+function ActiveLimits({ limits }: { readonly limits: AdminPlanJson["limits"] }) {
+  const { t, number } = useI18n()
+  const perDay = (value: number | null) => (value === null ? t("admin.limits.none") : number(value))
+  const monthly: readonly (readonly [MessageKey, number | null])[] = [
+    ["admin.limits.workerPerMonth", limits.workerRequestsPerMonth],
+    ["admin.limits.doPerMonth", limits.doRequestsPerMonth],
+  ]
+  const { overridden } = limits
+  const rows: readonly (readonly [MessageKey, string, boolean])[] = [
+    [
+      "admin.limits.workerPerDay",
+      perDay(limits.workerRequestsPerDay),
+      overridden.workerRequestsPerDay,
+    ],
+    ["admin.limits.doPerDay", perDay(limits.doRequestsPerDay), overridden.doRequestsPerDay],
+    // Only Paid includes a monthly amount; Free bills nothing.
+    ...monthly.flatMap(([label, value]) =>
+      value === null ? [] : [[label, number(value), false] as const],
+    ),
+    [
+      "admin.limits.subrequests",
+      number(limits.subrequestsPerInvocation),
+      overridden.subrequestsPerInvocation,
+    ],
+  ]
+  return (
+    <>
+      <h3 className="plan-limits-title">{t("admin.limits.title")}</h3>
+      <dl className="plan-limits">
+        {rows.map(([label, value, isOverridden]) => (
+          <div key={label}>
+            <dt>{t(label)}</dt>
+            <dd>
+              {value}
+              {isOverridden ? (
+                <>
+                  {" "}
+                  <small className="muted">{t("admin.limits.overridden")}</small>
+                </>
+              ) : null}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  )
+}
+
 function UsageBars({ usage }: { readonly usage: Usage | null | "unavailable" }) {
   const { t } = useI18n()
   if (usage === null) return <p>{t("admin.noLimit")}</p>
@@ -136,7 +322,8 @@ function Bar({
   readonly icon: ReactNode
   readonly label: string
   readonly used: number
-  readonly limit: number
+  /** Null on a plan without a daily cap: the count shows without a bar. */
+  readonly limit: number | null
 }) {
   const { t, number } = useI18n()
   return (
@@ -145,9 +332,11 @@ function Bar({
         {icon}
         <strong>{label}</strong>
       </p>
-      <progress value={used} max={limit} aria-label={label} />
+      {limit === null ? null : <progress value={used} max={limit} aria-label={label} />}
       <p className="usage-text">
-        {t("admin.usageText", { used: number(used), limit: number(limit) })}
+        {limit === null
+          ? t("admin.usageNoLimit", { used: number(used) })
+          : t("admin.usageText", { used: number(used), limit: number(limit) })}
       </p>
     </div>
   )

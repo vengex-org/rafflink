@@ -1,8 +1,10 @@
 import type { ResolvedConfig } from "../config.ts"
+import { cloudflarePlans, type CloudflarePlan } from "../plan/plan-limits.ts"
 import { parseRules, type GiveawayRules } from "../domain/rules.ts"
 import type { AsyncSql, Instant, SqlRow } from "../ports.ts"
 import { RoomRowError, roomStatuses, RowReader, type RoomStatus } from "../room/rows.ts"
 import {
+  cloudflarePlanSql,
   deleteStreamerTokenSql,
   giveawayByCodeSql,
   giveawayByIdSql,
@@ -13,6 +15,7 @@ import {
   replaceStreamerTokenSql,
   setRetentionArmedSql,
   setStatusSql,
+  storeCloudflarePlanSql,
   streamerByIdSql,
   streamerByPlatformUserSql,
   streamerTokenSql,
@@ -211,6 +214,19 @@ export class AccountStore {
   /** Idempotent: the sweep never lists the giveaway again. */
   async markRetentionArmed(giveawayId: string): Promise<void> {
     await this.sql.run(setRetentionArmedSql, [giveawayId])
+  }
+
+  /** The Cloudflare plan an admin switched to, or null when nobody has. */
+  async storedCloudflarePlan(): Promise<CloudflarePlan | null> {
+    const [row] = await this.sql.all(cloudflarePlanSql, [])
+    return row === undefined
+      ? null
+      : new RowReader("cloudflare_plan", row).oneOf("plan", cloudflarePlans)
+  }
+
+  /** Idempotent: the row keeps only the latest switch. `changedBy` is the admin's Twitch user id. */
+  async storeCloudflarePlan(plan: CloudflarePlan, changedBy: string, at: Instant): Promise<void> {
+    await this.sql.run(storeCloudflarePlanSql, [plan, at, changedBy])
   }
 
   private async findOne(sql: string, params: readonly string[]): Promise<Giveaway | null> {

@@ -6,7 +6,15 @@ import { generateCode } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { randomId } from "../lib/random-id.ts"
 import { UsageUnavailable } from "../lib/usage-unavailable.ts"
-import type { Usage } from "../ports.ts"
+import { currentPlan } from "../plan/current-plan.ts"
+import {
+  cloudflarePlans,
+  overriddenLimits,
+  planLimits,
+  type CloudflarePlan,
+  type PlanLimits,
+} from "../plan/plan-limits.ts"
+import { usageAlerts, usageOf, type Usage } from "../plan/usage.ts"
 import {
   overlaySnapshot,
   type ClaimOutcome,
@@ -20,10 +28,13 @@ import type { AppDeps } from "./deps.ts"
 import {
   dashboardGiveaway,
   readJson,
+  type AdminPlanJson,
+  type AdminUsageJson,
   type BadgesJson,
   type EntrantsPage,
   type OwnerLiveSnapshot,
 } from "./json.ts"
+import { sameOriginJson } from "./origin.ts"
 import type { StreamerSession } from "./session.ts"
 import { currentStreamer } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
@@ -213,7 +224,39 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     if (!(await deps.admins.isAdmin(c.get("streamer").twitchUserId))) {
       return c.json({ error: "forbidden" }, 403)
     }
-    return c.json({ usage: await adminUsage(deps), queue: await deps.queue.stats() })
+    const plan = await activePlan(deps)
+    const usage =
+      plan === "unavailable" ? plan : await adminUsage(deps, plan === null ? null : plan.limits)
+    const body: AdminUsageJson = {
+      usage,
+      plan: plan === "unavailable" ? null : plan,
+      alerts:
+        typeof usage === "object" && usage !== null
+          ? usageAlerts(usage, deps.config.usageAlertPercent)
+          : [],
+      alertPercent: deps.config.usageAlertPercent,
+      queue: await deps.queue.stats(),
+    }
+    return c.json(body)
+  })
+
+  // The admin pays for the plan in the Cloudflare dashboard first; this only tells the app which limits apply.
+  app.post("/api/admin/plan", sameOriginJson(deps.config), async (c) => {
+    const { twitchUserId } = c.get("streamer")
+    if (!(await deps.admins.isAdmin(twitchUserId))) return c.json({ error: "forbidden" }, 403)
+    if (deps.planQueue === null) return c.json({ error: "not-found" }, 404)
+    const plan = planField(await readJson(c))
+    if (plan === null) return c.json({ error: "invalid-input", field: "plan" }, 400)
+    await deps.accounts.storeCloudflarePlan(plan, twitchUserId, deps.clock.now())
+    console.info("cloudflare plan switched", { plan })
+    try {
+      await deps.planQueue.usePlan(plan)
+    } catch (error) {
+      // Stored: the queue reads it again when it next starts, and a repeated switch reaches it now.
+      console.warn("plan switch did not reach the queue", { plan, errorClass: errorClass(error) })
+      return c.json({ error: "queue-unavailable" }, 503)
+    }
+    return c.json({ kind: "switched", plan })
   })
 
   // OBS has no session: the token in the URL is the whole credential.
@@ -309,21 +352,48 @@ async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
 
 type UsageWarning = { readonly kind: "worker-requests-low"; readonly remaining: number }
 
-/** The admin page shows "unavailable" instead of failing when the usage source does not answer. */
-async function adminUsage(deps: AppDeps): Promise<Usage | null | "unavailable"> {
+/** The plan and its limits; null on a target without a Cloudflare plan, "unavailable" when the stored plan cannot be read. */
+async function activePlan(deps: AppDeps): Promise<AdminPlanJson | null | "unavailable"> {
+  if (deps.planQueue === null) return null
   try {
-    return await deps.usage.today()
+    const plan = await currentPlan(deps.accounts, deps.config)
+    return {
+      current: plan,
+      limits: { ...planLimits(plan, deps.config), overridden: overriddenLimits(deps.config) },
+    }
+  } catch (error) {
+    console.warn("plan unavailable", { errorClass: errorClass(error) })
+    return "unavailable"
+  }
+}
+
+/** The admin page shows "unavailable" instead of failing when the usage source does not answer. */
+async function adminUsage(
+  deps: AppDeps,
+  limits: PlanLimits | null,
+): Promise<Usage | null | "unavailable"> {
+  try {
+    return await todayUsage(deps, limits)
   } catch (error) {
     warnUsageUnavailable(error)
     return "unavailable"
   }
 }
 
+// A target without a plan counts nothing, so null limits and null requests come together.
+async function todayUsage(deps: AppDeps, limits: PlanLimits | null): Promise<Usage | null> {
+  const requests = await deps.usage.today()
+  return requests === null || limits === null ? null : usageOf(requests, limits)
+}
+
 async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
+  const plan = await activePlan(deps)
+  if (plan === "unavailable") return []
   try {
-    const usage = await deps.usage.today()
-    if (usage === null) return []
-    const remaining = usage.workerRequests.limit - usage.workerRequests.used
+    const usage = await todayUsage(deps, plan === null ? null : plan.limits)
+    const limit = usage?.workerRequests.limit ?? null
+    if (usage === null || limit === null) return []
+    const remaining = limit - usage.workerRequests.used
     return remaining < deps.config.usageWarningThreshold
       ? [{ kind: "worker-requests-low", remaining }]
       : []
@@ -331,6 +401,12 @@ async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
     warnUsageUnavailable(error)
     return []
   }
+}
+
+function planField(body: unknown): CloudflarePlan | null {
+  if (typeof body !== "object" || body === null || !Object.hasOwn(body, "plan")) return null
+  const value: unknown = Reflect.get(body, "plan")
+  return cloudflarePlans.find((plan) => plan === value) ?? null
 }
 
 function warnUsageUnavailable(error: unknown): void {

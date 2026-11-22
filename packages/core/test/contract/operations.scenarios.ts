@@ -1,7 +1,13 @@
 import { expect } from "bun:test"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext } from "./target.ts"
-import { scenario } from "./world.ts"
+import { publicOrigin, scenario } from "./world.ts"
+
+const switchTo = (plan: string, origin = publicOrigin): RequestInit => ({
+  method: "POST",
+  headers: { "content-type": "application/json", origin },
+  body: JSON.stringify({ plan }),
+})
 
 export function operationsScenarios(context: ContractContext): void {
   scenario(
@@ -35,6 +41,36 @@ export function operationsScenarios(context: ContractContext): void {
 
       expect(failed.status).toBe(403)
       expect(retried.status).toBe(200)
+    },
+  )
+
+  scenario(
+    context,
+    "an admin switches the Cloudflare plan to Paid and another streamer cannot",
+    async (world) => {
+      const target = await world.start()
+      const admin = await world.signInStreamer(target, users.streamer.id)
+      const other = await world.signInStreamer(target, users.otherStreamer.id)
+
+      const refused = await other.request("/api/admin/plan", switchTo("paid"))
+      const foreign = await admin.request(
+        "/api/admin/plan",
+        switchTo("paid", "https://evil.example"),
+      )
+      const switched = await admin.request("/api/admin/plan", switchTo("paid"))
+      const page = await (await admin.request("/api/admin/usage")).json()
+
+      expect(refused.status).toBe(403)
+      expect(foreign.status).toBe(403)
+      if (context.plans === "switchable") {
+        expect(switched.status).toBe(200)
+        expect(page).toMatchObject({
+          plan: { current: "paid", limits: { workerRequestsPerDay: null } },
+        })
+      } else {
+        expect(switched.status).toBe(404)
+        expect(page).toMatchObject({ plan: null })
+      }
     },
   )
 

@@ -75,12 +75,9 @@ describe("usage meter on the Cloudflare Analytics API", () => {
       Response.json(analytics([{ sum: { requests: 61_234 } }], [{ sum: { requests: 4_321 } }])),
     )
 
-    const usage = await meterFor(analyticsServer, { WORKER_REQUEST_LIMIT: "90000" }).today()
+    const usage = await meterFor(analyticsServer).today()
 
-    expect(usage).toEqual({
-      workerRequests: { used: 61_234, limit: 90_000 },
-      doRequests: { used: 4_321, limit: 100_000 },
-    })
+    expect(usage).toEqual({ workerRequests: 61_234, doRequests: 4_321 })
     expect(analyticsServer.requests).toHaveLength(1)
     expect(analyticsServer.requests[0]).toMatchObject({
       authorization: "Bearer token-1",
@@ -97,10 +94,7 @@ describe("usage meter on the Cloudflare Analytics API", () => {
   it("counts a day without requests as zero used", async () => {
     const endpoint = fakeAnalytics(() => Response.json(analytics([], [])))
 
-    expect(await meterFor(endpoint).today()).toMatchObject({
-      workerRequests: { used: 0 },
-      doRequests: { used: 0 },
-    })
+    expect(await meterFor(endpoint).today()).toEqual({ workerRequests: 0, doRequests: 0 })
   })
 
   it("reports an Analytics error response as unavailable", async () => {

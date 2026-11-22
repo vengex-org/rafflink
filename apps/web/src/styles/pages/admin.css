@@ -103,3 +103,92 @@
   letter-spacing: -0.03em;
   white-space: nowrap;
 }
+
+/* The usage alert above the cards: the icon beside the words, like the warnings of the live page. */
+
+.usage-alert {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.25rem var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.usage-alert .state-icon {
+  grid-row: 1 / span 4;
+  align-self: start;
+  margin: 0;
+}
+
+.usage-alert > :not(.state-icon) {
+  grid-column: 2;
+  margin: 0;
+}
+
+.usage-alert h2 {
+  font-size: var(--fs-lg);
+}
+
+/* The plan card: the switch, its confirm step and the limits the app applies. */
+
+.plan-card .segmented {
+  margin-top: var(--space-2);
+}
+
+.plan-confirm {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--surface-2);
+}
+
+.plan-confirm h3 {
+  margin: 0 0 0.25rem;
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+
+.plan-confirm p {
+  margin: 0;
+}
+
+.plan-confirm .actions {
+  margin-top: var(--space-2);
+}
+
+.plan-limits-title {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.plan-limits {
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.plan-limits > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.plan-limits dt {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.plan-limits dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

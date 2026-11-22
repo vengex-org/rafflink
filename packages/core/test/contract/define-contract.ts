@@ -10,7 +10,7 @@ import { queueScenarios } from "./queue.scenarios.ts"
 import { retentionScenarios } from "./retention.scenarios.ts"
 import { sessionScenarios } from "./session.scenarios.ts"
 import { viewerPushScenarios } from "./viewer-push.scenarios.ts"
-import type { PageServing, StartTarget } from "./target.ts"
+import type { PageServing, PlanSwitching, StartTarget } from "./target.ts"
 
 /**
  * Registers the black-box scenarios of spec AC-6 to AC-22 against one deployment target. The suite
@@ -19,9 +19,10 @@ import type { PageServing, StartTarget } from "./target.ts"
 export function defineContract(
   targetName: string,
   pages: PageServing,
+  plans: PlanSwitching,
   startTarget: StartTarget,
 ): void {
-  const context = { targetName, pages, startTarget }
+  const context = { targetName, pages, plans, startTarget }
   describe("contract", () => {
     entryScenarios(context)
     queueScenarios(context)

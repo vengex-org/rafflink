@@ -1,16 +1,11 @@
 import type { ResolvedConfig } from "@rafflink/core/config"
 import { errorClass } from "@rafflink/core/lib/error-class"
-import type { Clock, UsageMeter } from "@rafflink/core/ports"
+import type { Clock, DayRequests, UsageMeter } from "@rafflink/core/ports"
 import { UsageUnavailable } from "@rafflink/core/lib/usage-unavailable"
 
 export type UsageMeterConfig = Pick<
   ResolvedConfig,
-  | "cloudflareAccountId"
-  | "cloudflareApiToken"
-  | "cloudflareUsageUrl"
-  | "cloudflareUsageTimeoutMs"
-  | "workerRequestLimit"
-  | "durableObjectRequestLimit"
+  "cloudflareAccountId" | "cloudflareApiToken" | "cloudflareUsageUrl" | "cloudflareUsageTimeoutMs"
 >
 
 /** The `fetch` the meter sends its call through; the global `fetch` fits. */
@@ -31,7 +26,8 @@ const usageQuery = `query Usage($accountTag: String!, $since: Time!, $until: Tim
 
 /**
  * Reads the requests of the current UTC day from the Cloudflare GraphQL Analytics API on every call.
- * Without an account id and API token there is nothing to read, and the meter reports no limit.
+ * Without an account id and API token there is nothing to read, and the meter reports no limit. The limits
+ * the counts are compared against come from the plan, see `planLimits`.
  */
 export function createUsageMeter(
   config: UsageMeterConfig,
@@ -47,10 +43,7 @@ export function createUsageMeter(
       const response = await send(now)
       const counts = parseCounts(await readBody(response, [accountId, apiToken]))
       if (counts === null) throw new UsageUnavailable("Analytics answer has no usage numbers")
-      return {
-        workerRequests: { used: counts.workerRequests, limit: config.workerRequestLimit },
-        doRequests: { used: counts.durableObjectRequests, limit: config.durableObjectRequestLimit },
-      }
+      return counts
     },
   }
 
@@ -107,12 +100,7 @@ function redact(text: string, secrets: readonly string[]): string {
   return secrets.reduce((result, secret) => result.replaceAll(secret, "[redacted]"), text)
 }
 
-interface Counts {
-  readonly workerRequests: number
-  readonly durableObjectRequests: number
-}
-
-function parseCounts(body: unknown): Counts | null {
+function parseCounts(body: unknown): DayRequests | null {
   if (!isRecord(body)) return null
   const account = firstOf(isRecord(body.data) ? body.data.viewer : null, "accounts")
   if (!isRecord(account)) return null
@@ -120,7 +108,7 @@ function parseCounts(body: unknown): Counts | null {
   const durableObjects = requestsOf(account.durableObjects)
   return workers === null || durableObjects === null
     ? null
-    : { workerRequests: workers, durableObjectRequests: durableObjects }
+    : { workerRequests: workers, doRequests: durableObjects }
 }
 
 function firstOf(parent: unknown, key: string): unknown {

@@ -1817,10 +1817,7 @@ describe("overlay and admin", () => {
   })
 
   it("shows the usage and the queue counters to an admin", async () => {
-    harness.usage.usage = {
-      workerRequests: { used: 10, limit: 100_000 },
-      doRequests: { used: 5, limit: 100_000 },
-    }
+    harness.usage.usage = { workerRequests: 10, doRequests: 5 }
     const browser = new Browser(harness)
     await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
 

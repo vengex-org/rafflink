@@ -2,6 +2,8 @@ import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
+  AdminPlanJson,
+  AdminUsageJson,
   BadgesJson,
   DashboardGiveaway,
   EntrantsPage,
@@ -13,7 +15,12 @@ import type {
   ViewerState,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
-import type { Usage } from "@rafflink/core/ports"
+import {
+  cloudflarePlans,
+  type CloudflarePlan,
+  type PlanLimitOverrides,
+} from "@rafflink/core/plan/plan-limits"
+import { usageAlertLimits, type Usage, type UsageAlert } from "@rafflink/core/plan/usage"
 import type {
   ClaimOutcome,
   CloseOutcome,
@@ -128,11 +135,7 @@ export type CreateResult =
   | { readonly kind: "invalid"; readonly field: string; readonly code: CreateIssue["code"] }
   | { readonly kind: "unauthorized" }
 
-export interface AdminUsage {
-  /** Null: the target has no daily limit. "unavailable": the usage source did not answer. */
-  readonly usage: Usage | null | "unavailable"
-  readonly queue: QueueStats
-}
+export type AdminUsage = AdminUsageJson
 
 /** What the verify page reads: the public facts, the leaf list once the room committed, and the viewer's own leaf when they entered. */
 export interface VerifyLoad {
@@ -461,10 +464,30 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
   if (status === 403) return "forbidden"
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "admin")
-  return { usage: parseUsage(source), queue: parseQueue(child(source, "queue")) }
+  return {
+    usage: parseUsage(source),
+    plan: source.plan === null ? null : parsePlan(child(source, "plan")),
+    alerts: list(source, "alerts", parseAlert),
+    alertPercent: num(source, "alertPercent"),
+    queue: parseQueue(child(source, "queue")),
+  }
+}
+
+/**
+ * Tells the app which Cloudflare plan the account is on; the payment happens in the Cloudflare dashboard.
+ * "queue-unavailable": the plan is stored, only the token queue has not taken it yet.
+ */
+export async function switchPlan(
+  plan: CloudflarePlan,
+): Promise<"switched" | "queue-unavailable" | Rejected> {
+  const { status, body } = await postJson("/api/admin/plan", { plan })
+  const source = record(body, "action")
+  if (status === 503 && source.error === "queue-unavailable") return "queue-unavailable"
+  return answerKind(source, switchPlanKinds)
 }
 
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
+const switchPlanKinds = ["switched"] as const
 const setWinnerKinds = ["set"] as const satisfies readonly SetWinnerCountKind[]
 const drawKinds = [
   "drawn",
@@ -552,13 +575,16 @@ async function act<K extends string>(
   return answerKind(await post(path, payload), kinds)
 }
 
-async function post(path: string, payload: unknown): Promise<Json> {
-  const { body } = await send(path, {
+function postJson(path: string, payload: unknown): Promise<Answer> {
+  return send(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   })
-  return record(body, "action")
+}
+
+async function post(path: string, payload: unknown): Promise<Json> {
+  return record((await postJson(path, payload)).body, "action")
 }
 
 function answerKind<K extends string>(source: Json, kinds: readonly K[]): K | Rejected {
@@ -762,7 +788,37 @@ function parseUsage(source: Json): Usage | null | "unavailable" {
 }
 
 function parseQuota(source: Json): Usage["workerRequests"] {
-  return { used: num(source, "used"), limit: num(source, "limit") }
+  return { used: num(source, "used"), limit: nullableNum(source, "limit") }
+}
+
+function parsePlan(source: Json): AdminPlanJson {
+  const limits = child(source, "limits")
+  return {
+    current: oneOf(source, "current", cloudflarePlans),
+    limits: {
+      workerRequestsPerDay: nullableNum(limits, "workerRequestsPerDay"),
+      doRequestsPerDay: nullableNum(limits, "doRequestsPerDay"),
+      workerRequestsPerMonth: nullableNum(limits, "workerRequestsPerMonth"),
+      doRequestsPerMonth: nullableNum(limits, "doRequestsPerMonth"),
+      subrequestsPerInvocation: num(limits, "subrequestsPerInvocation"),
+      overridden: parseOverridden(child(limits, "overridden")),
+    },
+  }
+}
+
+function parseOverridden(source: Json): PlanLimitOverrides {
+  return {
+    workerRequestsPerDay: bool(source, "workerRequestsPerDay"),
+    doRequestsPerDay: bool(source, "doRequestsPerDay"),
+    subrequestsPerInvocation: bool(source, "subrequestsPerInvocation"),
+  }
+}
+
+function parseAlert(source: Json): UsageAlert {
+  return {
+    limit: oneOf(source, "limit", usageAlertLimits),
+    percent: num(source, "percent"),
+  }
 }
 
 function parseQueue(source: Json): QueueStats {
