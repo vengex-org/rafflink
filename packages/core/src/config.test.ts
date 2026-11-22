@@ -165,7 +165,7 @@ describe("resolveConfig", () => {
     expect(config).toMatchObject({
       ticketsPerGroupMax: 1000,
       claimSecondsMax: 86_400,
-      drawMaxWinners: 100,
+      drawMaxWinners: 500,
       publicGiveawayCacheSeconds: 5,
       queueProcessingTimeoutSeconds: 60,
     })

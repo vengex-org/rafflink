@@ -19,42 +19,45 @@ export interface LeafPick {
 export interface Winner extends Identity, LeafPick {}
 
 /** Picks winners 0..count-1; stops early when no tickets remain (fewer entrants than `count`). */
-export async function drawWinners(
+export function drawWinners(
   seed: Uint8Array<ArrayBuffer>,
   entries: readonly DrawEntry[],
   count: number,
 ): Promise<Winner[]> {
-  const sorted = sortEntries(entries)
-  const picks = await drawLeafPicks(
-    seed,
-    sorted.map((entry) => entry.tickets),
-    count,
-  )
-  return picks.map((leafPick) => {
-    const entry = sorted[leafPick.leafIndex]
-    if (entry === undefined) throw new Error("leaf index outside the entrants")
-    return { ...leafPick, platform: entry.platform, platformUserId: entry.platformUserId }
-  })
+  return pickWinners(seed, 0, count, entries, [])
 }
 
+/** Where a run of picks starts: its first pick number and the leaves earlier picks took. */
+export interface DrawStart {
+  readonly first: number
+  readonly excludedLeaves: ReadonlySet<number>
+}
+
+/** A run from pick 0 with no earlier pick: the whole draw as the verify page replays it. */
+export const fromFirstPick: DrawStart = { first: 0, excludedLeaves: new Set() }
+
 /**
- * {@link drawWinners} over the tickets of the sorted entrants alone, which is all a verifier of the
- * published leaf list has: the same seed and tickets give the same picks.
+ * Picks `from.first`..`from.first + count - 1` over the tickets of the sorted entrants alone, which is
+ * all a verifier of the published leaf list has; each pick is excluded from the next, so a run is the
+ * same picks as single picks made in turn. Stops early when no tickets remain.
  */
 export async function drawLeafPicks(
   seed: Uint8Array<ArrayBuffer>,
   tickets: readonly number[],
   count: number,
+  from: DrawStart,
 ): Promise<LeafPick[]> {
   if (!Number.isSafeInteger(count) || count < 0) {
     throw new RangeError("count must be a non-negative safe integer")
   }
   const key = await importSeed(seed)
   // Totalled once; each pick leaves the list and the total, so a pick costs one pass, not a rebuild.
-  const candidates = tickets.map((ticketCount, leafIndex) => ({ tickets: ticketCount, leafIndex }))
+  const candidates = tickets
+    .map((ticketCount, leafIndex) => ({ tickets: ticketCount, leafIndex }))
+    .filter((candidate) => !from.excludedLeaves.has(candidate.leafIndex))
   let total = ticketTotal(candidates)
   const picks: LeafPick[] = []
-  for (let n = 0; n < count && total > 0n; n++) {
+  for (let n = from.first; n < from.first + count && total > 0n; n++) {
     const index = await sampleIndex(key, n, total)
     const position = candidateAt(candidates, index)
     // splice(-1, 1) would drop the last candidate instead of failing.
@@ -77,7 +80,34 @@ export async function pickWinner(
   entries: readonly DrawEntry[],
   excluded: readonly Identity[],
 ): Promise<Winner | null> {
-  return pick(await importSeed(seed), n, sortEntries(entries), excluded)
+  const [picked] = await pickWinners(seed, n, 1, entries, excluded)
+  return picked ?? null
+}
+
+/** {@link drawLeafPicks} over entrants: picks `first`..`first + count - 1` among those not in `excluded`. */
+export async function pickWinners(
+  seed: Uint8Array<ArrayBuffer>,
+  first: number,
+  count: number,
+  entries: readonly DrawEntry[],
+  excluded: readonly Identity[],
+): Promise<Winner[]> {
+  const sorted = sortEntries(entries)
+  const taken = new Set(excluded.map(identityKey))
+  const excludedLeaves = new Set(
+    sorted.flatMap((entry, leafIndex) => (taken.has(identityKey(entry)) ? [leafIndex] : [])),
+  )
+  const picks = await drawLeafPicks(
+    seed,
+    sorted.map((entry) => entry.tickets),
+    count,
+    { first, excludedLeaves },
+  )
+  return picks.map((leafPick) => {
+    const entry = sorted[leafPick.leafIndex]
+    if (entry === undefined) throw new Error("leaf index outside the entrants")
+    return { ...leafPick, platform: entry.platform, platformUserId: entry.platformUserId }
+  })
 }
 
 /** The entrants in the order of the draw and of the Merkle leaves: by `(platform, platformUserId)`. */
@@ -114,23 +144,6 @@ function importSeed(seed: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
 function compareText(a: string, b: string): number {
   if (a < b) return -1
   return a > b ? 1 : 0
-}
-
-async function pick(
-  key: CryptoKey,
-  n: number,
-  sorted: readonly DrawEntry[],
-  excluded: readonly Identity[],
-): Promise<Winner | null> {
-  const taken = new Set(excluded.map(identityKey))
-  const candidates = sorted.filter((entry) => !taken.has(identityKey(entry)))
-  const total = ticketTotal(candidates)
-  if (total === 0n) return null
-
-  const candidate = candidates[candidateAt(candidates, await sampleIndex(key, n, total))]
-  if (candidate === undefined) throw new Error("ticket index outside the ticket total")
-  const leafIndex = sorted.indexOf(candidate)
-  return { n, leafIndex, platform: candidate.platform, platformUserId: candidate.platformUserId }
 }
 
 function ticketTotal(candidates: readonly { readonly tickets: number }[]): bigint {

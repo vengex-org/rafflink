@@ -212,7 +212,7 @@ export class World {
   }
 
   drawWinners(giveaway: CreatedGiveaway): Promise<Response> {
-    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, {})
+    return giveaway.streamer.postJson(`/api/dash/giveaways/${giveaway.id}/draw`, { count: 1 })
   }
 
   /** Requests the fake Twitch has received on `path`. */

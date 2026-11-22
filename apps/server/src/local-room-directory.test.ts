@@ -292,7 +292,7 @@ describe("LocalRoomDirectory", () => {
     await room.init(giveawayInit(id))
     await room.enter(viewer)
     await room.close()
-    await room.draw()
+    await room.draw(1)
     expect({ opened, closed }).toEqual({ opened: 1, closed: 0 })
 
     await directory.close()

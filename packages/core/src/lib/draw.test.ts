@@ -1,6 +1,16 @@
 import { createHmac } from "node:crypto"
 import { describe, expect, it } from "bun:test"
-import { drawLeafPicks, drawWinners, indexFromDigest, pickWinner, type DrawEntry } from "./draw.ts"
+import {
+  drawLeafPicks,
+  fromFirstPick,
+  drawWinners,
+  indexFromDigest,
+  pickWinner,
+  pickWinners,
+  type DrawEntry,
+  type Identity,
+  type Winner,
+} from "./draw.ts"
 
 const seed = new Uint8Array(32).fill(7)
 const entries: DrawEntry[] = [
@@ -115,6 +125,53 @@ describe("pickWinner", () => {
   })
 })
 
+describe("pickWinners", () => {
+  const many: DrawEntry[] = Array.from({ length: 40 }, (_, index) => ({
+    platform: "twitch",
+    platformUserId: `user-${index}`,
+    tickets: (index % 7) + 1,
+  }))
+
+  async function oneByOne(first: number, count: number, excluded: readonly Identity[]) {
+    const picks: Winner[] = []
+    for (let n = first; n < first + count; n++) {
+      const picked = await pickWinner(seed, n, many, [...excluded, ...picks])
+      if (picked === null) break
+      picks.push(picked)
+    }
+    return picks
+  }
+
+  it("a batch of k after earlier picks equals k picks made one by one", async () => {
+    const earlier = await drawWinners(seed, many, 3)
+    const rerolledToo = [...earlier, { platform: "twitch", platformUserId: "user-30" }]
+    expect(await pickWinners(seed, 4, 12, many, rerolledToo)).toEqual(
+      await oneByOne(4, 12, rerolledToo),
+    )
+  })
+
+  it("a run that starts after earlier picks continues the run from pick 0", async () => {
+    const tickets = many.map((entry) => entry.tickets)
+    const whole = await drawLeafPicks(seed, tickets, 25, fromFirstPick)
+    const earlier = new Set(whole.slice(0, 7).map((pick) => pick.leafIndex))
+
+    expect(await drawLeafPicks(seed, tickets, 18, { first: 7, excludedLeaves: earlier })).toEqual(
+      whole.slice(7),
+    )
+  })
+
+  it("stops when no tickets remain, with fewer picks than asked", async () => {
+    const picks = await pickWinners(seed, 0, 5, entries, [
+      { platform: "twitch", platformUserId: "3" },
+    ])
+    expect(picks.map((pick) => pick.n)).toEqual([0, 1])
+  })
+
+  it("draws nothing for a batch of 0", async () => {
+    expect(await pickWinners(seed, 0, 0, entries, [])).toEqual([])
+  })
+})
+
 describe("indexFromDigest", () => {
   it("rejects a word in the biased tail and uses the next one", () => {
     // 2^64 mod 3 = 1, so only the word 2^64 - 1 is above the limit for total 3.
@@ -138,12 +195,12 @@ describe("indexFromDigest", () => {
 // Expected picks come from an independent implementation (Python hmac) of the same sampling.
 describe("drawLeafPicks", () => {
   it("picks the known leaves for a known seed", async () => {
-    expect(await drawLeafPicks(seed, [5, 2, 1], 3)).toEqual([
+    expect(await drawLeafPicks(seed, [5, 2, 1], 3, fromFirstPick)).toEqual([
       { n: 0, leafIndex: 0 },
       { n: 1, leafIndex: 1 },
       { n: 2, leafIndex: 2 },
     ])
-    expect(await drawLeafPicks(seed, Array(10).fill(1), 4)).toEqual([
+    expect(await drawLeafPicks(seed, Array(10).fill(1), 4, fromFirstPick)).toEqual([
       { n: 0, leafIndex: 8 },
       { n: 1, leafIndex: 0 },
       { n: 2, leafIndex: 7 },
@@ -157,7 +214,7 @@ describe("drawLeafPicks", () => {
       (pair) => Number.parseInt(pair, 16),
     )
 
-    expect(await drawLeafPicks(randomness, [3, 1, 4, 1, 5, 9, 2, 6], 5)).toEqual([
+    expect(await drawLeafPicks(randomness, [3, 1, 4, 1, 5, 9, 2, 6], 5, fromFirstPick)).toEqual([
       { n: 0, leafIndex: 0 },
       { n: 1, leafIndex: 2 },
       { n: 2, leafIndex: 3 },
@@ -167,13 +224,13 @@ describe("drawLeafPicks", () => {
   })
 
   it("stops when no tickets remain", async () => {
-    expect(await drawLeafPicks(seed, [2, 1], 5)).toHaveLength(2)
-    expect(await drawLeafPicks(seed, [], 3)).toEqual([])
+    expect(await drawLeafPicks(seed, [2, 1], 5, fromFirstPick)).toHaveLength(2)
+    expect(await drawLeafPicks(seed, [], 3, fromFirstPick)).toEqual([])
   })
 
   it("rejects a count that is not a non-negative safe integer", async () => {
     for (const count of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      await expect(drawLeafPicks(seed, [1], count)).rejects.toThrow(RangeError)
+      await expect(drawLeafPicks(seed, [1], count, fromFirstPick)).rejects.toThrow(RangeError)
     }
   })
 
@@ -186,6 +243,7 @@ describe("drawLeafPicks", () => {
         seed,
         sorted.map((entry) => entry.tickets),
         3,
+        fromFirstPick,
       ),
     )
     for (const winner of winners) {

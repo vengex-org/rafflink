@@ -137,25 +137,29 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     }),
   )
 
-  // Draws the next winner. While entries are open the press closes them and asks the room to draw the
-  // first winner itself once the committed drand round is published.
+  // Draws the next `count` winners at once. While entries are open the press closes them and asks the
+  // room to draw the first batch itself once the committed drand round is published.
   app.post("/api/dash/giveaways/:id/draw", (c) =>
     withOwnedRoom(c, deps, async (giveaway) => {
+      const count = integerField(await readJson(c), "count", 1)
+      if (count === null || count > deps.config.drawMaxWinners) {
+        return c.json({ error: "invalid-input", field: "count" }, 400)
+      }
       const room = deps.rooms.get(giveaway.id)
       const answer = async (outcome: DrawOutcome, retried: boolean): Promise<Response> => {
         switch (outcome.kind) {
           case "drawn":
             await mirrorStatus(room, deps.accounts, giveaway.id, "drawn", deps.clock.now())
-            return c.json({ kind: "drawn", n: outcome.winner.n })
+            return c.json({ kind: "drawn", picks: outcome.winners.map((winner) => winner.n) })
           case "not-closed": {
-            const requested = await room.requestDraw()
+            const requested = await room.requestDraw(count)
             if (requested.kind === "requested") {
               await mirrorStatus(room, deps.accounts, giveaway.id, "closed", deps.clock.now())
               return c.json({ kind: requested.kind }, 202)
             }
             // Entries closed between the two calls; the press still means a draw.
             if (retried) return c.json({ kind: requested.kind, status: requested.status }, 409)
-            return answer(await room.draw(), true)
+            return answer(await room.draw(count), true)
           }
           case "round-pending":
             return c.json(
@@ -171,7 +175,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
             return c.json({ kind: outcome.kind }, 409)
         }
       }
-      return answer(await room.draw(), false)
+      return answer(await room.draw(count), false)
     }),
   )
 

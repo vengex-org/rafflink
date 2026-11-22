@@ -219,6 +219,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "overlay.enterAt": "Zapoj se na",
   "overlay.qr": "QR kód s odkazem pro zapojení do soutěže",
   "overlay.winners": "Vítězové",
+  "overlay.moreWinners": "a další: {count}",
   "giveaway.fallbackName": "Soutěž {code}",
 
   "status.open": "Přihlašování je otevřené",
@@ -311,6 +312,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "ticket.one": "{count} los",
   "ticket.few": "{count} losy",
   "ticket.other": "{count} losů",
+  "drawBatch.one": "Vylosovat {count} vítěze",
+  "drawBatch.few": "Vylosovat {count} vítěze",
+  "drawBatch.other": "Vylosovat {count} vítězů",
   "minute.one": "{count} minuta",
   "minute.few": "{count} minuty",
   "minute.other": "{count} minut",
@@ -567,6 +571,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.draw.title": "Přihlašování je uzavřené",
   "live.draw.text": "{people}. Vylosuj vítěze, až budeš připravený.",
   "live.draw.count": "Plánovaný počet vítězů",
+  "live.draw.batchCount": "Vítězů najednou",
+  "live.draw.batchInvalid": "Zadej 1 až {most}",
   "live.draw.nobody": "Nikdo se nepřihlásil, není koho losovat.",
   "live.draw.random": "Vítěz se vybere náhodně ze všech přihlášených.",
   "live.draw.label": "Vylosovat vítěze",
@@ -576,7 +582,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Losování se změnilo, zatímco jsi stiskl Vylosovat vítěze. Stiskni ho znovu.",
   "drawResult.no-entrants-left": "Vylosovaní jsou všichni, kdo se přihlásili.",
   "drawResult.pick-limit":
-    "Toto losování už drží nejvíc vítězů, kolik může. Další se vylosovat nedá.",
+    "Tolik dalších vítězů se do tohoto losování nevejde. Vylosuj méně, nebo nikoho, pokud je plné.",
   "drawResult.try-again":
     "Ve stejnou chvíli proběhlo jiné losování. Stiskni Vylosovat vítěze znovu.",
   "live.draw.next": "Vylosovat dalšího vítěze",
@@ -899,6 +905,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "verify.check.winners.unavailable": "Kolo drand {round} se nepodařilo přečíst. Zkus to později.",
   "verify.check.winners.none": "Zatím nejsou vylosovaní žádní vítězové, takže není co porovnat.",
   "verify.winners.title": "Vítězové",
+  "verify.winners.showAll": "Zobrazit všech {count} výběrů",
   "verify.winner.entry": "Výběr {n} je přihláška {leaf} ze seznamu.",
   "verify.winner.rerolled": "(vylosovaný znovu)",
   "live.draw.fixed":

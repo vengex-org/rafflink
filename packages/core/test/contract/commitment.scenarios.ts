@@ -1,5 +1,5 @@
 import { expect } from "bun:test"
-import { drawLeafPicks } from "../../src/lib/draw.ts"
+import { drawLeafPicks, fromFirstPick } from "../../src/lib/draw.ts"
 import { quicknet } from "../../src/lib/drand.ts"
 import { fromHex, toHex } from "../../src/lib/encoding.ts"
 import { leafHash, merkleRoot } from "../../src/lib/merkle.ts"
@@ -127,9 +127,9 @@ export function commitmentScenarios(context: ContractContext): void {
       expect(await changed.json()).toEqual({ kind: "set" })
       expect(late.status).toBe(200)
       expect(await Promise.all(presses.map((press) => press.json()))).toEqual([
-        { kind: "drawn", n: 0 },
-        { kind: "drawn", n: 1 },
-        { kind: "drawn", n: 2 },
+        { kind: "drawn", picks: [0] },
+        { kind: "drawn", picks: [1] },
+        { kind: "drawn", picks: [2] },
       ])
       expect((await verifyOf(target, giveaway.code)).winnerCount).toBe(1)
     },
@@ -179,7 +179,12 @@ export function commitmentScenarios(context: ContractContext): void {
       expect(world.drand.requested).toContain(round)
       const verify = await verifyOf(target, giveaway.code)
       const leaves = await leavesOf(target, giveaway.code)
-      const expected = await drawLeafPicks(await world.drand.seedOf(round), leaves.tickets, 3)
+      const expected = await drawLeafPicks(
+        await world.drand.seedOf(round),
+        leaves.tickets,
+        3,
+        fromFirstPick,
+      )
       expect(verify.picks).toEqual(
         expected.map((pick) => ({ n: pick.n, leafIndex: pick.leafIndex, rerolled: pick.n === 0 })),
       )

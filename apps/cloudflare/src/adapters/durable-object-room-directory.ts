@@ -55,8 +55,8 @@ class DurableObjectRoomStub implements RoomStub {
   close() {
     return inRoom(() => this.stub.close())
   }
-  requestDraw() {
-    return inRoom(() => this.stub.requestDraw())
+  requestDraw(...args: Parameters<GiveawayRoom["requestDraw"]>) {
+    return inRoom(() => this.stub.requestDraw(...args))
   }
   draw(...args: Parameters<GiveawayRoom["draw"]>) {
     return inRoom(() => this.stub.draw(...args))

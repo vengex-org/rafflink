@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, waitFor } from "@testing-library/react"
+import { pickWinners } from "@rafflink/core/lib/draw"
+import { fromHex, toHex } from "@rafflink/core/lib/encoding"
+import { merkleRoot } from "@rafflink/core/lib/merkle"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
@@ -270,6 +273,52 @@ describe("verify page", () => {
     expect(
       view.getByText("Pick 2 is entry 3 of the list. 1 rerolled picks came before it."),
     ).toBeTruthy()
+  })
+
+  it("replays a 500-pick batch the room drew and lists the first 50 picks until asked for all", async () => {
+    const entrants = Array.from({ length: 600 }, (_, index) => ({
+      platform: "twitch",
+      platformUserId: `u${String(index).padStart(4, "0")}`,
+      tickets: (index % 5) + 1,
+      hash: toHex(new Uint8Array(32).fill(index % 251)),
+    }))
+    const seed = fromHex(round.randomness)
+    if (seed === null) throw new Error("bad fixture randomness")
+    // The room's batch draw, not the page's replay, gives the expected picks.
+    const picks = await pickWinners(seed, 0, 500, entrants, [])
+    const root = toHex(
+      await merkleRoot(
+        entrants.map((entrant) => ({
+          hash: fromHex(entrant.hash) ?? new Uint8Array(32),
+          tickets: entrant.tickets,
+        })),
+      ),
+    )
+    const big = {
+      ...drawn,
+      entrantCount: 600,
+      ticketTotal: entrants.reduce((sum, entrant) => sum + entrant.tickets, 0),
+      winnerCount: 500,
+      commitment: { ...drawn.commitment, merkleRoot: root },
+      picks: picks.map((pick) => ({ n: pick.n, leafIndex: pick.leafIndex, rerolled: false })),
+    }
+    const view = await verified({
+      "GET /api/g/ABCDE/verify": () => ok(big),
+      [`GET /api/g/ABCDE/leaves/${root}`]: () =>
+        ok({
+          hashes: entrants.map((entrant) => entrant.hash),
+          tickets: entrants.map((entrant) => entrant.tickets),
+        }),
+    })
+
+    expect(
+      await view.findByText(
+        "The winners follow from the list and the random number of drand round 1000000.",
+      ),
+    ).toBeTruthy()
+    expect(view.container.querySelectorAll(".verify-picks li")).toHaveLength(50)
+    fireEvent.click(view.getByRole("button", { name: "Show all 500 picks" }))
+    expect(view.container.querySelectorAll(".verify-picks li")).toHaveLength(500)
   })
 
   it("says the counts do not match when the announced tickets differ from the list", async () => {

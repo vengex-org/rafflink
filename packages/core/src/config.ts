@@ -148,6 +148,12 @@ export const configSchema = {
     "50",
     "Random entrant names a live push carries while a draw is pending, for the shuffle animation; starting guess, about 1 KB per push",
   ),
+  liveWinnerImages: withDefault(
+    "LIVE_WINNER_IMAGES",
+    int(0),
+    "24",
+    "Newest picks whose profile picture a live push carries; older picks go without, so a batch of 500 winners stays near 70 KB per push instead of 125 KB; the stage shows the newest pick",
+  ),
   liveEntrantsPerPush: withDefault(
     "LIVE_ENTRANTS_PER_PUSH",
     int(1),
@@ -367,7 +373,7 @@ export const configSchema = {
   drawMaxWinners: withDefault(
     "DRAW_MAX_WINNERS",
     int(1),
-    "100",
+    "500",
     "Most picks one giveaway holds, rerolled ones included, and the most planned winners a streamer can set; starting guess, every pick is a row the verify page replays",
   ),
   publicGiveawayCacheSeconds: withDefault(
@@ -724,6 +730,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     liveIntervalMs: read(env, configSchema.liveIntervalMs),
     liveLastNames: read(env, configSchema.liveLastNames),
     liveShuffleNames: read(env, configSchema.liveShuffleNames),
+    liveWinnerImages: read(env, configSchema.liveWinnerImages),
     liveEntrantsPerPush: read(env, configSchema.liveEntrantsPerPush),
     liveWinnerChatMax: read(env, configSchema.liveWinnerChatMax),
     entrantsPageMax: read(env, configSchema.entrantsPageMax),

@@ -301,6 +301,8 @@ function EntriesSwitch({
 function DrawStep({ id, busy, run, snapshot }: Doing & { readonly snapshot: LiveSnapshot }) {
   // A round-pending answer covers a snapshot older than the commit.
   const [pendingMs, setPendingMs] = useState<number | null>(null)
+  // Held here, not in the keyed controls, so a new snapshot does not reset what the streamer typed; null is the whole batch.
+  const [batchCount, setBatchCount] = useState<string | null>(null)
   const snapshotWaitMs =
     snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
   const waitMs = snapshotWaitMs ?? pendingMs
@@ -313,6 +315,8 @@ function DrawStep({ id, busy, run, snapshot }: Doing & { readonly snapshot: Live
       snapshot={snapshot}
       waitMs={waitMs ?? 0}
       onPending={setPendingMs}
+      batchCount={batchCount}
+      onBatchCount={setBatchCount}
     />
   )
 }
@@ -325,10 +329,14 @@ function DrawControls({
   snapshot,
   waitMs,
   onPending,
+  batchCount,
+  onBatchCount,
 }: Doing & {
   readonly snapshot: LiveSnapshot
   readonly waitMs: number
   readonly onPending: (waitMs: number) => void
+  readonly batchCount: string | null
+  readonly onBatchCount: (count: string | null) => void
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -336,10 +344,11 @@ function DrawControls({
   const remainingMs = useRemainingMs(waitMs)
   const { status, drawRequested, entrantCount } = snapshot
   const blocked = blockedText(snapshot, t)
-  const draw = () =>
+  const batch = batchSize(snapshot)
+  const draw = (count: number) =>
     void run(
       async () => {
-        const answer = await drawWinners(id)
+        const answer = await drawWinners(id, count)
         if (answer.kind !== "round-pending") return answer.kind
         const pendingMs = answer.availableAt - answer.now
         onPending(Math.max(0, pendingMs))
@@ -374,14 +383,28 @@ function DrawControls({
           disabled={entrantCount === 0}
           className="live-btn primary"
           shortcut="d"
-          onConfirm={draw}
+          onConfirm={() => draw(1)}
         />
       ) : (
-        <DrawButton
-          label={t(status === "drawn" ? "live.draw.next" : "live.draw.label")}
-          disabled={busy || blocked !== null || drawRequested}
-          onPress={draw}
-        />
+        <>
+          <DrawButton
+            label={t(status === "drawn" ? "live.draw.next" : "live.draw.label")}
+            disabled={busy || blocked !== null || drawRequested}
+            onPress={() => draw(1)}
+          />
+          {batch > 1 ? (
+            <BatchDraw
+              most={batch}
+              value={batchCount ?? String(batch)}
+              disabled={busy || blocked !== null || drawRequested}
+              onChange={onBatchCount}
+              onDraw={(count) => {
+                onBatchCount(null)
+                draw(count)
+              }}
+            />
+          ) : null}
+        </>
       )}
     </>
   )
@@ -416,6 +439,60 @@ function DrawButton({
       <kbd aria-hidden="true">D</kbd>
     </button>
   )
+}
+
+/** How many winners one press draws, 1 to `most`, and the button that draws them. */
+function BatchDraw({
+  most,
+  value,
+  disabled,
+  onChange,
+  onDraw,
+}: {
+  readonly most: number
+  readonly value: string
+  readonly disabled: boolean
+  readonly onChange: (value: string) => void
+  readonly onDraw: (count: number) => void
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const id = useId()
+  const count = Number(value)
+  const valid = value.trim() !== "" && Number.isInteger(count) && count >= 1 && count <= most
+  return (
+    <div className="live-draw-count">
+      <label htmlFor={id}>{t("live.draw.batchCount")}</label>
+      <Stepper
+        id={id}
+        name="batchCount"
+        value={value}
+        min={1}
+        invalid={!valid}
+        describedBy="draw-help"
+        onChange={onChange}
+        decreaseLabel={t("winners.fewer")}
+        increaseLabel={t("winners.more")}
+      />
+      <button
+        type="button"
+        className="live-btn secondary"
+        disabled={disabled || !valid}
+        onClick={() => onDraw(count)}
+      >
+        <ShuffleIcon />
+        {valid
+          ? i18n.plural("drawBatch", count)
+          : t("live.draw.batchInvalid", { most: i18n.number(most) })}
+      </button>
+    </div>
+  )
+}
+
+// The planned winners not drawn yet, as far as entrants and the room's pick limit allow: the most one press of the batch button draws.
+function batchSize(snapshot: LiveSnapshot): number {
+  const missing = snapshot.winnerCount - standingWinners(snapshot.winners).length
+  return Math.min(missing, snapshot.entrantCount - snapshot.winners.length, snapshot.picksLeft)
 }
 
 // Why the button cannot draw, or null while it can.

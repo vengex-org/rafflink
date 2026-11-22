@@ -1,5 +1,5 @@
 import type { LeavesJson, MyLeafJson, VerifyJson } from "@rafflink/core/http/json"
-import { drawLeafPicks } from "@rafflink/core/lib/draw"
+import { drawLeafPicks, fromFirstPick } from "@rafflink/core/lib/draw"
 import { parseBeaconRound, publicDrandUrls, roundPath, roundTime } from "@rafflink/core/lib/drand"
 import { fromHex, toHex } from "@rafflink/core/lib/encoding"
 import { leafHash, merkleRoot } from "@rafflink/core/lib/merkle"
@@ -95,7 +95,12 @@ async function checkBeacon(
     return { signature: "invalid", winners: "mismatch" }
   }
   // Every pick, whether drawn one by one or added by a reroll, is the next of the same seeded order.
-  const replay = await drawLeafPicks(beacon.randomness, leaves.tickets, verify.picks.length)
+  const replay = await drawLeafPicks(
+    beacon.randomness,
+    leaves.tickets,
+    verify.picks.length,
+    fromFirstPick,
+  )
   const winners = matches(
     replay.length === verify.picks.length
       && replay.every(

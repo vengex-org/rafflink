@@ -74,8 +74,8 @@ describe("parseLiveSnapshot winner chat", () => {
 })
 
 describe("parseOverlaySnapshot", () => {
-  it("reads a snapshot without winnerChat and returns none", () => {
-    const { winnerChat: _chat, winnerChatOpen: _open, ...overlay } = liveSnapshot
+  it("reads a snapshot without winnerChat and picksLeft and returns neither", () => {
+    const { winnerChat: _chat, winnerChatOpen: _open, picksLeft: _left, ...overlay } = liveSnapshot
 
     const parsed = parseOverlaySnapshot(overlay)
 

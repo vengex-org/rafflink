@@ -328,10 +328,10 @@ describe("live page: drawing", () => {
   const closed: LiveSnapshot = { ...liveSnapshot, status: "closed" }
   const drawPath = "POST /api/dash/giveaways/gid-1/draw"
 
-  it("draws the next winner on one press of Draw winner, without a question and without a body", async () => {
+  it("draws the next winner on one press of Draw winner, without a question, for one winner", async () => {
     const requests = mockLive({
       "GET /api/live/gid-1": () => ok(closed),
-      [drawPath]: () => ok({ kind: "drawn", n: 0 }),
+      [drawPath]: () => ok({ kind: "drawn", picks: [0] }),
     })
 
     const view = renderApp("/live/gid-1")
@@ -345,7 +345,7 @@ describe("live page: drawing", () => {
     await effectsRun()
     expect(view.container.querySelector(".toast")).toBeNull()
     expect(view.queryByRole("dialog")).toBeNull()
-    expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: {} })
+    expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: { count: 1 } })
   })
 
   it("is there while entries are open, and asks before it closes them", async () => {
@@ -366,13 +366,13 @@ describe("live page: drawing", () => {
         "Entries are closed. The winner is drawn by itself when the random number is ready.",
       ),
     ).toBeTruthy()
-    expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: {} })
+    expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: { count: 1 } })
   })
 
   it("keeps the button for the next winner after a draw and shows the progress against the plan", async () => {
     const requests = mockLive({
       "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 5, winnerCount: 2 }),
-      [drawPath]: () => ok({ kind: "drawn", n: 3 }),
+      [drawPath]: () => ok({ kind: "drawn", picks: [3] }),
     })
 
     const view = renderApp("/live/gid-1")
@@ -387,10 +387,84 @@ describe("live page: drawing", () => {
     expect(lastRequest(requests, drawPath)?.route).toBe(drawPath)
   })
 
+  it("draws the planned winners still missing in one press of the batch button", async () => {
+    const requests = mockDrawn({
+      "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 10, winnerCount: 7 }),
+      [drawPath]: () => ok({ kind: "drawn", picks: [3, 4, 5, 6] }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.click(await view.findByRole("button", { name: "Draw 4 winners" }))
+
+    await waitFor(() =>
+      expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: { count: 4 } }),
+    )
+  })
+
+  it("draws the number of winners typed in the batch stepper, and refuses one above the batch", async () => {
+    const requests = mockDrawn({
+      "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 10, winnerCount: 7 }),
+      [drawPath]: () => ok({ kind: "drawn", picks: [3, 4] }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    const input = await view.findByLabelText("Winners at once")
+    expect((input as HTMLInputElement).value).toBe("4")
+    fireEvent.change(input, { target: { value: "5" } })
+    const refused = view.getByRole("button", { name: "Pick 1 to 4" })
+    expect((refused as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(input, { target: { value: "2" } })
+    fireEvent.click(view.getByRole("button", { name: "Draw 2 winners" }))
+
+    await waitFor(() =>
+      expect(lastRequest(requests, drawPath)).toEqual({ route: drawPath, body: { count: 2 } }),
+    )
+  })
+
+  it("packs the progress segments of a large batch so they share the row", async () => {
+    const many = Array.from({ length: 25 }, (_, n) => ({
+      n,
+      entrySeq: null,
+      displayName: `W${n}`,
+      profileImageUrl: null,
+      claimUntil: 1,
+      claim: { state: "expired" as const },
+    }))
+    mockDrawn({ "GET /api/live/gid-1": () => ok({ ...drawn, winners: many }) })
+
+    const view = renderApp("/live/gid-1")
+    const progress = await view.findByRole("list", { name: "Winners drawn" })
+
+    expect(progress.dataset.dense).toBe("true")
+    expect(progress.children).toHaveLength(25)
+  })
+
+  it("offers no batch above the picks the room can still hold", async () => {
+    mockDrawn({
+      "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 10, winnerCount: 7, picksLeft: 2 }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByRole("button", { name: "Draw 2 winners" })).toBeTruthy()
+  })
+
+  it("offers no batch past the entrants left, and none for a single missing winner", async () => {
+    mockDrawn({ "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 5, winnerCount: 9 }) })
+    const view = renderApp("/live/gid-1")
+    expect(await view.findByRole("button", { name: "Draw 2 winners" })).toBeTruthy()
+    view.unmount()
+
+    mockDrawn({ "GET /api/live/gid-1": () => ok({ ...drawn, entrantCount: 9, winnerCount: 4 }) })
+    const single = renderApp("/live/gid-1")
+    await single.findByRole("button", { name: "Draw next winner" })
+    expect(single.queryByRole("button", { name: /Draw \d+ winners/ })).toBeNull()
+  })
+
   it("draws with the d key and shows the key on the button", async () => {
     const requests = mockLive({
       "GET /api/live/gid-1": () => ok(closed),
-      [drawPath]: () => ok({ kind: "drawn", n: 0 }),
+      [drawPath]: () => ok({ kind: "drawn", picks: [0] }),
     })
 
     const view = renderApp("/live/gid-1")
@@ -418,7 +492,11 @@ describe("live page: drawing", () => {
       "Could not reach the random source (drand). Nothing was drawn. Try again.",
     ],
     ["no-entrants-left", 409, "Everyone who entered has been drawn."],
-    ["pick-limit", 409, "This giveaway holds the most winners it can. Nobody more can be drawn."],
+    [
+      "pick-limit",
+      409,
+      "This giveaway cannot hold that many more winners. Draw fewer, or none if it is full.",
+    ],
     ["try-again", 409, "Another draw happened at the same moment. Press Draw winner again."],
   ])("tells the streamer what happened when the answer is %s", async (kind, status, message) => {
     mockLive({
@@ -1807,7 +1885,7 @@ describe("live page: the controls bar", () => {
   it("draws with the d key, not while typing and not with Ctrl", async () => {
     const requests = mockLive({
       "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }),
-      "POST /api/dash/giveaways/gid-1/draw": () => ok({ kind: "drawn", n: 0 }),
+      "POST /api/dash/giveaways/gid-1/draw": () => ok({ kind: "drawn", picks: [0] }),
     })
     const drawRequests = () => requests.filter((request) => request.route.startsWith("POST"))
 

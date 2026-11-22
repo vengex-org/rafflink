@@ -219,6 +219,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "overlay.enterAt": "Zapoj sa na",
   "overlay.qr": "QR kód s odkazom na zapojenie do súťaže",
   "overlay.winners": "Víťazi",
+  "overlay.moreWinners": "a ďalší: {count}",
   "giveaway.fallbackName": "Súťaž {code}",
 
   "status.open": "Zápis je otvorený",
@@ -310,6 +311,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "ticket.one": "{count} lístok",
   "ticket.few": "{count} lístky",
   "ticket.other": "{count} lístkov",
+  "drawBatch.one": "Vyžrebovať {count} víťaza",
+  "drawBatch.few": "Vyžrebovať {count} víťazov",
+  "drawBatch.other": "Vyžrebovať {count} víťazov",
   "minute.one": "{count} minúta",
   "minute.few": "{count} minúty",
   "minute.other": "{count} minút",
@@ -566,6 +570,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.draw.title": "Zápis je uzavretý",
   "live.draw.text": "{people}. Vyžrebuj víťaza, keď budeš pripravený.",
   "live.draw.count": "Plánovaný počet víťazov",
+  "live.draw.batchCount": "Víťazov naraz",
+  "live.draw.batchInvalid": "Zadaj 1 až {most}",
   "live.draw.nobody": "Nikto sa nezapísal, nie je koho žrebovať.",
   "live.draw.random": "Víťaz sa vyberie náhodne spomedzi všetkých zapísaných.",
   "live.draw.label": "Vyžrebovať víťaza",
@@ -574,7 +580,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "drawResult.not-open": "Žrebovanie sa zmenilo, kým si stlačil Vyžrebovať víťaza. Stlač ho znova.",
   "drawResult.no-entrants-left": "Vyžrebovaní sú všetci, ktorí sa zapísali.",
   "drawResult.pick-limit":
-    "Toto žrebovanie už drží najviac víťazov, koľko môže. Ďalší sa vyžrebovať nedá.",
+    "Toľko ďalších víťazov sa do tohto žrebovania nezmestí. Vyžrebuj menej, alebo nikoho, ak je plné.",
   "drawResult.try-again":
     "V tej istej chvíli prebehlo iné žrebovanie. Stlač Vyžrebovať víťaza znova.",
   "live.draw.next": "Vyžrebovať ďalšieho víťaza",
@@ -899,6 +905,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "verify.check.winners.unavailable": "Kolo drand {round} sa nepodarilo prečítať. Skús to neskôr.",
   "verify.check.winners.none": "Zatiaľ nie sú vyžrebovaní žiadni víťazi, takže nie je čo porovnať.",
   "verify.winners.title": "Víťazi",
+  "verify.winners.showAll": "Zobraziť všetkých {count} výberov",
   "verify.winner.entry": "Výber {n} je zápis {leaf} zo zoznamu.",
   "verify.winner.rerolled": "(vyžrebovaný znova)",
   "live.draw.fixed":

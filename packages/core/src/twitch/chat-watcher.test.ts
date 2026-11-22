@@ -668,7 +668,7 @@ async function drawnRoom(options: Parameters<typeof roomUnderTest>[0] = {}) {
   context.clock.advance(1)
   await context.room.commit()
   context.clock.advance(1)
-  await context.room.draw()
+  await context.room.draw(1)
   const winner = context.room.picks()[0]?.platformUserId ?? ""
   const loser = ["1", "2", "3"].find((id) => id !== winner) ?? ""
   return { ...context, winner, loser, drawnAt: context.clock.now() }

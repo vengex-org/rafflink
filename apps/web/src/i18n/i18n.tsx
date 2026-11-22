@@ -18,6 +18,7 @@ export type PluralBase =
   | "usageLow"
   | "roleFailures"
   | "chatFailures"
+  | "drawBatch"
 
 type PluralForm = "one" | "few" | "other"
 type Params = Readonly<Record<string, string | number>>
