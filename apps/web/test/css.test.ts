@@ -104,17 +104,6 @@ describe("stylesheet", () => {
     )
   })
 
-  it("fills the home stage's current step over its own time and stops the fill while the loop is paused", () => {
-    const home = sheet(join(stylesDir, "pages/home.css")).text
-
-    expect(blocksOf(home, '.stage-progress [data-state="current"]::after {')[0]).toMatch(
-      /animation-duration:\s*inherit/,
-    )
-    expect(
-      blocksOf(home, '.stage-progress[data-paused] [data-state="current"]::after {')[0],
-    ).toMatch(/animation-play-state:\s*paused/)
-  })
-
   it("switches off animation and transition under reduced motion", () => {
     const blocks = everySheet.flatMap(({ text }) =>
       blocksOf(text, "@media (prefers-reduced-motion: reduce)"),

@@ -111,7 +111,7 @@ function Connected({
   )
 }
 
-/** The live page for data it is given; the demo gives it a simulated giveaway. */
+/** The live page for data it is given; a hosted demo (site seam) gives it a simulated giveaway. */
 export function LiveControls({
   id,
   snapshot,
@@ -127,7 +127,7 @@ export function LiveControls({
   readonly connected: boolean
   readonly overlayToken: string | null
   readonly donateUrl: string | null
-  /** Where the clean-mode choice is stored, so the demo does not share it with the real page. */
+  /** Where the clean-mode choice is stored, so a hosted demo (site seam) does not share it with the real page. */
   readonly cleanModeKey: string
   readonly facts: GiveawayView | null
   readonly entrants: ReturnType<typeof useEntrants>

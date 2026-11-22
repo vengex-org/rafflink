@@ -174,7 +174,7 @@ describe("header session", () => {
     expect(logged).not.toHaveBeenCalled()
   })
 
-  it.each(["/ABCDE", "/g/ABCDE/verify", "/demo"])(
+  it.each(["/ABCDE", "/g/ABCDE/verify"])(
     "makes no session call on %s, which viewers visit",
     async (path) => {
       const restoreSocket = installFakeSocket()
@@ -294,13 +294,13 @@ describe("header session", () => {
     mockFetch({})
     const home = renderApp("/")
     await home.findByRole("link", { name: "Log in" })
-    expect(home.getByRole("link", { name: "How it works" })).toBeTruthy()
+    expect(home.getByRole("link", { name: "Self-host" })).toBeTruthy()
     expect(home.queryByRole("link", { name: "Demo giveaway" })).toBeNull()
     cleanup()
 
     const legal = renderApp("/privacy")
     await legal.findByRole("link", { name: "Log in" })
-    for (const name of ["How it works", "Self-host", "GitHub", "Demo giveaway"]) {
+    for (const name of ["Self-host", "GitHub", "Demo giveaway"]) {
       expect(legal.queryByRole("link", { name })).toBeNull()
     }
     expect(legal.getByRole("link", { name: /Rafflink/ }).getAttribute("href")).toBe("/")
@@ -324,7 +324,7 @@ describe("header account menu", () => {
 
     expect(button.getAttribute("aria-expanded")).toBe("false")
     expect(view.queryByRole("link", { name: "My giveaways" })).toBeNull()
-    expect(view.queryByRole("link", { name: "How it works" })).toBeNull()
+    expect(view.queryByRole("link", { name: "Self-host" })).toBeNull()
     expect(view.queryByRole("link", { name: "Demo giveaway" })).toBeNull()
     expect(view.queryByRole("button", { name: "Log out" })).toBeNull()
   })

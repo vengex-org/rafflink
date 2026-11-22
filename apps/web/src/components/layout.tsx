@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { Link, Outlet, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
-import { repositoryUrl } from "../lib/links.ts"
+import { SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
@@ -18,7 +18,7 @@ import {
 /**
  * The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages.
  * `account` asks the server who the streamer is, which only the streamer's pages need.
- * A page that picks its frame itself, as the demo does, passes its content as `children` instead of being a route here.
+ * A page that picks its frame itself passes its content as `children` instead of being a route here.
  */
 export function Layout({
   account,
@@ -28,7 +28,7 @@ export function Layout({
   readonly children?: ReactNode | undefined
 }) {
   const { t } = useI18n()
-  // The home page ends with its own footer and keeps the marketing links in its bar.
+  // The home page ends with its own footer and renders SiteNav in its bar.
   const isHome = useLocation().pathname === "/"
   const showFooter = !isHome
   const page = (
@@ -44,13 +44,7 @@ export function Layout({
             </span>
             Rafflink
           </Link>
-          {isHome ? (
-            <nav aria-label={t("nav.main")} className="app-nav">
-              <a href="/#how">{t("nav.howItWorks")}</a>
-              <a href="/#self-host">{t("nav.selfHost")}</a>
-              <a href={repositoryUrl}>{t("nav.github")}</a>
-            </nav>
-          ) : null}
+          {isHome ? <SiteNav /> : null}
           <div className="app-bar-end">
             <Link className="button text app-verify" to="/verify">
               {t("nav.verify")}

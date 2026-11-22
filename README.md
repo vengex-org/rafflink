@@ -139,8 +139,10 @@ Every other setting has a default; see [.env.example](.env.example).
 Both targets need your own Twitch app (see above) and the required settings listed there. Every setting is in
 [.env.example](.env.example), which `bun run env:example` generates from the config schema.
 
+The home page is intentionally plain: a sign-in button and the footer links. A deployment that wants a richer page replaces the one module `apps/web/src/site/site.tsx` at build time.
+
 Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Sponsors and the like) and a quiet
-"Support" link appears in the home page trust row, above the drawn giveaways on the dashboard, in the account menu
+"Support" link appears in the home page footer, above the drawn giveaways on the dashboard, in the account menu
 and in the settings panel of the streamer's live page. Viewer pages and the OBS overlay never show it. Left blank,
 no link appears anywhere.
 
@@ -337,7 +339,7 @@ refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache 
 `workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
 seconds old.
 The home page is one Worker request itself. The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
-`/api/g/<code>` request when it shows winners, to read the prize; the giveaway and demo pages make no session request.
+`/api/g/<code>` request when it shows winners, to read the prize; the giveaway pages make no session request.
 
 The leaf list of a committed giveaway (`/api/g/CODE/leaves`, up to a megabyte) is kept in the same cache for
 `LEAVES_CACHE_SECONDS`. A download that misses the cache wakes the giveaway's room, so each client address may make
