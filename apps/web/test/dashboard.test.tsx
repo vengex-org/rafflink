@@ -705,8 +705,13 @@ describe("dashboard block list", () => {
     fireEvent.click(await view.findByRole("button", { name: "Remove spammer from the block list" }))
 
     expect(await view.findByText("Account removed from the block list.")).toBeTruthy()
+    // The message can render before the reloaded list. A failing toBeNull() on the row's button would
+    // format the React-owned element for seconds, past waitFor's timeout, so no check would follow the
+    // reload; a boolean fails cheaply and waitFor keeps polling.
     await waitFor(() =>
-      expect(view.queryByRole("button", { name: "Remove spammer from the block list" })).toBeNull(),
+      expect(
+        view.queryByRole("button", { name: "Remove spammer from the block list" }) === null,
+      ).toBe(true),
     )
     expect(view.getByRole("button", { name: "Remove troll from the block list" })).toBeTruthy()
     expect(
