@@ -16,6 +16,38 @@ What it does:
 Rafflink runs on Cloudflare (Workers, Durable Objects, D1) or on any server with Docker. Both targets share
 one core and pass the same contract tests.
 
+## Screenshots
+
+Taken from a self-hosted install running against the fake Twitch, with made-up streamers and viewers.
+
+![Live page of a running giveaway with 15 entrants, ticket counts per group and the Draw winner button](docs/screenshots/04-live-page.png)
+
+The streamer's live page while entries are open: entrants with their group and tickets, entry stats and the
+draw controls.
+
+![Live page after the draw, showing the winner RetroRaven with a five minute claim countdown](docs/screenshots/05-winner-drawn.png)
+
+The winner is drawn from a public drand random number and has a set time to claim, by button or in chat.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/01-home.png" alt="Home page with the Log in with Twitch button"><br>Home page of a self-hosted install.</td>
+    <td width="50%"><img src="docs/screenshots/02-dashboard.png" alt="Dashboard listing a running and a finished giveaway"><br>Dashboard with running and finished giveaways.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/03-create-giveaway.png" alt="Create giveaway wizard on the entry rules step"><br>Create wizard, entry rules step: who can enter and tickets per group.</td>
+    <td><img src="docs/screenshots/06-obs-overlay.png" alt="OBS overlay card with the entry link and the number of people entered, on a transparent background"><br>OBS overlay, shown here on a checkered background because it is transparent.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/07-verify.png" alt="Verify page with five passed checks for the draw"><br>Anyone can verify a draw in the browser.</td>
+    <td><img src="docs/screenshots/08-admin-stats.png" alt="Admin page with live counters and the open giveaways table"><br>Admin page with live platform stats.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/09-admin-streamer-access.png" alt="Admin page section where the admin approves or revokes streamers"><br>The admin approves streamers when signup is closed.</td>
+    <td></td>
+  </tr>
+</table>
+
 ## Development
 
 Requires [Bun](https://bun.sh) 1.4.5 or newer.
