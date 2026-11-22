@@ -25,6 +25,7 @@ import {
   headSeqSql,
   lastNamesSql,
   recentEntriesCountSql,
+  entriesBetweenCountSql,
   lastClaimDeadlineSql,
   lastStandingDeadlineSql,
   undrawnEntrantSql,
@@ -939,6 +940,20 @@ describe("GiveawayRoom live push", () => {
     expect(room.liveSnapshot().winners[0]?.claim).toEqual({ state: "expired" })
   })
 
+  it("counts the entries per second in the window before an instant, for the token queue", () => {
+    const { room, clock } = setup()
+    const start = clock.now()
+    for (const id of ["1", "2", "3", "4"]) {
+      clock.advance(500)
+      room.enter(viewer(id))
+    }
+
+    // Entered at start + 500, 1000, 1500 and 2000: the window [start + 1000, start + 2000) holds two.
+    expect(room.entriesPerSecondBefore(start + 2000, 1)).toBe(2)
+    expect(room.entriesPerSecondBefore(start + 2001, 2)).toBe(2)
+    expect(room.entriesPerSecondBefore(start, 1)).toBe(0)
+  })
+
   it("shows how a winner claimed and which pick was rerolled", async () => {
     const { room, sql, clock } = setup()
     enterMany(room, ["1", "2", "3"])
@@ -1251,6 +1266,18 @@ describe("room queries", () => {
         (detail) =>
           detail.startsWith("SEARCH")
           && detail.includes("INDEX entries_by_entered_at (entered_at>?)"),
+      ),
+    ).toBe(true)
+  })
+
+  it("counts the entries of a window by searching the entries index", () => {
+    const { sql } = setup()
+    const details = plan(sql, entriesBetweenCountSql, [0, 1])
+    expect(
+      details.some(
+        (detail) =>
+          detail.startsWith("SEARCH")
+          && detail.includes("INDEX entries_by_entered_at (entered_at>? AND entered_at<?)"),
       ),
     ).toBe(true)
   })

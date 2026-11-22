@@ -219,6 +219,9 @@ class LocalRoomStub implements RoomStub {
   liveSnapshot() {
     return inRoom(() => this.room.liveSnapshot())
   }
+  entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
+    return inRoom(() => this.room.entriesPerSecondBefore(...args))
+  }
 }
 
 async function inRoom<T>(run: () => T | Promise<T>): Promise<T> {

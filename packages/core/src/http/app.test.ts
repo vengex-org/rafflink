@@ -921,7 +921,23 @@ describe("token endpoint limits", () => {
     expect(harness.queue.stats().queued).toBe(2)
   })
 
-  it("calls the token endpoint again once the cooldown is over", async () => {
+  it("queues a new code behind a backlog after the cooldown instead of calling the token endpoint", async () => {
+    const { code } = await createGiveaway(harness)
+    harness.fake.control.failNext("token", 429, 1)
+    for (const userId of [users.viewer.id, users.viewer2.id, users.viewer3.id, users.viewer.id]) {
+      await viewerSignIn(userId, code)
+    }
+    harness.clock.advance(harness.config.queueCooldownSeconds * 1000)
+    await harness.queue.onAlarm()
+    const afterPass = tokenCalls()
+
+    const next = await viewerSignIn(users.viewer2.id, code)
+
+    expect(next.query.get("entry")).toBe("pending")
+    expect(tokenCalls()).toBe(afterPass)
+  })
+
+  it("calls the token endpoint again once the cooldown is over and the next pass takes the whole queue", async () => {
     const { code } = await createGiveaway(harness)
     harness.fake.control.failNext("token", 429, 1)
     await viewerSignIn(users.viewer.id, code)
@@ -1027,6 +1043,9 @@ describe("token endpoint limits", () => {
     const { browser, query: firstQuery, response } = await viewerSignIn(users.viewer.id, first.code)
     const secondSignIn = await viewerSignIn(users.viewer.id, second.code, browser)
     harness.clock.advance((harness.config.queueCooldownSeconds + 1) * 1000)
+    // No entries before the 429: the first pass runs at the floor rate and leaves the second code for the next.
+    await harness.queue.onAlarm()
+    harness.clock.advance(1000)
     await harness.queue.onAlarm()
 
     const firstDone = await browser.request(

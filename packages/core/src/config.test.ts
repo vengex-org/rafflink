@@ -38,7 +38,9 @@ describe("resolveConfig", () => {
     expect(config.defaultClaimSeconds).toBe(300)
     expect(config.queuePollMaxSeconds).toBe(120)
     expect(config.queueCodeMaxAgeSeconds).toBe(300)
-    expect(config.queueCooldownSeconds).toBe(30)
+    expect(config.queueCooldownSeconds).toBe(2)
+    expect(config.queueDecreasePercent).toBe(67)
+    expect(config.queueMaxRatePerSecond).toBe(500)
     expect(config.entryWriteRetryDelaysMs).toEqual([200, 500, 1000])
     expect(config.usageWarningThreshold).toBe(25_000)
     expect(config.titleMaxLength).toBe(100)
@@ -262,6 +264,18 @@ describe("resolveConfig", () => {
     expect(resolveConfig({ ...required, QUEUE_COOLDOWN_SECONDS: "0" }).queueCooldownSeconds).toBe(0)
   })
 
+  it("keeps the queue's decrease a real decrease: below 100 percent and above 0", () => {
+    for (const percent of ["0", "100"]) {
+      expect(failure({ ...required, QUEUE_DECREASE_PERCENT: percent })).toMatchObject({
+        env: "QUEUE_DECREASE_PERCENT",
+        reason: "out-of-range",
+      })
+    }
+    expect(resolveConfig({ ...required, QUEUE_DECREASE_PERCENT: "99" }).queueDecreasePercent).toBe(
+      99,
+    )
+  })
+
   it("rejects an integer beyond the safe range and a percent above 100", () => {
     expect(failure({ ...required, DEFAULT_CLAIM_SECONDS: "9007199254740993" })).toMatchObject({
       reason: "out-of-range",
@@ -369,6 +383,19 @@ describe("resolveConfig", () => {
     expect(resolveConfig({ ...required, QUEUE_POLL_MAX_SECONDS: "299" }).queuePollMaxSeconds).toBe(
       299,
     )
+  })
+
+  it("rejects a queue rate floor above the ceiling and accepts them equal", () => {
+    expect(
+      failure({ ...required, QUEUE_MIN_RATE_PER_SECOND: "11", QUEUE_MAX_RATE_PER_SECOND: "10" }),
+    ).toMatchObject({ env: "QUEUE_MIN_RATE_PER_SECOND", reason: "above-queue-max-rate" })
+    expect(
+      resolveConfig({
+        ...required,
+        QUEUE_MIN_RATE_PER_SECOND: "10",
+        QUEUE_MAX_RATE_PER_SECOND: "10",
+      }).queueMinRatePerSecond,
+    ).toBe(10)
   })
 
   it("accepts a ws or wss EventSub URL with its path and rejects any other scheme", () => {

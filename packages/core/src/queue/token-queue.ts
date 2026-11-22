@@ -2,6 +2,8 @@ import { errorClass } from "../lib/error-class.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { randomId } from "../lib/random-id.ts"
 import type { Alarm, Clock, Instant, Random, Remote, SqlRow, SyncSql } from "../ports.ts"
+import type { RoomStub } from "../room/room-directory.ts"
+import { queuedEntryTwitchSubrequests } from "../twitch/queued-entry-requests.ts"
 import { RowReader } from "../room/rows.ts"
 import {
   parseFinalOutcome,
@@ -20,17 +22,19 @@ import {
   releaseStaleSql,
   requeueClaimedSql,
   statsSql,
+  waitingCountSql,
 } from "./queries.ts"
+import { decreasedRate, increasedRate, type DrainRate, type RateConfig } from "./rate-control.ts"
 
 export type QueueConfig = Pick<
   ResolvedConfig,
   | "queueCodeMaxAgeSeconds"
   | "queueProcessingTimeoutSeconds"
   | "queueCooldownSeconds"
-  | "queueStartRatePerSecond"
-  | "queueMinRatePerSecond"
-  | "queueMaxRatePerSecond"
+  | "queueRateWindowSeconds"
+  | "queueBacklogLeaseSeconds"
 >
+  & RateConfig
 
 /** An authorization code waiting for the token endpoint. */
 export interface QueuedCode {
@@ -47,15 +51,35 @@ export interface QueueDeps {
   readonly config: QueueConfig
   /** The routine the sign-in callback runs; it must not throw for a Twitch answer. */
   readonly process: (item: QueuedCode) => Promise<EntryAttempt>
+  /** The rooms whose entries tell the rate a 429 on the direct path interrupted. */
+  readonly rooms: { get(giveawayId: string): Pick<RoomStub, "entriesPerSecondBefore"> }
+  /**
+   * The most codes one alarm invocation processes; a pass with more calls continues in the next invocation
+   * right away. See {@link entriesPerInvocation} for a runtime that caps subrequests per invocation.
+   */
+  readonly entriesPerInvocation: number
 }
 
-/** Why a code is queued: `rate-limited` starts the cooldown, the others change nothing. */
-export type EnqueueCause = DeferCause | "cooldown"
+/** The codes whose Twitch requests fit the subrequests one invocation may send. */
+export function entriesPerInvocation(
+  config: Pick<ResolvedConfig, "queueSubrequestsPerInvocation">,
+): number {
+  return Math.floor(config.queueSubrequestsPerInvocation / queuedEntryTwitchSubrequests)
+}
+
+/**
+ * Why a code is queued: `rate-limited` on an idle queue starts the cooldown and measures the rate that hit the
+ * limit; `backlog` (queued because the queue still holds codes) and `unavailable` change nothing.
+ */
+export type EnqueueCause = DeferCause | "backlog"
 
 export interface Enqueued {
   readonly ticket: string
-  /** Until when new codes belong in the queue; 0 when no cooldown runs. */
-  readonly cooldownUntil: Instant
+  /**
+   * Until when new codes belong in the queue: the end of the cooldown, or a short lease while the codes ahead
+   * need more than the next second, whichever is later. In the past when the next second takes them all.
+   */
+  readonly queueUntil: Instant
 }
 
 export type PollOutcome =
@@ -86,8 +110,10 @@ export interface QueueStats {
 export type TokenQueueStub = Remote<Pick<TokenQueue, "enqueue" | "poll" | "stats">>
 
 /**
- * Authorization codes the token endpoint could not take yet, drained by an alarm at a rate that halves
- * after a 429 and doubles after a clean pass. Its schema is `queueMigrations`.
+ * Authorization codes the token endpoint could not take yet, drained by an alarm in passes of one second.
+ * The rate follows AIMD: a 429 cuts it to a share of the calls per second that hit the limit, then it grows
+ * by a step per interval until the next 429. Only the first 429 of a backlog also pauses the queue for the
+ * cooldown. Its schema is `queueMigrations`.
  */
 export class TokenQueue {
   private readonly sql: SyncSql
@@ -96,6 +122,8 @@ export class TokenQueue {
   private readonly random: Random
   private readonly config: QueueConfig
   private readonly process: QueueDeps["process"]
+  private readonly rooms: QueueDeps["rooms"]
+  private readonly entriesPerInvocation: number
 
   constructor(deps: QueueDeps) {
     this.sql = deps.sql
@@ -104,29 +132,49 @@ export class TokenQueue {
     this.random = deps.random
     this.config = deps.config
     this.process = deps.process
+    this.rooms = deps.rooms
+    this.entriesPerInvocation = deps.entriesPerInvocation
     this.sql.exec(
       "INSERT INTO queue_stats (id, rate_per_second) VALUES (1, ?) ON CONFLICT (id) DO NOTHING",
-      [this.config.queueStartRatePerSecond],
+      [this.config.queueMinRatePerSecond],
     )
   }
 
   enqueue(item: QueuedCode, cause: EnqueueCause): Enqueued {
     const now = this.clock.now()
     const ticket = randomId(this.random)
-    this.sql.transaction(() => {
+    const ahead = this.sql.transaction(() => {
+      const waiting = this.waitingCount()
       this.sql.exec(
         `INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state)
          VALUES (?, ?, ?, ?, ?, 'queued')`,
         [ticket, item.code, item.giveawayId, item.nonce, now],
       )
+      if (waiting > 0) return waiting
+      // A new backlog: the additive steps count from now, not from the end of the previous one.
+      this.sql.exec(
+        `UPDATE queue_stats SET rate_changed_at = ?, backlog_started_at = ?, pass_started_at = 0,
+         pass_calls = 0 WHERE id = 1`,
+        [now, now],
+      )
+      // A 429 on the direct path while the queue is busy says nothing new: the queue's own passes measure it.
       if (cause === "rate-limited" && this.readStats().cooldownUntil <= now) {
-        this.sql.exec("UPDATE queue_stats SET cooldown_until = ? WHERE id = 1", [
-          now + this.config.queueCooldownSeconds * 1000,
-        ])
+        this.sql.exec(
+          `UPDATE queue_stats SET cooldown_until = ?, measure_giveaway_id = ?, measure_until = ?
+           WHERE id = 1`,
+          [now + this.config.queueCooldownSeconds * 1000, item.giveawayId, now],
+        )
       }
+      return waiting
     })
     this.rearm()
-    return { ticket, cooldownUntil: this.readStats().cooldownUntil }
+    const stats = this.readStats()
+    // At least one invocation per second, each taking at most `entriesPerInvocation` codes.
+    const perSecond = Math.min(stats.ratePerSecond, this.entriesPerInvocation)
+    if (ahead < perSecond) return { ticket, queueUntil: stats.cooldownUntil }
+    // Short, so a rate that grows or an invocation that is faster than one per second ends it soon.
+    const seconds = Math.min(Math.ceil(ahead / perSecond), this.config.queueBacklogLeaseSeconds)
+    return { ticket, queueUntil: Math.max(stats.cooldownUntil, now + seconds * 1000) }
   }
 
   /** A finished result stays readable until the sweep removes it, so a lost response can be fetched again. */
@@ -149,14 +197,14 @@ export class TokenQueue {
   }
 
   stats(): QueueStats {
-    const stats = this.readStats()
-    const queued = this.sql.exec(
-      "SELECT COUNT(*) AS c FROM token_queue WHERE state IN ('queued', 'processing')",
-      [],
-    )[0]
+    const { ratePerSecond, cooldownUntil, dropped, abandonedResults, lostClaims } = this.readStats()
     return {
-      ...stats,
-      queued: queued === undefined ? 0 : new RowReader("token_queue", queued).int("c"),
+      ratePerSecond,
+      cooldownUntil,
+      dropped,
+      abandonedResults,
+      lostClaims,
+      queued: this.waitingCount(),
     }
   }
 
@@ -165,7 +213,7 @@ export class TokenQueue {
     const now = this.clock.now()
     this.sweep(now)
     const stats = this.readStats()
-    if (now >= stats.cooldownUntil) await this.drain(now, stats.ratePerSecond)
+    if (now >= stats.cooldownUntil) await this.drain(now, stats)
     this.rearm()
   }
 
@@ -194,23 +242,86 @@ export class TokenQueue {
     )
   }
 
-  private async drain(now: Instant, rate: number): Promise<void> {
-    // Claimed before the first await: a pass that starts while this one waits for Twitch finds nothing to take.
-    const items = this.sql.exec(claimQueuedSql, [now, rate]).map(parseQueued)
-    if (items.length === 0) return
-    const results = await Promise.all(items.map((item) => this.processOne(item, now)))
-    const limited = results.includes("rate-limited")
-    const allDone = results.every((result) => result === "done")
-    if (limited) {
-      this.sql.exec("UPDATE queue_stats SET rate_per_second = ?, cooldown_until = ? WHERE id = 1", [
-        Math.max(this.config.queueMinRatePerSecond, Math.floor(rate / 2)),
-        now + this.config.queueCooldownSeconds * 1000,
-      ])
-    } else if (allDone) {
-      this.sql.exec("UPDATE queue_stats SET rate_per_second = ? WHERE id = 1", [
-        Math.min(this.config.queueMaxRatePerSecond, rate * 2),
-      ])
+  // One invocation takes at most `entriesPerInvocation` codes of the current pass; `rearm` calls the next one
+  // right away while the pass has calls left.
+  private async drain(now: Instant, stats: StoredStats): Promise<void> {
+    let claimedAt = now
+    let pass = { startedAt: stats.passStartedAt, calls: stats.passCalls, rate: stats.ratePerSecond }
+    if (now >= stats.passStartedAt + tickMs) {
+      // Awaited only to measure: a pass that does not measure claims before its first await.
+      let rate = increasedRate(
+        this.config,
+        { perSecond: stats.ratePerSecond, changedAt: stats.rateChangedAt },
+        now,
+      )
+      if (stats.measure !== null) {
+        rate = await this.measuredRate(now, stats.measure)
+        claimedAt = this.clock.now()
+      }
+      this.writeRate(rate)
+      pass = { startedAt: claimedAt, calls: 0, rate: rate.perSecond }
     }
+    const take = Math.min(pass.rate - pass.calls, this.entriesPerInvocation)
+    if (take <= 0) return
+    // Claimed before the next await: an invocation that starts while this one waits for Twitch finds nothing to take.
+    const items = this.sql.exec(claimQueuedSql, [claimedAt, take]).map(parseQueued)
+    const calls = pass.calls + items.length
+    this.sql.exec("UPDATE queue_stats SET pass_started_at = ?, pass_calls = ? WHERE id = 1", [
+      pass.startedAt,
+      calls,
+    ])
+    if (items.length === 0) return
+    const results = await Promise.all(items.map((item) => this.processOne(item, claimedAt)))
+    if (results.includes("rate-limited")) this.slowDown(calls)
+  }
+
+  // Every invocation of a pass claims within the second the pass started, and each code's token exchange is
+  // its first Twitch request, so the pass's calls are the exchanges sent in that second. How long the answers
+  // and the Helix reads behind them took says nothing about the rate the token endpoint saw.
+  private slowDown(calls: number): void {
+    const now = this.clock.now()
+    const stats = this.readStats()
+    const pausedInBacklog = stats.cooldownUntil > stats.backlogStartedAt
+    const cooldownUntil = pausedInBacklog
+      ? stats.cooldownUntil
+      : now + this.config.queueCooldownSeconds * 1000
+    this.writeRate({
+      perSecond: decreasedRate(this.config, calls),
+      changedAt: Math.max(now, cooldownUntil),
+    })
+    // The pass ends here: the rest of its second would only meet more 429s.
+    this.sql.exec(
+      "UPDATE queue_stats SET cooldown_until = ?, pass_calls = rate_per_second WHERE id = 1",
+      [cooldownUntil],
+    )
+  }
+
+  // After a 429 on the direct path the first pass takes what the token endpoint let through just before it.
+  private async measuredRate(now: Instant, measure: Measure): Promise<DrainRate> {
+    // Cleared before the await, so a pass that starts meanwhile does not measure the same 429 again.
+    this.sql.exec(
+      "UPDATE queue_stats SET measure_giveaway_id = NULL, measure_until = NULL WHERE id = 1",
+      [],
+    )
+    let trigger = 0
+    try {
+      trigger = await this.rooms
+        .get(measure.giveawayId)
+        .entriesPerSecondBefore(measure.until, this.config.queueRateWindowSeconds)
+    } catch (error) {
+      console.warn("queue trigger rate unavailable", {
+        giveawayId: measure.giveawayId,
+        errorClass: errorClass(error),
+      })
+    }
+    return { perSecond: decreasedRate(this.config, trigger), changedAt: now }
+  }
+
+  private writeRate(rate: DrainRate): void {
+    this.sql.exec("UPDATE queue_stats SET rate_per_second = ?, rate_changed_at = ? WHERE id = 1", [
+      rate.perSecond,
+      rate.changedAt,
+    ])
   }
 
   // One failing item must not stop the rest of the pass: its row goes back to the queue until it ages out.
@@ -270,7 +381,12 @@ export class TokenQueue {
     const maxAgeMs = this.config.queueCodeMaxAgeSeconds * 1000
     const wakeups: Instant[] = []
     if (this.sql.exec(oldestQueuedSql, []).length > 0) {
-      wakeups.push(Math.max(now + tickMs, stats.cooldownUntil))
+      // The first pass of a backlog comes a second after the code that started it was deferred.
+      const passEnd =
+        (stats.passStartedAt === 0 ? stats.backlogStartedAt : stats.passStartedAt) + tickMs
+      const passOpen =
+        stats.passStartedAt !== 0 && stats.passCalls < stats.ratePerSecond && now < passEnd
+      wakeups.push(Math.max(passOpen ? now : passEnd, stats.cooldownUntil))
     }
     const oldestClaim = this.sql.exec(oldestClaimSql, [])[0]
     const claimedAt =
@@ -288,13 +404,28 @@ export class TokenQueue {
     else this.alarm.set(Math.min(...wakeups))
   }
 
-  private readStats(): Omit<QueueStats, "queued"> {
+  private waitingCount(): number {
+    const row = this.sql.exec(waitingCountSql, [])[0]
+    return row === undefined ? 0 : new RowReader("token_queue", row).int("c")
+  }
+
+  private readStats(): StoredStats {
     const row = this.sql.exec(statsSql, [])[0]
     if (row === undefined) throw new Error("queue is not initialised")
     const reader = new RowReader("queue_stats", row)
+    const measureGiveawayId = reader.nullableText("measure_giveaway_id")
+    const measureUntil = reader.nullableInt("measure_until")
     return {
       ratePerSecond: reader.int("rate_per_second"),
+      rateChangedAt: reader.int("rate_changed_at"),
       cooldownUntil: reader.int("cooldown_until"),
+      backlogStartedAt: reader.int("backlog_started_at"),
+      passStartedAt: reader.int("pass_started_at"),
+      passCalls: reader.int("pass_calls"),
+      measure:
+        measureGiveawayId === null || measureUntil === null
+          ? null
+          : { giveawayId: measureGiveawayId, until: measureUntil },
       dropped: reader.int("dropped"),
       abandonedResults: reader.int("abandoned_results"),
       lostClaims: reader.int("lost_claims"),
@@ -303,6 +434,22 @@ export class TokenQueue {
 }
 
 type QueuedItem = QueuedCode & { readonly ticket: string }
+
+type StoredStats = Omit<QueueStats, "queued"> & {
+  readonly rateChangedAt: Instant
+  readonly backlogStartedAt: Instant
+  readonly passStartedAt: Instant
+  /** Codes the current pass has claimed over all its invocations. */
+  readonly passCalls: number
+  /** The next pass measures the rate of this 429 from the giveaway's room. */
+  readonly measure: Measure | null
+}
+
+/** A 429 on the direct path: the giveaway of its code and when it came. */
+interface Measure {
+  readonly giveawayId: string
+  readonly until: Instant
+}
 
 // The rate is calls per second, so one pass per second.
 const tickMs = 1000

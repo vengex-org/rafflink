@@ -108,6 +108,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     random,
     config,
     process: (item) => enterQueuedCode(entryDeps, item),
+    rooms,
+    // Bun caps no subrequests: one invocation runs the whole pass.
+    entriesPerInvocation: config.queueMaxRatePerSecond,
   })
   const deps: AppDeps = {
     ...entryDeps,

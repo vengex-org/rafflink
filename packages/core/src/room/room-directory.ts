@@ -22,6 +22,7 @@ export type RoomStub = Remote<
     | "picks"
     | "markMirrored"
     | "liveSnapshot"
+    | "entriesPerSecondBefore"
   >
 >
 

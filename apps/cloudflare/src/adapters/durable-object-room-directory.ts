@@ -71,6 +71,9 @@ class DurableObjectRoomStub implements RoomStub {
   liveSnapshot() {
     return inRoom(() => this.stub.liveSnapshot())
   }
+  entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
+    return inRoom(() => this.stub.entriesPerSecondBefore(...args))
+  }
 }
 
 /** Runs a call on a room object and turns the runtime's retryable failures into {@link RoomTransientError}. */

@@ -74,7 +74,9 @@ bun run load-test -- --rate 300 --duration 10 --token-limit 100   # fake Twitch 
 ```
 
 The script starts the Bun server and the fake Twitch as child processes on free local ports, with a throwaway
-data folder. Server settings such as `QUEUE_MAX_RATE_PER_SECOND` are read from your environment. The exit code
+data folder. Server settings such as `QUEUE_INCREASE_STEP_PER_SECOND` are read from your environment. With
+`--token-limit` the run shows how the token queue adapts its drain rate to the limit: it cuts the rate to 2/3 at
+each 429 and grows it step by step in between (see "Queue for the token endpoint" in `docs/spec.md`). The exit code
 is 1 when a check fails and 2 for bad flags or a redirect to a host that is not local.
 
 The load test only talks to `localhost`, `127.0.0.1` and `[::1]`: any other host is refused before a request is

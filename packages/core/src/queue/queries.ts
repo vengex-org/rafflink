@@ -39,5 +39,10 @@ export const oldestClaimSql =
 export const oldestDoneSql = `SELECT received_at FROM token_queue WHERE state = 'done'
   ORDER BY received_at, ticket LIMIT 1`
 
-export const statsSql =
-  "SELECT rate_per_second, cooldown_until, dropped, abandoned_results, lost_claims FROM queue_stats WHERE id = 1"
+/** The codes waiting or being processed. */
+export const waitingCountSql =
+  "SELECT COUNT(*) AS c FROM token_queue WHERE state IN ('queued', 'processing')"
+
+export const statsSql = `SELECT rate_per_second, rate_changed_at, cooldown_until, measure_giveaway_id, measure_until,
+  backlog_started_at, pass_started_at, pass_calls, dropped, abandoned_results, lost_claims
+  FROM queue_stats WHERE id = 1`
