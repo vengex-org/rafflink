@@ -235,6 +235,23 @@ describe("legal pages", () => {
     expect(link.getAttribute("rel")).toBe("noopener")
   })
 
+  it("name the streamer as the organizer and forbid paid entry in the terms in every language", () => {
+    const words: Readonly<Record<Language, { organizer: string; paid: string }>> = {
+      en: { organizer: "Rafflink is not the organizer", paid: "Paid entry is not allowed" },
+      sk: { organizer: "Rafflink nie je organizátor", paid: "Platené zapojenie nie je dovolené" },
+      cs: { organizer: "Rafflink není pořadatel", paid: "Placené zapojení není dovoleno" },
+    }
+    for (const language of languages) {
+      browserLanguage(language)
+      const view = renderApp("/terms")
+
+      const text = view.getByRole("article").textContent
+      expect(text).toContain(words[language].organizer)
+      expect(text).toContain(words[language].paid)
+      cleanup()
+    }
+  })
+
   it("name the cookies and say no consent banner is needed", () => {
     browserLanguage("en-US")
     const view = renderApp("/privacy")

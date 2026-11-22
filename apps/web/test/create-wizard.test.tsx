@@ -101,6 +101,19 @@ describe("create wizard", () => {
     expect(view.getByRole("group", { name: "Tickets per group" })).toBeTruthy()
   })
 
+  it("warns that a subscription is a purchase only while Subscribers only is chosen", async () => {
+    mockFetch(listed)
+    const view = await openWizard()
+    await toRules(view)
+    const warning = /A subscription is a paid purchase/
+
+    expect(view.queryByText(warning)).toBeNull()
+    fireEvent.click(view.getByRole("radio", { name: /Subscribers only/ }))
+    expect(view.getByRole("note").textContent).toMatch(warning)
+    fireEvent.click(view.getByRole("radio", { name: /Followers only/ }))
+    expect(view.queryByText(warning)).toBeNull()
+  })
+
   it("tells how much better the odds are for the best group and follows the ticket counts", async () => {
     mockFetch(listed)
     const view = await openWizard()

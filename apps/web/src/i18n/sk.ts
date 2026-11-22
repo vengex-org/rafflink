@@ -433,6 +433,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rules.entriesEnd": "Zápis končí {time}",
   "rules.claimTime": "Víťazi majú na prevzatie {time}",
   "rules.claimWhere": "Víťaz výhru preberie na tejto stránke alebo v chate streamu.",
+  "rules.organizer": "Organizátor: {name}. Rafflink nie je organizátor.",
 
   "dash.title": "Moje súťaže",
   "dash.new.title": "Nová súťaž",
@@ -595,6 +596,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.audience.followers.help": "Zapojiť sa môžu len ľudia, ktorí sledujú tvoj kanál.",
   "wizard.audience.subscribers": "Len predplatitelia",
   "wizard.audience.subscribers.help": "Zapojiť sa môžu len tvoji platiaci predplatitelia.",
+  "wizard.audience.subscribers.warning":
+    "Predplatné je platený nákup. V mnohých krajinách je giveaway, do ktorého sa treba zapojiť nákupom, regulovaná lotéria. Zváž, či nepustiť do giveawaya aj sledovateľov alebo všetkých divákov.",
   "wizard.minAge.label": "Minimálny vek účtu v dňoch (nepovinné)",
   "wizard.minAge.help":
     "Zabráni ľuďom vytvárať nové účty len kvôli súťaži. Keď pole nevyplníš, zapojiť sa môže akýkoľvek účet.",
@@ -747,17 +750,20 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "terms.source.h": "Open source",
   "terms.source.p1":
     "Zdrojový kód je licencovaný pod GNU AGPL-3.0 a je dostupný na {repository}. Licencia sa vzťahuje na kód. Tieto podmienky sa vzťahujú na službu na tejto inštancii.",
-  "terms.streamers.h": "Streameri",
-  "terms.streamers.p1": "Giveaway vedieš ty, nie Rafflink. Rafflink iba žrebuje.",
-  "terms.streamers.i1": "Zodpovedáš za výhru, jej odovzdanie a svoje pravidlá.",
+  "terms.streamers.h": "Streameri a organizátor",
+  "terms.streamers.p1":
+    "Si organizátorom každého giveawaya, ktorý vytvoríš. Rafflink poskytuje iba nástroj a žrebovanie. Rafflink nie je organizátor.",
+  "terms.streamers.i1":
+    "Výlučne ty zodpovedáš za to, aby každý giveaway spĺňal zákony tam, kde sa nachádzaš ty a tvoji diváci: výhra, pravidlá, oprávnenosť, vekové a krajinové obmedzenia, dane, pravidlá o hazardných hrách a lotériách a odovzdanie výhry.",
   "terms.streamers.i2":
-    "Zodpovedáš za to, aby bol giveaway zákonný v tvojej jurisdikcii aj v krajinách, kde žijú tvoji diváci, vrátane pravidiel o hazardných hrách, lotériách, propagačných súťažiach a daniach.",
+    "Platené zapojenie nie je dovolené. Giveaway nesmie vyžadovať platbu za zapojenie, takže platené tomboly a lotérie na Rafflinku nie sú dovolené.",
   "terms.streamers.i3":
-    "Zapojenie musí zostať pre divákov zadarmo. Tikety navyše pre predplatiteľov alebo followerov sú tvoje rozhodnutie a musíš si overiť, že je to tam, kde giveaway vedieš, dovolené.",
+    "Tikety navyše pre predplatiteľov alebo followerov sú tvoje rozhodnutie. Predplatné je platený nákup, takže giveaway len pre predplatiteľov sa tam, kde žiješ ty alebo tvoji diváci, môže považovať za platené zapojenie. Over si to skôr, než ho zvolíš.",
   "terms.streamers.i4":
     "Zodpovedáš za to, ako použiješ údaje účastníkov, ktoré vidíš, podľa predpisov o ochrane osobných údajov, ktoré sa na teba vzťahujú.",
   "terms.viewers.h": "Diváci",
-  "terms.viewers.i1": "Zapojenie je zadarmo a vyžaduje účet na Twitchi.",
+  "terms.viewers.i1":
+    "Zapojenie je zo strany Rafflinku vždy zadarmo a vyžaduje účet na Twitchi. Rafflink nikdy nežiada od divákov platbu.",
   "terms.viewers.i2":
     "Výhru poskytuje streamer, nie Rafflink. Rafflink nie je stranou giveawayu a nesľubuje výhru ani jej doručenie.",
   "terms.viewers.i3":

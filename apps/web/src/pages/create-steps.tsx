@@ -124,6 +124,11 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         value={values.audience}
         onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
       />
+      {values.audience === "subscribers" ? (
+        <p className="help" role="note">
+          {t("wizard.audience.subscribers.warning")}
+        </p>
+      ) : null}
       <StepperField
         name="minAccountAgeDays"
         label={t("wizard.minAge.label")}

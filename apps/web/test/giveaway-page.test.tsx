@@ -62,6 +62,16 @@ describe("run-your-own invitation", () => {
   })
 })
 
+describe("organizer line", () => {
+  it("names the streamer as the organizer in the rules and says Rafflink is not", async () => {
+    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, streamerName: "Ada" }) })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Organized by Ada. Rafflink is not the organizer.")).toBeTruthy()
+  })
+})
+
 describe("giveaway landing", () => {
   it("shows the prize as the headline with the people count and who can enter", async () => {
     mockFetch({
