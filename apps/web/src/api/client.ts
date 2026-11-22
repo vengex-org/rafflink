@@ -144,6 +144,8 @@ export interface CreateGiveawayBody {
     readonly minAccountAgeDays: number | undefined
     readonly claimKeyword: string
     readonly excludeRecentWinners: RecentWinnersRule | null
+    /** Null when viewers enter on the page only. */
+    readonly chatKeyword: string | null
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
@@ -417,6 +419,14 @@ export function entryFromQuery(query: URLSearchParams): EntryResult | null {
 
 export async function claimPrize(code: string): Promise<ClaimKind | Rejected> {
   return act(`/api/g/${encodeURIComponent(code)}/claim`, {}, claimKinds)
+}
+
+/** "Am I in?" by login, for a viewer who entered in chat; the server answers yes or no and nothing else. */
+export async function isLoginEntered(code: string, login: string): Promise<boolean> {
+  const query = new URLSearchParams({ login })
+  const { status, body } = await send(`/api/g/${encodeURIComponent(code)}/entered?${query}`)
+  if (status !== 200) throw new ApiError(status)
+  return bool(record(body, "entered"), "entered")
 }
 
 export async function listGiveaways(): Promise<DashboardGiveaway[] | "unauthorized"> {
@@ -1031,6 +1041,7 @@ function parseRules(source: Json): GiveawayRules {
       source.excludeRecentWinners === null
         ? null
         : parseRecentWinners(child(source, "excludeRecentWinners")),
+    chatKeyword: nullableText(source, "chatKeyword"),
   }
 }
 

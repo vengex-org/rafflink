@@ -13,8 +13,24 @@ export interface GiveawayStreamerAccess {
   readonly broadcasterId: string
 }
 
+// A refresh can replace the stored refresh token, so two refreshes at once from the same row can make the
+// second fail: callers that overlap, such as the role refresh and the chat subscription right after the
+// giveaway opens, share one refresh.
+const inFlight = new Map<string, Promise<GiveawayStreamerAccess>>()
+
 /** An access token of the giveaway's streamer, with the channel it is for and its platform's provider. */
-export async function openGiveawayStreamerAccess(
+export function openGiveawayStreamerAccess(
+  deps: StreamerTokenDeps,
+  giveawayId: string,
+): Promise<GiveawayStreamerAccess> {
+  const running = inFlight.get(giveawayId)
+  if (running !== undefined) return running
+  const access = readStreamerAccess(deps, giveawayId).finally(() => inFlight.delete(giveawayId))
+  inFlight.set(giveawayId, access)
+  return access
+}
+
+async function readStreamerAccess(
   deps: StreamerTokenDeps,
   giveawayId: string,
 ): Promise<GiveawayStreamerAccess> {

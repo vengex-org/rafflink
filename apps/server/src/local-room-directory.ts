@@ -261,6 +261,9 @@ class LocalRoomStub implements RoomStub {
   entryOf(...args: Parameters<GiveawayRoom["entryOf"]>) {
     return inRoom(() => this.room.entryOf(...args))
   }
+  hasEntrant(...args: Parameters<GiveawayRoom["hasEntrant"]>) {
+    return inRoom(() => this.room.hasEntrant(...args))
+  }
   entrants(...args: Parameters<GiveawayRoom["entrants"]>) {
     return inRoom(() => this.room.entrants(...args))
   }

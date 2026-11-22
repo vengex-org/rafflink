@@ -2,6 +2,7 @@ import { useCallback, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import type { ViewerState } from "@rafflink/core/http/json"
 import { entryFromQuery, type GiveawayView } from "../api/client.ts"
+import { ChatEntry } from "../components/chat-entry.tsx"
 import { GiveawayCode } from "../components/giveaway-code.tsx"
 import { ClaimPanel } from "../components/giveaway-claim.tsx"
 import { EntryPanel } from "../components/giveaway-entry.tsx"
@@ -100,6 +101,14 @@ function GiveawayDetails({
           />
         )}
       </div>
+      {giveaway.rules.chatKeyword === null || isIn || isWinner ? null : (
+        <ChatEntry
+          code={code}
+          keyword={giveaway.rules.chatKeyword}
+          streamerName={giveaway.streamerName}
+          open={giveaway.status === "open"}
+        />
+      )}
       <div className="viewer-details">
         {isIn ? null : <GiveawayFacts kind={isWinner ? "pool" : "entry"} giveaway={giveaway} />}
         <GiveawayRules giveaway={giveaway} />

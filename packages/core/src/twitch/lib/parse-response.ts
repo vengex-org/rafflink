@@ -73,24 +73,20 @@ export function parseFollowed(body: unknown): Parsed<boolean, "malformed"> {
 
 export function parseUserProfile(body: unknown): Parsed<UserProfile, "malformed"> {
   const entry = firstEntry(body)
-  if (!entry.ok) return entry
-  const { id, login, display_name: displayName, created_at: createdAt } = entry.value
-  if (typeof id !== "string" || typeof login !== "string" || typeof displayName !== "string") {
-    return malformed
+  return entry.ok ? userProfileOf(entry.value) : entry
+}
+
+/** Users of a lookup by id; an id Twitch does not know is absent. */
+export function parseUserProfiles(body: unknown): Parsed<readonly UserProfile[], "malformed"> {
+  const data = dataOf(body)
+  if (!data.ok) return data
+  const profiles: UserProfile[] = []
+  for (const item of data.value) {
+    const profile = isRecord(item) ? userProfileOf(item) : malformed
+    if (!profile.ok) return profile
+    profiles.push(profile.value)
   }
-  if (typeof createdAt !== "string") return malformed
-  const instant = Date.parse(createdAt)
-  if (!Number.isFinite(instant)) return malformed
-  return {
-    ok: true,
-    value: {
-      id,
-      login,
-      displayName,
-      createdAt: instant,
-      profileImageUrl: twitchImageUrl(entry.value.profile_image_url),
-    },
-  }
+  return { ok: true, value: profiles }
 }
 
 /**
@@ -141,6 +137,26 @@ export function parseValidated(body: unknown): Parsed<{ userId: string }, "malfo
 export function parseSubscriptionCreated(body: unknown): Parsed<null, "malformed"> {
   const entry = firstEntry(body)
   return entry.ok && typeof entry.value.id === "string" ? { ok: true, value: null } : malformed
+}
+
+function userProfileOf(item: Record<string, unknown>): Parsed<UserProfile, "malformed"> {
+  const { id, login, display_name: displayName, created_at: createdAt } = item
+  if (typeof id !== "string" || typeof login !== "string" || typeof displayName !== "string") {
+    return malformed
+  }
+  if (typeof createdAt !== "string") return malformed
+  const instant = Date.parse(createdAt)
+  if (!Number.isFinite(instant)) return malformed
+  return {
+    ok: true,
+    value: {
+      id,
+      login,
+      displayName,
+      createdAt: instant,
+      profileImageUrl: twitchImageUrl(item.profile_image_url),
+    },
+  }
 }
 
 function dataOf(body: unknown): Parsed<readonly unknown[], "malformed"> {

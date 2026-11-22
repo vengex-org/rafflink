@@ -9,6 +9,16 @@ export const entriesBetweenCountSql =
 export const entryOfSql =
   "SELECT group_name, tickets, entered_at FROM entries WHERE platform = ? AND platform_user_id = ?"
 
+/** One row when an entrant of a platform (parameter 1) has a login (parameter 2). */
+export const entrantByLoginSql = "SELECT 1 FROM entries WHERE platform = ? AND login = ? LIMIT 1"
+
+/** The oldest chatters waiting for the check of their chat entry (parameter 1 is how many; -1 is all), oldest first. */
+export const chatEntryRequestsSql =
+  "SELECT * FROM chat_entry_requests ORDER BY requested_at, platform_user_id LIMIT ?"
+
+/** One row while a chatter waits for the check of their chat entry. */
+export const chatEntryWaitingSql = "SELECT 1 FROM chat_entry_requests LIMIT 1"
+
 /** The newest entrants (parameter 1 is how many), newest first. */
 export const lastNamesSql =
   "SELECT display_name FROM entries ORDER BY entered_at DESC, platform DESC, platform_user_id DESC LIMIT ?"

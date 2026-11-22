@@ -1,6 +1,9 @@
 import type { ResolvedConfig } from "../config.ts"
 import type { Parsed } from "../lib/parsed.ts"
+import type { Instant } from "../ports.ts"
 import { bestGroup, groups, type Group, type Tickets } from "./groups.ts"
+
+const msPerDay = 86_400_000
 
 /** What a streamer sets for who may enter and with how many tickets. */
 export interface GiveawayRules {
@@ -13,6 +16,8 @@ export interface GiveawayRules {
   readonly claimKeyword: string | null
   /** Null lets winners of the streamer's earlier giveaways enter. */
   readonly excludeRecentWinners: RecentWinnersRule | null
+  /** A chat message starting with it enters the chatter while entries are open; null means no chat entry. */
+  readonly chatKeyword: string | null
 }
 
 /** Keeps out the winners of the streamer's last `count` drawn giveaways, or of those drawn in the last `count` days. */
@@ -117,10 +122,12 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
   if (!followersOnly.ok) return followersOnly
   const minAccountAgeDays = parseMinAccountAgeDays(input)
   if (!minAccountAgeDays.ok) return minAccountAgeDays
-  const claimKeyword = parseClaimKeyword(input, config.claimKeywordMaxLength)
+  const claimKeyword = parseKeyword(input, "claimKeyword", config.claimKeywordMaxLength)
   if (!claimKeyword.ok) return claimKeyword
   const excludeRecentWinners = parseRecentWinners(input, config)
   if (!excludeRecentWinners.ok) return excludeRecentWinners
+  const chatKeyword = parseKeyword(input, "chatKeyword", config.claimKeywordMaxLength)
+  if (!chatKeyword.ok) return chatKeyword
   return ok({
     tickets: tickets.value,
     subsOnly: subsOnly.value,
@@ -128,7 +135,20 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
     minAccountAgeDays: minAccountAgeDays.value,
     claimKeyword: claimKeyword.value,
     excludeRecentWinners: excludeRecentWinners.value,
+    chatKeyword: chatKeyword.value,
   })
+}
+
+/** Whole days since the account was created; never negative, so a clock ahead of the platform's does not make an account younger than new. */
+export function accountAgeDays(now: Instant, createdAt: Instant): number {
+  return Math.max(0, Math.floor((now - createdAt) / msPerDay))
+}
+
+/** Whether a chat message asks to enter: its text starts with the keyword as a whole word, in any letter case. */
+export function isEntryMessage(text: string, keyword: string): boolean {
+  const message = text.trim().toLowerCase()
+  const wanted = keyword.toLowerCase()
+  return message === wanted || message.startsWith(`${wanted} `)
 }
 
 /** An absent claim time takes the configured default; a present one must be a positive integer up to the maximum. */
@@ -188,16 +208,17 @@ function parseMinAccountAgeDays(input: Record<string, unknown>): Parsed<number |
   return ok(value === 0 ? null : value)
 }
 
-function parseClaimKeyword(
+function parseKeyword(
   input: Record<string, unknown>,
+  field: "claimKeyword" | "chatKeyword",
   maxLength: number,
 ): Parsed<string | null, RulesIssue> {
-  const value = ownValue(input, "claimKeyword")
+  const value = ownValue(input, field)
   if (value === undefined || value === null) return ok(null)
-  if (typeof value !== "string") return fail("claimKeyword", "not-a-string")
+  if (typeof value !== "string") return fail(field, "not-a-string")
   const keyword = value.trim()
-  if (keyword === "") return fail("claimKeyword", "blank")
-  if (keyword.length > maxLength) return fail("claimKeyword", "too-long")
+  if (keyword === "") return fail(field, "blank")
+  if (keyword.length > maxLength) return fail(field, "too-long")
   return ok(keyword)
 }
 

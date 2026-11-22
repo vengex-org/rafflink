@@ -359,6 +359,7 @@ describe("create wizard", () => {
         minAccountAgeDays: 7,
         claimKeyword: "",
         excludeRecentWinners: null,
+        chatKeyword: null,
       },
       claimSeconds: 300,
       winnerCount: 1,
@@ -393,8 +394,13 @@ describe("create wizard", () => {
     }
     fireEvent.click(view.getByRole("radio", { name: /10 minutes/ }))
     fireEvent.change(view.getByLabelText("Chat word (optional)"), { target: { value: "mine" } })
+    expect(view.queryByLabelText("Entry keyword")).toBeNull()
+    fireEvent.click(view.getByRole("radio", { name: /Page and chat/ }))
+    expect(inputOf(view.getByLabelText("Entry keyword")).value).toBe("!enter")
+    fireEvent.change(view.getByLabelText("Entry keyword"), { target: { value: "!join" } })
     next(view)
     await view.findByText("Step 3 of 3: Review")
+    expect(view.getByText('On the giveaway page or by typing "!join" in your chat.')).toBeDefined()
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
     await view.findByRole("heading", { name: "Your giveaway is live!" })
 
@@ -408,6 +414,7 @@ describe("create wizard", () => {
         minAccountAgeDays: 30,
         claimKeyword: "mine",
         excludeRecentWinners: null,
+        chatKeyword: "!join",
       },
       closesAt: new Date("2099-01-01T10:00").toISOString(),
       claimSeconds: 600,

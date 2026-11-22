@@ -122,6 +122,10 @@ export interface PlatformProvider {
   userProfile(accessToken: string): Promise<UserProfile>
   validate(accessToken: string): Promise<TokenValidation>
   follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
+  /** Whether `userId` follows the channel, asked with the streamer's token instead of the viewer's. */
+  channelFollower(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
+  /** The profiles of the accounts that exist among `userIds`; a missing account is absent from the answer. */
+  userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]>
   /** The tier group of the viewer's subscription, `null` when not subscribed. */
   subscriptionTier(
     accessToken: string,

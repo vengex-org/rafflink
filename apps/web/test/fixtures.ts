@@ -10,6 +10,7 @@ export const rules: GiveawayRules = {
   minAccountAgeDays: null,
   claimKeyword: null,
   excludeRecentWinners: null,
+  chatKeyword: null,
 }
 
 /** The body of `GET /api/g/ABCDE` for a viewer who has not signed in. */

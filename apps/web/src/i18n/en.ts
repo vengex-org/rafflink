@@ -753,6 +753,25 @@ export const en = {
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Any chat message from the winner also counts.",
   "review.keywordChat": 'The winner can also type "{keyword}" in your chat.',
+  "wizard.entry.legend": "How viewers enter",
+  "wizard.entry.page": "Giveaway page",
+  "wizard.entry.page.help": "Viewers sign in with Twitch on the giveaway page.",
+  "wizard.entry.chat": "Page and chat",
+  "wizard.entry.chat.help": "Viewers can also enter by typing a keyword in your chat.",
+  "wizard.chatKeyword.label": "Entry keyword",
+  "wizard.chatKeyword.help":
+    "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
+  "review.entry": "Entry",
+  "review.entryPage": "On the giveaway page.",
+  "review.entryChat": 'On the giveaway page or by typing "{keyword}" in your chat.',
+  "giveaway.chatEntry": "Or type {keyword} in the chat of {name} to enter.",
+  "giveaway.lookup.legend": "Entered by chat?",
+  "giveaway.lookup.label": "Your Twitch login",
+  "giveaway.lookup.button": "Am I in?",
+  "giveaway.lookup.yes": "{login} is in the giveaway.",
+  "giveaway.lookup.no":
+    "{login} is not in the giveaway yet. A chat entry can take a minute to show up.",
+  "giveaway.lookup.failed": "The check did not work. Try again.",
 
   "legal.privacy": "Privacy",
   "legal.terms": "Terms",
@@ -785,7 +804,7 @@ export const en = {
   "privacy.data.i4":
     'Everyone drawn, rerolled picks included: Twitch user ID, login name, display name, the draw result and whether and how the prize was claimed. The user ID stays with the pick also after the name was replaced with "removed".',
   "privacy.data.i5":
-    "Chat messages: read in memory to recognise a winner's claim and to show the winner's messages on the live page. They are never stored or logged.",
+    "Chat messages: read in memory to recognise the entry keyword and a winner's claim, and to show the winner's messages on the live page. They are never stored or logged. Typing the entry keyword stores your Twitch user ID, login, display name and the roles your chat badges show until the entry is checked; then you are an entrant like on the page, and the follow is checked with the streamer's token.",
   "privacy.data.i6":
     "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example with rate limits.",
   "privacy.data.i7":

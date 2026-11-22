@@ -50,6 +50,7 @@ const rules: GiveawayRules = {
   minAccountAgeDays: null,
   claimKeyword: null,
   excludeRecentWinners: null,
+  chatKeyword: null,
 }
 
 const acceptedKinds: readonly string[] = ["entered", "already-in"]

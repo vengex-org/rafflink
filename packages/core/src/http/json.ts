@@ -99,6 +99,11 @@ export interface MyLeafJson {
   readonly salt: string | null
 }
 
+/** The answer of the "Am I in?" lookup by login. */
+export interface EnteredJson {
+  readonly entered: boolean
+}
+
 /** Who runs the instance, as the privacy policy and the terms name them (the `OPERATOR_*` keys); `legalUpdated` is `LEGAL_UPDATED`, null when unset. */
 export interface OperatorJson {
   readonly name: string

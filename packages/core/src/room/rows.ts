@@ -2,6 +2,7 @@ import { parseActor, type Actor } from "../domain/actor.ts"
 import { groups, type Group } from "../domain/groups.ts"
 import { parseRules, type GiveawayRules, type RulesConfig } from "../domain/rules.ts"
 import type { DrandChain } from "../lib/drand.ts"
+import type { ChatterRoles } from "../platform/chat-source.ts"
 import type { Instant, SqlRow } from "../ports.ts"
 
 /** Where a giveaway is in its life: entries open, entries closed, winners drawn. Matches the `status` CHECK. */
@@ -202,6 +203,32 @@ export function parseEntrant(row: SqlRow): Entrant {
     tickets: reader.int("tickets"),
     group: reader.oneOf("group_name", groups),
     profileImageUrl: reader.nullableText("profile_image_url"),
+  }
+}
+
+/** A chatter waiting for the check of their chat entry: who they are and what their chat badges said. */
+export interface ChatRequest {
+  readonly platformUserId: string
+  readonly login: string
+  readonly displayName: string
+  readonly roles: ChatterRoles
+}
+
+export function parseChatRequest(row: SqlRow): ChatRequest {
+  const reader = new RowReader("chat_entry_requests", row)
+  const subTier = reader.nullableInt("sub_tier")
+  if (subTier !== null && subTier !== 1 && subTier !== 2 && subTier !== 3) {
+    throw new RoomRowError("chat_entry_requests", "sub_tier")
+  }
+  return {
+    platformUserId: reader.text("platform_user_id"),
+    login: reader.text("login"),
+    displayName: reader.text("display_name"),
+    roles: {
+      subTier,
+      isVip: reader.int("vip") === 1,
+      isModerator: reader.int("moderator") === 1,
+    },
   }
 }
 

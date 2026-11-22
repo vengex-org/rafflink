@@ -63,7 +63,7 @@ export function sessionScenarios(context: ContractContext): void {
           vip: true,
           accountAge: true,
           pageEntry: true,
-          chatEntry: false,
+          chatEntry: true,
         },
       },
       donateUrl: null,

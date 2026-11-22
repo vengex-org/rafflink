@@ -452,6 +452,34 @@ describe("Helix", () => {
     expect(await client.follows(accessToken, "200", "100")).toBe(true)
   })
 
+  it("reads whether a user follows the channel with the streamer's token", async () => {
+    const { accessToken } = await signIn("200", ["openid", "moderator:read:followers"])
+
+    expect(await client.channelFollower(accessToken, "200", "100")).toBe(false)
+    fake.control.setFollowing("100", "200", true)
+    expect(await client.channelFollower(accessToken, "200", "100")).toBe(true)
+  })
+
+  it("refuses the channel's follower list to a token without the followers scope", async () => {
+    const { accessToken } = await signIn("200", STREAMER_SCOPES)
+
+    expect(await rejection(client.channelFollower(accessToken, "200", "100"))).toBeInstanceOf(
+      TwitchInvalid,
+    )
+  })
+
+  it("reads profiles by id with the app token, 100 ids per call, and leaves unknown ids out", async () => {
+    const ids = [viewer.id, streamer.id, ...Array.from({ length: 99 }, (_, n) => `${9000 + n}`)]
+
+    const profiles = await client.userProfilesById(await client.appAccessToken(), ids)
+
+    expect(profiles.map((profile) => profile.login).toSorted()).toEqual(["streamer", "viewer"])
+    expect(profiles.find((profile) => profile.id === viewer.id)?.createdAt).toBe(
+      Date.parse(viewer.createdAt),
+    )
+    expect(callsTo("/helix/users")).toBe(2)
+  })
+
   it("reads the account creation time of the token owner", async () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
 

@@ -3,7 +3,8 @@ import { upgradeWebSocket } from "@hono/bun"
 import type { WSContext } from "hono/ws"
 import type { HelixEnv } from "../lib/auth.ts"
 import { helixError, scriptedHelixFailure } from "../lib/responses.ts"
-import { requireUser, type FakeState } from "../state.ts"
+import { pairKey, requireUser, type FakeState } from "../state.ts"
+import { tierVersionIds } from "./helix.ts"
 
 export interface EventSub {
   socketRoutes: Hono
@@ -134,7 +135,7 @@ export function createEventSub(state: FakeState): EventSub {
                   fragments: [{ type: "text", text, cheermote: null, emote: null, mention: null }],
                 },
                 message_type: "text",
-                badges: [],
+                badges: chatBadges(state, broadcaster.id, chatter.id),
                 color: "",
                 cheer: null,
                 reply: null,
@@ -241,6 +242,23 @@ function metadata(messageType: string) {
     message_type: messageType,
     message_timestamp: new Date().toISOString(),
   }
+}
+
+// The badges Twitch puts on a message from what the fake knows: the broadcaster, the channel roles and the subscription.
+function chatBadges(state: FakeState, broadcasterId: string, chatterId: string) {
+  const badges: { set_id: string; id: string; info: string }[] = []
+  if (chatterId === broadcasterId) badges.push({ set_id: "broadcaster", id: "1", info: "" })
+  if (state.roles.moderator.get(broadcasterId)?.has(chatterId) === true) {
+    badges.push({ set_id: "moderator", id: "1", info: "" })
+  }
+  if (state.roles.vip.get(broadcasterId)?.has(chatterId) === true) {
+    badges.push({ set_id: "vip", id: "1", info: "" })
+  }
+  const tier = state.subscriptions.get(pairKey(broadcasterId, chatterId))
+  if (tier !== undefined) {
+    badges.push({ set_id: "subscriber", id: tierVersionIds[tier], info: "1" })
+  }
+  return badges
 }
 
 function subscriptionJson(subscription: Subscription, sessionId: string) {

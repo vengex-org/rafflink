@@ -55,13 +55,14 @@ function isValues(value: unknown): value is Values {
   if (typeof value !== "object" || value === null) return false
   const fields = Object.fromEntries(Object.entries(value))
   const { title, prize, audience, tickets, minAccountAgeDays, ending, closesAt, claim } = fields
-  const { claimKeyword, winnerCount } = fields
+  const { claimKeyword, entryWays, chatKeyword, winnerCount } = fields
   return (
-    [title, prize, minAccountAgeDays, closesAt, claimKeyword, winnerCount].every(
+    [title, prize, minAccountAgeDays, closesAt, claimKeyword, chatKeyword, winnerCount].every(
       (text) => typeof text === "string",
     )
     && (audience === "everyone" || audience === "followers" || audience === "subscribers")
     && (ending === "never" || ending === "at-time")
+    && (entryWays === "page" || entryWays === "page-and-chat")
     && isTickets(tickets)
     && isClaim(claim)
   )

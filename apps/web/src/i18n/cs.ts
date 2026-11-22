@@ -759,6 +759,25 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "review.claimText": "{time}. {chat}",
   "review.anyChat": "Platí i jakákoli zpráva vítěze v chatu.",
   "review.keywordChat": "Vítěz může napsat i „{keyword}“ do tvého chatu.",
+  "wizard.entry.legend": "Jak se diváci zapojí",
+  "wizard.entry.page": "Stránka soutěže",
+  "wizard.entry.page.help": "Diváci se přihlásí přes Twitch na stránce soutěže.",
+  "wizard.entry.chat": "Stránka i chat",
+  "wizard.entry.chat.help": "Diváci se mohou zapojit i napsáním klíčového slova do tvého chatu.",
+  "wizard.chatKeyword.label": "Klíčové slovo pro zapojení",
+  "wizard.chatKeyword.help":
+    "Zpráva v chatu, která začíná tímto slovem, diváka zapojí se stejnými pravidly a losy jako stránka. Rafflink do tvého chatu nikdy nepíše.",
+  "review.entry": "Zapojení",
+  "review.entryPage": "Na stránce soutěže.",
+  "review.entryChat": "Na stránce soutěže nebo napsáním „{keyword}“ do tvého chatu.",
+  "giveaway.chatEntry": "Nebo napiš {keyword} do chatu kanálu {name} a zapojíš se.",
+  "giveaway.lookup.legend": "Zapojení přes chat",
+  "giveaway.lookup.label": "Tvoje jméno na Twitchi",
+  "giveaway.lookup.button": "Jsem v soutěži?",
+  "giveaway.lookup.yes": "{login} je v soutěži.",
+  "giveaway.lookup.no":
+    "{login} zatím v soutěži není. Zapojení z chatu se může ukázat až za minutu.",
+  "giveaway.lookup.failed": "Kontrola se nepovedla. Zkus to znovu.",
 
   "legal.privacy": "Ochrana soukromí",
   "legal.terms": "Podmínky",
@@ -791,7 +810,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i4":
     "Všichni vylosovaní, i ti nahrazení novým losem: Twitch ID uživatele, přihlašovací a zobrazované jméno, výsledek losování a to, zda a jak byla výhra převzata. ID uživatele zůstává u losu i poté, co bylo jméno nahrazeno slovem „removed“.",
   "privacy.data.i5":
-    "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují.",
+    "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo klíčové slovo pro zapojení a převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují. Když napíšeš klíčové slovo, uloží se tvoje Twitch ID, přihlašovací jméno, zobrazované jméno a role z tvých odznaků v chatu, dokud se zapojení nezkontroluje; pak jsi v soutěži stejně jako ze stránky a sledování kanálu se ověří tokenem streamera.",
   "privacy.data.i6":
     "Technické údaje: hostitel zpracovává tvou IP adresu a údaje o požadavku, aby stránku doručil a ochránil ji před zneužitím, například omezeními rychlosti.",
   "privacy.data.i7":

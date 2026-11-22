@@ -5,7 +5,12 @@ import { systemRandom } from "@rafflink/core/lib/system-ports"
 import type { RunningFakeTwitch } from "@rafflink/core/test/contract"
 import type { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 
-const streamerScopes = ["openid", "channel:read:vips", "moderation:read"] as const
+const streamerScopes = [
+  "openid",
+  "channel:read:vips",
+  "moderation:read",
+  "moderator:read:followers",
+] as const
 
 /**
  * Signs `userId` in at the fake and stores their sealed refresh token as streamer `streamerId`, as the

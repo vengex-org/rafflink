@@ -6,7 +6,15 @@ import {
   TextField,
   type SegmentOption,
 } from "../components/form-fields.tsx"
-import { ClockIcon, HeartIcon, LockIcon, StarIcon, UsersIcon } from "../components/icons.tsx"
+import {
+  ClockIcon,
+  HeartIcon,
+  LinkIcon,
+  LockIcon,
+  StarIcon,
+  TwitchIcon,
+  UsersIcon,
+} from "../components/icons.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { claimTimeText, recentWinnersText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
 import {
@@ -16,6 +24,7 @@ import {
   type ClaimPreset,
   type Audience,
   type Ending,
+  type EntryWays,
   type Issue,
   type Odds,
   type RecentWinners,
@@ -166,6 +175,50 @@ export function RulesStep({ values, setValues, issue }: StepProps) {
         error={errorOf(i18n, issue, "claimKeyword")}
         onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
       />
+      <EntryWaysField values={values} setValues={setValues} issue={issue} />
+    </>
+  )
+}
+
+/** Page entry only, or the chat keyword too, with the keyword field under the choice. */
+function EntryWaysField({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const options: readonly SegmentOption<EntryWays>[] = [
+    {
+      value: "page",
+      label: t("wizard.entry.page"),
+      icon: <LinkIcon />,
+      description: t("wizard.entry.page.help"),
+    },
+    {
+      value: "page-and-chat",
+      label: t("wizard.entry.chat"),
+      icon: <TwitchIcon />,
+      description: t("wizard.entry.chat.help"),
+    },
+  ]
+  return (
+    <>
+      <Segmented
+        name="entryWays"
+        legend={t("wizard.entry.legend")}
+        help={null}
+        options={options}
+        value={values.entryWays}
+        onSelect={(entryWays) => setValues((current) => ({ ...current, entryWays }))}
+      />
+      {values.entryWays === "page-and-chat" ? (
+        <TextField
+          name="chatKeyword"
+          label={t("wizard.chatKeyword.label")}
+          help={t("wizard.chatKeyword.help")}
+          type="text"
+          value={values.chatKeyword}
+          error={errorOf(i18n, issue, "chatKeyword")}
+          onChange={(chatKeyword) => setValues((current) => ({ ...current, chatKeyword }))}
+        />
+      ) : null}
     </>
   )
 }
@@ -371,6 +424,14 @@ export function ReviewStep({ values }: { readonly values: Values }) {
           values.ending === "never"
             ? t("review.endsManual")
             : i18n.dateTime(new Date(values.closesAt).getTime())
+        }
+      />
+      <ReviewRow
+        label={t("review.entry")}
+        value={
+          values.entryWays === "page-and-chat"
+            ? t("review.entryChat", { keyword: values.chatKeyword.trim() })
+            : t("review.entryPage")
         }
       />
       <ReviewRow label={t("review.winners")} value={i18n.number(Number(values.winnerCount))} />

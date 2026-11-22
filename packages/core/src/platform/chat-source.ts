@@ -1,9 +1,11 @@
+import type { ViewerFacts } from "../domain/rules.ts"
 import type { Instant } from "../ports.ts"
 
-/** A chat badge as the platform names it: its set (`subscriber`, `vip`) and the version within the set. */
-export interface ChatBadge {
-  readonly setId: string
-  readonly id: string
+/** What the chatter's badges on this message say about them in the channel, as the platform reads its own badges. */
+export interface ChatterRoles {
+  readonly subTier: ViewerFacts["subTier"]
+  readonly isVip: boolean
+  readonly isModerator: boolean
 }
 
 /** A chat message as the room reads it, whatever the platform's transport. */
@@ -12,7 +14,7 @@ export interface ChatMessage {
   readonly login: string
   readonly displayName: string
   readonly text: string
-  readonly badges: readonly ChatBadge[]
+  readonly roles: ChatterRoles
 }
 
 /** What a chat source tells the room that owns it. */

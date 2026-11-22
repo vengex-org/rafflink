@@ -3,6 +3,7 @@ import type { Actor } from "../domain/actor.ts"
 import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import {
   evaluateEligibility,
+  isEntryMessage,
   type GiveawayRules,
   type Exclusion,
   type IneligibleReason,
@@ -33,8 +34,14 @@ import type {
   SyncSql,
 } from "../ports.ts"
 import { maxBoundParameters } from "../ports.ts"
-import type { ChatMessage, ChatOpener, ChatSource } from "../platform/chat-source.ts"
+import type { ChatMessage, ChatOpener, ChatSource, ChatterRoles } from "../platform/chat-source.ts"
 import {
+  chatEntryRequestsSql,
+  chatEntryWaitingSql,
+  clearChatEntryRequestsSql,
+  insertChatEntryRequestSql,
+  takeChatEntryRequestSql,
+  chatEntrantByLoginSql,
   claimsPerMinuteSql,
   claimsSinceCountSql,
   entrantsAfterSql,
@@ -55,12 +62,14 @@ import {
   winnerChatNameSql,
 } from "./queries.ts"
 import {
+  parseChatRequest,
   parseDraw,
   parseEntrant,
   parseEntry,
   parseState,
   RoomRowError,
   RowReader,
+  type ChatRequest,
   type ClaimedVia,
   type Commitment,
   type DrawRow,
@@ -75,6 +84,8 @@ export type RoomConfig = RulesConfig
     ResolvedConfig,
     | "chatBotLogins"
     | "roleRefreshSeconds"
+    | "chatEntryCheckSeconds"
+    | "chatEntryFollowerChecks"
     | "liveIntervalMs"
     | "liveLastNames"
     | "liveShuffleNames"
@@ -103,7 +114,7 @@ export interface RoomDeps {
   readonly clock: Clock
   readonly random: Random
   readonly config: RoomConfig
-  /** Opens the chat of the giveaway's channel while the room watches its winners. */
+  /** Opens the chat of the giveaway's channel while the room takes chat entries or watches its winners. */
   readonly chat: ChatOpener
   /** Where the draw reads the round it committed to at close. */
   readonly beacon: RandomnessBeacon
@@ -129,6 +140,29 @@ export type RoomViewer = Omit<ViewerFacts, "userId" | "isVip" | "isModerator" | 
   readonly login: string
   readonly displayName: string
   /** Null when the viewer has no picture on Twitch's image host. */
+  readonly profileImageUrl: string | null
+}
+
+/** A chatter who typed the entry keyword and waits for the caller of {@link GiveawayRoom.onAlarm} to check them. */
+export interface ChatEntrantCheck {
+  readonly platformUserId: string
+  /** Whether being a follower changes if or with how many tickets they enter, so the follow has to be read. */
+  readonly followerCheck: boolean
+}
+
+/** The chatters one check reads, oldest first. */
+export interface ChatEntrantsDuty {
+  readonly platform: string
+  readonly chatters: readonly ChatEntrantCheck[]
+}
+
+/** What the caller read about a checked chatter, for {@link GiveawayRoom.enterFromChat}. */
+export interface CheckedChatter {
+  readonly platformUserId: string
+  /** False when the follow was not read because it changes nothing. */
+  readonly isFollower: boolean
+  /** Null when the account was not found; an unknown age fails a minimum. */
+  readonly accountAgeDays: number | null
   readonly profileImageUrl: string | null
 }
 
@@ -223,6 +257,8 @@ export interface AlarmDuties {
   readonly draw: boolean
   /** Add these minutes of entries and claims to the account store's per-minute counters; they are final and the room does not report them again. */
   readonly metrics: readonly MinuteCounts[]
+  /** Read these chatters' profiles, and the follows they need, then call `enterFromChat`. Null when no check is due. */
+  readonly chatEntrants: ChatEntrantsDuty | null
 }
 
 /** What an admin sees of a room that is open right now. */
@@ -243,6 +279,8 @@ export interface RoomSummary {
   readonly winnerCount: number
   /** No chat claim is possible: the chat watch gave up, so a winner can only claim on the page or by the streamer's hand. */
   readonly chatClaimUnavailable: boolean
+  /** Entries are open to a chat keyword but the chat watch gave up, so typing the keyword enters nobody. */
+  readonly chatEntryOff: boolean
 }
 
 /** The room as a viewer's page loads it. */
@@ -435,6 +473,11 @@ export class GiveawayRoom {
   // Lost with the object; the first outcome after that is pushed again.
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
+  // Lost with the object; the waiting chatters are stored, so the next alarm checks them at once.
+  private chatCheckAt: Instant | null = null
+  // What a chat message is matched against while entries are open to a keyword, null otherwise; set by
+  // every chat sync, so a message costs no read of the room state.
+  private chatEntrySettings: ChatEntrySettings | null = null
   // Set when the alarm ended a commit or a requested draw, so its live push shows the change.
   private givenUp = false
   // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
@@ -515,50 +558,94 @@ export class GiveawayRoom {
     const now = this.clock.now()
     const outcome = this.sql.transaction((): EnterOutcome => {
       const state = this.readState()
-      if (state.status !== "open" || (state.closesAt !== null && now >= state.closesAt)) {
-        return { kind: "closed" }
-      }
-      if (!state.exclusionsLoaded) return { kind: "unavailable", missing: "exclusions" }
-      if (state.blockListVersion < expected.blockListVersion) {
-        return { kind: "unavailable", missing: "block-list" }
-      }
-      const existing = this.sql.exec(entryOfSql, [state.platform, viewer.platformUserId])[0]
-      if (existing !== undefined) return { kind: "already-in", entry: parseEntry(existing) }
-
-      const eligibility = evaluateEligibility(
-        state.rules,
-        this.viewerFacts(state, viewer),
-        state.broadcasterId,
-      )
-      if (!eligibility.eligible) return { kind: "not-eligible", reason: eligibility.reason }
-
-      // `entrant_count` only grows and moves in the same transaction, so the next `seq` never repeats.
-      this.sql.exec(
-        `INSERT INTO entries (seq, platform, platform_user_id, login, display_name, profile_image_url, group_name, tickets, entered_at, salt)
-         VALUES ((SELECT entrant_count + 1 FROM room_state WHERE id = 1), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          state.platform,
-          viewer.platformUserId,
-          viewer.login,
-          viewer.displayName,
-          viewer.profileImageUrl,
-          eligibility.group,
-          eligibility.tickets,
-          now,
-          this.random.bytes(saltBytes),
-        ],
-      )
-      this.sql.exec(
-        "UPDATE room_state SET entrant_count = entrant_count + 1, ticket_total = ticket_total + ? WHERE id = 1",
-        [eligibility.tickets],
-      )
-      return {
-        kind: "entered",
-        entry: { group: eligibility.group, tickets: eligibility.tickets, enteredAt: now },
-      }
+      if (!entriesOpen(state, now)) return { kind: "closed" }
+      if (!state.rules.pageEntry) return { kind: "not-eligible", reason: "page-entry-off" }
+      return this.writeEntry(state, viewer, pageEntry, expected, now)
     })
     if (outcome.kind === "entered") this.afterWrite()
     return outcome
+  }
+
+  /**
+   * Enters the checked chatters who still wait, by the same rules as a page entry, with the roles their
+   * chat badges showed; a chatter no longer waiting is skipped. Works while entries are open and, for the
+   * last profile read, after the close until the commit; between the end time and the close nobody enters.
+   * While the room cannot check exclusions against `expected`, every chatter stays waiting for the next check.
+   */
+  enterFromChat(checked: readonly CheckedChatter[], expected: EntryExpectation): void {
+    const now = this.clock.now()
+    const outcomes = this.sql.transaction(() => {
+      const state = this.readState()
+      if (!entriesOpen(state, now) && !awaitsCommit(state)) return []
+      const missing = exclusionsMissing(state, expected)
+      if (missing !== null) {
+        const unavailable: EnterOutcome = { kind: "unavailable", missing }
+        return [unavailable]
+      }
+      return checked.flatMap((chatter) => {
+        const [row] = this.sql.exec(takeChatEntryRequestSql, [chatter.platformUserId])
+        if (row === undefined) return []
+        const request = parseChatRequest(row)
+        const viewer = chatViewer(request, chatter)
+        return [this.writeEntry(state, viewer, chatEntry(request), expected, now)]
+      })
+    })
+    this.logChatEntries("check", outcomes)
+    if (outcomes.some((outcome) => outcome.kind === "entered")) this.afterWrite()
+    else this.reconcile()
+  }
+
+  /** Whether a chat entrant has this login, in any letter case; page entrants are never found. The "Am I in?" lookup answers nothing else. Logins are stored as the platform writes them, in lower case. */
+  hasChatEntrant(login: string): boolean {
+    const { platform } = this.readState()
+    return this.sql.exec(chatEntrantByLoginSql, [platform, login.toLowerCase()]).length > 0
+  }
+
+  // One entry per account: a repeat returns the first entry and changes nothing. Runs inside the caller's transaction.
+  private writeEntry(
+    state: RoomState,
+    viewer: RoomViewer,
+    way: EntryWay,
+    expected: EntryExpectation,
+    now: Instant,
+  ): EnterOutcome {
+    const missing = exclusionsMissing(state, expected)
+    if (missing !== null) return { kind: "unavailable", missing }
+    const existing = this.sql.exec(entryOfSql, [state.platform, viewer.platformUserId])[0]
+    if (existing !== undefined) return { kind: "already-in", entry: parseEntry(existing) }
+
+    const eligibility = evaluateEligibility(
+      state.rules,
+      this.viewerFacts(state, viewer, way.roles),
+      state.broadcasterId,
+    )
+    if (!eligibility.eligible) return { kind: "not-eligible", reason: eligibility.reason }
+
+    // `entrant_count` only grows and moves in the same transaction, so the next `seq` never repeats.
+    this.sql.exec(
+      `INSERT INTO entries (seq, platform, platform_user_id, login, display_name, profile_image_url, group_name, tickets, entered_at, salt, via)
+       VALUES ((SELECT entrant_count + 1 FROM room_state WHERE id = 1), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        state.platform,
+        viewer.platformUserId,
+        viewer.login,
+        viewer.displayName,
+        viewer.profileImageUrl,
+        eligibility.group,
+        eligibility.tickets,
+        now,
+        this.random.bytes(saltBytes),
+        way.via,
+      ],
+    )
+    this.sql.exec(
+      "UPDATE room_state SET entrant_count = entrant_count + 1, ticket_total = ticket_total + ? WHERE id = 1",
+      [eligibility.tickets],
+    )
+    return {
+      kind: "entered",
+      entry: { group: eligibility.group, tickets: eligibility.tickets, enteredAt: now },
+    }
   }
 
   summary(): PublicSummary {
@@ -686,6 +773,7 @@ export class GiveawayRoom {
     }
     const mirrorDue = state.mirrorPending && now >= (this.mirrorRetryAt ?? now)
     if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+    const chatEntrants = this.chatEntrantsDue(state, now)
     this.guarded("chat", () => {
       this.syncChat()
       this.chat?.onAlarm()
@@ -697,7 +785,59 @@ export class GiveawayRoom {
       commit: commitDue,
       draw: drawDue,
       metrics,
+      chatEntrants,
     }
+  }
+
+  // While entries are open: the oldest waiting chatters, with no more follow reads than one check may send;
+  // the others wait for the next check, a period later. After the close: the last profile read of whoever
+  // still waits, with no follows, so a minimum account age judges them on their real age.
+  private chatEntrantsDue(state: RoomState, now: Instant): ChatEntrantsDuty | null {
+    const open = entriesOpen(state, now)
+    if ((!open && !awaitsCommit(state)) || now < (this.chatCheckAt ?? now)) return null
+    const rows = this.sql.exec(chatEntryRequestsSql, [
+      open ? chatEntrantsPerCheck : chatEntrantsPerLastRead,
+    ])
+    if (rows.length === 0) return null
+    this.chatCheckAt = now + this.config.chatEntryCheckSeconds * 1000
+    if (!open) {
+      return {
+        platform: state.platform,
+        chatters: rows.map((row) => ({
+          platformUserId: parseChatRequest(row).platformUserId,
+          followerCheck: false,
+        })),
+      }
+    }
+    const chatters: ChatEntrantCheck[] = []
+    let follows = 0
+    for (const row of rows) {
+      const request = parseChatRequest(row)
+      const followerCheck = this.followerDecides(state, request)
+      if (followerCheck && follows >= this.config.chatEntryFollowerChecks) continue
+      if (followerCheck) follows += 1
+      chatters.push({ platformUserId: request.platformUserId, followerCheck })
+    }
+    return { platform: state.platform, chatters }
+  }
+
+  // The account age is left out: it is read for everyone, and an age that refuses makes the follow pointless anyway.
+  private followerDecides(state: RoomState, request: ChatRequest): boolean {
+    const rules: GiveawayRules = { ...state.rules, minAccountAgeDays: null }
+    const outcomeAs = (isFollower: boolean) =>
+      evaluateEligibility(
+        rules,
+        this.viewerFacts(
+          state,
+          chatViewer(request, { ...uncheckedChatter, isFollower }),
+          request.roles,
+        ),
+        state.broadcasterId,
+      )
+    const follower = outcomeAs(true)
+    const other = outcomeAs(false)
+    if (!follower.eligible || !other.eligible) return follower.eligible !== other.eligible
+    return follower.tickets !== other.tickets
   }
 
   // A requested draw is due from the time of its round; a round still missing after the publish margin is a broken beacon, so the request ends and the streamer presses Draw again.
@@ -754,7 +894,7 @@ export class GiveawayRoom {
   // Each alarm that asks for a commit is an attempt and waits twice as long as the one before. The wake after the last
   // attempt finds the limit reached, logs it and arms nothing more; `draw` still commits when someone draws.
   private commitDue(state: RoomState, now: Instant): boolean {
-    if (!awaitsCommit(state) || state.commitGaveUp || now < (state.commitRetryAt ?? now)) {
+    if (!awaitsCommit(state) || state.commitGaveUp || now < this.commitWaitUntil(state, now)) {
       return false
     }
     if (state.commitAttempts >= this.config.commitMaxAttempts) {
@@ -776,6 +916,15 @@ export class GiveawayRoom {
     return true
   }
 
+  // The next commit attempt, and while chatters still wait for their last profile read, not before two
+  // check periods after the close: one for the read, one for its retry. The commit enters whoever is left.
+  private commitWaitUntil(state: RoomState, now: Instant): Instant {
+    const retryAt = state.commitRetryAt ?? now
+    if (state.closedAt === null || this.sql.exec(chatEntryWaitingSql, []).length === 0)
+      return retryAt
+    return Math.max(retryAt, state.closedAt + 2 * this.config.chatEntryCheckSeconds * 1000)
+  }
+
   /** Clears the pending mirror once `status` reached the account store; a newer status stays pending. */
   markMirrored(status: RoomStatus): void {
     this.sql.exec("UPDATE room_state SET mirror_pending = 0 WHERE id = 1 AND status = ?", [status])
@@ -783,12 +932,15 @@ export class GiveawayRoom {
   }
 
   /**
-   * Commits a closed room to its entrants and to a drand round: salts every entry that has none (one
+   * Commits a closed room to its entrants and to a drand round: enters the chatters still waiting for a
+   * check, as not following and of unknown age, then salts every entry that has none (one
    * written before salts existed), then stores the Merkle root over the sorted leaves, the round and the
    * leaf list. Leaves an open, a committed and a drawn room alone; two calls at once commit once.
    */
   async commit(): Promise<void> {
-    if (!awaitsCommit(this.readState())) return
+    const state = this.readState()
+    if (!awaitsCommit(state)) return
+    this.enterUncheckedChatters(state)
     const entries = this.saltedEntries()
     const leaves = await Promise.all(
       entries.map(async (entry) => ({ hash: await leafHash(entry), tickets: entry.tickets })),
@@ -886,8 +1038,9 @@ export class GiveawayRoom {
     const now = this.clock.now()
     let flipped = false
     const outcome = this.sql.transaction((): DrawOutcome => {
+      // The first winner gets a fresh chat watch even when the chat entry watch gave up.
       const moved = this.sql.exec(
-        "UPDATE room_state SET status = 'drawn', seed = ?, draw_requested = 0, draw_retry_at = NULL, mirror_pending = 1 WHERE id = 1 AND status = 'closed' AND entries_deleted = 0 RETURNING id",
+        "UPDATE room_state SET status = 'drawn', seed = ?, draw_requested = 0, draw_retry_at = NULL, mirror_pending = 1, chat_unavailable = 0 WHERE id = 1 AND status = 'closed' AND entries_deleted = 0 RETURNING id",
         [seed],
       )
       if (moved.length === 0) return drawRefusal(this.readState()) ?? { kind: "try-again" }
@@ -1102,7 +1255,7 @@ export class GiveawayRoom {
       lastNames,
       winners,
       winnerChat: this.winnerChat.map((entry) => entry.line),
-      winnerChatOpen: this.chatWatchOpen(state),
+      winnerChatOpen: this.winnerChatWatched(state),
       picksLeft: Math.max(0, this.config.drawMaxWinners - winners.length),
       actors: { closedBy: state.closedBy, picks: rows.map(pickActors) },
       ...this.rerollState(state),
@@ -1193,7 +1346,12 @@ export class GiveawayRoom {
       })
   }
 
-  private viewerFacts(state: RoomState, viewer: RoomViewer): ViewerFacts {
+  // A role counts when the stored role lists or the chat badges show it: the lists are refreshed only now and then.
+  private viewerFacts(
+    state: RoomState,
+    viewer: RoomViewer,
+    chatRoles: ChatRoleBadges,
+  ): ViewerFacts {
     const roles = this.sql
       .exec("SELECT role FROM channel_roles WHERE platform = ? AND platform_user_id = ?", [
         state.platform,
@@ -1204,8 +1362,8 @@ export class GiveawayRoom {
       userId: viewer.platformUserId,
       isFollower: viewer.isFollower,
       subTier: viewer.subTier,
-      isVip: roles.includes("vip"),
-      isModerator: roles.includes("moderator"),
+      isVip: chatRoles.isVip || roles.includes("vip"),
+      isModerator: chatRoles.isModerator || roles.includes("moderator"),
       accountAgeDays: viewer.accountAgeDays,
       exclusion: this.exclusionOf(state, viewer),
     }
@@ -1295,12 +1453,71 @@ export class GiveawayRoom {
     )
   }
 
+  // The chatters still waiting get their last profile read at once, before the commit enters the rest.
   private closeOpenRoom(by: Actor | null): boolean {
     const closed = this.sql.exec(
       "UPDATE room_state SET status = 'closed', closed_at = ?, closed_by = ?, mirror_pending = 1 WHERE id = 1 AND status = 'open' RETURNING id",
       [this.clock.now(), by],
     )
+    if (closed.length > 0) this.chatCheckAt = null
     return closed.length > 0
+  }
+
+  // Chatters the last profile read did not reach enter in the order they asked, as not following and with an unknown account age.
+  // A room whose exclusions were never written refuses them all (fail closed); the block list it holds is the newest it can check.
+  private enterUncheckedChatters(state: RoomState): void {
+    const now = this.clock.now()
+    const heldBlockList: EntryExpectation = { blockListVersion: state.blockListVersion }
+    const outcomes = this.sql.transaction(() => {
+      const rows = this.sql.exec(chatEntryRequestsSql, [-1])
+      this.sql.exec(clearChatEntryRequestsSql, [])
+      return rows.map((row) => {
+        const request = parseChatRequest(row)
+        return this.writeEntry(
+          state,
+          chatViewer(request, uncheckedChatter),
+          chatEntry(request),
+          heldBlockList,
+          now,
+        )
+      })
+    })
+    this.logChatEntries("commit", outcomes)
+  }
+
+  // Each batch of chat entrants is counted by outcome, so refusals are visible without a log line per chatter.
+  private logChatEntries(stage: "check" | "commit", outcomes: readonly EnterOutcome[]): void {
+    if (outcomes.length === 0) return
+    const refused: Partial<Record<IneligibleReason, number>> = {}
+    let entered = 0
+    let alreadyIn = 0
+    let unavailable = 0
+    for (const outcome of outcomes) {
+      switch (outcome.kind) {
+        case "entered":
+          entered += 1
+          break
+        case "already-in":
+          alreadyIn += 1
+          break
+        case "not-eligible":
+          refused[outcome.reason] = (refused[outcome.reason] ?? 0) + 1
+          break
+        case "unavailable":
+          unavailable += 1
+          break
+        case "closed":
+          break
+      }
+    }
+    console.info("chat entrants handled", {
+      giveawayId: this.giveawayIdOrNull(),
+      stage,
+      entered,
+      alreadyIn,
+      refused,
+      unavailable,
+    })
   }
 
   // Counts, picks and claims stay: the winner list belongs to the giveaway, the entrants' data does not.
@@ -1343,10 +1560,21 @@ export class GiveawayRoom {
     this.guarded("alarm", () => this.rearm())
   }
 
-  // The watcher runs from the draw until the reroll window after the last pick's claim time ends, as
-  // long as a pick is not rerolled and it did not give up for this giveaway. Closing forgets the messages.
+  // The watcher runs while entries are open to a chat keyword, and from the draw until the reroll window
+  // after the last pick's claim time ends, as long as a pick is not rerolled; never after it gave up,
+  // until a new pick clears that. Closing forgets the messages.
   private syncChat(): void {
     const state = this.readState()
+    const keyword = state.rules.chatKeyword
+    this.chatEntrySettings =
+      state.status === "open" && keyword !== null
+        ? {
+            keyword,
+            platform: state.platform,
+            broadcasterId: state.broadcasterId,
+            closesAt: state.closesAt,
+          }
+        : null
     if (this.chatWatchOpen(state)) {
       this.chat ??= this.openChat(state.platform, {
         onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
@@ -1362,6 +1590,11 @@ export class GiveawayRoom {
   }
 
   private chatWatchOpen(state: RoomState): boolean {
+    const takesChatEntries = state.status === "open" && state.rules.chatKeyword !== null
+    return (takesChatEntries && !state.chatUnavailable) || this.winnerChatWatched(state)
+  }
+
+  private winnerChatWatched(state: RoomState): boolean {
     return state.status === "drawn" && !state.chatUnavailable && !this.chatWatchOver()
   }
 
@@ -1386,9 +1619,15 @@ export class GiveawayRoom {
     return row === undefined ? null : new RowReader("draws", row).nullableInt("deadline")
   }
 
-  // A message from a winner whose pick is not rerolled goes to the live page from memory only; one from
-  // the winner who may still claim also claims. Every other message is dropped here, unread and unlogged.
+  // While entries are open, the entry keyword queues the chatter. After the draw, a message from a winner
+  // whose pick is not rerolled goes to the live page from memory only; one from the winner who may still
+  // claim also claims. Every other message is dropped here, unread and unlogged.
   private onChatMessage(message: ChatMessage): void {
+    // An open room has no picks, so the winner paths below would find nothing.
+    if (this.chatEntrySettings !== null) {
+      this.requestChatEntry(this.chatEntrySettings, message)
+      return
+    }
     const shown = this.showWinnerChat(message)
     const claimed = this.claimFromChat(message)
     if (shown && !claimed) {
@@ -1396,6 +1635,26 @@ export class GiveawayRoom {
       // A throttled push only sets `pushDueAt`; the alarm has to wake the room for it.
       if (this.pushDueAt !== null) this.guarded("alarm", () => this.rearm())
     }
+  }
+
+  // Only the chatter's name and badges are kept, never the text. A repeat keeps the first request, an entrant and the broadcaster are not queued.
+  private requestChatEntry(settings: ChatEntrySettings, message: ChatMessage): void {
+    const now = this.clock.now()
+    if (settings.closesAt !== null && now >= settings.closesAt) return
+    if (!isEntryMessage(message.text, settings.keyword)) return
+    if (message.platformUserId === settings.broadcasterId) return
+    if (this.sql.exec(entryOfSql, [settings.platform, message.platformUserId]).length > 0) return
+    const { roles } = message
+    const queued = this.sql.exec(insertChatEntryRequestSql, [
+      message.platformUserId,
+      message.login,
+      message.displayName,
+      roles.subTier,
+      roles.isVip ? 1 : 0,
+      roles.isModerator ? 1 : 0,
+      now,
+    ])
+    if (queued.length > 0) this.guarded("alarm", () => this.rearm())
   }
 
   private showWinnerChat(message: ChatMessage): boolean {
@@ -1554,12 +1813,15 @@ export class GiveawayRoom {
       open ? state.rolesRefreshAt : null,
       this.pushDueAt,
       state.mirrorPending ? (this.mirrorRetryAt ?? this.clock.now()) : null,
-      awaitsCommit(state) && !state.commitGaveUp ? (state.commitRetryAt ?? this.clock.now()) : null,
+      awaitsCommit(state) && !state.commitGaveUp
+        ? this.commitWaitUntil(state, this.clock.now())
+        : null,
       this.drawWake(state),
       // One past the inclusive deadline, so the alarm finds the claim time over and pushes the viewers.
       claimDeadline === null ? null : claimDeadline + 1,
       this.rerollWindowWake(state),
       this.chatWatchWake(state),
+      this.chatEntrantsWake(state),
       this.retentionDeadline(state),
       this.chat?.wakeAt() ?? null,
       this.metricsWake(),
@@ -1622,6 +1884,12 @@ export class GiveawayRoom {
     return end + 1
   }
 
+  private chatEntrantsWake(state: RoomState): Instant | null {
+    if (state.status !== "open" && !awaitsCommit(state)) return null
+    if (this.sql.exec(chatEntryWaitingSql, []).length === 0) return null
+    return this.chatCheckAt ?? this.clock.now()
+  }
+
   // One past the end of the watch, so the alarm finds it over and closes the chat watch.
   private chatWatchWake(state: RoomState): Instant | null {
     if (state.status !== "drawn") return null
@@ -1648,6 +1916,41 @@ interface ChatterLine {
   readonly chatterUserId: string
   readonly line: WinnerChatLine
 }
+
+// The roles a chat badge can show beyond the stored role lists.
+type ChatRoleBadges = Pick<ChatterRoles, "isVip" | "isModerator">
+
+// How an entry is written: its `via` and the roles the chat badges add to the stored lists.
+interface EntryWay {
+  readonly via: "page" | "chat"
+  readonly roles: ChatRoleBadges
+}
+
+const pageEntry: EntryWay = { via: "page", roles: { isVip: false, isModerator: false } }
+
+function chatEntry(request: ChatRequest): EntryWay {
+  return { via: "chat", roles: request.roles }
+}
+
+interface ChatEntrySettings {
+  readonly keyword: string
+  readonly platform: string
+  readonly broadcasterId: string
+  readonly closesAt: Instant | null
+}
+
+// What a chatter enters with when the check never ran for them.
+const uncheckedChatter: Omit<CheckedChatter, "platformUserId"> = {
+  isFollower: false,
+  accountAgeDays: null,
+  profileImageUrl: null,
+}
+
+// Twitch reads 100 profiles in one call, so one check reads every profile it needs in one request.
+const chatEntrantsPerCheck = 100
+
+// The last profile read after the close takes 30 profile calls, well inside the 45 subrequests of a Cloudflare Free invocation; whoever is beyond enters unchecked at the commit.
+const chatEntrantsPerLastRead = chatEntrantsPerCheck * 30
 
 // A round is published at its time; the alarm waits this long more so the first try finds it.
 const drawLagMs = 500
@@ -1693,7 +1996,35 @@ function summarize(state: RoomState): RoomSummary {
     ticketTotal: state.ticketTotal,
     winnerCount: state.winnerCount,
     chatClaimUnavailable: state.chatUnavailable,
+    chatEntryOff:
+      state.status === "open" && state.rules.chatKeyword !== null && state.chatUnavailable,
   }
+}
+
+// Open, and its end time, if any, not reached yet: the alarm that closes the room may still be on its way.
+function entriesOpen(state: RoomState, now: Instant): boolean {
+  return state.status === "open" && (state.closesAt === null || now < state.closesAt)
+}
+
+function chatViewer(
+  request: ChatRequest,
+  checked: Omit<CheckedChatter, "platformUserId">,
+): RoomViewer {
+  return {
+    platformUserId: request.platformUserId,
+    login: request.login,
+    displayName: request.displayName,
+    profileImageUrl: checked.profileImageUrl,
+    isFollower: checked.isFollower,
+    subTier: request.roles.subTier,
+    accountAgeDays: checked.accountAgeDays,
+  }
+}
+
+// What the room lacks to check an entry against `expected`: the excluded accounts, or the block list version the caller knows of.
+function exclusionsMissing(state: RoomState, expected: EntryExpectation): ExclusionsMissing | null {
+  if (!state.exclusionsLoaded) return "exclusions"
+  return state.blockListVersion < expected.blockListVersion ? "block-list" : null
 }
 
 // Closed, with nothing committed yet. A room drawn before commitments existed never commits, and one whose

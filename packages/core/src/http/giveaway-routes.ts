@@ -10,6 +10,7 @@ import { readPublicCache, writePublicCache } from "./public-cache.ts"
 import { toHex } from "../lib/encoding.ts"
 import {
   verifyJson,
+  type EnteredJson,
   type LeavesJson,
   type MyLeafJson,
   type PublicGiveaway,
@@ -90,6 +91,17 @@ export function giveawayRoutes(deps: AppDeps): Hono {
       }
     }
     return c.json(pendingOutcome(polled, ticket))
+  })
+
+  // "Am I in?" for a viewer who entered by chat and never signed in: yes or no for one login, nothing else about the entrants.
+  app.get("/api/g/:code/entered", async (c) => {
+    c.header("Cache-Control", "no-store")
+    const login = c.req.query("login")?.trim() ?? ""
+    if (login === "") return c.json({ error: "login-required" }, 400)
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    const body: EnteredJson = { entered: await deps.rooms.get(giveaway.id).hasEntrant(login) }
+    return c.json(body)
   })
 
   app.get("/api/g/:code/verify", async (c) => {

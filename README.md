@@ -1,7 +1,8 @@
 # Rafflink
 
-Giveaways for Twitch streamers without chat keywords. The streamer creates a giveaway and posts a link;
-viewers open it, sign in with Twitch and are entered. See [docs/spec.md](docs/spec.md) for the product spec.
+Giveaways for Twitch streamers. The streamer creates a giveaway and posts a link; viewers open it, sign in
+with Twitch and are entered, or type the giveaway's chat keyword when the streamer turned it on. See
+[docs/spec.md](docs/spec.md) for the product spec.
 
 What it does:
 
@@ -9,6 +10,8 @@ What it does:
   group, optional filters and end time) and gets a short link such as `/K7M2P`.
 - Viewers open the link, sign in with Twitch and are entered with the tickets of their best group
   (viewer, follower, subscriber tier, VIP, moderator). The streamer cannot enter their own giveaway.
+- With a chat keyword (such as `!enter`) viewers can also enter by typing it in the stream chat. The same
+  rules and ticket groups apply, and the giveaway page answers "Am I in?" for a login.
 - The streamer watches a live page (also available as a read-only OBS overlay link), closes the giveaway
   and draws winners. Winners claim with a button or by writing in chat. A winner who does not claim can be
   rerolled.
@@ -145,8 +148,9 @@ register it once and copy two values into the config.
 
 You do not pick scopes in the console. Rafflink asks for them at sign-in:
 
-- streamers: `openid`, `channel:read:vips`, `moderation:read` (to know VIPs and moderators) and
-  `user:read:chat` (to watch the chat for claims and show the winners' messages);
+- streamers: `openid`, `channel:read:vips`, `moderation:read` (to know VIPs and moderators),
+  `user:read:chat` (to watch the chat for chat entries and claims and show the winners' messages) and
+  `moderator:read:followers` (to check whether a chat entrant follows);
 - viewers: `openid`, `user:read:subscriptions` and `user:read:follows` (to check who may enter and how many
   tickets they get).
 

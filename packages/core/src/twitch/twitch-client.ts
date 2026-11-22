@@ -18,6 +18,7 @@ import {
   parseTokenResponse,
   parseUserLogins,
   parseUserProfile,
+  parseUserProfiles,
   parseValidated,
   type Tier,
 } from "./lib/parse-response.ts"
@@ -137,6 +138,40 @@ export class TwitchClient {
       accessToken,
       parseFollowed,
     )
+  }
+
+  /** Needs the streamer's token with `moderator:read:followers`; the streamer moderates their own channel. */
+  async channelFollower(
+    accessToken: string,
+    broadcasterId: string,
+    userId: string,
+  ): Promise<boolean> {
+    return this.helix(
+      "followers",
+      "/helix/channels/followers",
+      { broadcaster_id: broadcasterId, user_id: userId },
+      accessToken,
+      parseFollowed,
+    )
+  }
+
+  /** Profiles by user id; Twitch answers 100 ids per call, so a longer list is sent in chunks. An id without an account is absent from the result. */
+  async userProfilesById(
+    appToken: string,
+    userIds: readonly string[],
+  ): Promise<readonly UserProfile[]> {
+    const profiles: UserProfile[] = []
+    for (let from = 0; from < userIds.length; from += helixMaxPageSize) {
+      const page = await this.helix(
+        "users",
+        "/helix/users",
+        { id: userIds.slice(from, from + helixMaxPageSize) },
+        appToken,
+        parseUserProfiles,
+      )
+      profiles.push(...page)
+    }
+    return profiles
   }
 
   /** Login, display name and creation time of the account the token belongs to. */

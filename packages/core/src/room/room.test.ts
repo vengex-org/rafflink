@@ -61,6 +61,7 @@ const rules: GiveawayRules = {
   minAccountAgeDays: null,
   claimKeyword: null,
   excludeRecentWinners: null,
+  chatKeyword: null,
 }
 
 const giveaway: GiveawayInit = {
@@ -1185,6 +1186,7 @@ describe("GiveawayRoom alarm", () => {
       commit: false,
       draw: false,
       metrics: [],
+      chatEntrants: null,
     })
     room.replaceRoles([], [])
     expect(alarm.at).toBe(5000)
@@ -1199,6 +1201,7 @@ describe("GiveawayRoom alarm", () => {
       commit: true,
       draw: false,
       metrics: [],
+      chatEntrants: null,
     })
     expect(room.enter(viewer("1"), current)).toEqual({ kind: "closed" })
   })

@@ -910,3 +910,51 @@ describe("viewer page frame", () => {
     expect(view.queryByText("Entries open")).toBeNull()
   })
 })
+
+describe("chat entry", () => {
+  const chatGiveaway = { ...giveaway, rules: { ...giveaway.rules, chatKeyword: "!enter" } }
+
+  it("shows no chat way in for a giveaway without a chat keyword", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/ABCDE")
+
+    await view.findByRole("heading", { level: 1 })
+    expect(view.queryByRole("button", { name: "Am I in?" })).toBeNull()
+  })
+
+  it("tells the keyword and answers yes or no for a login", async () => {
+    const requests = mockFetch({
+      "GET /api/g/ABCDE": () => ok(chatGiveaway),
+      "GET /api/g/ABCDE/entered?login=fan": () => ok({ entered: true }),
+      "GET /api/g/ABCDE/entered?login=nobody": () => ok({ entered: false }),
+    })
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Or type !enter in the chat of Streamy to enter.")).toBeTruthy()
+    fireEvent.change(view.getByLabelText("Your Twitch login"), { target: { value: " fan " } })
+    fireEvent.click(view.getByRole("button", { name: "Am I in?" }))
+    expect(await view.findByText("fan is in the giveaway.")).toBeTruthy()
+
+    fireEvent.change(view.getByLabelText("Your Twitch login"), { target: { value: "nobody" } })
+    fireEvent.click(view.getByRole("button", { name: "Am I in?" }))
+    expect(await view.findByText(/^nobody is not in the giveaway yet\./)).toBeTruthy()
+    expect(requests.filter((request) => request.route.includes("/entered"))).toHaveLength(2)
+  })
+
+  it("says the check did not work when the lookup fails", async () => {
+    spyOn(console, "error").mockImplementation(() => {})
+    mockFetch({
+      "GET /api/g/ABCDE": () => ok(chatGiveaway),
+      "GET /api/g/ABCDE/entered?login=fan": () => ({ status: 500, body: {} }),
+    })
+    const view = renderApp("/ABCDE")
+
+    fireEvent.change(await view.findByLabelText("Your Twitch login"), {
+      target: { value: "fan" },
+    })
+    fireEvent.click(view.getByRole("button", { name: "Am I in?" }))
+
+    expect(await view.findByText("The check did not work. Try again.")).toBeTruthy()
+  })
+})

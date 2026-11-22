@@ -101,7 +101,19 @@ shows no plan switch.
   claimed" on the live page. It works for any pick that is neither claimed nor rerolled, also after the claim
   time, and is recorded as `manual`.
 
-**Chat watch.** Rafflink reads chat from the draw until the giveaway is finished: the reroll window
+**Chat entry (#60).** The streamer can set a chat keyword in the wizard (default `!enter`; off unless chosen).
+While entries are open the room watches chat over the same EventSub socket as the claims, and a message that
+starts with the keyword queues the chatter once; repeats, entrants and the broadcaster are ignored and Rafflink
+never posts to chat. The sub tier, VIP and moderator come from the chat badges (or the stored role lists). The
+room alarm checks the queue every `CHAT_ENTRY_CHECK_SECONDS`: one `GET /helix/users?id=` with the app token for
+up to 100 chatters (account age, picture), plus `GET /helix/channels/followers?user_id=` with the streamer's
+token (scope `moderator:read:followers`) only for chatters whose follow changes the outcome, at most
+`CHAT_ENTRY_FOLLOWER_CHECKS` per check. Then the chatter enters by the same rules as a page entry and is one
+entrant with a page entry of the same account. Chatters still unchecked at close enter with their badges, as not
+following and with an unknown account age, so a followers-only or minimum-age rule refuses them. The giveaway
+page has an "Am I in?" lookup by login that answers yes or no only.
+
+**Chat watch.** Besides chat entry, Rafflink reads chat from the draw until the giveaway is finished: the reroll window
 (`REROLL_WINDOW_SECONDS`, default one hour) after the latest claim time of a pick that is not rerolled. Claims
 happen only in the claim window; the rest of the watch shows the winners' newest messages on the live page:
 
@@ -265,8 +277,9 @@ While the queue is empty, no extra request is made: the normal path is one callb
 
 ### Streamer flow
 
-Code flow with `openid channel:read:vips moderation:read user:read:chat` (`user:read:chat` for the chat
-claim). Rafflink keeps the streamer's refresh token
+Code flow with `openid channel:read:vips moderation:read user:read:chat moderator:read:followers`
+(`user:read:chat` for the chat claim and chat entry, `moderator:read:followers` for the follow of a chat
+entrant). Rafflink keeps the streamer's refresh token
 (confidential clients get refresh tokens that do not expire). Twitch requires apps that keep an OAuth session
 to call `GET id.twitch.tv/oauth2/validate` at start and every hour. A Cron Trigger validates every stored
 streamer token hourly (a timer on the VPS) and deletes the ones that return 401; a 5xx, a 429 or a network

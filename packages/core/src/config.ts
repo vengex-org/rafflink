@@ -132,6 +132,18 @@ export const configSchema = {
     "300",
     "Refresh of the VIP and moderator lists while entries are open; spec AC-13",
   ),
+  chatEntryCheckSeconds: withDefault(
+    "CHAT_ENTRY_CHECK_SECONDS",
+    int(1),
+    "3",
+    "Wait between two checks of the chatters who typed the entry keyword: each check reads their profiles and up to CHAT_ENTRY_FOLLOWER_CHECKS follows; starting guess",
+  ),
+  chatEntryFollowerChecks: withDefault(
+    "CHAT_ENTRY_FOLLOWER_CHECKS",
+    int(1),
+    "15",
+    "Most follow reads one check of chat entrants sends with the streamer's token; 15 every 3 seconds is 300 of the 800 Helix points a minute the streamer's token has, and with a retried 503 each, a token refresh and the profile read it stays inside the 45 subrequests of a Cloudflare Free invocation",
+  ),
   liveIntervalMs: withDefault(
     "LIVE_INTERVAL_MS",
     int(1),
@@ -424,7 +436,7 @@ export const configSchema = {
     "CLAIM_KEYWORD_MAX_LENGTH",
     int(1),
     "32",
-    "Longest claim keyword a streamer can set; starting guess",
+    "Longest claim keyword and chat entry keyword a streamer can set; starting guess",
   ),
   codeInsertRetries: withDefault(
     "CODE_INSERT_RETRIES",
@@ -771,6 +783,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     devFakeTwitch: read(env, configSchema.devFakeTwitch),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
+    chatEntryCheckSeconds: read(env, configSchema.chatEntryCheckSeconds),
+    chatEntryFollowerChecks: read(env, configSchema.chatEntryFollowerChecks),
     liveIntervalMs: read(env, configSchema.liveIntervalMs),
     liveLastNames: read(env, configSchema.liveLastNames),
     liveShuffleNames: read(env, configSchema.liveShuffleNames),

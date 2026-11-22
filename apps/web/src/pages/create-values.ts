@@ -8,6 +8,11 @@ export type Step = 1 | 2 | 3
 export type Audience = "everyone" | "followers" | "subscribers"
 export type Ending = "never" | "at-time"
 export type RecentWinners = "off" | RecentWinnersRule["kind"]
+/** Where viewers enter: only on the giveaway page, or also by the chat keyword. */
+export type EntryWays = "page" | "page-and-chat"
+
+/** The chat keyword the wizard offers until the streamer types another. */
+export const defaultChatKeyword = "!enter"
 
 /** The claim times offered as buttons, in seconds. */
 export const claimPresets = [120, 300, 600] as const
@@ -36,6 +41,8 @@ export interface Values {
   recentWinners: RecentWinners
   /** The count of the recent-winners rule; kept while the rule is off so switching it on again shows it. */
   recentWinnersCount: string
+  entryWays: EntryWays
+  chatKeyword: string
   winnerCount: string
 }
 
@@ -64,6 +71,8 @@ export const initialValues: Values = {
   claimKeyword: "",
   recentWinners: "off",
   recentWinnersCount: "3",
+  entryWays: "page",
+  chatKeyword: defaultChatKeyword,
   winnerCount: "1",
 }
 
@@ -92,6 +101,8 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
       rules.excludeRecentWinners === null
         ? initialValues.recentWinnersCount
         : String(rules.excludeRecentWinners.count),
+    entryWays: rules.chatKeyword === null ? "page" : "page-and-chat",
+    chatKeyword: rules.chatKeyword ?? defaultChatKeyword,
   }
 }
 
@@ -148,6 +159,7 @@ export function stepOfField(field: string): Step {
     || field === "minAccountAgeDays"
     || field === "claimSeconds"
     || field === "claimKeyword"
+    || field === "chatKeyword"
     || field === "winnerCount"
     || field.startsWith("excludeRecentWinners")
   ) {
@@ -193,6 +205,7 @@ export function toBody(values: Values): CreateGiveawayBody {
         values.recentWinners === "off"
           ? null
           : { kind: values.recentWinners, count: Number(values.recentWinnersCount) },
+      chatKeyword: values.entryWays === "page-and-chat" ? values.chatKeyword : null,
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
     claimSeconds: claimSecondsOf(values.claim),

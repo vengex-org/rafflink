@@ -99,7 +99,7 @@ describe("session", () => {
           vip: true,
           accountAge: true,
           pageEntry: true,
-          chatEntry: false,
+          chatEntry: true,
         },
       },
       donateUrl: null,
@@ -211,7 +211,9 @@ describe("streamer sign-in", () => {
     const sealed = String(token?.refresh_token_enc)
     expect(sealed.startsWith("test.")).toBe(true)
     expect(await openSecret(harness.deps.keyRing, sealed, "twitch:200")).toMatch(/^[0-9a-f-]{36}$/)
-    expect(token?.scopes).toBe("openid channel:read:vips moderation:read user:read:chat")
+    expect(token?.scopes).toBe(
+      "openid channel:read:vips moderation:read user:read:chat moderator:read:followers",
+    )
     expect((await browser.request("/api/dash/giveaways")).status).toBe(200)
   })
 
