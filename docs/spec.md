@@ -407,9 +407,10 @@ no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Pl
 - `giveaways.status` and `room_state.status` are `open`, `closed` or `drawn`. The room owns the status, the
   accounts store mirrors it, and the room alarm retries a mirror that failed.
 - `overlay_token`: the credential of the read-only overlay URL of the live page, compared in constant time.
-- `streamer_overlay.theme_json` and `giveaways.overlay_theme_json`: the overlay style (colors, font, size, corner,
-  plate corners, reveal sound and confetti), parsed by `parseOverlayTheme`. A giveaway's own style wins over the
-  streamer's; with neither the overlay looks as it did before styles existed.
+- `streamer_overlay.theme_json` and `giveaways.overlay_theme_json`: an `OverlayTheme`, parsed by
+  `parseOverlayTheme`. A giveaway's own style wins over the streamer's; with neither the overlay looks as it did
+  before styles existed. A save pushes the style to the open overlays through the room's overlay broadcast; the
+  room stores none of it.
 - `room_state.seed`: 32 bytes written at the draw: the randomness of the drand round in `drand_round` (a room
   drawn before 0003 holds 32 random bytes and no root; the verify page reports it as unverifiable).
 

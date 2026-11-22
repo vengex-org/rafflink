@@ -3,7 +3,7 @@ import { timingSafeEqual } from "hono/utils/buffer"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway, NewGiveaway, StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
-import { parseOverlayTheme } from "../domain/overlay-theme.ts"
+import { parseOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
 import { generateCode } from "../lib/codes.ts"
 import { csvText } from "../lib/csv.ts"
 import { errorClass } from "../lib/error-class.ts"
@@ -294,10 +294,12 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   app.post("/api/dash/overlay-theme", async (c) => {
     const parsed = parseOverlayTheme(await readJson(c))
     if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
-    await deps.accounts.storeStreamerOverlayTheme(
-      c.get("streamer").streamerId,
+    const { streamerId } = c.get("streamer")
+    await deps.accounts.storeStreamerOverlayTheme(streamerId, parsed.value, deps.clock.now())
+    await pushOverlayTheme(
+      deps,
+      await deps.accounts.streamerThemedGiveaways(streamerId),
       parsed.value,
-      deps.clock.now(),
     )
     return c.json({ kind: "saved", theme: parsed.value })
   })
@@ -326,12 +328,18 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       return c.json({ error: "invalid-input", ...parsed.issue }, 400)
     }
     const own = parsed === null ? null : parsed.value
+    const giveawayId = c.req.param("id")
     const set = await deps.accounts.setGiveawayOverlayTheme(
       c.get("streamer").streamerId,
-      c.req.param("id"),
+      giveawayId,
       own,
     )
     if (!set) return c.json({ error: "not-found" }, 404)
+    await pushOverlayTheme(
+      deps,
+      [giveawayId],
+      own ?? (await deps.accounts.overlayThemeOf(giveawayId)),
+    )
     return c.json({ kind: "saved", own })
   })
 
@@ -442,7 +450,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     return c.json(overlaySnapshot(await deps.rooms.get(giveaway.id).liveSnapshot()))
   })
 
-  // The overlay asks again now and then, so a theme the streamer saves reaches OBS without a reload.
+  // The overlay reads its theme when it starts and whenever its socket reconnects; a save in between reaches it as a push.
   app.get("/api/overlay/:id/:token/theme", async (c) => {
     const giveaway = await overlayGiveaway(c, deps)
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
@@ -452,6 +460,22 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
   })
 
   return app
+}
+
+// A room that cannot be reached misses only the push: the theme is stored, and its overlay reads it again when its
+// socket reconnects.
+async function pushOverlayTheme(
+  deps: AppDeps,
+  giveawayIds: readonly string[],
+  theme: OverlayTheme,
+): Promise<void> {
+  for (const giveawayId of giveawayIds) {
+    try {
+      await deps.rooms.get(giveawayId).pushOverlayTheme(theme)
+    } catch (error) {
+      console.warn("overlay theme push failed", { giveawayId, errorClass: errorClass(error) })
+    }
+  }
 }
 
 // OBS has no session: the token in the URL is the whole credential. A wrong token finds nothing.

@@ -558,9 +558,11 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "overlayStyle.off": "Vypnuto",
   "overlayStyle.preview": "Náhled",
   "overlayStyle.preview.prize": "Herní židle",
+  "overlayStyle.lowContrast":
+    "Text se na tomto podkladu špatně čte. Vyber světlejší nebo tmavší barvu textu.",
   "overlayStyle.save": "Uložit vzhled",
   "overlayStyle.reset": "Původní vzhled",
-  "overlayStyle.saved": "Uloženo. OBS ukáže nový vzhled do půl minuty.",
+  "overlayStyle.saved": "Uloženo. OBS ukáže nový vzhled hned.",
   "overlayStyle.rejected": "Vzhled se neuložil. Načti stránku znovu a zkus to ještě jednou.",
   "live.draw.title": "Přihlašování je uzavřené",
   "live.draw.text": "{people}. Vylosuj vítěze, až budeš připravený.",

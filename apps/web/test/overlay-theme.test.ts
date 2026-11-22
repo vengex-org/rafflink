@@ -2,16 +2,36 @@ import { describe, expect, it } from "bun:test"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { defaultOverlayTheme } from "@rafflink/core/domain/overlay-theme"
-import { overlayThemeAttributes, overlayThemeStyle } from "../src/lib/overlay-theme.ts"
+import {
+  hasLowContrast,
+  overlayThemeAttributes,
+  overlayThemeStyle,
+} from "../src/lib/overlay-theme.ts"
+
+describe("hasLowContrast", () => {
+  it("passes the default colors", () => {
+    expect(hasLowContrast(defaultOverlayTheme)).toBe(false)
+  })
+
+  it.each([
+    ["#777777", "#ffffff", true],
+    ["#767676", "#ffffff", false],
+    ["#ffffff", "#767676", false],
+    ["#101010", "#111113", true],
+  ])("text %s on %s is low contrast: %p", (text, background, low) => {
+    expect(hasLowContrast({ text, background })).toBe(low)
+  })
+})
 
 describe("overlayThemeStyle", () => {
   it("sets no property for the default theme, so the stylesheet draws the overlay as before", () => {
     expect(overlayThemeStyle(defaultOverlayTheme)).toEqual({})
   })
 
-  it("sets the plate color only when the background changes", () => {
+  it("sets the plate color and moves the muted text toward it when the background changes", () => {
     expect(overlayThemeStyle({ ...defaultOverlayTheme, background: "#202040" })).toEqual({
       "--overlay-plate": "#202040",
+      "--overlay-muted": "color-mix(in srgb, #fafafa 65%, #202040)",
     })
   })
 

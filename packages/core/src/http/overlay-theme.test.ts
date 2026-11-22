@@ -1,12 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
   createGiveaway,
   createHarness,
+  InProcessRooms,
   users,
   type Harness,
 } from "../../test/app-fixture.ts"
 import { defaultOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
+import { RoomTransientError } from "../room/room-directory.ts"
 
 let harness: Harness
 
@@ -15,6 +17,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  mock.restore()
   await harness.stop()
 })
 
@@ -65,9 +68,19 @@ describe("streamer overlay theme", () => {
   })
 
   it.each([
-    [{ accent: "url(x)" }, { field: "accent", code: "not-a-color" }],
-    [{ font: "papyrus" }, { field: "font", code: "unknown-option" }],
-    [{ sound: "yes" }, { field: "sound", code: "not-a-boolean" }],
+    [
+      { ...branded, accent: "url(x)" },
+      { field: "accent", code: "not-a-color" },
+    ],
+    [
+      { ...branded, font: "papyrus" },
+      { field: "font", code: "unknown-option" },
+    ],
+    [
+      { ...branded, sound: "yes" },
+      { field: "sound", code: "not-a-boolean" },
+    ],
+    [{ accent: "#ff5500" }, { field: "background", code: "missing" }],
     [[], { field: "theme", code: "not-an-object" }],
   ])("refuses %p and keeps the stored theme", async (body, issue) => {
     const browser = await signedIn()
@@ -99,6 +112,75 @@ describe("streamer overlay theme", () => {
 
     expect((await anonymous.request("/api/dash/overlay-theme")).status).toBe(401)
     expect((await anonymous.postJson("/api/dash/overlay-theme", branded)).status).toBe(401)
+  })
+})
+
+/** Replaces every room's theme push with `push`; the rest of each room stays real. */
+function stubPush(push: (giveawayId: string, theme: OverlayTheme) => Promise<void>): void {
+  const rooms = harness.rooms
+  spyOn(rooms, "get").mockImplementation(function (this: typeof rooms, giveawayId: string) {
+    const stub = InProcessRooms.prototype.get.call(this, giveawayId)
+    return Object.assign(Object.create(stub), {
+      pushOverlayTheme: (theme: OverlayTheme) => push(giveawayId, theme),
+    })
+  })
+}
+
+/** Records the theme pushes from here on. */
+function pushes(): { giveawayId: string; theme: OverlayTheme }[] {
+  const pushed: { giveawayId: string; theme: OverlayTheme }[] = []
+  stubPush(async (giveawayId, theme) => {
+    pushed.push({ giveawayId, theme })
+  })
+  return pushed
+}
+
+describe("overlay theme push on save", () => {
+  it("pushes a streamer's theme to the overlays of the giveaways not drawn yet that show it", async () => {
+    const first = await createGiveaway(harness)
+    const own = await createGiveaway(harness)
+    await own.browser.postJson(`/api/dash/giveaways/${own.id}/overlay-theme`, { theme: special })
+    const other = await createGiveaway(harness, users.streamerB.id)
+    const pushed = pushes()
+
+    await first.browser.postJson("/api/dash/overlay-theme", branded)
+
+    expect(pushed).toEqual([{ giveawayId: first.id, theme: branded }])
+    expect(pushed.some((push) => push.giveawayId === other.id)).toBe(false)
+  })
+
+  it("pushes a giveaway's own theme, and the streamer's once it is reset", async () => {
+    const { browser, id } = await createGiveaway(harness)
+    await browser.postJson("/api/dash/overlay-theme", branded)
+    const pushed = pushes()
+    const path = `/api/dash/giveaways/${id}/overlay-theme`
+
+    await browser.postJson(path, { theme: special })
+    await browser.postJson(path, { theme: null })
+
+    expect(pushed).toEqual([
+      { giveawayId: id, theme: special },
+      { giveawayId: id, theme: branded },
+    ])
+  })
+
+  it("keeps a saved theme when a room cannot be reached", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const { browser, id } = await createGiveaway(harness)
+    stubPush(async () => {
+      throw new RoomTransientError("down")
+    })
+
+    const saved = await browser.postJson("/api/dash/overlay-theme", branded)
+
+    expect(saved.status).toBe(200)
+    expect(await (await browser.request("/api/dash/overlay-theme")).json()).toEqual({
+      theme: branded,
+    })
+    expect(warn).toHaveBeenCalledWith("overlay theme push failed", {
+      giveawayId: id,
+      errorClass: "RoomTransientError",
+    })
   })
 })
 

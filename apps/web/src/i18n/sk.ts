@@ -557,9 +557,11 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "overlayStyle.off": "Vypnuté",
   "overlayStyle.preview": "Náhľad",
   "overlayStyle.preview.prize": "Herná stolička",
+  "overlayStyle.lowContrast":
+    "Text sa na tomto podklade zle číta. Vyber svetlejšiu alebo tmavšiu farbu textu.",
   "overlayStyle.save": "Uložiť vzhľad",
   "overlayStyle.reset": "Pôvodný vzhľad",
-  "overlayStyle.saved": "Uložené. OBS ukáže nový vzhľad do pol minúty.",
+  "overlayStyle.saved": "Uložené. OBS ukáže nový vzhľad hneď.",
   "overlayStyle.rejected": "Vzhľad sa neuložil. Načítaj stránku znova a skús to ešte raz.",
   "live.draw.title": "Zápis je uzavretý",
   "live.draw.text": "{people}. Vyžrebuj víťaza, keď budeš pripravený.",

@@ -50,8 +50,8 @@
 
   /*
    * The OBS overlay sits on gameplay, so it keeps light text and a dark plate in both themes. A streamer's
-   * overlay theme replaces the ink, plate, muted, edge and accent colors on the overlay's root; its default
-   * colors (packages/core/src/domain/overlay-theme.ts) are these.
+   * overlay theme overrides some of these on the overlay's root (overlayThemeStyle in
+   * apps/web/src/lib/overlay-theme.ts); defaultOverlayTheme must hold the same colors.
    */
   --overlay-ink: #fafafa;
   --overlay-plate: #111113;

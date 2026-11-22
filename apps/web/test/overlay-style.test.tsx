@@ -110,17 +110,48 @@ describe("overlay theme on the OBS overlay", () => {
     expect(root?.getAttribute("data-corners")).toBe("square")
   })
 
-  it("shows a style the streamer saves on its next refresh, without a reload", async () => {
-    jest.useFakeTimers()
-    let theme = defaultOverlayTheme
-    openOverlay(liveSnapshot, () => ok({ theme }))
+  it("shows a style the streamer saves as soon as the socket pushes it, and keeps the snapshot", async () => {
+    const requests = openOverlay(liveSnapshot, () => ok({ theme: defaultOverlayTheme }))
     const view = renderApp("/overlay/gid-1/tok-1")
     await waitFor(() => expect(frame(view)?.getAttribute("data-position")).toBe("top-left"))
 
-    theme = branded
-    await act(async () => jest.advanceTimersByTime(30_000))
+    push({ ...liveSnapshot, entrantCount: 11 })
+    act(() => FakeSocket.opened[0]?.push({ theme: branded }))
 
     await waitFor(() => expect(frame(view)?.getAttribute("data-position")).toBe("bottom-right"))
+    expect(view.getByText("11")).toBeTruthy()
+    const themeReads = requests.filter((request) => request.route.endsWith("/theme"))
+    expect(themeReads).toHaveLength(1)
+  })
+
+  it("reads the theme again after the socket reconnects, for a push it missed", async () => {
+    let theme = defaultOverlayTheme
+    const requests = openOverlay(liveSnapshot, () => ok({ theme }))
+    const view = renderApp("/overlay/gid-1/tok-1")
+    await waitFor(() => expect(frame(view)).not.toBeNull())
+    push(liveSnapshot)
+    const themeReads = () => requests.filter((request) => request.route.endsWith("/theme"))
+    expect(themeReads()).toHaveLength(1)
+
+    theme = branded
+    act(() => FakeSocket.opened[0]?.drop())
+    await waitFor(() => expect(FakeSocket.opened).toHaveLength(2), { timeout: 3000 })
+    act(() => FakeSocket.opened[1]?.push(liveSnapshot))
+
+    await waitFor(() => expect(frame(view)?.getAttribute("data-position")).toBe("bottom-right"))
+    expect(themeReads()).toHaveLength(2)
+  })
+
+  it("ignores a pushed theme the server would refuse", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    openOverlay(liveSnapshot, () => ok({ theme: defaultOverlayTheme }))
+    const view = renderApp("/overlay/gid-1/tok-1")
+    await waitFor(() => expect(frame(view)).not.toBeNull())
+
+    act(() => FakeSocket.opened[0]?.push({ theme: { ...branded, accent: "red" } }))
+
+    expect(frame(view)?.getAttribute("data-position")).toBe("top-left")
+    expect(error).toHaveBeenCalledWith("overlay theme push ignored", { field: "accent" })
   })
 
   it("falls back to the default theme when the theme cannot be loaded", async () => {
@@ -131,7 +162,10 @@ describe("overlay theme on the OBS overlay", () => {
 
     expect(await view.findByText("Ada")).toBeTruthy()
     expect(frame(view)?.getAttribute("data-font")).toBe("geist")
-    expect(warn).toHaveBeenCalledWith("overlay theme unavailable", { errorClass: "ApiError" })
+    expect(warn).toHaveBeenCalledWith("overlay theme unavailable", {
+      errorClass: "ApiError",
+      round: 0,
+    })
   })
 })
 
@@ -235,9 +269,7 @@ describe("overlay style on the dashboard", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Save style" }))
 
-    expect(
-      await view.findByText("Saved. OBS shows the new style within half a minute."),
-    ).toBeTruthy()
+    expect(await view.findByText("Saved. OBS shows the new style right away.")).toBeTruthy()
     expect(
       requests.find((request) => request.route === "POST /api/dash/overlay-theme")?.body,
     ).toEqual({
@@ -283,6 +315,23 @@ describe("overlay style on the dashboard", () => {
 
     expect(previewFrame(view)?.getAttribute("data-font")).toBe("geist")
     expect(previewFrame(view)?.getAttribute("style") ?? "").toBe("")
+  })
+
+  it("warns under the preview while the text is hard to read on the plates", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () => ok({ giveaways: [dashboardGiveaway] }),
+      "GET /api/dash/overlay-theme": () => ok({ theme: defaultOverlayTheme }),
+    })
+    const view = renderApp("/dashboard")
+    await view.findByText("Overlay style")
+    expand(view, "Overlay style")
+    const warning = "The text is hard to read on these plates. Pick a lighter or darker text color."
+    expect(await view.findByLabelText("Text")).toBeTruthy()
+    expect(view.queryByText(warning)).toBeNull()
+
+    fireEvent.change(view.getByLabelText("Text"), { target: { value: "#202022" } })
+
+    expect(view.getByText(warning)).toBeTruthy()
   })
 })
 

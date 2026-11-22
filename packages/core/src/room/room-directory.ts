@@ -29,6 +29,7 @@ export type RoomStub = Remote<
     | "markMirrored"
     | "liveSnapshot"
     | "entriesPerSecondBefore"
+    | "pushOverlayTheme"
   >
 >
 

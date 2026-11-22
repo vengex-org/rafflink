@@ -134,3 +134,7 @@ export const ownedOverlayThemesSql = `${overlayThemesSelect} WHERE g.id = ? AND 
 /** Parameters: theme JSON or null, giveaway id, streamer id. Returns the id when the giveaway is the streamer's. */
 export const setGiveawayOverlaySql =
   "UPDATE giveaways SET overlay_theme_json = ? WHERE id = ? AND streamer_id = ? RETURNING id"
+
+/** Ids of a streamer's (parameter 1) giveaways not drawn yet whose overlay shows the streamer's theme. */
+export const streamerThemedGiveawaysSql =
+  "SELECT id FROM giveaways WHERE streamer_id = ? AND status != 'drawn' AND overlay_theme_json IS NULL"

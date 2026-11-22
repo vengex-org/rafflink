@@ -562,6 +562,18 @@ describe("AccountStore overlay themes", () => {
     expect(await store.ownedOverlayThemes("s1", "g1")).toEqual({ own: null, streamer: branded })
   })
 
+  it("lists the streamer's giveaways not drawn yet that show the streamer's theme", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA" }))
+    await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB" }))
+    await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC" }))
+    await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", streamerId: "s2" }))
+    await store.setGiveawayOverlayTheme("s1", "g2", special)
+    await store.setStatus("g3", "drawn")
+
+    expect(await store.streamerThemedGiveaways("s1")).toEqual(["g1"])
+  })
+
   it("never reads or sets the theme of another streamer's giveaway", async () => {
     const { store } = await withStreamers()
     await store.insertGiveaway(giveaway())
@@ -589,7 +601,20 @@ describe("AccountStore overlay themes", () => {
     await store.insertGiveaway(giveaway())
     db.run("UPDATE giveaways SET overlay_theme_json = 'not json'")
 
-    await expect(store.overlayThemeOf("g1")).rejects.toBeInstanceOf(RoomRowError)
+    await expect(store.overlayThemeOf("g1")).rejects.toThrow(
+      "giveaways.overlay_theme_json: unexpected value",
+    )
+  })
+
+  it("names the streamer's own column when the streamer theme read with a giveaway is broken", async () => {
+    const { db, store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    await store.storeStreamerOverlayTheme("s1", branded, 1_000)
+    db.run("UPDATE streamer_overlay SET theme_json = '{}'")
+
+    await expect(store.overlayThemeOf("g1")).rejects.toThrow(
+      "streamer_overlay.theme_json: unexpected value",
+    )
   })
 })
 

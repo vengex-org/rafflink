@@ -18,19 +18,15 @@ describe("parseOverlayTheme", () => {
     expect(parseOverlayTheme(custom)).toEqual({ ok: true, value: custom })
   })
 
-  it("gives an empty object the default theme", () => {
-    expect(parseOverlayTheme({})).toEqual({ ok: true, value: defaultOverlayTheme })
-  })
-
   it("keeps sound and confetti off by default", () => {
     expect(defaultOverlayTheme.sound).toBe(false)
     expect(defaultOverlayTheme.confetti).toBe(false)
   })
 
   it("lowercases a color", () => {
-    expect(parseOverlayTheme({ accent: "#AbCdEf" })).toEqual({
+    expect(parseOverlayTheme({ ...custom, accent: "#AbCdEf" })).toEqual({
       ok: true,
-      value: { ...defaultOverlayTheme, accent: "#abcdef" },
+      value: { ...custom, accent: "#abcdef" },
     })
   })
 
@@ -38,6 +34,18 @@ describe("parseOverlayTheme", () => {
     expect(parseOverlayTheme(input)).toEqual({
       ok: false,
       issue: { field: "theme", code: "not-an-object" },
+    })
+  })
+
+  it.each(Object.keys(custom))("refuses a theme without %s", (field) => {
+    const rest = Object.fromEntries(Object.entries(custom).filter(([key]) => key !== field))
+    expect(parseOverlayTheme(rest)).toEqual({ ok: false, issue: { field, code: "missing" } })
+  })
+
+  it("refuses an empty object at its first field", () => {
+    expect(parseOverlayTheme({})).toEqual({
+      ok: false,
+      issue: { field: "accent", code: "missing" },
     })
   })
 
@@ -56,7 +64,7 @@ describe("parseOverlayTheme", () => {
     3,
     null,
   ])("refuses %p as a color", (accent) => {
-    expect(parseOverlayTheme({ accent })).toEqual({
+    expect(parseOverlayTheme({ ...custom, accent })).toEqual({
       ok: false,
       issue: { field: "accent", code: "not-a-color" },
     })
@@ -73,7 +81,7 @@ describe("parseOverlayTheme", () => {
     ["corners", "round"],
     ["corners", null],
   ])("refuses %p %p as an unknown option", (field, value) => {
-    expect(parseOverlayTheme({ [field]: value })).toEqual({
+    expect(parseOverlayTheme({ ...custom, [field]: value })).toEqual({
       ok: false,
       issue: { field, code: "unknown-option" },
     })
@@ -84,15 +92,17 @@ describe("parseOverlayTheme", () => {
     ["sound", 1],
     ["confetti", null],
   ])("refuses %p %p as a switch", (field, value) => {
-    expect(parseOverlayTheme({ [field]: value })).toEqual({
+    expect(parseOverlayTheme({ ...custom, [field]: value })).toEqual({
       ok: false,
       issue: { field, code: "not-a-boolean" },
     })
   })
 
   it("reads own fields only, never the prototype's", () => {
-    const inherited = Object.create({ font: "oswald", sound: true })
-    expect(parseOverlayTheme(inherited)).toEqual({ ok: true, value: defaultOverlayTheme })
+    expect(parseOverlayTheme(Object.create(custom))).toEqual({
+      ok: false,
+      issue: { field: "accent", code: "missing" },
+    })
   })
 
   it("drops fields it does not know", () => {

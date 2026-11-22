@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite"
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { resolveConfig } from "../config.ts"
+import { defaultOverlayTheme } from "../domain/overlay-theme.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import { drawLeafPicks, drawWinners } from "../lib/draw.ts"
 import { quicknet, roundTime } from "../lib/drand.ts"
@@ -2765,5 +2766,18 @@ describe("GiveawayRoom populated before the minute counters", () => {
     expect(room.onAlarm().metrics).toEqual([])
     expect(alarm.at).not.toBeNull()
     expect(alarm.at ?? 0).toBeGreaterThan(30 * hour)
+  })
+})
+
+describe("overlay theme push", () => {
+  it("sends a saved style to the overlays only, without a snapshot", () => {
+    const { room, hub } = setup()
+    const theme = { ...defaultOverlayTheme, accent: "#ff5500" }
+
+    room.pushOverlayTheme(theme)
+
+    expect(hub.overlayMessages.map((text) => JSON.parse(text))).toEqual([{ theme }])
+    expect(hub.messages).toEqual([])
+    expect(hub.viewerMessages).toEqual([])
   })
 })

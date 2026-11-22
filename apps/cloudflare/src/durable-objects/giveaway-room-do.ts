@@ -109,6 +109,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async entriesPerSecondBefore(...args: Parameters<GiveawayRoom["entriesPerSecondBefore"]>) {
     return (await this.opened).room.entriesPerSecondBefore(...args)
   }
+  async pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
+    return (await this.opened).room.pushOverlayTheme(...args)
+  }
   async liveCounts() {
     const { room } = await this.opened
     return { ...room.liveCounts(), viewers: this.ctx.getWebSockets(viewerTag).length }

@@ -412,9 +412,9 @@ refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache 
 `workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
 seconds old.
 The home page is one Worker request itself. The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
-`/api/g/<code>` request when it shows winners, to read the prize; the giveaway pages make no session request. An open
-overlay also reads its style (`/api/overlay/<id>/<token>/theme`, one D1 read) when it loads and every 30 seconds, so a
-saved style reaches OBS without a reload.
+`/api/g/<code>` request when it shows winners, to read the prize; the giveaway pages make no session request. An
+overlay reads its style (`/api/overlay/<id>/<token>/theme`, one D1 read) when it loads and when its socket reconnects;
+a saved style reaches open overlays as a push on the overlay socket, one room call per giveaway that shows it.
 
 The leaf list of a committed giveaway (`/api/g/CODE/leaves/ROOT`, up to a megabyte, where `ROOT` is the published
 Merkle root, so a code reused after a deletion never serves an old list) is kept in the same cache for
@@ -493,8 +493,8 @@ The OBS overlay is a browser source that opens `/overlay/...` as a top-level pag
 it), a small plate under the winners names the host the overlay is served from, so a self-hosted overlay shows its
 own domain. Do not embed the overlay in an iframe on another site.
 
-A streamer styles the overlay on the dashboard (colors, font, size, corner, plate corners, a sound and confetti at
-the winner reveal), and one giveaway can have its own style on its live page. The CSP allows no inline style
+A streamer styles the overlay on the dashboard (the fields of `OverlayTheme` in
+`packages/core/src/domain/overlay-theme.ts`), and one giveaway can have its own style on its live page. The CSP allows no inline style
 attribute and no font CDN, so the overlay sets the colors as CSS custom properties from script and the rest as data
 attributes, and the fonts are files in `apps/web/public/fonts` (Quicksand, Space Grotesk and Oswald from the Google
 Fonts repository, Latin subsets, SIL Open Font License in `apps/web/public/licenses`). The reveal chime

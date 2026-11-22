@@ -555,9 +555,11 @@ export const en = {
   "overlayStyle.off": "Off",
   "overlayStyle.preview": "Preview",
   "overlayStyle.preview.prize": "A gaming chair",
+  "overlayStyle.lowContrast":
+    "The text is hard to read on these plates. Pick a lighter or darker text color.",
   "overlayStyle.save": "Save style",
   "overlayStyle.reset": "Back to default",
-  "overlayStyle.saved": "Saved. OBS shows the new style within half a minute.",
+  "overlayStyle.saved": "Saved. OBS shows the new style right away.",
   "overlayStyle.rejected": "The style was not saved. Reload the page and try again.",
   "live.draw.title": "Entries are closed",
   "live.draw.text": "{people}. Draw the winner when you are ready.",

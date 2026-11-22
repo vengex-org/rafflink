@@ -15,13 +15,14 @@ import {
   type Rejected,
 } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
-import { overlayFontFamilies } from "../lib/overlay-theme.ts"
+import { hasLowContrast, overlayFontFamilies } from "../lib/overlay-theme.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLoad } from "../lib/use-load.ts"
-import { OverlayPreview } from "../pages/overlay-page.tsx"
+
 import { Disclosure } from "./disclosure.tsx"
 import { Segmented, type SegmentOption } from "./form-fields.tsx"
 import { SlidersIcon } from "./icons.tsx"
+import { OverlayPreview } from "./overlay-plates.tsx"
 import { Failed, Loading } from "./notice.tsx"
 
 /** The dashboard's overlay style: the theme of every giveaway that has none of its own. Loads once opened. */
@@ -143,6 +144,9 @@ function ThemeForm({
     <div className="overlay-style">
       {editable ? <ThemeFields theme={theme} set={set} /> : null}
       <OverlayPreview theme={theme} />
+      {hasLowContrast(theme) ? (
+        <p className="field-error">{t("overlayStyle.lowContrast")}</p>
+      ) : null}
       <div className="actions">
         <button
           type="button"

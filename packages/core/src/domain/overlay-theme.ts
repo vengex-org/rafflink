@@ -48,6 +48,7 @@ export const defaultOverlayTheme: OverlayTheme = {
 
 export type OverlayThemeIssueCode =
   | "not-an-object"
+  | "missing"
   | "not-a-color"
   | "unknown-option"
   | "not-a-boolean"
@@ -58,7 +59,7 @@ export interface OverlayThemeIssue {
   readonly code: OverlayThemeIssueCode
 }
 
-/** Parses `theme_json` or a request body; an absent field takes the default, an unknown one is dropped. */
+/** Parses `theme_json` or a request body: every field must be present; an unknown one is dropped. */
 export function parseOverlayTheme(input: unknown): Parsed<OverlayTheme, OverlayThemeIssue> {
   if (!isRecord(input)) return fail("theme", "not-an-object")
   const accent = parseColor(input, "accent")
@@ -103,7 +104,7 @@ function parseColor(
   field: "accent" | "background" | "text",
 ): Parsed<string, OverlayThemeIssue> {
   const value = ownValue(input, field)
-  if (value === undefined) return { ok: true, value: defaultOverlayTheme[field] }
+  if (value === undefined) return fail(field, "missing")
   if (typeof value !== "string" || !colorPattern.test(value)) return fail(field, "not-a-color")
   return { ok: true, value: value.toLowerCase() }
 }
@@ -114,7 +115,7 @@ function parseOption<F extends "font" | "size" | "position" | "corners">(
   options: readonly OverlayTheme[F][],
 ): Parsed<OverlayTheme[F], OverlayThemeIssue> {
   const value = ownValue(input, field)
-  if (value === undefined) return { ok: true, value: defaultOverlayTheme[field] }
+  if (value === undefined) return fail(field, "missing")
   const known = options.find((option) => option === value)
   return known === undefined ? fail(field, "unknown-option") : { ok: true, value: known }
 }
@@ -124,7 +125,7 @@ function parseSwitch(
   field: "sound" | "confetti",
 ): Parsed<boolean, OverlayThemeIssue> {
   const value = ownValue(input, field)
-  if (value === undefined) return { ok: true, value: defaultOverlayTheme[field] }
+  if (value === undefined) return fail(field, "missing")
   if (typeof value !== "boolean") return fail(field, "not-a-boolean")
   return { ok: true, value }
 }
