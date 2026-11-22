@@ -6,7 +6,14 @@ import {
   type IneligibleReason,
   type ViewerFacts,
 } from "../domain/rules.ts"
-import { pickWinner, sortEntries, type DrawEntry, type Identity, type Winner } from "../lib/draw.ts"
+import {
+  pickWinner,
+  pickWinners,
+  sortEntries,
+  type DrawEntry,
+  type Identity,
+  type Winner,
+} from "../lib/draw.ts"
 import { drandChain, roundAtOrAfter, roundTime } from "../lib/drand.ts"
 import { leafHash, merkleRoot, type LeafPreimage } from "../lib/merkle.ts"
 import type { MinuteCounts } from "../stats/stats-store.ts"
@@ -140,8 +147,9 @@ export type RequestDrawOutcome =
   | { readonly kind: "not-open"; readonly status: RoomStatus }
 
 export type DrawOutcome =
-  | { readonly kind: "drawn"; readonly winner: Winner }
-  /** The committed drand round is not published yet; nothing was drawn and the alarm draws once it is. */
+  /** The batch in pick order; fewer picks than asked when every entrant got picked on the way. */
+  | { readonly kind: "drawn"; readonly winners: readonly Winner[] }
+  /** The committed drand round is not published yet; nothing was drawn and the alarm draws the batch once it is. */
   | { readonly kind: "round-pending"; readonly availableAt: Instant; readonly now: Instant }
   /** The beacon failed after its retries; nothing was drawn and a later call may draw. */
   | { readonly kind: "beacon-unavailable" }
@@ -149,7 +157,7 @@ export type DrawOutcome =
   | { readonly kind: "entries-deleted" }
   /** Every entrant is already picked. The first draw of a room nobody entered still moves it to drawn. */
   | { readonly kind: "no-entrants-left" }
-  /** The room holds as many picks as `DRAW_MAX_WINNERS` allows. */
+  /** The batch would take the room past the picks `DRAW_MAX_WINNERS` allows; nothing was drawn. */
   | { readonly kind: "pick-limit" }
   /** Another draw wrote its pick first; nothing was drawn and a repeat draws the next one. */
   | { readonly kind: "try-again" }
@@ -542,11 +550,13 @@ export class GiveawayRoom {
     return { kind: "closed" }
   }
 
-  /** Closes an open room and has the alarm draw the first winner once the committed drand round is published. */
-  requestDraw(): RequestDrawOutcome {
+  /** Closes an open room and has the alarm draw the first `count` winners once the committed drand round is published. */
+  requestDraw(count: number): RequestDrawOutcome {
     const closed = this.sql.transaction(() => {
       if (!this.closeOpenRoom()) return false
-      this.sql.exec("UPDATE room_state SET draw_requested = 1 WHERE id = 1", [])
+      this.sql.exec("UPDATE room_state SET draw_requested = 1, draw_count = ? WHERE id = 1", [
+        count,
+      ])
       return true
     })
     if (!closed) return { kind: "not-open", status: this.readState().status }
@@ -727,20 +737,26 @@ export class GiveawayRoom {
   }
 
   /**
-   * Draws the next winner. A closed room commits if it has not, then draws pick 0 with the randomness of
-   * the drand round it committed to; a drawn room adds the next pick of the same seeded order, skipping
-   * every earlier pick. While the round is missing it draws nothing, uses no other randomness and has
-   * the alarm draw once the round is published.
+   * Draws the next `count` winners in one transaction, so a batch is written whole or not at all. A
+   * closed room commits if it has not, then draws from pick 0 with the randomness of the drand round it
+   * committed to; a drawn room adds the next picks of the same seeded order, skipping every earlier pick.
+   * A batch is the same picks as `count` draws one by one. While the round is missing it draws nothing,
+   * uses no other randomness and has the alarm draw the batch once the round is published.
    */
-  async draw(): Promise<DrawOutcome> {
+  async draw(count: number): Promise<DrawOutcome> {
     const state = this.readState()
     const refusal = drawRefusal(state)
     if (refusal !== null) return refusal
-    return state.status === "drawn" ? this.drawNext(state.seed) : this.drawFirst()
+    return state.status === "drawn" ? this.drawNext(state.seed, count) : this.drawOpening(count)
   }
 
-  /** Draws pick 0 of a closed room and nothing else: a room that is already drawn is refused, so the alarm never adds a pick. */
+  /** Draws the requested first batch of a closed room and nothing else: a room that is already drawn is refused, so the alarm never adds a pick. */
   async drawFirst(): Promise<DrawOutcome> {
+    return this.drawOpening(this.readState().drawCount)
+  }
+
+  private async drawOpening(count: number): Promise<DrawOutcome> {
+    if (count > this.config.drawMaxWinners) return { kind: "pick-limit" }
     await this.commit()
     const state = this.readState()
     const refusal = drawRefusal(state)
@@ -757,8 +773,8 @@ export class GiveawayRoom {
           return { kind: "beacon-unavailable" }
         }
         this.sql.exec(
-          "UPDATE room_state SET draw_requested = 1 WHERE id = 1 AND status = 'closed'",
-          [],
+          "UPDATE room_state SET draw_requested = 1, draw_count = ? WHERE id = 1 AND status = 'closed'",
+          [count],
         )
         this.afterWrite()
         return { kind: "round-pending", availableAt, now: this.clock.now() }
@@ -769,7 +785,7 @@ export class GiveawayRoom {
         break
     }
     const seed = answer.round.randomness
-    const first = await pickWinner(seed, 0, this.readDrawEntries(), [])
+    const winners = await pickWinners(seed, 0, count, this.readDrawEntries(), [])
     const now = this.clock.now()
     let flipped = false
     const outcome = this.sql.transaction((): DrawOutcome => {
@@ -779,9 +795,9 @@ export class GiveawayRoom {
       )
       if (moved.length === 0) return drawRefusal(this.readState()) ?? { kind: "try-again" }
       flipped = true
-      if (first === null) return { kind: "no-entrants-left" }
-      this.insertPick(first, now, state.claimSeconds)
-      return { kind: "drawn", winner: first }
+      if (winners.length === 0) return { kind: "no-entrants-left" }
+      for (const winner of winners) this.insertPick(winner, now, state.claimSeconds)
+      return { kind: "drawn", winners }
     })
     if (flipped) {
       this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
@@ -790,23 +806,23 @@ export class GiveawayRoom {
     return outcome
   }
 
-  private async drawNext(seed: Uint8Array<ArrayBuffer>): Promise<DrawOutcome> {
+  private async drawNext(seed: Uint8Array<ArrayBuffer>, count: number): Promise<DrawOutcome> {
     const draws = this.readDraws()
-    if (draws.length >= this.config.drawMaxWinners) return { kind: "pick-limit" }
+    if (draws.length + count > this.config.drawMaxWinners) return { kind: "pick-limit" }
     const next = nextPickNumber(draws)
-    const picked = await pickWinner(seed, next, this.readDrawEntries(), draws)
-    if (picked === null) return { kind: "no-entrants-left" }
+    const winners = await pickWinners(seed, next, count, this.readDrawEntries(), draws)
+    if (winners.length === 0) return { kind: "no-entrants-left" }
     const now = this.clock.now()
     const { claimSeconds } = this.readState()
     const outcome = this.sql.transaction((): DrawOutcome => {
       if (this.readState().entriesDeleted) return { kind: "entries-deleted" }
-      if (this.sql.exec("SELECT n FROM draws WHERE n = ?", [next]).length > 0) {
+      if (this.sql.exec("SELECT n FROM draws WHERE n >= ? LIMIT 1", [next]).length > 0) {
         return { kind: "try-again" }
       }
-      this.insertPick(picked, now, claimSeconds)
+      for (const winner of winners) this.insertPick(winner, now, claimSeconds)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
       this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
-      return { kind: "drawn", winner: picked }
+      return { kind: "drawn", winners }
     })
     if (outcome.kind === "drawn") this.afterOutcomeWrite()
     return outcome

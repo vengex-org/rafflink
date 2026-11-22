@@ -126,6 +126,55 @@ it("labels each standing winner by place and counts down the claim only for a wa
   expect(view.getByText("to claim")).toBeTruthy()
 })
 
+/** A drawn snapshot with `count` waiting winners, as one batch draw leaves it. */
+const batch = (count: number): LiveSnapshot => ({
+  ...drawn,
+  winners: Array.from({ length: count }, (_, n) => ({
+    n,
+    entrySeq: n + 1,
+    displayName: `Winner${n + 1}`,
+    profileImageUrl: null,
+    claimUntil: Date.now() + 90_000,
+    claim: { state: "waiting" as const },
+  })),
+})
+
+describe("a batch of winners", () => {
+  it("lists more winners than plates fit on one plate, without claim clocks", async () => {
+    routeSnapshot(batch(4))
+
+    const view = renderApp("/overlay/gid-1/tok-1")
+
+    expect(await view.findByText("Winner4")).toBeTruthy()
+    expect(view.getByRole("heading", { level: 2, name: "Winners" })).toBeTruthy()
+    expect(view.container.querySelectorAll(".overlay-winner")).toHaveLength(1)
+    expect(view.container.querySelectorAll(".overlay-winner-list li")).toHaveLength(4)
+    expect(view.queryByRole("timer")).toBeNull()
+  })
+
+  it("lists the newest 24 of a large batch and counts the rest", async () => {
+    routeSnapshot(batch(500))
+
+    const view = renderApp("/overlay/gid-1/tok-1")
+
+    expect(await view.findByText("Winner500")).toBeTruthy()
+    expect(view.container.querySelectorAll(".overlay-winner-list li")).toHaveLength(24)
+    expect(view.queryByText("Winner476")).toBeNull()
+    expect(view.getByText("Winner477")).toBeTruthy()
+    expect(view.getByText("and 476 more")).toBeTruthy()
+  })
+
+  it("names the newest 24 of a large batch on the compact plate and counts the rest", async () => {
+    routeSnapshot(batch(30))
+
+    const view = renderApp("/overlay/gid-1/tok-1?mode=compact")
+
+    const line = await view.findByText(/Winner30/)
+    expect(line.textContent).toStartWith("Winner7, Winner8")
+    expect(line.textContent).toEndWith("Winner30 and 6 more")
+  })
+})
+
 it("shows the prize on each winner plate", async () => {
   routeSnapshot(
     {

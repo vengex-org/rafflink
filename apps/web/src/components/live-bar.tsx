@@ -336,10 +336,11 @@ function DrawControls({
   const remainingMs = useRemainingMs(waitMs)
   const { status, drawRequested, entrantCount } = snapshot
   const blocked = blockedText(snapshot, t)
-  const draw = () =>
+  const batch = batchSize(snapshot)
+  const draw = (count: number) =>
     void run(
       async () => {
-        const answer = await drawWinners(id)
+        const answer = await drawWinners(id, count)
         if (answer.kind !== "round-pending") return answer.kind
         const pendingMs = answer.availableAt - answer.now
         onPending(Math.max(0, pendingMs))
@@ -374,14 +375,28 @@ function DrawControls({
           disabled={entrantCount === 0}
           className="live-btn primary"
           shortcut="d"
-          onConfirm={draw}
+          onConfirm={() => draw(1)}
         />
       ) : (
-        <DrawButton
-          label={t(status === "drawn" ? "live.draw.next" : "live.draw.label")}
-          disabled={busy || blocked !== null || drawRequested}
-          onPress={draw}
-        />
+        <>
+          <DrawButton
+            label={t(status === "drawn" ? "live.draw.next" : "live.draw.label")}
+            disabled={busy || blocked !== null || drawRequested}
+            onPress={() => draw(1)}
+          />
+          {batch > 1 ? (
+            <button
+              type="button"
+              className="live-btn secondary"
+              disabled={busy || blocked !== null || drawRequested}
+              aria-describedby="draw-help"
+              onClick={() => draw(batch)}
+            >
+              <ShuffleIcon />
+              {i18n.plural("drawBatch", batch)}
+            </button>
+          ) : null}
+        </>
       )}
     </>
   )
@@ -416,6 +431,12 @@ function DrawButton({
       <kbd aria-hidden="true">D</kbd>
     </button>
   )
+}
+
+// The planned winners not drawn yet, as far as entrants are left: what one press of the batch button draws.
+function batchSize(snapshot: LiveSnapshot): number {
+  const missing = snapshot.winnerCount - standingWinners(snapshot.winners).length
+  return Math.min(missing, snapshot.entrantCount - snapshot.winners.length)
 }
 
 // Why the button cannot draw, or null while it can.

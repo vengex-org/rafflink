@@ -1,6 +1,15 @@
 import { createHmac } from "node:crypto"
 import { describe, expect, it } from "bun:test"
-import { drawLeafPicks, drawWinners, indexFromDigest, pickWinner, type DrawEntry } from "./draw.ts"
+import {
+  drawLeafPicks,
+  drawWinners,
+  indexFromDigest,
+  pickWinner,
+  pickWinners,
+  type DrawEntry,
+  type Identity,
+  type Winner,
+} from "./draw.ts"
 
 const seed = new Uint8Array(32).fill(7)
 const entries: DrawEntry[] = [
@@ -112,6 +121,47 @@ describe("pickWinner", () => {
 
   it("returns null once every entrant is excluded", async () => {
     expect(await pickWinner(seed, 3, entries, entries)).toBeNull()
+  })
+})
+
+describe("pickWinners", () => {
+  const many: DrawEntry[] = Array.from({ length: 40 }, (_, index) => ({
+    platform: "twitch",
+    platformUserId: `user-${index}`,
+    tickets: (index % 7) + 1,
+  }))
+
+  async function oneByOne(first: number, count: number, excluded: readonly Identity[]) {
+    const picks: Winner[] = []
+    for (let n = first; n < first + count; n++) {
+      const picked = await pickWinner(seed, n, many, [...excluded, ...picks])
+      if (picked === null) break
+      picks.push(picked)
+    }
+    return picks
+  }
+
+  it("a batch of k after earlier picks equals k picks made one by one", async () => {
+    const earlier = await drawWinners(seed, many, 3)
+    const rerolledToo = [...earlier, { platform: "twitch", platformUserId: "user-30" }]
+    expect(await pickWinners(seed, 4, 12, many, rerolledToo)).toEqual(
+      await oneByOne(4, 12, rerolledToo),
+    )
+  })
+
+  it("a batch from pick 0 equals the list draw the verify page replays", async () => {
+    expect(await pickWinners(seed, 0, 25, many, [])).toEqual(await drawWinners(seed, many, 25))
+  })
+
+  it("stops when no tickets remain, with fewer picks than asked", async () => {
+    const picks = await pickWinners(seed, 0, 5, entries, [
+      { platform: "twitch", platformUserId: "3" },
+    ])
+    expect(picks.map((pick) => pick.n)).toEqual([0, 1])
+  })
+
+  it("draws nothing for a batch of 0", async () => {
+    expect(await pickWinners(seed, 0, 0, entries, [])).toEqual([])
   })
 })
 

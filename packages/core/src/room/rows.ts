@@ -59,6 +59,8 @@ export type RoomState = {
   readonly winnerCount: number
   /** The streamer pressed Draw before the round was published; the alarm draws once it is. */
   readonly drawRequested: boolean
+  /** How many picks the requested draw adds; read only while `drawRequested`. */
+  readonly drawCount: number
   /** When the alarm tries a requested draw next; null before the first try. */
   readonly drawRetryAt: Instant | null
 } & (
@@ -120,6 +122,7 @@ export function parseState(
     commitGaveUp: reader.int("commit_gave_up") === 1,
     winnerCount: reader.int("winner_count"),
     drawRequested: reader.int("draw_requested") === 1,
+    drawCount: reader.int("draw_count"),
     drawRetryAt: reader.nullableInt("draw_retry_at"),
   }
   const status = reader.oneOf("status", roomStatuses)

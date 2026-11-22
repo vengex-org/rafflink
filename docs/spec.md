@@ -568,6 +568,11 @@ Decisions made while building M2 H2, Merkle root and drand draw (2026-11-21):
   earlier pick, rerolled ones included. The streamer may draw more than `winner_count`, which is only the planned count
   the live page measures progress against (editable at any time). `DRAW_MAX_WINNERS` caps the stored picks. The verify page
   replays any number of picks. Drawing the first pick of a room nobody entered still moves it to drawn.
+- Batch draw (#65, 2026-11-22): one press draws `count` picks (`POST .../draw` with `{ count }`, 1 to
+  `DRAW_MAX_WINNERS`, default cap 500). The room computes them as the same picks `count` single presses would make and
+  writes them in one transaction; a batch that would pass the cap is refused whole, and one that runs out of entrants
+  stops at the last. A press before the round is published keeps its count in `room_state.draw_count` for the alarm.
+  The live page offers "Draw N" up to the planned winners still missing; the overlay lists a large batch on one plate.
 - Draw shuffle (owner decision, 2026-11-21): while a draw is pending the stage and the OBS overlay flash entrant names in
   the winner slot, and every later pick shuffles for at least 1.5 s before it shows. The names are a random sample of
   up to `LIVE_SHUFFLE_NAMES` entrants in the snapshot (`shuffleNames`, while the room is closed and asked to draw or

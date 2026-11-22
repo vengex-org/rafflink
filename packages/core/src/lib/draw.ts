@@ -77,7 +77,42 @@ export async function pickWinner(
   entries: readonly DrawEntry[],
   excluded: readonly Identity[],
 ): Promise<Winner | null> {
-  return pick(await importSeed(seed), n, sortEntries(entries), excluded)
+  const [picked] = await pickWinners(seed, n, 1, entries, excluded)
+  return picked ?? null
+}
+
+/**
+ * Picks winners `first`..`first + count - 1` among the entrants not in `excluded`; each pick is
+ * excluded from the next, so a batch is the same picks as single picks made in turn. Stops early
+ * when no tickets remain.
+ */
+export async function pickWinners(
+  seed: Uint8Array<ArrayBuffer>,
+  first: number,
+  count: number,
+  entries: readonly DrawEntry[],
+  excluded: readonly Identity[],
+): Promise<Winner[]> {
+  const key = await importSeed(seed)
+  const sorted = sortEntries(entries)
+  const taken = new Set(excluded.map(identityKey))
+  // Kept in leaf order; each pick leaves the list and the total, so a pick costs one pass, not a rebuild.
+  const candidates = sorted
+    .map((entry, leafIndex) => ({ entry, leafIndex, tickets: entry.tickets }))
+    .filter((candidate) => !taken.has(identityKey(candidate.entry)))
+  let total = ticketTotal(candidates)
+  const picks: Winner[] = []
+  for (let n = first; n < first + count && total > 0n; n++) {
+    const position = candidateAt(candidates, await sampleIndex(key, n, total))
+    // splice(-1, 1) would drop the last candidate instead of failing.
+    if (position === -1) throw new Error("ticket index outside the ticket total")
+    const [candidate] = candidates.splice(position, 1)
+    if (candidate === undefined) throw new Error("ticket index outside the ticket total")
+    total -= BigInt(candidate.tickets)
+    const { platform, platformUserId } = candidate.entry
+    picks.push({ n, leafIndex: candidate.leafIndex, platform, platformUserId })
+  }
+  return picks
 }
 
 /** The entrants in the order of the draw and of the Merkle leaves: by `(platform, platformUserId)`. */
@@ -114,23 +149,6 @@ function importSeed(seed: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
 function compareText(a: string, b: string): number {
   if (a < b) return -1
   return a > b ? 1 : 0
-}
-
-async function pick(
-  key: CryptoKey,
-  n: number,
-  sorted: readonly DrawEntry[],
-  excluded: readonly Identity[],
-): Promise<Winner | null> {
-  const taken = new Set(excluded.map(identityKey))
-  const candidates = sorted.filter((entry) => !taken.has(identityKey(entry)))
-  const total = ticketTotal(candidates)
-  if (total === 0n) return null
-
-  const candidate = candidates[candidateAt(candidates, await sampleIndex(key, n, total))]
-  if (candidate === undefined) throw new Error("ticket index outside the ticket total")
-  const leafIndex = sorted.indexOf(candidate)
-  return { n, leafIndex, platform: candidate.platform, platformUserId: candidate.platformUserId }
 }
 
 function ticketTotal(candidates: readonly { readonly tickets: number }[]): bigint {

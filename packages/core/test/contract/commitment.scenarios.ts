@@ -127,9 +127,9 @@ export function commitmentScenarios(context: ContractContext): void {
       expect(await changed.json()).toEqual({ kind: "set" })
       expect(late.status).toBe(200)
       expect(await Promise.all(presses.map((press) => press.json()))).toEqual([
-        { kind: "drawn", n: 0 },
-        { kind: "drawn", n: 1 },
-        { kind: "drawn", n: 2 },
+        { kind: "drawn", picks: [0] },
+        { kind: "drawn", picks: [1] },
+        { kind: "drawn", picks: [2] },
       ])
       expect((await verifyOf(target, giveaway.code)).winnerCount).toBe(1)
     },

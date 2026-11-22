@@ -143,8 +143,8 @@ export function giveawayScenarios(context: ContractContext): void {
       const second = await world.drawWinners(giveaway)
       const third = await world.drawWinners(giveaway)
 
-      expect(await first.json()).toEqual({ kind: "drawn", n: 0 })
-      expect(await second.json()).toEqual({ kind: "drawn", n: 1 })
+      expect(await first.json()).toEqual({ kind: "drawn", picks: [0] })
+      expect(await second.json()).toEqual({ kind: "drawn", picks: [1] })
       const winners = (await world.live(giveaway)).winners.map((winner) => winner.displayName)
       expect(new Set(winners).size).toBe(2)
       expect(entered.map((viewer) => viewer.displayName)).toEqual(expect.arrayContaining(winners))

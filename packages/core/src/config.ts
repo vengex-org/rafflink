@@ -367,7 +367,7 @@ export const configSchema = {
   drawMaxWinners: withDefault(
     "DRAW_MAX_WINNERS",
     int(1),
-    "100",
+    "500",
     "Most picks one giveaway holds, rerolled ones included, and the most planned winners a streamer can set; starting guess, every pick is a row the verify page replays",
   ),
   publicGiveawayCacheSeconds: withDefault(

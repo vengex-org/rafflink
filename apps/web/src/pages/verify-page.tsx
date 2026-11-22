@@ -191,17 +191,22 @@ function Checker({
   )
 }
 
+/** Picks the list shows before the reader asks for all of them, so a batch of hundreds does not bury the checks. */
+const picksShownFirst = 50
+
 function Picks({ picks }: { readonly picks: VerifyLoad["verify"]["picks"] }) {
   const i18n = useI18n()
   const { t } = i18n
+  const [showAll, setShowAll] = useState(false)
   const rerolled = picks.filter((pick) => pick.rerolled).length
+  const shown = showAll ? picks : picks.slice(0, picksShownFirst)
   return (
     <section>
       <h2>{t("verify.winners.title")}</h2>
       <p>{t("verify.rerolls.note")}</p>
       <p>{t("verify.rerolls.count", { count: i18n.number(rerolled) })}</p>
       <ol className="verify-picks">
-        {picks.map((pick) => {
+        {shown.map((pick) => {
           const before = picks.filter((other) => other.rerolled && other.n < pick.n).length
           return (
             <li key={pick.n}>
@@ -214,6 +219,11 @@ function Picks({ picks }: { readonly picks: VerifyLoad["verify"]["picks"] }) {
           )
         })}
       </ol>
+      {shown.length < picks.length ? (
+        <button type="button" className="button outlined" onClick={() => setShowAll(true)}>
+          {t("verify.winners.showAll", { count: i18n.number(picks.length) })}
+        </button>
+      ) : null}
     </section>
   )
 }

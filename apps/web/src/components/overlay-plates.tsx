@@ -13,6 +13,10 @@ import { WinnerPlate } from "./winner-plate.tsx"
 
 /** Names on the compact plate: what a viewer can read in a glance. */
 const newestNames = 3
+/** Winner plates stacked one under another that fit a 1080p canvas; more standing winners share one list plate. */
+const winnerPlatesMax = 3
+/** Winner names a plate lists, the newest; the rest are counted, so a batch of hundreds never runs off the canvas. */
+const listedWinnersMax = 24
 
 /** The overlay root as a theme draws it: colors as custom properties, the rest as data attributes overlay.css reads. */
 export function overlayFrameProps(theme: OverlayTheme) {
@@ -82,7 +86,13 @@ export function EntryPlate({
           </span>
           {drawn ? (
             <span className="overlay-winner-line">
-              {standing.map((winner) => winner.displayName ?? t("winner.removed")).join(", ")}
+              {standing
+                .slice(-listedWinnersMax)
+                .map((winner) => winner.displayName ?? t("winner.removed"))
+                .join(", ")}
+              {standing.length > listedWinnersMax
+                ? ` ${t("overlay.moreWinners", { count: i18n.number(standing.length - listedWinnersMax) })}`
+                : null}
             </span>
           ) : (
             <span className="overlay-url">
@@ -119,6 +129,8 @@ export function WinnerPlates({
 }) {
   const i18n = useI18n()
   const { t } = i18n
+  if (standing.length > winnerPlatesMax)
+    return <WinnerListPlate standing={standing} prize={prize} />
   return (
     <>
       <h2 className="sr-only">{t("overlay.winners")}</h2>
@@ -196,6 +208,38 @@ function PlateHost() {
       </span>
       {siteHost()}
     </p>
+  )
+}
+
+/** A batch too large for one plate per winner: the newest names in columns on one plate, and how many more there are. */
+function WinnerListPlate({
+  standing,
+  prize,
+}: {
+  readonly standing: readonly LiveWinner[]
+  readonly prize: string
+}) {
+  const i18n = useI18n()
+  const { t } = i18n
+  const hidden = standing.length - listedWinnersMax
+  return (
+    <div className="overlay-plate overlay-winner overlay-winner-list">
+      <div>
+        <h2 className="overlay-label">{t("overlay.winners")}</h2>
+        <p className="overlay-prize">{prize}</p>
+        <ol>
+          {standing.slice(-listedWinnersMax).map((winner) => (
+            <li key={winner.n}>{winner.displayName ?? t("winner.removed")}</li>
+          ))}
+        </ol>
+        {hidden > 0 ? (
+          <p className="overlay-label">
+            {t("overlay.moreWinners", { count: i18n.number(hidden) })}
+          </p>
+        ) : null}
+      </div>
+      <PlateHost />
+    </div>
   )
 }
 

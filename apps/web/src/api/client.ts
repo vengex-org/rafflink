@@ -490,9 +490,9 @@ export type DrawAnswer =
   | { readonly kind: Exclude<DrawKind, "round-pending"> | Rejected }
   | { readonly kind: "round-pending"; readonly availableAt: number; readonly now: number }
 
-/** Draws the next winner; while entries are open it closes them and the room draws the first winner itself once the round is published. */
-export async function drawWinners(id: string): Promise<DrawAnswer> {
-  const source = await post(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, {})
+/** Draws the next `count` winners; while entries are open it closes them and the room draws the first ones itself once the round is published. */
+export async function drawWinners(id: string, count: number): Promise<DrawAnswer> {
+  const source = await post(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, { count })
   const kind = answerKind(source, drawKinds)
   return kind === "round-pending"
     ? { kind, availableAt: num(source, "availableAt"), now: num(source, "now") }

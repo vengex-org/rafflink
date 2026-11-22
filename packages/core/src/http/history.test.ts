@@ -27,7 +27,7 @@ async function drawnGiveaway(overrides: Record<string, unknown> = {}) {
   const viewer = new Browser(harness)
   await viewer.signInAs(users.viewer.id, `/auth/twitch/viewer/start?giveaway=${created.code}`)
   await created.browser.postJson(`/api/dash/giveaways/${created.id}/close`, {})
-  await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, {})
+  await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, { count: 1 })
   return { ...created, viewer }
 }
 
@@ -220,7 +220,7 @@ describe("history retention", () => {
     const viewer = new Browser(harness)
     await viewer.signInAs(users.viewer.id, `/auth/twitch/viewer/start?giveaway=${created.code}`)
     await created.browser.postJson(`/api/dash/giveaways/${created.id}/close`, {})
-    await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, {})
+    await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, { count: 1 })
     harness.clock.advance(dayMs)
 
     expect(await deleteExpiredGiveaways(harness.deps, 2)).toBe(0)
