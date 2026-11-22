@@ -82,7 +82,7 @@ describe("header session", () => {
     const link = view.getByRole("link", { name: "Support Rafflink" })
     expect(link.getAttribute("href")).toBe(donateUrl)
     expect(link.getAttribute("target")).toBe("_blank")
-    expect(link.getAttribute("rel")).toBe("noopener")
+    expect(link.getAttribute("rel")).toBe("noopener nofollow")
   })
 
   it("leaves the support entry out of the account menu when no page is configured", async () => {

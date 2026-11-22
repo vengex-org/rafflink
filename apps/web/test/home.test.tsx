@@ -73,7 +73,7 @@ describe("home page", () => {
 
     expect(link.getAttribute("href")).toBe(donateUrl)
     expect(link.getAttribute("target")).toBe("_blank")
-    expect(link.getAttribute("rel")).toBe("noopener")
+    expect(link.getAttribute("rel")).toBe("noopener nofollow")
     expect(link.closest(".home-footer")).not.toBeNull()
   })
 
@@ -118,6 +118,13 @@ describe("home page", () => {
     expect(footer.getByRole("link", { name: "Self-host guide" }).getAttribute("href")).toBe(
       "https://github.com/vengex-org/rafflink#twitch-app-registration",
     )
+    for (const name of ["GitHub", "Self-host guide"]) {
+      const link = footer.getByRole("link", { name })
+      expect(link.getAttribute("target")).toBe("_blank")
+      expect(link.getAttribute("rel")).toBe("noopener")
+      expect(link.getAttribute("aria-describedby")).not.toBeNull()
+    }
+    expect(footer.getByRole("link", { name: "Privacy" }).hasAttribute("target")).toBe(false)
     expect(footer.getByRole("link", { name: "Verify a draw" }).getAttribute("href")).toBe("/verify")
     expect(footer.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/privacy")
     expect(footer.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/terms")
@@ -134,6 +141,11 @@ describe("home page", () => {
     expect(nav.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe(
       "https://github.com/vengex-org/rafflink",
     )
+    for (const name of ["Self-host", "GitHub"]) {
+      const link = nav.getByRole("link", { name })
+      expect(link.getAttribute("target")).toBe("_blank")
+      expect(link.getAttribute("rel")).toBe("noopener")
+    }
     expect(nav.queryByRole("link", { name: "Verify a draw" })).toBeNull()
     expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
     expect(

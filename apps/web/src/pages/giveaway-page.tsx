@@ -6,6 +6,7 @@ import { ClaimPanel } from "../components/giveaway-claim.tsx"
 import { EntryPanel } from "../components/giveaway-entry.tsx"
 import { GiveawayFacts, GiveawayRules } from "../components/giveaway-facts.tsx"
 import { GiveawayHead, GiveawayPhase } from "../components/giveaway-head.tsx"
+import { ExternalLink } from "../components/external-link.tsx"
 import { TwitchIcon } from "../components/icons.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
@@ -108,10 +109,10 @@ function GiveawayDetails({
       ) : null}
       {isIn && channelUrl !== null ? (
         <div className="viewer-dock">
-          <a className="button outlined block" href={channelUrl}>
+          <ExternalLink kind="reference" className="button outlined block" href={channelUrl}>
             <TwitchIcon />
             {t("giveaway.watch", { name: giveaway.streamerName })}
-          </a>
+          </ExternalLink>
         </div>
       ) : null}
     </Page>

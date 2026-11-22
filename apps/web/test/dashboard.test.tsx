@@ -179,7 +179,7 @@ describe("dashboard", () => {
       const link = await view.findByRole("link", { name: "Support" })
       expect(link.getAttribute("href")).toBe(donateUrl)
       expect(link.getAttribute("target")).toBe("_blank")
-      expect(link.getAttribute("rel")).toBe("noopener")
+      expect(link.getAttribute("rel")).toBe("noopener nofollow")
       expect(link.closest(".support-note")?.textContent).toContain(supportText)
       expect(link.closest(".support-note")?.nextElementSibling).toBe(
         view.getByRole("region", { name: "Finished" }),

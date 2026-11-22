@@ -22,6 +22,7 @@ import {
   ServerIcon,
   UsersIcon,
 } from "../components/icons.tsx"
+import { ExternalLink } from "../components/external-link.tsx"
 import { Stat } from "../components/live-parts.tsx"
 import { Failed, Loading, SignIn, Status } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
@@ -206,9 +207,9 @@ function PlanCard({
       <h2 id="plan">{t("admin.plan.title")}</h2>
       <p className="muted">
         {t("admin.plan.hint")}{" "}
-        <a href={cloudflarePlansUrl} target="_blank" rel="noreferrer">
+        <ExternalLink kind="reference" href={cloudflarePlansUrl}>
           {t("admin.plan.link")}
-        </a>
+        </ExternalLink>
       </p>
       <SegmentRow
         name="cloudflare-plan"

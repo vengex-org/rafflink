@@ -5,6 +5,7 @@
 import type { ReactElement } from "react"
 import { Link, useSearchParams } from "react-router"
 import { DonateLink } from "../components/donate-link.tsx"
+import { ExternalLink } from "../components/external-link.tsx"
 import { AlertIcon, TwitchIcon } from "../components/icons.tsx"
 import { StateCard } from "../components/state-card.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
@@ -54,8 +55,12 @@ export function HomePage() {
             Rafflink
           </span>
           <nav aria-label={t("home.footer.label")}>
-            <a href={repositoryUrl}>{t("nav.github")}</a>
-            <a href={setupGuideUrl}>{t("home.footer.guide")}</a>
+            <ExternalLink kind="own" href={repositoryUrl}>
+              {t("nav.github")}
+            </ExternalLink>
+            <ExternalLink kind="own" href={setupGuideUrl}>
+              {t("home.footer.guide")}
+            </ExternalLink>
             <Link to="/verify">{t("nav.verify")}</Link>
             <Link to="/privacy">{t("legal.privacy")}</Link>
             <Link to="/terms">{t("legal.terms")}</Link>
@@ -75,8 +80,12 @@ export function SiteNav() {
   const { t } = useI18n()
   return (
     <nav aria-label={t("nav.main")} className="app-nav">
-      <a href={setupGuideUrl}>{t("nav.selfHost")}</a>
-      <a href={repositoryUrl}>{t("nav.github")}</a>
+      <ExternalLink kind="own" href={setupGuideUrl}>
+        {t("nav.selfHost")}
+      </ExternalLink>
+      <ExternalLink kind="own" href={repositoryUrl}>
+        {t("nav.github")}
+      </ExternalLink>
     </nav>
   )
 }

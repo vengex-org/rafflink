@@ -7,6 +7,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "nav.selfHost": "Vlastní hosting",
   "nav.verify": "Ověřit losování",
   "nav.github": "GitHub",
+  "link.newTab": "Otevře se na nové kartě",
   "nav.login": "Přihlásit se",
   "nav.logout": "Odhlásit se",
   "nav.support": "Podpořit Rafflink",
