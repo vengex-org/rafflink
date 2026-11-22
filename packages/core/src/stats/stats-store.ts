@@ -1,5 +1,11 @@
 import type { ResolvedConfig } from "../config.ts"
-import type { AsyncSql, Instant, SqlRow, SqlStatement } from "../ports.ts"
+import {
+  maxBoundParameters,
+  type AsyncSql,
+  type Instant,
+  type SqlRow,
+  type SqlStatement,
+} from "../ports.ts"
 import { RowReader } from "../room/rows.ts"
 import {
   countReferralSql,
@@ -13,7 +19,7 @@ import {
   streamersPerDaySql,
   topReferralsSql,
 } from "./queries.ts"
-import { dayMs } from "./time.ts"
+import { dayMs, hourMs } from "./time.ts"
 
 /** The entries and claims of every room in one minute; `minute` is the start of the minute. */
 export interface MinuteCounts {
@@ -44,11 +50,14 @@ export interface ReferralCount {
 
 export type StatsStoreConfig = Pick<
   ResolvedConfig,
-  "metricsRetentionHours" | "referralSourcesPerDayMax" | "adminStatsDays"
+  | "metricsRetentionHours"
+  | "referralSourcesPerDayMax"
+  | "referralVisitsPerDayMax"
+  | "adminStatsDays"
 >
 
-// Three bound parameters per row, so a statement stays under the 100 parameters D1 allows.
-const minuteRowsPerInsert = 30
+const minuteColumns = 3
+const minuteRowsPerInsert = Math.floor(maxBoundParameters / minuteColumns)
 
 /**
  * Aggregate counters for the admin page over the account database. Nothing it stores or returns names or
@@ -73,7 +82,7 @@ export class StatsStore {
     }
     statements.push({
       sql: pruneMinutesSql,
-      params: [now - this.config.metricsRetentionHours * 3_600_000],
+      params: [now - this.config.metricsRetentionHours * hourMs],
     })
     await this.sql.batch(statements)
   }
@@ -91,16 +100,24 @@ export class StatsStore {
     })
   }
 
-  /** Counts one visit of a source today, and deletes the days past `ADMIN_STATS_DAYS`. A source beyond the day's limit is not counted. */
-  async countReferral(ref: string, now: Instant): Promise<void> {
+  /**
+   * Counts one visit of a source today and deletes the days past `ADMIN_STATS_DAYS`. `skipped`: the day
+   * already holds the most sources or the most visits it may, and nothing was written for the count.
+   */
+  async countReferral(ref: string, now: Instant): Promise<"counted" | "skipped"> {
     const day = Math.floor(now / dayMs)
-    await this.sql.batch([
-      {
-        sql: countReferralSql,
-        params: [day, ref, day, ref, day, this.config.referralSourcesPerDayMax],
-      },
-      { sql: pruneReferralsSql, params: [day - this.config.adminStatsDays] },
+    const written = await this.sql.all(countReferralSql, [
+      day,
+      ref,
+      day,
+      ref,
+      day,
+      this.config.referralSourcesPerDayMax,
+      day,
+      this.config.referralVisitsPerDayMax,
     ])
+    await this.sql.run(pruneReferralsSql, [day - this.config.adminStatsDays])
+    return written.length === 1 ? "counted" : "skipped"
   }
 
   /** The busiest sources from `since` on, as visits summed over the days. */

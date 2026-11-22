@@ -6,14 +6,17 @@ export const minutesSinceSql =
   "SELECT minute, entries, claims FROM metrics_minute WHERE minute >= ? ORDER BY minute"
 
 /**
- * Counts one visit of a source on a day (parameters: day, source, day, source, day, most sources per day).
- * A source that has no row yet is ignored once the day holds the most it may.
+ * Counts one visit of a source on a day (parameters: day, source, day, source, day, most sources per day,
+ * day, most visits per day) and returns the source when it wrote. A source that has no row yet is ignored
+ * once the day holds the most sources it may, and nothing is written once the day's visits reached the most.
  */
 export const countReferralSql = `INSERT INTO referrals (day, ref, count)
   SELECT ?, ?, 1
-  WHERE EXISTS (SELECT 1 FROM referrals WHERE day = ? AND ref = ?)
-    OR (SELECT COUNT(*) FROM referrals WHERE day = ?) < ?
-  ON CONFLICT (day, ref) DO UPDATE SET count = count + 1`
+  WHERE (EXISTS (SELECT 1 FROM referrals WHERE day = ? AND ref = ?)
+      OR (SELECT COUNT(*) FROM referrals WHERE day = ?) < ?)
+    AND (SELECT COALESCE(SUM(count), 0) FROM referrals WHERE day = ?) < ?
+  ON CONFLICT (day, ref) DO UPDATE SET count = count + 1
+  RETURNING ref`
 
 /** Parameters: the first day to keep (days since 1970-01-01). */
 export const pruneReferralsSql = "DELETE FROM referrals WHERE day < ?"

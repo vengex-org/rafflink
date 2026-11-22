@@ -9,7 +9,7 @@ import { pickWinner, sortEntries, type DrawEntry, type Identity, type Winner } f
 import { drandChain, roundAtOrAfter, roundTime } from "../lib/drand.ts"
 import { leafHash, merkleRoot, type LeafPreimage } from "../lib/merkle.ts"
 import type { MinuteCounts } from "../stats/stats-store.ts"
-import { minuteMs, startOfMinute } from "../stats/time.ts"
+import { hourMs, minuteMs, startOfMinute } from "../stats/time.ts"
 import type {
   Alarm,
   Clock,
@@ -21,6 +21,7 @@ import type {
   SqlValue,
   SyncSql,
 } from "../ports.ts"
+import { maxBoundParameters } from "../ports.ts"
 import {
   ChatWatcher,
   type ChatLink,
@@ -1345,7 +1346,7 @@ export class GiveawayRoom {
   private takeFinishedMinutes(now: Instant): readonly MinuteCounts[] {
     const upTo = startOfMinute(now)
     const reported = this.metricsReportedUntil()
-    const from = Math.max(reported, upTo - this.config.metricsRetentionHours * 3_600_000)
+    const from = Math.max(reported, upTo - this.config.metricsRetentionHours * hourMs)
     if (from >= upTo) return []
     const byMinute = new Map<Instant, MinuteCounts>()
     for (const row of this.sql.exec(entriesPerMinuteSql, [from, upTo])) {
@@ -1427,8 +1428,6 @@ const hashBytes = 32
 const ticketBytes = 8
 const leafRecordBytes = hashBytes + ticketBytes
 
-// The smallest bound-parameter limit among the targets (D1).
-const maxBoundParameters = 100
 const roleColumns = ["platform", "platform_user_id", "role", "fetched_at"] as const
 const rolesPerInsert = Math.floor(maxBoundParameters / roleColumns.length)
 

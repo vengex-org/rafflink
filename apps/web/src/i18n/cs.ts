@@ -687,7 +687,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.purposes.i2":
     "K bezpečnosti a férovosti služby: jedna účast na účet, omezení rychlosti, hodinová kontrola tokenů streamerů. Náš oprávněný zájem (čl. 6 odst. 1 písm. f) GDPR).",
   "privacy.purposes.i3":
-    "K udržení přihlášení pomocí cookies, které jsou k tomu nezbytné. Rafflink nepoužívá reklamu, analytické nástroje ani sledování a údaje neprodává ani nepředává pro marketing. Uchovává jen souhrnné počty, které neobsahují osobní údaje, například návštěvy podle značky zdroje za den a soutěže za minutu.",
+    "K udržení přihlášení pomocí cookies, které jsou k tomu nezbytné. Rafflink nepoužívá reklamu, analytické nástroje ani sledování a údaje neprodává ani nepředává pro marketing. Uchovává jen souhrnné počty, které neobsahují osobní údaje, například návštěvy podle značky zdroje za den a přihlášky a převzetí za minutu.",
   "privacy.retention.h": "Jak dlouho se údaje uchovávají",
   "privacy.retention.i1":
     "Zapojení (jména, URL obrázků, skupiny, tikety, časy zapojení) se mažou nejpozději 30 dní po uzavření giveawaye; provozovatel může nastavit kratší dobu.",

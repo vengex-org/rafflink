@@ -680,7 +680,7 @@ export const en = {
   "privacy.purposes.i2":
     "To keep the service secure and fair: one entry per account, rate limits, hourly validation of streamer tokens. Our legitimate interest (Article 6(1)(f)).",
   "privacy.purposes.i3":
-    "To keep you signed in with cookies that are strictly necessary for that. Rafflink uses no advertising, no analytics tools and no tracking, and it does not sell or share data for marketing. It keeps only aggregate counts that contain no personal data, such as visits per referral label per day and giveaways per minute.",
+    "To keep you signed in with cookies that are strictly necessary for that. Rafflink uses no advertising, no analytics tools and no tracking, and it does not sell or share data for marketing. It keeps only aggregate counts that contain no personal data, such as visits per referral label per day and entries and claims per minute.",
   "privacy.retention.h": "How long data is kept",
   "privacy.retention.i1":
     "Entries (names, picture URLs, groups, tickets, entry times) are deleted at most 30 days after the giveaway closes; the operator may set a shorter time.",

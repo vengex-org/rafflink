@@ -54,6 +54,18 @@ describe("resolveConfig", () => {
     expect(config.port).toBe(3000)
   })
 
+  it("keeps the live rooms of the admin statistics within the Free plan's subrequests", () => {
+    expect(resolveConfig(required).adminStatsLiveRoomsMax).toBe(20)
+    expect(
+      resolveConfig({ ...required, ADMIN_STATS_LIVE_ROOMS_MAX: "30" }).adminStatsLiveRoomsMax,
+    ).toBe(30)
+    expect(failure({ ...required, ADMIN_STATS_LIVE_ROOMS_MAX: "31" })).toMatchObject({
+      env: "ADMIN_STATS_LIVE_ROOMS_MAX",
+      reason: "out-of-range",
+    })
+    expect(resolveConfig(required).referralVisitsPerDayMax).toBe(2000)
+  })
+
   it("takes an override over the default", () => {
     const config = resolveConfig({
       ...required,

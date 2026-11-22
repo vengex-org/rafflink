@@ -6,7 +6,7 @@ import type { Alarm, Clock, Instant, Random, Remote, SqlRow, SyncSql } from "../
 import type { RoomStub } from "../room/room-directory.ts"
 import { queuedEntryTwitchSubrequests } from "../twitch/queued-entry-requests.ts"
 import { RowReader } from "../room/rows.ts"
-import { startOfMinute } from "../stats/time.ts"
+import { hourMs, startOfMinute } from "../stats/time.ts"
 import {
   parseFinalOutcome,
   type DeferCause,
@@ -256,7 +256,7 @@ export class TokenQueue {
         giveawayId: new RowReader("token_queue", row).text("giveaway_id"),
       })
     }
-    this.sql.exec(pruneRateLimitedMinutesSql, [now - this.config.metricsRetentionHours * 3_600_000])
+    this.sql.exec(pruneRateLimitedMinutesSql, [now - this.config.metricsRetentionHours * hourMs])
     const purged = this.sql.exec(purgeDoneSql, [cutoff])
     const abandoned = purged.filter((row) => new RowReader("token_queue", row).int("polled") === 0)
     if (expired.length === 0 && abandoned.length === 0) return

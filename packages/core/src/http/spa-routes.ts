@@ -77,9 +77,17 @@ async function countReferral(deps: SpaDeps, request: Request): Promise<void> {
   if (ref === null) return
   try {
     const address = deps.clientAddress(request)
-    if (address === null || !(await deps.entryIpLimiter.allow(`ref:${address}`))) return
-    await deps.stats.countReferral(ref, deps.clock.now())
+    if (address === null) return skippedReferral("no-address")
+    if (!(await deps.entryIpLimiter.allow(`ref:${address}`))) return skippedReferral("rate-limited")
+    if ((await deps.stats.countReferral(ref, deps.clock.now())) === "skipped") {
+      skippedReferral("day-limit")
+    }
   } catch (error) {
     console.warn("referral count failed", { errorClass: errorClass(error) })
   }
+}
+
+// Expected under load or a flood, so info; the reason only, never the address.
+function skippedReferral(reason: "no-address" | "rate-limited" | "day-limit"): void {
+  console.info("referral visit not counted", { reason })
 }

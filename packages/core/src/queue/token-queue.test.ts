@@ -922,3 +922,35 @@ describe("TokenQueue 429 counters", () => {
     expect(queue.stats().rateLimited).toBe(2)
   })
 })
+
+describe("TokenQueue populated before the 429 counters", () => {
+  it("keeps its waiting codes and counters and starts the 429 counters at zero", () => {
+    const db = new Database(":memory:")
+    const sql = new BunSqliteSyncSql(db)
+    applyMigrations(sql, queueMigrations.slice(0, 2))
+    db.run("INSERT INTO queue_stats (id, rate_per_second, dropped) VALUES (1, 7, 3)")
+    db.run(
+      "INSERT INTO token_queue (ticket, code, giveaway_id, nonce, received_at, state) VALUES ('t1', 'c', 'g1', 'n', 1, 'queued')",
+    )
+    applyMigrations(sql, queueMigrations)
+    const queue = new TokenQueue({
+      sql,
+      alarm: new TestAlarm(),
+      clock: new TestClock(1_000_000),
+      random: secureRandom,
+      config,
+      process: async () => entered,
+      rooms: { get: () => ({ entriesPerSecondBefore: async () => 0 }) },
+      entriesPerInvocation: config.queueMaxRatePerSecond,
+    })
+
+    expect(queue.stats()).toMatchObject({
+      queued: 1,
+      ratePerSecond: 7,
+      dropped: 3,
+      rateLimited: 0,
+      lastRateLimitedAt: 0,
+      rateLimitedMinutes: [],
+    })
+  })
+})

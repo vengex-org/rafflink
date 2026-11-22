@@ -15,6 +15,7 @@ const config = resolveConfig({
   PUBLIC_URL: "https://rafflink.app",
   METRICS_RETENTION_HOURS: "24",
   REFERRAL_SOURCES_PER_DAY_MAX: "2",
+  REFERRAL_VISITS_PER_DAY_MAX: "5",
   ADMIN_STATS_DAYS: "14",
 })
 
@@ -134,6 +135,30 @@ describe("StatsStore referrals", () => {
       { ref: "a", visits: 2 },
       { ref: "b", visits: 1 },
     ])
+  })
+
+  it("reports whether a visit was counted", async () => {
+    const { store } = setup()
+    const now = 20 * dayMs
+
+    expect(await store.countReferral("a", now)).toBe("counted")
+    expect(await store.countReferral("b", now)).toBe("counted")
+    expect(await store.countReferral("c", now)).toBe("skipped")
+  })
+
+  it("writes nothing once the day's visits reached the most, for known and new labels, and counts again the next day", async () => {
+    const { db, store } = setup()
+    const now = 20 * dayMs
+    for (let visit = 0; visit < 3; visit++) await store.countReferral("a", now)
+    await store.countReferral("b", now)
+    await store.countReferral("b", now)
+
+    expect(await store.countReferral("a", now)).toBe("skipped")
+    expect(await store.countReferral("b", now)).toBe("skipped")
+    expect(await store.countReferral("c", now)).toBe("skipped")
+
+    expect(db.query("SELECT SUM(count) AS total FROM referrals").get()).toEqual({ total: 5 })
+    expect(await store.countReferral("a", now + dayMs)).toBe("counted")
   })
 
   it("counts a new label on the next day even when the previous day was full", async () => {

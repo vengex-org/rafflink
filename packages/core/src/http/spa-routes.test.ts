@@ -105,11 +105,32 @@ describe("referral counting on the home page", () => {
     ])
   })
 
-  it("counts nothing for a visit without a client address", async () => {
+  it("counts nothing for a visit without a client address and logs the reason", async () => {
+    const info = spyOn(console, "info").mockImplementation(() => {})
+
     const response = await app.request("/?ref=reddit")
 
     expect(response.status).toBe(200)
     expect(await sources()).toEqual([])
+    expect(info).toHaveBeenCalledWith("referral visit not counted", { reason: "no-address" })
+    info.mockRestore()
+  })
+
+  it("stops counting once the day's visits reached the most, serves the page and logs the reason", async () => {
+    const info = spyOn(console, "info").mockImplementation(() => {})
+    await harness.stop()
+    harness = await createHarness({ env: { REFERRAL_VISITS_PER_DAY_MAX: "2" } })
+    app = createApp(harness.deps, async () => spaTemplate)
+
+    const statuses = []
+    for (const address of ["198.51.100.1", "198.51.100.2", "198.51.100.3"]) {
+      statuses.push((await visit(app, "/?ref=reddit", address)).status)
+    }
+
+    expect(statuses).toEqual([200, 200, 200])
+    expect(await sources()).toEqual([{ ref: "reddit", visits: 2 }])
+    expect(info).toHaveBeenCalledWith("referral visit not counted", { reason: "day-limit" })
+    info.mockRestore()
   })
 
   it("stops counting an address over the entry limit, still serves the page, and keeps other addresses and entry sign-ins unaffected", async () => {
@@ -117,6 +138,7 @@ describe("referral counting on the home page", () => {
     harness = await createHarness({ env: { ENTRY_IP_LIMIT_PER_MINUTE: "2" } })
     app = createApp(harness.deps, async () => spaTemplate)
 
+    const info = spyOn(console, "info").mockImplementation(() => {})
     const statuses = []
     for (let visits = 0; visits < 4; visits++) {
       statuses.push((await visit(app, "/?ref=reddit")).status)
@@ -126,6 +148,9 @@ describe("referral counting on the home page", () => {
     expect(statuses).toEqual([200, 200, 200, 200])
     expect(await sources()).toEqual([{ ref: "reddit", visits: 3 }])
     expect(await harness.deps.entryIpLimiter.allow("203.0.113.5")).toBe(true)
+    expect(info).toHaveBeenCalledWith("referral visit not counted", { reason: "rate-limited" })
+    expect(JSON.stringify(info.mock.calls)).not.toContain("203.0.113")
+    info.mockRestore()
   })
 
   it("counts nothing for a missing, empty or malformed ref", async () => {

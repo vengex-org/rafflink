@@ -2651,3 +2651,69 @@ describe("GiveawayRoom reroll timing", () => {
     expect(picks(sql).map((row) => row.rerolled)).toEqual([1, 0])
   })
 })
+
+describe("GiveawayRoom populated before the minute counters", () => {
+  const hour = 3_600_000
+
+  // The room as 0001 to 0006 left it: an open giveaway with an entry long ago and one a minute and a half ago.
+  function oldRoom(clockAt: number, env: Record<string, string> = {}) {
+    const sql = new BunSqliteSyncSql(new Database(":memory:"))
+    applyMigrations(sql, roomMigrations.slice(0, 6))
+    sql.exec(
+      `INSERT INTO room_state (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, roles_refresh_at)
+       VALUES (1, 'twitch', 'g1', 'b', 't', 'ABCDE', ?, 300, 'open', ?)`,
+      [JSON.stringify(rules), clockAt + hour],
+    )
+    for (const [seq, at] of [
+      [1, 500],
+      [2, clockAt - 90_000],
+    ] as const) {
+      sql.exec(
+        "INSERT INTO entries (seq, platform, platform_user_id, login, display_name, group_name, tickets, entered_at) VALUES (?, 'twitch', ?, 'l', 'n', 'viewer', 1, ?)",
+        [seq, `u${seq}`, at],
+      )
+    }
+    applyMigrations(sql, roomMigrations)
+    const clock = new TestClock(clockAt)
+    const alarm = new TestAlarm()
+    const room = new GiveawayRoom({
+      sql,
+      alarm,
+      live: new TestHub(),
+      clock,
+      random,
+      config: resolveConfig({ ...baseEnv, ...env }),
+      chat: idleChat,
+      beacon: new FakeBeacon(),
+    })
+    return { sql, room, clock, alarm }
+  }
+
+  it("keeps its rows and starts with nothing reported", () => {
+    const { sql, room } = oldRoom(30 * hour)
+
+    expect(count(sql, "entries")).toBe(2)
+    expect(sql.exec("SELECT metrics_reported_until AS m FROM room_state", [])[0]?.m).toBe(0)
+    expect(room.summary().status).toBe("open")
+  })
+
+  it("reports on its first alarm only the minutes within the retention, not its whole history", () => {
+    const clockAt = 30 * hour
+    const { room } = oldRoom(clockAt, { METRICS_RETENTION_HOURS: "24" })
+
+    const { metrics } = room.onAlarm()
+
+    expect(metrics).toEqual([
+      { minute: Math.floor((clockAt - 90_000) / 60_000) * 60_000, entries: 1, claims: 0 },
+    ])
+  })
+
+  it("reports nothing and does not wake itself again for history older than the retention", () => {
+    const { room, alarm, sql } = oldRoom(30 * hour, { METRICS_RETENTION_HOURS: "1" })
+    sql.exec("DELETE FROM entries WHERE seq = 2", [])
+
+    expect(room.onAlarm().metrics).toEqual([])
+    expect(alarm.at).not.toBeNull()
+    expect(alarm.at ?? 0).toBeGreaterThan(30 * hour)
+  })
+})

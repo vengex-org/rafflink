@@ -612,9 +612,9 @@ export const configSchema = {
   ),
   adminStatsLiveRoomsMax: withDefault(
     "ADMIN_STATS_LIVE_ROOMS_MAX",
-    int(0),
+    int(0, 30),
     "20",
-    "Most open giveaways one admin statistics request asks for live counts, newest first; each costs one Durable Object request on Cloudflare and the Free plan caps subrequests per call; the rest show as a number; starting guess",
+    "Most open giveaways one admin statistics request asks for live counts, newest first; each costs one Durable Object subrequest on Cloudflare; a request makes 13 other subrequests (session, 2 open giveaways, queue, plan, usage, minutes, 3 daily counts, referrals, 2 access lists), so the Free plan's 50 holds up to 30 and 20 leaves headroom; the rest show as a number",
   ),
   adminStatsSeriesMinutes: withDefault(
     "ADMIN_STATS_SERIES_MINUTES",
@@ -645,6 +645,12 @@ export const configSchema = {
     int(1),
     "24",
     "How long the per-minute entry, claim and 429 counters are kept before the writer deletes them; the owner's choice of 24 hours, the chart reads only the last ADMIN_STATS_SERIES_MINUTES",
+  ),
+  referralVisitsPerDayMax: withDefault(
+    "REFERRAL_VISITS_PER_DAY_MAX",
+    int(1),
+    "2000",
+    "Most ?ref= visits counted per UTC day in all; each costs a D1 write and the Free plan allows 100,000 row writes a day, so this bounds what a flood of visits can use; starting guess, far above the visits of a small site",
   ),
   referralSourcesPerDayMax: withDefault(
     "REFERRAL_SOURCES_PER_DAY_MAX",
@@ -789,6 +795,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     adminStatsReturnDays: read(env, configSchema.adminStatsReturnDays),
     adminStatsRefsMax: read(env, configSchema.adminStatsRefsMax),
     metricsRetentionHours: read(env, configSchema.metricsRetentionHours),
+    referralVisitsPerDayMax: read(env, configSchema.referralVisitsPerDayMax),
     referralSourcesPerDayMax: read(env, configSchema.referralSourcesPerDayMax),
     donateUrl: read(env, configSchema.donateUrl),
     operatorName: read(env, configSchema.operatorName),

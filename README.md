@@ -364,7 +364,7 @@ room adds to the account database once a minute while it is active (`metrics_min
 figures are counted from the giveaway and streamer tables. A home page visit with `?ref=<label>` (lower-case
 letters, digits and hyphens, up to 32 characters; anything else is ignored) adds one to that label's count for
 the day, and the page lists the busiest labels. The count has no cookie, address or other visitor data, and a
-new label beyond `REFERRAL_SOURCES_PER_DAY_MAX` (100) a day is ignored. Cloudflare's own request analytics
+new label beyond `REFERRAL_SOURCES_PER_DAY_MAX` (100) a day, and every visit beyond `REFERRAL_VISITS_PER_DAY_MAX` (2000) a day, is ignored (each count is a D1 write). Cloudflare's own request analytics
 (the usage meter above) are the only other source; no analytics service or script is added.
 Scripts, styles, icons and the app pages are static assets that Cloudflare serves without the Worker. Only
 `/api/*`, `/auth/*` and the pages search engines index (`/`, `/privacy` and `/terms`) count as Worker requests;

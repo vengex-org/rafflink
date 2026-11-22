@@ -435,6 +435,13 @@ async function initRoom(deps: AppDeps, giveaway: Giveaway): Promise<boolean> {
   }
 }
 
+async function usageOfPlan(
+  deps: AppDeps,
+  plan: AdminPlanJson | null | "unavailable",
+): Promise<Usage | null | "unavailable"> {
+  return plan === "unavailable" ? plan : adminUsage(deps, plan === null ? null : plan.limits)
+}
+
 async function adminStats(deps: AppDeps): Promise<AdminStatsJson> {
   const { config } = deps
   const now = deps.clock.now()
@@ -491,13 +498,6 @@ async function accessCounts(deps: AppDeps): Promise<AdminAccessCountsJson> {
     approved: allowed.streamers.length,
     truncated: waiting.truncated || allowed.truncated,
   }
-}
-
-async function usageOfPlan(
-  deps: AppDeps,
-  plan: AdminPlanJson | null | "unavailable",
-): Promise<Usage | null | "unavailable"> {
-  return plan === "unavailable" ? plan : adminUsage(deps, plan === null ? null : plan.limits)
 }
 
 type UsageWarning = { readonly kind: "worker-requests-low"; readonly remaining: number }
