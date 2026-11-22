@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent } from "@testing-library/react"
+import { cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
@@ -90,9 +90,14 @@ describe("sign-in error card", () => {
     mockFetch(giveawayRoutes)
 
     const view = renderApp("/ABCDE?error=access_denied&error_description=x&state=s&entry=closed")
+    // The page removes the sign-in outcome from the address when it opens; dismissing starts from that address.
+    await waitFor(() => expect(view.address()).not.toContain("entry="))
     fireEvent.click(await view.findByRole("button", { name: "Dismiss" }))
 
-    expect(view.queryByRole("heading", { name: "Sign-in with Twitch failed" })).toBeNull()
+    await waitFor(() =>
+      expect(view.queryByRole("heading", { name: "Sign-in with Twitch failed" })).toBeNull(),
+    )
+    expect(view.address()).toBe("/ABCDE")
     expect(await view.findByRole("heading", { name: "A gaming chair" })).toBeTruthy()
   })
 

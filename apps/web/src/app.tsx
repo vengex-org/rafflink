@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent } from "react"
+import { useEffect, useEffectEvent, type ReactNode } from "react"
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router"
 import { Layout } from "./components/layout.tsx"
 import { NotFound } from "./components/notice.tsx"
@@ -22,29 +22,30 @@ export function AppRoutes() {
   return (
     <I18nProvider>
       <LinkedLanguage />
-      <CanonicalPath />
-      <Routes>
-        <Route path="overlay/:id/:token" caseSensitive element={<OverlayPage />} />
-        <Route path="live/:id" caseSensitive element={<LivePage />} />
-        <Route element={<Layout account />}>
-          <Route path="dashboard" caseSensitive element={<DashboardPage />} />
-          <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
-          <Route path="dashboard/created/:id" caseSensitive element={<CreatedGiveawayPage />} />
-          <Route path="admin" caseSensitive element={<AdminPage />} />
-          <Route path="privacy" caseSensitive element={<PrivacyPage />} />
-          <Route path="terms" caseSensitive element={<TermsPage />} />
-          <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
-          <Route index element={<HomePage />} />
-          <Route path="*" element={<NotFound title="notFound.page" />} />
-        </Route>
-        {siteRoutes}
-        <Route element={<Layout account={false} />}>
-          <Route path="g/:code" element={<MovedGiveaway page="giveaway" />} />
-          <Route path="g/:code/verify" element={<MovedGiveaway page="verify" />} />
-          <Route path=":code" element={<GiveawayPage />} />
-          <Route path=":code/verify" element={<VerifyPage />} />
-        </Route>
-      </Routes>
+      <CanonicalPath>
+        <Routes>
+          <Route path="overlay/:id/:token" caseSensitive element={<OverlayPage />} />
+          <Route path="live/:id" caseSensitive element={<LivePage />} />
+          <Route element={<Layout account />}>
+            <Route path="dashboard" caseSensitive element={<DashboardPage />} />
+            <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
+            <Route path="dashboard/created/:id" caseSensitive element={<CreatedGiveawayPage />} />
+            <Route path="admin" caseSensitive element={<AdminPage />} />
+            <Route path="privacy" caseSensitive element={<PrivacyPage />} />
+            <Route path="terms" caseSensitive element={<TermsPage />} />
+            <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
+            <Route index element={<HomePage />} />
+            <Route path="*" element={<NotFound title="notFound.page" />} />
+          </Route>
+          {siteRoutes}
+          <Route element={<Layout account={false} />}>
+            <Route path="g/:code" element={<MovedGiveaway page="giveaway" />} />
+            <Route path="g/:code/verify" element={<MovedGiveaway page="verify" />} />
+            <Route path=":code" element={<GiveawayPage />} />
+            <Route path=":code/verify" element={<VerifyPage />} />
+          </Route>
+        </Routes>
+      </CanonicalPath>
     </I18nProvider>
   )
 }
@@ -68,7 +69,7 @@ const staticSegments = ["dashboard", "admin", "privacy", "terms", "verify", "liv
  * the one spelling: no trailing slash, and a static page in lowercase. A first segment that is a giveaway code
  * stays, so `/TERMS` is a giveaway; the code redirect of {@link GiveawayCode} handles the other cases.
  */
-function CanonicalPath() {
+function CanonicalPath({ children }: { readonly children: ReactNode }) {
   const { pathname, search, hash } = useLocation()
   const segments = pathname.replace(/\/+$/, "").split("/")
   const first = segments[1]
@@ -80,7 +81,10 @@ function CanonicalPath() {
     segments[1] = first.toLowerCase()
   }
   const canonical = segments.join("/")
-  return canonical === "" || canonical === pathname ? null : (
+  // Nothing else renders while it redirects, so a route cannot redirect the same address elsewhere.
+  return canonical === "" || canonical === pathname ? (
+    children
+  ) : (
     <Navigate replace to={{ pathname: canonical, search, hash }} />
   )
 }

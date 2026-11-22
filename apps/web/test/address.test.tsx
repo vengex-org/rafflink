@@ -50,7 +50,7 @@ describe("giveaway code in the address", () => {
     await waitFor(() => expect(view.address()).toBe("/ABCDE/verify?run=1"))
   })
 
-  it.each(["/ABCD", "/ABCDEF", "/OOOOO", "/Privacy", "/ABCDE0/verify"])(
+  it.each(["/ABCD", "/ABCDEF", "/OOOOO", "/ABCDE0/verify"])(
     "answers %s with the page 404 and no request for a giveaway",
     async (path) => {
       const requests = mockFetch({})
