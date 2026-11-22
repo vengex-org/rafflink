@@ -1408,7 +1408,7 @@ describe("live page: support link", () => {
     const link = settings.getByRole("link", { name: "Support" })
     expect(link.getAttribute("href")).toBe(donateUrl)
     expect(link.getAttribute("target")).toBe("_blank")
-    expect(link.getAttribute("rel")).toBe("noopener")
+    expect(link.getAttribute("rel")).toBe("noopener nofollow")
   })
 
   it("hides the support link with the controls", async () => {

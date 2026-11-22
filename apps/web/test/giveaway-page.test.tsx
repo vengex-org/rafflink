@@ -791,6 +791,9 @@ describe("viewer page frame", () => {
     expect(view.getByRole("link", { name: "Watch Streamy on Twitch" }).getAttribute("href")).toBe(
       "https://www.twitch.tv/streamy",
     )
+    const channel = view.getByRole("link", { name: "Watch Streamy on Twitch" })
+    expect(channel.getAttribute("target")).toBe("_blank")
+    expect(channel.getAttribute("rel")).toBe("noopener noreferrer")
     expect(view.queryByRole("list", { name: "Steps" })).toBeNull()
   })
 

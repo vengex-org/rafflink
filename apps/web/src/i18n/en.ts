@@ -6,6 +6,7 @@ export const en = {
   "nav.selfHost": "Self-host",
   "nav.verify": "Verify a draw",
   "nav.github": "GitHub",
+  "link.newTab": "Opens in a new tab",
   "nav.login": "Log in",
   "nav.logout": "Log out",
   "nav.support": "Support Rafflink",

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { ExternalLink } from "./external-link.tsx"
 import { HeartIcon } from "./icons.tsx"
 
 /** The quiet link to the deployment's support page (`DONATE_URL`), opening in a new tab. */
@@ -12,9 +13,9 @@ export function DonateLink({
   readonly children: ReactNode
 }) {
   return (
-    <a className="donate-link" href={url} target="_blank" rel="noopener" onClick={onClick}>
+    <ExternalLink kind="donate" className="donate-link" href={url} onClick={onClick}>
       <HeartIcon />
       {children}
-    </a>
+    </ExternalLink>
   )
 }

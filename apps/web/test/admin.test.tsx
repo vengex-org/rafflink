@@ -130,6 +130,9 @@ describe("admin page", () => {
     expect(view.getByRole("link", { name: "Cloudflare plans" }).getAttribute("href")).toBe(
       "https://www.cloudflare.com/plans/developer-platform/",
     )
+    const plans = view.getByRole("link", { name: "Cloudflare plans" })
+    expect(plans.getAttribute("target")).toBe("_blank")
+    expect(plans.getAttribute("rel")).toBe("noopener noreferrer")
     expect(view.getByRole("radio", { name: "Free" })).toHaveProperty("checked", true)
     expect(view.getByText("Subrequests per entry line call").nextSibling?.textContent).toBe("45")
 

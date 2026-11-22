@@ -11,6 +11,7 @@ import {
   ClockIcon,
   ShuffleIcon,
 } from "../components/icons.tsx"
+import { ExternalLink } from "../components/external-link.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
@@ -103,7 +104,9 @@ function Facts({
         {commitment.chainHash}
       </Fact>
       <Fact label={t("verify.facts.round")}>
-        <a href={roundUrl}>{commitment.round}</a>
+        <ExternalLink kind="reference" href={roundUrl}>
+          {commitment.round}
+        </ExternalLink>
       </Fact>
       <Fact label={t("verify.facts.leaves")}>
         <a href={`/api/g/${encodeURIComponent(code)}/leaves`}>{t("verify.facts.leavesLink")}</a>

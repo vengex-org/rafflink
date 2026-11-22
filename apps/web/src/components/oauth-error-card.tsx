@@ -3,6 +3,7 @@ import { codeAlphabet, codeLength } from "@rafflink/core/lib/codes"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { setupGuideUrl } from "../lib/links.ts"
+import { ExternalLink } from "./external-link.tsx"
 import { AlertIcon, LogInIcon } from "./icons.tsx"
 import { Page } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
@@ -39,9 +40,9 @@ export function OAuthErrorCard() {
         <p role="alert">{t(messageOf(error))}</p>
         {error === "redirect_mismatch" ? (
           <p>
-            <a href={setupGuideUrl} target="_blank" rel="noreferrer">
+            <ExternalLink kind="own" href={setupGuideUrl}>
               {t("oauthError.setupLink")}
-            </a>
+            </ExternalLink>
           </p>
         ) : null}
         {error === "access_denied" || error === "redirect_mismatch" ? null : (

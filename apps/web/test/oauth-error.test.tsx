@@ -22,9 +22,9 @@ describe("sign-in error card", () => {
     expect(await view.findByRole("heading", { name: "Sign-in with Twitch failed" })).toBeTruthy()
     expect(view.getByText("You cancelled the Twitch sign-in.")).toBeTruthy()
     expect(view.queryByText(/Error code/)).toBeNull()
-    expect(view.getByRole("link", { name: "Try again" }).getAttribute("href")).toBe(
-      "/auth/twitch/viewer/start?giveaway=ABCDE",
-    )
+    const retry = view.getByRole("link", { name: "Try again" })
+    expect(retry.getAttribute("href")).toBe("/auth/twitch/viewer/start?giveaway=ABCDE")
+    expect(retry.hasAttribute("target")).toBe(false)
   })
 
   it("is as wide as the viewer card above a giveaway and a text column above any other page", async () => {
@@ -54,6 +54,9 @@ describe("sign-in error card", () => {
     expect(
       view.getByRole("link", { name: "See the Twitch app setup steps" }).getAttribute("href"),
     ).toContain("#twitch-app-registration")
+    const guide = view.getByRole("link", { name: "See the Twitch app setup steps" })
+    expect(guide.getAttribute("target")).toBe("_blank")
+    expect(guide.getAttribute("rel")).toBe("noopener")
     expect(view.queryByText(/does not match/)).toBeNull()
     expect(view.getByRole("link", { name: "Try again" }).getAttribute("href")).toBe(
       "/auth/twitch/streamer/start",
