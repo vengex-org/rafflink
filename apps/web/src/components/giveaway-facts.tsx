@@ -118,6 +118,7 @@ export function GiveawayRules({ giveaway }: { readonly giveaway: GiveawayView })
           <li>{t("rules.claimTime", { time: claimTimeText(i18n, giveaway.claimSeconds) })}</li>
           <li>{t("rules.claimWhere")}</li>
         </ul>
+        <p>{t("rules.organizer", { name: giveaway.streamerName })}</p>
       </div>
     </details>
   )

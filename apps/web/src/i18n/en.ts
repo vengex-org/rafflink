@@ -432,6 +432,7 @@ export const en = {
   "rules.entriesEnd": "Entries end {time}",
   "rules.claimTime": "Winners have {time} to claim",
   "rules.claimWhere": "A winner claims on this page or in the stream chat.",
+  "rules.organizer": "Organized by {name}. Rafflink is not the organizer.",
 
   "dash.title": "My giveaways",
   "dash.new.title": "New giveaway",
@@ -591,6 +592,8 @@ export const en = {
   "wizard.audience.followers.help": "Only people who follow your channel can enter.",
   "wizard.audience.subscribers": "Subscribers only",
   "wizard.audience.subscribers.help": "Only your paying subscribers can enter.",
+  "wizard.audience.subscribers.warning":
+    "A subscription is a paid purchase. In many countries a giveaway that needs a purchase to enter is a regulated lottery. Consider letting followers or all viewers enter too.",
   "wizard.minAge.label": "Minimum account age in days (optional)",
   "wizard.minAge.help":
     "Stops people from making fresh accounts just to enter. Leave it empty to allow any account.",
@@ -743,17 +746,20 @@ export const en = {
   "terms.source.h": "Open source",
   "terms.source.p1":
     "The source code is licensed under the GNU AGPL-3.0 and is available at {repository}. The licence applies to the code. These terms apply to the service on this instance.",
-  "terms.streamers.h": "Streamers",
-  "terms.streamers.p1": "You run your giveaway, not Rafflink. Rafflink only draws.",
-  "terms.streamers.i1": "You are responsible for the prize, for delivering it and for your rules.",
+  "terms.streamers.h": "Streamers and the organizer",
+  "terms.streamers.p1":
+    "You are the organizer of every giveaway you create. Rafflink only provides the tool and the draw. Rafflink is not the organizer.",
+  "terms.streamers.i1":
+    "You alone are responsible for each giveaway complying with the law where you and your viewers are: the prize, the rules, eligibility, age and country limits, taxes, gambling and lottery rules, and delivering the prize.",
   "terms.streamers.i2":
-    "You are responsible for the giveaway being legal in your jurisdiction and in the places your viewers live, including gambling, lottery, promotion and tax rules.",
+    "Paid entry is not allowed. A giveaway must not require payment to enter, so paid raffles and lotteries are not allowed on Rafflink.",
   "terms.streamers.i3":
-    "Entering must stay free for viewers. Extra tickets for subscribers or followers are your choice, and you must check that this is allowed where you run the giveaway.",
+    "Extra tickets for subscribers or followers are your choice. A subscription is a paid purchase, so a giveaway only for subscribers may count as paid entry where you or your viewers live. Check this before you choose it.",
   "terms.streamers.i4":
     "You are responsible for how you use the entrants' data that you see, under the privacy law that applies to you.",
   "terms.viewers.h": "Viewers",
-  "terms.viewers.i1": "Entering is free and needs a Twitch account.",
+  "terms.viewers.i1":
+    "Entering is always free on Rafflink's side and needs a Twitch account. Rafflink never asks viewers to pay.",
   "terms.viewers.i2":
     "The prize comes from the streamer, not from Rafflink. Rafflink is not a party to the giveaway and does not promise a prize or its delivery.",
   "terms.viewers.i3":
