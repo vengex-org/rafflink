@@ -1,4 +1,5 @@
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
+import { parseOverlayTheme, type OverlayTheme } from "@rafflink/core/domain/overlay-theme"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
@@ -12,6 +13,7 @@ import type {
   BadgesJson,
   DashboardGiveaway,
   EntrantsPage,
+  GiveawayOverlayThemesJson,
   LeavesJson,
   MyLeafJson,
   OperatorJson,
@@ -509,6 +511,47 @@ export function markClaimed(id: string, n: number): Promise<ClaimKind | Rejected
   return act(`/api/dash/giveaways/${encodeURIComponent(id)}/claim`, { n }, claimKinds)
 }
 
+/** The theme a giveaway's overlay shows; the overlay token is the credential. */
+export async function getOverlayTheme(id: string, token: string): Promise<OverlayTheme> {
+  const { status, body } = await send(`${overlaySnapshotPath(id, token)}/theme`)
+  if (status !== 200) throw new ApiError(status)
+  return themeOf(record(body, "overlayTheme"), "theme")
+}
+
+const streamerThemePath = "/api/dash/overlay-theme"
+const giveawayThemePath = (id: string) =>
+  `/api/dash/giveaways/${encodeURIComponent(id)}/overlay-theme`
+
+/** The signed-in streamer's overlay theme; the default until one is saved. */
+export async function getStreamerOverlayTheme(): Promise<OverlayTheme> {
+  const { status, body } = await send(streamerThemePath)
+  if (status !== 200) throw new ApiError(status)
+  return themeOf(record(body, "overlayTheme"), "theme")
+}
+
+export function saveStreamerOverlayTheme(theme: OverlayTheme): Promise<"saved" | Rejected> {
+  return act(streamerThemePath, theme, savedKinds)
+}
+
+/** One giveaway's own overlay theme, null while the streamer's applies, and the streamer's. */
+export async function getGiveawayOverlayThemes(id: string): Promise<GiveawayOverlayThemesJson> {
+  const { status, body } = await send(giveawayThemePath(id))
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "overlayThemes")
+  return {
+    own: source.own === null ? null : themeOf(source, "own"),
+    streamer: themeOf(source, "streamer"),
+  }
+}
+
+/** A null theme gives the giveaway back the streamer's. */
+export function saveGiveawayOverlayTheme(
+  id: string,
+  theme: OverlayTheme | null,
+): Promise<"saved" | Rejected> {
+  return act(giveawayThemePath(id), { theme }, savedKinds)
+}
+
 export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "forbidden"> {
   const { status, body } = await send("/api/admin/usage")
   if (status === 401) return "unauthorized"
@@ -641,6 +684,7 @@ export type DeleteKind = (typeof deleteKinds)[number]
 
 const deleteKinds = ["deleted"] as const
 const streamerAccessKinds = ["approved", "revoked"] as const
+const savedKinds = ["saved"] as const
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
 const switchPlanKinds = ["switched"] as const
 const setWinnerKinds = ["set"] as const satisfies readonly SetWinnerCountKind[]
@@ -744,6 +788,13 @@ async function post(path: string, payload: unknown): Promise<Json> {
 
 function answerKind<K extends string>(source: Json, kinds: readonly K[]): K | Rejected {
   return Object.hasOwn(source, "kind") ? oneOf(source, "kind", kinds) : "rejected"
+}
+
+// The server's own parser: the client takes no theme the server would refuse.
+function themeOf(source: Json, key: string): OverlayTheme {
+  const theme = parseOverlayTheme(Object.hasOwn(source, key) ? source[key] : undefined)
+  if (!theme.ok) throw new ApiShapeError(`${key}.${theme.issue.field}`)
+  return theme.value
 }
 
 function parseEntryResult(source: Json): EntryResult {

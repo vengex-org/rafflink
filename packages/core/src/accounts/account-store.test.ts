@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite"
 import { describe, expect, it } from "bun:test"
 import { accountsSchema, explainPlan, sqlRows, validRules } from "../../test/app-fixture.ts"
 import { resolveConfig } from "../config.ts"
+import { defaultOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
 import type { SqlValue } from "../ports.ts"
 import { currentPlan } from "../plan/current-plan.ts"
 import { RoomRowError } from "../room/rows.ts"
@@ -524,6 +525,71 @@ describe("AccountStore cloudflare plan", () => {
 
     expect(() => insert(1, "pro")).toThrow()
     expect(() => insert(2, "paid")).toThrow()
+  })
+})
+
+describe("AccountStore overlay themes", () => {
+  const branded: OverlayTheme = { ...defaultOverlayTheme, accent: "#ff5500", font: "oswald" }
+  const special: OverlayTheme = { ...defaultOverlayTheme, position: "bottom-right", sound: true }
+
+  it("gives a streamer without a stored theme the default and keeps only the latest one stored", async () => {
+    const { db, store } = await withStreamers()
+    expect(await store.streamerOverlayTheme("s1")).toEqual(defaultOverlayTheme)
+
+    await store.storeStreamerOverlayTheme("s1", special, 1_000)
+    await store.storeStreamerOverlayTheme("s1", branded, 2_000)
+
+    expect(await store.streamerOverlayTheme("s1")).toEqual(branded)
+    expect(await store.streamerOverlayTheme("s2")).toEqual(defaultOverlayTheme)
+    expect(sqlRows(db, "SELECT streamer_id, updated_at FROM streamer_overlay")).toEqual([
+      { streamer_id: "s1", updated_at: 2_000 },
+    ])
+  })
+
+  it("applies the streamer's theme to a giveaway without its own, and its own once set", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    expect(await store.overlayThemeOf("g1")).toEqual(defaultOverlayTheme)
+
+    await store.storeStreamerOverlayTheme("s1", branded, 1_000)
+    expect(await store.overlayThemeOf("g1")).toEqual(branded)
+    expect(await store.setGiveawayOverlayTheme("s1", "g1", special)).toBe(true)
+    expect(await store.overlayThemeOf("g1")).toEqual(special)
+    expect(await store.ownedOverlayThemes("s1", "g1")).toEqual({ own: special, streamer: branded })
+
+    expect(await store.setGiveawayOverlayTheme("s1", "g1", null)).toBe(true)
+    expect(await store.overlayThemeOf("g1")).toEqual(branded)
+    expect(await store.ownedOverlayThemes("s1", "g1")).toEqual({ own: null, streamer: branded })
+  })
+
+  it("never reads or sets the theme of another streamer's giveaway", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+
+    expect(await store.setGiveawayOverlayTheme("s2", "g1", special)).toBe(false)
+    expect(await store.ownedOverlayThemes("s2", "g1")).toBeNull()
+    expect(await store.overlayThemeOf("g1")).toEqual(defaultOverlayTheme)
+  })
+
+  it("gives an unknown giveaway the default theme", async () => {
+    const { store } = await withStreamers()
+    expect(await store.overlayThemeOf("missing")).toEqual(defaultOverlayTheme)
+  })
+
+  it("fails loudly on a stored theme that is not a valid theme", async () => {
+    const { db, store } = await withStreamers()
+    await store.storeStreamerOverlayTheme("s1", branded, 1_000)
+    db.run('UPDATE streamer_overlay SET theme_json = \'{"accent":"red"}\'')
+
+    await expect(store.streamerOverlayTheme("s1")).rejects.toBeInstanceOf(RoomRowError)
+  })
+
+  it("fails loudly on a giveaway theme that is not JSON", async () => {
+    const { db, store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    db.run("UPDATE giveaways SET overlay_theme_json = 'not json'")
+
+    await expect(store.overlayThemeOf("g1")).rejects.toBeInstanceOf(RoomRowError)
   })
 })
 

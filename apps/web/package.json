@@ -9,7 +9,8 @@
   "scripts": {
     "build": "bun build ./index.html --outdir dist --production --splitting --chunk-naming \"index-[hash].[ext]\" --public-path / --asset-naming \"[name].[ext]\" --external \"/fonts/*\" && bun scripts/finish-build.ts",
     "test": "bun test",
-    "icons": "bun scripts/icons.ts"
+    "icons": "bun scripts/icons.ts",
+    "reveal-sound": "bun scripts/reveal-sound.ts"
   },
   "dependencies": {
     "@noble/curves": "2.4.0",

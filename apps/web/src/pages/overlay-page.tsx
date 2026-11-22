@@ -1,7 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useParams, useSearchParams } from "react-router"
+import type { OverlayTheme } from "@rafflink/core/domain/overlay-theme"
 import type { LiveWinner, OverlaySnapshot } from "@rafflink/core/room/giveaway-room"
 import { overlaySnapshotPath, parseOverlaySnapshot } from "../api/client.ts"
+import { Confetti } from "../components/confetti.tsx"
 import { UsersIcon } from "../components/icons.tsx"
 import { EntrantNames, Stat } from "../components/live-parts.tsx"
 import { Failed, Loading } from "../components/notice.tsx"
@@ -12,11 +14,14 @@ import { useI18n } from "../i18n/i18n.tsx"
 import { shareUrl, siteHost } from "../lib/links.ts"
 import { giveawayDisplayName, giveawayName } from "../lib/messages.ts"
 import { readOverlayOptions, type OverlayOptions } from "../lib/overlay-options.ts"
+import { overlayThemeAttributes, overlayThemeStyle } from "../lib/overlay-theme.ts"
 import { useLive } from "../lib/use-live.ts"
 import { useGiveawayFacts } from "../lib/use-giveaway-facts.ts"
+import { useOverlayTheme } from "../lib/use-overlay-theme.ts"
 import { formatClock, useClock, useRemainingMs } from "../lib/use-remaining.ts"
+import { useRevealCue } from "../lib/use-reveal-cue.ts"
 import { standingWinners } from "../lib/standing-winners.ts"
-import { useDrawShuffle } from "../lib/use-draw-shuffle.ts"
+import { useDrawShuffle, type DrawShuffle as ShuffleState } from "../lib/use-draw-shuffle.ts"
 
 /** Names on the compact plate: what a viewer can read in a glance. */
 const newestNames = 3
@@ -58,6 +63,7 @@ function Loaded({
   readonly options: OverlayOptions
 }) {
   const live = useLive(overlaySnapshotPath(id, token), parseOverlaySnapshot)
+  const theme = useOverlayTheme(id, token)
   switch (live.state) {
     case "loading":
       return <Loading />
@@ -67,60 +73,123 @@ function Loaded({
     case "not-found":
       return <OverlayNotFound />
     case "ready":
-      return <Overlay snapshot={live.snapshot} options={options} />
+      // Plates drawn before the theme is known would flash the default look on stream.
+      return theme === null ? (
+        <Loading />
+      ) : (
+        <Overlay snapshot={live.snapshot} options={options} theme={theme} />
+      )
   }
 }
 
 function Overlay({
   snapshot,
   options,
+  theme,
 }: {
   readonly snapshot: OverlaySnapshot
   readonly options: OverlayOptions
+  readonly theme: OverlayTheme
 }) {
   const i18n = useI18n()
-  const { t } = i18n
-  // The snapshot carries no prize and the overlay fetches it only for the winner plates, so the heading names the code.
-  const heading = (
-    <h1 className="sr-only">
-      {giveawayDisplayName(i18n, { title: snapshot.title, prize: null, code: snapshot.code })}
-    </h1>
-  )
   const shuffle = useDrawShuffle(snapshot)
   const standing = standingWinners(snapshot.winners)
+  const cue = useRevealCue(standing, shuffle.shuffling, theme)
+  return (
+    <main {...overlayFrameProps(theme)}>
+      {/* The snapshot carries no prize and the overlay fetches it only for the winner plates, so the heading names the code. */}
+      <h1 className="sr-only">
+        {giveawayDisplayName(i18n, { title: snapshot.title, prize: null, code: snapshot.code })}
+      </h1>
+      <OverlayContent snapshot={snapshot} options={options} shuffle={shuffle} standing={standing} />
+      {cue.confetti ? <Confetti key={cue.count} accent={theme.accent} text={theme.text} /> : null}
+    </main>
+  )
+}
+
+function OverlayContent({
+  snapshot,
+  options,
+  shuffle,
+  standing,
+}: {
+  readonly snapshot: OverlaySnapshot
+  readonly options: OverlayOptions
+  readonly shuffle: ShuffleState
+  readonly standing: readonly LiveWinner[]
+}) {
+  const { t } = useI18n()
   const qr = options.qr ? <QrCode value={shareUrl(snapshot.code)} label={t("overlay.qr")} /> : null
   if (shuffle.shuffling) {
     const waitMs =
       snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
-    return (
-      <main className="overlay">
-        {heading}
-        <ShufflePlate names={shuffle.names} waitMs={waitMs} />
-      </main>
-    )
+    return <ShufflePlate names={shuffle.names} waitMs={waitMs} />
   }
   if (snapshot.status === "drawn" && options.mode !== "compact") {
     return (
-      <main className="overlay">
-        {heading}
+      <>
         <FetchedWinnerPlates snapshot={snapshot} standing={standing} />
         {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
-      </main>
+      </>
     )
   }
   if (options.mode === "winner") {
-    return (
-      <main className="overlay">
-        {heading}
-        {qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>}
-      </main>
-    )
+    return qr === null ? null : <div className="overlay-plate overlay-qr">{qr}</div>
   }
+  return <EntryPlate snapshot={snapshot} qr={qr} />
+}
+
+/** The overlay root as a theme draws it: colors as custom properties, the rest as data attributes overlay.css reads. */
+function overlayFrameProps(theme: OverlayTheme) {
+  return { className: "overlay", style: overlayThemeStyle(theme), ...overlayThemeAttributes(theme) }
+}
+
+const previewSnapshot: OverlaySnapshot = {
+  status: "open",
+  closesAt: null,
+  entrantCount: 128,
+  ticketTotal: 128,
+  winnerCount: 1,
+  chatClaimUnavailable: false,
+  rerollOpen: false,
+  rerollBlocked: null,
+  title: null,
+  code: "ABCDE",
+  entriesPerSecond: 0,
+  lastNames: ["pixel_fox", "nightowl", "ada_plays"],
+  winners: [],
+  roleRefreshFailures: 0,
+  eventSubFailures: 0,
+  drawAvailableAt: null,
+  drawRequested: false,
+  shuffleNames: [],
+  now: 0,
+}
+
+const previewWinners: readonly LiveWinner[] = [
+  {
+    n: 0,
+    entrySeq: 1,
+    displayName: "nightowl",
+    profileImageUrl: null,
+    claimUntil: 0,
+    claim: { state: "claimed", at: 0, via: "rafflink" },
+  },
+]
+
+/** The overlay as `theme` draws it, for the style settings: the entry plate and a winner's plate on a sample picture of a stream. */
+export function OverlayPreview({ theme }: { readonly theme: OverlayTheme }) {
+  const { t } = useI18n()
   return (
-    <main className="overlay">
-      {heading}
-      <EntryPlate snapshot={snapshot} qr={qr} />
-    </main>
+    <figure className="overlay-preview">
+      <figcaption>{t("overlayStyle.preview")}</figcaption>
+      <div className="overlay-preview-stage" aria-hidden="true">
+        <div {...overlayFrameProps(theme)}>
+          <EntryPlate snapshot={previewSnapshot} qr={null} />
+          <WinnerPlates standing={previewWinners} prize={t("overlayStyle.preview.prize")} />
+        </div>
+      </div>
+    </figure>
   )
 }
 

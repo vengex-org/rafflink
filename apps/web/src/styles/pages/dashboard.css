@@ -1,5 +1,10 @@
 /* Dashboard: running giveaways, then drawn ones, each under a section label and each giveaway its own card. */
 
+/* The overlay style sits above the lists, closed until the streamer opens it. */
+.dash-style {
+  margin-bottom: var(--space-5);
+}
+
 /* The section label of the live page cards: small caps in the second ink. */
 .dash-section > h2 {
   margin: 0 0 var(--space-2);

@@ -48,12 +48,18 @@
   --shadow-pop: 0 2px 6px var(--shadow-ink), 0 24px 48px -12px var(--shadow-ink);
   --shadow-plate: 0 2px 0 rgb(24 24 27 / 0.9), 0 24px 48px -20px rgb(24 24 27 / 0.28);
 
-  /* The OBS overlay sits on gameplay, so it keeps light text and a dark plate in both themes. */
+  /*
+   * The OBS overlay sits on gameplay, so it keeps light text and a dark plate in both themes. A streamer's
+   * overlay theme replaces the ink, plate, muted, edge and accent colors on the overlay's root; its default
+   * colors (packages/core/src/domain/overlay-theme.ts) are these.
+   */
   --overlay-ink: #fafafa;
   --overlay-plate: #111113;
   --overlay-muted: #a1a1aa;
   --overlay-edge: rgb(250 250 250 / 0.14);
   --overlay-scrim: rgb(9 9 11 / 0.8);
+  --overlay-qr-paper: #fafafa;
+  --overlay-qr-ink: #18181b;
 
   /* The phone frame of the hosted site's illustration is dark in both themes; only a site seam module uses it. */
   --device: #18181b;

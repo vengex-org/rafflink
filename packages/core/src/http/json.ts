@@ -1,6 +1,7 @@
 import type { Context } from "hono"
 import { toHex } from "../lib/encoding.ts"
-import type { Giveaway } from "../accounts/account-store.ts"
+import type { Giveaway, OwnedOverlayThemes } from "../accounts/account-store.ts"
+import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/plan-limits.ts"
 import type { Usage, UsageAlert } from "../plan/usage.ts"
@@ -136,6 +137,14 @@ export interface DashboardGiveaway {
   readonly overlayToken: string
   readonly createdAt: Instant
 }
+
+/** The streamer's overlay theme, or the one a giveaway's overlay shows. */
+export interface OverlayThemeJson {
+  readonly theme: OverlayTheme
+}
+
+/** What the streamer edits for one giveaway's overlay. */
+export type GiveawayOverlayThemesJson = OwnedOverlayThemes
 
 /** The subscriber badge image of each ticket group a subscriber can be in; `null` when none is known and the page shows a tier chip. */
 export type BadgesJson = SubscriberBadges

@@ -17,6 +17,7 @@ import {
   TrashIcon,
 } from "../components/icons.tsx"
 import { Failed, Loading, SignIn, Status } from "../components/notice.tsx"
+import { StreamerOverlayStyle } from "../components/overlay-style.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StateCard, type Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
@@ -142,6 +143,9 @@ function GiveawayList({
         ) : null}
       </div>
       {canCreate ? null : <AwaitingApproval />}
+      <section className="dash-style">
+        <StreamerOverlayStyle />
+      </section>
       {pinned.length === 0 ? null : (
         <section className="dash-section" aria-labelledby="dash-running">
           <h2 id="dash-running">{t("dash.section.running")}</h2>
