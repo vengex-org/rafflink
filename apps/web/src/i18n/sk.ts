@@ -874,6 +874,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "rl_pending_*: umožní prehliadaču, ktorý zaradil zapojenie do fronty, vyzdvihnúť jeho výsledok, predvolene 10 minút.",
   "privacy.cookies.i5":
     "Lokálne úložisko prehliadača si pamätá tvoj výber jazyka a témy a čistý režim živej stránky. Úložisko relácie drží približne 30 sekúnd kópiu načítanej stránky giveawayu vrátane tvojho stavu v nej. Zariadenie neopúšťa ani jedno.",
+  "privacy.cookies.i7":
+    "rl_chat_entry: pamätá si, že posledné prihlásenie streamera v tomto prehliadači povolilo čítať sledujúcich kanála pre zapojenie cez chat, aby ho ďalšie prihlásenie pýtalo znova; 400 dní, ostáva aj po odhlásení.",
   "privacy.cookies.i6":
     "rl_mod_*: umožní tomu, kto otvoril odkaz pre moderátora, používať stránku moderátora daného giveawayu, predvolene 7 dní alebo kým streamer odkaz nezruší. rl_mod_pending: pamätá si, ktorý odkaz čaká na prihlásenie moderátora cez Twitch, predvolene 10 minút.",
   "privacy.rights.h": "Tvoje práva",

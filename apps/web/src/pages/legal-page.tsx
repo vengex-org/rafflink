@@ -184,6 +184,7 @@ const privacy: LegalDocument = {
         "privacy.cookies.i4",
         "privacy.cookies.i5",
         "privacy.cookies.i6",
+        "privacy.cookies.i7",
       ],
     },
     {

@@ -71,8 +71,9 @@ async function drawRoom(
   }
 }
 
-// A failed profile read leaves the whole batch waiting, a failed follow read only that chatter; the room's
-// next check a period later asks again, so nothing is thrown here.
+// A failed profile or giveaway read leaves the whole batch waiting, a failed follow read only that chatter;
+// the room's next check a period later asks again, so nothing is thrown here. The block list version the
+// account store holds is what the room checks the exclusions against, as for a page entry.
 async function checkChatEntrants(
   deps: StreamerTokenDeps,
   giveawayId: string,
@@ -80,17 +81,24 @@ async function checkChatEntrants(
   duty: ChatEntrantsDuty,
 ): Promise<void> {
   const provider = providerFor(deps.platforms, duty.platform)
-  const [profiles, follows] = await Promise.allSettled([
+  const [giveaway, profiles, follows] = await Promise.allSettled([
+    deps.accounts.findGiveawayById(giveawayId),
     provider.userProfiles(duty.chatters.map((chatter) => chatter.platformUserId)),
     readFollows(deps, giveawayId, duty),
   ])
-  if (profiles.status === "rejected") {
-    console.warn("chat entry check failed", {
-      giveawayId,
-      errorClass: errorClass(profiles.reason),
-    })
+  if (giveaway.status === "rejected") {
+    console.warn("chat entry check failed", { giveawayId, errorClass: errorClass(giveaway.reason) })
     return
   }
+  if (profiles.status === "rejected") {
+    console.warn("chat entry check failed", { giveawayId, errorClass: errorClass(profiles.reason) })
+    return
+  }
+  if (giveaway.value === null) {
+    console.warn("chat entry check found no giveaway", { giveawayId })
+    return
+  }
+  const expected = { blockListVersion: giveaway.value.blockListVersion }
   // An unexpected throw of the follow reads leaves every chatter that needs a follow waiting.
   const followOf =
     follows.status === "fulfilled" ? follows.value : new Map<string, boolean | null>()
@@ -116,6 +124,7 @@ async function checkChatEntrants(
         },
       ]
     }),
+    expected,
   )
 }
 

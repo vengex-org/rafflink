@@ -868,6 +868,8 @@ export const en = {
     "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes by default.",
   "privacy.cookies.i5":
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
+  "privacy.cookies.i7":
+    "rl_chat_entry: remembers that the last streamer sign-in in this browser allowed reading the channel's followers for chat entry, so the next sign-in asks for it again; 400 days, kept when signing out.",
   "privacy.cookies.i6":
     "rl_mod_*: lets whoever opened a moderator link use that giveaway's moderator page, 7 days by default or until the streamer revokes the link. rl_mod_pending: remembers which link waits for the moderator's Twitch sign-in, 10 minutes by default.",
   "privacy.rights.h": "Your rights",

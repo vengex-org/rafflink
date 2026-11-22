@@ -25,6 +25,7 @@ import {
   GiveawayRoom,
   type CheckedChatter,
   type GiveawayInit,
+  type RoomExclusions,
   type RoomViewer,
 } from "../room/giveaway-room.ts"
 import { applyMigrations } from "../room/migrate.ts"
@@ -664,6 +665,8 @@ function roomUnderTest(
     readonly claimKeyword?: string | null
     readonly rules?: Partial<GiveawayRules>
     readonly closesAt?: Instant
+    /** The excluded accounts the room is given; null gives none, so the room cannot check entries. */
+    readonly exclusions?: RoomExclusions | null
   } = {},
 ) {
   const db = new Database(":memory:")
@@ -698,7 +701,11 @@ function roomUnderTest(
       options.closesAt ?? null,
     ),
   )
-  room.loadExclusions({ blocked: { version: 0, platformUserIds: [] }, recentWinners: [] })
+  if (options.exclusions !== null) {
+    room.loadExclusions(
+      options.exclusions ?? { blocked: { version: 0, platformUserIds: [] }, recentWinners: [] },
+    )
+  }
   return {
     db,
     sql,
@@ -1379,7 +1386,7 @@ describe("chat entry", () => {
   it("closes the entry watch at the close", async () => {
     const { room, socket } = await chatEntryRoom()
 
-    room.close()
+    room.close(null)
 
     expect(socket?.closed).toBe(true)
   })
@@ -1396,7 +1403,10 @@ describe("chat entry", () => {
       platform: "twitch",
       chatters: [{ platformUserId: "42", followerCheck: false }],
     })
-    room.enterFromChat([checked("42", { profileImageUrl: "https://static-cdn.jtvnw.net/42.png" })])
+    room.enterFromChat(
+      [checked("42", { profileImageUrl: "https://static-cdn.jtvnw.net/42.png" })],
+      current,
+    )
     expect(room.entrants({ afterSeq: 0, limit: 10 })).toEqual([
       {
         seq: 1,
@@ -1411,7 +1421,7 @@ describe("chat entry", () => {
 
   it("queues a chatter once and ignores other messages, the broadcaster and entrants", async () => {
     const { room, say } = await chatEntryRoom()
-    room.enter(viewer("7"))
+    room.enter(viewer("7"), current)
 
     say("42", "!enter")
     say("42", "!enter")
@@ -1473,11 +1483,14 @@ describe("chat entry", () => {
     say("stranger", "!enter")
     say("fan", "!enter")
 
-    room.enterFromChat([
-      checked("young", { isFollower: true, accountAgeDays: 5 }),
-      checked("stranger", { isFollower: false }),
-      checked("fan", { isFollower: true }),
-    ])
+    room.enterFromChat(
+      [
+        checked("young", { isFollower: true, accountAgeDays: 5 }),
+        checked("stranger", { isFollower: false }),
+        checked("fan", { isFollower: true }),
+      ],
+      current,
+    )
     clock.advance(3000)
 
     expect(room.entrants({ afterSeq: 0, limit: 10 }).map((entrant) => entrant.login)).toEqual([
@@ -1489,6 +1502,7 @@ describe("chat entry", () => {
       entered: 1,
       alreadyIn: 0,
       refused: { "account-too-young": 1, "followers-only": 1 },
+      unavailable: 0,
     })
     expect(room.onAlarm().chatEntrants).toBeNull()
   })
@@ -1499,9 +1513,9 @@ describe("chat entry", () => {
     say("v", "!enter", [vipBadge])
     say("plain", "!enter")
 
-    room.close()
+    room.close(null)
     const duties = room.onAlarm()
-    room.enterFromChat([checked("plain", { accountAgeDays: 100 })])
+    room.enterFromChat([checked("plain", { accountAgeDays: 100 })], current)
 
     expect(duties).toMatchObject({
       commit: false,
@@ -1522,7 +1536,7 @@ describe("chat entry", () => {
     const info = spyOn(console, "info").mockImplementation(() => {})
     say("v", "!enter", [vipBadge])
     say("plain", "!enter")
-    room.close()
+    room.close(null)
     const closedAt = clock.now()
 
     clock.advance(6000 - 1)
@@ -1543,6 +1557,7 @@ describe("chat entry", () => {
       entered: 2,
       alreadyIn: 0,
       refused: {},
+      unavailable: 0,
     })
   })
 
@@ -1551,7 +1566,7 @@ describe("chat entry", () => {
     spyOn(console, "info").mockImplementation(() => {})
     say("v", "!enter", [vipBadge])
 
-    room.close()
+    room.close(null)
     await room.commit()
 
     expect(room.summary().entrantCount).toBe(0)
@@ -1562,10 +1577,10 @@ describe("chat entry", () => {
     spyOn(console, "info").mockImplementation(() => {})
     say("a", "!enter")
     room.onAlarm()
-    room.close()
+    room.close(null)
     await room.commit()
 
-    room.enterFromChat([checked("a")])
+    room.enterFromChat([checked("a")], current)
 
     expect(room.summary().entrantCount).toBe(0)
   })
@@ -1573,7 +1588,57 @@ describe("chat entry", () => {
   it("refuses a page entry on a chat-only giveaway", async () => {
     const { room } = await chatEntryRoom({ rules: { pageEntry: false } })
 
-    expect(room.enter(viewer("1"))).toEqual({ kind: "not-eligible", reason: "page-entry-off" })
+    expect(room.enter(viewer("1"), current)).toEqual({
+      kind: "not-eligible",
+      reason: "page-entry-off",
+    })
+  })
+
+  it("keeps a blocked chatter and a recent winner out like a page entry", async () => {
+    const { room, say } = await chatEntryRoom({
+      exclusions: { blocked: { version: 1, platformUserIds: ["b"] }, recentWinners: ["w"] },
+    })
+    spyOn(console, "info").mockImplementation(() => {})
+    say("b", "!enter")
+    say("w", "!enter")
+    say("ok", "!enter")
+
+    room.enterFromChat([checked("b"), checked("w"), checked("ok")], { blockListVersion: 1 })
+
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((entrant) => entrant.login)).toEqual([
+      "user_ok",
+    ])
+  })
+
+  it("keeps the chatters waiting while the room cannot check exclusions, and enters them once it can", async () => {
+    const { room, say } = await chatEntryRoom({ exclusions: null })
+    spyOn(console, "info").mockImplementation(() => {})
+    say("a", "!enter")
+
+    room.enterFromChat([checked("a")], current)
+    const whileMissing = room.summary().entrantCount
+    room.loadExclusions({ blocked: { version: 1, platformUserIds: [] }, recentWinners: [] })
+    room.enterFromChat([checked("a")], { blockListVersion: 2 })
+    const whileOld = room.summary().entrantCount
+    room.replaceBlocked({ version: 2, platformUserIds: [] })
+    room.enterFromChat([checked("a")], { blockListVersion: 2 })
+
+    expect([whileMissing, whileOld, room.summary().entrantCount]).toEqual([0, 0, 1])
+  })
+
+  it("refuses the unchecked chatters at the commit when the room never got its exclusions", async () => {
+    const { room, say } = await chatEntryRoom({ exclusions: null })
+    const info = spyOn(console, "info").mockImplementation(() => {})
+    say("a", "!enter")
+
+    room.close(null)
+    await room.commit()
+
+    expect(room.summary().entrantCount).toBe(0)
+    expect(info).toHaveBeenCalledWith(
+      "chat entrants handled",
+      expect.objectContaining({ stage: "commit", entered: 0, unavailable: 1 }),
+    )
   })
 
   it("queues nobody once the end time passed, before the alarm closed the room", async () => {
@@ -1598,12 +1663,12 @@ describe("chat entry", () => {
     expect(room.summary()).toMatchObject({ chatClaimUnavailable: true, chatEntryOff: true })
     subscriptions.refusal = null
 
-    room.enter(viewer("1"))
-    room.close()
+    room.enter(viewer("1"), current)
+    room.close(null)
     expect(room.summary().chatEntryOff).toBe(false)
     clock.advance(1)
     await room.commit()
-    await room.draw()
+    await room.draw(1, "streamer")
 
     expect(room.summary().chatClaimUnavailable).toBe(false)
     expect(connector.sockets).toHaveLength(2)
@@ -1613,9 +1678,9 @@ describe("chat entry", () => {
   it("answers whether a chat entrant has a login, in any letter case, and never finds a page entrant", async () => {
     const { room, db, say } = await chatEntryRoom()
     spyOn(console, "info").mockImplementation(() => {})
-    room.enter(viewer("1"))
+    room.enter(viewer("1"), current)
     say("42", "!enter")
-    room.enterFromChat([checked("42")])
+    room.enterFromChat([checked("42")], current)
 
     expect(room.hasChatEntrant("USER_42")).toBe(true)
     expect(room.hasChatEntrant("login1")).toBe(false)

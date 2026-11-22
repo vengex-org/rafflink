@@ -875,6 +875,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "rl_pending_*: umožní prohlížeči, který zařadil zapojení do fronty, vyzvednout jeho výsledek, výchozí 10 minut.",
   "privacy.cookies.i5":
     "Lokální úložiště prohlížeče si pamatuje tvůj výběr jazyka a motivu a čistý režim živé stránky. Úložiště relace drží přibližně 30 sekund kopii načtené stránky giveawaye včetně tvého stavu v ní. Zařízení neopouští ani jedno.",
+  "privacy.cookies.i7":
+    "rl_chat_entry: pamatuje si, že poslední přihlášení streamera v tomto prohlížeči povolilo číst sledující kanálu pro zapojení přes chat, aby ho další přihlášení žádalo znovu; 400 dní, zůstává i po odhlášení.",
   "privacy.cookies.i6":
     "rl_mod_*: umožní tomu, kdo otevřel odkaz pro moderátora, používat stránku moderátora daného giveawaye, výchozí 7 dní nebo dokud streamer odkaz nezruší. rl_mod_pending: pamatuje si, který odkaz čeká na přihlášení moderátora přes Twitch, výchozí 10 minut.",
   "privacy.rights.h": "Tvá práva",
