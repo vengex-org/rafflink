@@ -5,8 +5,8 @@ Status: final for M1, 2026-11-20. Domain: `rafflink.app` (free at the Google reg
 ## Why
 
 Chat giveaways stop working on big channels. When thousands of people type the keyword at once, entries
-reach the giveaway tool slower than people type them. Streamer Giveaway, our desktop app, took a long time
-to collect 8,000 valid entries.
+reach the giveaway tool slower than people type them. A chat giveaway can take a long time to collect 8,000
+valid entries.
 
 Rafflink moves entry out of chat. The streamer creates a giveaway on the web and gets a link. They post it in
 chat. Viewers open it, sign in with their streaming account and are in. One click per viewer, no chat parsing,
@@ -33,7 +33,7 @@ paid extra chances. This keeps it out of gambling law and inside Twitch's giveaw
 - Paid plans, ads, sponsored giveaways.
 - "Chatted in the last N minutes" rule. The chat watch for claims (see Claim) could later feed it, but it
   would have to run during the whole giveaway, not only from the draw until the reroll window ends.
-- Winner form (for example a shipping address). Planned as M3, see Milestones.
+- Winner form (for example a shipping address). Planned in M8 (#73), see Milestones.
 - Messages to chat. Rafflink never posts to chat; the streamer announces the winner.
 - A mobile app.
 
@@ -145,7 +145,7 @@ requests than the entries themselves. The count comes with the page load and wit
 
 ## Rules and tickets
 
-Same model as Streamer Giveaway, so streamers know it already:
+Same model as common chat giveaway tools, so streamers know it already:
 
 - Groups: viewer, follower, sub tier 1, tier 2, tier 3, VIP, moderator. Each group has a ticket count.
   0 tickets means the group cannot enter.
@@ -471,6 +471,8 @@ of the id could be brute-forced into a list of who entered.
 
 ## Milestones
 
+Milestone names and issue numbers match GitHub. There is no M3.
+
 1. **M1, Twitch MVP:** Twitch app registration (a README step), streamer sign-in, create giveaway with a short
    code, viewer entry with sub, follow, VIP and moderator rules, retry and token queue, live page and overlay
    link, draw (HMAC over a random seed), claim (button and automatic chat claim over EventSub) and reroll,
@@ -480,11 +482,17 @@ of the id could be brute-forced into a list of who entered.
    session, "one click" becomes "log in, then click", and the page should offer "Open in browser".
 2. **M2, Hardening:** load test at 500 entries per second, rate limits, Merkle root and drand draw with the
    verify page, data deletion job.
-3. **M3, Winner form:** the streamer builds a form the winner fills in after claiming (for example a shipping
-   address). Answers are personal data: encrypted at rest, visible only to the streamer, deleted 30 days after
-   the claim, with a privacy notice on the form. Needs its own short spec before work starts.
-4. **M4, Streamer Giveaway link:** the desktop app can show a Rafflink giveaway's entrants and draw.
-5. **M5, Kick and YouTube** providers.
+
+3. **M4, Platforms:** provider interface (#56), rules by platform capability (#57), Kick (#58), YouTube (#59).
+4. **M5, Chat entry:** Twitch chat keyword entry (#60), Kick and YouTube chat entry (#61).
+5. **M6, Parity:** automatic entry on sub and channel points (#62), block list and exclusions (#63), moderator
+   access link (#64), several winners in one press (#65), overlay styles (#66), six more languages (#67),
+   verifiable list draw (#68).
+6. **M7, History:** long-term history with winner names, export and deletion (#69), public streamer history (#70).
+7. **M8, Extras:** one giveaway across platforms (#71), official rules text (#72), winner form for prize
+   delivery (#73). The winner form collects personal data (for example a shipping address): encrypted at rest,
+   visible only to the streamer, deleted 30 days after the claim, with a privacy notice on the form. Needs its
+   own short spec before work starts.
 
 ## Open questions
 
@@ -499,7 +507,7 @@ of the id could be brute-forced into a list of who entered.
 - Hosting: hosted service plus self-host; hosted starts on the free plan, moves to Paid by the rule in Hosting.
 - Winner: the streamer announces; the winner claims with the Claim button or by writing in chat, which
   Rafflink detects over EventSub during the claim window (the winner's later messages only show on the live page). Rafflink never posts to chat.
-- Winner form comes as M3, after hardening.
+- Winner form comes after hardening, now in M8 (#73).
 - Short 5-character codes, link `rafflink.app/<code>`.
 - Domain: only `rafflink.app`.
 - Frontend: React single-page app bundled by `bun build` (no Vite); the same static build is served by Workers
