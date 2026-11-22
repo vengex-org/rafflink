@@ -167,10 +167,16 @@ export interface AdminStreamerJson {
   readonly approvedAt: number | null
 }
 
+/** One access list, newest first. `truncated`: more streamers exist than STREAMER_ACCESS_LIST_MAX shows. */
+export interface AdminStreamerListJson {
+  readonly streamers: readonly AdminStreamerJson[]
+  readonly truncated: boolean
+}
+
 /** Who waits for approval and who is approved; admins are in neither list. */
 export interface AdminStreamersJson {
-  readonly pending: readonly AdminStreamerJson[]
-  readonly approved: readonly AdminStreamerJson[]
+  readonly pending: AdminStreamerListJson
+  readonly approved: AdminStreamerListJson
 }
 
 export function verifyJson(verification: Verification): VerifyJson {

@@ -39,6 +39,8 @@ export function DashboardPage() {
   const { result, reload } = useLoad(listGiveaways)
   const [view, setView] = useState<View>({ kind: "list" })
   const [signedOut, setSignedOut] = useState(false)
+  // The server's refusal outranks the session, which may not be loaded yet or may be stale.
+  const [notApproved, setNotApproved] = useState(false)
 
   if (signedOut) return <SignIn why="signIn.why.expired" />
   switch (result.state) {
@@ -62,6 +64,10 @@ export function DashboardPage() {
                   reload()
                 }}
                 onUnauthorized={() => setSignedOut(true)}
+                onNotApproved={() => {
+                  setNotApproved(true)
+                  setView({ kind: "list" })
+                }}
                 onCancel={() => setView({ kind: "list" })}
               />
             </Page>
@@ -72,6 +78,7 @@ export function DashboardPage() {
           return (
             <GiveawayList
               giveaways={result.value}
+              approved={!notApproved}
               onCreate={(seed) => setView({ kind: "create", seed })}
             />
           )
@@ -138,15 +145,18 @@ function CreatedScreen({
 function GiveawayList({
   giveaways,
   onCreate,
+  approved,
 }: {
   readonly giveaways: readonly DashboardGiveaway[]
   readonly onCreate: (seed: Values) => void
+  /** False once the server refused a create with `streamer_not_approved`. */
+  readonly approved: boolean
 }) {
   const i18n = useI18n()
   const { t } = i18n
   const { donateUrl, streamer } = useStreamerSession()
   // An unknown session is not a refusal: the server still enforces approval on create.
-  const canCreate = streamer === null || streamer.canCreate
+  const canCreate = approved && (streamer === null || streamer.canCreate)
   const create = canCreate ? onCreate : null
   if (giveaways.length === 0) {
     if (!canCreate) {

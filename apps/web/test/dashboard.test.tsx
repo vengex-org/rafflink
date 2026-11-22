@@ -343,4 +343,23 @@ describe("dashboard", () => {
     expect(await view.findByRole("button", { name: "Create giveaway" })).toBeTruthy()
     expect(view.queryByRole("heading", { name: "Waiting for approval" })).toBeNull()
   })
+
+  it("shows the waiting notice when the server refuses a create the session allowed", async () => {
+    mockFetch({
+      ...listed,
+      "POST /api/dash/giveaways": () => ({
+        status: 403,
+        body: { error: "streamer_not_approved" },
+      }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("button", { name: "Duplicate Summer giveaway" }))
+    fireEvent.click(await view.findByRole("button", { name: "Next" }))
+    fireEvent.click(await view.findByRole("button", { name: "Next" }))
+    fireEvent.click(await view.findByRole("button", { name: "Start giveaway" }))
+
+    expect(await view.findByRole("heading", { name: "Waiting for approval" })).toBeTruthy()
+    expect(view.queryByRole("button", { name: "New giveaway" })).toBeNull()
+  })
 })

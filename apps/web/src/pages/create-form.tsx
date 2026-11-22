@@ -31,12 +31,14 @@ export function CreateForm({
   seed,
   onCreated,
   onUnauthorized,
+  onNotApproved,
   onCancel,
 }: {
   /** The answers the form starts with. */
   readonly seed: Values
   readonly onCreated: (created: Created) => void
   readonly onUnauthorized: () => void
+  readonly onNotApproved: () => void
   readonly onCancel: () => void
 }) {
   const { t } = useI18n()
@@ -75,6 +77,9 @@ export function CreateForm({
           return
         case "unauthorized":
           onUnauthorized()
+          return
+        case "not-approved":
+          onNotApproved()
           return
       }
     } catch (error) {

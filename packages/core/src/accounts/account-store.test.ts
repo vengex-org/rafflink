@@ -13,10 +13,12 @@ import {
   type StreamerSignIn,
 } from "./account-store.ts"
 import {
+  approvedStreamersSql,
   giveawayByCodeSql,
   giveawayByIdSql,
   giveawaysOfStreamerSql,
   ownedGiveawaySql,
+  pendingStreamersSql,
   streamerByIdSql,
   streamerByPlatformUserSql,
   unarmedRetentionSql,
@@ -443,6 +445,8 @@ describe("account queries", () => {
     ["a streamer's giveaways", giveawaysOfStreamerSql, ["s1"]],
     ["a streamer by platform user", streamerByPlatformUserSql, ["twitch", "200"]],
     ["a streamer by id", streamerByIdSql, ["s1"]],
+    ["the streamers waiting for approval", pendingStreamersSql, [10]],
+    ["the approved streamers", approvedStreamersSql, [10]],
   ]
 
   for (const [name, statement, params] of cases) {
@@ -466,6 +470,16 @@ describe("account queries", () => {
     expect(explainPlan(db, giveawaysOfStreamerSql, ["s1"]).join("\n")).toContain(
       "giveaways_by_streamer",
     )
+  })
+})
+
+describe("streamer access queries", () => {
+  it("list both groups through the approval index", () => {
+    const { db } = setup()
+
+    for (const statement of [pendingStreamersSql, approvedStreamersSql]) {
+      expect(explainPlan(db, statement, [10]).join(" ")).toContain("streamers_by_approval")
+    }
   })
 })
 

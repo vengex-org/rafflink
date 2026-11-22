@@ -4,6 +4,7 @@ import type { CreateIssue } from "@rafflink/core/http/create-input"
 import type {
   AdminPlanJson,
   AdminStreamerJson,
+  AdminStreamerListJson,
   AdminStreamersJson,
   AdminUsageJson,
   BadgesJson,
@@ -136,6 +137,8 @@ export type CreateResult =
     }
   | { readonly kind: "invalid"; readonly field: string; readonly code: CreateIssue["code"] }
   | { readonly kind: "unauthorized" }
+  /** 403 `streamer_not_approved`: signup is closed and no admin approved the account. */
+  | { readonly kind: "not-approved" }
 
 export type AdminUsage = AdminUsageJson
 
@@ -373,6 +376,9 @@ export async function createGiveaway(input: CreateGiveawayBody): Promise<CreateR
     body: JSON.stringify(input),
   })
   if (status === 401) return { kind: "unauthorized" }
+  if (status === 403 && record(body, "refusal").error === "streamer_not_approved") {
+    return { kind: "not-approved" }
+  }
   if (status === 400) {
     const source = record(body, "issue")
     return {
@@ -495,8 +501,15 @@ export async function getAdminStreamers(): Promise<AdminStreamersJson> {
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "streamers")
   return {
-    pending: list(source, "pending", parseAdminStreamer),
-    approved: list(source, "approved", parseAdminStreamer),
+    pending: parseStreamerList(child(source, "pending")),
+    approved: parseStreamerList(child(source, "approved")),
+  }
+}
+
+function parseStreamerList(source: Json): AdminStreamerListJson {
+  return {
+    streamers: list(source, "streamers", parseAdminStreamer),
+    truncated: bool(source, "truncated"),
   }
 }
 

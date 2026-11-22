@@ -111,6 +111,7 @@ export const en = {
   "admin.access.approved": "Approved",
   "admin.access.nonePending": "Nobody is waiting.",
   "admin.access.noneApproved": "No streamer is approved yet.",
+  "admin.access.truncated": "More streamers exist than are listed. The newest are shown.",
   "admin.access.firstLogin": "First sign-in {date}",
   "admin.access.approve": "Approve",
   "admin.access.approve.label": "Approve {name}",

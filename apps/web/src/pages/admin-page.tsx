@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from "react"
-import type { AdminPlanJson, AdminStreamerJson } from "@rafflink/core/http/json"
+import type { AdminPlanJson, AdminStreamerListJson } from "@rafflink/core/http/json"
 import type { CloudflarePlan } from "@rafflink/core/plan/plan-limits"
 import type { Usage, UsageAlert } from "@rafflink/core/plan/usage"
 import {
@@ -278,7 +278,7 @@ function AccessCard() {
           <AccessList
             title="admin.access.pending"
             empty="admin.access.nonePending"
-            streamers={result.value.pending}
+            list={result.value.pending}
             action="approve"
             busy={busy}
             onDecide={(id, decision) => void decide(id, decision)}
@@ -286,7 +286,7 @@ function AccessCard() {
           <AccessList
             title="admin.access.approved"
             empty="admin.access.noneApproved"
-            streamers={result.value.approved}
+            list={result.value.approved}
             action="revoke"
             busy={busy}
             onDecide={(id, decision) => void decide(id, decision)}
@@ -303,14 +303,14 @@ function AccessCard() {
 function AccessList({
   title,
   empty,
-  streamers,
+  list,
   action,
   busy,
   onDecide,
 }: {
   readonly title: MessageKey
   readonly empty: MessageKey
-  readonly streamers: readonly AdminStreamerJson[]
+  readonly list: AdminStreamerListJson
   readonly action: "approve" | "revoke"
   readonly busy: boolean
   readonly onDecide: (id: string, decision: "approve" | "revoke") => void
@@ -320,11 +320,11 @@ function AccessList({
   return (
     <>
       <h3>{t(title)}</h3>
-      {streamers.length === 0 ? (
+      {list.streamers.length === 0 ? (
         <p className="muted">{t(empty)}</p>
       ) : (
         <ul className="access-list">
-          {streamers.map((streamer) => (
+          {list.streamers.map((streamer) => (
             <li key={streamer.id}>
               <div>
                 <strong>{streamer.displayName}</strong>{" "}
@@ -348,6 +348,7 @@ function AccessList({
           ))}
         </ul>
       )}
+      {list.truncated ? <p className="muted">{t("admin.access.truncated")}</p> : null}
     </>
   )
 }

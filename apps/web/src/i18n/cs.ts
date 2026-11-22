@@ -112,6 +112,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "admin.access.approved": "Schválení",
   "admin.access.nonePending": "Nikdo nečeká.",
   "admin.access.noneApproved": "Zatím není schválený žádný streamer.",
+  "admin.access.truncated": "Streamerů je víc, než je v seznamu. Zobrazují se nejnovější.",
   "admin.access.firstLogin": "První přihlášení {date}",
   "admin.access.approve": "Schválit",
   "admin.access.approve.label": "Schválit {name}",

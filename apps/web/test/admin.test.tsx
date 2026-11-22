@@ -57,6 +57,8 @@ function adminAnswer(overrides: Record<string, unknown> = {}) {
   })
 }
 
+const list = (streamers: readonly unknown[], truncated = false) => ({ streamers, truncated })
+
 describe("admin page", () => {
   it("shows the usage as bars with a sentence and the queue counters with labels", async () => {
     mockFetch({
@@ -280,6 +282,20 @@ describe("admin page", () => {
     }
     const allowed = { ...waiting, id: "s-ok", login: "oldie", displayName: "Oldie", approvedAt: 1 }
 
+    it("tells the admin when a list is cut", async () => {
+      mockFetch({
+        "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
+        "GET /api/admin/streamers": () =>
+          ok({ pending: list([waiting], true), approved: list([]) }),
+      })
+
+      const view = renderApp("/admin")
+
+      expect(
+        await view.findByText("More streamers exist than are listed. The newest are shown."),
+      ).toBeTruthy()
+    })
+
     it("shows no access section while signup is open", async () => {
       mockFetch({ "GET /api/admin/usage": () => adminAnswer() })
 
@@ -292,7 +308,8 @@ describe("admin page", () => {
     it("lists waiting and approved streamers with their login and first sign-in", async () => {
       mockFetch({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
-        "GET /api/admin/streamers": () => ok({ pending: [waiting], approved: [allowed] }),
+        "GET /api/admin/streamers": () =>
+          ok({ pending: list([waiting]), approved: list([allowed]) }),
       })
 
       const view = renderApp("/admin")
@@ -313,8 +330,8 @@ describe("admin page", () => {
         "GET /api/admin/streamers": () =>
           ok(
             approved
-              ? { pending: [], approved: [{ ...waiting, approvedAt: 2 }] }
-              : { pending: [waiting], approved: [] },
+              ? { pending: list([]), approved: list([{ ...waiting, approvedAt: 2 }]) }
+              : { pending: list([waiting]), approved: list([]) },
           ),
         "POST /api/admin/streamers/s-wait/approve": () => {
           approved = true
@@ -337,7 +354,11 @@ describe("admin page", () => {
       mockFetch({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
         "GET /api/admin/streamers": () =>
-          ok(revoked ? { pending: [allowed], approved: [] } : { pending: [], approved: [allowed] }),
+          ok(
+            revoked
+              ? { pending: list([allowed]), approved: list([]) }
+              : { pending: list([]), approved: list([allowed]) },
+          ),
         "POST /api/admin/streamers/s-ok/revoke": () => {
           revoked = true
           return ok({ kind: "revoked" })
@@ -354,7 +375,7 @@ describe("admin page", () => {
     it("says so when the server refuses the decision", async () => {
       mockFetch({
         "GET /api/admin/usage": () => adminAnswer({ signupOpen: false }),
-        "GET /api/admin/streamers": () => ok({ pending: [waiting], approved: [] }),
+        "GET /api/admin/streamers": () => ok({ pending: list([waiting]), approved: list([]) }),
         "POST /api/admin/streamers/s-wait/approve": () => ({
           status: 404,
           body: { error: "not-found" },

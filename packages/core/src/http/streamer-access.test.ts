@@ -43,8 +43,8 @@ async function access(browser: Browser) {
   const response = await browser.request("/api/admin/streamers")
   expect(response.status).toBe(200)
   const body: {
-    pending: { id: string; login: string }[]
-    approved: { id: string; login: string }[]
+    pending: { streamers: { id: string; login: string }[]; truncated: boolean }
+    approved: { streamers: { id: string; login: string }[]; truncated: boolean }
   } = await response.json()
   return body
 }
@@ -85,7 +85,7 @@ describe("streamer access while signup is closed", () => {
     const admin = await signedIn(users.streamerA.id)
     const other = await signedIn(users.streamerB.id)
     const { pending } = await access(admin)
-    const id = pending[0]?.id ?? ""
+    const id = pending.streamers[0]?.id ?? ""
 
     expect((await decide(admin, id, "approve")).status).toBe(200)
     expect((await create(other)).status).toBe(201)
@@ -100,7 +100,7 @@ describe("streamer access while signup is closed", () => {
 
     expect(await sessionOf(admin)).toBe(true)
     expect(await sessionOf(other)).toBe(false)
-    await decide(admin, pending[0]?.id ?? "", "approve")
+    await decide(admin, pending.streamers[0]?.id ?? "", "approve")
     expect(await sessionOf(other)).toBe(true)
   })
 
@@ -108,19 +108,42 @@ describe("streamer access while signup is closed", () => {
     const admin = await signedIn(users.streamerA.id)
     await signedIn(users.streamerB.id)
     const first = await access(admin)
-    await decide(admin, first.pending[0]?.id ?? "", "approve")
+    await decide(admin, first.pending.streamers[0]?.id ?? "", "approve")
 
     const listed = await access(admin)
 
-    expect(first).toMatchObject({ pending: [{ login: users.streamerB.login }] })
-    expect(listed.pending).toEqual([])
-    expect(listed.approved.map((streamer) => streamer.login)).toEqual([users.streamerB.login])
+    expect(first.pending.streamers.map((streamer) => streamer.login)).toEqual([
+      users.streamerB.login,
+    ])
+    expect(listed.pending.streamers).toEqual([])
+    expect(listed.approved.streamers.map((streamer) => streamer.login)).toEqual([
+      users.streamerB.login,
+    ])
+  })
+
+  it("cuts a list to STREAMER_ACCESS_LIST_MAX, flags it and never spends a slot on an admin", async () => {
+    await harness.stop()
+    harness = await createHarness({
+      env: { OPEN_SIGNUP: "false", STREAMER_ACCESS_LIST_MAX: "1" },
+    })
+    // The admin signs in last, so a list cut before the admins are removed would hold only the admin.
+    await signedIn(users.streamerB.id)
+    harness.clock.advance(1000)
+    await signedIn(users.viewer.id)
+    harness.clock.advance(1000)
+    const admin = await signedIn(users.streamerA.id)
+
+    const listed = await access(admin)
+
+    expect(listed.pending.streamers.map((streamer) => streamer.login)).toEqual([users.viewer.login])
+    expect(listed.pending.truncated).toBe(true)
+    expect(listed.approved).toEqual({ streamers: [], truncated: false })
   })
 
   it("keeps the lists and the decisions to admins", async () => {
     const admin = await signedIn(users.streamerA.id)
     const other = await signedIn(users.streamerB.id)
-    const id = (await access(admin)).pending[0]?.id ?? ""
+    const id = (await access(admin)).pending.streamers[0]?.id ?? ""
 
     expect((await other.request("/api/admin/streamers")).status).toBe(403)
     expect((await decide(other, id, "approve")).status).toBe(403)
@@ -132,14 +155,14 @@ describe("streamer access while signup is closed", () => {
   it("refuses a decision from another origin or without a JSON body", async () => {
     const admin = await signedIn(users.streamerA.id)
     await signedIn(users.streamerB.id)
-    const id = (await access(admin)).pending[0]?.id ?? ""
+    const id = (await access(admin)).pending.streamers[0]?.id ?? ""
 
     const foreign = await decide(admin, id, "approve", { origin: "https://evil.example" })
     const plain = await decide(admin, id, "approve", { "content-type": "text/plain" })
 
     expect(foreign.status).toBe(403)
     expect(plain.status).toBe(415)
-    expect((await access(admin)).approved).toEqual([])
+    expect((await access(admin)).approved.streamers).toEqual([])
   })
 
   it("answers 404 for an unknown streamer", async () => {

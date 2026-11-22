@@ -90,7 +90,7 @@ export const storeCloudflarePlanSql = `INSERT INTO cloudflare_plan (id, plan, ch
 export const pendingStreamersSql = `SELECT ${streamerColumns} FROM streamers WHERE approved_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ?`
 
 /** Streamers an admin approved, latest approval first. Parameter 1: how many. */
-export const approvedStreamersSql = `SELECT ${streamerColumns} FROM streamers WHERE approved_at IS NOT NULL ORDER BY approved_at DESC, id DESC LIMIT ?`
+export const approvedStreamersSql = `SELECT ${streamerColumns} FROM streamers WHERE approved_at IS NOT NULL ORDER BY approved_at DESC, created_at DESC, id DESC LIMIT ?`
 
 /** Parameters: approved at, approved by (the admin's Twitch user id), streamer id. Keeps an earlier approval; returns the id when the streamer exists. */
 export const approveStreamerSql = `UPDATE streamers SET approved_at = COALESCE(approved_at, ?), approved_by = COALESCE(approved_by, ?) WHERE id = ? RETURNING id`

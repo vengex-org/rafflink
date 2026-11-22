@@ -95,23 +95,32 @@ export function operationsScenarios(context: ContractContext): void {
 
       const refused = await other.request("/api/dash/giveaways", input)
       const adminCreated = await admin.request("/api/dash/giveaways", input)
-      const listed: { pending: { id: string; login: string }[] } = await (
+      const listed: { pending: { streamers: { id: string; login: string }[] } } = await (
         await admin.request("/api/admin/streamers")
       ).json()
-      const id = listed.pending[0]?.id ?? ""
+      const id = listed.pending.streamers[0]?.id ?? ""
       const approved = await decide(id, "approve")
       const created = await other.request("/api/dash/giveaways", input)
+      const createdBody: { giveaway: { id: string } } = await created.json()
       const revoked = await decide(id, "revoke")
       const refusedAgain = await other.request("/api/dash/giveaways", input)
+      const closed = await other.request(`/api/dash/giveaways/${createdBody.giveaway.id}/close`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      })
 
       expect(refused.status).toBe(403)
       expect(await refused.json()).toEqual({ error: "streamer_not_approved" })
       expect(adminCreated.status).toBe(201)
-      expect(listed.pending.map((streamer) => streamer.login)).toEqual([users.otherStreamer.login])
+      expect(listed.pending.streamers.map((streamer) => streamer.login)).toEqual([
+        users.otherStreamer.login,
+      ])
       expect(approved.status).toBe(200)
       expect(created.status).toBe(201)
       expect(revoked.status).toBe(200)
       expect(refusedAgain.status).toBe(403)
+      expect(closed.status).toBe(200)
     },
   )
 

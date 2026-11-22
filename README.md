@@ -210,6 +210,10 @@ cd apps/server
 docker compose up -d --build
 ```
 
+Streamers that signed in before the approval feature existed wait for approval after this upgrade, so they
+cannot create giveaways until an admin approves them on the admin page. Set `OPEN_SIGNUP=true` to keep
+today's behavior.
+
 The Bun server limits viewer sign-in callbacks per client address (`ENTRY_IP_LIMIT_PER_MINUTE`, 60 by
 default) and its logs carry a request id only. Which address it counts depends on `CLIENT_IP_HEADER`:
 
@@ -393,7 +397,9 @@ refresh loop at three requests a second. 30 is a starting guess; raise it if man
 `/auth/*` is not covered, because the free plan has one rule.
 
 To upgrade, pull the new code, run `bun run build`, apply new migrations with
-`bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`.
+`bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`. Apply the migrations
+first: the new code reads columns that only the migration adds. After the upgrade that introduced streamer
+approval, streamers that signed in earlier wait for approval unless `OPEN_SIGNUP` is `true`.
 
 ## Security headers, link previews and OBS
 
