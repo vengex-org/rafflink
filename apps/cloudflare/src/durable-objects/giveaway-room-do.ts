@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
 import { GiveawayRoom, overlaySnapshot } from "@rafflink/core/room/giveaway-room"
 import { applyMigrations } from "@rafflink/core/room/migrate"
 import { roomMigrations } from "@rafflink/core/room/migrations"
@@ -20,6 +21,19 @@ interface OpenRoom {
 const liveTag = "live"
 const overlayTag = "overlay"
 const viewerTag = "viewer"
+
+/** The extra tag of a live socket opened through a moderator link, so revoking the link finds it. */
+function moderatorTag(linkId: string): string {
+  return `mod:${linkId}`
+}
+
+// The storage key that marks a moderator link revoked; `destroy` deletes it with everything else.
+function revokedLinkKey(linkId: string): string {
+  return `revoked-link:${linkId}`
+}
+
+// RFC 6455: the server ends a socket whose peer is no longer allowed.
+const policyViolationCloseCode = 1008
 
 /**
  * One giveaway's room in a SQLite-backed Durable Object named by the giveaway id. Live pages are
@@ -52,6 +66,17 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
     })
   }
 
+  /**
+   * Closes the live sockets opened through the moderator link and remembers the revoke, so a socket whose
+   * route check passed just before it is refused when it arrives; the room and every other socket stay.
+   */
+  async closeModeratorSockets(linkId: string): Promise<void> {
+    await this.ctx.storage.put(revokedLinkKey(linkId), true)
+    for (const socket of this.ctx.getWebSockets(moderatorTag(linkId))) {
+      socket.close(policyViolationCloseCode, "moderator link revoked")
+    }
+  }
+
   async init(...args: Parameters<GiveawayRoom["init"]>) {
     return (await this.opened).room.init(...args)
   }
@@ -76,8 +101,8 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async leaves() {
     return (await this.opened).room.leaves()
   }
-  async close() {
-    return (await this.opened).room.close()
+  async close(...args: Parameters<GiveawayRoom["close"]>) {
+    return (await this.opened).room.close(...args)
   }
   async requestDraw(...args: Parameters<GiveawayRoom["requestDraw"]>) {
     return (await this.opened).room.requestDraw(...args)
@@ -117,7 +142,11 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
     return { ...room.liveCounts(), viewers: this.ctx.getWebSockets(viewerTag).length }
   }
 
-  /** Accepts a page's WebSocket and sends it the current snapshot (without the winner chat for the overlay), or for a viewer's page the current outcome; the Worker has already checked who may connect. */
+  /**
+   * Accepts a page's WebSocket and sends it the current snapshot (without the winner chat for the overlay),
+   * or for a viewer's page the current outcome; the Worker has already checked who may connect, and names
+   * the moderator link of a moderator's page in a header.
+   */
   override async fetch(request: Request): Promise<Response> {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
       return new Response("expected a WebSocket upgrade", { status: 426 })
@@ -128,6 +157,14 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
     if (pathname.startsWith("/api/g/")) {
       this.ctx.acceptWebSocket(pair[1], [viewerTag])
       pair[1].send(JSON.stringify(room.viewerPush()))
+    } else if (pathname.startsWith("/api/mod/")) {
+      const linkId = request.headers.get(moderatorLinkHeader)
+      if (linkId === null) return new Response("expected a moderator link", { status: 400 })
+      if ((await this.ctx.storage.get(revokedLinkKey(linkId))) === true) {
+        return new Response("moderator link revoked", { status: 403 })
+      }
+      this.ctx.acceptWebSocket(pair[1], [liveTag, moderatorTag(linkId)])
+      pair[1].send(JSON.stringify(room.liveSnapshot()))
     } else if (pathname.startsWith("/api/overlay/")) {
       this.ctx.acceptWebSocket(pair[1], [overlayTag])
       pair[1].send(JSON.stringify(overlaySnapshot(room.liveSnapshot())))

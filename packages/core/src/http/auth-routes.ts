@@ -13,6 +13,7 @@ import { enterGiveaway } from "../viewer/enter-giveaway.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { QueuedCode, EnqueueCause } from "../queue/token-queue.ts"
 import type { AppDeps } from "./deps.ts"
+import { finishModeratorSignIn } from "./moderator-routes.ts"
 import { outcomeQuery } from "./json.ts"
 import { defaultReturnPath, safeReturnPath } from "./return-path.ts"
 import {
@@ -58,6 +59,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       codeVerifier: verifier,
       giveawayCode: null,
       returnPath,
+      moderatorLinkId: null,
     })
     return c.redirect(
       provider.authorizeUrl({
@@ -125,6 +127,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       codeVerifier: verifier,
       giveawayCode: giveaway.code,
       returnPath: null,
+      moderatorLinkId: null,
     })
     return c.redirect(
       provider.authorizeUrl({
@@ -140,6 +143,9 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
 
   app.get(viewerCallbackPath, async (c) => {
     const saved = await takeOAuthState(c, deps, "viewer", c.req.query("state"))
+    if (saved !== null && saved.moderatorLinkId !== null) {
+      return finishModeratorSignIn(c, deps, provider, saved, saved.moderatorLinkId)
+    }
     const refused = refusalCode(c.req.query("error"))
     if (refused !== null)
       return c.redirect(`${pagePath(saved?.giveawayCode ?? null)}?error=${refused}`)

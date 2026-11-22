@@ -664,11 +664,11 @@ async function drawnRoom(options: Parameters<typeof roomUnderTest>[0] = {}) {
     context.room.enter(viewer(id))
   }
   context.clock.advance(1)
-  context.room.close()
+  context.room.close(null)
   context.clock.advance(1)
   await context.room.commit()
   context.clock.advance(1)
-  await context.room.draw(1)
+  await context.room.draw(1, null)
   const winner = context.room.picks()[0]?.platformUserId ?? ""
   const loser = ["1", "2", "3"].find((id) => id !== winner) ?? ""
   return { ...context, winner, loser, drawnAt: context.clock.now() }
@@ -752,7 +752,7 @@ describe("chat claim", () => {
 
   it("does not let the chat overwrite a claim that was already made", async () => {
     const { room, socket, winner, clock } = await connectedRoom()
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)
     const claimedAt = clock.now()
     clock.advance(1)
 
@@ -771,7 +771,7 @@ describe("chat watch lifetime", () => {
     const { room, connector, winner } = await drawnRoom()
     expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
 
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)
 
     expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
   })
@@ -780,7 +780,7 @@ describe("chat watch lifetime", () => {
     const { room, clock, connector, drawnAt, winner } = await drawnRoom({
       env: { EVENTSUB_SUBSCRIBE_SECONDS: "100000", REROLL_WINDOW_SECONDS: "10" },
     })
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)
 
     clock.advance(drawnAt + 310_000 - clock.now())
     room.onAlarm()
@@ -794,7 +794,7 @@ describe("chat watch lifetime", () => {
   it("does not open for a room that is not drawn", () => {
     const { room, connector } = roomUnderTest()
     room.enter(viewer("1"))
-    room.close()
+    room.close(null)
 
     expect(connector.sockets).toHaveLength(0)
   })
@@ -802,7 +802,7 @@ describe("chat watch lifetime", () => {
   it("keeps the socket for the next winner when a reroll replaces the one who waits", async () => {
     const { room, connector } = await drawnRoom()
 
-    await room.reroll(0)
+    await room.reroll(0, null)
 
     expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
   })
@@ -815,7 +815,7 @@ describe("chat watch lifetime", () => {
     room.onAlarm()
     expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
 
-    await room.reroll(0)
+    await room.reroll(0, null)
 
     expect(connector.sockets.map((socket) => socket.closed)).toEqual([false])
   })
@@ -921,7 +921,7 @@ describe("chat claim unavailable", () => {
       kind: "eventsub",
       error: refusal,
     })
-    expect(room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")).toEqual({
+    expect(room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)).toEqual({
       kind: "claimed",
     })
   })
@@ -965,7 +965,7 @@ describe("chat claim unavailable", () => {
     connector.sockets[1]?.fail(new Error("refused"))
     expect(room.liveSnapshot().chatClaimUnavailable).toBe(true)
 
-    await room.reroll(0)
+    await room.reroll(0, null)
     connector.sockets[2]?.fail(new Error("refused"))
 
     expect(connector.sockets).toHaveLength(3)
@@ -980,7 +980,7 @@ describe("chat claim unavailable", () => {
     await flush()
     subscriptions.refusal = null
 
-    await room.reroll(0)
+    await room.reroll(0, null)
     connector.sockets[1]?.receive(welcome("session-2"))
     await flush()
     const next = room.picks()[1]?.platformUserId ?? ""
@@ -1021,7 +1021,7 @@ describe("winner chat", () => {
 
   it("shows a message of a winner who already claimed", async () => {
     const { room, socket, winner } = await connectedRoom()
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)
 
     socket?.receive(chat(winner, "thanks"))
 
@@ -1030,7 +1030,7 @@ describe("winner chat", () => {
 
   it("keeps showing and pushing a winner's lines after a claim on the giveaway page, without touching the claim", async () => {
     const { room, socket, winner, liveMessages, clock } = await connectedRoom()
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "rafflink")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "rafflink", null)
     const claimedAt = clock.now()
     clock.advance(1_000)
     const pushed = liveMessages.length
@@ -1074,7 +1074,7 @@ describe("winner chat", () => {
     for (const text of ["one", "two", "three"]) socket?.receive(chat(winner, text))
     expect(room.liveSnapshot().winnerChat.map((line) => line.id)).toEqual([2, 3])
 
-    await room.reroll(0)
+    await room.reroll(0, null)
     socket?.receive(chat(room.picks()[1]?.platformUserId ?? "", "four"))
 
     expect(room.liveSnapshot().winnerChat.map((line) => line.id)).toEqual([4])
@@ -1082,7 +1082,7 @@ describe("winner chat", () => {
 
   it("stops the rerolled chatter and shows the new winner", async () => {
     const { room, socket, winner } = await connectedRoom({ claimKeyword: "!claim" })
-    await room.reroll(0)
+    await room.reroll(0, null)
     const next = room.picks()[1]?.platformUserId ?? ""
 
     socket?.receive(chat(winner, "still here"))
@@ -1157,7 +1157,7 @@ describe("winner chat", () => {
     socket?.receive(chat(winner, "old winner line"))
     clock.advance(1)
 
-    await room.reroll(0)
+    await room.reroll(0, null)
 
     expect(room.liveSnapshot().winnerChat).toEqual([])
     expect(liveMessages.at(-1)).not.toContain("old winner line")
@@ -1167,7 +1167,7 @@ describe("winner chat", () => {
     const { room, socket, winner, clock, drawnAt, connector } = await connectedRoom({
       env: { ...longLived, REROLL_WINDOW_SECONDS: "10" },
     })
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)
     socket?.receive(chat(winner, "thanks"))
     clock.advance(drawnAt + 310_001 - clock.now())
     room.onAlarm()
@@ -1181,7 +1181,7 @@ describe("winner chat", () => {
     const { room, winner, clock, drawnAt, liveMessages } = await connectedRoom({
       env: { ...longLived, REROLL_WINDOW_SECONDS: "10" },
     })
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)
     expect(room.liveSnapshot()).toMatchObject({ winnerChatOpen: true, rerollBlocked: null })
     const pushed = liveMessages.length
 
@@ -1229,7 +1229,7 @@ describe("winner chat", () => {
 
   it("writes nothing to the room database for a message of a claimed winner", async () => {
     const { db, room, socket, winner } = await connectedRoom()
-    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual")
+    room.claim(0, { platform: "twitch", platformUserId: winner }, "manual", null)
     const before = dump(db)
 
     socket?.receive(chat(winner, "hello"))

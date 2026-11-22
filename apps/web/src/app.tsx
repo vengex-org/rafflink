@@ -11,6 +11,7 @@ import { DrawPage } from "./pages/draw-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
 import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
+import { ModeratorLivePage, ModeratorOpenPage } from "./pages/moderator-page.tsx"
 import { OverlayPage } from "./pages/overlay-page.tsx"
 import { VerifyLookupPage } from "./pages/verify-lookup-page.tsx"
 import { VerifyPage } from "./pages/verify-page.tsx"
@@ -27,6 +28,7 @@ export function AppRoutes() {
         <Routes>
           <Route path="overlay/:id/:token" caseSensitive element={<OverlayPage />} />
           <Route path="live/:id" caseSensitive element={<LivePage />} />
+          <Route path="mod/:id" caseSensitive element={<ModeratorLivePage />} />
           <Route element={<Layout account />}>
             <Route path="dashboard" caseSensitive element={<DashboardPage />} />
             <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
@@ -38,9 +40,10 @@ export function AppRoutes() {
             <Route index element={<HomePage />} />
             <Route path="*" element={<NotFound title="notFound.page" />} />
           </Route>
-          {/* The list draw makes no request but the drand round, so it skips the session lookup. */}
+          {/* The list draw makes no request but the drand round, and a moderator link's opener needs no streamer header, so both skip the session lookup. */}
           <Route element={<Layout account={false} />}>
             <Route path="draw" caseSensitive element={<DrawPage />} />
+            <Route path="mod" caseSensitive element={<ModeratorOpenPage />} />
           </Route>
           {siteRoutes}
           <Route element={<Layout account={false} />}>

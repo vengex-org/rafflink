@@ -1188,8 +1188,8 @@ describe("winners", () => {
     const racing = Object.assign(Object.create(real), {
       draw: async () => {
         calls += 1
-        if (calls > 1) return real.draw(1)
-        harness.rooms.roomFor(id).close()
+        if (calls > 1) return real.draw(1, null)
+        harness.rooms.roomFor(id).close(null)
         return { kind: "not-closed" }
       },
     })
@@ -2135,7 +2135,7 @@ describe("draw commitment", () => {
     const { code, id } = await createGiveaway(harness)
     const early = await new Browser(harness).request(`/api/g/${code}/leaves/${noRoot}`)
     expect(early.status).toBe(409)
-    harness.rooms.roomFor(id).close()
+    harness.rooms.roomFor(id).close(null)
     await harness.rooms.roomFor(id).commit()
 
     const later = await new Browser(harness).request(await leavesPath(code))

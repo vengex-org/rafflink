@@ -28,6 +28,11 @@ export class FakeSocket {
     this.emit(new Event("close"))
   }
 
+  /** The server ended the socket because its peer lost access (RFC 6455 code 1008). */
+  revoke(): void {
+    this.emit(new CloseEvent("close", { code: 1008 }))
+  }
+
   private emit(event: Event): void {
     for (const listener of this.listeners.get(event.type) ?? []) listener(event)
   }

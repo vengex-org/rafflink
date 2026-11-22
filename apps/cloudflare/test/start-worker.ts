@@ -61,6 +61,7 @@ function rateLimitsOf(
     ENTRY_USER_LIMITER: env.ENTRY_USER_LIMIT_PER_MINUTE,
     ENTRY_IP_LIMITER: env.ENTRY_IP_LIMIT_PER_MINUTE,
     LEAVES_IP_LIMITER: env.LEAVES_IP_LIMIT_PER_MINUTE,
+    MODERATOR_IP_LIMITER: env.MODERATOR_IP_LIMIT_PER_MINUTE,
   }
   return Object.fromEntries(
     Object.entries(configured).map(([name, { namespaceId, limit }]) => {

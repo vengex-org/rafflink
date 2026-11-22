@@ -164,7 +164,12 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     if (pick === undefined) return c.json({ kind: "not-a-winner" }, claimStatus["not-a-winner"])
     const outcome = await deps.rooms
       .get(giveaway.id)
-      .claim(pick.n, { platform: pick.platform, platformUserId: pick.platformUserId }, "rafflink")
+      .claim(
+        pick.n,
+        { platform: pick.platform, platformUserId: pick.platformUserId },
+        "rafflink",
+        null,
+      )
     return c.json({ kind: outcome.kind }, claimStatus[outcome.kind])
   })
 

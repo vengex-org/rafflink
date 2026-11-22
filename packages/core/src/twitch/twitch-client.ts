@@ -203,6 +203,18 @@ export class TwitchClient {
     return { vips, moderators }
   }
 
+  /** Whether the user moderates the channel. Needs the streamer's token with `moderation:read`. */
+  async isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
+    const page = await this.helix(
+      "moderators",
+      "/helix/moderation/moderators",
+      { broadcaster_id: broadcasterId, user_id: userId },
+      accessToken,
+      parseRolePage,
+    )
+    return page.userIds.includes(userId)
+  }
+
   /**
    * Subscribes the WebSocket session to the channel's chat messages. Needs the streamer's token with
    * `user:read:chat`; the streamer is both the channel and the reading user.

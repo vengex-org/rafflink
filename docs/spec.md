@@ -372,6 +372,7 @@ giveaways(id, code UNIQUE, streamer_id, title, prize, rules_json, status,
           closes_at, claim_seconds, overlay_token, overlay_theme_json, created_at)
 streamer_overlay(streamer_id, theme_json, updated_at, PRIMARY KEY (streamer_id))
 cloudflare_plan(id CHECK (id = 1), plan CHECK (plan IN ('free', 'paid')), changed_at, changed_by)
+moderator_links(id, streamer_id, giveaway_id, token_hash UNIQUE, require_mod, created_at, revoked_at)
 metrics_minute(minute, entries, claims, PRIMARY KEY (minute)) WITHOUT ROWID   -- admin chart, aggregate
 referrals(day, ref, count, PRIMARY KEY (day, ref)) WITHOUT ROWID              -- ?ref= visits, aggregate
 -- indexes for the admin statistics: giveaways(created_at), giveaways(created_at) WHERE status = 'open',
@@ -395,7 +396,7 @@ entries(platform, platform_user_id, login, display_name, profile_image_url, grou
 channel_roles(platform, platform_user_id, role, fetched_at,
               PRIMARY KEY (platform, platform_user_id, role)) WITHOUT ROWID
 draws(n, platform, platform_user_id, drawn_at, claim_until, claimed_at, claimed_via, rerolled,
-      leaf_index, PRIMARY KEY (n))
+      leaf_index, drawn_by, rerolled_by, claim_marked_by, PRIMARY KEY (n))
 leaves(chunk, data)
 ```
 
@@ -411,6 +412,19 @@ no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Pl
   `parseOverlayTheme`. A giveaway's own style wins over the streamer's; with neither the overlay looks as it did
   before styles existed. A save pushes the style to the open overlays through the room's overlay broadcast; the
   room stores none of it.
+- `moderator_links` (#64): a link the streamer hands to a moderator for one giveaway. Its URL is
+  `/mod#<link id>.<secret>`: the token is in the fragment, so it never reaches a server log. The row keeps
+  the SHA-256 of the 128-bit secret, compared in constant time. Opening the link gives a cookie scoped to
+  `/api/mod/<giveaway id>`, and every request looks the row up, so revoking (`revoked_at`) stops the link at
+  once and closes its live sockets. The link may close entries, draw, reroll and mark claims, nothing else.
+  With `require_mod` the opener must be the broadcaster or a moderator of the channel, which Helix answers with
+  the streamer's token. Someone not signed in gets a pending cookie with the link id only, signs in on the
+  viewer callback with scope `openid` (no account row, no stored token), and the cookie keeps their user id;
+  button presses check it again at most every `MODERATOR_RECHECK_SECONDS`. Rows go with their giveaway. A link
+  for all of a streamer's giveaways (issue #64) is deferred: every link is for one giveaway.
+- `room_state.closed_by`, `draw_requested_by`, `draws.drawn_by`, `rerolled_by`, `claim_marked_by` (room
+  migration 0010): who pressed the action, `streamer` or `mod:<link id>`; NULL when the room acted by itself.
+  The live page lists them once a moderator link acted.
 - `room_state.seed`: 32 bytes written at the draw: the randomness of the drand round in `drand_round` (a room
   drawn before 0003 holds 32 random bytes and no root; the verify page reports it as unverifiable).
 

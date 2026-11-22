@@ -142,6 +142,7 @@ const privacy: LegalDocument = {
         "privacy.data.i5",
         "privacy.data.i6",
         "privacy.data.i7",
+        "privacy.data.i8",
       ],
     },
     {
@@ -179,6 +180,7 @@ const privacy: LegalDocument = {
         "privacy.cookies.i3",
         "privacy.cookies.i4",
         "privacy.cookies.i5",
+        "privacy.cookies.i6",
       ],
     },
     {

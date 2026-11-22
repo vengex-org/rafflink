@@ -7,8 +7,11 @@ const platforms = ["twitch"] as const
 
 export type Platform = (typeof platforms)[number]
 
-/** The two sign-ins: the streamer who runs giveaways and the viewer who enters one. */
+/** The two sign-in callbacks: the streamer who runs giveaways and the viewer who enters one. */
 export type OAuthFlow = "streamer" | "viewer"
+
+/** What a sign-in is for; a moderator of a giveaway's channel signs in on the viewer callback, so no new redirect URI is registered. */
+export type SignInPurpose = OAuthFlow | "moderator"
 
 export type SubscriptionGroup = Extract<Group, "sub_t1" | "sub_t2" | "sub_t3">
 
@@ -96,7 +99,7 @@ export interface PlatformProvider {
   readonly platform: Platform
   readonly capabilities: PlatformCapabilities
   /** The scopes each sign-in asks for; the streamer's are stored with the streamer's token. */
-  readonly scopes: Readonly<Record<OAuthFlow, readonly [string, ...string[]]>>
+  readonly scopes: Readonly<Record<SignInPurpose, readonly [string, ...string[]]>>
   authorizeUrl(params: AuthorizeParams): string
   /**
    * Trades the sign-in's code, with its PKCE verifier, for tokens. Not retried: a code is single use,
@@ -122,6 +125,8 @@ export interface PlatformProvider {
   /** The channel's subscriber badges; every tier `null` when the platform could not answer. */
   subscriberBadges(broadcasterId: string): Promise<SubscriberBadges>
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles>
+  /** Whether the user moderates the channel now, asked with the streamer's token. */
+  isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
   /** The chat of one giveaway's channel, whatever this platform's transport. */
   chatSource(context: ChatContext): ChatSourceFactory
 }

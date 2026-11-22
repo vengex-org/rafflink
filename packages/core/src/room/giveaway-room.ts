@@ -1,4 +1,5 @@
 import type { ResolvedConfig } from "../config.ts"
+import type { Actor } from "../domain/actor.ts"
 import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import {
   evaluateEligibility,
@@ -288,8 +289,24 @@ export type OverlaySnapshot = RoomSummary
     readonly now: Instant
   }
 
-/** The streamer's live page snapshot: the overlay's plus the winners' chat. */
+/** Who pressed the actions of one pick; null where nobody is known. */
+export interface PickActors {
+  readonly n: number
+  readonly drawnBy: Actor | null
+  readonly rerolledBy: Actor | null
+  /** Set only for a claim marked by hand. */
+  readonly claimMarkedBy: Actor | null
+}
+
+/** Who pressed the room's actions, so the live page tells the streamer's from a moderator link's; null where the room acted by itself or the action predates actors. */
+export interface ActionActors {
+  readonly closedBy: Actor | null
+  readonly picks: readonly PickActors[]
+}
+
+/** The streamer's live page snapshot: the overlay's plus the winners' chat and who pressed what. */
 export type LiveSnapshot = OverlaySnapshot & {
+  readonly actors: ActionActors
   /** The newest chat messages of winners, newest last; kept in room memory only. */
   readonly winnerChat: readonly WinnerChatLine[]
   /** The chat watch is running, so a winner's message can still appear in `winnerChat`; false once it ended or gave up. */
@@ -546,20 +563,21 @@ export class GiveawayRoom {
   }
 
   /** Stops entries. Idempotent: closing a room that is not open reports its status. */
-  close(): CloseOutcome {
-    if (!this.closeOpenRoom()) return { kind: "not-open", status: this.readState().status }
+  close(by: Actor | null): CloseOutcome {
+    if (!this.closeOpenRoom(by)) return { kind: "not-open", status: this.readState().status }
     this.mirrorRetryAt = this.clock.now() + this.config.mirrorRetrySeconds * 1000
     this.afterOutcomeWrite()
     return { kind: "closed" }
   }
 
   /** Closes an open room and has the alarm draw the first `count` winners once the committed drand round is published. */
-  requestDraw(count: number): RequestDrawOutcome {
+  requestDraw(count: number, by: Actor | null): RequestDrawOutcome {
     const closed = this.sql.transaction(() => {
-      if (!this.closeOpenRoom()) return false
-      this.sql.exec("UPDATE room_state SET draw_requested = 1, draw_count = ? WHERE id = 1", [
-        count,
-      ])
+      if (!this.closeOpenRoom(by)) return false
+      this.sql.exec(
+        "UPDATE room_state SET draw_requested = 1, draw_count = ?, draw_requested_by = ? WHERE id = 1",
+        [count, by],
+      )
       return true
     })
     if (!closed) return { kind: "not-open", status: this.readState().status }
@@ -581,7 +599,7 @@ export class GiveawayRoom {
     let state = this.readState()
     let pushNow = this.pushDueAt !== null && now >= this.pushDueAt
     if (state.status === "open" && state.closesAt !== null && now >= state.closesAt) {
-      pushNow = this.closeOpenRoom() || pushNow
+      pushNow = this.closeOpenRoom(null) || pushNow
       state = this.readState()
     }
     // The end of the chat watch changes the snapshot too, also when every pick is claimed and no reroll window runs.
@@ -746,16 +764,22 @@ export class GiveawayRoom {
    * A batch is the same picks as `count` draws one by one. While the round is missing it draws nothing,
    * uses no other randomness and has the alarm draw the batch once the round is published.
    */
-  async draw(count: number): Promise<DrawOutcome> {
+  async draw(count: number, by: Actor | null): Promise<DrawOutcome> {
     const state = this.readState()
     const refusal = drawRefusal(state)
     if (refusal !== null) return refusal
-    return state.status === "drawn" ? this.drawNext(state.seed, count) : this.drawOpening(count)
+    return state.status === "drawn"
+      ? this.drawNext(state.seed, count, by)
+      : this.drawOpening(count, by)
   }
 
-  /** Draws the requested first batch of a closed room and nothing else: a room that is already drawn is refused, so the alarm never adds a pick. */
-  async drawFirst(): Promise<DrawOutcome> {
-    const outcome = await this.drawOpening(this.readState().drawCount)
+  /**
+   * Draws the requested first batch of a closed room and nothing else: a room that is already drawn is refused,
+   * so the alarm never adds a pick. With a null `by` (the alarm) the picks belong to whoever pressed Draw while
+   * entries were open.
+   */
+  async drawFirst(by: Actor | null): Promise<DrawOutcome> {
+    const outcome = await this.drawOpening(this.readState().drawCount, by)
     // A batch over the limit never fits, so the alarm stops asking and the streamer draws fewer.
     if (outcome.kind === "pick-limit") {
       this.sql.exec(
@@ -767,7 +791,7 @@ export class GiveawayRoom {
     return outcome
   }
 
-  private async drawOpening(count: number): Promise<DrawOutcome> {
+  private async drawOpening(count: number, by: Actor | null): Promise<DrawOutcome> {
     if (count > this.config.drawMaxWinners) return { kind: "pick-limit" }
     await this.commit()
     const state = this.readState()
@@ -785,8 +809,8 @@ export class GiveawayRoom {
           return { kind: "beacon-unavailable" }
         }
         this.sql.exec(
-          "UPDATE room_state SET draw_requested = 1, draw_count = ? WHERE id = 1 AND status = 'closed'",
-          [count],
+          "UPDATE room_state SET draw_requested = 1, draw_count = ?, draw_requested_by = COALESCE(?, draw_requested_by) WHERE id = 1 AND status = 'closed'",
+          [count, by],
         )
         this.afterWrite()
         return { kind: "round-pending", availableAt, now: this.clock.now() }
@@ -808,7 +832,8 @@ export class GiveawayRoom {
       if (moved.length === 0) return drawRefusal(this.readState()) ?? { kind: "try-again" }
       flipped = true
       if (winners.length === 0) return { kind: "no-entrants-left" }
-      for (const winner of winners) this.insertPick(winner, now, state.claimSeconds)
+      const drawnBy = by ?? state.drawRequestedBy
+      for (const winner of winners) this.insertPick(winner, now, state.claimSeconds, drawnBy)
       return { kind: "drawn", winners }
     })
     if (flipped) {
@@ -818,7 +843,11 @@ export class GiveawayRoom {
     return outcome
   }
 
-  private async drawNext(seed: Uint8Array<ArrayBuffer>, count: number): Promise<DrawOutcome> {
+  private async drawNext(
+    seed: Uint8Array<ArrayBuffer>,
+    count: number,
+    by: Actor | null,
+  ): Promise<DrawOutcome> {
     const draws = this.readDraws()
     if (draws.length + count > this.config.drawMaxWinners) return { kind: "pick-limit" }
     const next = nextPickNumber(draws)
@@ -831,7 +860,7 @@ export class GiveawayRoom {
       if (this.sql.exec("SELECT n FROM draws WHERE n >= ? LIMIT 1", [next]).length > 0) {
         return { kind: "try-again" }
       }
-      for (const winner of winners) this.insertPick(winner, now, claimSeconds)
+      for (const winner of winners) this.insertPick(winner, now, claimSeconds, by)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
       this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
       return { kind: "drawn", winners }
@@ -841,7 +870,7 @@ export class GiveawayRoom {
   }
 
   /** Marks pick `n` rerolled and adds the next pick; a repeat for the same `n` changes nothing. */
-  async reroll(n: number): Promise<RerollOutcome> {
+  async reroll(n: number, by: Actor | null): Promise<RerollOutcome> {
     const state = this.readState()
     if (state.status !== "drawn") return { kind: "not-drawn" }
     if (state.entriesDeleted) return { kind: "entries-deleted" }
@@ -864,11 +893,11 @@ export class GiveawayRoom {
         return { kind: "try-again" }
       }
       const marked = this.sql.exec(
-        "UPDATE draws SET rerolled = 1 WHERE n = ? AND rerolled = 0 AND claimed_at IS NULL RETURNING n",
-        [n],
+        "UPDATE draws SET rerolled = 1, rerolled_by = ? WHERE n = ? AND rerolled = 0 AND claimed_at IS NULL RETURNING n",
+        [by, n],
       )
       if (marked.length === 0) return rerollRefusal(this.readDraw(n)) ?? { kind: "unknown-pick" }
-      this.insertPick(winner, now, state.claimSeconds)
+      this.insertPick(winner, now, state.claimSeconds, by)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
       this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
       return { kind: "rerolled", replaced: n, winner }
@@ -880,15 +909,19 @@ export class GiveawayRoom {
     return outcome
   }
 
-  /** Records that the winner of pick `n` claimed; the first claim wins, a later one is refused. A claim by the streamer's hand has no deadline. */
-  claim(n: number, winner: Identity, via: ClaimedVia): ClaimOutcome {
+  /**
+   * Records that the winner of pick `n` claimed; the first claim wins, a later one is refused. A claim by the
+   * streamer's hand has no deadline; `by` is who marked it and is kept only for such a claim.
+   */
+  claim(n: number, winner: Identity, via: ClaimedVia, by: Actor | null): ClaimOutcome {
     const now = this.clock.now()
+    const markedBy = via === "manual" ? by : null
     const claimed = this.sql.exec(
-      `UPDATE draws SET claimed_at = ?, claimed_via = ?
+      `UPDATE draws SET claimed_at = ?, claimed_via = ?, claim_marked_by = ?
        WHERE n = ? AND platform = ? AND platform_user_id = ?
          AND claimed_at IS NULL AND rerolled = 0 AND (? = 'manual' OR claim_until >= ?)
        RETURNING n`,
-      [now, via, n, winner.platform, winner.platformUserId, via, now],
+      [now, via, markedBy, n, winner.platform, winner.platformUserId, via, now],
     )
     if (claimed.length === 1) {
       this.afterOutcomeWrite()
@@ -1017,6 +1050,7 @@ export class GiveawayRoom {
       winnerChat: this.winnerChat.map((entry) => entry.line),
       winnerChatOpen: this.chatWatchOpen(state),
       picksLeft: Math.max(0, this.config.drawMaxWinners - winners.length),
+      actors: { closedBy: state.closedBy, picks: rows.map(pickActors) },
       ...this.rerollState(state),
       roleRefreshFailures: state.roleRefreshFailures,
       eventSubFailures: state.eventSubFailures,
@@ -1049,7 +1083,7 @@ export class GiveawayRoom {
 
   private readPickRows(): SqlRow[] {
     return this.sql.exec(
-      `SELECT d.n, d.platform, d.platform_user_id, d.drawn_at, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, d.login, d.display_name, e.profile_image_url, e.seq
+      `SELECT d.n, d.platform, d.platform_user_id, d.drawn_at, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, d.login, d.display_name, d.drawn_by, d.rerolled_by, d.claim_marked_by, e.profile_image_url, e.seq
        FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
        ORDER BY d.n`,
       [],
@@ -1123,11 +1157,11 @@ export class GiveawayRoom {
   }
 
   // The names are copied from the entry, so they outlive the entries' retention.
-  private insertPick(winner: Winner, now: Instant, claimSeconds: number): void {
+  private insertPick(winner: Winner, now: Instant, claimSeconds: number, by: Actor | null): void {
     const entry = "FROM entries WHERE platform = ? AND platform_user_id = ?"
     this.sql.exec(
-      `INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until, leaf_index, login, display_name)
-       VALUES (?, ?, ?, ?, ?, ?, (SELECT login ${entry}), (SELECT display_name ${entry}))`,
+      `INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until, leaf_index, drawn_by, login, display_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT login ${entry}), (SELECT display_name ${entry}))`,
       [
         winner.n,
         winner.platform,
@@ -1135,6 +1169,7 @@ export class GiveawayRoom {
         now,
         now + claimSeconds * 1000,
         winner.leafIndex,
+        by,
         winner.platform,
         winner.platformUserId,
         winner.platform,
@@ -1143,10 +1178,10 @@ export class GiveawayRoom {
     )
   }
 
-  private closeOpenRoom(): boolean {
+  private closeOpenRoom(by: Actor | null): boolean {
     const closed = this.sql.exec(
-      "UPDATE room_state SET status = 'closed', closed_at = ?, mirror_pending = 1 WHERE id = 1 AND status = 'open' RETURNING id",
-      [this.clock.now()],
+      "UPDATE room_state SET status = 'closed', closed_at = ?, closed_by = ?, mirror_pending = 1 WHERE id = 1 AND status = 'open' RETURNING id",
+      [this.clock.now(), by],
     )
     return closed.length > 0
   }
@@ -1279,6 +1314,7 @@ export class GiveawayRoom {
       new RowReader("draws", pick).int("n"),
       { platform: state.platform, platformUserId: message.platformUserId },
       "chat",
+      null,
     )
     return outcome.kind === "claimed"
   }
@@ -1524,6 +1560,7 @@ export function overlaySnapshot({
   winnerChat: _winnerChat,
   winnerChatOpen: _winnerChatOpen,
   picksLeft: _picksLeft,
+  actors: _actors,
   ...rest
 }: LiveSnapshot): OverlaySnapshot {
   return rest
@@ -1611,6 +1648,11 @@ function liveWinner(row: SqlRow, now: Instant): LiveWinner {
     claimUntil: draw.claimUntil,
     claim: winnerClaim(draw, now),
   }
+}
+
+function pickActors(row: SqlRow): PickActors {
+  const { n, drawnBy, rerolledBy, claimMarkedBy } = parseDraw(row)
+  return { n, drawnBy, rerolledBy, claimMarkedBy }
 }
 
 function winnerClaim(draw: DrawRow, now: Instant): WinnerClaim {

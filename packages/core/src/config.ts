@@ -472,6 +472,18 @@ export const configSchema = {
     "20",
     "Leaf list downloads one client address may make per minute when the list is not in the cache; each wakes the giveaway's room and carries up to a megabyte; a verify page loads it once, so this is a loose backstop (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
   ),
+  moderatorIpLimitPerMinute: withDefault(
+    "MODERATOR_IP_LIMIT_PER_MINUTE",
+    int(1),
+    "10",
+    "Moderator links one client address may open per minute; opening one is a single call, and its 128-bit token is not guessable anyway, so this only caps the cost of attempts (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
+  ),
+  moderatorRecheckSeconds: withDefault(
+    "MODERATOR_RECHECK_SECONDS",
+    int(1),
+    "600",
+    "How long a moderator's button presses trust the last answer that they still moderate the channel, for links that require a moderator; each check is one Helix call with the streamer's token, and a demoted moderator keeps acting at most this long (starting guess)",
+  ),
   leavesCacheSeconds: withDefault(
     "LEAVES_CACHE_SECONDS",
     int(0),
@@ -784,6 +796,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     entryUserLimitPerMinute: read(env, configSchema.entryUserLimitPerMinute),
     entryIpLimitPerMinute: read(env, configSchema.entryIpLimitPerMinute),
     leavesIpLimitPerMinute: read(env, configSchema.leavesIpLimitPerMinute),
+    moderatorIpLimitPerMinute: read(env, configSchema.moderatorIpLimitPerMinute),
+    moderatorRecheckSeconds: read(env, configSchema.moderatorRecheckSeconds),
     leavesCacheSeconds: read(env, configSchema.leavesCacheSeconds),
     clientIpHeader: read(env, configSchema.clientIpHeader),
     titleMaxLength: read(env, configSchema.titleMaxLength),

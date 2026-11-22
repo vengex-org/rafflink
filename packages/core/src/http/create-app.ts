@@ -5,6 +5,7 @@ import { authRoutes, type Backlog } from "./auth-routes.ts"
 import { dashboardRoutes } from "./dashboard-routes.ts"
 import type { AppDeps } from "./deps.ts"
 import { giveawayRoutes } from "./giveaway-routes.ts"
+import { moderatorRoutes } from "./moderator-routes.ts"
 import { sessionRoutes } from "./session-routes.ts"
 import { securityHeadersMiddleware } from "./security-headers.ts"
 import { spaRoutes, type SpaTemplateLoader } from "./spa-routes.ts"
@@ -23,6 +24,7 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   app.route("/", giveawayRoutes(deps))
   app.route("/", sessionRoutes(deps))
   app.route("/", dashboardRoutes(deps))
+  app.route("/", moderatorRoutes(deps))
   if (spaTemplate !== null) app.route("/", spaRoutes(deps, spaTemplate))
 
   app.notFound((c) => c.json({ error: "not-found" }, 404))

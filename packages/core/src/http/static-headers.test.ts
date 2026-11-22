@@ -33,6 +33,8 @@ describe("headersFile", () => {
         "  X-Robots-Tag: noindex, nofollow",
         "/live/*",
         "  X-Robots-Tag: noindex, nofollow",
+        "/mod/*",
+        "  X-Robots-Tag: noindex, nofollow",
         "/overlay/*",
         "  X-Robots-Tag: noindex, nofollow",
         "/dashboard/*",

@@ -2,6 +2,7 @@ import { useCallback, useId, useState, type ReactNode } from "react"
 import { useParams, useSearchParams } from "react-router"
 import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { liveSnapshotPath, parseLiveSnapshot } from "../api/client.ts"
+import { ActorLog } from "../components/actor-log.tsx"
 import { ActivityIcon, AlertIcon, EyeOffIcon } from "../components/icons.tsx"
 import { EntrantsSection, Tiers } from "../components/entrants-table.tsx"
 import { ClaimStatus, isUnsettled, LiveActions, LiveSettings } from "../components/live-bar.tsx"
@@ -33,7 +34,7 @@ export function LivePage() {
 }
 
 /** A state with no giveaway to show: the frame with the brand only. */
-function Plain({ children }: { readonly children: ReactNode }) {
+export function Plain({ children }: { readonly children: ReactNode }) {
   return <LiveFrame bar={<LiveBrand />}>{children}</LiveFrame>
 }
 
@@ -58,6 +59,7 @@ function Loaded({ id }: { readonly id: string }) {
           <SignIn why="signIn.why.live" />
         </Plain>
       )
+    case "forbidden":
     case "not-found":
       return (
         <Plain>
@@ -111,7 +113,7 @@ function Connected({
   )
 }
 
-/** The live page for data it is given; a hosted demo (site seam) gives it a simulated giveaway. */
+/** The live page for data it is given; a hosted demo (site seam) gives it a simulated giveaway, a moderator link's page its own requests. */
 export function LiveControls({
   id,
   snapshot,
@@ -188,6 +190,7 @@ export function LiveControls({
             <ClaimStatus winners={snapshot.winners} current={current} />
           )}
           <LiveStats snapshot={snapshot} facts={facts} rows={entrants.rows} />
+          <ActorLog actors={snapshot.actors} />
           {clean ? (
             <button type="button" className="live-btn ghost live-show" onClick={toggleClean}>
               <EyeOffIcon />

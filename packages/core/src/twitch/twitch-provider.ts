@@ -36,6 +36,7 @@ export class TwitchProvider implements PlatformProvider {
   readonly scopes = {
     streamer: ["openid", "channel:read:vips", "moderation:read", "user:read:chat"],
     viewer: ["openid", "user:read:subscriptions", "user:read:follows"],
+    moderator: ["openid"],
   } as const
   private readonly badges: ChannelBadges
 
@@ -108,6 +109,10 @@ export class TwitchProvider implements PlatformProvider {
 
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles> {
     return this.client.channelRoles(accessToken, broadcasterId)
+  }
+
+  isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
+    return this.client.isModerator(accessToken, broadcasterId, userId)
   }
 
   /** An EventSub WebSocket whose sessions are subscribed to the channel's chat with the streamer's token. */

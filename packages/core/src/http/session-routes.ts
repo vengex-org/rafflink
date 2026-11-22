@@ -1,4 +1,4 @@
-import { Hono, type Context } from "hono"
+import { Hono, type Context, type MiddlewareHandler } from "hono"
 import type { StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import type { ResolvedConfig } from "../config.ts"
@@ -7,6 +7,9 @@ import type { AppDeps } from "./deps.ts"
 import type { OperatorJson, SessionJson } from "./json.ts"
 import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
 import { sameOrigin } from "./origin.ts"
+
+/** The variables {@link requireStreamer} sets. */
+export type StreamerEnv = { Variables: { streamer: StreamerSession; account: StreamerRecord } }
 
 export function sessionRoutes(deps: AppDeps): Hono {
   const app = new Hono()
@@ -68,4 +71,15 @@ export async function currentStreamer(
     return null
   }
   return { session, streamer }
+}
+
+/** Answers 401 without a signed-in streamer; otherwise sets the session and the account for the route. */
+export function requireStreamer(deps: AppDeps): MiddlewareHandler<StreamerEnv> {
+  return async (c, next) => {
+    const current = await currentStreamer(c, deps)
+    if (current === null) return c.json({ error: "unauthorized" }, 401)
+    c.set("streamer", current.session)
+    c.set("account", current.streamer)
+    return next()
+  }
 }

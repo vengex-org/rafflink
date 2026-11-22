@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { EntrantsDelta } from "@rafflink/core/room/giveaway-room"
 import type { Entrant } from "@rafflink/core/room/rows"
-import { getEntrants } from "../api/client.ts"
+import { useLiveApi } from "./live-api.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 
 export interface EntrantsState {
@@ -33,6 +33,7 @@ export function useEntrants(
 ): EntrantsState & { readonly retry: () => void } {
   const [state, setState] = useState<EntrantsState>({ rows: [], phase: "loading" })
   const syncer = useRef<Syncer | null>(null)
+  const { getEntrants } = useLiveApi()
 
   useEffect(() => {
     let alive = true
@@ -100,7 +101,7 @@ export function useEntrants(
       alive = false
       syncer.current = null
     }
-  }, [id])
+  }, [id, getEntrants])
 
   useEffect(() => {
     if (feed.connected) syncer.current?.catchUp()

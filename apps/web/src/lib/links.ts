@@ -1,5 +1,5 @@
 import type { OverlayOptions } from "./overlay-options.ts"
-import { giveawayPath, overlayPath } from "./routes.ts"
+import { giveawayPath, moderatorOpenPath, overlayPath } from "./routes.ts"
 
 export function shareUrl(code: string): string {
   return new URL(giveawayPath(code), window.location.origin).href
@@ -12,6 +12,11 @@ export function siteHost(): string {
 
 export function overlayUrl(id: string, overlayToken: string, options?: OverlayOptions): string {
   return new URL(overlayPath(id, overlayToken, options), window.location.origin).href
+}
+
+/** A moderator link: the token rides in the fragment, which the browser never sends to a server. */
+export function moderatorUrl(token: string): string {
+  return new URL(`${moderatorOpenPath}#${token}`, window.location.origin).href
 }
 
 export const repositoryUrl = "https://github.com/vengex-org/rafflink"

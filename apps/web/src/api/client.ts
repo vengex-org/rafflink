@@ -1,3 +1,4 @@
+import { parseActor, type Actor } from "@rafflink/core/domain/actor"
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { parseOverlayTheme, type OverlayTheme } from "@rafflink/core/domain/overlay-theme"
 import { ineligibleReasons, type GiveawayRules } from "@rafflink/core/domain/rules"
@@ -15,6 +16,7 @@ import type {
   EntrantsPage,
   GiveawayOverlayThemesJson,
   LeavesJson,
+  ModeratorLinkJson,
   MyLeafJson,
   OperatorJson,
   PublicGiveaway,
@@ -31,6 +33,7 @@ import {
 } from "@rafflink/core/plan/plan-limits"
 import { usageAlertLimits, type Usage, type UsageAlert } from "@rafflink/core/plan/usage"
 import type {
+  ActionActors,
   ClaimOutcome,
   CloseOutcome,
   DrawOutcome,
@@ -38,6 +41,7 @@ import type {
   LiveSnapshot,
   LiveWinner,
   OverlaySnapshot,
+  PickActors,
   RequestDrawOutcome,
   RerollOutcome,
   RerollState,
@@ -163,6 +167,8 @@ export interface VerifyLoad {
 }
 
 export const liveSnapshotPath = (id: string) => `/api/live/${encodeURIComponent(id)}`
+/** The live snapshot and socket of a moderator link's page; its cookie is scoped to this path. */
+export const moderatorSnapshotPath = (id: string) => `/api/mod/${encodeURIComponent(id)}`
 export const overlaySnapshotPath = (id: string, token: string) =>
   `/api/overlay/${encodeURIComponent(id)}/${encodeURIComponent(token)}`
 
@@ -446,16 +452,34 @@ export async function createGiveaway(input: CreateGiveawayBody): Promise<CreateR
 }
 
 /** The entrants after `afterSeq`, oldest first, up to the server's page size. */
-export async function getEntrants(id: string, afterSeq: number): Promise<EntrantsPage> {
-  const { status, body } = await send(`${liveSnapshotPath(id)}/entrants?after=${afterSeq}`)
+export function getEntrants(id: string, afterSeq: number): Promise<EntrantsPage> {
+  return entrantsAfter(liveSnapshotPath(id), afterSeq)
+}
+
+/** {@link getEntrants} on a moderator link's page. */
+export function getModeratorEntrants(id: string, afterSeq: number): Promise<EntrantsPage> {
+  return entrantsAfter(moderatorSnapshotPath(id), afterSeq)
+}
+
+async function entrantsAfter(livePath: string, afterSeq: number): Promise<EntrantsPage> {
+  const { status, body } = await send(`${livePath}/entrants?after=${afterSeq}`)
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "entrants")
   return { rows: list(source, "rows", parseEntrant), more: bool(source, "more") }
 }
 
 /** The channel's subscriber badge image per tier; the server reads Twitch once and answers every tier `null` while Twitch gives none. */
-export async function getBadges(id: string): Promise<BadgesJson> {
-  const { status, body } = await send(`${liveSnapshotPath(id)}/badges`)
+export function getBadges(id: string): Promise<BadgesJson> {
+  return badgesOf(liveSnapshotPath(id))
+}
+
+/** {@link getBadges} on a moderator link's page. */
+export function getModeratorBadges(id: string): Promise<BadgesJson> {
+  return badgesOf(moderatorSnapshotPath(id))
+}
+
+async function badgesOf(livePath: string): Promise<BadgesJson> {
+  const { status, body } = await send(`${livePath}/badges`)
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "badges")
   return {
@@ -468,9 +492,10 @@ export async function getBadges(id: string): Promise<BadgesJson> {
 export async function getLive<Snapshot>(
   path: string,
   parseSnapshot: (source: Json) => Snapshot,
-): Promise<LiveLoad<Snapshot> | "unauthorized" | "not-found"> {
+): Promise<LiveLoad<Snapshot> | "unauthorized" | "forbidden" | "not-found"> {
   const { status, body } = await send(path)
   if (status === 401) return "unauthorized"
+  if (status === 403) return "forbidden"
   if (status === 404) return "not-found"
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "live")
@@ -482,7 +507,7 @@ export async function getLive<Snapshot>(
 }
 
 export function closeEntries(id: string): Promise<CloseKind | Rejected> {
-  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/close`, {}, closeKinds)
+  return act(`${dashPath(id)}/close`, {}, closeKinds)
 }
 
 /** What a draw answered: the outcome, and for `round-pending` the instant the committed round is published. */
@@ -491,8 +516,12 @@ export type DrawAnswer =
   | { readonly kind: "round-pending"; readonly availableAt: number; readonly now: number }
 
 /** Draws the next `count` winners; while entries are open it closes them and the room draws the first ones itself once the round is published. */
-export async function drawWinners(id: string, count: number): Promise<DrawAnswer> {
-  const source = await post(`/api/dash/giveaways/${encodeURIComponent(id)}/draw`, { count })
+export function drawWinners(id: string, count: number): Promise<DrawAnswer> {
+  return drawAt(dashPath(id), count)
+}
+
+async function drawAt(actionsPath: string, count: number): Promise<DrawAnswer> {
+  const source = await post(`${actionsPath}/draw`, { count })
   const kind = answerKind(source, drawKinds)
   return kind === "round-pending"
     ? { kind, availableAt: num(source, "availableAt"), now: num(source, "now") }
@@ -504,11 +533,90 @@ export function setWinnerCount(id: string, count: number): Promise<SetWinnerCoun
 }
 
 export function rerollWinner(id: string, n: number): Promise<RerollKind | Rejected> {
-  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/reroll`, { n }, rerollKinds)
+  return act(`${dashPath(id)}/reroll`, { n }, rerollKinds)
 }
 
 export function markClaimed(id: string, n: number): Promise<ClaimKind | Rejected> {
-  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/claim`, { n }, claimKinds)
+  return act(`${dashPath(id)}/claim`, { n }, claimKinds)
+}
+
+/** The buttons a moderator link's page sends: the same answers as the streamer's, under the link's own routes. */
+export const moderatorActions = {
+  closeEntries: (id: string): Promise<CloseKind | Rejected> =>
+    act(`${moderatorSnapshotPath(id)}/close`, {}, closeKinds),
+  drawWinners: (id: string, count: number): Promise<DrawAnswer> =>
+    drawAt(moderatorSnapshotPath(id), count),
+  rerollWinner: (id: string, n: number): Promise<RerollKind | Rejected> =>
+    act(`${moderatorSnapshotPath(id)}/reroll`, { n }, rerollKinds),
+  markClaimed: (id: string, n: number): Promise<ClaimKind | Rejected> =>
+    act(`${moderatorSnapshotPath(id)}/claim`, { n }, claimKinds),
+}
+
+/** The giveaway's moderator links that still work, oldest first. */
+export async function listModeratorLinks(id: string): Promise<ModeratorLinkJson[]> {
+  const { status, body } = await send(`${dashPath(id)}/moderator-links`)
+  if (status !== 200) throw new ApiError(status)
+  return list(record(body, "moderatorLinks"), "links", parseModeratorLink)
+}
+
+/** A new link and the token its URL carries; the token is never shown again. */
+export async function createModeratorLink(
+  id: string,
+  requireMod: boolean,
+): Promise<{ readonly link: ModeratorLinkJson; readonly token: string } | Rejected> {
+  const { status, body } = await postJson(`${dashPath(id)}/moderator-links`, { requireMod })
+  if (status !== 201) return "rejected"
+  const source = record(body, "moderatorLink")
+  return { link: parseModeratorLink(child(source, "link")), token: text(source, "token") }
+}
+
+export function revokeModeratorLink(id: string, linkId: string): Promise<RevokeKind | Rejected> {
+  return act(
+    `${dashPath(id)}/moderator-links/${encodeURIComponent(linkId)}/revoke`,
+    {},
+    revokeKinds,
+  )
+}
+
+export type RevokeKind = (typeof revokeKinds)[number]
+
+/** What opening a moderator link came to; `opened` names the giveaway whose moderator page the cookie now opens. */
+export type OpenLinkResult =
+  | { readonly kind: "opened"; readonly giveawayId: string }
+  | {
+      readonly kind:
+        | "sign-in-required"
+        | "not-a-moderator"
+        | "link-invalid"
+        | "rate-limited"
+        | "try-again"
+    }
+
+export async function openModeratorLink(token: string): Promise<OpenLinkResult> {
+  const { status, body } = await postJson("/api/moderator-links/open", { token })
+  if (status === 200)
+    return { kind: "opened", giveawayId: text(record(body, "opened"), "giveawayId") }
+  if (status === 429) return { kind: "rate-limited" }
+  if (status === 503) return { kind: "try-again" }
+  if (status === 401 || status === 403) {
+    const error = oneOf(record(body, "refused"), "error", openRefusals)
+    return { kind: error }
+  }
+  throw new ApiError(status)
+}
+
+const openRefusals = ["sign-in-required", "not-a-moderator", "link-invalid"] as const
+
+function dashPath(id: string): string {
+  return `/api/dash/giveaways/${encodeURIComponent(id)}`
+}
+
+function parseModeratorLink(source: Json): ModeratorLinkJson {
+  return {
+    id: text(source, "id"),
+    requireMod: bool(source, "requireMod"),
+    createdAt: num(source, "createdAt"),
+  }
 }
 
 /** The theme a giveaway's overlay shows; the overlay token is the credential. */
@@ -683,6 +791,7 @@ export const winnersCsvPath = (id: string) =>
 export type DeleteKind = (typeof deleteKinds)[number]
 
 const deleteKinds = ["deleted"] as const
+const revokeKinds = ["revoked"] as const
 const streamerAccessKinds = ["approved", "revoked"] as const
 const savedKinds = ["saved"] as const
 const closeKinds = ["closed", "not-open"] as const satisfies readonly CloseKind[]
@@ -920,8 +1029,33 @@ export function parseLiveSnapshot(source: Json): LiveSnapshot {
     winnerChat: list(source, "winnerChat", parseChatLine),
     winnerChatOpen: bool(source, "winnerChatOpen"),
     picksLeft: num(source, "picksLeft"),
+    actors: parseActors(child(source, "actors")),
     ...parseRerollState(source),
   }
+}
+
+function parseActors(source: Json): ActionActors {
+  return {
+    closedBy: nullableActor(source, "closedBy"),
+    picks: list(source, "picks", parsePickActors),
+  }
+}
+
+function parsePickActors(source: Json): PickActors {
+  return {
+    n: num(source, "n"),
+    drawnBy: nullableActor(source, "drawnBy"),
+    rerolledBy: nullableActor(source, "rerolledBy"),
+    claimMarkedBy: nullableActor(source, "claimMarkedBy"),
+  }
+}
+
+function nullableActor(source: Json, key: string): Actor | null {
+  const value = nullableText(source, key)
+  if (value === null) return null
+  const actor = parseActor(value)
+  if (actor === null) throw new ApiShapeError(key)
+  return actor
 }
 
 /** The snapshot of the OBS overlay, which never carries winner chat. */

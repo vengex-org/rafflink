@@ -19,6 +19,10 @@ export class DurableObjectRoomDirectory implements RoomDirectory {
     return inRoom(() => this.stubOf(giveawayId).destroy())
   }
 
+  closeModeratorSockets(giveawayId: string, linkId: string): Promise<void> {
+    return inRoom(() => this.stubOf(giveawayId).closeModeratorSockets(linkId))
+  }
+
   private stubOf(giveawayId: string): DurableObjectStub<GiveawayRoomObject> {
     return this.namespace.get(this.namespace.idFromName(giveawayId))
   }
@@ -52,8 +56,8 @@ class DurableObjectRoomStub implements RoomStub {
   leaves() {
     return inRoom(() => this.stub.leaves())
   }
-  close() {
-    return inRoom(() => this.stub.close())
+  close(...args: Parameters<GiveawayRoom["close"]>) {
+    return inRoom(() => this.stub.close(...args))
   }
   requestDraw(...args: Parameters<GiveawayRoom["requestDraw"]>) {
     return inRoom(() => this.stub.requestDraw(...args))

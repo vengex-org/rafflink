@@ -119,6 +119,8 @@ export class InProcessRooms implements RoomDirectory {
   readonly beacon = new FakeBeacon()
   /** The ids passed to `delete`, in call order. */
   readonly deleted: string[] = []
+  /** The giveaway and link ids passed to `closeModeratorSockets`, in call order. */
+  readonly closedModeratorSockets: { giveawayId: string; linkId: string }[] = []
   private readonly rooms = new Map<string, GiveawayRoom>()
 
   constructor(
@@ -133,6 +135,10 @@ export class InProcessRooms implements RoomDirectory {
   async delete(giveawayId: string): Promise<void> {
     this.rooms.delete(giveawayId)
     this.deleted.push(giveawayId)
+  }
+
+  async closeModeratorSockets(giveawayId: string, linkId: string): Promise<void> {
+    this.closedModeratorSockets.push({ giveawayId, linkId })
   }
 
   /** The real room, for assertions the stub does not offer. */
@@ -189,20 +195,20 @@ class InProcessRoomStub implements RoomStub {
   async leaves() {
     return this.room.leaves()
   }
-  async close() {
-    return this.room.close()
+  async close(...args: Parameters<GiveawayRoom["close"]>) {
+    return this.room.close(...args)
   }
-  async requestDraw(count: number) {
-    return this.room.requestDraw(count)
+  async requestDraw(...args: Parameters<GiveawayRoom["requestDraw"]>) {
+    return this.room.requestDraw(...args)
   }
-  async draw(count: number) {
-    return this.room.draw(count)
+  async draw(...args: Parameters<GiveawayRoom["draw"]>) {
+    return this.room.draw(...args)
   }
   async setWinnerCount(count: number) {
     return this.room.setWinnerCount(count)
   }
-  async reroll(n: number) {
-    return this.room.reroll(n)
+  async reroll(...args: Parameters<GiveawayRoom["reroll"]>) {
+    return this.room.reroll(...args)
   }
   async claim(...args: Parameters<GiveawayRoom["claim"]>) {
     return this.room.claim(...args)
@@ -376,6 +382,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, 60_000),
     leavesIpLimiter: new MemoryRateLimiter(clock, config.leavesIpLimitPerMinute, 60_000),
+    moderatorIpLimiter: new MemoryRateLimiter(clock, config.moderatorIpLimitPerMinute, 60_000),
     clientAddress: (request) => request.headers.get(testAddressHeader),
   }
   return {

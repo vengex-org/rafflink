@@ -133,6 +133,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, rateWindowMs),
     leavesIpLimiter: new MemoryRateLimiter(clock, config.leavesIpLimitPerMinute, rateWindowMs),
+    moderatorIpLimiter: new MemoryRateLimiter(
+      clock,
+      config.moderatorIpLimitPerMinute,
+      rateWindowMs,
+    ),
     clientAddress: (request) => clientAddress(request, server, config.clientIpHeader),
   }
 

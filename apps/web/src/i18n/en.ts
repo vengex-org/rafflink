@@ -733,7 +733,7 @@ export const en = {
   "privacy.data.i1":
     "Streamers: Twitch user ID, login name, display name, the URL of the Twitch profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
   "privacy.data.i2":
-    "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway.",
+    "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway, and check that someone who opens a moderator link moderates the channel.",
   "privacy.data.i3":
     "Entrants: Twitch user ID, login name, display name, the URL of the Twitch profile picture, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4":
@@ -744,6 +744,8 @@ export const en = {
     "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example with rate limits.",
   "privacy.data.i7":
     "Giveaway rooms: the Twitch user IDs of the channel's VIPs and moderators, stored to apply the ticket rules. They are deleted with the giveaway's entries.",
+  "privacy.data.i8":
+    "Moderators who open a moderator link: the link stores only a hash of its secret. When a link is for channel moderators, the moderator signs in with Twitch and Rafflink checks the Twitch user ID against the channel's moderators. The ID is kept only in the moderator's cookie, nothing else about them is stored, and no Twitch token is kept.",
   "privacy.purposes.h": "Why and on what legal basis",
   "privacy.purposes.i1":
     "To run the giveaways streamers create and let viewers enter them, including the draw and the claim: performance of a contract with you, the service you asked for (GDPR Article 6(1)(b)).",
@@ -783,6 +785,8 @@ export const en = {
     "rl_pending_*: lets the browser that queued an entry collect its result, 10 minutes by default.",
   "privacy.cookies.i5":
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
+  "privacy.cookies.i6":
+    "rl_mod_*: lets whoever opened a moderator link use that giveaway's moderator page, 7 days by default or until the streamer revokes the link. rl_mod_pending: remembers which link waits for the moderator's Twitch sign-in, 10 minutes by default.",
   "privacy.rights.h": "Your rights",
   "privacy.rights.p1":
     "You have the rights listed below. Write to {contact}. We answer within one month.",
@@ -984,6 +988,42 @@ export const en = {
   "draw.proof.time":
     "The time the list was fixed comes from the browser that fixed it, not from a server. Someone could fix a list after the round and claim an earlier time. Trust the draw only if you saw the list hash or the link before the round was published.",
   "draw.proof.list": "The draw does not show who belongs on the list. Check the names yourself.",
+  "live.mod.link": "Moderator links",
+  "live.mod.text":
+    "Whoever opens a link can close entries, draw, reroll and mark claims for this giveaway. They cannot change the rules, delete the giveaway or see your account.",
+  "live.mod.who": "Who may use it",
+  "live.mod.who.mods": "Moderators of my channel",
+  "live.mod.who.mods.help":
+    "They sign in with Twitch and Rafflink checks that they moderate your channel.",
+  "live.mod.who.anyone": "Anyone with the link",
+  "live.mod.create": "Create link",
+  "live.mod.new": "New link. Copy it now, it is shown only once.",
+  "live.mod.copy": "Copy moderator link",
+  "live.mod.none": "No moderator link works now.",
+  "live.mod.item": "Link {id}, made at {time}",
+  "live.mod.itemMod": "moderators only",
+  "live.mod.revoke": "Revoke",
+  "live.mod.revokeLabel": "Revoke link {id}",
+  "live.mod.loadFailed": "The links could not be loaded. Try again.",
+  "modResult.revoked": "Link revoked. It stopped working.",
+  "modResult.rejected": "The link was not changed. Try again.",
+  "live.actors.title": "Who did what",
+  "live.actors.closed": "Entries closed by {who}",
+  "live.actors.drawn": "Winner {n} drawn by {who}",
+  "live.actors.rerolled": "Winner {n} replaced by {who}",
+  "live.actors.marked": "Winner {n} marked as claimed by {who}",
+  "live.actors.streamer": "the streamer",
+  "live.actors.moderator": "moderator link {id}",
+  "mod.invalid.title": "This moderator link does not work",
+  "mod.invalid.text":
+    "The streamer revoked it, or it was copied wrong. Ask the streamer for a new link.",
+  "mod.notMod.title": "Only for moderators",
+  "mod.notMod.text":
+    "This link is for moderators of the streamer's channel, and the Twitch account you signed in with is not one.",
+  "mod.signInAgain": "The Twitch sign-in did not finish. Open the link from the streamer again.",
+  "mod.rateLimited": "Too many tries from your network. Wait a minute and open the link again.",
+  "signIn.why.moderator":
+    "This moderator link is for moderators of the channel. Sign in with Twitch so Rafflink can check that you are one.",
 } as const satisfies Record<string, string>
 
 export type MessageKey = keyof typeof en

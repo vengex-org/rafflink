@@ -12,7 +12,10 @@ import {
   cloudflarePlanSql,
   approvedStreamersSql,
   approveStreamerSql,
+  activeModeratorLinksSql,
+  deleteGiveawayModeratorLinksSql,
   deleteGiveawaySql,
+  deleteStreamerModeratorLinksSql,
   deleteStreamerGiveawaysSql,
   deleteStreamerSql,
   deleteStreamerTokenSql,
@@ -21,12 +24,15 @@ import {
   giveawayByIdSql,
   giveawaysOfStreamerSql,
   insertGiveawaySql,
+  insertModeratorLinkSql,
+  moderatorLinkByIdSql,
   ownedGiveawaySql,
   ownedOverlayThemesSql,
   overlayThemesSql,
   pendingStreamersSql,
   recordRetentionFailureSql,
   replaceStreamerTokenSql,
+  revokeModeratorLinkSql,
   revokeStreamerSql,
   setGiveawayOverlaySql,
   setRetentionArmedSql,
@@ -103,6 +109,22 @@ export interface Giveaway {
 }
 
 export type NewGiveaway = Omit<Giveaway, "platform" | "broadcasterId" | "streamerName" | "status">
+
+/** A link that lets whoever opens it act on one giveaway as its moderator; the store keeps a hash of its token, never the token. */
+export interface ModeratorLink {
+  readonly id: string
+  readonly streamerId: string
+  readonly giveawayId: string
+  /** SHA-256 hex of the link's secret; the secret itself is only in the link. */
+  readonly tokenHash: string
+  /** The opener must be signed in as a moderator of the giveaway's channel. */
+  readonly requireMod: boolean
+  readonly createdAt: Instant
+  /** Null while the link works. */
+  readonly revokedAt: Instant | null
+}
+
+export type NewModeratorLink = Omit<ModeratorLink, "revokedAt">
 
 export type InsertOutcome = "inserted" | "code-taken"
 
@@ -220,14 +242,18 @@ export class AccountStore {
     return rows.map((row) => this.parseGiveaway(row))
   }
 
-  /** Removes the giveaway's row, which frees its code; the caller deletes its room first. */
+  /** Removes the giveaway's row with its moderator links, which frees its code; the caller deletes its room first. */
   async deleteGiveaway(giveawayId: string): Promise<void> {
-    await this.sql.run(deleteGiveawaySql, [giveawayId])
+    await this.sql.batch([
+      { sql: deleteGiveawayModeratorLinksSql, params: [giveawayId] },
+      { sql: deleteGiveawaySql, params: [giveawayId] },
+    ])
   }
 
-  /** Removes the streamer with their token and every giveaway row in one batch; the caller deletes the rooms first. */
+  /** Removes the streamer with their token, every giveaway row and its moderator links in one batch; the caller deletes the rooms first. */
   async deleteStreamer(streamerId: string): Promise<void> {
     await this.sql.batch([
+      { sql: deleteStreamerModeratorLinksSql, params: [streamerId] },
       { sql: deleteStreamerGiveawaysSql, params: [streamerId] },
       { sql: deleteStreamerTokenSql, params: [streamerId] },
       { sql: deleteStreamerSql, params: [streamerId] },
@@ -353,6 +379,40 @@ export class AccountStore {
     return (await this.sql.all(setGiveawayOverlaySql, [json, giveawayId, streamerId])).length === 1
   }
 
+  async insertModeratorLink(link: NewModeratorLink): Promise<void> {
+    await this.sql.run(insertModeratorLinkSql, [
+      link.id,
+      link.streamerId,
+      link.giveawayId,
+      link.tokenHash,
+      link.requireMod ? 1 : 0,
+      link.createdAt,
+    ])
+  }
+
+  /** The giveaway's links that still work, oldest first; another streamer's giveaway lists none. */
+  async listModeratorLinks(streamerId: string, giveawayId: string): Promise<ModeratorLink[]> {
+    const rows = await this.sql.all(activeModeratorLinksSql, [giveawayId, streamerId])
+    return rows.map(parseModeratorLink)
+  }
+
+  /** Revoked links are found too: the caller refuses them. */
+  async findModeratorLink(id: string): Promise<ModeratorLink | null> {
+    const [row] = await this.sql.all(moderatorLinkByIdSql, [id])
+    return row === undefined ? null : parseModeratorLink(row)
+  }
+
+  /** Idempotent: an earlier revocation keeps its time. False when the streamer's giveaway has no such link. */
+  async revokeModeratorLink(
+    streamerId: string,
+    giveawayId: string,
+    linkId: string,
+    at: Instant,
+  ): Promise<boolean> {
+    const rows = await this.sql.all(revokeModeratorLinkSql, [at, linkId, giveawayId, streamerId])
+    return rows.length === 1
+  }
+
   private async findOne(sql: string, params: readonly string[]): Promise<Giveaway | null> {
     const [row] = await this.sql.all(sql, params)
     return row === undefined ? null : this.parseGiveaway(row)
@@ -396,6 +456,19 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     profileImageUrl: reader.nullableText("profile_image_url"),
     createdAt: reader.int("created_at"),
     approvedAt: reader.nullableInt("approved_at"),
+  }
+}
+
+function parseModeratorLink(row: SqlRow): ModeratorLink {
+  const reader = new RowReader("moderator_links", row)
+  return {
+    id: reader.text("id"),
+    streamerId: reader.text("streamer_id"),
+    giveawayId: reader.text("giveaway_id"),
+    tokenHash: reader.text("token_hash"),
+    requireMod: reader.int("require_mod") === 1,
+    createdAt: reader.int("created_at"),
+    revokedAt: reader.nullableInt("revoked_at"),
   }
 }
 

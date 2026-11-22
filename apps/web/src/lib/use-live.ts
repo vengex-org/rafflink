@@ -17,7 +17,10 @@ export type LiveState<Snapshot> =
       /** The deployment's support page, known like the overlay token; null when unset. */
       readonly donateUrl: string | null
     }
-  | { readonly state: "unauthorized" | "not-found" | "failed" }
+  | { readonly state: "unauthorized" | "forbidden" | "not-found" | "failed" }
+
+// RFC 6455: the server ended the socket because its peer is no longer allowed.
+const policyViolationCloseCode = 1008
 
 // Start and ceiling of the reconnect delay; starting guesses, a streamer's page may stay open for hours.
 const reconnectBaseMs = 1000
@@ -70,8 +73,13 @@ export function useLive<Snapshot>(
           console.error("live message ignored", { errorClass: errorClass(error) })
         }
       })
-      next.addEventListener("close", () => {
+      next.addEventListener("close", (event) => {
         if (!current) return
+        // The server ends a socket whose access was taken away (a revoked moderator link); a reconnect would be refused too.
+        if (event.code === policyViolationCloseCode) {
+          setLive({ state: "forbidden" })
+          return
+        }
         setLive((previous) =>
           previous.state === "ready" ? { ...previous, connected: false } : previous,
         )

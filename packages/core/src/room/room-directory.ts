@@ -38,6 +38,8 @@ export interface RoomDirectory {
   get(giveawayId: string): RoomStub
   /** Removes the room's storage and its alarm; a later `get` with the same id finds an empty room. */
   delete(giveawayId: string): Promise<void>
+  /** Closes the live sockets the room's pages opened through one moderator link; the room and its other sockets stay. */
+  closeModeratorSockets(giveawayId: string, linkId: string): Promise<void>
 }
 
 /**
