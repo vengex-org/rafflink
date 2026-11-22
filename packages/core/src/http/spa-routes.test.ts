@@ -60,6 +60,15 @@ describe("page routes", () => {
     expect(html).toContain(`<title>Giveaway ${created.code}</title>`)
   })
 
+  it("previews the list draw under its own title and canonical link, not indexed", async () => {
+    const response = await app.request("/draw")
+    const html = await response.text()
+
+    expect(html).toContain("<title>Draw from a list</title>")
+    expect(html).toContain('href="http://localhost/draw"')
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+  })
+
   it("answers an unknown code with the plain page and not an error", async () => {
     const response = await app.request("/ZZZZZ")
 

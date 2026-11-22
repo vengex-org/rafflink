@@ -29,6 +29,7 @@ const pages = [
   "admin",
   "legal",
   "verify",
+  "draw",
 ]
 
 const namedColors = new Set(

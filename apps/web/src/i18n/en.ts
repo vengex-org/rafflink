@@ -866,6 +866,56 @@ export const en = {
   "verify.mine.found": "Your entry is entry {leaf} of the list, with {tickets} tickets.",
   "verify.mine.won": "You are pick {n}.",
   "verify.mine.missing": "Your entry is not in the list.",
+  "nav.draw": "Draw from a list",
+  "draw.title": "Draw from a list",
+  "draw.intro":
+    "Paste names, fix the list, and a public drand round picks the winners. Anyone with the link can check the draw in their own browser. No sign-in.",
+  "draw.form.title": "Title (optional)",
+  "draw.form.titleTooLong": "Keep the title to {max} characters.",
+  "draw.form.names": "Names",
+  "draw.form.namesHelp": "One name per line, up to {max}. A name that repeats counts once.",
+  "draw.form.count": "Names: {count}. Repeats left out: {repeats}.",
+  "draw.form.empty": "Add at least one name.",
+  "draw.form.tooMany": "The list is too long. The limit is {max} names.",
+  "draw.form.winners": "Winners",
+  "draw.form.winnersInvalid": "Choose from 1 to {max} winners.",
+  "draw.commit": "Fix the list",
+  "draw.badLink": "This draw link is broken or incomplete.",
+  "draw.file.label": "List file",
+  "draw.file.help": "The list was too long for the link. Open the list file that came with it.",
+  "draw.file.invalid": "This is not a list file.",
+  "draw.mismatch":
+    "The names do not match the list hash. The link or the file was changed, so nothing is drawn.",
+  "draw.facts.names": "Names",
+  "draw.facts.winners": "Winners",
+  "draw.facts.hash": "List hash",
+  "draw.facts.roundAt": "Round published at",
+  "draw.facts.committed": "List fixed at (clock of the browser that fixed it)",
+  "draw.early":
+    "This list says it was fixed after drand round {round} was published, so the draw cannot be trusted.",
+  "draw.seenBefore":
+    "You opened this list before drand round {round} was published, so it was fixed before anyone could know the winners.",
+  "draw.waiting": "The winners are drawn when drand round {round} is published.",
+  "draw.drawn": "The winners follow from the list and the random number of drand round {round}.",
+  "draw.invalid": "The signature of drand round {round} is not valid, so no winners are shown.",
+  "draw.unavailable": "Could not read drand round {round}. Try again later.",
+  "draw.retry": "Try again",
+  "draw.share.label": "Share link",
+  "draw.share.copy": "Copy the share link",
+  "draw.share.withNames":
+    "The link holds the names. Anyone who opens it sees them and gets the same winners.",
+  "draw.share.noNames":
+    "The list is too long for a link. Share the link together with the list file.",
+  "draw.download": "Download the list file",
+  "draw.new": "New draw",
+  "draw.proof.title": "What this proves",
+  "draw.proof.covers":
+    "The winners follow from exactly these names and the random number of the drand round. Anyone can recompute them, and no one knows that number before the round is published.",
+  "draw.proof.private":
+    "The names stay in your browser. They leave it only in the link or the file you share.",
+  "draw.proof.time":
+    "The time the list was fixed comes from the browser that fixed it, not from a server. Someone could fix a list after the round and claim an earlier time. Trust the draw only if you saw the list hash or the link before the round was published.",
+  "draw.proof.list": "The draw does not show who belongs on the list. Check the names yourself.",
 } as const satisfies Record<string, string>
 
 export type MessageKey = keyof typeof en

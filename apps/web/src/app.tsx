@@ -7,6 +7,7 @@ import { parseLanguage } from "./i18n/language.ts"
 import { AdminPage } from "./pages/admin-page.tsx"
 import { CreatedGiveawayPage, NewGiveawayPage } from "./pages/create-page.tsx"
 import { DashboardPage } from "./pages/dashboard-page.tsx"
+import { DrawPage } from "./pages/draw-page.tsx"
 import { GiveawayPage } from "./pages/giveaway-page.tsx"
 import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
@@ -36,6 +37,10 @@ export function AppRoutes() {
             <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
             <Route index element={<HomePage />} />
             <Route path="*" element={<NotFound title="notFound.page" />} />
+          </Route>
+          {/* The list draw makes no request but the drand round, so it skips the session lookup. */}
+          <Route element={<Layout account={false} />}>
+            <Route path="draw" caseSensitive element={<DrawPage />} />
           </Route>
           {siteRoutes}
           <Route element={<Layout account={false} />}>

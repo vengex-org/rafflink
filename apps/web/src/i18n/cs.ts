@@ -871,4 +871,56 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "verify.mine.found": "Tvoje přihláška je přihláška {leaf} ze seznamu, s {tickets} tikety.",
   "verify.mine.won": "Jsi výběr {n}.",
   "verify.mine.missing": "Tvoje přihláška není v seznamu.",
+  "nav.draw": "Losování ze seznamu",
+  "draw.title": "Losování ze seznamu",
+  "draw.intro":
+    "Vlož jména, uzamkni seznam a vítěze vybere veřejné kolo drand. Kdokoli s odkazem si losování zkontroluje ve vlastním prohlížeči. Bez přihlášení.",
+  "draw.form.title": "Název (nepovinný)",
+  "draw.form.titleTooLong": "Název může mít nejvýš {max} znaků.",
+  "draw.form.names": "Jména",
+  "draw.form.namesHelp":
+    "Jedno jméno na řádek, nejvýš {max}. Jméno, které se opakuje, se počítá jednou.",
+  "draw.form.count": "Jména: {count}. Vynechaná opakování: {repeats}.",
+  "draw.form.empty": "Přidej aspoň jedno jméno.",
+  "draw.form.tooMany": "Seznam je příliš dlouhý. Limit je {max} jmen.",
+  "draw.form.winners": "Vítězové",
+  "draw.form.winnersInvalid": "Vyber od 1 do {max} vítězů.",
+  "draw.commit": "Uzamknout seznam",
+  "draw.badLink": "Tento odkaz na losování je poškozený nebo neúplný.",
+  "draw.file.label": "Soubor se seznamem",
+  "draw.file.help":
+    "Seznam byl na odkaz příliš dlouhý. Otevři soubor se seznamem, který k němu patří.",
+  "draw.file.invalid": "Tohle není soubor se seznamem.",
+  "draw.mismatch":
+    "Jména nesedí s hashem seznamu. Odkaz nebo soubor někdo změnil, takže se nic nelosuje.",
+  "draw.facts.names": "Jména",
+  "draw.facts.winners": "Vítězové",
+  "draw.facts.hash": "Hash seznamu",
+  "draw.facts.roundAt": "Kolo zveřejněno",
+  "draw.facts.committed": "Seznam uzamčen (podle hodin prohlížeče, který ho uzamkl)",
+  "draw.early":
+    "Podle tohoto seznamu byl uzamčen až po zveřejnění kola drand {round}, takže losování se nedá věřit.",
+  "draw.seenBefore":
+    "Tento seznam jsi otevřel před zveřejněním kola drand {round}, takže byl uzamčen dřív, než mohl kdokoli znát vítěze.",
+  "draw.waiting": "Vítězové se vylosují, až se zveřejní kolo drand {round}.",
+  "draw.drawn": "Vítězové vycházejí ze seznamu a z náhodného čísla kola drand {round}.",
+  "draw.invalid": "Podpis kola drand {round} není platný, takže se žádní vítězové nezobrazí.",
+  "draw.unavailable": "Kolo drand {round} se nepodařilo načíst. Zkus to později.",
+  "draw.retry": "Zkusit znovu",
+  "draw.share.label": "Odkaz ke sdílení",
+  "draw.share.copy": "Zkopírovat odkaz ke sdílení",
+  "draw.share.withNames":
+    "Odkaz obsahuje jména. Každý, kdo ho otevře, je uvidí a dostane stejné vítěze.",
+  "draw.share.noNames":
+    "Seznam je na odkaz příliš dlouhý. Sdílej odkaz spolu se souborem se seznamem.",
+  "draw.download": "Stáhnout soubor se seznamem",
+  "draw.new": "Nové losování",
+  "draw.proof.title": "Co to dokazuje",
+  "draw.proof.covers":
+    "Vítězové vycházejí přesně z těchto jmen a z náhodného čísla kola drand. Kdokoli je může přepočítat a nikdo to číslo nezná, dokud se kolo nezveřejní.",
+  "draw.proof.private":
+    "Jména zůstávají ve tvém prohlížeči. Opustí ho jen v odkazu nebo v souboru, který sdílíš.",
+  "draw.proof.time":
+    "Čas uzamčení seznamu pochází z prohlížeče, který ho uzamkl, ne ze serveru. Někdo by mohl uzamknout seznam až po kole a tvrdit dřívější čas. Věř losování, jen pokud jsi hash seznamu nebo odkaz viděl před zveřejněním kola.",
+  "draw.proof.list": "Losování neukazuje, kdo do seznamu patří. Jména si zkontroluj sám.",
 }

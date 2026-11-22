@@ -75,6 +75,7 @@ export function useEntryResult(
   return view
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+/** Resolves after `ms`; a wait already over (0 or less) resolves on the next tick. */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)))
 }
