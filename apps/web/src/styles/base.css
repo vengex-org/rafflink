@@ -255,8 +255,11 @@ button:disabled {
 
 .account-menu-panel a,
 .account-menu-panel button {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   width: 100%;
+  white-space: nowrap;
   padding: var(--space-2);
   border: 0;
   border-radius: var(--r-sm);
