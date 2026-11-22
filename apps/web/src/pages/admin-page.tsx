@@ -43,7 +43,7 @@ export function AdminPage() {
     case "loading":
       return <Loading />
     case "failed":
-      return <Failed />
+      return <Failed onReload={reload} />
     case "ready":
       if (result.value === "unauthorized") return <SignIn why="signIn.why.admin" />
       if (result.value === "forbidden") {

@@ -33,6 +33,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "notFound.home": "Přejít na domovskou stránku",
   "notFound.page": "Stránka nebyla nalezena",
   "notFound.giveaway": "Soutěž nebyla nalezena",
+  "notFound.live": "Živá stránka nebyla nalezena",
   "notFound.generic": "Nenalezeno",
 
   "signIn.title": "Přihlášení",

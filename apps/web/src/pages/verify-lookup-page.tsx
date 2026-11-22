@@ -4,6 +4,7 @@ import { TextField } from "../components/form-fields.tsx"
 import { Page } from "../components/page.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { parseGiveawayCode } from "../lib/giveaway-code.ts"
+import { verifyPath } from "../lib/routes.ts"
 
 /** Where anyone can open the verification of a draw by its code or link, without being on the giveaway page. */
 export function VerifyLookupPage() {
@@ -17,7 +18,7 @@ export function VerifyLookupPage() {
     const code = parseGiveawayCode(input)
     setInvalid(code === null)
     if (code !== null) {
-      navigate(`/g/${code}/verify`)
+      navigate(verifyPath(code))
       return
     }
     // The error is the input's description, so focus there makes a screen reader read it.

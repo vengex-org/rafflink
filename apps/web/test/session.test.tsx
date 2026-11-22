@@ -192,7 +192,7 @@ describe("header session", () => {
     expect(logged).not.toHaveBeenCalled()
   })
 
-  it.each(["/ABCDE", "/g/ABCDE/verify"])(
+  it.each(["/ABCDE", "/ABCDE/verify"])(
     "makes no session call on %s, which viewers visit",
     async (path) => {
       const restoreSocket = installFakeSocket()

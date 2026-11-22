@@ -29,7 +29,7 @@ export function headersFile(security: Readonly<Record<string, string>>): string 
     ["/*", ...everything.map(([name, value]) => `  ${name}: ${value}`)].join("\n"),
     // Cloudflare does not apply a `! X-Robots-Tag` detach under `/` to the home page, so noindex goes on each
     // page below it instead: `/:segment` never matches `/`, the splats cover the deeper app routes.
-    ...["/:segment", "/g/*", "/live/*", "/overlay/*"].map(
+    ...["/:segment", "/:segment/verify", "/g/*", "/live/*", "/overlay/*", "/dashboard/*"].map(
       (pattern) => `${pattern}\n  X-Robots-Tag: ${noindex}`,
     ),
     // `/:segment` also matches the legal pages, so they detach it. Unlike the home page this has not been

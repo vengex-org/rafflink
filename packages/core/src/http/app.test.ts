@@ -204,6 +204,27 @@ describe("streamer sign-in", () => {
     expect((await browser.request("/api/dash/giveaways")).status).toBe(200)
   })
 
+  it("returns to the page the sign-in was started from", async () => {
+    const signIn = await new Browser(harness).signInAs(
+      users.streamerA.id,
+      "/auth/twitch/streamer/start?return=/live/abc123",
+    )
+
+    expect(signIn.response.headers.get("location")).toBe("/live/abc123")
+  })
+
+  it.each(["//evil.example", "/\\evil.example", "https://evil.example"])(
+    "returns to the dashboard when the return path is %s",
+    async (path) => {
+      const signIn = await new Browser(harness).signInAs(
+        users.streamerA.id,
+        `/auth/twitch/streamer/start?return=${encodeURIComponent(path)}`,
+      )
+
+      expect(signIn.response.headers.get("location")).toBe("/dashboard")
+    },
+  )
+
   it("updates the streamer on a second sign-in instead of adding one", async () => {
     await new Browser(harness).signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
     await new Browser(harness).signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
@@ -468,7 +489,7 @@ describe("sign-in refused by Twitch", () => {
 
     const response = await browser.request(`/auth/twitch/viewer?error=access_denied&state=${state}`)
 
-    expect(response.headers.get("location")).toBe(`/g/${code}?error=access_denied`)
+    expect(response.headers.get("location")).toBe(`/${code}?error=access_denied`)
     expect(browser.cookieNames()).toEqual([])
     expect(harness.rooms.roomFor(id).summary().entrantCount).toBe(0)
   })

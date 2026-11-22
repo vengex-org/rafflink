@@ -17,7 +17,7 @@ describe("sign-in error card", () => {
   it("says the viewer cancelled and offers the viewer sign-in of this giveaway again", async () => {
     mockFetch(giveawayRoutes)
 
-    const view = renderApp("/g/ABCDE?error=access_denied")
+    const view = renderApp("/ABCDE?error=access_denied")
 
     expect(await view.findByRole("heading", { name: "Sign-in with Twitch failed" })).toBeTruthy()
     expect(view.getByText("You cancelled the Twitch sign-in.")).toBeTruthy()
@@ -29,7 +29,7 @@ describe("sign-in error card", () => {
 
   it("is as wide as the viewer card above a giveaway and a text column above any other page", async () => {
     mockFetch(giveawayRoutes)
-    const onGiveaway = renderApp("/g/ABCDE?error=access_denied")
+    const onGiveaway = renderApp("/ABCDE?error=access_denied")
     const giveawayCard = await onGiveaway.findByRole("heading", {
       name: "Sign-in with Twitch failed",
     })
@@ -89,7 +89,7 @@ describe("sign-in error card", () => {
   it("removes the error from the URL when dismissed and keeps the page", async () => {
     mockFetch(giveawayRoutes)
 
-    const view = renderApp("/g/ABCDE?error=access_denied&error_description=x&state=s&entry=closed")
+    const view = renderApp("/ABCDE?error=access_denied&error_description=x&state=s&entry=closed")
     fireEvent.click(await view.findByRole("button", { name: "Dismiss" }))
 
     expect(view.queryByRole("heading", { name: "Sign-in with Twitch failed" })).toBeNull()
@@ -99,7 +99,7 @@ describe("sign-in error card", () => {
   it("shows no card without an error in the query", async () => {
     mockFetch(giveawayRoutes)
 
-    const view = renderApp("/g/ABCDE")
+    const view = renderApp("/ABCDE")
 
     await view.findByRole("heading", { name: "A gaming chair" })
     expect(view.queryByRole("heading", { name: "Sign-in with Twitch failed" })).toBeNull()

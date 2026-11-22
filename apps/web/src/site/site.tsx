@@ -3,7 +3,7 @@
  * are the contract.
  */
 import type { ReactElement } from "react"
-import { Link, useSearchParams } from "react-router"
+import { Link } from "react-router"
 import { DonateLink } from "../components/donate-link.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
 import { AlertIcon, TwitchIcon } from "../components/icons.tsx"
@@ -12,14 +12,15 @@ import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl, setupGuideUrl } from "../lib/links.ts"
+import { dashboardPath, privacyPath, termsPath, verifyLookupPath } from "../lib/routes.ts"
+import { useConsumedParam } from "../lib/use-consumed-param.ts"
 
 /** Extra top-level routes of the deployment, rendered before the catch-all routes. */
 export const siteRoutes: ReactElement | null = null
 
 export function HomePage() {
   const { t } = useI18n()
-  const [query] = useSearchParams()
-  const problem = signInProblem(query.get("signin"))
+  const problem = signInProblem(useConsumedParam("signin"))
   const { streamer, donateUrl } = useStreamerSession()
   return (
     <div className="home">
@@ -38,7 +39,7 @@ export function HomePage() {
           <h1>{t("home.title")}</h1>
           <p className="home-sub">{t("home.text")}</p>
           <div className="home-actions">
-            <Link className="button home-cta" to="/dashboard">
+            <Link className="button home-cta" to={dashboardPath}>
               {streamer === null ? <TwitchIcon /> : null}
               {t(streamer === null ? "home.login" : "nav.myGiveaways")}
             </Link>
@@ -61,9 +62,9 @@ export function HomePage() {
             <ExternalLink kind="own" href={setupGuideUrl}>
               {t("home.footer.guide")}
             </ExternalLink>
-            <Link to="/verify">{t("nav.verify")}</Link>
-            <Link to="/privacy">{t("legal.privacy")}</Link>
-            <Link to="/terms">{t("legal.terms")}</Link>
+            <Link to={verifyLookupPath}>{t("nav.verify")}</Link>
+            <Link to={privacyPath}>{t("legal.privacy")}</Link>
+            <Link to={termsPath}>{t("legal.terms")}</Link>
             {donateUrl === null ? null : (
               <DonateLink url={donateUrl}>
                 {t(isKoFi(donateUrl) ? "home.trust.supportKoFi" : "home.trust.support")}

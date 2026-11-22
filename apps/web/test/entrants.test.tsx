@@ -94,9 +94,14 @@ function entrantRequests(requests: ReturnType<typeof mockFetch>): string[] {
   return requests.map((request) => request.route).filter((route) => route.includes("/entrants"))
 }
 
-async function openLive(first: readonly Entrant[], extra: Routes = {}, snapshot = liveSnapshot) {
+async function openLive(
+  first: readonly Entrant[],
+  extra: Routes = {},
+  snapshot = liveSnapshot,
+  path = "/live/gid-1",
+) {
   const requests = mockEntrants(first, extra, snapshot)
-  const view = renderApp("/live/gid-1")
+  const view = renderApp(path)
   await view.findByRole("heading", { name: /^Entrants/ })
   await waitFor(() => expect(requests.length).toBeGreaterThan(1))
   return { view, requests }
@@ -280,6 +285,27 @@ describe("entrants table: search", () => {
 
     await waitFor(() => expect(names(view)).toEqual(["Adam", "Zoe_Ada", "Canada", "ArDeA"]))
     expect(view.getByText("Showing 4 of 5")).toBeTruthy()
+  })
+
+  it("writes the search into ?q= once typing pauses, without a history entry, and drops it when cleared", async () => {
+    const { view } = await openLive(people)
+    await view.findByText("Adam")
+
+    fireEvent.change(view.getByLabelText("Search by name"), { target: { value: "ada" } })
+    expect(view.address()).toBe("/live/gid-1")
+    await waitFor(() => expect(view.address()).toBe("/live/gid-1?q=ada"))
+    view.back()
+
+    expect(view.address()).toBe("/live/gid-1?q=ada")
+    fireEvent.change(view.getByLabelText("Search by name"), { target: { value: "" } })
+    await waitFor(() => expect(view.address()).toBe("/live/gid-1"))
+  })
+
+  it("opens with the search of the address already applied", async () => {
+    const { view } = await openLive(people, {}, liveSnapshot, "/live/gid-1?q=ada")
+
+    expect(inputOf(view.getByLabelText("Search by name")).value).toBe("ada")
+    await waitFor(() => expect(names(view)).toEqual(["Adam", "Zoe_Ada", "Canada", "ArDeA"]))
   })
 
   it("highlights the matched letters", async () => {

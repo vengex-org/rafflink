@@ -6,6 +6,7 @@ import type { SubscriberBadges } from "@rafflink/core/twitch/channel-badges"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { orderEntrants, searchEntrants, type ListedEntrant } from "../lib/entrant-list.ts"
 import { useEntrants } from "../lib/use-entrants.ts"
+import { useSearchQuery } from "../lib/use-search-query.ts"
 import { useSubscriberBadges } from "../lib/use-subscriber-badges.ts"
 import { useVirtualRows, type RowGeometry } from "../lib/use-virtual-rows.ts"
 import { AlertIcon, GiftIcon, RefreshIcon, SearchIcon, UsersIcon } from "./icons.tsx"
@@ -38,7 +39,7 @@ export function EntrantsSection({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useSearchQuery()
   const searched = useDeferredValue(query)
   const { entrantCount, ticketTotal, winners } = snapshot
   const ordered = useMemo(() => orderEntrants(entrants.rows, winners), [entrants.rows, winners])

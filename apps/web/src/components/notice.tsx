@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { Link } from "react-router"
+import { Link, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
+import { homePath, streamerSignInPath } from "../lib/routes.ts"
 import { AlertIcon, ArrowLeftIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
 import { StateColumn } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
@@ -16,7 +17,8 @@ export function Loading() {
   )
 }
 
-export function Failed() {
+/** `onReload` loads the page's data again; without it, which a page that holds no loader has, the whole document reloads. */
+export function Failed({ onReload }: { readonly onReload?: (() => void) | undefined }) {
   const { t } = useI18n()
   return (
     <StateColumn>
@@ -28,7 +30,11 @@ export function Failed() {
         level={1}
       >
         <p role="alert">{t("failed.text")}</p>
-        <button type="button" className="button" onClick={() => window.location.reload()}>
+        <button
+          type="button"
+          className="button"
+          onClick={onReload ?? (() => window.location.reload())}
+        >
           <RefreshIcon />
           {t("common.reloadPage")}
         </button>
@@ -46,7 +52,7 @@ export function NotFound({ title }: { readonly title: MessageKey }) {
       </p>
       <h1>{t(title)}</h1>
       <p>{t("notFound.hint")}</p>
-      <Link className="button large" to="/">
+      <Link className="button large" to={homePath}>
         <ArrowLeftIcon />
         {t("notFound.home")}
       </Link>
@@ -85,13 +91,15 @@ export function Status({ children }: { readonly children: ReactNode }) {
   )
 }
 
+/** Signing in brings the streamer back to the page they are on. */
 export function SignIn({ why }: { readonly why: MessageKey }) {
   const { t } = useI18n()
+  const { pathname, search } = useLocation()
   return (
     <StateColumn>
       <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
         <p>{t(why)}</p>
-        <a className="button block" href="/auth/twitch/streamer/start">
+        <a className="button block" href={streamerSignInPath(`${pathname}${search}`)}>
           <LogInIcon />
           {t("signIn.button")}
         </a>

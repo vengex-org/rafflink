@@ -1,5 +1,8 @@
+import type { OverlayOptions } from "./overlay-options.ts"
+import { giveawayPath, overlayPath } from "./routes.ts"
+
 export function shareUrl(code: string): string {
-  return new URL(`/${code}`, window.location.origin).href
+  return new URL(giveawayPath(code), window.location.origin).href
 }
 
 /** The host viewers type, the same one the share links carry, so a self-hosted overlay names its own deployment. */
@@ -7,11 +10,8 @@ export function siteHost(): string {
   return window.location.host
 }
 
-export function overlayUrl(id: string, overlayToken: string): string {
-  return new URL(
-    `/overlay/${encodeURIComponent(id)}/${encodeURIComponent(overlayToken)}`,
-    window.location.origin,
-  ).href
+export function overlayUrl(id: string, overlayToken: string, options?: OverlayOptions): string {
+  return new URL(overlayPath(id, overlayToken, options), window.location.origin).href
 }
 
 export const repositoryUrl = "https://github.com/vengex-org/rafflink"

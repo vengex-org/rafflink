@@ -1,8 +1,9 @@
 import { useLocation, useSearchParams } from "react-router"
-import { codeAlphabet, codeLength } from "@rafflink/core/lib/codes"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
+import { parseGiveawayCode } from "../lib/giveaway-code.ts"
 import { setupGuideUrl } from "../lib/links.ts"
+import { dashboardPath, homePath, streamerSignInPath, viewerSignInPath } from "../lib/routes.ts"
 import { ExternalLink } from "./external-link.tsx"
 import { AlertIcon, LogInIcon } from "./icons.tsx"
 import { Page } from "./page.tsx"
@@ -71,16 +72,17 @@ function messageOf(error: string): MessageKey {
   }
 }
 
-/** A giveaway page signs a viewer in; any other page signs a streamer in. */
+/**
+ * A giveaway page signs a viewer in; any other page signs a streamer in and brings them back to it. The query is
+ * left out, it holds the error. The home page, where a failed streamer sign-in lands, stands for the dashboard.
+ */
 function signInOf(pathname: string): { readonly viewer: boolean; readonly href: string } {
   const segments = pathname.split("/").filter((segment) => segment !== "")
-  const code = segments.length === 2 && segments[0] === "g" ? segments[1] : segments[0]
-  const isCode =
-    code !== undefined
-    && (segments.length === 1 || segments[0] === "g")
-    && code.length === codeLength
-    && [...code].every((char) => codeAlphabet.includes(char))
-  return isCode
-    ? { viewer: true, href: `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}` }
-    : { viewer: false, href: "/auth/twitch/streamer/start" }
+  const [first] = segments
+  const code = segments.length === 1 && first !== undefined ? parseGiveawayCode(first) : null
+  if (code !== null) return { viewer: true, href: viewerSignInPath(code) }
+  return {
+    viewer: false,
+    href: streamerSignInPath(pathname === homePath ? dashboardPath : pathname),
+  }
 }

@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router"
+import { useCallback, useState } from "react"
+import { Link, useSearchParams } from "react-router"
 import type { ViewerState } from "@rafflink/core/http/json"
 import { entryFromQuery, type GiveawayView } from "../api/client.ts"
+import { GiveawayCode } from "../components/giveaway-code.tsx"
 import { ClaimPanel } from "../components/giveaway-claim.tsx"
 import { EntryPanel } from "../components/giveaway-entry.tsx"
 import { GiveawayFacts, GiveawayRules } from "../components/giveaway-facts.tsx"
@@ -12,6 +13,7 @@ import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
 import { RunYourOwn } from "../components/run-your-own.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
+import { verifyPath, viewerSignInPath } from "../lib/routes.ts"
 import { useEntryResult } from "../lib/use-entry-result.ts"
 import { loadGiveaway } from "../lib/stored-giveaway.ts"
 import { twitchChannelUrl } from "../lib/twitch-channel.ts"
@@ -20,8 +22,7 @@ import { useViewerPush } from "../lib/use-viewer-push.ts"
 import { applyViewerPush } from "../lib/viewer-outcome.ts"
 
 export function GiveawayPage() {
-  const { code } = useParams()
-  return code === undefined ? <NotFound title="notFound.giveaway" /> : <Loaded code={code} />
+  return <GiveawayCode page="giveaway">{(code) => <Loaded code={code} />}</GiveawayCode>
 }
 
 function Loaded({ code }: { readonly code: string }) {
@@ -34,7 +35,7 @@ function Loaded({ code }: { readonly code: string }) {
     case "loading":
       return <Loading />
     case "failed":
-      return <Failed />
+      return <Failed onReload={reload} />
     case "ready":
       return result.value === null ? (
         <NotFound title="notFound.giveaway" />
@@ -65,7 +66,7 @@ function GiveawayDetails({
   const push = useViewerPush(code, !loadedGiveaway.finished)
   const { giveaway, me } = applyViewerPush({ giveaway: loadedGiveaway, me: loadedMe }, push)
   const [query] = useSearchParams()
-  const initial = useMemo(() => entryFromQuery(query), [query])
+  const [initial] = useState(() => entryFromQuery(query))
   const fromSignIn = useEntryResult(code, initial, giveaway.poll, onEntered)
   // A returning viewer has no sign-in outcome in the URL; the viewer state says they are in. It also
   // wins over a `dropped` left in the URL, which only says the queued ticket is gone.
@@ -75,7 +76,7 @@ function GiveawayDetails({
   // The viewer state was read before a queued sign-in finished, so the poll answer is the fresher entry.
   const entered = entry?.kind === "entered" || entry?.kind === "already-in" ? entry.entry : null
   const tickets = entered ?? (me.kind === "entered" ? me.entry : null)
-  const signInHref = `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`
+  const signInHref = viewerSignInPath(code)
   const channelUrl = twitchChannelUrl(giveaway.streamerName)
   const isWinner = me.kind === "won"
   const isIn = entered !== null && !isWinner && giveaway.status !== "drawn"
@@ -104,7 +105,7 @@ function GiveawayDetails({
         <GiveawayRules giveaway={giveaway} />
       </div>
       {giveaway.status === "drawn" ? (
-        <Link className="button text" to={`/g/${code}/verify`}>
+        <Link className="button text" to={verifyPath(code)}>
           {t("giveaway.verify.link")}
         </Link>
       ) : null}

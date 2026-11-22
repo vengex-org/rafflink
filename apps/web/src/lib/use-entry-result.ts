@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useEffect, useEffectEvent, useState } from "react"
+import { useSearchParams } from "react-router"
 import { pollEntry, type EntryResult } from "../api/client.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import type { PollTiming } from "./poll-timing.ts"
@@ -9,6 +10,7 @@ export type EntryView = EntryResult | { readonly kind: "timed-out" }
 
 /**
  * The outcome to show; a pending one is polled every `poll.intervalMs` until it settles or `poll.maxMs` pass.
+ * The outcome comes in the page's query: a settled one is removed from the address at once, a pending one when its poll ends.
  * `onEntered` runs once when a queued entry settles as entered or already-in, because the poll answer
  * starts the viewer's session and the page then has to ask who the viewer is.
  */
@@ -20,6 +22,22 @@ export function useEntryResult(
 ): EntryView | null {
   const [view, setView] = useState<EntryView | null>(initial)
   const ticket = initial?.kind === "pending" ? initial.ticket : null
+  const [, setQuery] = useSearchParams()
+  // The ticket in the address is spent once the poll ends, so a reload must not poll it again.
+  const forgetEntryInUrl = useEffectEvent(() =>
+    setQuery(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        for (const name of ["entry", "ticket", "reason"]) next.delete(name)
+        return next
+      },
+      { replace: true },
+    ),
+  )
+
+  useEffect(() => {
+    if (initial !== null && initial.kind !== "pending") forgetEntryInUrl()
+  }, [initial])
 
   useEffect(() => {
     if (ticket === null) return
@@ -55,13 +73,6 @@ export function useEntryResult(
   }, [code, ticket, poll.intervalMs, poll.maxMs, onEntered])
 
   return view
-}
-
-// The ticket in the address is spent once the poll ends, so a reload must not poll it again.
-function forgetEntryInUrl(): void {
-  const url = new URL(window.location.href)
-  for (const name of ["entry", "ticket", "reason"]) url.searchParams.delete(name)
-  window.history.replaceState(window.history.state, "", url)
 }
 
 function sleep(ms: number): Promise<void> {

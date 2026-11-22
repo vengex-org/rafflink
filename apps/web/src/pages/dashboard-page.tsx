@@ -1,154 +1,58 @@
-import { useState } from "react"
-import { Link } from "react-router"
+import type { ReactNode } from "react"
+import { Link, useLocation } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { RoomStatus } from "@rafflink/core/room/rows"
-import { listGiveaways, type CreateResult } from "../api/client.ts"
+import { listGiveaways } from "../api/client.ts"
 import { Disclosure } from "../components/disclosure.tsx"
 import { DonateLink } from "../components/donate-link.tsx"
-import {
-  ActivityIcon,
-  ArrowLeftIcon,
-  CheckIcon,
-  CopyIcon,
-  LinkIcon,
-  LockIcon,
-  PlusIcon,
-  TvIcon,
-} from "../components/icons.tsx"
+import { ActivityIcon, CopyIcon, LinkIcon, LockIcon, PlusIcon } from "../components/icons.tsx"
 import { Failed, Loading, SignIn } from "../components/notice.tsx"
-import { Page } from "../components/page.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StateCard, type Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
+import { readNotice } from "../lib/dashboard-notice.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
+import { dashboardNewPath, livePath } from "../lib/routes.ts"
 import { useLoad } from "../lib/use-load.ts"
-import { CreateForm } from "./create-form.tsx"
-import { initialValues, valuesFrom, type Values } from "./create-values.ts"
 
-type Created = Extract<CreateResult, { kind: "created" }>
-
-type View =
-  | { readonly kind: "list" }
-  | { readonly kind: "create"; readonly seed: Values }
-  | { readonly kind: "created"; readonly created: Created }
-
-export function DashboardPage() {
-  const { t } = useI18n()
+/** The signed-in streamer's giveaways for the screen under it; the sign-in prompt, a loading state or a failure otherwise. */
+export function DashboardGate({
+  children,
+}: {
+  readonly children: (giveaways: readonly DashboardGiveaway[]) => ReactNode
+}) {
   const { result, reload } = useLoad(listGiveaways)
-  const [view, setView] = useState<View>({ kind: "list" })
-  const [signedOut, setSignedOut] = useState(false)
-  // The server's refusal outranks the session, which may not be loaded yet or may be stale.
-  const [notApproved, setNotApproved] = useState(false)
-
-  if (signedOut) return <SignIn why="signIn.why.expired" />
   switch (result.state) {
     case "loading":
       return <Loading />
     case "failed":
-      return <Failed />
+      return <Failed onReload={reload} />
     case "ready":
-      if (result.value === "unauthorized") return <SignIn why="signIn.why.dashboard" />
-      switch (view.kind) {
-        case "create":
-          return (
-            <Page width="text" className="create">
-              <div className="page-head">
-                <h1>{t("dash.new.title")}</h1>
-              </div>
-              <CreateForm
-                seed={view.seed}
-                onCreated={(created) => {
-                  setView({ kind: "created", created })
-                  reload()
-                }}
-                onUnauthorized={() => setSignedOut(true)}
-                onNotApproved={() => {
-                  setNotApproved(true)
-                  setView({ kind: "list" })
-                }}
-                onCancel={() => setView({ kind: "list" })}
-              />
-            </Page>
-          )
-        case "created":
-          return <CreatedScreen created={view.created} onDone={() => setView({ kind: "list" })} />
-        case "list":
-          return (
-            <GiveawayList
-              giveaways={result.value}
-              approved={!notApproved}
-              onCreate={(seed) => setView({ kind: "create", seed })}
-            />
-          )
-      }
+      return result.value === "unauthorized" ? (
+        <SignIn why="signIn.why.dashboard" />
+      ) : (
+        children(result.value)
+      )
   }
 }
 
-function CreatedScreen({
-  created,
-  onDone,
-}: {
-  readonly created: Created
-  readonly onDone: () => void
-}) {
-  const { t, rich, plural } = useI18n()
-  const { giveaway } = created
+export function DashboardPage() {
+  // The server's refusal outranks the session, which may not be loaded yet or may be stale.
+  const notApproved = readNotice(useLocation().state)?.kind === "not-approved"
   return (
-    <div className="created">
-      <div className="created-head">
-        <span className="created-mark" aria-hidden="true">
-          <CheckIcon />
-        </span>
-        <h1>{t("dash.created.title")}</h1>
-      </div>
-      {created.usageLow === null ? null : (
-        <p role="alert" className="form-alert">
-          {plural("usageLow", created.usageLow.remaining)}
-        </p>
-      )}
-      {created.roomReady ? null : (
-        <p role="alert" className="form-alert">
-          {t("dash.roomNotReady")}
-        </p>
-      )}
-      <div className="created-grid">
-        <section className="card" aria-labelledby="share-title">
-          <h2 id="share-title" className="sr-only">
-            {t("live.share.title")}
-          </h2>
-          <p>{rich("dash.next", { code: <strong>{giveaway.code}</strong> })}</p>
-          <ShareLinks code={giveaway.code} />
-          <Link className="button large" to={`/live/${giveaway.id}`}>
-            <ActivityIcon />
-            {t("dash.openLive")}
-          </Link>
-        </section>
-        <section className="card" aria-labelledby="obs-title">
-          <span className="state-icon">
-            <TvIcon />
-          </span>
-          <h2 id="obs-title">{t("dash.obs.title")}</h2>
-          <p>{t("dash.obs.text")}</p>
-          <ObsSteps giveaway={giveaway} />
-        </section>
-      </div>
-      <button type="button" className="button outlined" onClick={onDone}>
-        <ArrowLeftIcon />
-        {t("dash.back")}
-      </button>
-    </div>
+    <DashboardGate>
+      {(giveaways) => <GiveawayList giveaways={giveaways} approved={!notApproved} />}
+    </DashboardGate>
   )
 }
 
 function GiveawayList({
   giveaways,
-  onCreate,
   approved,
 }: {
   readonly giveaways: readonly DashboardGiveaway[]
-  readonly onCreate: (seed: Values) => void
   /** False once the server refused a create with `streamer_not_approved`. */
   readonly approved: boolean
 }) {
@@ -157,7 +61,6 @@ function GiveawayList({
   const { donateUrl, streamer } = useStreamerSession()
   // An unknown session is not a refusal: the server still enforces approval on create.
   const canCreate = approved && (streamer === null || streamer.canCreate)
-  const create = canCreate ? onCreate : null
   if (giveaways.length === 0) {
     if (!canCreate) {
       return (
@@ -178,10 +81,10 @@ function GiveawayList({
           <div>
             <h2 id="empty-title">{t("dash.empty.title")}</h2>
             <p>{t("dash.empty.text")}</p>
-            <button type="button" className="button large" onClick={() => onCreate(initialValues)}>
+            <Link className="button large" to={dashboardNewPath()}>
               <PlusIcon />
               {t("dash.empty.button")}
-            </button>
+            </Link>
           </div>
           <ol className="explainer">
             <li>
@@ -204,12 +107,12 @@ function GiveawayList({
     <>
       <div className="page-head">
         <h1>{t("dash.title")}</h1>
-        {create === null ? null : (
-          <button type="button" className="button" onClick={() => create(initialValues)}>
+        {canCreate ? (
+          <Link className="button" to={dashboardNewPath()}>
             <PlusIcon />
             {t("dash.new.button")}
-          </button>
-        )}
+          </Link>
+        ) : null}
       </div>
       {canCreate ? null : <AwaitingApproval />}
       {pinned.length === 0 ? null : (
@@ -217,7 +120,7 @@ function GiveawayList({
           <h2 id="dash-running">{t("dash.section.running")}</h2>
           <ul className="giveaways pinned">
             {pinned.map((giveaway) => (
-              <GiveawayItem key={giveaway.id} giveaway={giveaway} pinned onCreate={create} />
+              <GiveawayItem key={giveaway.id} giveaway={giveaway} pinned canDuplicate={canCreate} />
             ))}
           </ul>
         </section>
@@ -232,7 +135,7 @@ function GiveawayList({
                 key={giveaway.id}
                 giveaway={giveaway}
                 pinned={false}
-                onCreate={create}
+                canDuplicate={canCreate}
               />
             ))}
           </ul>
@@ -267,12 +170,12 @@ function SupportNote({ url }: { readonly url: string }) {
 function GiveawayItem({
   giveaway,
   pinned,
-  onCreate,
+  canDuplicate,
 }: {
   readonly giveaway: DashboardGiveaway
   readonly pinned: boolean
-  /** Null when the streamer may not create giveaways, which also takes away duplicating one. */
-  readonly onCreate: ((seed: Values) => void) | null
+  /** False when the streamer may not create giveaways, which also takes away duplicating one. */
+  readonly canDuplicate: boolean
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -293,21 +196,20 @@ function GiveawayItem({
         })}
       </p>
       <div className="actions">
-        <Link className={pinned ? "button" : "button text"} to={`/live/${giveaway.id}`}>
+        <Link className={pinned ? "button" : "button text"} to={livePath(giveaway.id)}>
           <ActivityIcon />
           {t("dash.openLive")}
         </Link>
-        {onCreate === null ? null : (
-          <button
-            type="button"
+        {canDuplicate ? (
+          <Link
             className={pinned ? "button outlined" : "button text"}
             aria-label={t("dash.duplicate.label", { name })}
-            onClick={() => onCreate(valuesFrom(giveaway))}
+            to={dashboardNewPath({ from: giveaway.id })}
           >
             <CopyIcon />
             {t("dash.duplicate")}
-          </button>
-        )}
+          </Link>
+        ) : null}
       </div>
       <Disclosure icon={<LinkIcon />} summary={t("dash.linkObs")} open={false}>
         <ShareLinks code={giveaway.code} />

@@ -339,7 +339,36 @@ button:disabled {
   }
 }
 
-/* Reduced motion removes every movement: transitions, reveals, entrances and the spinner. */
+/* A move to another page cross-fades the page content (the `page-fade` class of <ViewTransition>); the app bar has its own name, so it stays put. */
+.app-bar {
+  view-transition-name: app-bar;
+}
+
+::view-transition-old(app-bar) {
+  display: none;
+}
+
+::view-transition-old(*.page-fade) {
+  animation: page-fade-out var(--dur) var(--ease) both;
+}
+
+::view-transition-new(*.page-fade) {
+  animation: page-fade-in var(--dur) var(--ease) both;
+}
+
+@keyframes page-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion removes every movement: transitions, reveals, entrances, the spinner and the page fade. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -347,5 +376,11 @@ button:disabled {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

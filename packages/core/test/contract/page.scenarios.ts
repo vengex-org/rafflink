@@ -114,7 +114,7 @@ function staticPageScenarios(context: ContractContext): void {
       const target = await world.start()
       const giveaway = await world.createGiveaway(target)
 
-      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`]) {
+      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`, `/${giveaway.code}/verify`]) {
         const response = await page(target, path)
         const html = await response.text()
 
@@ -136,7 +136,7 @@ function injectedPageScenarios(context: ContractContext): void {
       const target = await world.start()
       const giveaway = await world.createGiveaway(target)
 
-      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`]) {
+      for (const path of [`/g/${giveaway.code}`, `/${giveaway.code}`, `/${giveaway.code}/verify`]) {
         const response = await page(target, path)
         const html = await response.text()
 

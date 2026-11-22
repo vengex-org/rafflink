@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { streamerTokenAad } from "../accounts/streamer-token.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
+import { giveawayPath } from "../lib/page-paths.ts"
 import { randomId } from "../lib/random-id.ts"
 import { sealSecret } from "../lib/seal.ts"
 import type { Instant } from "../ports.ts"
@@ -11,6 +12,7 @@ import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { QueuedCode, EnqueueCause } from "../queue/token-queue.ts"
 import type { AppDeps } from "./deps.ts"
 import { outcomeQuery } from "./json.ts"
+import { defaultReturnPath, safeReturnPath } from "./return-path.ts"
 import {
   startOAuthState,
   startStreamerSession,
@@ -38,7 +40,8 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
   app.get("/auth/twitch/streamer/start", async (c) => {
     const state = randomId(deps.random)
     const nonce = randomId(deps.random)
-    await startOAuthState(c, deps, "streamer", { state, nonce, giveawayCode: null })
+    const returnPath = safeReturnPath(c.req.query("return")) ?? defaultReturnPath
+    await startOAuthState(c, deps, "streamer", { state, nonce, giveawayCode: null, returnPath })
     return c.redirect(
       deps.twitch.authorizeUrl({
         state,
@@ -87,7 +90,7 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
       streamerId: streamer.id,
       twitchUserId: streamer.platformUserId,
     })
-    return c.redirect("/dashboard")
+    return c.redirect(saved.returnPath ?? defaultReturnPath)
   })
 
   app.get("/auth/twitch/viewer/start", async (c) => {
@@ -96,7 +99,12 @@ export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const state = randomId(deps.random)
     const nonce = randomId(deps.random)
-    await startOAuthState(c, deps, "viewer", { state, nonce, giveawayCode: giveaway.code })
+    await startOAuthState(c, deps, "viewer", {
+      state,
+      nonce,
+      giveawayCode: giveaway.code,
+      returnPath: null,
+    })
     return c.redirect(
       deps.twitch.authorizeUrl({
         state,
@@ -193,7 +201,7 @@ function returnTo(giveawayCode: string | null, outcome: CallbackOutcome): string
 }
 
 function pagePath(giveawayCode: string | null): string {
-  return giveawayCode === null ? "/" : `/g/${giveawayCode}`
+  return giveawayCode === null ? "/" : giveawayPath(giveawayCode)
 }
 
 // Twitch's `error` is an OAuth code such as `access_denied`; anything of another shape is passed on as a plain `error`. `error_description` is free text and is not forwarded.

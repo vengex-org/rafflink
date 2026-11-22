@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, ViewTransition, type ReactNode } from "react"
 import { Link, Outlet, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
+import { dashboardPath, homePath, privacyPath, termsPath, verifyLookupPath } from "../lib/routes.ts"
 import { SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
@@ -29,7 +30,8 @@ export function Layout({
 }) {
   const { t } = useI18n()
   // The home page ends with its own footer and renders SiteNav in its bar.
-  const isHome = useLocation().pathname === "/"
+  const { pathname } = useLocation()
+  const isHome = pathname === homePath
   const showFooter = !isHome
   const page = (
     <div className="layout">
@@ -38,7 +40,7 @@ export function Layout({
       </a>
       <header className="app-bar">
         <div className="container app-bar-inner">
-          <Link to="/" className="brand">
+          <Link to={homePath} className="brand">
             <span className="brand-mark" aria-hidden="true">
               R
             </span>
@@ -46,12 +48,12 @@ export function Layout({
           </Link>
           {isHome ? <SiteNav /> : null}
           <div className="app-bar-end">
-            <Link className="button text app-verify" to="/verify">
+            <Link className="button text app-verify" to={verifyLookupPath}>
               {t("nav.verify")}
             </Link>
             {account ? <Account /> : <LoginLink />}
             <SettingsMenu>
-              <Link className="settings-verify" to="/verify">
+              <Link className="settings-verify" to={verifyLookupPath}>
                 {t("nav.verify")}
               </Link>
             </SettingsMenu>
@@ -61,14 +63,17 @@ export function Layout({
       <main id="main" className="container">
         <AppFrame value>
           <OAuthErrorCard />
-          {children ?? <Outlet />}
+          {/* Keyed by path, so a move to another page fades and a change of the query alone does not. */}
+          <ViewTransition key={pathname} default="none" enter="page-fade" exit="page-fade">
+            {children ?? <Outlet />}
+          </ViewTransition>
         </AppFrame>
       </main>
       {showFooter ? (
         <footer className="site-footer">
           <nav aria-label={t("legal.footerLabel")} className="container">
-            <Link to="/privacy">{t("legal.privacy")}</Link>
-            <Link to="/terms">{t("legal.terms")}</Link>
+            <Link to={privacyPath}>{t("legal.privacy")}</Link>
+            <Link to={termsPath}>{t("legal.terms")}</Link>
           </nav>
         </footer>
       ) : null}
@@ -159,7 +164,7 @@ function AccountMenu({
       {open ? (
         <ul id={menuId} className="account-menu-panel">
           <li>
-            <Link to="/dashboard" onClick={() => setOpen(false)}>
+            <Link to={dashboardPath} onClick={() => setOpen(false)}>
               {t("nav.myGiveaways")}
             </Link>
           </li>
@@ -193,7 +198,7 @@ function AccountMenu({
 function LoginLink() {
   const { t } = useI18n()
   return (
-    <Link className="button" to="/dashboard">
+    <Link className="button" to={dashboardPath}>
       <TwitchIcon />
       {t("nav.login")}
     </Link>

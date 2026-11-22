@@ -443,7 +443,7 @@ the home and legal pages. Those three run the Worker, which answers them like th
 in the canonical, `og:url`, `og:image` and `twitter:image` tags; link previews and search engines ignore relative
 URLs there. A pasted giveaway link shows the generic preview of the home page with its relative URLs, so most
 previews show no image. The Bun server
-answers each page itself and gives the page of a giveaway link (`/<code>` and `/g/<code>`) its title, prize
+answers each page itself and gives the page of a giveaway link (`/<code>`, `/<code>/verify` and the old `/g/<code>`, which the page then replaces with `/<code>`) its title, prize
 and streamer name in the title, Open Graph and Twitter tags, so a pasted link previews well; it sends the same
 noindex rule. `/robots.txt` is a static file in `apps/web/public` for both targets; there is no sitemap.
 
