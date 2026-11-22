@@ -142,6 +142,24 @@ Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Spo
 and in the settings panel of the streamer's live page. Viewer pages and the OBS overlay never show it. Left blank,
 no link appears anywhere.
 
+### Server size (VPS)
+
+One Bun process serves everything and writes entries to SQLite, so a small VPS is enough. The entry path runs on
+one CPU core and waits on disk writes, which makes disk speed matter more than core count.
+
+| Use                                                                  | CPU    | RAM  | Disk           |
+| -------------------------------------------------------------------- | ------ | ---- | -------------- |
+| Minimum: small streams, a few thousand entrants per giveaway         | 1 vCPU | 1 GB | 10 GB SSD      |
+| Recommended: big streams, entry bursts of several hundred per second | 2 vCPU | 2 GB | 20 GB NVMe SSD |
+
+The second core keeps Caddy, Docker and the OS off the core that handles entries. A spinning disk or a cheap
+network volume with slow fsync lowers the entry ceiling the most.
+
+Measured with `bun run load-test` on an 8 core desktop with an NVMe disk: 500 entries per second for 30 s with no
+errors, and up to 1,500 per second in short runs, using about 0.75 of one core at 700 per second. A VPS core is
+slower, so expect a lower ceiling and run the load test on your own server before a big giveaway. Twitch limits
+sign-ins per app too; above that limit viewers wait in the sign-in queue, whatever the server size.
+
 ### Docker (any server)
 
 [apps/server/compose.yaml](apps/server/compose.yaml) runs the Bun server and a Caddy proxy that gets a
