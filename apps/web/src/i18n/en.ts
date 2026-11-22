@@ -741,6 +741,7 @@ export const en = {
   "drawResult.beacon-unavailable":
     "Could not reach the random source (drand). Nothing was drawn. Try again.",
   "giveaway.verify.link": "Verify this draw",
+  "viewer.runYourOwn": "Run your own giveaway with Rafflink",
   "verify.title": "Verify this draw",
   "verify.intro":
     "Check in your browser that the winners follow from the list of entries and from a public random number that nobody here controls.",

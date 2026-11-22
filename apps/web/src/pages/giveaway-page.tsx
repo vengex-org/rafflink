@@ -10,6 +10,7 @@ import { ExternalLink } from "../components/external-link.tsx"
 import { TwitchIcon } from "../components/icons.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
+import { RunYourOwn } from "../components/run-your-own.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useEntryResult } from "../lib/use-entry-result.ts"
 import { loadGiveaway } from "../lib/stored-giveaway.ts"
@@ -107,6 +108,7 @@ function GiveawayDetails({
           {t("giveaway.verify.link")}
         </Link>
       ) : null}
+      <RunYourOwn />
       {isIn && channelUrl !== null ? (
         <div className="viewer-dock">
           <ExternalLink kind="reference" className="button outlined block" href={channelUrl}>

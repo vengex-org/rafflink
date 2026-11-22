@@ -50,6 +50,18 @@ it("never offers the support page to a viewer, even after a draw", async () => {
   expect(requests.some((request) => request.route === "GET /api/session")).toBe(false)
 })
 
+describe("run-your-own invitation", () => {
+  it("invites a viewer to the home page of the same instance with the referral marker", async () => {
+    mockFetch(giveawayRoute)
+
+    const view = renderApp("/g/ABCDE")
+
+    const link = await view.findByRole("link", { name: "Run your own giveaway with Rafflink" })
+    expect(link.getAttribute("href")).toBe("/?ref=giveaway")
+    expect(link.getAttribute("target")).toBeNull()
+  })
+})
+
 describe("giveaway landing", () => {
   it("shows the prize as the headline with the people count and who can enter", async () => {
     mockFetch({

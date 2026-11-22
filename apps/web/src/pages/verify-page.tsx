@@ -14,6 +14,7 @@ import {
 import { ExternalLink } from "../components/external-link.tsx"
 import { Failed, Loading, NotFound } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
+import { RunYourOwn } from "../components/run-your-own.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { useLoad } from "../lib/use-load.ts"
 import { verifyDraw, type Commitment, type OwnEntry, type Verdict } from "../lib/verify-draw.ts"
@@ -62,6 +63,7 @@ function Verify({ code, load }: { readonly code: string; readonly load: VerifyLo
           <Checker load={load} commitment={commitment} leaves={leaves} mine={mine} code={code} />
         </>
       )}
+      <RunYourOwn />
     </Page>
   )
 }

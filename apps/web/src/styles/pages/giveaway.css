@@ -507,3 +507,16 @@ main.container:has(> .viewer) {
     background: none;
   }
 }
+
+/* The invitation under a viewer's page: as quiet as the site footer, so it never competes with the entry. */
+
+.run-your-own {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.run-your-own a {
+  color: inherit;
+  text-decoration-color: currentColor;
+}
