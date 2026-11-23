@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { Hono } from "hono"
 import {
   Browser,
+  fullStreamerStart,
   codeRandom,
   createGiveaway,
   createHarness,
@@ -10,6 +11,7 @@ import {
   testAddressHeader,
   users,
   validRules,
+  validTickets,
   type Harness,
 } from "../../test/app-fixture.ts"
 import { codeAlphabet, codeLength } from "../lib/codes.ts"
@@ -68,7 +70,7 @@ async function meOf(browser: Browser, code: string): Promise<unknown> {
 
 async function deletedStreamerBrowser(): Promise<Browser> {
   const browser = new Browser(harness)
-  await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+  await browser.signInAs(users.streamerA.id, fullStreamerStart)
   harness.accountsDb.run("DELETE FROM streamers")
   return browser
 }
@@ -86,7 +88,7 @@ async function streamerCookieOn(platform: "kick", streamerId: string): Promise<s
 describe("session", () => {
   it("signs out a Kick session once the install runs without Kick, with no fault", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
     harness.accountsDb.run("UPDATE streamers SET platform = 'kick'")
     const [row] = sqlRows(harness.accountsDb, "SELECT id FROM streamers")
     const cookie = await streamerCookieOn("kick", String(row?.id))
@@ -137,7 +139,7 @@ describe("session", () => {
           pointsEntry: true,
           chatBadgeGroups: [],
         },
-        readyEntryWays: [],
+        grantedFeatures: [],
         publicHistory: false,
         historyIndexed: false,
         admin: true,
@@ -170,7 +172,7 @@ describe("session", () => {
       operator: null,
     })
 
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const session: { donateUrl: unknown } = await (await browser.request("/api/session")).json()
     expect(session.donateUrl).toBe("https://ko-fi.com/rafflink")
@@ -216,7 +218,7 @@ describe("session", () => {
 
   it("logs out by deleting the cookie", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.request("/auth/logout", { method: "POST" })
 
@@ -232,7 +234,7 @@ describe("session", () => {
 
   it("refuses a logout from another origin and keeps the session", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.request("/auth/logout", {
       method: "POST",
@@ -245,7 +247,7 @@ describe("session", () => {
 
   it("accepts a logout from the public origin", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.request("/auth/logout", {
       method: "POST",
@@ -257,7 +259,7 @@ describe("session", () => {
 })
 
 describe("streamer sign-in", () => {
-  it("stores the refresh token sealed and starts a session", async () => {
+  it("stores the refresh token sealed and starts a session, asking for no VIP or moderator scope", async () => {
     const browser = new Browser(harness)
 
     const signIn = await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
@@ -270,63 +272,55 @@ describe("streamer sign-in", () => {
     const sealed = String(token?.refresh_token_enc)
     expect(sealed.startsWith("test.")).toBe(true)
     expect(await openSecret(harness.deps.keyRing, sealed, "twitch:200")).toMatch(/^[0-9a-f-]{36}$/)
-    expect(token?.scopes).toBe("openid channel:read:vips moderation:read user:read:chat")
+    expect(token?.scopes).toBe("openid user:read:chat")
     expect((await browser.request("/api/dash/giveaways")).status).toBe(200)
-    expect((await (await browser.request("/api/session")).json()).streamer.readyEntryWays).toEqual(
+    expect((await (await browser.request("/api/session")).json()).streamer.grantedFeatures).toEqual(
       [],
     )
   })
 
-  it("asks for the chat entry scopes on a reconnect for chat entry and reports the token ready", async () => {
+  it("asks for the followers scope on a reconnect for a follower rule and reports it granted", async () => {
     const browser = new Browser(harness)
 
     const signIn = await browser.signInAs(
       users.streamerA.id,
-      "/auth/twitch/streamer/start?entry=chat&return=/dashboard/new",
+      "/auth/twitch/streamer/start?features=followers&return=/dashboard/new",
     )
 
     expect(signIn.response.headers.get("location")).toBe("/dashboard/new")
     const [token] = sqlRows(harness.accountsDb, "SELECT scopes FROM streamer_tokens")
-    expect(token?.scopes).toBe(
-      "openid channel:read:vips moderation:read user:read:chat moderator:read:followers",
+    expect(token?.scopes).toBe("openid user:read:chat moderator:read:followers")
+    expect((await (await browser.request("/api/session")).json()).streamer.grantedFeatures).toEqual(
+      ["followers"],
     )
-    expect((await (await browser.request("/api/session")).json()).streamer.readyEntryWays).toEqual([
-      "chat",
-    ])
   })
 
-  it("asks for the sub and points entry scopes once each on a reconnect for both", async () => {
+  it("asks for a scope two features share once", async () => {
     const browser = new Browser(harness)
 
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?entry=sub,points")
+    await browser.signInAs(
+      users.streamerA.id,
+      "/auth/twitch/streamer/start?features=roles,modlinks",
+    )
 
     const [token] = sqlRows(harness.accountsDb, "SELECT scopes FROM streamer_tokens")
-    expect(token?.scopes).toBe(
-      "openid channel:read:vips moderation:read user:read:chat moderator:read:followers channel:read:subscriptions channel:read:redemptions",
+    expect(token?.scopes).toBe("openid user:read:chat channel:read:vips moderation:read")
+    expect((await (await browser.request("/api/session")).json()).streamer.grantedFeatures).toEqual(
+      ["roles", "modlinks"],
     )
-    expect((await (await browser.request("/api/session")).json()).streamer.readyEntryWays).toEqual([
-      "chat",
-      "sub",
-      "points",
-    ])
   })
 
-  it("ignores an entry way it does not know and asks only for the base scopes", async () => {
+  it("ignores a feature it does not know and asks only for the base scopes", async () => {
     const browser = new Browser(harness)
 
-    const start = await browser.request("/auth/twitch/streamer/start?entry=chat,bits")
+    const start = await browser.request("/auth/twitch/streamer/start?features=followers,bits")
 
-    expect(scopesOf(start)).toEqual([
-      "openid",
-      "channel:read:vips",
-      "moderation:read",
-      "user:read:chat",
-    ])
+    expect(scopesOf(start)).toEqual(["openid", "user:read:chat"])
   })
 
-  it("asks a streamer who granted the chat entry scopes for them again on a normal sign-in", async () => {
+  it("asks a streamer who granted the followers scope for it again on a normal sign-in", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?entry=chat")
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?features=followers")
 
     const sameBrowser = await browser.request("/auth/twitch/streamer/start")
     const sessionOnly = await harness.app.request("/auth/twitch/streamer/start", {
@@ -364,8 +358,8 @@ describe("streamer sign-in", () => {
   )
 
   it("updates the streamer on a second sign-in instead of adding one", async () => {
-    await new Browser(harness).signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
-    await new Browser(harness).signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await new Browser(harness).signInAs(users.streamerA.id, fullStreamerStart)
+    await new Browser(harness).signInAs(users.streamerA.id, fullStreamerStart)
 
     expect(sqlRows(harness.accountsDb, "SELECT id FROM streamers")).toHaveLength(1)
     expect(sqlRows(harness.accountsDb, "SELECT streamer_id FROM streamer_tokens")).toHaveLength(1)
@@ -391,7 +385,7 @@ describe("streamer sign-in", () => {
     await harness.stop()
     harness = await createHarness({ capabilities: { followerCheck: false } })
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.postJson("/api/dash/giveaways", {
       title: "T",
@@ -416,7 +410,7 @@ describe("streamer sign-in", () => {
     await harness.stop()
     harness = await createHarness({ capabilities: { vip: false } })
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
     const created = await browser.postJson("/api/dash/giveaways", {
       title: "T",
       prize: "P",
@@ -431,7 +425,7 @@ describe("streamer sign-in", () => {
 
   it("refuses an expired session", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     harness.clock.advance((harness.config.sessionTtlSeconds + 1) * 1000)
 
@@ -489,14 +483,14 @@ describe("channel point rewards", () => {
   it("asks an Affiliate whose token lacks the points scopes to reconnect", async () => {
     harness.fake.control.addUser({ ...users.streamerA, broadcasterType: "affiliate" })
 
-    expect(await rewardsOf("?entry=chat")).toEqual({ kind: "reconnect" })
+    expect(await rewardsOf("?features=followers")).toEqual({ kind: "reconnect" })
   })
 
   it("lists the rewards of a Partner who granted the points scopes", async () => {
     harness.fake.control.addUser({ ...users.streamerA, broadcasterType: "partner" })
     harness.fake.control.setCustomRewards(users.streamerA.id, [reward])
 
-    expect(await rewardsOf("?entry=points")).toEqual({
+    expect(await rewardsOf("?features=redemptions")).toEqual({
       kind: "rewards",
       rewards: [{ id: "reward-1", title: "Enter" }],
     })
@@ -506,7 +500,7 @@ describe("channel point rewards", () => {
     spyOn(console, "warn").mockImplementation(() => {})
     harness.fake.control.addUser({ ...users.streamerA, broadcasterType: "partner" })
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?entry=points")
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?features=redemptions")
     harness.fake.control.failNext("rewards", 500, 2)
 
     const response = await browser.request("/api/dash/rewards")
@@ -517,6 +511,14 @@ describe("channel point rewards", () => {
 })
 
 describe("viewer sign-in start", () => {
+  it("asks a Twitch viewer for openid only", async () => {
+    const { code } = await createGiveaway(harness)
+
+    const start = await new Browser(harness).request(`/auth/twitch/viewer/start?giveaway=${code}`)
+
+    expect(scopesOf(start)).toEqual(["openid"])
+  })
+
   it("asks Twitch for the account picker only when force_verify is true", async () => {
     const { code } = await createGiveaway(harness)
 
@@ -802,7 +804,7 @@ describe("creating a giveaway", () => {
     await createGiveaway(harness)
     const insert = spyOn(harness.deps.accounts, "insertGiveaway")
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerB.id, fullStreamerStart)
 
     const response = await browser.postJson("/api/dash/giveaways", {
       title: "T",
@@ -859,7 +861,7 @@ describe("creating a giveaway", () => {
 
   it("rejects an invalid body with the offending field", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.postJson("/api/dash/giveaways", {
       title: "T",
@@ -877,7 +879,7 @@ describe("creating a giveaway", () => {
 
   it("rejects a body that is not JSON", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.request("/api/dash/giveaways", { method: "POST", body: "{" })
 
@@ -916,6 +918,21 @@ describe("viewer entry", () => {
 
     expect(query.get("entry")).toBe("entered")
     expect(harness.rooms.roomFor(id).summary()).toMatchObject({ entrantCount: 1, ticketTotal: 2 })
+  })
+
+  it("reads the follow of a follower-rule giveaway with the streamer's token, not the viewer's", async () => {
+    const { code, id } = await createGiveaway(harness, users.streamerA.id, {
+      rules: { ...validRules, followersOnly: true },
+    })
+    harness.fake.control.setFollowing(users.viewer.id, users.streamerA.id, true)
+    harness.fake.control.setFollowing(users.viewer2.id, users.streamerA.id, true)
+    await viewerSignIn(users.viewer.id, code)
+
+    harness.fake.control.revokeUserTokens(users.streamerA.id)
+    const { query } = await viewerSignIn(users.viewer2.id, code)
+
+    expect(harness.rooms.roomFor(id).summary()).toMatchObject({ entrantCount: 1, ticketTotal: 2 })
+    expect(query.get("entry")).toBe("try-again")
   })
 
   it("weights a subscriber by the subscription tier", async () => {
@@ -1022,7 +1039,7 @@ describe("viewer entry", () => {
 
   it("answers try-again when Helix rate limits after the code was spent", async () => {
     const { code, id } = await createGiveaway(harness)
-    harness.fake.control.failNext("followed", 429, 1)
+    harness.fake.control.failNext("followers", 429, 1)
 
     const { query } = await viewerSignIn(users.viewer.id, code)
 
@@ -1081,10 +1098,10 @@ describe("viewer entry", () => {
 })
 
 // The scopes a sign-in start asks Twitch for, read from its redirect.
-// The reward list as the wizard reads it, for streamer A signed in with the start query `entry`.
-async function rewardsOf(entry: string): Promise<unknown> {
+// The reward list as the wizard reads it, for streamer A signed in with the start query `features`.
+async function rewardsOf(features: string): Promise<unknown> {
   const browser = new Browser(harness)
-  await browser.signInAs(users.streamerA.id, `/auth/twitch/streamer/start${entry}`)
+  await browser.signInAs(users.streamerA.id, `/auth/twitch/streamer/start${features}`)
   return (await browser.request("/api/dash/rewards")).json()
 }
 
@@ -1234,7 +1251,13 @@ describe("token endpoint limits", () => {
   })
 
   it("calls the token endpoint again once the cooldown is over and the next pass takes the whole queue", async () => {
-    const { code } = await createGiveaway(harness)
+    // Rules that weigh no follow or tier, so no refresh of the streamer's token is counted among the token calls.
+    const { code } = await createGiveaway(harness, users.streamerA.id, {
+      rules: {
+        ...validRules,
+        tickets: { ...validTickets, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1 },
+      },
+    })
     harness.fake.control.failNext("token", 429, 1)
     await viewerSignIn(users.viewer.id, code)
     const afterFirst = tokenCalls()
@@ -1489,7 +1512,7 @@ describe("winners", () => {
     await harness.stop()
     harness = await createHarness({ env: { DRAW_MAX_WINNERS: "2" } })
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     for (const winnerCount of [0, -1, 1.5, "2", null, 3]) {
       const response = await browser.postJson("/api/dash/giveaways", {
@@ -1529,7 +1552,7 @@ describe("winners", () => {
   it("answers 404 to another streamer who changes the winner count", async () => {
     const { id } = await createGiveaway(harness)
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     const response = await other.postJson(`/api/dash/giveaways/${id}/winners`, { count: 2 })
 
@@ -1658,7 +1681,7 @@ describe("owner scoping", () => {
     const a = await createGiveaway(harness, users.streamerA.id)
     await a.browser.postJson(`/api/dash/giveaways/${a.id}/close`, {})
     const b = new Browser(harness)
-    await b.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await b.signInAs(users.streamerB.id, fullStreamerStart)
 
     const response = await b.postJson(`/api/dash/giveaways/${a.id}/draw`, { count: 1 })
 
@@ -1669,7 +1692,7 @@ describe("owner scoping", () => {
   it("answers 404 to streamer B for every action on A's giveaway", async () => {
     const a = await createGiveaway(harness, users.streamerA.id)
     const b = new Browser(harness)
-    await b.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await b.signInAs(users.streamerB.id, fullStreamerStart)
 
     for (const action of ["close", "draw", "reroll", "claim"]) {
       const response = await b.postJson(`/api/dash/giveaways/${a.id}/${action}`, { count: 1, n: 0 })
@@ -2034,7 +2057,7 @@ describe("entrants of the live page", () => {
   it("answers 404 to streamer B for the entrants of A's giveaway", async () => {
     const a = await giveawayWithEntrants(2)
     const b = new Browser(harness)
-    await b.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await b.signInAs(users.streamerB.id, fullStreamerStart)
 
     const response = await entrantsOf(b, a.id)
 
@@ -2146,7 +2169,7 @@ describe("overlay and admin", () => {
   it("shows the usage and the queue counters to an admin", async () => {
     harness.usage.usage = { workerRequests: 10, doRequests: 5 }
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.request("/api/admin/usage")
 
@@ -2161,7 +2184,7 @@ describe("overlay and admin", () => {
     spyOn(console, "warn").mockImplementation(() => {})
     harness.usage.failure = new Error("Analytics answered 500")
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.request("/api/admin/usage")
 
@@ -2174,9 +2197,9 @@ describe("overlay and admin", () => {
     const byLogin = await createHarness({ env: { ADMIN_TWITCH_IDS: users.streamerB.login } })
     try {
       const browser = new Browser(byLogin)
-      await browser.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+      await browser.signInAs(users.streamerB.id, fullStreamerStart)
       const other = new Browser(byLogin)
-      await other.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+      await other.signInAs(users.streamerA.id, fullStreamerStart)
 
       expect((await browser.request("/api/admin/usage")).status).toBe(200)
       expect((await other.request("/api/admin/usage")).status).toBe(403)
@@ -2187,7 +2210,7 @@ describe("overlay and admin", () => {
 
   it("refuses the admin page to a streamer who is not listed", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerB.id, fullStreamerStart)
 
     expect((await browser.request("/api/admin/usage")).status).toBe(403)
   })

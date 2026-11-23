@@ -114,12 +114,9 @@ the commit enters the rest as not following and with an unknown account age, so 
 rule refuses them. The giveaway page has an "Am I in?" lookup by login (`GET /api/g/:code/entered`, rate limited
 per address like the leaf list) that answers yes or no for chat, sub and points entrants; page entrants are never found.
 
-- Scope: `moderator:read:followers` is not part of the base streamer scopes. When a streamer turns chat entry on
-  and the stored token lacks it, the wizard offers "Reconnect Twitch" (`/auth/twitch/streamer/start?entry=chat`,
-  base scopes plus this one); the wizard keeps its answers across the round trip. Twitch grants only the
-  scopes a sign-in asks for, so a later normal sign-in asks for it again when the browser's last sign-in
-  granted it (a signed cookie) or the signed-in streamer's stored token holds it. A chat-entry giveaway whose
-  token still lacks it counts every chatter as not following and logs it once.
+- Scope: chat entry needs no scope beyond the sign-in's. The follow read needs `moderator:read:followers`, the
+  `followers` feature, which a giveaway needs only when a follow changes who enters or their tickets (see
+  Streamer features).
 
 **Sub and points entry (#62).** Optional per giveaway, on top of page or chat entry, which stays on: a sub is a
 purchase, so a free way in keeps the giveaway from being a paid lottery, and the rules refuse sub or points entry
@@ -134,10 +131,9 @@ written with `entries.via` = `sub` or `points`. A sub enters with the tier of it
 tier, so the check reads the redeemers' tiers with one `GET /helix/subscriptions?user_id=` per check (streamer
 token). Events after the end time or the close enter nobody, and the watch closes at the close.
 
-- Scopes: sub entry asks for `channel:read:subscriptions`, points entry also for `channel:read:redemptions`, both
-  with `moderator:read:followers` for the follow read (`?entry=sub`, `?entry=points`, combinable as
-  `?entry=chat,sub,points`). Creating a sub or points giveaway on a token without them answers 422 `reconnect`,
-  and the wizard does not submit while they are missing. When Twitch still refuses the sub or points
+- Scopes: sub entry needs the `subs` feature (`channel:read:subscriptions`), points entry the `redemptions`
+  feature (`channel:read:redemptions`); a redeemer's tier is read only when the token holds `subs` (see Streamer
+  features). When Twitch still refuses the sub or points
   subscriptions (a permission removed later), a watch that also reads chat keeps chat entry and claims, stops only
   the refused way for the giveaway (`room_state.sub_entry_unavailable`, `room_state.points_entry_unavailable`)
   and the live page says which way is off; a watch without chat gives up.
@@ -271,17 +267,19 @@ list of accepted platforms; a later provider adds one.
 
 ### What the viewer sign-in calls
 
-| Step         | Endpoint                                                                                    | Whose limit                                 |
-| ------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Sign-in      | `id.twitch.tv/oauth2/authorize` (browser redirect)                                          | none on our side                            |
-| Token        | `POST id.twitch.tv/oauth2/token`                                                            | app's `client_id`, limit **not documented** |
-| Identity     | `id_token` verified locally against `id.twitch.tv/oauth2/keys` (RS256)                      | none                                        |
-| Sub check    | `GET /helix/subscriptions/user` (`user:read:subscriptions`, 404 = not subscribed)           | per client per user                         |
-| Follow check | `GET /helix/channels/followed?broadcaster_id=` (`user:read:follows`, empty = not following) | per client per user                         |
-| Account age  | `GET /helix/users` (`created_at`), only when the giveaway sets a minimum age                | per client per user                         |
+| Step         | Endpoint                                                                              | Whose limit                                 |
+| ------------ | ------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Sign-in      | `id.twitch.tv/oauth2/authorize` (browser redirect)                                    | none on our side                            |
+| Token        | `POST id.twitch.tv/oauth2/token`                                                      | app's `client_id`, limit **not documented** |
+| Identity     | `id_token` verified locally against `id.twitch.tv/oauth2/keys` (RS256)                | none                                        |
+| Sub check    | `GET /helix/subscriptions?user_id=` (streamer token, `channel:read:subscriptions`)    | per client per streamer                     |
+| Follow check | `GET /helix/channels/followers?user_id=` (streamer token, `moderator:read:followers`) | per client per streamer                     |
+| Account age  | `GET /helix/users` (`created_at`), only when the giveaway sets a minimum age          | per client per user                         |
 
-Helix limits apply "per client ID per user per minute" for user tokens, so 12,000 viewers do not share one
-bucket. The `id_token` has no account creation claim (only `email`, `picture`, `preferred_username`,
+Helix limits apply "per client ID per user per minute" for user tokens. The follow and sub checks use the
+streamer's token, so the viewer grants only `openid`; they run only when the rules weigh a follow or a tier, and
+then every entrant of one channel shares the streamer's bucket (800 points per minute), so a large giveaway with
+such a rule can see 429 answers, which give the viewer "try again". The `id_token` has no account creation claim (only `email`, `picture`, `preferred_username`,
 `updated_at` can be requested), so account age costs a third Helix call.
 
 The token endpoint is the one shared, undocumented limit on the hot path. Twitch's docs give no limit for
@@ -291,7 +289,7 @@ with an empty body and no rate-limit headers, and Twitch staff never answered. A
 
 ### Viewer flow: code flow with a queue (decided 2026-11-20)
 
-Code flow with OpenID Connect, scopes `openid user:read:subscriptions user:read:follows`. The implicit flow
+Code flow with OpenID Connect, scope `openid`. The implicit flow
 was considered (it skips the token endpoint) and rejected, because OAuth's security guidance discourages
 tokens in the URL.
 
@@ -343,10 +341,26 @@ While the queue is empty, no extra request is made: the normal path is one callb
 
 ### Streamer flow
 
-Code flow with `openid channel:read:vips moderation:read user:read:chat` (`user:read:chat` for the chat
-claim and chat entry); the reconnect for chat entry adds `moderator:read:followers` (see Chat entry), the one
-for sub and points entry `channel:read:subscriptions` and `channel:read:redemptions` (see Sub and points entry). The
-granted scopes are stored with the token. Rafflink keeps the streamer's refresh token
+Code flow with `openid user:read:chat` (`user:read:chat` for the chat claim and chat entry).
+
+**Streamer features.** Every other scope belongs to a feature and is asked for only when a giveaway first uses it,
+through the wizard's "Reconnect Twitch" (`/auth/twitch/streamer/start?features=followers,roles`):
+
+| Feature       | Twitch scopes                          | Needed when                                                    |
+| ------------- | -------------------------------------- | -------------------------------------------------------------- |
+| `followers`   | `moderator:read:followers`             | followers only, or follower tickets differ from viewer tickets |
+| `subs`        | `channel:read:subscriptions`           | sub entry, subscribers only, or a tier's tickets differ        |
+| `redemptions` | `channel:read:redemptions`             | points entry                                                   |
+| `roles`       | `channel:read:vips`, `moderation:read` | VIP or moderator tickets differ from viewer tickets            |
+| `modlinks`    | `moderation:read`                      | a moderator link for moderators only                           |
+
+Kick maps `redemptions` to `channel:rewards:read` and needs no scope for the others; YouTube needs none. Creating
+a giveaway whose rules need a feature the token lacks answers 422 `reconnect`, and so does a moderators-only link
+without `modlinks`; the wizard and the live page offer the reconnect instead. So a viewer's entry and the room
+can count on the scopes: the room reads the role lists only for a giveaway that weighs roles. Twitch grants only
+the scopes a sign-in asks for, so a later normal sign-in asks again for the features the browser's last sign-in
+granted (a signed cookie) or the signed-in streamer's stored token holds. The requested scopes are stored with
+the token. Rafflink keeps the streamer's refresh token
 (confidential clients get refresh tokens that do not expire). Twitch requires apps that keep an OAuth session
 to call `GET id.twitch.tv/oauth2/validate` at start and every hour. A Cron Trigger validates every stored
 streamer token hourly (a timer on the VPS) and deletes the ones that return 401; a 5xx, a 429 or a network

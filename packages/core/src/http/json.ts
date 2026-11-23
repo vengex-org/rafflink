@@ -7,7 +7,8 @@ import type {
   StreamerBlock,
 } from "../accounts/account-store.ts"
 import type { OverlayTheme } from "../domain/overlay-theme.ts"
-import type { ChannelEntryVia, GiveawayRules, PointsReward } from "../domain/rules.ts"
+import type { GiveawayRules, PointsReward } from "../domain/rules.ts"
+import type { StreamerFeature } from "../domain/streamer-features.ts"
 import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/plan-limits.ts"
 import type { Usage, UsageAlert } from "../plan/usage.ts"
 import type { PresenceCounts } from "../presence/site-presence.ts"
@@ -166,8 +167,8 @@ export interface SessionJson {
     readonly platform: Platform
     /** What the streamer's platform supports, so the create form offers only those rules and entry paths. */
     readonly capabilities: PlatformCapabilities
-    /** The entry ways whose scopes the stored token holds; turning on a way missing here asks the streamer to reconnect first. */
-    readonly readyEntryWays: readonly ChannelEntryVia[]
+    /** The features whose scopes the stored token holds; using a feature missing here asks the streamer to reconnect first. */
+    readonly grantedFeatures: readonly StreamerFeature[]
     /** The streamer turned on their public history page. */
     readonly publicHistory: boolean
     /** The streamer lets search engines index their public history page. */

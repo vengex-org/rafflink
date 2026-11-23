@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono"
 import { streamerTokenAad } from "../accounts/streamer-token.ts"
-import type { ChannelEntryVia } from "../domain/rules.ts"
+import { parseFeatures, type StreamerFeature } from "../domain/streamer-features.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import { giveawayPath } from "../lib/page-paths.ts"
 import { randomId } from "../lib/random-id.ts"
@@ -10,8 +10,8 @@ import { PlatformError, PlatformIdentityRejected, PlatformNoChannel } from "../p
 import { codeChallenge, codeVerifier } from "../platform/pkce.ts"
 import {
   configuredProviders,
+  grantedFeatures,
   providerFor,
-  readyEntryWays,
   type Platform,
   type PlatformProvider,
 } from "../platform/provider.ts"
@@ -32,10 +32,9 @@ import {
   startViewerSession,
   takeOAuthState,
   startPendingEntry,
-  parseEntryWays,
-  readEntryScopesHint,
+  readFeatureScopesHint,
   readStreamerSession,
-  writeEntryScopesHint,
+  writeFeatureScopesHint,
 } from "./session.ts"
 
 /**
@@ -66,11 +65,11 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     const nonce = randomId(deps.random)
     const verifier = codeVerifier(deps.random)
     const returnPath = safeReturnPath(c.req.query("return")) ?? defaultReturnPath
-    // `?entry=chat,sub` is the wizard's "Reconnect Twitch": the base scopes plus the ones those entry ways
-    // need. Twitch grants only the scopes a sign-in asks for, so the ways granted before are asked again.
-    const asked = parseEntryWays(c.req.query("entry")?.split(",") ?? []) ?? []
-    const granted = await grantedEntryWays(c, deps, provider)
-    const entryWays = [...new Set([...granted, ...asked])]
+    // `?features=followers,roles` is the wizard's "Reconnect Twitch": the base scopes plus the ones those
+    // features need. Twitch grants only the scopes a sign-in asks for, so the features granted before are asked again.
+    const asked = parseFeatures(c.req.query("features")?.split(",") ?? []) ?? []
+    const granted = await knownFeatures(c, deps, provider)
+    const features = [...new Set([...granted, ...asked])]
     await startOAuthState(c, deps, "streamer", {
       state,
       nonce,
@@ -78,14 +77,14 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: null,
       returnPath,
       moderatorLinkId: null,
-      entryWays,
+      features,
     })
     return c.redirect(
       provider.authorizeUrl({
         state,
         nonce,
         codeChallenge: await codeChallenge(verifier),
-        scopes: streamerScopes(provider, entryWays),
+        scopes: streamerScopes(provider, features),
         redirectUri: redirectUri(deps.config, streamerCallbackPath),
       }),
     )
@@ -122,7 +121,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
         streamerTokenAad(platform, signIn.userId),
         deps.random,
       ),
-      scopes: streamerScopes(provider, saved.entryWays).join(" "),
+      scopes: streamerScopes(provider, saved.features).join(" "),
       now: deps.clock.now(),
     })
     // A copy cached before the rename would show the history under the old login instead of its redirect.
@@ -134,7 +133,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       platform,
       platformUserId: streamer.platformUserId,
     })
-    await writeEntryScopesHint(c, deps, saved.entryWays)
+    await writeFeatureScopesHint(c, deps, saved.features)
     return c.redirect(saved.returnPath ?? defaultReturnPath)
   })
 
@@ -161,7 +160,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: giveaway.code,
       returnPath: null,
       moderatorLinkId: null,
-      entryWays: [],
+      features: [],
     })
     return c.redirect(
       provider.authorizeUrl({
@@ -241,25 +240,25 @@ interface StreamerGrant {
 }
 
 // The browser's last sign-in granted them, or the signed-in streamer's stored token holds them.
-async function grantedEntryWays(
+async function knownFeatures(
   c: Context,
   deps: AppDeps,
   provider: PlatformProvider,
-): Promise<readonly ChannelEntryVia[]> {
-  const hinted = await readEntryScopesHint(c, deps)
+): Promise<readonly StreamerFeature[]> {
+  const hinted = await readFeatureScopesHint(c, deps)
   const session = await readStreamerSession(c, deps)
   if (session === null || session.platform !== provider.platform) return hinted
   const token = await deps.accounts.findStreamerToken(session.streamerId)
-  const stored = token === null ? [] : readyEntryWays(provider, token.scopes)
+  const stored = token === null ? [] : grantedFeatures(provider, token.scopes)
   return [...new Set([...hinted, ...stored])]
 }
 
 function streamerScopes(
   provider: PlatformProvider,
-  entryWays: readonly ChannelEntryVia[],
+  features: readonly StreamerFeature[],
 ): readonly [string, ...string[]] {
   const [first, ...rest] = provider.scopes.streamer
-  const extra = entryWays.flatMap((way) => provider.entryScopes[way])
+  const extra = features.flatMap((feature) => provider.featureScopes[feature])
   return [first, ...new Set([...rest, ...extra])]
 }
 

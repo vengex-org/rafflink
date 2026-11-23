@@ -19,6 +19,7 @@ import {
   type Identity,
   type Winner,
 } from "../lib/draw.ts"
+import { rolesMatter, tierMatters } from "../domain/streamer-features.ts"
 import { drandChain, roundAtOrAfter, roundTime } from "../lib/drand.ts"
 import { leafHash, merkleRoot, type LeafPreimage } from "../lib/merkle.ts"
 import type { MinuteCounts } from "../stats/stats-store.ts"
@@ -565,7 +566,10 @@ export class GiveawayRoom {
     this.openChat = deps.chat
   }
 
-  /** Creates the room once; a second call with any giveaway changes nothing. */
+  /**
+   * Creates the room once; a second call with any giveaway changes nothing. The role lists are read only
+   * for a giveaway whose tickets weigh VIPs or moderators, so no other one needs the roles scopes.
+   */
   init(giveaway: GiveawayInit): RoomInitOutcome {
     this.sql.exec(
       `INSERT INTO room_state
@@ -581,7 +585,7 @@ export class GiveawayRoom {
         JSON.stringify(giveaway.rules),
         giveaway.claimSeconds,
         giveaway.closesAt,
-        this.clock.now(),
+        rolesMatter(giveaway.rules) ? this.clock.now() : null,
         giveaway.winnerCount,
       ],
     )
@@ -873,6 +877,8 @@ export class GiveawayRoom {
     ])
     if (rows.length === 0) return null
     this.chatCheckAt = now + this.config.chatEntryCheckSeconds * 1000
+    // A redeemer's tier is read only when the tickets weigh tiers, so points entry alone needs no subscribers scope.
+    const tiersRead = tierMatters(state.rules)
     if (!open) {
       return {
         platform: state.platform,
@@ -881,7 +887,7 @@ export class GiveawayRoom {
           return {
             platformUserId: request.platformUserId,
             followerCheck: false,
-            tierCheck: request.via === "points" && index < tierChecksPerLastRead,
+            tierCheck: tiersRead && request.via === "points" && index < tierChecksPerLastRead,
           }
         }),
       }
@@ -896,7 +902,7 @@ export class GiveawayRoom {
       chatters.push({
         platformUserId: request.platformUserId,
         followerCheck,
-        tierCheck: request.via === "points",
+        tierCheck: tiersRead && request.via === "points",
       })
     }
     return { platform: state.platform, chatters }

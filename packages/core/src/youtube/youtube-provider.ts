@@ -11,7 +11,6 @@ import type {
   PlatformProvider,
   SubscriberBadges,
   SubscriberTiers,
-  SubscriptionGroup,
   TokenValidation,
   UserProfile,
 } from "../platform/provider.ts"
@@ -78,7 +77,13 @@ export class YouTubeProvider implements PlatformProvider {
     viewer: [readonlyScope],
     moderator: [readonlyScope],
   } as const
-  readonly entryScopes = { chat: [], sub: [], points: [] } as const
+  readonly featureScopes = {
+    followers: [],
+    subs: [],
+    redemptions: [],
+    roles: [],
+    modlinks: [],
+  } as const
 
   constructor(
     private readonly client: YouTubeClient,
@@ -129,10 +134,6 @@ export class YouTubeProvider implements PlatformProvider {
     }
   }
 
-  async follows(): Promise<boolean> {
-    return false
-  }
-
   async channelFollower(): Promise<boolean> {
     return false
   }
@@ -140,10 +141,6 @@ export class YouTubeProvider implements PlatformProvider {
   /** Chat messages carry the name; a channel read per entrant would cost a unit each for an account age the rules cannot use. */
   async userProfiles(): Promise<readonly UserProfile[]> {
     return []
-  }
-
-  async subscriptionTier(): Promise<SubscriptionGroup | null> {
-    return null
   }
 
   async subscriberBadges(): Promise<SubscriberBadges> {

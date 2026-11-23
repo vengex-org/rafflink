@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   users,
@@ -35,7 +36,7 @@ async function start(env: Record<string, string> = {}): Promise<Harness> {
 
 async function adminBrowser(running: Harness): Promise<Browser> {
   const browser = new Browser(running)
-  await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+  await browser.signInAs(users.streamerA.id, fullStreamerStart)
   return browser
 }
 
@@ -49,7 +50,7 @@ describe("GET /api/admin/stats", () => {
   it("answers 401 without a session and 403 to a streamer who is not an admin", async () => {
     const running = await start()
     const other = new Browser(running)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     expect((await new Browser(running).request("/api/admin/stats")).status).toBe(401)
     expect((await other.request("/api/admin/stats")).status).toBe(403)
@@ -105,7 +106,7 @@ describe("GET /api/admin/stats", () => {
     const running = await start({ OPEN_SIGNUP: "false" })
     const admin = await adminBrowser(running)
     const waiting = new Browser(running)
-    await waiting.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await waiting.signInAs(users.streamerB.id, fullStreamerStart)
 
     expect((await stats(admin)).access).toEqual({ pending: 1, approved: 0, truncated: false })
   })

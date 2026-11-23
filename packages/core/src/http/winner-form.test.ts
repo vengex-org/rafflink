@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   users,
@@ -186,7 +187,7 @@ describe("the winner form", () => {
     const { browser, id, code, winner } = await claimedWithForm()
     await sendAnswers(winner, code)
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
     const created = await sameOriginPost(browser, `/api/dash/giveaways/${id}/moderator-links`, {
       requireMod: false,
     })
@@ -283,7 +284,7 @@ describe("the winner form", () => {
     harness.rooms.roomFor(id).onAlarm()
     // The first session has expired by now.
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     expect(harness.config.winnerFormRetentionSeconds).toBe(30 * 24 * 60 * 60)
     expect(harness.rooms.roomFor(id).winnerAnswers()).toEqual([])

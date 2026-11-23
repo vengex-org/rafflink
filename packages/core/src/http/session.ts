@@ -1,7 +1,7 @@
 import type { Context } from "hono"
 import { deleteCookie, getCookie, getSignedCookie, setSignedCookie } from "hono/cookie"
 import type { ResolvedConfig } from "../config.ts"
-import { channelEntryVias, type ChannelEntryVia } from "../domain/rules.ts"
+import { parseFeatures, type StreamerFeature } from "../domain/streamer-features.ts"
 import { isPlatform, type OAuthFlow, type Platform } from "../platform/provider.ts"
 import type { Clock, Instant } from "../ports.ts"
 
@@ -57,8 +57,8 @@ export interface OAuthState {
   readonly giveawayCode: string | null
   readonly returnPath: string | null
   readonly moderatorLinkId: string | null
-  /** The entry ways whose scopes the streamer sign-in asked for too; empty for every other sign-in. */
-  readonly entryWays: readonly ChannelEntryVia[]
+  /** The features whose scopes the streamer sign-in asked for too; empty for every other sign-in. */
+  readonly features: readonly StreamerFeature[]
 }
 
 const cookieNames = {
@@ -111,44 +111,37 @@ export function endStreamerSession(c: Context): void {
   deleteCookie(c, cookieNames.streamer, { path: "/" })
 }
 
-/** The entry ways whose scopes the last streamer sign-in in this browser granted, so the next one asks for them again. */
-export async function readEntryScopesHint(
+/** The features whose scopes the last streamer sign-in in this browser granted, so the next one asks for them again. */
+export async function readFeatureScopesHint(
   c: Context,
   deps: SessionDeps,
-): Promise<readonly ChannelEntryVia[]> {
-  const hint = await readCookie(c, deps, entryScopesHintCookie, (value) =>
-    parseEntryWays(value.entryWays),
+): Promise<readonly StreamerFeature[]> {
+  const hint = await readCookie(c, deps, featureScopesHintCookie, (value) =>
+    parseFeatures(value.features),
   )
   return hint ?? []
 }
 
-/** Remembers after a streamer sign-in which entry ways' scopes it granted; a logout keeps it. */
-export async function writeEntryScopesHint(
+/** Remembers after a streamer sign-in which features' scopes it granted; a logout keeps it. */
+export async function writeFeatureScopesHint(
   c: Context,
   deps: SessionDeps,
-  granted: readonly ChannelEntryVia[],
+  granted: readonly StreamerFeature[],
 ): Promise<void> {
   if (granted.length > 0) {
     await writeCookie(
       c,
       deps,
-      entryScopesHintCookie,
-      { entryWays: granted },
-      entryScopesHintSeconds,
+      featureScopesHintCookie,
+      { features: granted },
+      featureScopesHintSeconds,
     )
-  } else deleteCookie(c, entryScopesHintCookie, { path: "/" })
+  } else deleteCookie(c, featureScopesHintCookie, { path: "/" })
 }
 
-/** The entry ways of a stored list; null when it is not a list of them. */
-export function parseEntryWays(value: unknown): readonly ChannelEntryVia[] | null {
-  if (!Array.isArray(value)) return null
-  const ways = value.flatMap((item) => channelEntryVias.filter((way) => way === item))
-  return ways.length === value.length ? ways : null
-}
-
-const entryScopesHintCookie = "rl_entry_scopes"
+const featureScopesHintCookie = "rl_entry_scopes"
 // Browsers keep a cookie at most 400 days.
-const entryScopesHintSeconds = 400 * 86_400
+const featureScopesHintSeconds = 400 * 86_400
 
 export async function readViewerSession(
   c: Context,
@@ -303,14 +296,14 @@ export async function takeOAuthState(
   const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
     const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId } = value
-    const entryWays = parseEntryWays(value.entryWays)
+    const features = parseFeatures(value.features)
     if (typeof state !== "string" || typeof nonce !== "string") return null
     if (typeof codeVerifier !== "string") return null
     if (giveawayCode !== null && typeof giveawayCode !== "string") return null
     if (returnPath !== null && typeof returnPath !== "string") return null
     if (moderatorLinkId !== null && typeof moderatorLinkId !== "string") return null
-    if (entryWays === null) return null
-    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, entryWays }
+    if (features === null) return null
+    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, features }
   })
   deleteCookie(c, name, { path: "/" })
   return saved

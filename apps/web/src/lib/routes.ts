@@ -1,4 +1,4 @@
-import type { ChannelEntryVia } from "@rafflink/core/domain/rules"
+import type { StreamerFeature } from "@rafflink/core/domain/streamer-features"
 import { languages, sourceLanguage } from "@rafflink/core/lib/languages"
 import type { Platform } from "@rafflink/core/platform/provider"
 import type { OverlayOptions } from "./overlay-options.ts"
@@ -76,13 +76,13 @@ export function streamerSignInPath(platform: Platform, returnTo: string): string
 
 /** A moderator's sign-in for the link that just asked for it; the server remembers which link in a cookie. */
 export const moderatorSignInPath = "/auth/twitch/moderator/start"
-/** Signs the streamer in again on their platform with the scopes the entry ways need, then back to `returnTo`. */
-export function entryReconnectPath(
+/** Signs the streamer in again on their platform with the scopes the features need, then back to `returnTo`. */
+export function featureReconnectPath(
   platform: Platform,
-  ways: readonly ChannelEntryVia[],
+  features: readonly StreamerFeature[],
   returnTo: string,
 ): string {
-  const query = new URLSearchParams({ entry: ways.join(","), return: returnTo })
+  const query = new URLSearchParams({ features: features.join(","), return: returnTo })
   return withQuery(`/auth/${platform}/streamer/start`, query)
 }
 

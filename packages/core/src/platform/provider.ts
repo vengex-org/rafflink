@@ -1,10 +1,6 @@
 import type { Group } from "../domain/groups.ts"
-import {
-  channelEntryVias,
-  type ChannelEntryVia,
-  type PointsReward,
-  type ViewerFacts,
-} from "../domain/rules.ts"
+import type { PointsReward, ViewerFacts } from "../domain/rules.ts"
+import { streamerFeatures, type StreamerFeature } from "../domain/streamer-features.ts"
 import type { Clock, Instant, SocketConnector } from "../ports.ts"
 import type { ChannelEntryEvent, ChatMessage, ChatSourceFactory } from "./chat-source.ts"
 
@@ -146,10 +142,10 @@ export interface PlatformProvider {
   /** The scopes each sign-in asks for; the streamer's are stored with the streamer's token. */
   readonly scopes: Readonly<Record<SignInPurpose, readonly [string, ...string[]]>>
   /**
-   * The streamer scopes each channel entry way needs on top of `scopes.streamer`, asked only when the
-   * streamer turns that way on. Each includes what the check of a queued entrant reads (follow, tier).
+   * The streamer scopes each feature needs on top of `scopes.streamer`, asked only when the streamer first
+   * uses it; empty for a feature the platform serves without one.
    */
-  readonly entryScopes: Readonly<Record<ChannelEntryVia, readonly string[]>>
+  readonly featureScopes: Readonly<Record<StreamerFeature, readonly string[]>>
   authorizeUrl(params: AuthorizeParams): string
   /**
    * Trades the sign-in's code, with its PKCE verifier, for tokens. Not retried: a code is single use,
@@ -165,17 +161,10 @@ export interface PlatformProvider {
   refreshTokens(refreshToken: string): Promise<ExchangedCode>
   userProfile(accessToken: string): Promise<UserProfile>
   validate(accessToken: string): Promise<TokenValidation>
-  follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
-  /** Whether `userId` follows the channel, asked with the streamer's token instead of the viewer's. */
+  /** Whether `userId` follows the channel, asked with the streamer's token. */
   channelFollower(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
   /** The profiles of the accounts that exist among `userIds`; a missing account is absent from the answer. */
   userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]>
-  /** The tier group of the viewer's subscription, `null` when not subscribed. */
-  subscriptionTier(
-    accessToken: string,
-    broadcasterId: string,
-    userId: string,
-  ): Promise<SubscriptionGroup | null>
   /** The channel's subscriber badges; every tier `null` when the platform could not answer. */
   subscriberBadges(broadcasterId: string): Promise<SubscriberBadges>
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles>
@@ -255,13 +244,13 @@ export function configuredProviders(providers: PlatformProviders): readonly Plat
   return platforms.flatMap((platform) => providers[platform] ?? [])
 }
 
-/** The entry ways whose scopes all are among a token's `scopes`. */
-export function readyEntryWays(
+/** The features whose scopes all are among a token's `scopes`. */
+export function grantedFeatures(
   provider: PlatformProvider,
   scopes: readonly string[],
-): readonly ChannelEntryVia[] {
-  return channelEntryVias.filter((way) =>
-    provider.entryScopes[way].every((scope) => scopes.includes(scope)),
+): readonly StreamerFeature[] {
+  return streamerFeatures.filter((feature) =>
+    provider.featureScopes[feature].every((scope) => scopes.includes(scope)),
   )
 }
 

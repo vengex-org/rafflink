@@ -9,7 +9,8 @@ import type {
 } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import { parseOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
-import type { ChannelEntryVia, GiveawayRules } from "../domain/rules.ts"
+import type { GiveawayRules } from "../domain/rules.ts"
+import { featuresOfRules } from "../domain/streamer-features.ts"
 import { generateCode } from "../lib/codes.ts"
 import { csvText } from "../lib/csv.ts"
 import { errorClass } from "../lib/error-class.ts"
@@ -36,7 +37,7 @@ import { denseDays, denseMinutes } from "../stats/series.ts"
 import { liveGiveaways } from "../stats/live-giveaways.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
 import { PlatformError } from "../platform/errors.ts"
-import { providerFor, readyEntryWays, type PlatformAccount } from "../platform/provider.ts"
+import { grantedFeatures, providerFor, type PlatformAccount } from "../platform/provider.ts"
 import { openStreamerAccess } from "../accounts/streamer-token.ts"
 import type { Instant } from "../ports.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
@@ -75,7 +76,7 @@ import { sameOriginJson } from "./origin.ts"
 import { historyCacheKey } from "./history-routes.ts"
 import { deletePublicCache, readPublicCache, writePublicCache } from "./public-cache.ts"
 import { endStreamerSession, type StreamerSession } from "./session.ts"
-import { requireStreamer, type StreamerEnv } from "./session-routes.ts"
+import { requireStreamer, streamerFeaturesOf, type StreamerEnv } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 import { pickAnswersJson, winnerAnswersJson } from "./winner-answers.ts"
 
@@ -107,7 +108,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       providerFor(deps.platforms, streamer.platform).capabilities,
     )
     if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
-    if (!(await channelEntryReady(deps, streamer, parsed.value.rules))) {
+    if (!(await featuresReady(deps, streamer, parsed.value.rules))) {
       return c.json({ error: "reconnect" }, 422)
     }
     // A YouTube chat watch spends the install's daily units, so one that cannot read until its close and
@@ -276,7 +277,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
         return c.json<PointsRewardsJson>({ kind: "no-channel-points" })
       }
       const token = await deps.accounts.findStreamerToken(streamerId)
-      if (token === null || !readyEntryWays(provider, token.scopes).includes("points")) {
+      if (token === null || !grantedFeatures(provider, token.scopes).includes("redemptions")) {
         return c.json<PointsRewardsJson>({ kind: "reconnect" })
       }
       const accessToken = await openStreamerAccess(deps, token)
@@ -681,20 +682,17 @@ function winnersCsv(giveaway: Giveaway, picks: readonly WinnerPick[]): string {
   ])
 }
 
-// A sub or points giveaway on a token without those scopes would watch nothing, so it is refused before it exists.
-async function channelEntryReady(
+// A giveaway whose rules need a scope the token lacks would watch nothing or read no follow, tier or role,
+// so it is refused before it exists; entries and the room then rely on the scopes being there.
+async function featuresReady(
   deps: AppDeps,
   streamer: StreamerSession,
   rules: GiveawayRules,
 ): Promise<boolean> {
-  const needed: ChannelEntryVia[] = []
-  if (rules.subEntry) needed.push("sub")
-  if (rules.pointsReward !== null) needed.push("points")
+  const needed = featuresOfRules(rules)
   if (needed.length === 0) return true
-  const token = await deps.accounts.findStreamerToken(streamer.streamerId)
-  if (token === null) return false
-  const ready = readyEntryWays(providerFor(deps.platforms, streamer.platform), token.scopes)
-  return needed.every((way) => ready.includes(way))
+  const granted = await streamerFeaturesOf(deps, streamer)
+  return needed.every((feature) => granted.includes(feature))
 }
 
 async function insertWithFreshCode(

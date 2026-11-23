@@ -41,7 +41,12 @@ import {
   takeModeratorPending,
   type OAuthState,
 } from "./session.ts"
-import { currentStreamer, requireStreamer, type StreamerEnv } from "./session-routes.ts"
+import {
+  currentStreamer,
+  requireStreamer,
+  streamerFeaturesOf,
+  type StreamerEnv,
+} from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 
 /** Set by the moderator live route on its answer: the link a socket opened through it belongs to, so revoking the link closes that socket. */
@@ -109,7 +114,7 @@ export function moderatorRoutes(deps: AppDeps): Hono {
         giveawayCode: null,
         returnPath: null,
         moderatorLinkId: linkId,
-        entryWays: [],
+        features: [],
       })
       return c.redirect(
         provider.authorizeUrl({
@@ -220,7 +225,8 @@ function linkManagement(deps: AppDeps): Hono<StreamerEnv> {
   })
 
   app.post("/api/dash/giveaways/:id/moderator-links", sameSite, streamer, async (c) => {
-    const { streamerId } = c.get("streamer")
+    const session = c.get("streamer")
+    const { streamerId } = session
     const giveaway = await deps.accounts.findOwnedGiveaway(streamerId, c.req.param("id"))
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const requireMod = objectField(await readJson(c), "requireMod")
@@ -230,6 +236,10 @@ function linkManagement(deps: AppDeps): Hono<StreamerEnv> {
     // A platform that does not tell who moderates the channel could never let anyone open a mods-only link.
     if (requireMod && !providerFor(deps.platforms, giveaway.platform).capabilities.moderatorRole) {
       return c.json({ error: "invalid-input", field: "requireMod" }, 400)
+    }
+    // Checking who moderates needs a scope the sign-in does not ask for, so the first such link asks for it.
+    if (requireMod && !(await streamerFeaturesOf(deps, session)).includes("modlinks")) {
+      return c.json({ error: "reconnect" }, 422)
     }
     const secret = randomId(deps.random)
     const link: ModeratorLink = {

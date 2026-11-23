@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   sqlRows,
@@ -80,7 +81,7 @@ describe("moderator links of the streamer", () => {
   it("answers 404 for another streamer's giveaway and 401 without a session", async () => {
     const { id } = await giveawayWithLink()
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     const foreign = await sameOriginPost(other, `/api/dash/giveaways/${id}/moderator-links`, {
       requireMod: false,
@@ -338,7 +339,7 @@ describe("a revoked moderator link", () => {
   it("can be revoked by its own streamer only", async () => {
     const { id, link, token } = await giveawayWithLink()
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     const revoke = await sameOriginPost(
       other,
@@ -426,7 +427,7 @@ describe("a moderator link that requires a moderator", () => {
   it("answers 503 when the channel's moderators cannot be read", async () => {
     const { token } = await giveawayWithLink(true)
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
     spyOn(console, "warn").mockImplementation(() => {})
     harness.fake.control.failNext("moderators", 503, 2)
 

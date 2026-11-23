@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { Browser, createHarness, users, type Harness } from "../../test/app-fixture.ts"
+import {
+  Browser,
+  fullStreamerStart,
+  createHarness,
+  users,
+  type Harness,
+} from "../../test/app-fixture.ts"
 
 let harness: Harness
 
@@ -14,7 +20,7 @@ afterEach(async () => {
 
 async function signedIn(userId: string, target: Harness = harness): Promise<Browser> {
   const browser = new Browser(target)
-  await browser.signInAs(userId, "/auth/twitch/streamer/start")
+  await browser.signInAs(userId, fullStreamerStart)
   return browser
 }
 

@@ -104,7 +104,7 @@ describe("KickProvider", () => {
     ])
     const tokens = await userTokens(world, kickStreamer, [
       ...provider.scopes.streamer,
-      ...provider.entryScopes.points,
+      ...provider.featureScopes.redemptions,
     ])
 
     expect(await provider.pointsRewards(tokens.accessToken)).toEqual([

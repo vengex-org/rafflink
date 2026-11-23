@@ -118,7 +118,7 @@ export const twitchPlatform = {
     pointsEntry: true,
     chatBadgeGroups: [],
   },
-  readyEntryWays: ["chat", "sub", "points"],
+  grantedFeatures: ["followers", "subs", "redemptions", "roles", "modlinks"],
   publicHistory: false,
   historyIndexed: false,
   admin: false,

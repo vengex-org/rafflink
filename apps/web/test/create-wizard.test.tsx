@@ -48,11 +48,13 @@ async function toReview(view: RenderResult) {
   await view.findByText("Step 3 of 3: Review")
 }
 
-// The session of a signed-in streamer whose token holds the scopes of these entry ways.
-function session(readyEntryWays: readonly string[]) {
+// The session of a signed-in streamer whose token holds the scopes of these features.
+function session(grantedFeatures: readonly string[]) {
   return () =>
-    ok({ ...supportedSession, streamer: { ...supportedSession.streamer, readyEntryWays } })
+    ok({ ...supportedSession, streamer: { ...supportedSession.streamer, grantedFeatures } })
 }
+
+const allFeatures = supportedSession.streamer.grantedFeatures
 
 const rewards = {
   kind: "rewards",
@@ -722,24 +724,24 @@ describe("create wizard", () => {
     ).toMatchObject({ rules: { chatKeyword: "!enter", pageEntry: false } })
   })
 
-  it("offers Reconnect Twitch for chat entry only while the streamer's token lacks the scope", async () => {
+  it("asks to reconnect for the VIP permission once VIP tickets differ, and never for chat entry alone", async () => {
     mockFetch({ ...listed, "GET /api/session": session([]) })
     const view = await openWizard()
     await toRules(view)
+    fireEvent.click(view.getByRole("radio", { name: /Page and chat/ }))
     expect(view.queryByRole("link", { name: "Reconnect Twitch" })).toBeNull()
 
-    fireEvent.click(view.getByRole("radio", { name: /Page and chat/ }))
+    openBonusTickets(view)
+    fireEvent.click(view.getByRole("button", { name: "More tickets for VIPs" }))
 
     const reconnect = await view.findByRole("link", { name: "Reconnect Twitch" })
     expect(reconnect.getAttribute("href")).toBe(
-      "/auth/twitch/streamer/start?entry=chat&return=%2Fdashboard%2Fnew%3Fstep%3D2",
+      "/auth/twitch/streamer/start?features=roles&return=%2Fdashboard%2Fnew%3Fstep%3D2",
     )
-    cleanup()
-    mockFetch({ ...listed, "GET /api/session": session(["chat"]) })
-    const ready = await openWizard()
-    await toRules(ready)
-    fireEvent.click(ready.getByRole("radio", { name: /Page and chat/ }))
-    expect(ready.queryByRole("link", { name: "Reconnect Twitch" })).toBeNull()
+    fireEvent.click(view.getByRole("button", { name: "About Reconnect Twitch" }))
+    expect(view.getByText(/read your VIPs and moderators/)).toBeTruthy()
+    next(view)
+    expect(await view.findByText(/Reconnect Twitch first/)).toBeTruthy()
   })
 
   it("keeps the answers across Reconnect Twitch and comes back to the rules step", async () => {
@@ -749,10 +751,11 @@ describe("create wizard", () => {
     await toRules(view)
     fireEvent.click(view.getByRole("radio", { name: /Page and chat/ }))
     fireEvent.change(view.getByLabelText("Entry keyword"), { target: { value: "!join" } })
+    fireEvent.click(view.getByRole("radio", { name: /Followers only/ }))
     fireEvent.click(await view.findByRole("link", { name: "Reconnect Twitch" }))
     cleanup()
 
-    mockFetch({ ...listed, "GET /api/session": session(["chat"]) })
+    mockFetch({ ...listed, "GET /api/session": session(["followers"]) })
     const back = renderApp("/dashboard/new?step=2")
 
     expect(await back.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
@@ -765,7 +768,7 @@ describe("create wizard", () => {
   it("asks to reconnect for sub entry and does not go on until the token holds the sub scope", async () => {
     mockFetch({
       ...listed,
-      "GET /api/session": session(["chat", "points"]),
+      "GET /api/session": session(["followers", "redemptions"]),
       "GET /api/dash/rewards": () => ok(rewards),
     })
     const view = await openWizard()
@@ -776,7 +779,7 @@ describe("create wizard", () => {
     fireEvent.click(await view.findByRole("checkbox", { name: "Enter new subscribers" }))
     const reconnect = await view.findByRole("link", { name: "Reconnect Twitch" })
     expect(reconnect.getAttribute("href")).toBe(
-      "/auth/twitch/streamer/start?entry=sub&return=%2Fdashboard%2Fnew%3Fstep%3D2",
+      "/auth/twitch/streamer/start?features=subs&return=%2Fdashboard%2Fnew%3Fstep%3D2",
     )
     next(view)
 
@@ -787,7 +790,7 @@ describe("create wizard", () => {
   it("enters new subscribers on top of page entry once the token holds the sub scope", async () => {
     const requests = mockFetch({
       ...withCreate(createdReply),
-      "GET /api/session": session(["chat", "sub", "points"]),
+      "GET /api/session": session(allFeatures),
       "GET /api/dash/rewards": () => ok(rewards),
     })
     const view = await openWizard()
@@ -819,7 +822,7 @@ describe("create wizard", () => {
 
     const reconnect = await view.findByRole("link", { name: "Reconnect Kick" })
     expect(reconnect.getAttribute("href")).toBe(
-      "/auth/kick/streamer/start?entry=points&return=%2Fdashboard%2Fnew%3Fstep%3D2",
+      "/auth/kick/streamer/start?features=redemptions&return=%2Fdashboard%2Fnew%3Fstep%3D2",
     )
     fireEvent.click(view.getByRole("button", { name: "About Reconnect Kick" }))
     expect(view.getByText(/To list your channel point rewards/)).toBeTruthy()
@@ -847,7 +850,7 @@ describe("create wizard", () => {
   it("goes back to the rules step when the server answers that the token needs a reconnect", async () => {
     mockFetch({
       ...withCreate({ status: 422, body: { error: "reconnect" } }),
-      "GET /api/session": session(["chat", "sub", "points"]),
+      "GET /api/session": session(allFeatures),
       "GET /api/dash/rewards": () => ok(rewards),
     })
     const view = await openWizard()
@@ -877,7 +880,7 @@ describe("create wizard", () => {
   it("never lets sub or points entry stand alone: every entry way the wizard offers keeps page or chat entry", async () => {
     const requests = mockFetch({
       ...withCreate(createdReply),
-      "GET /api/session": session(["chat", "sub", "points"]),
+      "GET /api/session": session(allFeatures),
       "GET /api/dash/rewards": () => ok(rewards),
     })
     const view = await openWizard()
@@ -910,7 +913,7 @@ describe("create wizard", () => {
   it("picks a channel point reward from the streamer's rewards, with help that promises no odds", async () => {
     mockFetch({
       ...listed,
-      "GET /api/session": session(["chat", "sub", "points"]),
+      "GET /api/session": session(allFeatures),
       "GET /api/dash/rewards": () => ok(rewards),
     })
     const view = await openWizard()
@@ -935,7 +938,7 @@ describe("create wizard", () => {
 
     const reconnect = await view.findByRole("link", { name: "Reconnect Twitch" })
     expect(reconnect.getAttribute("href")).toBe(
-      "/auth/twitch/streamer/start?entry=points&return=%2Fdashboard%2Fnew%3Fstep%3D2",
+      "/auth/twitch/streamer/start?features=redemptions&return=%2Fdashboard%2Fnew%3Fstep%3D2",
     )
     cleanup()
     mockFetch(listed)

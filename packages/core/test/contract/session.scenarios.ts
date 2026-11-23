@@ -75,7 +75,7 @@ export function sessionScenarios(context: ContractContext): void {
           pointsEntry: true,
           chatBadgeGroups: [],
         },
-        readyEntryWays: [],
+        grantedFeatures: ["followers", "subs", "redemptions", "roles", "modlinks"],
         publicHistory: false,
         historyIndexed: false,
         admin: true,

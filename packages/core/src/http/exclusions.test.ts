@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   entryQuery,
@@ -24,7 +25,7 @@ afterEach(async () => {
 
 async function streamer(id: string = users.streamerA.id): Promise<Browser> {
   const browser = new Browser(harness)
-  await browser.signInAs(id, "/auth/twitch/streamer/start")
+  await browser.signInAs(id, fullStreamerStart)
   return browser
 }
 
