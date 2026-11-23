@@ -1,5 +1,23 @@
 import { describe, expect, it } from "bun:test"
-import { parseWinnerAnswers } from "./winner-form.ts"
+import { parseWinnerAnswers, winnerAnswersOf, winnerFieldKindOf } from "./winner-form.ts"
+
+describe("winnerAnswersOf", () => {
+  it("keeps the own string fields of known kinds only", () => {
+    const inherited = Object.create({ email: "a@b" })
+    Object.assign(inherited, { name: "Ann", address: 5, phone: "1" })
+
+    expect(winnerAnswersOf(inherited)).toEqual({ name: "Ann" })
+    expect(winnerAnswersOf(null)).toEqual({})
+  })
+})
+
+describe("winnerFieldKindOf", () => {
+  it("names a known kind and nothing else", () => {
+    expect(winnerFieldKindOf("platform-id")).toBe("platform-id")
+    expect(winnerFieldKindOf("constructor")).toBeUndefined()
+    expect(winnerFieldKindOf(1)).toBeUndefined()
+  })
+})
 
 const config = { winnerAnswerMaxLength: 20 }
 

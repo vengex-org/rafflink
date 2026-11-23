@@ -1,5 +1,5 @@
 import { groups } from "@rafflink/core/domain/groups"
-import { winnerFieldKinds } from "@rafflink/core/domain/winner-form"
+import { winnerFieldKindOf } from "@rafflink/core/domain/winner-form"
 import { claimPresets, type Step, type Values } from "../pages/create-values.ts"
 import { readSessionStored, removeSessionStored, writeSessionStored } from "./safe-storage.ts"
 
@@ -100,9 +100,7 @@ function isValues(value: unknown): value is Values {
 }
 
 function isWinnerForm(value: unknown): boolean {
-  return (
-    Array.isArray(value) && value.every((item) => winnerFieldKinds.some((kind) => kind === item))
-  )
+  return Array.isArray(value) && value.every((item) => winnerFieldKindOf(item) !== undefined)
 }
 
 function isTickets(value: unknown): boolean {

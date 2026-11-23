@@ -316,7 +316,8 @@ error keeps the token. Viewer tokens are not kept, so they are not validated.
   plus `http://localhost:8787/...` for development (or a separate dev app, cleaner).
 - Client secret into a Worker secret (`wrangler secret put TWITCH_CLIENT_SECRET`) or into the `.env` of the
   VPS target. A new secret invalidates the old one, so rotation is a deploy step.
-- Encryption key for stored streamer refresh tokens (`TOKEN_SEAL_KEYS`) as a second secret.
+- Encryption key for stored streamer refresh tokens and winner form answers (`TOKEN_SEAL_KEYS`) as a second
+  secret.
 - Privacy policy and terms pages on `rafflink.app` before public launch (shown on the consent screen link
   and needed for Twitch's developer agreement).
 - Read the Twitch Developer Services Agreement section on giveaways and promotions before launch.

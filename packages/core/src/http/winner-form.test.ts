@@ -129,6 +129,32 @@ describe("the winner form", () => {
     expect([crossSite.status, form.status]).toEqual([403, 415])
   })
 
+  it("closes the form in the viewer state of a winner whose pick was rerolled", async () => {
+    const { browser, id, code } = await createGiveaway(harness, users.streamerA.id, {
+      rules: { ...validRules, winnerForm: ["name"] },
+    })
+    const viewers = [new Browser(harness), new Browser(harness)]
+    await viewers[0]?.signInAs(users.viewer.id, `/auth/twitch/viewer/start?giveaway=${code}`)
+    await viewers[1]?.signInAs(users.viewer2.id, `/auth/twitch/viewer/start?giveaway=${code}`)
+    await browser.postJson(`/api/dash/giveaways/${id}/close`, {})
+    await browser.postJson(`/api/dash/giveaways/${id}/draw`, { count: 1 })
+
+    expect((await browser.postJson(`/api/dash/giveaways/${id}/reroll`, { n: 0 })).status).toBe(200)
+
+    const states = await Promise.all(
+      viewers.map(async (viewer) => {
+        const page: { me: { kind: string; n: number; answers: string } } = await (
+          await viewer.request(`/api/g/${code}`)
+        ).json()
+        return page.me
+      }),
+    )
+    expect(states.map((me) => [me.n, me.answers]).toSorted()).toEqual([
+      [0, "closed"],
+      [1, "open"],
+    ])
+  })
+
   it("answers 404 for a giveaway without a form", async () => {
     const { code, winner } = await claimedWithForm([])
 

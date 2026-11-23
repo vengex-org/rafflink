@@ -49,6 +49,22 @@ export function parseWinnerAnswers(
   return { ok: true, value: answers }
 }
 
+/** The field kind `value` names, or undefined for anything else. */
+export function winnerFieldKindOf(value: unknown): WinnerFieldKind | undefined {
+  return winnerFieldKinds.find((kind) => kind === value)
+}
+
+/** The known fields of `value` that hold a string, read from own keys only; for answers this code wrote, not for a winner's input. */
+export function winnerAnswersOf(value: unknown): WinnerAnswers {
+  const answers: Partial<Record<WinnerFieldKind, string>> = {}
+  if (typeof value !== "object" || value === null) return answers
+  for (const kind of winnerFieldKinds) {
+    const answer: unknown = Object.hasOwn(value, kind) ? Reflect.get(value, kind) : undefined
+    if (typeof answer === "string") answers[kind] = answer
+  }
+  return answers
+}
+
 function fail(
   field: WinnerAnswersIssue["field"],
   code: WinnerAnswersIssueCode,

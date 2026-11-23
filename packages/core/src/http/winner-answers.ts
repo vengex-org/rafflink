@@ -1,9 +1,5 @@
 import type { Giveaway } from "../accounts/account-store.ts"
-import {
-  winnerFieldKinds,
-  type WinnerAnswers,
-  type WinnerFieldKind,
-} from "../domain/winner-form.ts"
+import { winnerAnswersOf, type WinnerAnswers } from "../domain/winner-form.ts"
 import { openSecret, sealSecret, SealError } from "../lib/seal.ts"
 import type { AppDeps } from "./deps.ts"
 import type { WinnerAnswersJson } from "./json.ts"
@@ -61,20 +57,10 @@ async function openWinnerAnswers(
     console.warn("winner answers unreadable", { giveawayId, n, reason: error.reason })
     return null
   }
-  return answersOf(JSON.parse(plaintext))
+  // The plaintext is what `sealWinnerAnswers` wrote, authenticated by AES-GCM; this only narrows its type.
+  return winnerAnswersOf(JSON.parse(plaintext))
 }
 
 function answersAad(giveawayId: string, n: number): string {
   return `winner-answers:${giveawayId}:${n}`
-}
-
-// The plaintext is what `sealWinnerAnswers` wrote, authenticated by AES-GCM; this only narrows its type.
-function answersOf(value: unknown): WinnerAnswers {
-  const answers: Partial<Record<WinnerFieldKind, string>> = {}
-  if (typeof value !== "object" || value === null) return answers
-  for (const kind of winnerFieldKinds) {
-    const answer: unknown = Object.hasOwn(value, kind) ? Reflect.get(value, kind) : undefined
-    if (typeof answer === "string") answers[kind] = answer
-  }
-  return answers
 }

@@ -3,7 +3,7 @@ import type { Parsed } from "../lib/parsed.ts"
 import type { PlatformCapabilities } from "../platform/provider.ts"
 import type { Instant } from "../ports.ts"
 import { bestGroup, groups, supportedGroups, type Group, type Tickets } from "./groups.ts"
-import { winnerFieldKinds, type WinnerFieldKind } from "./winner-form.ts"
+import { winnerFieldKindOf, type WinnerFieldKind } from "./winner-form.ts"
 
 const msPerDay = 86_400_000
 /** The highest minimum age to win a streamer can state: a bound on typos, since no giveaway asks winners to be 100 or older. */
@@ -318,7 +318,7 @@ function parseWinnerForm(value: unknown): Parsed<readonly WinnerFieldKind[], Rul
   if (!Array.isArray(value)) return fail("winnerForm", "not-a-list")
   const fields: WinnerFieldKind[] = []
   for (const [index, item] of value.entries()) {
-    const kind = winnerFieldKinds.find((candidate) => candidate === item)
+    const kind = winnerFieldKindOf(item)
     if (kind === undefined) return fail(`winnerForm.${index}`, "unknown-kind")
     if (fields.includes(kind)) return fail(`winnerForm.${index}`, "duplicate")
     fields.push(kind)

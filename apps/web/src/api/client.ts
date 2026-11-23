@@ -8,7 +8,8 @@ import {
   type RecentWinnersRule,
 } from "@rafflink/core/domain/rules"
 import {
-  winnerFieldKinds,
+  winnerAnswersOf,
+  winnerFieldKindOf,
   type WinnerAnswers,
   type WinnerFieldKind,
 } from "@rafflink/core/domain/winner-form"
@@ -595,7 +596,7 @@ export async function getWinnerAnswers(id: string): Promise<WinnerAnswersJson> {
       n: num(pick, "n"),
       answers: oneOf(pick, "answers", pickAnswers),
       deliveredAt: nullableNum(pick, "deliveredAt"),
-      values: pick.values === null ? null : answersOf(child(pick, "values")),
+      values: pick.values === null ? null : winnerAnswersOf(child(pick, "values")),
     })),
   }
 }
@@ -1164,18 +1165,10 @@ function parseRules(source: Json): GiveawayRules {
 
 function winnerFormOf(source: Json, key: string): WinnerFieldKind[] {
   return textList(source, key).map((item) => {
-    const kind = winnerFieldKinds.find((candidate) => candidate === item)
+    const kind = winnerFieldKindOf(item)
     if (kind === undefined) throw new ApiShapeError(key)
     return kind
   })
-}
-
-function answersOf(source: Json): WinnerAnswers {
-  const answers: Partial<Record<WinnerFieldKind, string>> = {}
-  for (const kind of winnerFieldKinds) {
-    if (Object.hasOwn(source, kind)) answers[kind] = text(source, kind)
-  }
-  return answers
 }
 
 function parseRecentWinners(source: Json): RecentWinnersRule {

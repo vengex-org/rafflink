@@ -3303,6 +3303,15 @@ describe("winner form answers", () => {
     expect(room.saveWinnerAnswers(0, winner, "sealed")).toEqual({ kind: "form-closed" })
   })
 
+  it("closes the form of a rerolled pick", async () => {
+    const { room, winner } = await drawnRoom()
+
+    expect((await room.reroll(0, null)).kind).toBe("rerolled")
+
+    expect(room.picks()[0]?.answers).toBe("closed")
+    expect(room.saveWinnerAnswers(0, winner, "sealed")).toEqual({ kind: "form-closed" })
+  })
+
   it("refuses to mark an unclaimed pick delivered", async () => {
     const { room } = await drawnRoom()
 

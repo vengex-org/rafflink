@@ -127,6 +127,23 @@ describe("applyMigrations", () => {
     })
   })
 
+  describe("the winner form of rooms drawn before it existed", () => {
+    it("keeps a claimed pick unanswered and undelivered, with no answers held", () => {
+      const sql = roomBefore("drawn", 5000, "x'00'")
+      sql.exec(
+        "INSERT INTO draws (n, platform, platform_user_id, drawn_at, claim_until, claimed_at, claimed_via) VALUES (0, 'twitch', 'u', 9000, 9500, 9100, 'rafflink')",
+        [],
+      )
+
+      applyMigrations(sql, roomMigrations)
+
+      expect(sql.exec("SELECT n, claimed_at, answered_at, delivered_at FROM draws", [])).toEqual([
+        { n: 0, claimed_at: 9100, answered_at: null, delivered_at: null },
+      ])
+      expect(sql.exec("SELECT COUNT(*) AS c FROM winner_answers", [])[0]?.c).toBe(0)
+    })
+  })
+
   describe("the winner names of rooms that picked before they were stored", () => {
     it("copies the name of a winner whose entry is still there, and leaves a swept winner nameless", () => {
       const sql = roomBefore("drawn", 5000, "x'00'")
