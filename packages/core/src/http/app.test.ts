@@ -77,7 +77,12 @@ describe("session", () => {
     const response = await new Browser(harness).request("/api/session")
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ streamer: null, donateUrl: null, operator: null })
+    expect(await response.json()).toEqual({
+      streamer: null,
+      signInPlatforms: ["twitch"],
+      donateUrl: null,
+      operator: null,
+    })
   })
 
   it("names the signed-in streamer", async () => {
@@ -99,6 +104,7 @@ describe("session", () => {
           subTiers: true,
           vip: true,
           accountAge: true,
+          moderatorRole: true,
           pageEntry: true,
           chatEntry: true,
           subEntry: true,
@@ -108,6 +114,7 @@ describe("session", () => {
         publicHistory: false,
         historyIndexed: false,
       },
+      signInPlatforms: ["twitch"],
       donateUrl: null,
       operator: null,
     })
@@ -119,6 +126,7 @@ describe("session", () => {
     const browser = new Browser(harness)
     expect(await (await browser.request("/api/session")).json()).toEqual({
       streamer: null,
+      signInPlatforms: ["twitch"],
       donateUrl: "https://ko-fi.com/rafflink",
       operator: null,
     })
@@ -157,7 +165,12 @@ describe("session", () => {
 
     const response = await browser.request("/api/session")
 
-    expect(await response.json()).toEqual({ streamer: null, donateUrl: null, operator: null })
+    expect(await response.json()).toEqual({
+      streamer: null,
+      signInPlatforms: ["twitch"],
+      donateUrl: null,
+      operator: null,
+    })
     expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
     expect(browser.cookie("rl_streamer")).toBeUndefined()
   })
@@ -172,6 +185,7 @@ describe("session", () => {
     expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
     expect(await (await browser.request("/api/session")).json()).toEqual({
       streamer: null,
+      signInPlatforms: ["twitch"],
       donateUrl: null,
       operator: null,
     })
@@ -692,6 +706,7 @@ describe("creating a giveaway", () => {
       title: "Giveaway",
       prize: "Prize",
       streamerName: users.streamerA.displayName,
+      platform: "twitch",
       rules: validRules,
       capabilities: everyCapability,
       status: "open",

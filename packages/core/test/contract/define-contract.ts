@@ -5,6 +5,7 @@ import { chatEntryScenarios } from "./chat-entry.scenarios.ts"
 import { commitmentScenarios } from "./commitment.scenarios.ts"
 import { entryScenarios } from "./entry.scenarios.ts"
 import { giveawayScenarios } from "./giveaway.scenarios.ts"
+import { kickScenarios } from "./kick.scenarios.ts"
 import { liveScenarios } from "./live.scenarios.ts"
 import { operationsScenarios } from "./operations.scenarios.ts"
 import { pageScenarios } from "./page.scenarios.ts"
@@ -35,6 +36,7 @@ export function defineContract(
     chatClaimScenarios(context)
     chatEntryScenarios(context)
     channelEntryScenarios(context)
+    kickScenarios(context)
     operationsScenarios(context)
     retentionScenarios(context)
     pageScenarios(context)

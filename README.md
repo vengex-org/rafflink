@@ -182,6 +182,37 @@ The rest of the required config:
 
 Every other setting has a default; see [.env.example](.env.example).
 
+## Kick app registration (optional)
+
+Kick is optional. Without `KICK_CLIENT_ID` and `KICK_CLIENT_SECRET` the install signs in with Twitch only. With
+them, streamers and viewers can also sign in with Kick, and a Kick winner can claim by writing in the Kick chat.
+
+1. Turn on two-factor authentication on the Kick account that will own the app. The developer tools need it.
+2. On kick.com open **Account Settings**, then the **Developer** tab, and create an app.
+3. Fill in the form:
+   - **Redirect URLs:** both callback URLs of your installation, with your `PUBLIC_URL` as the origin:
+     - `https://rafflink.example.com/auth/kick/streamer`
+     - `https://rafflink.example.com/auth/kick/viewer`
+   - **Scopes:** `user:read` (who signed in) and `events:subscribe` (the streamer's chat while a winner can
+     claim).
+   - **Enable Webhooks:** on, with the URL `https://rafflink.example.com/api/kick/webhook`. Kick posts chat
+     messages there, so the URL must be reachable over the public internet with HTTPS. A Bun server on a
+     laptop needs a tunnel for Kick chat claims; sign-in works without one.
+4. Copy the **Client ID** into `KICK_CLIENT_ID` and the **Client Secret** into `KICK_CLIENT_SECRET`.
+
+What a Kick giveaway can do:
+
+- Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages, so every Kick entrant is
+  in the viewer group, and the create form offers only the rules Kick can check. Chat entry with a keyword is
+  not available on Kick yet.
+- Rafflink subscribes to the streamer's chat when a winner is drawn and removes the subscription when the
+  claim and reroll time ends. A subscription Kick did not delete is cancelled when its next webhook finds no giveaway watching the
+  channel. While subscribed, every message in that chat is one request to your server or
+  Worker; only messages from winners reach the giveaway's room. On the Workers Free plan this counts toward the
+  100,000 requests a day.
+- Kick signs each webhook. Rafflink checks the signature with Kick's public key, refuses a webhook whose
+  timestamp is more than `KICK_WEBHOOK_MAX_AGE_SECONDS` away from now, and drops a repeated message id.
+
 ## Self-hosting
 
 Both targets need your own Twitch app (see above) and the required settings listed there. Every setting is in

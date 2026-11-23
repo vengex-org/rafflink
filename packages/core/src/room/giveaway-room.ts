@@ -38,6 +38,7 @@ import { maxBoundParameters } from "../ports.ts"
 import type {
   ChannelEntryEvent,
   ChannelViewer,
+  ChatAudience,
   ChatMessage,
   ChatOpener,
   ChatSource,
@@ -68,6 +69,8 @@ import {
   shuffleNamesSql,
   retainedDataSql,
   waitingPickOfChatterSql,
+  watchedChattersSql,
+  chatWatchedSql,
   winnerChatNameSql,
 } from "./queries.ts"
 import {
@@ -1772,22 +1775,52 @@ export class GiveawayRoom {
           }
         : null
     if (this.chatWatchOpen(state)) {
-      this.chat ??= this.openChat(state.platform, {
-        onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
-        onChannelEntry: (event) =>
-          this.guarded("channel-entry", () => this.requestChannelEntry(event)),
-        onChannelEntryUnavailable: (cause) =>
-          this.guarded("channel-entry-unavailable", () => this.channelEntryUnavailable(cause)),
-        topics: () => this.watchTopics(),
-        onUnavailable: (cause) =>
-          this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
-        onSchedule: () => this.guarded("alarm", () => this.rearm()),
-      })
-      this.chat.open()
+      this.chat ??= this.openChatSource(state.platform)
+      this.chat.open(this.chatAudience(state))
+      this.sql.exec("UPDATE room_state SET chat_watched = 1 WHERE id = 1 AND chat_watched = 0", [])
       return
     }
+    // A source lost with the object may still hold a watch at the platform, which a fresh one closes.
+    if (this.chat === null && this.sql.exec(chatWatchedSql, []).length > 0) {
+      this.chat = this.openChatSource(state.platform)
+    }
     this.chat?.close()
+    this.sql.exec("UPDATE room_state SET chat_watched = 0 WHERE id = 1 AND chat_watched = 1", [])
     this.forgetWinnerChat()
+  }
+
+  private openChatSource(platform: string): ChatSource {
+    return this.openChat(platform, {
+      onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
+      onChannelEntry: (event) =>
+        this.guarded("channel-entry", () => this.requestChannelEntry(event)),
+      onChannelEntryUnavailable: (cause) =>
+        this.guarded("channel-entry-unavailable", () => this.channelEntryUnavailable(cause)),
+      topics: () => this.watchTopics(),
+      onUnavailable: (cause) => this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
+      onSchedule: () => this.guarded("alarm", () => this.rearm()),
+    })
+  }
+
+  // Every chatter while entries are open to a keyword, otherwise the winners whose pick is not rerolled:
+  // the only ones whose messages the room shows or claims with.
+  private chatAudience(state: RoomState): ChatAudience {
+    if ((this.channelEntrySettings?.keyword ?? null) !== null) return { kind: "everyone" }
+    const rows = this.sql.exec(watchedChattersSql, [state.platform])
+    return {
+      kind: "chatters",
+      userIds: rows.map((row) => new RowReader("draws", row).text("platform_user_id")),
+    }
+  }
+
+  /**
+   * A chat message a platform's webhook brought, read like one the room's chat source delivers while the
+   * chat watch runs, and dropped otherwise.
+   */
+  receiveChat(message: ChatMessage): void {
+    this.guarded("chat", () => this.syncChat())
+    if (this.chat === null || !this.chatWatchOpen(this.readState())) return
+    this.guarded("chat-message", () => this.onChatMessage(message))
   }
 
   private chatWatchOpen(state: RoomState): boolean {

@@ -8,7 +8,12 @@ import { sealSecret } from "../lib/seal.ts"
 import type { Instant } from "../ports.ts"
 import { PlatformError, PlatformIdentityRejected } from "../platform/errors.ts"
 import { codeChallenge, codeVerifier } from "../platform/pkce.ts"
-import { providerFor, readyEntryWays, type PlatformProvider } from "../platform/provider.ts"
+import {
+  configuredProviders,
+  providerFor,
+  readyEntryWays,
+  type PlatformProvider,
+} from "../platform/provider.ts"
 import { callbackPath, redirectUri } from "../platform/redirect.ts"
 import { enterGiveaway } from "../viewer/enter-giveaway.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
@@ -42,7 +47,7 @@ export interface Backlog {
 
 export function authRoutes(deps: AppDeps, backlog: Backlog): Hono {
   const app = new Hono()
-  for (const provider of Object.values(deps.platforms)) {
+  for (const provider of configuredProviders(deps.platforms)) {
     app.route("/", platformAuthRoutes(deps, backlog, provider))
   }
   return app
@@ -136,6 +141,12 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     const code = c.req.query("giveaway")
     const giveaway = code === undefined ? null : await deps.accounts.findGiveawayByCode(code)
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    // A link that names another platform than the giveaway's, such as a retry after a failed sign-in, signs in on the giveaway's.
+    if (giveaway.platform !== platform) {
+      const giveawayPlatform = providerFor(deps.platforms, giveaway.platform).platform
+      const query = new URL(c.req.url).search
+      return c.redirect(`/auth/${giveawayPlatform}/viewer/start${query}`)
+    }
     const state = randomId(deps.random)
     const nonce = randomId(deps.random)
     const verifier = codeVerifier(deps.random)

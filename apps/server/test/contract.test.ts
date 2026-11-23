@@ -10,6 +10,7 @@ import { BunSqliteAsyncSql } from "@rafflink/core/sqlite-bun"
 import { defineContract } from "@rafflink/core/test/contract"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
+import { kickPlatform } from "@rafflink/core/kick/kick-provider"
 import { openDatabase } from "../src/database.ts"
 import { accountsFileName, startServer } from "../src/start-server.ts"
 import { tempDir } from "./fixtures.ts"
@@ -37,11 +38,15 @@ defineContract("bun", "injected-previews", "none", async (env, webDir) => {
   // A second connection to the accounts file, so the job runs on demand beside the server's own timer.
   const accountsDb = openDatabase(join(dir.path, accountsFileName))
   accountsDb.exec("PRAGMA busy_timeout = 2000")
+  const accountsSql = new BunSqliteAsyncSql(accountsDb)
   const tokenDeps: StreamerTokenDeps = {
     clock: systemClock,
     random: systemRandom,
-    platforms: { twitch: new TwitchProvider(new TwitchClient(config, fetch), systemClock, config) },
-    accounts: new AccountStore(new BunSqliteAsyncSql(accountsDb), config),
+    platforms: {
+      twitch: new TwitchProvider(new TwitchClient(config, fetch), systemClock, config),
+      ...kickPlatform(config, fetch, systemClock, accountsSql),
+    },
+    accounts: new AccountStore(accountsSql, config),
     keyRing: await openKeyRing(config.tokenSealKeys),
   }
 

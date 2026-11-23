@@ -10,6 +10,7 @@ import { moderatorRoutes } from "./moderator-routes.ts"
 import { sessionRoutes } from "./session-routes.ts"
 import { securityHeadersMiddleware } from "./security-headers.ts"
 import { spaRoutes, type SpaTemplateLoader } from "./spa-routes.ts"
+import { webhookRoutes } from "./webhook-routes.ts"
 
 export type { AppDeps } from "./deps.ts"
 export type { SpaTemplateLoader } from "./spa-routes.ts"
@@ -27,6 +28,7 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   app.route("/", sessionRoutes(deps))
   app.route("/", dashboardRoutes(deps))
   app.route("/", moderatorRoutes(deps))
+  app.route("/", webhookRoutes(deps))
   if (spaTemplate !== null) app.route("/", spaRoutes(deps, spaTemplate))
 
   app.notFound((c) => c.json({ error: "not-found" }, 404))

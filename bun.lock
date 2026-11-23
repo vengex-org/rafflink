@@ -66,7 +66,15 @@
         "jose": "6.2.18",
       },
       "devDependencies": {
+        "@rafflink/fake-kick": "workspace:*",
         "@rafflink/fake-twitch": "workspace:*",
+      },
+    },
+    "packages/fake-kick": {
+      "name": "@rafflink/fake-kick",
+      "version": "0.0.0",
+      "dependencies": {
+        "hono": "4.13.19",
       },
     },
     "packages/fake-twitch": {
@@ -275,6 +283,8 @@
     "@rafflink/cloudflare": ["@rafflink/cloudflare@workspace:apps/cloudflare"],
 
     "@rafflink/core": ["@rafflink/core@workspace:packages/core"],
+
+    "@rafflink/fake-kick": ["@rafflink/fake-kick@workspace:packages/fake-kick"],
 
     "@rafflink/fake-twitch": ["@rafflink/fake-twitch@workspace:packages/fake-twitch"],
 

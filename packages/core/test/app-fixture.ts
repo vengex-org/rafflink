@@ -261,6 +261,9 @@ class InProcessRoomStub implements RoomStub {
   async pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
     this.room.pushOverlayTheme(...args)
   }
+  async receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
+    this.room.receiveChat(...args)
+  }
   async liveCounts() {
     return { ...this.room.liveCounts(), viewers: 0 }
   }

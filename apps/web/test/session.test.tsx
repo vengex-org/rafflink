@@ -21,6 +21,7 @@ const signedIn = {
         canCreate: true,
         ...twitchPlatform,
       },
+      signInPlatforms: ["twitch"],
       donateUrl: null,
       operator: null,
     }),
@@ -58,6 +59,7 @@ describe("header session", () => {
             canCreate: true,
             ...twitchPlatform,
           },
+          signInPlatforms: ["twitch"],
           donateUrl: null,
           operator: null,
         }),
@@ -128,7 +130,7 @@ describe("header session", () => {
         ok(
           signedInNow
             ? { ...supportedSession, donateUrl: null }
-            : { streamer: null, donateUrl: null, operator: null },
+            : { streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator: null },
         ),
       "POST /auth/logout": () => {
         signedInNow = false
@@ -178,6 +180,7 @@ describe("header session", () => {
                 canCreate: true,
                 ...twitchPlatform,
               },
+              signInPlatforms: ["twitch"],
               donateUrl: null,
               operator: null,
             })
@@ -253,7 +256,7 @@ describe("header session", () => {
         return ok(
           sessionCalls === 1
             ? { ...supportedSession, donateUrl: null }
-            : { streamer: null, donateUrl: null, operator: null },
+            : { streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator: null },
         )
       },
       "GET /api/dash/giveaways": async () => {
@@ -278,7 +281,7 @@ describe("header session", () => {
     mockFetch({
       "GET /api/session": () => {
         sessionCalls += 1
-        return ok({ streamer: null, donateUrl: null, operator: null })
+        return ok({ streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator: null })
       },
       "GET /api/dash/giveaways": async () => {
         await setTimeout(0)

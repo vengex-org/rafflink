@@ -226,7 +226,11 @@ export async function getSession(): Promise<SessionJson> {
   const source = record(body, "session")
   const donateUrl = nullableText(source, "donateUrl")
   const operator = source.operator === null ? null : operatorOf(child(source, "operator"))
-  if (source.streamer === null) return { streamer: null, donateUrl, operator }
+  const signInPlatforms = textList(source, "signInPlatforms").map((value) => {
+    if (!isPlatform(value)) throw new ApiShapeError("signInPlatforms")
+    return value
+  })
+  if (source.streamer === null) return { streamer: null, signInPlatforms, donateUrl, operator }
   const streamer = child(source, "streamer")
   return {
     streamer: {
@@ -244,6 +248,7 @@ export async function getSession(): Promise<SessionJson> {
       publicHistory: bool(streamer, "publicHistory"),
       historyIndexed: bool(streamer, "historyIndexed"),
     },
+    signInPlatforms,
     donateUrl,
     operator,
   }
@@ -261,6 +266,7 @@ function capabilitiesOf(source: Json): PlatformCapabilities {
     subTiers: bool(source, "subTiers"),
     vip: bool(source, "vip"),
     accountAge: bool(source, "accountAge"),
+    moderatorRole: bool(source, "moderatorRole"),
     pageEntry: bool(source, "pageEntry"),
     chatEntry: bool(source, "chatEntry"),
     subEntry: bool(source, "subEntry"),
@@ -375,6 +381,7 @@ export function parseGiveawayLoad(source: Json): GiveawayLoad {
       title: nullableText(source, "title"),
       prize: nullableText(source, "prize"),
       streamerName: text(source, "streamerName"),
+      platform: platformOf(source, "platform"),
       rules: parseRules(child(source, "rules")),
       capabilities: capabilitiesOf(child(source, "capabilities")),
       status: oneOf(source, "status", roomStatuses),

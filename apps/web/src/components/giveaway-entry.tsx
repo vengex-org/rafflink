@@ -74,7 +74,7 @@ export function EntryPanel({
     return (
       <GiveawayState tone="info" icon={<LockIcon />} title={t("giveaway.drawn.title")}>
         <p className="viewer-note">{t("giveaway.drawn.text")}</p>
-        {signIn(t("signIn.button"))}
+        {signIn(t(giveaway.platform === "kick" ? "signIn.buttonKick" : "signIn.button"))}
       </GiveawayState>
     )
   }
@@ -97,7 +97,9 @@ export function EntryPanel({
           <p className="viewer-note">{card === null ? t("giveaway.ready.text") : card.detail}</p>
           {card !== null && card.help !== null ? <p className="viewer-note">{card.help}</p> : null}
         </div>
-        {canEnter ? signIn(t("giveaway.enter")) : null}
+        {canEnter
+          ? signIn(t(giveaway.platform === "kick" ? "giveaway.enterKick" : "giveaway.enter"))
+          : null}
         {entry?.kind === "not-eligible" && entry.reason === "broadcaster" ? (
           <a className="button outlined block" href={`${signInHref}&force_verify=true`}>
             <LogInIcon />

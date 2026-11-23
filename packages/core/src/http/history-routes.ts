@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import type { ResolvedConfig } from "../config.ts"
 import { historyPath } from "../lib/page-paths.ts"
-import { isPlatform, providerFor, type Platform } from "../platform/provider.ts"
+import { isPlatform, type Platform } from "../platform/provider.ts"
 import type { AppDeps } from "./deps.ts"
 import { objectField, type PublicHistoryJson } from "./json.ts"
 import { readPublicCache, writePublicCache } from "./public-cache.ts"
@@ -14,15 +14,16 @@ export function historyRoutes(deps: AppDeps): Hono {
   app.get("/api/s/:platform/:login", async (c) => {
     c.header("Cache-Control", "no-store")
     const platform = c.req.param("platform")
-    if (!isPlatform(platform)) return c.json({ error: "not-found" }, 404)
-    const login = providerFor(deps.platforms, platform).parseLogin(c.req.param("login"))
+    const provider = isPlatform(platform) ? deps.platforms[platform] : undefined
+    if (provider === undefined) return c.json({ error: "not-found" }, 404)
+    const login = provider.parseLogin(c.req.param("login"))
     if (login === null) return c.json({ error: "not-found" }, 404)
-    const answer = await publicHistoryAnswer(deps, platform, login)
+    const answer = await publicHistoryAnswer(deps, provider.platform, login)
     switch (answer.kind) {
       case "found":
         return c.body(answer.text, 200, { "Content-Type": "application/json" })
       case "moved":
-        return c.redirect(`/api${historyPath(platform, answer.login)}`, 308)
+        return c.redirect(`/api${historyPath(provider.platform, answer.login)}`, 308)
       case "missing":
         return c.json({ error: "not-found" }, 404)
     }

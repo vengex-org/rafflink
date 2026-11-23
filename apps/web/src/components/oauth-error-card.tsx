@@ -80,9 +80,10 @@ function signInOf(pathname: string): { readonly viewer: boolean; readonly href: 
   const segments = pathname.split("/").filter((segment) => segment !== "")
   const [first] = segments
   const code = segments.length === 1 && first !== undefined ? parseGiveawayCode(first) : null
-  if (code !== null) return { viewer: true, href: viewerSignInPath(code) }
+  // The card does not know the giveaway's platform; the server sends the viewer on to it.
+  if (code !== null) return { viewer: true, href: viewerSignInPath("twitch", code) }
   return {
     viewer: false,
-    href: streamerSignInPath(pathname === homePath ? dashboardPath : pathname),
+    href: streamerSignInPath("twitch", pathname === homePath ? dashboardPath : pathname),
   }
 }

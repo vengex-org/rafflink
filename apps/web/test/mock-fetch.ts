@@ -6,7 +6,10 @@ export interface Reply {
   readonly body: unknown
 }
 
-const signedOut: Reply = { status: 200, body: { streamer: null, donateUrl: null, operator: null } }
+const signedOut: Reply = {
+  status: 200,
+  body: { streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator: null },
+}
 const noBadges: Reply = { status: 200, body: { sub_t1: null, sub_t2: null, sub_t3: null } }
 const defaultTheme: Reply = { status: 200, body: { theme: defaultOverlayTheme } }
 

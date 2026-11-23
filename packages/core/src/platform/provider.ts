@@ -6,10 +6,10 @@ import {
   type ViewerFacts,
 } from "../domain/rules.ts"
 import type { Clock, Instant, SocketConnector } from "../ports.ts"
-import type { ChatSourceFactory } from "./chat-source.ts"
+import type { ChatMessage, ChatSourceFactory } from "./chat-source.ts"
 
 /** The streaming platforms the app signs in with; the `platform` column of streamers, giveaways and entries. */
-const platforms = ["twitch"] as const
+const platforms = ["twitch", "kick"] as const
 
 export type Platform = (typeof platforms)[number]
 
@@ -30,6 +30,8 @@ export interface PlatformCapabilities {
   readonly subTiers: boolean
   readonly vip: boolean
   readonly accountAge: boolean
+  /** The platform tells who moderates the channel. */
+  readonly moderatorRole: boolean
   /** Viewers enter by signing in on the giveaway page. */
   readonly pageEntry: boolean
   /** Viewers enter by writing in the streamer's chat. */
@@ -46,6 +48,7 @@ export const everyCapability: PlatformCapabilities = {
   subTiers: true,
   vip: true,
   accountAge: true,
+  moderatorRole: true,
   pageEntry: true,
   chatEntry: true,
   subEntry: true,
@@ -84,7 +87,8 @@ export interface UserProfile {
   readonly id: string
   readonly login: string
   readonly displayName: string
-  readonly createdAt: Instant
+  /** `null` when the platform does not tell when the account was made. */
+  readonly createdAt: Instant | null
   /** `null` when the platform sent no picture on its image host. */
   readonly profileImageUrl: string | null
 }
@@ -121,6 +125,8 @@ export interface StreamerAccess {
 
 /** What a target gives a provider to open the chat of one giveaway's channel. */
 export interface ChatContext {
+  /** The giveaway whose room watches the chat. */
+  readonly giveawayId: string
   /** Outbound WebSockets of this target. */
   readonly connector: SocketConnector
   readonly clock: Clock
@@ -185,12 +191,22 @@ export interface PlatformProvider {
   accountByLogin(login: string): Promise<PlatformAccount | null>
   /** The chat of one giveaway's channel, whatever this platform's transport. */
   chatSource(context: ChatContext): ChatSourceFactory
+  /**
+   * Answers the platform's webhook at `/api/<platform>/webhook`, handing each chat message it proves to
+   * `deliver`; absent on a platform that sends no webhooks.
+   */
+  readonly receiveWebhook?: (request: Request, deliver: ChatDelivery) => Promise<Response>
 }
 
-/** The provider of each platform, as `AppDeps` carries it. */
-export type PlatformProviders = Readonly<Record<Platform, PlatformProvider>>
+/** Hands one chat message a webhook brought to the room of a giveaway. */
+export type ChatDelivery = (giveawayId: string, message: ChatMessage) => Promise<void>
 
-/** A stored `platform` value with no provider; rows are only written for registered platforms. */
+/** The provider of each platform this install signs in with: Twitch always, the others when their app is configured. */
+export type PlatformProviders = Readonly<
+  { twitch: PlatformProvider } & Partial<Record<Exclude<Platform, "twitch">, PlatformProvider>>
+>
+
+/** A stored `platform` value with no provider: a platform this code does not know, or one whose app is not configured. */
 export class UnknownPlatform extends Error {
   constructor(readonly platform: string) {
     super("no provider for platform")
@@ -199,8 +215,14 @@ export class UnknownPlatform extends Error {
 
 /** The provider of a stored `platform` value. */
 export function providerFor(providers: PlatformProviders, platform: string): PlatformProvider {
-  if (!isPlatform(platform)) throw new UnknownPlatform(platform)
-  return providers[platform]
+  const provider = isPlatform(platform) ? providers[platform] : undefined
+  if (provider === undefined) throw new UnknownPlatform(platform)
+  return provider
+}
+
+/** The providers of the platforms this install signs in with, Twitch first. */
+export function configuredProviders(providers: PlatformProviders): readonly PlatformProvider[] {
+  return platforms.flatMap((platform) => providers[platform] ?? [])
 }
 
 /** The entry ways whose scopes all are among a token's `scopes`. */

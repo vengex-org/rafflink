@@ -37,6 +37,8 @@ export interface PublicGiveaway {
   readonly prize: string | null
   /** The streamer's display name. */
   readonly streamerName: string
+  /** Where the giveaway runs, so the page signs viewers in there. */
+  readonly platform: Platform
   readonly rules: GiveawayRules
   /** What the giveaway's platform can check, so the page explains only the groups it can tell. */
   readonly capabilities: PlatformCapabilities
@@ -156,6 +158,8 @@ export interface SessionJson {
     /** The streamer lets search engines index their public history page. */
     readonly historyIndexed: boolean
   } | null
+  /** The platforms a streamer can sign in with on this install, Twitch first. */
+  readonly signInPlatforms: readonly Platform[]
   readonly donateUrl: string | null
   readonly operator: OperatorJson | null
 }

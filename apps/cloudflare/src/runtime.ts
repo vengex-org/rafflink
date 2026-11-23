@@ -9,6 +9,7 @@ import { StatsStore } from "@rafflink/core/stats/stats-store"
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
+import { kickPlatform } from "@rafflink/core/kick/kick-provider"
 import { D1AsyncSql } from "./adapters/d1-async-sql.ts"
 import { RateLimitBindingLimiter } from "./adapters/rate-limit-binding.ts"
 import { settingsOf, type WorkerEnv } from "./env.ts"
@@ -41,7 +42,10 @@ async function openRuntime(env: WorkerEnv): Promise<Runtime> {
     config,
     clock: systemClock,
     random: systemRandom,
-    platforms: { twitch: new TwitchProvider(twitch, systemClock, config) },
+    platforms: {
+      twitch: new TwitchProvider(twitch, systemClock, config),
+      ...kickPlatform(config, (input, init) => fetch(input, init), systemClock, sql),
+    },
     admins: new AdminDirectory(config, twitch),
     beacon: new DrandBeacon(config, (input, init) => fetch(input, init), systemRandom),
     accounts: new AccountStore(sql, config),
