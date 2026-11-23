@@ -85,7 +85,8 @@ function PickAnswers({
   const { t } = i18n
   const { message, busy, run } = useAction()
   const [shown, setShown] = useState<WinnerAnswers | null>(null)
-  // Delivery deletes the answers, so what was shown goes with them.
+  // Delivery deletes the answers, so what was shown goes with them, from memory too.
+  if (!pick.held && shown !== null) setShown(null)
   const values = pick.held ? shown : null
   const reveal = () =>
     void run(

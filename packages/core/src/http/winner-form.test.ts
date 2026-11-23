@@ -91,9 +91,21 @@ describe("the winner form", () => {
       picks: [{ n: 0, answers: "sent", deliveredAt: null, held: true }],
     })
     expect(await readPick(browser, id, 0)).toEqual({ status: 200, body: { values: answers } })
-    expect((await readPick(browser, id, 1)).status).toBe(404)
+    const unknown = await browser.request(`/api/dash/giveaways/${id}/answers/1`)
+    expect([unknown.status, unknown.headers.get("cache-control")]).toEqual([404, "no-store"])
     const page: { me: { answers: string } } = await (await winner.request(`/api/g/${code}`)).json()
     expect(page.me.answers).toBe("sent")
+  })
+
+  it.each(["-1", "1.5", "abc"])("refuses the answers of pick %p as invalid input", async (n) => {
+    const { browser, id } = await claimedWithForm()
+
+    const response = await browser.request(`/api/dash/giveaways/${id}/answers/${n}`)
+
+    expect([response.status, await response.json()]).toEqual([
+      400,
+      { error: "invalid-input", field: "n" },
+    ])
   })
 
   it("refuses answers before the claim, from someone who did not win, signed out or invalid", async () => {

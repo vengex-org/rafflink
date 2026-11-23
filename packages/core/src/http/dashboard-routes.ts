@@ -86,6 +86,11 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
 
   app.use("/api/live/:id", webSocketOrigin(deps.config, { allowMissing: false }))
   app.use("/api/overlay/:id/:token", webSocketOrigin(deps.config, { allowMissing: true }))
+  // Before the sign-in check, so that no answer of these routes, its refusals included, is kept by a cache.
+  app.use("/api/dash/giveaways/:id/answers/*", async (c, next) => {
+    c.header("Cache-Control", "no-store")
+    await next()
+  })
   app.use("/api/dash/*", requireStreamer(deps))
   app.use("/api/live/*", requireStreamer(deps))
   app.use("/api/admin/*", requireStreamer(deps), requireAdmin(deps))
@@ -187,10 +192,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
 
   // The winner form answers are for the giveaway's streamer alone: no moderator route reads them.
   app.get("/api/dash/giveaways/:id/answers", (c) =>
-    withOwnedRoom(c, deps, async (giveaway) => {
-      c.header("Cache-Control", "no-store")
-      return c.json(await winnerAnswersJson(deps, giveaway))
-    }),
+    withOwnedRoom(c, deps, async (giveaway) => c.json(await winnerAnswersJson(deps, giveaway))),
   )
 
   // The live page may be on stream, so it lists the picks without answers and asks for one pick's only on request.
@@ -200,7 +202,6 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
       const answers = await pickAnswersJson(deps, giveaway, n)
       if (answers === null) return c.json({ error: "not-found" }, 404)
-      c.header("Cache-Control", "no-store")
       return c.json(answers)
     }),
   )
