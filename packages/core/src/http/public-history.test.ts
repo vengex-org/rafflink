@@ -129,9 +129,11 @@ describe("public giveaway history", () => {
         },
       ],
     })
+    // Platform ids are JSON strings, so a leaked id shows up quoted; a bare substring would match timestamps.
     for (const viewer of [users.viewer, users.viewer2]) {
       expect(text).not.toContain(viewer.login)
-      expect(text).not.toContain(viewer.id)
+      expect(text).not.toContain(viewer.displayName)
+      expect(text).not.toContain(JSON.stringify(viewer.id))
     }
   })
 
