@@ -1,15 +1,10 @@
-import {
-  bestGroup,
-  groups,
-  supportedGroups,
-  type Group,
-  type Tickets,
-} from "@rafflink/core/domain/groups"
-import type { GiveawayRules, RecentWinnersRule } from "@rafflink/core/domain/rules"
+import { groups, supportedGroups, type Group, type Tickets } from "@rafflink/core/domain/groups"
+import { minAgeMax, type GiveawayRules, type RecentWinnersRule } from "@rafflink/core/domain/rules"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import type { CreateGiveawayBody } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
+import { ticketOdds, type Odds } from "../lib/rules-text.ts"
 
 export type Step = 1 | 2 | 3
 export type Audience = "everyone" | "followers" | "subscribers"
@@ -51,6 +46,10 @@ export interface Values {
   entryWays: EntryWays
   chatKeyword: string
   winnerCount: string
+  /** The official rules fields; empty when not stated. */
+  minAge: string
+  excludedCountries: string
+  extraTerms: string
 }
 
 export interface Issue {
@@ -81,6 +80,9 @@ export const initialValues: Values = {
   entryWays: "page",
   chatKeyword: defaultChatKeyword,
   winnerCount: "1",
+  minAge: "",
+  excludedCountries: "",
+  extraTerms: "",
 }
 
 /**
@@ -149,6 +151,9 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
         : String(rules.excludeRecentWinners.count),
     entryWays: entryWaysOf(rules),
     chatKeyword: rules.chatKeyword ?? defaultChatKeyword,
+    minAge: rules.minAge === null ? "" : String(rules.minAge),
+    excludedCountries: rules.excludedCountries ?? "",
+    extraTerms: rules.extraTerms ?? "",
   }
 }
 
@@ -156,6 +161,10 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
 export function stepIssue(step: Step, values: Values, now: number): Issue | null {
   switch (step) {
     case 1: {
+      const age = values.minAge.trim()
+      if (age !== "" && (!isWholeNumber(age) || Number(age) < 1 || Number(age) > minAgeMax)) {
+        return { field: "minAge", message: "issue.wholeYears" }
+      }
       if (values.ending === "never") return null
       const end = new Date(values.closesAt).getTime()
       if (Number.isNaN(end)) {
@@ -199,7 +208,16 @@ export function stepIssue(step: Step, values: Values, now: number): Issue | null
 
 /** Which step asks for the field the server complained about; the review step for a field no step owns. */
 export function stepOfField(field: string): Step {
-  if (field === "title" || field === "prize" || field === "closesAt") return 1
+  if (
+    field === "title"
+    || field === "prize"
+    || field === "closesAt"
+    || field === "minAge"
+    || field === "excludedCountries"
+    || field === "extraTerms"
+  ) {
+    return 1
+  }
   if (
     field.startsWith("tickets.")
     || field === "minAccountAgeDays"
@@ -214,26 +232,10 @@ export function stepOfField(field: string): Step {
   return 3
 }
 
-/** How a viewer's chance compares with the best-off group, from the ticket counts as typed. */
-export type Odds =
-  | { readonly kind: "same" }
-  | { readonly kind: "viewersOut" }
-  | { readonly kind: "noBetter" }
-  | { readonly kind: "times"; readonly group: Exclude<Group, "viewer">; readonly times: number }
-
 /** The odds the ticket counts of the `shown` groups give, or null while a count is not a whole number. */
 export function oddsOf(typed: Values["tickets"], shown: readonly Group[]): Odds | null {
   if (!shown.every((group) => isWholeNumber(typed[group]))) return null
-  const tickets = ticketCounts(typed)
-  if (tickets.viewer === 0) return { kind: "viewersOut" }
-  if (shown.every((group) => tickets[group] === tickets.viewer)) return { kind: "same" }
-  const best = bestGroup(tickets, shown)
-  if (best.group === "viewer" || best.tickets === tickets.viewer) return { kind: "noBetter" }
-  return {
-    kind: "times",
-    group: best.group,
-    times: Math.round((best.tickets / tickets.viewer) * 10) / 10,
-  }
+  return ticketOdds(ticketCounts(typed), shown)
 }
 
 export function toBody(values: Values): CreateGiveawayBody {
@@ -253,6 +255,9 @@ export function toBody(values: Values): CreateGiveawayBody {
           : { kind: values.recentWinners, count: Number(values.recentWinnersCount) },
       chatKeyword: values.entryWays === "page" ? null : values.chatKeyword,
       pageEntry: values.entryWays !== "chat",
+      minAge: values.minAge.trim() === "" ? null : Number(values.minAge),
+      excludedCountries: textOrNull(values.excludedCountries),
+      extraTerms: textOrNull(values.extraTerms),
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
     claimSeconds: claimSecondsOf(values.claim),
@@ -298,6 +303,11 @@ function ticketCounts(typed: Values["tickets"]): Tickets {
     vip: Number(typed.vip),
     moderator: Number(typed.moderator),
   }
+}
+
+function textOrNull(text: string): string | null {
+  const trimmed = text.trim()
+  return trimmed === "" ? null : trimmed
 }
 
 function isWholeNumber(text: string): boolean {

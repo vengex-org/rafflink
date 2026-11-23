@@ -367,11 +367,66 @@ describe("create wizard", () => {
         excludeRecentWinners: null,
         chatKeyword: null,
         pageEntry: true,
+        minAge: null,
+        excludedCountries: null,
+        extraTerms: null,
       },
       claimSeconds: 300,
       winnerCount: 1,
     })
   })
+
+  it("sends the official rules fields of the basics step and shows them on the review", async () => {
+    const requests = mockFetch(withCreate(createdReply))
+    const view = await openWizard()
+    fillGiveaway(view)
+    fireEvent.change(view.getByLabelText("Minimum age to win, in years"), {
+      target: { value: "18" },
+    })
+    fireEvent.change(view.getByLabelText("Places where people cannot win"), {
+      target: { value: " Quebec " },
+    })
+    fireEvent.change(view.getByLabelText("Extra terms"), {
+      target: { value: "Shipping in the EU only.\nOne prize per household." },
+    })
+    next(view)
+    await view.findByText("Step 2 of 3: Entry rules")
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+
+    expect(view.getByText("18 years")).toBeTruthy()
+    expect(view.getByText("Quebec")).toBeTruthy()
+    expect(view.getByText(/Shipping in the EU only\./)).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/giveaways")?.body,
+    ).toMatchObject({
+      rules: {
+        minAge: 18,
+        excludedCountries: "Quebec",
+        extraTerms: "Shipping in the EU only.\nOne prize per household.",
+      },
+    })
+  })
+
+  it.each(["0", "100", "17.5"])(
+    "refuses %p as the minimum age to win on the basics step",
+    async (age) => {
+      mockFetch(listed)
+      const view = await openWizard()
+      fireEvent.change(view.getByLabelText("Minimum age to win, in years"), {
+        target: { value: age },
+      })
+      next(view)
+
+      expect(
+        view.getByText("Enter a whole number of years from 1 to 99, or leave it empty."),
+      ).toBeTruthy()
+      expect(view.getByText("Step 1 of 3: Basics")).toBeTruthy()
+    },
+  )
 
   it("sends every answer in the request body", async () => {
     const requests = mockFetch(withCreate(createdReply))
@@ -423,6 +478,9 @@ describe("create wizard", () => {
         excludeRecentWinners: null,
         chatKeyword: "!join",
         pageEntry: true,
+        minAge: null,
+        excludedCountries: null,
+        extraTerms: null,
       },
       closesAt: new Date("2099-01-01T10:00").toISOString(),
       claimSeconds: 600,
@@ -786,6 +844,7 @@ describe("create wizard", () => {
     ],
     ["claimKeyword", "too-long", "Step 2 of 3: Entry rules", "Chat word (optional)"],
     ["title", "blank", "Step 1 of 3: Basics", "Giveaway name (optional)"],
+    ["extraTerms", "too-long", "Step 1 of 3: Basics", "Extra terms"],
   ])(
     "sends the streamer back to the step of the field the server refused (%s)",
     async (field, code, step, label) => {

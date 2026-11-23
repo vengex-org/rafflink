@@ -20,6 +20,9 @@ const rules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  minAge: null,
+  excludedCountries: null,
+  extraTerms: null,
 }
 
 const viewer: ViewerFacts = {
@@ -39,6 +42,8 @@ const config = {
   claimSecondsMax: 3600,
   recentWinnersGiveawaysMax: 10,
   recentWinnersDaysMax: 90,
+  excludedCountriesMaxLength: 20,
+  extraTermsMaxLength: 30,
 }
 
 const validInput = {
@@ -211,7 +216,68 @@ describe("parseRules", () => {
         excludeRecentWinners: null,
         chatKeyword: null,
         pageEntry: true,
+        minAge: null,
+        excludedCountries: null,
+        extraTerms: null,
       },
+    })
+  })
+
+  it("parses the minimum age of a winner in whole years up to 99", () => {
+    expect(parseRules({ ...validInput, minAge: 18 }, config)).toMatchObject({
+      ok: true,
+      value: { minAge: 18 },
+    })
+    expect(parseRules({ ...validInput, minAge: 99 }, config).ok).toBe(true)
+    expect(parseRules({ ...validInput, minAge: null }, config)).toMatchObject({
+      ok: true,
+      value: { minAge: null },
+    })
+    for (const bad of [0, -1, 17.5, Number.NaN, Number.POSITIVE_INFINITY, "18"]) {
+      expect(parseRules({ ...validInput, minAge: bad }, config)).toEqual({
+        ok: false,
+        issue: { field: "minAge", code: "not-a-positive-integer" },
+      })
+    }
+    expect(parseRules({ ...validInput, minAge: 100 }, config)).toEqual({
+      ok: false,
+      issue: { field: "minAge", code: "too-large" },
+    })
+  })
+
+  it("parses trimmed excluded countries and extra terms within their length limits", () => {
+    expect(
+      parseRules(
+        { ...validInput, excludedCountries: " Quebec ", extraTerms: " Shipping in the EU only. " },
+        config,
+      ),
+    ).toMatchObject({
+      ok: true,
+      value: { excludedCountries: "Quebec", extraTerms: "Shipping in the EU only." },
+    })
+    for (const field of ["excludedCountries", "extraTerms"] as const) {
+      expect(parseRules({ ...validInput, [field]: null }, config)).toMatchObject({
+        ok: true,
+        value: { [field]: null },
+      })
+      expect(parseRules({ ...validInput, [field]: " " }, config)).toEqual({
+        ok: false,
+        issue: { field, code: "blank" },
+      })
+      expect(parseRules({ ...validInput, [field]: 1 }, config)).toEqual({
+        ok: false,
+        issue: { field, code: "not-a-string" },
+      })
+    }
+    expect(parseRules({ ...validInput, excludedCountries: "a".repeat(20) }, config).ok).toBe(true)
+    expect(parseRules({ ...validInput, excludedCountries: "a".repeat(21) }, config)).toEqual({
+      ok: false,
+      issue: { field: "excludedCountries", code: "too-long" },
+    })
+    expect(parseRules({ ...validInput, extraTerms: "a".repeat(30) }, config).ok).toBe(true)
+    expect(parseRules({ ...validInput, extraTerms: "a".repeat(31) }, config)).toEqual({
+      ok: false,
+      issue: { field: "extraTerms", code: "too-long" },
     })
   })
 

@@ -17,7 +17,13 @@ import {
   UsersIcon,
 } from "../components/icons.tsx"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
-import { claimTimeText, recentWinnersText, ticketText, whoCanEnterText } from "../lib/rules-text.ts"
+import {
+  claimTimeText,
+  oddsText,
+  recentWinnersText,
+  ticketText,
+  whoCanEnterText,
+} from "../lib/rules-text.ts"
 import { chatEntryReconnectPath, dashboardNewPath } from "../lib/routes.ts"
 import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
 import { useStreamerSession } from "../components/streamer-session.tsx"
@@ -32,7 +38,6 @@ import {
   type Ending,
   type EntryWays,
   type Issue,
-  type Odds,
   type RecentWinners,
   type Values,
 } from "./create-values.ts"
@@ -103,7 +108,51 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
           onChange={(closesAt) => setValues((current) => ({ ...current, closesAt }))}
         />
       ) : null}
+      <OfficialRulesFields values={values} setValues={setValues} issue={issue} />
     </>
+  )
+}
+
+/** What the generated rules cannot know from the other answers: a minimum age, excluded places, the streamer's own terms. */
+function OfficialRulesFields({ values, setValues, issue }: StepProps) {
+  const i18n = useI18n()
+  const { t } = i18n
+  return (
+    <fieldset className="field">
+      <legend>{t("wizard.official.legend")}</legend>
+      <p className="help">{t("wizard.official.help")}</p>
+      <StepperField
+        name="minAge"
+        label={t("wizard.winnerAge.label")}
+        help={t("wizard.winnerAge.help")}
+        min={1}
+        value={values.minAge}
+        error={errorOf(i18n, issue, "minAge")}
+        onChange={(minAge) => setValues((current) => ({ ...current, minAge }))}
+        decreaseLabel={t("wizard.winnerAge.fewer")}
+        increaseLabel={t("wizard.winnerAge.more")}
+      />
+      <TextField
+        name="excludedCountries"
+        label={t("wizard.excludedCountries.label")}
+        help={t("wizard.excludedCountries.help")}
+        type="text"
+        value={values.excludedCountries}
+        error={errorOf(i18n, issue, "excludedCountries")}
+        onChange={(excludedCountries) =>
+          setValues((current) => ({ ...current, excludedCountries }))
+        }
+      />
+      <TextField
+        name="extraTerms"
+        label={t("wizard.extraTerms.label")}
+        help={t("wizard.extraTerms.help")}
+        type="multiline"
+        value={values.extraTerms}
+        error={errorOf(i18n, issue, "extraTerms")}
+        onChange={(extraTerms) => setValues((current) => ({ ...current, extraTerms }))}
+      />
+    </fieldset>
   )
 }
 
@@ -453,6 +502,7 @@ export function ReviewStep({
           i18n,
           values.audience === "subscribers",
           values.audience === "followers",
+          Number(values.tickets.viewer) === 0,
         )}
       />
       <ReviewRow
@@ -489,6 +539,18 @@ export function ReviewStep({
       />
       <ReviewRow label={t("review.entry")} value={entryWaysText(i18n, values)} />
       <ReviewRow label={t("review.winners")} value={i18n.number(Number(values.winnerCount))} />
+      {values.minAge.trim() === "" ? null : (
+        <ReviewRow
+          label={t("review.winnerAge")}
+          value={i18n.plural("year", Number(values.minAge))}
+        />
+      )}
+      {values.excludedCountries.trim() === "" ? null : (
+        <ReviewRow label={t("review.excludedCountries")} value={values.excludedCountries.trim()} />
+      )}
+      {values.extraTerms.trim() === "" ? null : (
+        <ReviewRow label={t("review.extraTerms")} value={values.extraTerms.trim()} />
+      )}
       <ReviewRow
         label={t("review.claim")}
         value={t("review.claimText", {
@@ -523,15 +585,4 @@ function ReviewRow({ label, value }: { readonly label: string; readonly value: s
       <dd>{value}</dd>
     </div>
   )
-}
-
-function oddsText(i18n: I18n, odds: Odds): string {
-  switch (odds.kind) {
-    case "same":
-    case "viewersOut":
-    case "noBetter":
-      return i18n.t(`odds.${odds.kind}`)
-    case "times":
-      return i18n.t(`odds.${odds.group}`, { times: i18n.number(odds.times) })
-  }
 }

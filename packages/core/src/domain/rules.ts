@@ -5,6 +5,8 @@ import type { Instant } from "../ports.ts"
 import { bestGroup, groups, supportedGroups, type Group, type Tickets } from "./groups.ts"
 
 const msPerDay = 86_400_000
+/** The highest minimum age to win a streamer can state: a bound on typos, since no giveaway asks winners to be 100 or older. */
+export const minAgeMax = 99
 
 /** What a streamer sets for who may enter and with how many tickets. */
 export interface GiveawayRules {
@@ -21,6 +23,12 @@ export interface GiveawayRules {
   readonly chatKeyword: string | null
   /** Viewers enter by signing in on the giveaway page; false only with a chat keyword (chat only). */
   readonly pageEntry: boolean
+  /** The age in years a winner must have reached, shown in the giveaway's rules; Rafflink cannot check it. Null means none stated. */
+  readonly minAge: number | null
+  /** Places whose residents cannot win, as the streamer wrote them; Rafflink cannot check it. Null means none. */
+  readonly excludedCountries: string | null
+  /** The streamer's own terms, shown as written under the generated rules; null when there are none. */
+  readonly extraTerms: string | null
 }
 
 /** Keeps out the winners of the streamer's last `count` drawn giveaways, or of those drawn in the last `count` days. */
@@ -38,6 +46,8 @@ export type RulesConfig = Pick<
   | "ticketsPerGroupMax"
   | "recentWinnersGiveawaysMax"
   | "recentWinnersDaysMax"
+  | "excludedCountriesMaxLength"
+  | "extraTermsMaxLength"
 >
 
 /** What Twitch told us about a viewer, gathered by the caller before the check. */
@@ -131,15 +141,21 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
   if (!followersOnly.ok) return followersOnly
   const minAccountAgeDays = parseMinAccountAgeDays(input)
   if (!minAccountAgeDays.ok) return minAccountAgeDays
-  const claimKeyword = parseKeyword(input, "claimKeyword", config.claimKeywordMaxLength)
+  const claimKeyword = parseText(input, "claimKeyword", config.claimKeywordMaxLength)
   if (!claimKeyword.ok) return claimKeyword
   const excludeRecentWinners = parseRecentWinners(input, config)
   if (!excludeRecentWinners.ok) return excludeRecentWinners
-  const chatKeyword = parseKeyword(input, "chatKeyword", config.claimKeywordMaxLength)
+  const chatKeyword = parseText(input, "chatKeyword", config.claimKeywordMaxLength)
   if (!chatKeyword.ok) return chatKeyword
   const pageEntry = parseFlag(input, "pageEntry", true)
   if (!pageEntry.ok) return pageEntry
   if (!pageEntry.value && chatKeyword.value === null) return fail("pageEntry", "no-entry-way")
+  const minAge = parseMinAge(input)
+  if (!minAge.ok) return minAge
+  const excludedCountries = parseText(input, "excludedCountries", config.excludedCountriesMaxLength)
+  if (!excludedCountries.ok) return excludedCountries
+  const extraTerms = parseText(input, "extraTerms", config.extraTermsMaxLength)
+  if (!extraTerms.ok) return extraTerms
   return ok({
     tickets: tickets.value,
     subsOnly: subsOnly.value,
@@ -149,6 +165,9 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
     excludeRecentWinners: excludeRecentWinners.value,
     chatKeyword: chatKeyword.value,
     pageEntry: pageEntry.value,
+    minAge: minAge.value,
+    excludedCountries: excludedCountries.value,
+    extraTerms: extraTerms.value,
   })
 }
 
@@ -243,18 +262,26 @@ function parseMinAccountAgeDays(input: Record<string, unknown>): Parsed<number |
   return ok(value === 0 ? null : value)
 }
 
-function parseKeyword(
+function parseMinAge(input: Record<string, unknown>): Parsed<number | null, RulesIssue> {
+  const value = ownValue(input, "minAge")
+  if (value === undefined || value === null) return ok(null)
+  if (!isPositiveInteger(value)) return fail("minAge", "not-a-positive-integer")
+  if (value > minAgeMax) return fail("minAge", "too-large")
+  return ok(value)
+}
+
+function parseText(
   input: Record<string, unknown>,
-  field: "claimKeyword" | "chatKeyword",
+  field: "claimKeyword" | "chatKeyword" | "excludedCountries" | "extraTerms",
   maxLength: number,
 ): Parsed<string | null, RulesIssue> {
   const value = ownValue(input, field)
   if (value === undefined || value === null) return ok(null)
   if (typeof value !== "string") return fail(field, "not-a-string")
-  const keyword = value.trim()
-  if (keyword === "") return fail(field, "blank")
-  if (keyword.length > maxLength) return fail(field, "too-long")
-  return ok(keyword)
+  const text = value.trim()
+  if (text === "") return fail(field, "blank")
+  if (text.length > maxLength) return fail(field, "too-long")
+  return ok(text)
 }
 
 function parseRecentWinners(

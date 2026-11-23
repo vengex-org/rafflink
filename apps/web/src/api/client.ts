@@ -148,6 +148,12 @@ export interface CreateGiveawayBody {
     readonly chatKeyword: string | null
     /** False for a chat-only giveaway. */
     readonly pageEntry: boolean
+    /** Null when the streamer states none. */
+    readonly minAge: number | null
+    /** Null when the streamer states none. */
+    readonly excludedCountries: string | null
+    /** Null when the streamer adds none. */
+    readonly extraTerms: string | null
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
@@ -1050,6 +1056,9 @@ function parseRules(source: Json): GiveawayRules {
         : parseRecentWinners(child(source, "excludeRecentWinners")),
     chatKeyword: nullableText(source, "chatKeyword"),
     pageEntry: bool(source, "pageEntry"),
+    minAge: nullableNum(source, "minAge"),
+    excludedCountries: nullableText(source, "excludedCountries"),
+    extraTerms: nullableText(source, "extraTerms"),
   }
 }
 

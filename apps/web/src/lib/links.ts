@@ -1,8 +1,12 @@
 import type { OverlayOptions } from "./overlay-options.ts"
-import { giveawayPath, moderatorOpenPath, overlayPath } from "./routes.ts"
+import { giveawayPath, moderatorOpenPath, overlayPath, verifyPath } from "./routes.ts"
 
 export function shareUrl(code: string): string {
   return new URL(giveawayPath(code), window.location.origin).href
+}
+
+export function verifyUrl(code: string): string {
+  return new URL(verifyPath(code), window.location.origin).href
 }
 
 /** The host viewers type, the same one the share links carry, so a self-hosted overlay names its own deployment. */
