@@ -37,6 +37,7 @@ export const giveaway: GiveawayView & { readonly me: ViewerState } = {
   prize: "A gaming chair",
   streamerName: "Streamy",
   platform: "twitch",
+  paused: false,
   rules,
   capabilities: everyCapability,
   status: "open",

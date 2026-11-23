@@ -1,4 +1,5 @@
 import { errorClass } from "../lib/error-class.ts"
+import { PlatformOff } from "../platform/provider.ts"
 import { Hono } from "hono"
 import { requestId } from "hono/request-id"
 import { authRoutes, type Backlog } from "./auth-routes.ts"
@@ -37,6 +38,8 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   // The log keeps only the error class and the request id: a message or a stack can carry a token, a code or a name.
   // The report to Sentry carries both, after `scrubEvent` of lib/error-reporting.ts removed the secrets it knows.
   app.onError((error, c) => {
+    // Rows of a platform switched off after they were made are expected, so the refusal is no fault to report.
+    if (error instanceof PlatformOff) return c.json({ error: "platform-off" }, 409)
     const id = c.get("requestId")
     deps.reportError(error, { requestId: id })
     console.error("request failed", {

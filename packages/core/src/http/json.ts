@@ -41,6 +41,8 @@ export interface PublicGiveaway {
   readonly streamerName: string
   /** Where the giveaway runs, so the page signs viewers in there. */
   readonly platform: Platform
+  /** The install runs without the giveaway's platform for now, so the page offers no way to enter. */
+  readonly paused: boolean
   readonly rules: GiveawayRules
   /** What the giveaway's platform can check, so the page explains only the groups it can tell. */
   readonly capabilities: PlatformCapabilities

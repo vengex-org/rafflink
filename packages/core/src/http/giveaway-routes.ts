@@ -1,7 +1,16 @@
 import { Hono, type Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway } from "../accounts/account-store.ts"
-import { providerFor } from "../platform/provider.ts"
+import { kickCapabilities } from "../kick/kick-provider.ts"
+import {
+  enabledProviderFor,
+  everyCapability,
+  knownPlatform,
+  providerFor,
+  type Platform,
+  type PlatformCapabilities,
+} from "../platform/provider.ts"
+import { youtubeCapabilities } from "../youtube/youtube-provider.ts"
 import { parseWinnerAnswers } from "../domain/winner-form.ts"
 import type {
   ClaimOutcome,
@@ -96,7 +105,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
       endPendingEntry(c, giveaway)
       if (polled.userId !== null) {
         await startViewerSession(c, deps, {
-          platform: providerFor(deps.platforms, giveaway.platform).platform,
+          platform: knownPlatform(giveaway.platform),
           userId: polled.userId,
         })
       }
@@ -128,7 +137,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     c.header("Cache-Control", "no-store")
     const verification = await deps.rooms.get(giveaway.id).verification()
-    return c.json(verifyJson(verification, providerFor(deps.platforms, giveaway.platform).platform))
+    return c.json(verifyJson(verification, knownPlatform(giveaway.platform)))
   })
 
   // The Merkle root in the path names the list: a code freed by a deleted giveaway and given to a new one
@@ -273,16 +282,25 @@ async function pickOf(
   )
 }
 
+// What each platform can check, for the page of a giveaway whose platform the install runs without.
+const platformCapabilities: Readonly<Record<Platform, PlatformCapabilities>> = {
+  twitch: everyCapability,
+  kick: kickCapabilities,
+  youtube: youtubeCapabilities,
+}
+
 function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: PublicSummary): PublicGiveaway {
-  const provider = providerFor(deps.platforms, giveaway.platform)
+  const platform = knownPlatform(giveaway.platform)
+  const provider = enabledProviderFor(deps.platforms, platform)
   return {
     code: giveaway.code,
     title: giveaway.title,
     prize: giveaway.prize,
     streamerName: giveaway.streamerName,
-    platform: provider.platform,
+    platform,
+    paused: provider === null,
     rules: giveaway.rules,
-    capabilities: provider.capabilities,
+    capabilities: provider?.capabilities ?? platformCapabilities[platform],
     status: summary.status,
     closesAt: summary.closesAt,
     claimSeconds: giveaway.claimSeconds,

@@ -392,6 +392,7 @@ export function parseGiveawayLoad(source: Json): GiveawayLoad {
       prize: nullableText(source, "prize"),
       streamerName: text(source, "streamerName"),
       platform: platformOf(source, "platform"),
+      paused: bool(source, "paused"),
       rules: parseRules(child(source, "rules")),
       capabilities: capabilitiesOf(child(source, "capabilities")),
       status: oneOf(source, "status", roomStatuses),

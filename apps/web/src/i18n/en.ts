@@ -454,6 +454,8 @@ export const en = {
   "giveaway.waiting.title": "Waiting for the draw",
   "giveaway.waiting.text":
     "Entries are closed. The streamer draws the winner live. Keep this page open: it changes to the claim screen by itself if you win.",
+  "giveaway.paused.title": "Entries are paused",
+  "giveaway.paused.text": "{platform} giveaways are paused on this site for now. Check back later.",
   "giveaway.closed.title": "Sorry, giveaway closed.",
   "giveaway.closed.text":
     "The streamer stopped taking entries. Follow the channel to catch the next one.",
@@ -1336,3 +1338,9 @@ export const en = {
 } as const satisfies Record<string, string>
 
 export type MessageKey = keyof typeof en
+
+/** Keys whose English copy is not translated yet; the other languages show the English text for them. */
+type EnglishOnlyKey = "giveaway.paused.title" | "giveaway.paused.text"
+
+/** What a language other than English provides: every key but the {@link EnglishOnlyKey}s. */
+export type Translation = Readonly<Omit<Record<MessageKey, string>, EnglishOnlyKey>>

@@ -10,7 +10,7 @@ import type { EnterOutcome, EntryExpectation, RoomViewer } from "../room/giveawa
 import { sendMissingExclusions, type ExclusionTarget } from "../room/room-exclusions.ts"
 import { RoomTransientError, type RoomDirectory } from "../room/room-directory.ts"
 import {
-  providerFor,
+  enabledProviderFor,
   type ExchangedCode,
   type PlatformProvider,
   type PlatformProviders,
@@ -59,7 +59,9 @@ export async function enterGiveaway(
   target: EntryTarget,
   item: Pick<QueuedCode, "code" | "nonce" | "codeVerifier">,
 ): Promise<EntryAttempt> {
-  const provider = providerFor(deps.platforms, target.platform)
+  // A code queued before its platform was switched off can enter nobody, as after the close.
+  const provider = enabledProviderFor(deps.platforms, target.platform)
+  if (provider === null) return final({ kind: "closed" }, null)
   let tokens: ExchangedCode
   try {
     tokens = await provider.exchangeCode(

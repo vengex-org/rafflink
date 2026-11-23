@@ -3,7 +3,12 @@ import type { StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import type { ResolvedConfig } from "../config.ts"
 import type { ChannelEntryVia } from "../domain/rules.ts"
-import { configuredProviders, providerFor, readyEntryWays } from "../platform/provider.ts"
+import {
+  configuredProviders,
+  enabledProviderFor,
+  providerFor,
+  readyEntryWays,
+} from "../platform/provider.ts"
 import type { AppDeps } from "./deps.ts"
 import type { OperatorJson, SessionJson } from "./json.ts"
 import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
@@ -79,7 +84,11 @@ export async function currentStreamer(
 ): Promise<{ session: StreamerSession; streamer: StreamerRecord } | null> {
   const session = await readStreamerSession(c, deps)
   if (session === null) return null
-  const streamer = await deps.accounts.findStreamer(session.streamerId)
+  // A session of a platform switched off since it began signs nobody in, as one whose account is gone.
+  const streamer =
+    enabledProviderFor(deps.platforms, session.platform) === null
+      ? null
+      : await deps.accounts.findStreamer(session.streamerId)
   if (streamer === null) {
     endStreamerSession(c)
     return null

@@ -1,5 +1,5 @@
 import { errorClass } from "../lib/error-class.ts"
-import { providerFor } from "../platform/provider.ts"
+import { enabledProviderFor, providerFor } from "../platform/provider.ts"
 import { PlatformInvalid, PlatformRateLimited, PlatformUnavailable } from "../platform/errors.ts"
 import type { StoredStreamerToken } from "./account-store.ts"
 import { openStreamerAccess, type StreamerTokenDeps } from "./streamer-token.ts"
@@ -34,6 +34,11 @@ export async function validateStreamerTokens(deps: StreamerTokenDeps): Promise<V
   let kept = 0
   let failed = 0
   for (const token of await deps.accounts.listStreamerTokens()) {
+    // A platform switched off cannot answer for its tokens, which wait untouched until it is back.
+    if (enabledProviderFor(deps.platforms, token.platform) === null) {
+      kept++
+      continue
+    }
     try {
       if ((await verdictOf(deps, token)) === "invalid") {
         await deps.accounts.deleteStreamerToken(token.streamerId)

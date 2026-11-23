@@ -24,6 +24,7 @@ export type ConfigReason =
   | "not-at-least-drand-period"
   | "not-an-admin-entry"
   | "not-an-optional-platform"
+  | "faked-platform-disabled"
   | "not-below-queue-code-max-age"
   | "above-queue-max-rate"
   | "not-below-eventsub-connection-max"
@@ -39,7 +40,10 @@ export type ConfigReason =
 /** Why a setting failed; a list entry that is not a secret also names itself. */
 export type ConfigIssue =
   | ConfigReason
-  | { readonly reason: "not-an-admin-entry" | "not-an-optional-platform"; readonly entry: string }
+  | {
+      readonly reason: "not-an-admin-entry" | "not-an-optional-platform" | "faked-platform-disabled"
+      readonly entry: string
+    }
 
 /** An invalid or missing setting. Carries the env key and a reason, never the value (it may be a secret); only a named list entry is quoted. */
 export class ConfigError extends Error {
@@ -1265,8 +1269,21 @@ export function resolveConfig(env: Env): ResolvedConfig {
   if (config.devFakeYouTube && config.youtubeClientId === null) {
     throw new ConfigError(configSchema.youtubeClientId.env, "missing")
   }
-  // A switched off platform takes the path of a blank app, so every caller of kickAppOf and youtubeAppOf drops it.
   const off = new Set(config.signInDisabledPlatforms)
+  // A fake stands in for its platform's app, so a fake of a switched off platform would serve nothing.
+  const fakes = [
+    [config.devFakeKick, "kick"],
+    [config.devFakeYouTube, "youtube"],
+  ] as const
+  for (const [mounted, platform] of fakes) {
+    if (mounted && off.has(platform)) {
+      throw new ConfigError(configSchema.signInDisabledPlatforms.env, {
+        reason: "faked-platform-disabled",
+        entry: platform,
+      })
+    }
+  }
+  // A switched off platform takes the path of a blank app, so every caller of kickAppOf and youtubeAppOf drops it.
   return {
     ...config,
     ...(off.has("kick") ? { kickClientId: null, kickClientSecret: null } : {}),
