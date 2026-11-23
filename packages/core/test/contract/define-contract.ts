@@ -13,6 +13,7 @@ import { queueScenarios } from "./queue.scenarios.ts"
 import { retentionScenarios } from "./retention.scenarios.ts"
 import { sessionScenarios } from "./session.scenarios.ts"
 import { viewerPushScenarios } from "./viewer-push.scenarios.ts"
+import { youtubeScenarios } from "./youtube.scenarios.ts"
 import type { PageServing, PlanSwitching, StartTarget } from "./target.ts"
 
 /**
@@ -37,6 +38,7 @@ export function defineContract(
     chatEntryScenarios(context)
     channelEntryScenarios(context)
     kickScenarios(context)
+    youtubeScenarios(context)
     operationsScenarios(context)
     retentionScenarios(context)
     pageScenarios(context)

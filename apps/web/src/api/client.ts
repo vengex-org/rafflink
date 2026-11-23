@@ -38,6 +38,7 @@ import type {
   PublicGiveaway,
   PublicHistoryJson,
   RequestBudgetJson,
+  YouTubeBudgetJson,
   SessionJson,
   VerifyJson,
   ViewerState,
@@ -195,6 +196,8 @@ export type CreateResult =
   | { readonly kind: "not-approved" }
   /** 422 `reconnect`: sub or points entry is on and the streamer's token lacks its scopes. */
   | { readonly kind: "reconnect" }
+  /** 409 `youtube-quota`: reading the YouTube chat until entries close would pass today's units. */
+  | { readonly kind: "youtube-quota" }
 
 export type AdminUsage = AdminUsageJson
 
@@ -345,6 +348,7 @@ async function getMyLeaf(base: string): Promise<MyLeafJson | null> {
 function parseVerify(source: Json): VerifyJson {
   const commitment = source.commitment === null ? null : child(source, "commitment")
   return {
+    platform: platformOf(source, "platform"),
     status: oneOf(source, "status", roomStatuses),
     entrantCount: num(source, "entrantCount"),
     ticketTotal: num(source, "ticketTotal"),
@@ -503,6 +507,9 @@ export async function createGiveaway(input: CreateGiveawayBody): Promise<CreateR
     return { kind: "not-approved" }
   }
   if (status === 422 && record(body, "refusal").error === "reconnect") return { kind: "reconnect" }
+  if (status === 409 && record(body, "refusal").error === "youtube-quota") {
+    return { kind: "youtube-quota" }
+  }
   if (status === 400) {
     const source = record(body, "issue")
     return {
@@ -779,6 +786,7 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
     alertPercent: num(source, "alertPercent"),
     signupOpen: bool(source, "signupOpen"),
     queue: parseQueue(child(source, "queue")),
+    youtubeQuota: parseYouTubeQuota(source),
   }
 }
 
@@ -953,6 +961,20 @@ export async function getRequestBudget(): Promise<RequestBudgetJson | "unauthori
   if (source.budget === null) return { budget: null }
   const budget = child(source, "budget")
   return { budget: { limit: num(budget, "limit"), remaining: num(budget, "remaining") } }
+}
+
+/** Today's YouTube units for the wizard's quota note; null on an install without YouTube. */
+export async function getYouTubeBudget(): Promise<YouTubeBudgetJson | null | "unauthorized"> {
+  const { status, body } = await send("/api/dash/youtube-budget")
+  if (status === 401) return "unauthorized"
+  if (status === 404) return null
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "youtubeBudget")
+  return {
+    limit: num(source, "limit"),
+    remaining: num(source, "remaining"),
+    unitsPerMinute: num(source, "unitsPerMinute"),
+  }
 }
 
 /** The streamer's channel point rewards for the wizard, or why there are none to pick. */
@@ -1432,6 +1454,13 @@ function parseUsage(source: Json): Usage | null | "unavailable" {
     workerRequests: parseQuota(child(usage, "workerRequests")),
     doRequests: parseQuota(child(usage, "doRequests")),
   }
+}
+
+function parseYouTubeQuota(source: Json): AdminUsage["youtubeQuota"] {
+  if (source.youtubeQuota === null) return null
+  if (source.youtubeQuota === "unavailable") return "unavailable"
+  const quota = child(source, "youtubeQuota")
+  return { used: num(quota, "used"), limit: num(quota, "limit"), alert: bool(quota, "alert") }
 }
 
 function parseQuota(source: Json): Usage["workerRequests"] {

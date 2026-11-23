@@ -461,6 +461,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     stats: new StatsStore(accountsSql, config),
     usage,
     planQueue,
+    youtubeQuota: null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
     keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),

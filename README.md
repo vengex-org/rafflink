@@ -227,6 +227,57 @@ What a Kick giveaway can do:
 - Kick signs each webhook. Rafflink checks the signature with Kick's public key, refuses a webhook whose
   timestamp is more than `KICK_WEBHOOK_MAX_AGE_SECONDS` away from now, and drops a repeated message id.
 
+## YouTube app registration (optional)
+
+YouTube is optional. Without `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` the install has no YouTube sign-in;
+set both or neither. With them, a streamer signs in with Google and picks their YouTube channel, and viewers
+enter that channel's giveaways by writing the keyword in the live chat. Viewers never sign in with Google.
+
+Rafflink asks for one scope, `https://www.googleapis.com/auth/youtube.readonly`. Google calls it sensitive, so an
+app that is not verified stops at 100 users and shows them a warning. Start the verification early: it needs a
+verified domain, a privacy page and a demo video, and takes days to weeks.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/) create a project, then under **APIs &
+   Services** enable the **YouTube Data API v3**.
+2. Open **Google Auth Platform**:
+   - **Branding:** the app name, a support e-mail, your home page `https://rafflink.example.com/`, the privacy
+     policy `https://rafflink.example.com/privacy` and the terms `https://rafflink.example.com/terms`. Add your
+     domain under **Authorized domains**.
+   - **Audience:** user type **External**. While the app is in **Testing**, only the test users you list (up to 100) can sign in. Publish it to production once the verification is through.
+   - **Data access:** add the scope `.../auth/youtube.readonly`.
+   - **Clients:** create an OAuth client of type **Web application** with these **Authorized redirect URIs**:
+     - `https://rafflink.example.com/auth/youtube/callback`
+     - `http://localhost:8787/auth/youtube/callback` (Wrangler dev)
+     - `http://localhost:3000/auth/youtube/callback` (Bun server)
+3. Verify the domain in [Google Search Console](https://search.google.com/search-console) with the Google account
+   that owns the project. Google checks it during the app verification.
+4. Copy the **Client ID** into `YOUTUBE_CLIENT_ID` and the **Client secret** into `YOUTUBE_CLIENT_SECRET`.
+5. Submit the app for verification under **Google Auth Platform**, **Verification center**. Google asks for a
+   video that shows the sign-in, the consent screen with the scope, and what the app does with the data.
+
+What a YouTube giveaway can do:
+
+- Viewers enter only with the chat keyword. A channel member gets the subscriber tickets and a moderator the
+  moderator tickets, as the chat message tells them. YouTube has no followers and no VIPs, so the create form
+  does not offer those rules. A winner claims by writing in the chat, or the streamer marks the claim by hand.
+- The giveaway reads the chat of the channel's active live stream. A giveaway made before the stream starts
+  looks for the stream every `YOUTUBE_BROADCAST_RETRY_SECONDS` and reads its chat once it is live.
+- Rafflink reads the chat while chat entries are open and from the draw until the claim and reroll time ends,
+  as often as YouTube asks and at most every `YOUTUBE_CHAT_POLL_MIN_MS`. Reading stops when entries close.
+- Every YouTube API call costs quota units: 1 for a channel or a broadcast lookup, 5 for a page of chat. A
+  Google project has 10,000 units a day by default, shared by every giveaway of the install, and the day starts
+  at midnight Pacific time. Rafflink counts the units in its database and never spends more than
+  `YOUTUBE_DAILY_QUOTA_UNITS` a day: a giveaway whose chat reads until its close would pass the cap is refused,
+  and a running chat watch stops when the cap is reached. Reading every 5 seconds costs 60 units a minute, so
+  the default quota covers about two and a half hours of chat a day. The create form shows the cost and what
+  is left today, and the admin page shows today's units and warns from `YOUTUBE_QUOTA_ALERT_PERCENT` on. Ask
+  Google for more quota in the Cloud console before you need it, then raise `YOUTUBE_DAILY_QUOTA_UNITS`.
+- YouTube's Developer Policies allow stored API data for 30 days at most. A YouTube giveaway's entries are
+  deleted at most 30 days after it closes, like every giveaway's, and its winners' names with them; the
+  winners' channel ids stay with the picks. The streamer's channel name and handle are refreshed only when they
+  sign in again ([#106](https://github.com/vengex-org/rafflink/issues/106)). A YouTube block list finds no
+  account, because Google offers no lookup without a user's token.
+
 ## Self-hosting
 
 Both targets need your own Twitch app (see above) and the required settings listed there. Every setting is in

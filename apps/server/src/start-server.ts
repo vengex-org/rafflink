@@ -26,6 +26,7 @@ import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import { kickAppOf, type KickApp } from "@rafflink/core/kick/kick-client"
 import { kickPlatform } from "@rafflink/core/kick/kick-provider"
+import { youtubePlatform } from "@rafflink/core/youtube/youtube-provider"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
 import { existsSync, mkdirSync, readdirSync } from "node:fs"
@@ -85,9 +86,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const stats = new StatsStore(accountsSql, config)
   const twitch = new TwitchClient(config, fetch)
   const keyRing = await openKeyRing(config.tokenSealKeys)
+  const youtube = youtubePlatform(config, fetch, clock, accountsSql)
   const platforms = {
     twitch: new TwitchProvider(twitch, clock, config),
     ...kickPlatform(config, fetch, clock, accountsSql),
+    ...youtube,
   }
   const tokenDeps: StreamerTokenDeps = { clock, random, platforms, accounts, keyRing }
   const connector = new BunSocketConnector()
@@ -145,6 +148,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     stats,
     usage: { today: async () => null },
     planQueue: null,
+    youtubeQuota: youtube.youtube?.quota ?? null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
     keyRing,
     admins: new AdminDirectory(config, twitch),

@@ -101,6 +101,23 @@ describe("legal pages", () => {
     }
   })
 
+  it("link YouTube's terms, Google's privacy policy and the page that removes Google access", () => {
+    const privacy = renderApp("/privacy")
+    const privacyLinks = privacy.getAllByRole("link").map((link) => link.getAttribute("href"))
+    cleanup()
+    const terms = renderApp("/terms")
+    const termsLinks = terms.getAllByRole("link").map((link) => link.getAttribute("href"))
+
+    expect(privacyLinks).toEqual(
+      expect.arrayContaining([
+        "https://www.youtube.com/t/terms",
+        "https://policies.google.com/privacy",
+        "https://myaccount.google.com/permissions",
+      ]),
+    )
+    expect(termsLinks).toContain("https://www.youtube.com/t/terms")
+  })
+
   it("list the profile picture URL among the data of streamers and of entrants in every language", async () => {
     const pictureWords = eachLanguage({
       en: "profile picture",

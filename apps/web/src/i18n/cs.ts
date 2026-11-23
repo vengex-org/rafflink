@@ -41,6 +41,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "signIn.title": "Přihlášení",
   "signIn.button": "Přihlásit se přes Twitch",
   "signIn.buttonKick": "Přihlásit se přes Kick",
+  "signIn.buttonYouTube": "Přihlásit se přes YouTube",
   "signIn.why.admin": "Pro otevření administrace se přihlas přes Twitch.",
   "signIn.why.expired": "Přihlášení vypršelo. Přihlas se a pokračuj.",
   "signIn.why.dashboard": "Pro vytváření a vedení soutěží se přihlas.",
@@ -57,6 +58,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "home.footer.label": "Patička",
   "home.problemTitle": "Přihlášení se nepovedlo",
   "home.problem.invalidState": "Přihlášení vypršelo. Zkus to prosím znovu.",
+  "home.problem.noChannel":
+    "Tento účet Google nemá kanál YouTube. Přihlas se účtem, kterému tvůj kanál patří.",
   "home.problem.tryAgain": "Streamovací platforma neodpověděla. Zkus to prosím znovu.",
 
   "oauthError.title": "Přihlášení přes {platform} selhalo",
@@ -91,6 +94,13 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "admin.alert.title": "Dnešní limit se blíží",
   "admin.alert.workerRequests": "Požadavky Workeru jsou na {percent} % dnešního limitu.",
   "admin.alert.doRequests": "Požadavky Durable Objectů jsou na {percent} % dnešního limitu.",
+  "admin.youtube.title": "Kvóta YouTube",
+  "admin.youtube.hint":
+    "Každé volání YouTube API se počítá do denní kvóty Googlu, která se obnovuje o půlnoci tichomořského času. Když dojde, giveawaye na YouTube přestanou číst chat.",
+  "admin.youtube.units": "Jednotky YouTube dnes",
+  "admin.youtube.usageText": "Dnes spotřebováno {used} z {limit} jednotek",
+  "admin.youtube.alert":
+    "Dnešní jednotky YouTube jsou na {percent} % denního limitu. Požádej Google o vyšší kvótu dřív, než giveawaye na YouTube přestanou číst chat.",
   "admin.alert.hint":
     "Pokud zátěž poroste, zaplať Workers Paid v Cloudflare dashboardu a pak níže přepni plán na Paid.",
   "admin.plan.title": "Cloudflare plán",
@@ -315,6 +325,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "issue.no-entry-way": "Diváci se musí mít jak zapojit: přes stránku, přes chat nebo obojím.",
   "issue.reconnect":
     "Nejdřív připoj Twitch znovu: zapojení přes sub a body kanálu potřebuje oprávnění, které Rafflink ještě nemá.",
+  "issue.youtubeQuota":
+    "Dnešní jednotky YouTube nestačí na čtení chatu až do uzavření přihlašování. Uzavři přihlašování dřív nebo to zkus znovu po půlnoci tichomořského času.",
   "issue.not-a-timestamp": "Zadej platné datum a čas.",
   "issue.in-the-past": "Čas ukončení musí být v budoucnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
@@ -930,6 +942,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Zpráva v chatu, která začíná tímto slovem, diváka zapojí se stejnými pravidly a losy jako stránka. Rafflink do tvého chatu nikdy nepíše.",
   "wizard.chatCost.kick":
     "Kick posílá Rafflinku každou zprávu z chatu, dokud je přihlašování otevřené, i bez klíčového slova, a každá spotřebuje jeden požadavek z denního limitu {limit} tohoto serveru. Chat se 100 zprávami za minutu spotřebuje 6 000 požadavků za hodinu. Na dnešek zbývá {remaining}.",
+  "wizard.chatCost.youtube":
+    "Rafflink čte chat na YouTube, dokud je přihlašování otevřené, a po losování, dokud si výherci můžou výhru převzít v chatu. Každá minuta čtení spotřebuje asi {perMinute} z {limit} denních jednotek YouTube tohoto serveru. Na dnešek zbývá {remaining}.",
   "wizard.autoEntry.legend": "Automatické zapojení",
   "wizard.subEntry.label": "Zapojit nové předplatitele",
   "wizard.subEntry.help":
@@ -972,7 +986,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
 
   "privacy.title": "Zásady ochrany osobních údajů",
   "privacy.intro":
-    "Rafflink losuje výherce giveawayů na Twitchi a Kicku. Tyto zásady vysvětlují, jaké osobní údaje zpracovává, proč, jak dlouho a jaká práva máš. Jsou záměrně stručné.",
+    "Rafflink losuje výherce giveawayů na Twitchi, Kicku a YouTube. Tyto zásady vysvětlují, jaké osobní údaje zpracovává, proč, jak dlouho a jaká práva máš. Jsou záměrně stručné.",
   "privacy.controller.h": "Kdo je odpovědný",
   "privacy.controller.p1":
     "Správcem tvých osobních údajů na této instanci je {operator}. Kontakt: {contact}.",
@@ -982,7 +996,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Rafflink je open source a každý si může spustit vlastní kopii. Tento text popisuje, co dělá software; správcem údajů na instanci je ten, kdo ji provozuje. Projekt Rafflink od instancí, které provozují jiní, nedostává žádná data.",
   "privacy.data.h": "Jaké údaje se zpracovávají",
   "privacy.data.p1":
-    "Vše pochází z Twitche nebo Kicku, podle toho, přes který se přihlásíš. Rafflink žádá jen přístup pro čtení a nikdy nepíše do chatu.",
+    "Vše pochází z Twitche, Kicku nebo YouTube, podle toho, přes který se přihlásíš. Rafflink žádá jen přístup pro čtení a nikdy nepíše do chatu.",
   "privacy.data.i1":
     "Streameři: user ID na platformě, přihlašovací jméno, předchozí přihlašovací jméno po přejmenování (aby odkaz na starou veřejnou historii přesměroval), zobrazované jméno, URL profilového obrázku a čas prvního přihlášení, dále giveawaye, které vytvoří (název, text výhry, pravidla, kód odkazu, časy), a jejich výsledky.",
   "privacy.data.i2":
@@ -1042,6 +1056,17 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Odpovědi z formuláře pro vítěze dostane jen streamer, který giveaway vede: moderátoři, overlay ani veřejné stránky je nikdy nezobrazí.",
   "privacy.recipients.i7":
     "Pokud provozovatel zapne hlášení chyb, Sentry (Functional Software, Inc.) přijímá jako zpracovatel provozovatele hlášení o chybách v prohlížeči a na serveru a ukládá je ve svém regionu EU v Německu. Hlášení obsahuje chybu, místo, kde nastala, prohlížeč a operační systém; jako každý server vidí Sentry IP adresu spojení. Cookies, obsah požadavků, přihlašovací kódy, tokeny Twitche a Kicku a odpovědi výherců ve formuláři se před odesláním hlášení odstraní.",
+  "privacy.youtube.h": "YouTube",
+  "privacy.youtube.p1":
+    "Rafflink používá služby YouTube API. Přihlášením přes YouTube souhlasíš se Smluvními podmínkami YouTube ({youtubeTerms}). Na to, co Google dělá s tvými údaji, se vztahují Zásady ochrany osobních údajů Google ({googlePrivacy}).",
+  "privacy.youtube.i1":
+    "Streamer na YouTube se přihlásí přes Google a dá Rafflinku přístup jen pro čtení ke svému účtu YouTube. Rafflink uchovává ID kanálu, handle, název kanálu a zapečetěný obnovovací token a čte aktivní živý přenos a jeho chat.",
+  "privacy.youtube.i2":
+    "Diváci se přes Google nikdy nepřihlašují. Do losování se přihlásí napsáním klíčového slova do chatu a Rafflink přečte ID jejich kanálu, jméno zobrazené v chatu, zprávu a to, zda jsou členy kanálu nebo moderátory.",
+  "privacy.youtube.i3":
+    "Údaje diváků z YouTube, které Rafflink uchovává, se smažou do 30 dnů: přihlášky nejpozději 30 dnů po uzavření giveawaye a spolu s nimi jména výherců, takže u vylosování zůstane jen ID jejich kanálu.",
+  "privacy.youtube.i4":
+    "Přístup Rafflinku ke svému účtu YouTube můžeš kdykoli odebrat v oprávněních svého účtu Google ({googlePermissions}). Uložený token se pak smaže při nejbližší hodinové kontrole.",
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",
@@ -1104,9 +1129,11 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Výhru poskytuje streamer, ne Rafflink. Rafflink není stranou giveawaye a neslibuje výhru ani její doručení.",
   "terms.viewers.i3":
     "Výhru je třeba převzít v čase, který streamer určil. Poté může streamer losovat znovu.",
-  "terms.platforms.h": "Twitch a Kick",
+  "terms.platforms.h": "Twitch, Kick a YouTube",
   "terms.platforms.p1":
     "Na tvé používání Twitche přes Rafflink se vztahují Terms of Service, Community Guidelines a Developer Services Agreement společnosti Twitch. Rafflink není s Twitchem spojen ani jím podporován. Na tvé používání Kicku přes Rafflink se vztahují podmínky a pravidla Kicku a Rafflink není spojen ani s Kickem, ani jím podporován.",
+  "terms.platforms.p2":
+    "Rafflink používá služby YouTube API a na tvé používání YouTube přes Rafflink se vztahují Smluvní podmínky YouTube ({youtubeTerms}). Rafflink není spojen s YouTube ani s Googlem, ani jimi podporován.",
   "terms.use.h": "Přípustné používání",
   "terms.use.p1": "Zavazuješ se, že nebudeš:",
   "terms.use.i1": "používat boty, skripty ani jinou automatizaci k zapojení nebo převzetí výhry,",
@@ -1197,6 +1224,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "verify.mine.title": "Tvoje přihláška",
   "verify.mine.signedOut":
     "Přihlas se na stránce giveaway stejným účtem jako při přihlášení do losování a zkontroluj svou přihlášku.",
+  "verify.mine.chatOnly":
+    "Do giveawaye na YouTube se přihlašuje v chatu bez přihlášení k účtu, proto tato stránka neumí ukázat tvou přihlášku ani její soukromou sůl. Kontroly výše i tak dokazují, že losování bylo férové.",
   "verify.mine.hint":
     "Tvoje přihláška se hashuje z těchto hodnot a tvé soukromé soli. Sůl nesdílej.",
   "verify.mine.platform": "Platforma",

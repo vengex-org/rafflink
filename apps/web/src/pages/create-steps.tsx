@@ -20,7 +20,7 @@ import {
   UsersIcon,
 } from "../components/icons.tsx"
 import type { PointsRewardsJson } from "@rafflink/core/http/json"
-import { getPointsRewards, getRequestBudget } from "../api/client.ts"
+import { getPointsRewards, getRequestBudget, getYouTubeBudget } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import {
   claimTimeText,
@@ -368,6 +368,7 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
         />
       ) : null}
       {usesChat && streamer?.platform === "kick" ? <KickChatCostNote /> : null}
+      {usesChat && streamer?.platform === "youtube" ? <YouTubeQuotaNote /> : null}
       {offersSupport && (capabilities.subEntry || capabilities.pointsEntry) ? (
         <fieldset className="field">
           <legend>{t("wizard.autoEntry.legend")}</legend>
@@ -497,6 +498,26 @@ function KickChatCostNote() {
   return (
     <p className="help" role="note">
       {i18n.t("wizard.chatCost.kick", {
+        limit: i18n.number(budget.limit),
+        remaining: i18n.number(Math.max(0, budget.remaining)),
+      })}
+    </p>
+  )
+}
+
+/**
+ * Rafflink reads a YouTube chat by polling, and every read spends the install's daily YouTube units, so a
+ * YouTube giveaway shows what a minute of reading costs and what is left today.
+ */
+function YouTubeQuotaNote() {
+  const i18n = useI18n()
+  const { result } = useLoad(getYouTubeBudget)
+  const budget = result.state === "ready" && result.value !== "unauthorized" ? result.value : null
+  if (budget === null) return null
+  return (
+    <p className="help" role="note">
+      {i18n.t("wizard.chatCost.youtube", {
+        perMinute: i18n.number(budget.unitsPerMinute),
         limit: i18n.number(budget.limit),
         remaining: i18n.number(Math.max(0, budget.remaining)),
       })}

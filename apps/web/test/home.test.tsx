@@ -176,6 +176,14 @@ describe("home page", () => {
     expect(inPanel.getByRole("radio", { name: "Slovenčina" })).toBeTruthy()
   })
 
+  it("tells a Google account without a YouTube channel to sign in with the channel's account", () => {
+    const view = renderApp("/?signin=no-channel")
+
+    expect(view.getByRole("alert").textContent).toBe(
+      "This Google account has no YouTube channel. Sign in with the account that owns your channel.",
+    )
+  })
+
   it("shows why a failed sign-in came back to the home page", () => {
     const view = renderApp("/?signin=try-again")
 

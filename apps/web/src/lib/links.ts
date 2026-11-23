@@ -33,7 +33,13 @@ export const setupGuideUrl = `${repositoryUrl}#twitch-app-registration`
 export const appSetupUrls: Readonly<Record<Platform, string>> = {
   twitch: setupGuideUrl,
   kick: `${repositoryUrl}#kick-app-registration-optional`,
+  youtube: `${repositoryUrl}#youtube-app-registration-optional`,
 }
+
+/** The pages the YouTube API Services terms require a YouTube app to link: YouTube's terms, Google's privacy policy and where a user removes the app's access. */
+export const youtubeTermsUrl = "https://www.youtube.com/t/terms"
+export const googlePrivacyUrl = "https://policies.google.com/privacy"
+export const googlePermissionsUrl = "https://myaccount.google.com/permissions"
 
 /** Cloudflare's page of the Workers plans, where the owner compares Free and Paid before paying in the dashboard. */
 export const cloudflarePlansUrl = "https://www.cloudflare.com/plans/developer-platform/"

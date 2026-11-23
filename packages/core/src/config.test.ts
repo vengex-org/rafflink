@@ -229,6 +229,26 @@ describe("resolveConfig", () => {
     ).toMatchObject({ env: "KICK_CLIENT_ID", reason: "missing" })
   })
 
+  it("turns YouTube off without a Google client and names its missing half", () => {
+    const off = resolveConfig(required)
+    const on = resolveConfig({
+      ...required,
+      YOUTUBE_CLIENT_ID: " yid ",
+      YOUTUBE_CLIENT_SECRET: "ys",
+    })
+
+    expect([off.youtubeClientId, off.youtubeClientSecret]).toEqual([null, null])
+    expect([on.youtubeClientId, on.youtubeClientSecret]).toEqual(["yid", "ys"])
+    expect(off.youtubeDailyQuotaUnits).toBe(10_000)
+    expect(failure({ ...required, YOUTUBE_CLIENT_ID: "yid" })).toMatchObject({
+      env: "YOUTUBE_CLIENT_SECRET",
+      reason: "missing",
+    })
+    expect(
+      failure({ ...required, YOUTUBE_CLIENT_SECRET: "ys", YOUTUBE_CLIENT_ID: " " }),
+    ).toMatchObject({ env: "YOUTUBE_CLIENT_ID", reason: "missing" })
+  })
+
   it("rejects a blank required key", () => {
     expect(failure({ ...required, SESSION_SECRET: "  " })).toMatchObject({
       env: "SESSION_SECRET",

@@ -26,6 +26,7 @@ const usageAnswer = ok({
   alerts: [],
   alertPercent: 70,
   signupOpen: true,
+  youtubeQuota: null,
   queue,
 })
 

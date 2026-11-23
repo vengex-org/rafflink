@@ -40,6 +40,7 @@ export const en = {
   "signIn.title": "Sign in",
   "signIn.button": "Sign in with Twitch",
   "signIn.buttonKick": "Sign in with Kick",
+  "signIn.buttonYouTube": "Sign in with YouTube",
   "signIn.why.admin": "Sign in with Twitch to open the admin page.",
   "signIn.why.expired": "Your session ended. Sign in to go on.",
   "signIn.why.dashboard": "Sign in to create and run giveaways.",
@@ -56,6 +57,8 @@ export const en = {
   "home.footer.label": "Footer",
   "home.problemTitle": "Sign-in did not work",
   "home.problem.invalidState": "The sign-in expired. Please try again.",
+  "home.problem.noChannel":
+    "This Google account has no YouTube channel. Sign in with the account that owns your channel.",
   "home.problem.tryAgain": "The streaming platform did not answer. Please try again.",
 
   "oauthError.title": "Sign-in with {platform} failed",
@@ -90,6 +93,13 @@ export const en = {
   "admin.alert.title": "Today's limit is getting close",
   "admin.alert.workerRequests": "Worker requests are at {percent}% of today's limit.",
   "admin.alert.doRequests": "Durable Object requests are at {percent}% of today's limit.",
+  "admin.youtube.title": "YouTube quota",
+  "admin.youtube.hint":
+    "Every YouTube API call counts against Google's daily quota, which resets at midnight Pacific time. YouTube giveaways stop reading the chat when it runs out.",
+  "admin.youtube.units": "YouTube units today",
+  "admin.youtube.usageText": "{used} of {limit} units used today",
+  "admin.youtube.alert":
+    "Today's YouTube units have reached {percent}% of the daily cap. Ask Google for more quota before YouTube giveaways stop reading the chat.",
   "admin.alert.hint":
     "If the load keeps growing, pay for Workers Paid in the Cloudflare dashboard, then switch the plan to Paid below.",
   "admin.plan.title": "Cloudflare plan",
@@ -312,6 +322,8 @@ export const en = {
   "issue.no-entry-way": "Viewers need a way to enter: the page, the chat or both.",
   "issue.reconnect":
     "Reconnect Twitch first: sub and channel point entry need a permission Rafflink does not have yet.",
+  "issue.youtubeQuota":
+    "Today's YouTube units are not enough to read the chat until entries close. Close entries sooner or try again after midnight Pacific time.",
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.unknown-kind": "Pick one of the options.",
@@ -922,6 +934,8 @@ export const en = {
     "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
   "wizard.chatCost.kick":
     "Kick sends every chat message to Rafflink while entries are open, with or without the keyword, and each one uses a request of this server's daily limit of {limit}. A chat with 100 messages a minute uses 6,000 requests an hour. {remaining} are left today.",
+  "wizard.chatCost.youtube":
+    "Rafflink reads the YouTube chat while entries are open and, after the draw, while winners can claim in chat. Each minute of reading uses about {perMinute} of the {limit} YouTube units this server has a day. {remaining} are left today.",
   "wizard.autoEntry.legend": "Automatic entries",
   "wizard.subEntry.label": "Enter new subscribers",
   "wizard.subEntry.help":
@@ -965,7 +979,7 @@ export const en = {
 
   "privacy.title": "Privacy policy",
   "privacy.intro":
-    "Rafflink draws winners of giveaways on Twitch and Kick. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
+    "Rafflink draws winners of giveaways on Twitch, Kick and YouTube. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
   "privacy.controller.h": "Who is responsible",
   "privacy.controller.p1":
     "The controller of your personal data on this instance is {operator}. Contact: {contact}.",
@@ -975,7 +989,7 @@ export const en = {
     "Rafflink is open source and anyone can run their own copy. This text describes what the software does; the person who runs an instance is the controller of the data on it. The Rafflink project receives no data from instances run by others.",
   "privacy.data.h": "What data is processed",
   "privacy.data.p1":
-    "Everything comes from Twitch or Kick, whichever you sign in with. Rafflink asks for read access only and never posts to chat.",
+    "Everything comes from Twitch, Kick or YouTube, whichever you sign in with. Rafflink asks for read access only and never posts to chat.",
   "privacy.data.i1":
     "Streamers: platform user ID, login name, the previous login name after a rename (kept so a link to the old public history page redirects), display name, the URL of the profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
   "privacy.data.i2":
@@ -1035,6 +1049,17 @@ export const en = {
     "Winner form answers go to the streamer who runs the giveaway and nobody else: moderators, the overlay and the public pages never show them.",
   "privacy.recipients.i7":
     "If the operator turns on error reporting, Sentry (Functional Software, Inc.) receives reports of errors in the browser and on the server as the operator's processor and stores them in its EU region in Germany. A report holds the error, where it happened, the browser and the operating system; like any server, Sentry sees the IP address of the connection. Cookies, request contents, sign-in codes, Twitch and Kick tokens and winner form answers are removed before a report is sent.",
+  "privacy.youtube.h": "YouTube",
+  "privacy.youtube.p1":
+    "Rafflink uses YouTube API Services. By signing in with YouTube you agree to the YouTube Terms of Service ({youtubeTerms}). The Google Privacy Policy ({googlePrivacy}) applies to what Google does with your data.",
+  "privacy.youtube.i1":
+    "A YouTube streamer signs in with Google and gives Rafflink read-only access to their YouTube account. Rafflink keeps the channel ID, the handle, the channel name and a sealed refresh token, and reads the active live stream and its chat.",
+  "privacy.youtube.i2":
+    "Viewers never sign in with Google. They enter by writing the keyword in the chat, and Rafflink reads their channel ID, the name shown in the chat, the message and whether they are a channel member or a moderator.",
+  "privacy.youtube.i3":
+    "Viewers' YouTube data that Rafflink stores is deleted within 30 days: the entries at most 30 days after the giveaway closes, and the names of its winners with them, so only their channel ID stays with the pick.",
+  "privacy.youtube.i4":
+    "You can remove Rafflink's access to your YouTube account at any time in your Google account's permissions ({googlePermissions}). The stored token is then deleted at the next hourly check.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",
@@ -1099,9 +1124,11 @@ export const en = {
     "The prize comes from the streamer, not from Rafflink. Rafflink is not a party to the giveaway and does not promise a prize or its delivery.",
   "terms.viewers.i3":
     "A win must be claimed within the time the streamer set. After that the streamer may draw again.",
-  "terms.platforms.h": "Twitch and Kick",
+  "terms.platforms.h": "Twitch, Kick and YouTube",
   "terms.platforms.p1":
     "Twitch's Terms of Service, Community Guidelines and Developer Services Agreement apply to your use of Twitch through Rafflink. Rafflink is not affiliated with or endorsed by Twitch. Kick's terms and policies apply to your use of Kick through Rafflink, and Rafflink is not affiliated with or endorsed by Kick either.",
+  "terms.platforms.p2":
+    "Rafflink uses YouTube API Services, and the YouTube Terms of Service ({youtubeTerms}) apply to your use of YouTube through Rafflink. Rafflink is not affiliated with or endorsed by YouTube or Google.",
   "terms.use.h": "Acceptable use",
   "terms.use.p1": "You agree not to:",
   "terms.use.i1": "use bots, scripts or other automation to enter or to claim,",
@@ -1193,6 +1220,8 @@ export const en = {
   "verify.mine.title": "Your entry",
   "verify.mine.signedOut":
     "Sign in on the giveaway page with the account you entered with to check your own entry.",
+  "verify.mine.chatOnly":
+    "Viewers enter a YouTube giveaway in chat without signing in, so this page cannot show your own entry or its private salt. The checks above still prove that the draw was fair.",
   "verify.mine.hint":
     "Your entry is hashed from these values and your private salt. Do not share the salt.",
   "verify.mine.platform": "Platform",

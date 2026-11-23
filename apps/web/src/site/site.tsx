@@ -108,6 +108,8 @@ function signInProblem(reason: string | null): MessageKey | null {
   switch (reason) {
     case "invalid-state":
       return "home.problem.invalidState"
+    case "no-channel":
+      return "home.problem.noChannel"
     case "try-again":
       return "home.problem.tryAgain"
     default:

@@ -41,6 +41,7 @@ export const fr: Readonly<Record<MessageKey, string>> = {
   "signIn.title": "Connexion",
   "signIn.button": "Se connecter avec Twitch",
   "signIn.buttonKick": "Se connecter avec Kick",
+  "signIn.buttonYouTube": "Se connecter avec YouTube",
   "signIn.why.admin": "Connecte-toi avec Twitch pour ouvrir la page d'administration.",
   "signIn.why.expired": "Ta session a expiré. Connecte-toi pour continuer.",
   "signIn.why.dashboard": "Connecte-toi pour créer et lancer des giveaways.",
@@ -57,6 +58,8 @@ export const fr: Readonly<Record<MessageKey, string>> = {
   "home.footer.label": "Pied de page",
   "home.problemTitle": "La connexion n'a pas fonctionné",
   "home.problem.invalidState": "La connexion a expiré. Réessaie.",
+  "home.problem.noChannel":
+    "Ce compte Google n'a pas de chaîne YouTube. Connecte-toi avec le compte propriétaire de ta chaîne.",
   "home.problem.tryAgain": "La plateforme de streaming n'a pas répondu. Réessaie.",
 
   "oauthError.title": "La connexion avec {platform} a échoué",
@@ -93,6 +96,13 @@ export const fr: Readonly<Record<MessageKey, string>> = {
   "admin.alert.workerRequests": "Les requêtes Worker atteignent {percent} % de la limite du jour.",
   "admin.alert.doRequests":
     "Les requêtes Durable Object atteignent {percent} % de la limite du jour.",
+  "admin.youtube.title": "Quota YouTube",
+  "admin.youtube.hint":
+    "Chaque appel à l'API YouTube compte dans le quota quotidien de Google, remis à zéro à minuit, heure du Pacifique. Quand il est épuisé, les giveaways YouTube arrêtent de lire le chat.",
+  "admin.youtube.units": "Unités YouTube aujourd'hui",
+  "admin.youtube.usageText": "{used} unités sur {limit} utilisées aujourd'hui",
+  "admin.youtube.alert":
+    "Les unités YouTube du jour atteignent {percent} % de la limite quotidienne. Demande plus de quota à Google avant que les giveaways YouTube arrêtent de lire le chat.",
   "admin.alert.hint":
     "Si la charge continue d'augmenter, souscris à Workers Paid dans le tableau de bord Cloudflare, puis passe le forfait sur Paid ci-dessous.",
   "admin.plan.title": "Forfait Cloudflare",
@@ -325,6 +335,8 @@ export const fr: Readonly<Record<MessageKey, string>> = {
     "Les viewers ont besoin d'un moyen de participer : la page, le chat ou les deux.",
   "issue.reconnect":
     "Reconnecte d'abord Twitch : la participation par sub et par points de chaîne nécessite une autorisation que Rafflink n'a pas encore.",
+  "issue.youtubeQuota":
+    "Les unités YouTube qui restent aujourd'hui ne suffisent pas pour lire le chat jusqu'à la fin des participations. Ferme les participations plus tôt ou réessaie après minuit, heure du Pacifique.",
   "issue.not-a-timestamp": "Saisis une date et une heure valides.",
   "issue.in-the-past": "L'heure de fin doit être dans le futur.",
   "issue.unknown-kind": "Choisis l'une des options.",
@@ -962,6 +974,8 @@ export const fr: Readonly<Record<MessageKey, string>> = {
     "Un message du chat qui commence par ce mot inscrit le viewer, avec les mêmes règles et les mêmes tickets que sur la page. Rafflink n'écrit jamais dans ton chat.",
   "wizard.chatCost.kick":
     "Kick envoie chaque message du chat à Rafflink tant que les participations sont ouvertes, avec ou sans le mot-clé, et chacun utilise une requête de la limite quotidienne de ce serveur, qui est de {limit}. Un chat avec 100 messages par minute utilise 6 000 requêtes par heure. Il en reste {remaining} aujourd'hui.",
+  "wizard.chatCost.youtube":
+    "Rafflink lit le chat YouTube tant que les participations sont ouvertes et, après le tirage, tant que les gagnants peuvent réclamer dans le chat. Chaque minute de lecture utilise environ {perMinute} des {limit} unités YouTube quotidiennes de ce serveur. Il en reste {remaining} aujourd'hui.",
   "wizard.autoEntry.legend": "Participations automatiques",
   "wizard.subEntry.label": "Inscrire les nouveaux abonnés",
   "wizard.subEntry.help":
@@ -1004,7 +1018,7 @@ export const fr: Readonly<Record<MessageKey, string>> = {
 
   "privacy.title": "Politique de confidentialité",
   "privacy.intro":
-    "Rafflink tire au sort les gagnants de giveaways sur Twitch et Kick. Cette politique indique quelles données personnelles il traite, pourquoi, pendant combien de temps et quels sont tes droits. Elle est volontairement courte.",
+    "Rafflink tire au sort les gagnants de giveaways sur Twitch, Kick et YouTube. Cette politique indique quelles données personnelles il traite, pourquoi, pendant combien de temps et quels sont tes droits. Elle est volontairement courte.",
   "privacy.controller.h": "Qui est responsable",
   "privacy.controller.p1":
     "Le responsable du traitement de tes données personnelles sur cette instance est {operator}. Contact : {contact}.",
@@ -1014,7 +1028,7 @@ export const fr: Readonly<Record<MessageKey, string>> = {
     "Rafflink est open source et n'importe qui peut faire tourner sa propre copie. Ce texte décrit ce que fait le logiciel ; la personne qui gère une instance est le responsable du traitement des données qui s'y trouvent. Le projet Rafflink ne reçoit aucune donnée des instances gérées par d'autres.",
   "privacy.data.h": "Quelles données sont traitées",
   "privacy.data.p1":
-    "Tout provient de Twitch ou de Kick, selon la plateforme avec laquelle tu te connectes. Rafflink demande uniquement un accès en lecture et ne publie jamais dans le chat.",
+    "Tout provient de Twitch, de Kick ou de YouTube, selon la plateforme avec laquelle tu te connectes. Rafflink demande uniquement un accès en lecture et ne publie jamais dans le chat.",
   "privacy.data.i1":
     "Streamers : l'identifiant utilisateur sur la plateforme, le nom de connexion, l'ancien nom de connexion après un changement de nom (conservé pour qu'un lien vers l'ancienne page d'historique public redirige), le nom affiché, l'URL de la photo de profil et la date de la première connexion, ainsi que les giveaways qu'ils créent (titre, texte du lot, règles, code du lien, dates) et leurs résultats.",
   "privacy.data.i2":
@@ -1076,6 +1090,17 @@ export const fr: Readonly<Record<MessageKey, string>> = {
     "Les réponses au formulaire du gagnant vont au streamer qui organise le giveaway et à personne d'autre : les modérateurs, l'overlay et les pages publiques ne les affichent jamais.",
   "privacy.recipients.i7":
     "Si l'exploitant active le signalement des erreurs, Sentry (Functional Software, Inc.) reçoit, en tant que sous-traitant de l'exploitant, les rapports d'erreurs du navigateur et du serveur et les conserve dans sa région UE en Allemagne. Un rapport contient l'erreur, l'endroit où elle s'est produite, le navigateur et le système d'exploitation ; comme tout serveur, Sentry voit l'adresse IP de la connexion. Les cookies, le contenu des requêtes, les codes de connexion, les jetons Twitch et Kick et les réponses des gagnants au formulaire sont retirés avant l'envoi d'un rapport.",
+  "privacy.youtube.h": "YouTube",
+  "privacy.youtube.p1":
+    "Rafflink utilise les services d'API YouTube. En te connectant avec YouTube, tu acceptes les Conditions d'utilisation de YouTube ({youtubeTerms}). Les Règles de confidentialité de Google ({googlePrivacy}) s'appliquent à ce que Google fait de tes données.",
+  "privacy.youtube.i1":
+    "Un streamer YouTube se connecte avec Google et donne à Rafflink un accès en lecture seule à son compte YouTube. Rafflink conserve l'identifiant de la chaîne, son handle, son nom et un jeton d'actualisation scellé, et lit le live en cours et son chat.",
+  "privacy.youtube.i2":
+    "Les spectateurs ne se connectent jamais avec Google. Ils participent en écrivant le mot-clé dans le chat, et Rafflink lit l'identifiant de leur chaîne, le nom affiché dans le chat, le message et s'ils sont membres de la chaîne ou modérateurs.",
+  "privacy.youtube.i3":
+    "Les données YouTube des spectateurs que Rafflink conserve sont supprimées sous 30 jours : les participations au plus tard 30 jours après la fin du giveaway, et avec elles les noms des gagnants, si bien que seul l'identifiant de leur chaîne reste avec le tirage.",
+  "privacy.youtube.i4":
+    "Tu peux retirer à tout moment l'accès de Rafflink à ton compte YouTube dans les autorisations de ton compte Google ({googlePermissions}). Le jeton conservé est alors supprimé lors de la vérification horaire suivante.",
   "privacy.cookies.h": "Cookies et stockage local",
   "privacy.cookies.p1":
     "Rafflink ne dépose que des cookies strictement nécessaires, aucune bannière de consentement n'est donc affichée. Ils sont tous HTTP-only et ne servent à rien d'autre.",
@@ -1140,9 +1165,11 @@ export const fr: Readonly<Record<MessageKey, string>> = {
     "Le lot vient du streamer, pas de Rafflink. Rafflink n'est pas partie au giveaway et ne promet ni lot ni livraison.",
   "terms.viewers.i3":
     "Un gain doit être réclamé dans le délai fixé par le streamer. Passé ce délai, le streamer peut procéder à un nouveau tirage.",
-  "terms.platforms.h": "Twitch et Kick",
+  "terms.platforms.h": "Twitch, Kick et YouTube",
   "terms.platforms.p1":
     "Les Conditions d'utilisation, les Règles de la communauté et le Contrat de services pour les développeurs de Twitch s'appliquent à ton utilisation de Twitch via Rafflink. Rafflink n'est ni affilié à Twitch ni approuvé par Twitch. Les conditions et règles de Kick s'appliquent à ton utilisation de Kick via Rafflink, et Rafflink n'est pas non plus affilié à Kick ni approuvé par Kick.",
+  "terms.platforms.p2":
+    "Rafflink utilise les services d'API YouTube, et les Conditions d'utilisation de YouTube ({youtubeTerms}) s'appliquent à ton utilisation de YouTube via Rafflink. Rafflink n'est ni affilié à YouTube ou à Google, ni approuvé par eux.",
   "terms.use.h": "Utilisation acceptable",
   "terms.use.p1": "Tu t'engages à ne pas :",
   "terms.use.i1":
@@ -1243,6 +1270,8 @@ export const fr: Readonly<Record<MessageKey, string>> = {
   "verify.mine.title": "Ta participation",
   "verify.mine.signedOut":
     "Connecte-toi sur la page du giveaway avec le compte utilisé pour participer afin de vérifier ta propre participation.",
+  "verify.mine.chatOnly":
+    "Sur un giveaway YouTube, on participe dans le chat sans se connecter : cette page ne peut donc pas afficher ta propre participation ni son sel privé. Les vérifications ci-dessus prouvent quand même que le tirage était équitable.",
   "verify.mine.hint":
     "Ta participation est hachée à partir de ces valeurs et de ton sel privé. Ne partage pas le sel.",
   "verify.mine.platform": "Plateforme",

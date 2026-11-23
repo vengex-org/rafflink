@@ -40,6 +40,7 @@ const stepNames = ["wizard.step.basics", "wizard.step.rules", "wizard.step.revie
 
 // Sub or points entry is on and Twitch has not granted its scopes: the reconnect note sits next to the field.
 const reconnectIssue: Issue = { field: "subEntry", message: "issue.reconnect" }
+const youtubeQuotaIssue: Issue = { field: "chatKeyword", message: "issue.youtubeQuota" }
 /**
  * Creates a giveaway in three steps; each step is checked before the next, and the server's complaint sends the streamer back to its step.
  * The step is the `?step=` of the address: Next and Back add a history entry, so the browser's back button walks the steps.
@@ -162,6 +163,10 @@ export function CreateForm({
           return
         case "reconnect":
           setIssue(reconnectIssue)
+          showStep(2, "replace")
+          return
+        case "youtube-quota":
+          setIssue(youtubeQuotaIssue)
           showStep(2, "replace")
           return
       }

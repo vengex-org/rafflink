@@ -38,6 +38,7 @@ import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
 import { PlatformError } from "../platform/errors.ts"
 import { providerFor, readyEntryWays, type PlatformAccount } from "../platform/provider.ts"
 import { openStreamerAccess } from "../accounts/streamer-token.ts"
+import type { Instant } from "../ports.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import {
@@ -57,6 +58,7 @@ import {
   type OwnerLiveSnapshot,
   type PointsRewardsJson,
   type RequestBudgetJson,
+  type YouTubeBudgetJson,
 } from "./json.ts"
 import {
   closeEntries,
@@ -102,6 +104,14 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
     if (!(await channelEntryReady(deps, streamer, parsed.value.rules))) {
       return c.json({ error: "reconnect" }, 422)
+    }
+    // A YouTube chat watch spends the install's daily units, so one that cannot read until its close is refused.
+    const budget = streamer.platform === "youtube" ? await youtubeBudget(deps) : null
+    if (budget !== null) {
+      const needed = youtubeUnitsNeeded(budget, parsed.value.closesAt, deps.clock.now())
+      if (needed > budget.remaining) {
+        return c.json({ error: "youtube-quota", needed, remaining: budget.remaining }, 409)
+      }
     }
     const created = await insertWithFreshCode(deps, {
       id: randomId(deps.random),
@@ -274,6 +284,14 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     return c.json<RequestBudgetJson>({ budget: await workerRequestBudget(deps) })
   })
 
+  // The wizard shows what a YouTube giveaway's chat watch costs of today's units before it is made.
+  app.get("/api/dash/youtube-budget", async (c) => {
+    c.header("Cache-Control", "no-store")
+    const budget = await youtubeBudget(deps)
+    if (budget === null) return c.json({ error: "not-found" }, 404)
+    return c.json<YouTubeBudgetJson>(budget)
+  })
+
   app.get("/api/dash/blocks", async (c) => {
     const body: BlockListJson = {
       blocks: await deps.accounts.listBlocks(
@@ -439,6 +457,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       alertPercent: deps.config.usageAlertPercent,
       signupOpen: deps.config.openSignup,
       queue: await deps.queue.stats(),
+      youtubeQuota: await adminYouTubeQuota(deps),
     }
     return c.json(body)
   })
@@ -795,6 +814,38 @@ async function workerRequestBudget(deps: AppDeps): Promise<RequestBudgetJson["bu
   } catch (error) {
     warnUsageUnavailable(error)
     return null
+  }
+}
+
+// Null on an install without a Google client.
+async function youtubeBudget(deps: AppDeps): Promise<YouTubeBudgetJson | null> {
+  const quota = deps.youtubeQuota
+  if (quota === null) return null
+  const { used, limit } = await quota.today(deps.clock.now())
+  return { limit, remaining: limit - used, unitsPerMinute: quota.chatUnitsPerMinute() }
+}
+
+/**
+ * The units the chat watch of a new YouTube giveaway spends until entries close: a giveaway closed by hand
+ * counts one minute, so at least its first minute of reading fits.
+ */
+function youtubeUnitsNeeded(
+  budget: YouTubeBudgetJson,
+  closesAt: Instant | null,
+  now: Instant,
+): number {
+  const minutes = closesAt === null ? 1 : Math.ceil((closesAt - now) / minuteMs)
+  return budget.unitsPerMinute * minutes
+}
+
+/** The admin page shows "unavailable" instead of failing when the count cannot be read. */
+async function adminYouTubeQuota(deps: AppDeps): Promise<AdminUsageJson["youtubeQuota"]> {
+  if (deps.youtubeQuota === null) return null
+  try {
+    return await deps.youtubeQuota.today(deps.clock.now())
+  } catch (error) {
+    console.warn("youtube quota unavailable", { errorClass: errorClass(error) })
+    return "unavailable"
   }
 }
 

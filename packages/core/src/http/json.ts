@@ -26,6 +26,7 @@ import type { AdminLiveGiveawayJson } from "../stats/live-giveaways.ts"
 import type { ReferralCount } from "../stats/stats-store.ts"
 import type { Platform, PlatformCapabilities, SubscriberBadges } from "../platform/provider.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
+import type { YouTubeQuotaUse } from "../youtube/quota.ts"
 
 /**
  * What the giveaway page needs; the overlay token and the streamer's ids stay out. The page's response
@@ -92,6 +93,8 @@ export interface WinnerAnswersJson {
 
 /** The public facts a visitor checks a draw against; `commitment` is null before the commit and for a giveaway drawn before commitments existed. */
 export interface VerifyJson {
+  /** The giveaway's platform; a YouTube viewer enters in chat without signing in, so has no own entry to see here. */
+  readonly platform: Platform
   readonly status: RoomStatus
   readonly entrantCount: number
   readonly ticketTotal: number
@@ -226,6 +229,13 @@ export interface RequestBudgetJson {
   readonly budget: { readonly limit: number; readonly remaining: number } | null
 }
 
+/** Today's YouTube units left under the install's cap, and what a minute of reading a live chat costs, for the wizard's quota note. */
+export interface YouTubeBudgetJson {
+  readonly limit: number
+  readonly remaining: number
+  readonly unitsPerMinute: number
+}
+
 /** The streamer's block list on the dashboard, newest first; `blockListMax` is how many it may hold. */
 export interface BlockListJson {
   readonly blocks: readonly StreamerBlock[]
@@ -288,6 +298,8 @@ export interface AdminUsageJson {
   /** OPEN_SIGNUP: every streamer may create giveaways, so the page shows no access lists. */
   readonly signupOpen: boolean
   readonly queue: QueueStats
+  /** Today's YouTube units; null on an install without a Google client. "unavailable": the count could not be read. */
+  readonly youtubeQuota: YouTubeQuotaUse | null | "unavailable"
 }
 
 /**
@@ -349,10 +361,11 @@ export interface AdminStreamersJson {
   readonly approved: AdminStreamerListJson
 }
 
-export function verifyJson(verification: Verification): VerifyJson {
+export function verifyJson(verification: Verification, platform: Platform): VerifyJson {
   const { commitment, ...rest } = verification
   return {
     ...rest,
+    platform,
     commitment:
       commitment === null
         ? null

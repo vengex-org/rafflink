@@ -2403,6 +2403,25 @@ describe("GiveawayRoom retention", () => {
     expect(count(sql, "entries")).toBe(0)
   })
 
+  it("replaces a YouTube winner's name with removed at the retention time and keeps the channel id", async () => {
+    const { room, clock } = setup({ ...giveaway, platform: "youtube" })
+    enterMany(room, ["1", "2", "3"])
+    room.close(null)
+    await room.draw(1, null)
+    const [drawn] = room.picks()
+
+    clock.advance(retentionMs - 1)
+    room.onAlarm()
+    const before = room.picks()
+    clock.advance(1)
+    room.onAlarm()
+
+    expect(before).toMatchObject([{ login: `login${drawn?.platformUserId}` }])
+    expect(room.picks()).toMatchObject([
+      { platformUserId: drawn?.platformUserId, login: "removed", displayName: "removed" },
+    ])
+  })
+
   it("keeps the name of a rerolled winner with the pick", async () => {
     const { room, clock } = await drawnRoom()
     await room.reroll(0, null)

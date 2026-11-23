@@ -40,3 +40,6 @@ export class PlatformInvalid extends PlatformError {
 
 /** The sign-in did not prove who the user is: no identity in the token answer, or one that failed verification. */
 export class PlatformIdentityRejected extends PlatformInvalid {}
+
+/** The account signed in but owns no channel on the platform, so there is no streamer to sign in. */
+export class PlatformNoChannel extends PlatformIdentityRejected {}

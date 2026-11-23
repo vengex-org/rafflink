@@ -106,6 +106,7 @@ describe("applyAccountsMigrations", () => {
       "0015_history_indexing.sql",
       "0016_kick_chat.sql",
       "0017_kick_channel_entry.sql",
+      "0018_youtube_quota.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",
@@ -121,6 +122,7 @@ describe("applyAccountsMigrations", () => {
       "streamer_overlay",
       "streamer_tokens",
       "streamers",
+      "youtube_quota_days",
     ])
   })
 

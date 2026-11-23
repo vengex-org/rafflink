@@ -41,6 +41,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "signIn.title": "Entrar",
   "signIn.button": "Entrar com a Twitch",
   "signIn.buttonKick": "Entrar com a Kick",
+  "signIn.buttonYouTube": "Entrar com o YouTube",
   "signIn.why.admin": "Entre com a Twitch para abrir a página de administração.",
   "signIn.why.expired": "Sua sessão terminou. Entre de novo para continuar.",
   "signIn.why.dashboard": "Entre para criar e conduzir sorteios.",
@@ -57,6 +58,8 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "home.footer.label": "Rodapé",
   "home.problemTitle": "O login não funcionou",
   "home.problem.invalidState": "O login expirou. Tente de novo.",
+  "home.problem.noChannel":
+    "Esta conta do Google não tem canal no YouTube. Entre com a conta dona do seu canal.",
   "home.problem.tryAgain": "A plataforma de streaming não respondeu. Tente de novo.",
 
   "oauthError.title": "O login com {platform} falhou",
@@ -93,6 +96,13 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "admin.alert.workerRequests": "As requisições do Worker estão em {percent}% do limite de hoje.",
   "admin.alert.doRequests":
     "As requisições de Durable Objects estão em {percent}% do limite de hoje.",
+  "admin.youtube.title": "Cota do YouTube",
+  "admin.youtube.hint":
+    "Cada chamada à API do YouTube conta na cota diária do Google, que é zerada à meia-noite no horário do Pacífico. Quando ela acaba, os sorteios do YouTube param de ler o chat.",
+  "admin.youtube.units": "Unidades do YouTube hoje",
+  "admin.youtube.usageText": "{used} de {limit} unidades usadas hoje",
+  "admin.youtube.alert":
+    "As unidades do YouTube de hoje estão em {percent}% do limite diário. Peça mais cota ao Google antes que os sorteios do YouTube parem de ler o chat.",
   "admin.alert.hint":
     "Se a carga continuar crescendo, assine o Workers Paid no painel da Cloudflare e depois mude o plano para Pago abaixo.",
   "admin.plan.title": "Plano da Cloudflare",
@@ -321,6 +331,8 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "Os espectadores precisam de uma forma de participar: a página, o chat ou os dois.",
   "issue.reconnect":
     "Reconecte a Twitch primeiro: as inscrições por sub e por pontos do canal precisam de uma permissão que o Rafflink ainda não tem.",
+  "issue.youtubeQuota":
+    "As unidades do YouTube que restam hoje não bastam para ler o chat até as inscrições fecharem. Feche as inscrições mais cedo ou tente de novo depois da meia-noite no horário do Pacífico.",
   "issue.not-a-timestamp": "Digite uma data e hora válidas.",
   "issue.in-the-past": "O horário de término precisa estar no futuro.",
   "issue.unknown-kind": "Escolha uma das opções.",
@@ -949,6 +961,8 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "Uma mensagem no chat que começa com esta palavra inscreve o espectador, com as mesmas regras e bilhetes da página. O Rafflink nunca escreve no seu chat.",
   "wizard.chatCost.kick":
     "A Kick envia ao Rafflink todas as mensagens do chat enquanto as inscrições estão abertas, com ou sem a palavra-chave, e cada uma usa uma requisição do limite diário deste servidor, que é {limit}. Um chat com 100 mensagens por minuto usa 6.000 requisições por hora. Restam {remaining} hoje.",
+  "wizard.chatCost.youtube":
+    "O Rafflink lê o chat do YouTube enquanto as inscrições estão abertas e, depois do sorteio, enquanto os vencedores podem resgatar no chat. Cada minuto de leitura usa cerca de {perMinute} das {limit} unidades do YouTube que este servidor tem por dia. Restam {remaining} hoje.",
   "wizard.autoEntry.legend": "Inscrições automáticas",
   "wizard.subEntry.label": "Inscrever novos inscritos",
   "wizard.subEntry.help":
@@ -991,7 +1005,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
 
   "privacy.title": "Política de privacidade",
   "privacy.intro":
-    "O Rafflink sorteia vencedores de sorteios na Twitch e na Kick. Esta política diz quais dados pessoais ele trata, por quê, por quanto tempo e quais direitos você tem. Ela é curta de propósito.",
+    "O Rafflink sorteia vencedores de sorteios na Twitch, na Kick e no YouTube. Esta política diz quais dados pessoais ele trata, por quê, por quanto tempo e quais direitos você tem. Ela é curta de propósito.",
   "privacy.controller.h": "Quem é o responsável",
   "privacy.controller.p1":
     "O controlador dos seus dados pessoais nesta instância é {operator}. Contato: {contact}.",
@@ -1001,7 +1015,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "O Rafflink é open source e qualquer pessoa pode rodar a própria cópia. Este texto descreve o que o software faz; quem opera uma instância é o controlador dos dados nela. O projeto Rafflink não recebe dados de instâncias operadas por outras pessoas.",
   "privacy.data.h": "Quais dados são tratados",
   "privacy.data.p1":
-    "Tudo vem da Twitch ou da Kick, conforme a plataforma com que você entra. O Rafflink pede só acesso de leitura e nunca publica no chat.",
+    "Tudo vem da Twitch, da Kick ou do YouTube, conforme a plataforma com que você entra. O Rafflink pede só acesso de leitura e nunca publica no chat.",
   "privacy.data.i1":
     "Streamers: ID de usuário na plataforma, nome de login, o nome de login anterior após uma troca de nome (guardado para que um link para a antiga página de histórico público redirecione), nome de exibição, a URL da foto de perfil e o horário do primeiro login, além dos sorteios que eles criam (título, texto do prêmio, regras, código do link, horários) e seus resultados.",
   "privacy.data.i2":
@@ -1062,6 +1076,17 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "As respostas do formulário do vencedor vão para o streamer que conduz o sorteio e para mais ninguém: os moderadores, o overlay e as páginas públicas nunca as mostram.",
   "privacy.recipients.i7":
     "Se o operador ativar o relatório de erros, a Sentry (Functional Software, Inc.) recebe, como subcontratante do operador, relatórios de erros no navegador e no servidor e guarda-os na sua região da UE, na Alemanha. Um relatório contém o erro, onde ocorreu, o navegador e o sistema operativo; como qualquer servidor, a Sentry vê o endereço IP da ligação. Os cookies, o conteúdo dos pedidos, os códigos de início de sessão, os tokens do Twitch e do Kick e as respostas dos vencedores no formulário são removidos antes de um relatório ser enviado.",
+  "privacy.youtube.h": "YouTube",
+  "privacy.youtube.p1":
+    "O Rafflink usa os Serviços de API do YouTube. Ao entrar com o YouTube, você aceita os Termos de Serviço do YouTube ({youtubeTerms}). A Política de Privacidade do Google ({googlePrivacy}) se aplica ao que o Google faz com os seus dados.",
+  "privacy.youtube.i1":
+    "Um streamer do YouTube entra com o Google e dá ao Rafflink acesso somente leitura à conta do YouTube. O Rafflink guarda o ID do canal, o identificador, o nome do canal e um token de atualização selado, e lê a transmissão ao vivo ativa e o chat dela.",
+  "privacy.youtube.i2":
+    "Os espectadores nunca entram com o Google. Eles participam escrevendo a palavra-chave no chat, e o Rafflink lê o ID do canal deles, o nome exibido no chat, a mensagem e se são membros do canal ou moderadores.",
+  "privacy.youtube.i3":
+    "Os dados do YouTube dos espectadores que o Rafflink guarda são apagados em até 30 dias: as inscrições no máximo 30 dias depois do fim do sorteio e, junto com elas, os nomes dos vencedores, de modo que só o ID do canal deles fica com o sorteado.",
+  "privacy.youtube.i4":
+    "Você pode retirar o acesso do Rafflink à sua conta do YouTube a qualquer momento nas permissões da sua Conta do Google ({googlePermissions}). O token guardado é então apagado na próxima verificação de hora em hora.",
   "privacy.cookies.h": "Cookies e armazenamento local",
   "privacy.cookies.p1":
     "O Rafflink define só cookies estritamente necessários, por isso nenhum banner de consentimento é exibido. Todos são HTTP-only e não são usados para mais nada.",
@@ -1125,9 +1150,11 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "O prêmio vem do streamer, não do Rafflink. O Rafflink não é parte do sorteio e não promete um prêmio nem a entrega dele.",
   "terms.viewers.i3":
     "Uma vitória precisa ser resgatada dentro do prazo que o streamer definiu. Depois disso, o streamer pode sortear de novo.",
-  "terms.platforms.h": "Twitch e Kick",
+  "terms.platforms.h": "Twitch, Kick e YouTube",
   "terms.platforms.p1":
     "Os Termos de Serviço, as Diretrizes da Comunidade e o Contrato de Serviços para Desenvolvedores da Twitch se aplicam ao seu uso da Twitch pelo Rafflink. O Rafflink não é afiliado à Twitch nem endossado por ela. Os termos e políticas da Kick se aplicam ao seu uso da Kick pelo Rafflink, e o Rafflink também não é afiliado à Kick nem endossado por ela.",
+  "terms.platforms.p2":
+    "O Rafflink usa os Serviços de API do YouTube, e os Termos de Serviço do YouTube ({youtubeTerms}) se aplicam ao seu uso do YouTube pelo Rafflink. O Rafflink não é afiliado ao YouTube nem ao Google, nem endossado por eles.",
   "terms.use.h": "Uso aceitável",
   "terms.use.p1": "Você concorda em não:",
   "terms.use.i1": "usar bots, scripts ou outra automação para participar ou para resgatar,",
@@ -1226,6 +1253,8 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "verify.mine.title": "Sua inscrição",
   "verify.mine.signedOut":
     "Entre na página do sorteio com a conta com que você participou para verificar sua própria inscrição.",
+  "verify.mine.chatOnly":
+    "Num sorteio do YouTube a inscrição é feita no chat, sem login, então esta página não pode mostrar a sua inscrição nem o salt privado dela. As verificações acima continuam provando que o sorteio foi justo.",
   "verify.mine.hint":
     "Sua inscrição é gerada como hash a partir destes valores e do seu salt privado. Não compartilhe o salt.",
   "verify.mine.platform": "Plataforma",

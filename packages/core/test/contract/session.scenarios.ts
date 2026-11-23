@@ -14,7 +14,7 @@ export function sessionScenarios(context: ContractContext): void {
     expect(response.headers.get("cache-control")).toBe("no-store")
     expect(await response.json()).toEqual({
       streamer: null,
-      signInPlatforms: ["twitch", "kick"],
+      signInPlatforms: ["twitch", "kick", "youtube"],
       donateUrl: null,
       operator: null,
     })
@@ -36,7 +36,7 @@ export function sessionScenarios(context: ContractContext): void {
 
       expect(await response.json()).toEqual({
         streamer: null,
-        signInPlatforms: ["twitch", "kick"],
+        signInPlatforms: ["twitch", "kick", "youtube"],
         donateUrl: null,
         operator: {
           name: "Example Operator",
@@ -79,7 +79,7 @@ export function sessionScenarios(context: ContractContext): void {
         publicHistory: false,
         historyIndexed: false,
       },
-      signInPlatforms: ["twitch", "kick"],
+      signInPlatforms: ["twitch", "kick", "youtube"],
       donateUrl: null,
       operator: null,
     })
@@ -98,7 +98,7 @@ export function sessionScenarios(context: ContractContext): void {
     expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
     expect(await (await streamer.request("/api/session")).json()).toEqual({
       streamer: null,
-      signInPlatforms: ["twitch", "kick"],
+      signInPlatforms: ["twitch", "kick", "youtube"],
       donateUrl: null,
       operator: null,
     })

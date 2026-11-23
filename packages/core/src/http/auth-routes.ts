@@ -6,7 +6,7 @@ import { giveawayPath } from "../lib/page-paths.ts"
 import { randomId } from "../lib/random-id.ts"
 import { sealSecret } from "../lib/seal.ts"
 import type { Instant } from "../ports.ts"
-import { PlatformError, PlatformIdentityRejected } from "../platform/errors.ts"
+import { PlatformError, PlatformIdentityRejected, PlatformNoChannel } from "../platform/errors.ts"
 import { codeChallenge, codeVerifier } from "../platform/pkce.ts"
 import {
   configuredProviders,
@@ -137,6 +137,9 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     await writeEntryScopesHint(c, deps, saved.entryWays)
     return c.redirect(saved.returnPath ?? defaultReturnPath)
   })
+
+  // Viewers and moderators sign in only on a platform where a sign-in can enter or prove a moderator.
+  if (!provider.capabilities.pageEntry && !provider.capabilities.moderatorRole) return app
 
   app.get(`/auth/${platform}/viewer/start`, async (c) => {
     const code = c.req.query("giveaway")
@@ -282,8 +285,9 @@ async function exchangeStreamer(
   }
 }
 
-function signInFailure(error: unknown): "invalid-state" | "try-again" {
+function signInFailure(error: unknown): "invalid-state" | "no-channel" | "try-again" {
   if (!(error instanceof PlatformError)) throw error
+  if (error instanceof PlatformNoChannel) return "no-channel"
   return error instanceof PlatformIdentityRejected ? "invalid-state" : "try-again"
 }
 

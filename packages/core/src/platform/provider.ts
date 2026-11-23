@@ -9,7 +9,7 @@ import type { Clock, Instant, SocketConnector } from "../ports.ts"
 import type { ChannelEntryEvent, ChatMessage, ChatSourceFactory } from "./chat-source.ts"
 
 /** The streaming platforms the app signs in with; the `platform` column of streamers, giveaways and entries. */
-const platforms = ["twitch", "kick"] as const
+const platforms = ["twitch", "kick", "youtube"] as const
 
 export type Platform = (typeof platforms)[number]
 
@@ -116,7 +116,8 @@ export interface ChannelRoles {
  * `unavailable`, so a caller keeps the token (spec AC-22).
  */
 export type TokenValidation =
-  | { readonly status: "valid"; readonly userId: string }
+  /** `userId` is null when the platform's check does not tell whose token it is. */
+  | { readonly status: "valid"; readonly userId: string | null }
   | { readonly status: "invalid" }
   | { readonly status: "unavailable" }
 
@@ -246,6 +247,14 @@ export function readyEntryWays(
   return channelEntryVias.filter((way) =>
     provider.entryScopes[way].every((scope) => scopes.includes(scope)),
   )
+}
+
+/**
+ * Whether a giveaway keeps its winners' names after its entrants are deleted. YouTube's Developer Policies
+ * allow stored API data for 30 days at most, so a YouTube giveaway keeps only its winners' channel ids.
+ */
+export function keepsWinnerNames(platform: string): boolean {
+  return platform !== "youtube"
 }
 
 export function isPlatform(value: string): value is Platform {

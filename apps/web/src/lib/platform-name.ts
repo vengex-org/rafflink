@@ -4,4 +4,5 @@ import type { Platform } from "@rafflink/core/platform/provider"
 export const platformNames: Readonly<Record<Platform, string>> = {
   twitch: "Twitch",
   kick: "Kick",
+  youtube: "YouTube",
 }

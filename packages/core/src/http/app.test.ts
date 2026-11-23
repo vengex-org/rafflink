@@ -2278,6 +2278,7 @@ describe("draw commitment", () => {
     const leaves = await new Browser(harness).request(`/api/g/${code}/leaves/${noRoot}`)
 
     expect(await verify.json()).toEqual({
+      platform: "twitch",
       status: "open",
       entrantCount: 0,
       ticketTotal: 0,

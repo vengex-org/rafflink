@@ -24,6 +24,7 @@ const leaves = {
   tickets: [3, 1, 7],
 }
 const drawn = {
+  platform: "twitch",
   status: "drawn",
   entrantCount: 3,
   ticketTotal: 11,
@@ -391,6 +392,17 @@ describe("verify page", () => {
     expect(
       await view.findByText(/Sign in on the giveaway page with the account you entered with/),
     ).toBeTruthy()
+  })
+
+  it("tells a YouTube viewer, who entered in chat without signing in, that only the draw can be checked", async () => {
+    mockFetch(routes({ "GET /api/g/ABCDE/verify": () => ok({ ...drawn, platform: "youtube" }) }))
+
+    const view = renderApp("/ABCDE/verify")
+
+    expect(
+      await view.findByText(/enter a YouTube giveaway in chat without signing in/),
+    ).toBeTruthy()
+    expect(view.queryByText(/Sign in on the giveaway page/)).toBeNull()
   })
 
   it("shows the entrant their own values and finds their entry in the list", async () => {

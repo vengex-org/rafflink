@@ -35,6 +35,7 @@ import type {
   SyncSql,
 } from "../ports.ts"
 import { maxBoundParameters } from "../ports.ts"
+import { keepsWinnerNames } from "../platform/provider.ts"
 import type {
   ChannelEntryEvent,
   ChannelEntryRefusal,
@@ -1696,6 +1697,9 @@ export class GiveawayRoom {
       this.sql.exec("DELETE FROM entries", [])
       this.sql.exec("DELETE FROM channel_roles", [])
       this.sql.exec("DELETE FROM excluded_users", [])
+      if (!keepsWinnerNames(state.platform)) {
+        this.sql.exec("UPDATE draws SET login = ?, display_name = ?", [removedName, removedName])
+      }
       this.sql.exec("UPDATE room_state SET entries_deleted = 1 WHERE id = 1", [])
     })
     console.info("room entries deleted", {
