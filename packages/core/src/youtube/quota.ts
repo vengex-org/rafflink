@@ -1,5 +1,6 @@
 import type { ResolvedConfig } from "../config.ts"
 import type { AsyncSql, Instant } from "../ports.ts"
+import { hourMs } from "../stats/time.ts"
 
 /**
  * The units Google charges per call (YouTube Data API quota calculator): a list of channels or live
@@ -13,7 +14,10 @@ export const youtubeUnits = {
 
 export type YouTubeQuotaConfig = Pick<
   ResolvedConfig,
-  "youtubeDailyQuotaUnits" | "youtubeQuotaAlertPercent" | "youtubeChatPollMinMs"
+  | "youtubeDailyQuotaUnits"
+  | "youtubeQuotaAlertPercent"
+  | "youtubeChatPollMinMs"
+  | "youtubeWinnerPollMinMs"
 >
 
 /** Today's YouTube units against the install's daily cap, as the admin page and the create form read them. */
@@ -66,9 +70,14 @@ export class YouTubeQuota {
     return { used, limit, alert: used * 100 >= this.config.youtubeQuotaAlertPercent * limit }
   }
 
-  /** The units a chat watch spends per minute when it reads the chat as often as it may. */
+  /** The units a chat watch spends per minute when it reads the entry keyword as often as it may. */
   chatUnitsPerMinute(): number {
-    return Math.ceil(60_000 / this.config.youtubeChatPollMinMs) * youtubeUnits.liveChatMessages
+    return unitsPerMinute(this.config.youtubeChatPollMinMs)
+  }
+
+  /** The same after the draw, while it reads only the winners' claims. */
+  winnerUnitsPerMinute(): number {
+    return unitsPerMinute(this.config.youtubeWinnerPollMinMs)
   }
 }
 
@@ -84,6 +93,19 @@ const pacificDate = new Intl.DateTimeFormat("en-US", {
 export function quotaDay(at: Instant): string {
   const parts = new Map(pacificDate.formatToParts(at).map((part) => [part.type, part.value]))
   return `${parts.get("year")}-${parts.get("month")}-${parts.get("day")}`
+}
+
+/** The first instant of the quota day after the one `at` falls in. */
+export function nextQuotaDayStart(at: Instant): Instant {
+  const today = quotaDay(at)
+  // Pacific midnight is 07:00 or 08:00 UTC, so the next one lies within 24 hours and is on a whole hour.
+  let next = Math.floor(at / hourMs) * hourMs + hourMs
+  while (quotaDay(next) === today) next += hourMs
+  return next
+}
+
+function unitsPerMinute(leastWaitMs: number): number {
+  return Math.ceil(60_000 / leastWaitMs) * youtubeUnits.liveChatMessages
 }
 
 function unitsOf(value: unknown): number {

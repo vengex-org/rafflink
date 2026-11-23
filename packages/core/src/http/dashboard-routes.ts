@@ -105,10 +105,11 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     if (!(await channelEntryReady(deps, streamer, parsed.value.rules))) {
       return c.json({ error: "reconnect" }, 422)
     }
-    // A YouTube chat watch spends the install's daily units, so one that cannot read until its close is refused.
+    // A YouTube chat watch spends the install's daily units, so one that cannot read until its close and
+    // through its claim time is refused.
     const budget = streamer.platform === "youtube" ? await youtubeBudget(deps) : null
     if (budget !== null) {
-      const needed = youtubeUnitsNeeded(budget, parsed.value.closesAt, deps.clock.now())
+      const needed = youtubeUnitsNeeded(budget, parsed.value, deps.clock.now())
       if (needed > budget.remaining) {
         return c.json({ error: "youtube-quota", needed, remaining: budget.remaining }, 409)
       }
@@ -822,20 +823,28 @@ async function youtubeBudget(deps: AppDeps): Promise<YouTubeBudgetJson | null> {
   const quota = deps.youtubeQuota
   if (quota === null) return null
   const { used, limit } = await quota.today(deps.clock.now())
-  return { limit, remaining: limit - used, unitsPerMinute: quota.chatUnitsPerMinute() }
+  return {
+    limit,
+    remaining: limit - used,
+    unitsPerMinute: quota.chatUnitsPerMinute(),
+    winnerUnitsPerMinute: quota.winnerUnitsPerMinute(),
+  }
 }
 
 /**
- * The units the chat watch of a new YouTube giveaway spends until entries close: a giveaway closed by hand
- * counts one minute, so at least its first minute of reading fits.
+ * The units the chat watch of a new YouTube giveaway spends: the keyword reads until entries close, then
+ * the winners' reads through one claim time. A giveaway closed by hand has no known end, so only its first
+ * minute counts; the create form warns how many minutes today's units cover.
  */
 function youtubeUnitsNeeded(
   budget: YouTubeBudgetJson,
-  closesAt: Instant | null,
+  giveaway: { readonly closesAt: Instant | null; readonly claimSeconds: number },
   now: Instant,
 ): number {
-  const minutes = closesAt === null ? 1 : Math.ceil((closesAt - now) / minuteMs)
-  return budget.unitsPerMinute * minutes
+  const { closesAt, claimSeconds } = giveaway
+  const entryMinutes = closesAt === null ? 1 : Math.ceil((closesAt - now) / minuteMs)
+  const claimMinutes = Math.ceil((claimSeconds * 1000) / minuteMs)
+  return budget.unitsPerMinute * entryMinutes + budget.winnerUnitsPerMinute * claimMinutes
 }
 
 /** The admin page shows "unavailable" instead of failing when the count cannot be read. */

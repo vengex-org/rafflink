@@ -43,6 +43,7 @@ import { StatsStore } from "../src/stats/stats-store.ts"
 import { TwitchClient } from "../src/twitch/twitch-client.ts"
 import { TwitchProvider } from "../src/twitch/twitch-provider.ts"
 import { enterQueuedCode } from "../src/viewer/enter-giveaway.ts"
+import { YouTubeQuota } from "../src/youtube/quota.ts"
 import { FakeBeacon } from "./fake-beacon.ts"
 import { idleChat } from "./idle-chat.ts"
 
@@ -315,6 +316,7 @@ export const validTickets = {
   sub_t1: 3,
   sub_t2: 4,
   sub_t3: 5,
+  member: 0,
   vip: 6,
   moderator: 7,
 }
@@ -378,6 +380,8 @@ export interface HarnessOptions {
   readonly capabilities?: Partial<PlatformCapabilities>
   /** The built `index.html` the pages are answered with; without it the app answers the API only. */
   readonly spaTemplate?: string
+  /** The YouTube quota the admin page reads; none, as without a Google client, when absent. */
+  readonly youtubeQuota?: YouTubeQuota
 }
 
 // Twitch with fewer capabilities, the stand-in for another platform's rules.
@@ -461,7 +465,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     stats: new StatsStore(accountsSql, config),
     usage,
     planQueue,
-    youtubeQuota: null,
+    youtubeQuota: options.youtubeQuota ?? null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
     keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),

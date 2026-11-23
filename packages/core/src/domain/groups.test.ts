@@ -8,6 +8,7 @@ const tickets: Tickets = {
   sub_t1: 5,
   sub_t2: 6,
   sub_t3: 7,
+  member: 0,
   vip: 3,
   moderator: 4,
 }

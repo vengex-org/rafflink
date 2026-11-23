@@ -76,6 +76,8 @@ export function oauthRoutes(state: FakeState): Hono {
   })
 
   app.get("/tokeninfo", (c) => {
+    const failure = takeFailure(state, "tokeninfo")
+    if (failure !== undefined) return c.json({ error: failure.reason }, failure.status)
     const token = state.accessTokens.get(c.req.query("access_token") ?? "")
     if (token === undefined || token.revoked) return c.json({ error: "invalid_token" }, 400)
     return c.json({

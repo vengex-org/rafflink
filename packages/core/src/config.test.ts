@@ -112,6 +112,18 @@ describe("resolveConfig", () => {
     expect(resolveConfig(required).devFakeKick).toBe(false)
   })
 
+  it("refuses the fake YouTube behind a public URL or without a Google client", () => {
+    const client = { YOUTUBE_CLIENT_ID: "yid", YOUTUBE_CLIENT_SECRET: "ys" }
+    const local = { ...required, DEV_FAKE_YOUTUBE: "true", PUBLIC_URL: "http://localhost:3000" }
+
+    expect(resolveConfig({ ...local, ...client }).devFakeYouTube).toBe(true)
+    expect(failure({ ...local, ...client, PUBLIC_URL: "https://rafflink.app" })).toMatchObject({
+      env: "DEV_FAKE_YOUTUBE",
+      reason: "fake-youtube-needs-local-public-url",
+    })
+    expect(failure(local)).toMatchObject({ env: "YOUTUBE_CLIENT_ID", reason: "missing" })
+  })
+
   it("rejects a processing timeout that does not exceed the Twitch requests of one queued code in a row", () => {
     const limitSeconds = queuedEntryTwitchRequests * 5
     for (const seconds of [limitSeconds - 1, limitSeconds]) {

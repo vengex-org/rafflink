@@ -974,6 +974,7 @@ export async function getYouTubeBudget(): Promise<YouTubeBudgetJson | null | "un
     limit: num(source, "limit"),
     remaining: num(source, "remaining"),
     unitsPerMinute: num(source, "unitsPerMinute"),
+    winnerUnitsPerMinute: num(source, "winnerUnitsPerMinute"),
   }
 }
 
@@ -1242,6 +1243,7 @@ function parseRules(source: Json): GiveawayRules {
     sub_t1: num(tickets, "sub_t1"),
     sub_t2: num(tickets, "sub_t2"),
     sub_t3: num(tickets, "sub_t3"),
+    member: num(tickets, "member"),
     vip: num(tickets, "vip"),
     moderator: num(tickets, "moderator"),
   }

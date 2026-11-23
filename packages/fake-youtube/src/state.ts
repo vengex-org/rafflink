@@ -13,7 +13,12 @@ export interface FakeYouTubeOptions {
   defaultChannel: FakeYouTubeChannel
 }
 
-export type FailableEndpoint = "token" | "channels" | "live-broadcasts" | "live-chat-messages"
+export type FailableEndpoint =
+  | "token"
+  | "tokeninfo"
+  | "channels"
+  | "live-broadcasts"
+  | "live-chat-messages"
 export type FailureStatus = 400 | 401 | 403 | 404 | 429 | 500 | 503
 
 /** A scripted failure: the status and the error reason the body names. */

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { Browser, createHarness, users, validRules, type Harness } from "../../test/app-fixture.ts"
 import { UsageUnavailable } from "../lib/usage-unavailable.ts"
-import type { DayRequests } from "../ports.ts"
+import type { AsyncSql, DayRequests } from "../ports.ts"
+import { YouTubeQuota } from "../youtube/quota.ts"
 
 let harness: Harness
 let browser: Browser
@@ -139,3 +140,37 @@ describe("request budget for the wizard", () => {
     expect(response.status).toBe(401)
   })
 })
+
+describe("YouTube quota on the admin page", () => {
+  it("says the YouTube count is unavailable when the accounts store does not answer", async () => {
+    spyOn(console, "warn").mockImplementation(() => {})
+    await harness.stop()
+    const failing: AsyncSql = {
+      all: async () => {
+        throw new Error("store down")
+      },
+      run: async () => {},
+      batch: async () => {},
+    }
+    harness = await createHarness({ youtubeQuota: new YouTubeQuota(failing, resolvedQuotaConfig) })
+    browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+
+    const body: { youtubeQuota: unknown } = await (await browser.request("/api/admin/usage")).json()
+
+    expect(body.youtubeQuota).toBe("unavailable")
+  })
+
+  it("shows no YouTube count on an install without a Google client", async () => {
+    const body: { youtubeQuota: unknown } = await (await browser.request("/api/admin/usage")).json()
+
+    expect(body.youtubeQuota).toBeNull()
+  })
+})
+
+const resolvedQuotaConfig = {
+  youtubeDailyQuotaUnits: 10_000,
+  youtubeQuotaAlertPercent: 70,
+  youtubeChatPollMinMs: 5000,
+  youtubeWinnerPollMinMs: 30_000,
+}

@@ -390,9 +390,7 @@ export class TwitchClient {
       return { status: "unavailable" }
     }
     const validated = parseValidated(body)
-    return validated.ok
-      ? { status: "valid", userId: validated.value.userId }
-      : { status: "unavailable" }
+    return validated.ok ? { status: "valid" } : { status: "unavailable" }
   }
 
   private async grantAppToken(): Promise<string> {

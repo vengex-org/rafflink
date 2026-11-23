@@ -33,7 +33,16 @@ export const vipsPath = "/helix/channels/vips"
 export const moderatorsPath = "/helix/moderation/moderators"
 
 export const defaultRules: GiveawayRules = {
-  tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 2,
+    sub_t1: 3,
+    sub_t2: 4,
+    sub_t3: 5,
+    member: 0,
+    vip: 6,
+    moderator: 7,
+  },
   subsOnly: false,
   followersOnly: false,
   minAccountAgeDays: null,
@@ -297,6 +306,7 @@ export class World {
       YOUTUBE_API_BASE_URL: this.youtube.origin,
       YOUTUBE_TIMEOUT_MS: "2000",
       YOUTUBE_CHAT_POLL_MIN_MS: "1000",
+      YOUTUBE_WINNER_POLL_MIN_MS: "1000",
       TWITCH_ID_BASE_URL: this.twitch.origin,
       TWITCH_HELIX_BASE_URL: this.twitch.origin,
       EVENTSUB_URL: `${this.twitch.origin.replace(/^http/, "ws")}${eventSubPath}`,

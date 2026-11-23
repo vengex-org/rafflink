@@ -141,7 +141,7 @@ describe("receiveKickWebhook", () => {
           login: "kick_viewer",
           displayName: "Kick_Viewer",
           text: "claiming!",
-          roles: { subTier: null, isVip: false, isModerator: false },
+          roles: { subTier: null, isMember: false, isVip: false, isModerator: false },
         },
       },
     ])
@@ -446,7 +446,7 @@ describe("parseKickEvent", () => {
   it("reads the moderator and subscriber badges", () => {
     expect(parseKickEvent(chatEvent(), JSON.stringify(event))).toMatchObject({
       kind: "chat",
-      message: { roles: { subTier: 1, isVip: false, isModerator: true } },
+      message: { roles: { subTier: 1, isMember: false, isVip: false, isModerator: true } },
     })
   })
 

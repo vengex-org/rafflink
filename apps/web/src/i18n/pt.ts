@@ -230,6 +230,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "tier.sub_t1": "Nível 1",
   "tier.sub_t2": "Nível 2",
   "tier.sub_t3": "Nível 3",
+  "tier.member": "Membro",
   "tier.vip": "VIP",
   "tier.moderator": "Mod",
   "overlay.enterAt": "Participe em",
@@ -281,6 +282,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "group.sub_t1": "Inscritos, nível 1",
   "group.sub_t2": "Inscritos, nível 2",
   "group.sub_t3": "Inscritos, nível 3",
+  "group.member": "Membros do canal",
   "group.vip": "VIPs",
   "group.moderator": "Moderadores",
 
@@ -473,6 +475,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "entry.role.sub_t1": "como inscrito de nível 1",
   "entry.role.sub_t2": "como inscrito de nível 2",
   "entry.role.sub_t3": "como inscrito de nível 3",
+  "entry.role.member": "como membro do canal",
   "entry.role.vip": "como VIP",
   "entry.role.moderator": "como moderador",
   "entry.pending.title": "Sua inscrição está sendo feita",
@@ -903,6 +906,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "odds.sub_t1": "Um sub de nível 1 tem {times}x a chance de um espectador.",
   "odds.sub_t2": "Um sub de nível 2 tem {times}x a chance de um espectador.",
   "odds.sub_t3": "Um sub de nível 3 tem {times}x a chance de um espectador.",
+  "odds.member": "Um membro do canal tem {times}x a chance de um espectador.",
   "odds.vip": "Um VIP tem {times}x a chance de um espectador.",
   "odds.moderator": "Um moderador tem {times}x a chance de um espectador.",
   "wizard.ending.legend": "Quando as inscrições terminam?",
@@ -962,7 +966,9 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "wizard.chatCost.kick":
     "A Kick envia ao Rafflink todas as mensagens do chat enquanto as inscrições estão abertas, com ou sem a palavra-chave, e cada uma usa uma requisição do limite diário deste servidor, que é {limit}. Um chat com 100 mensagens por minuto usa 6.000 requisições por hora. Restam {remaining} hoje.",
   "wizard.chatCost.youtube":
-    "O Rafflink lê o chat do YouTube enquanto as inscrições estão abertas e, depois do sorteio, enquanto os vencedores podem resgatar no chat. Cada minuto de leitura usa cerca de {perMinute} das {limit} unidades do YouTube que este servidor tem por dia. Restam {remaining} hoje.",
+    "O Rafflink lê o chat do YouTube enquanto as inscrições estão abertas, usando cerca de {perMinute} por minuto das {limit} unidades do YouTube que este servidor tem por dia, e depois do sorteio até os vencedores resgatarem, usando cerca de {winnerPerMinute} por minuto. Restam {remaining} hoje.",
+  "wizard.chatCost.youtubeByHand":
+    "Você fecha este sorteio manualmente, então o servidor não consegue verificar antes se as unidades de hoje bastam: elas cobrem cerca de {minutes} minutos de inscrições. Defina um horário de término para que isso seja verificado.",
   "wizard.autoEntry.legend": "Inscrições automáticas",
   "wizard.subEntry.label": "Inscrever novos inscritos",
   "wizard.subEntry.help":
@@ -1049,7 +1055,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "privacy.retention.i1":
     "As inscrições (IDs de usuário na plataforma, nomes, URLs de fotos, grupos, bilhetes, horários de inscrição, salts) são apagadas no máximo 30 dias depois que o sorteio é encerrado; quem opera a instância pode definir um prazo menor. Isso apaga também as inscrições das pessoas sorteadas; o ID de usuário e os nomes delas continuam junto ao sorteio, incluindo os substituídos em novo sorteio (veja abaixo).",
   "privacy.retention.i2":
-    "Quando um streamer remove o acesso do Rafflink na Twitch ou na Kick, só o token armazenado é apagado. A conta e seus sorteios ficam até o streamer apagá-los no painel, um sorteio ou todos os dados de uma vez, ou pedir a quem opera a instância que o faça (veja o contato acima).",
+    "Quando um streamer remove o acesso do Rafflink na Twitch, na Kick ou no YouTube, só o token armazenado é apagado. A conta e seus sorteios ficam até o streamer apagá-los no painel, um sorteio ou todos os dados de uma vez, ou pedir a quem opera a instância que o faça (veja o contato acima).",
   "privacy.retention.i3":
     "Os códigos de login que esperam na fila são descartados após alguns minutos.",
   "privacy.retention.i4":
@@ -1065,7 +1071,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "privacy.recipients.i1":
     "O provedor de hospedagem desta instância armazena e entrega o serviço como operador de dados de quem opera a instância e pode tratar dados fora do Espaço Econômico Europeu, conforme seus próprios termos e salvaguardas.",
   "privacy.recipients.i2":
-    "A Twitch é o provedor de identidade para logins com a Twitch. Ela recebe seu login e, durante um sorteio, chamadas de API que verificam seguidores, inscrições e papéis, e a assinatura do chat usada para reconhecer um resgate. O navegador do streamer também carrega fotos de perfil e emblemas de inscrito dos servidores de imagens da Twitch. A Twitch é uma controladora independente, conforme seu próprio aviso de privacidade. A Kick é o provedor de identidade para logins com a Kick. Ela recebe seu login e, durante um sorteio, a assinatura que envia as mensagens do chat do streamer ao Rafflink. A Kick é uma controladora independente, conforme seu próprio aviso de privacidade.",
+    "A Twitch é o provedor de identidade para logins com a Twitch. Ela recebe seu login e, durante um sorteio, chamadas de API que verificam seguidores, inscrições e papéis, e a assinatura do chat usada para reconhecer um resgate. O navegador do streamer também carrega fotos de perfil e emblemas de inscrito dos servidores de imagens da Twitch. A Twitch é uma controladora independente, conforme seu próprio aviso de privacidade. A Kick é o provedor de identidade para logins com a Kick. Ela recebe seu login e, durante um sorteio, a assinatura que envia as mensagens do chat do streamer ao Rafflink. A Kick é uma controladora independente, conforme seu próprio aviso de privacidade. O Google é o provedor de identidade dos logins com o YouTube. Ele recebe o login do streamer e, durante um sorteio, as chamadas à API que encontram a transmissão ao vivo e leem o chat dela. O Google é um controlador independente, com sua própria política de privacidade.",
   "privacy.recipients.i3":
     "O streamer que conduz um sorteio vê os participantes e vencedores dele. Os nomes dos participantes e vencedores aparecem na página ao vivo e no overlay do sorteio, e as fotos de perfil deles na página ao vivo.",
   "privacy.recipients.i4":
@@ -1075,7 +1081,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "privacy.recipients.i6":
     "As respostas do formulário do vencedor vão para o streamer que conduz o sorteio e para mais ninguém: os moderadores, o overlay e as páginas públicas nunca as mostram.",
   "privacy.recipients.i7":
-    "Se o operador ativar o relatório de erros, a Sentry (Functional Software, Inc.) recebe, como subcontratante do operador, relatórios de erros no navegador e no servidor e guarda-os na sua região da UE, na Alemanha. Um relatório contém o erro, onde ocorreu, o navegador e o sistema operativo; como qualquer servidor, a Sentry vê o endereço IP da ligação. Os cookies, o conteúdo dos pedidos, os códigos de início de sessão, os tokens do Twitch e do Kick e as respostas dos vencedores no formulário são removidos antes de um relatório ser enviado.",
+    "Se o operador ativar o relatório de erros, a Sentry (Functional Software, Inc.) recebe, como subcontratante do operador, relatórios de erros no navegador e no servidor e guarda-os na sua região da UE, na Alemanha. Um relatório contém o erro, onde ocorreu, o navegador e o sistema operativo; como qualquer servidor, a Sentry vê o endereço IP da ligação. Os cookies, o conteúdo dos pedidos, os códigos de início de sessão, os tokens da Twitch, da Kick e do Google e as respostas dos vencedores no formulário são removidos antes de um relatório ser enviado.",
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "O Rafflink usa os Serviços de API do YouTube. Ao entrar com o YouTube, você aceita os Termos de Serviço do YouTube ({youtubeTerms}). A Política de Privacidade do Google ({googlePrivacy}) se aplica ao que o Google faz com os seus dados.",
@@ -1109,7 +1115,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "privacy.rights.none":
     "Quem opera esta instância não publicou dados de contato aqui, e a pessoa que compartilhou o link com você pode não ser quem opera a instância. Sem um contato, não há uma forma garantida de exercer esses direitos por esta página.",
   "privacy.rights.p2":
-    "Você também pode remover o acesso do Rafflink a qualquer momento nas configurações da Twitch, em Conexões, ou nas configurações da sua conta da Kick.",
+    "Você também pode remover o acesso do Rafflink a qualquer momento nas configurações da Twitch, em Conexões, nas configurações da sua conta da Kick ou nas permissões da sua Conta do Google.",
   "privacy.rights.i1": "Acesso, correção, limitação do tratamento e portabilidade dos seus dados.",
   "privacy.rights.i2":
     "Eliminação, por exemplo do nome de um vencedor que fica depois do sorteio: quem opera a instância o substitui por “removido”, e o sorteio continua verificável.",
@@ -1124,9 +1130,9 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "Ao entrar ou participar de um sorteio no Rafflink, você aceita estes termos. Se não os aceitar, não use o serviço.",
   "terms.service.h": "O serviço",
   "terms.service.p1":
-    "O Rafflink permite que um streamer da Twitch ou da Kick crie um sorteio, reúna inscrições e sorteie vencedores ao vivo. Esta instância é operada por {operator}.",
+    "O Rafflink permite que um streamer da Twitch, da Kick ou do YouTube crie um sorteio, reúna inscrições e sorteie vencedores ao vivo. Esta instância é operada por {operator}.",
   "terms.service.none":
-    "O Rafflink permite que um streamer da Twitch ou da Kick crie um sorteio, reúna inscrições e sorteie vencedores ao vivo. Esta instância é operada por quem a mantém, que não publicou dados de contato aqui. Entre em contato com a pessoa que compartilhou o link com você.",
+    "O Rafflink permite que um streamer da Twitch, da Kick ou do YouTube crie um sorteio, reúna inscrições e sorteie vencedores ao vivo. Esta instância é operada por quem a mantém, que não publicou dados de contato aqui. Entre em contato com a pessoa que compartilhou o link com você.",
   "terms.service.p2":
     "O serviço é fornecido no estado em que se encontra e conforme disponível, sem nenhuma garantia. Ele pode mudar, ser limitado ou ser interrompido a qualquer momento, e não tem garantia de disponibilidade.",
   "terms.source.h": "Código aberto",
@@ -1145,7 +1151,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "Você é responsável por como usa os dados dos participantes que vê, conforme a lei de privacidade que se aplica a você.",
   "terms.viewers.h": "Espectadores",
   "terms.viewers.i1":
-    "Participar é sempre grátis da parte do Rafflink e exige uma conta da Twitch ou da Kick. O Rafflink nunca pede que os espectadores paguem.",
+    "Participar é sempre grátis da parte do Rafflink e exige uma conta da Twitch, da Kick ou do YouTube. O Rafflink nunca pede que os espectadores paguem.",
   "terms.viewers.i2":
     "O prêmio vem do streamer, não do Rafflink. O Rafflink não é parte do sorteio e não promete um prêmio nem a entrega dele.",
   "terms.viewers.i3":
@@ -1165,7 +1171,7 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "conduzir sorteios ilegais nem colocar conteúdo ilegal ou abusivo em um título ou texto de prêmio.",
   "terms.liability.h": "Responsabilidade",
   "terms.liability.p1":
-    "Na medida em que a lei permitir, não somos responsáveis por perdas indiretas ou consequentes, por um sorteio, um prêmio ou uma disputa entre um streamer e um espectador, nem por uma indisponibilidade do Rafflink, da Twitch ou da Kick. Nossa responsabilidade total se limita ao valor que você nos pagou pelo serviço, que é zero para uma conta gratuita.",
+    "Na medida em que a lei permitir, não somos responsáveis por perdas indiretas ou consequentes, por um sorteio, um prêmio ou uma disputa entre um streamer e um espectador, nem por uma indisponibilidade do Rafflink, da Twitch, da Kick ou do YouTube. Nossa responsabilidade total se limita ao valor que você nos pagou pelo serviço, que é zero para uma conta gratuita.",
   "terms.liability.p2":
     "Nada aqui limita uma responsabilidade que não pode ser limitada por lei, como a responsabilidade por dolo ou por lesão, nem seus direitos como consumidor.",
   "terms.changes.h": "Alterações",

@@ -372,6 +372,7 @@ describe("giveaway landing", () => {
               sub_t1: 3,
               sub_t2: 3,
               sub_t3: 3,
+              member: 0,
               vip: 1,
               moderator: 1,
             },

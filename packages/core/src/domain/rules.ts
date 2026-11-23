@@ -81,6 +81,8 @@ export interface ViewerFacts {
   readonly isFollower: boolean
   /** Null when not subscribed. */
   readonly subTier: 1 | 2 | 3 | null
+  /** A paying member of the channel where the platform has memberships apart from subscriptions (YouTube). */
+  readonly isMember: boolean
   readonly isVip: boolean
   readonly isModerator: boolean
   /** Null when unknown; an unknown age fails a minimum. */
@@ -266,10 +268,14 @@ function memberGroups(viewer: ViewerFacts): Group[] {
   const member: Group[] = ["viewer"]
   if (viewer.isFollower) member.push("follower")
   if (viewer.subTier !== null) member.push(`sub_t${viewer.subTier}`)
+  if (viewer.isMember) member.push("member")
   if (viewer.isVip) member.push("vip")
   if (viewer.isModerator) member.push("moderator")
   return member
 }
+
+// Rules stored before a group existed have no count for it, which reads as no tickets.
+const groupsAddedLater: readonly Group[] = ["member"]
 
 function parseTickets(input: unknown, max: number): Parsed<Tickets, RulesIssue> {
   if (!isRecord(input)) return fail("tickets", "not-an-object")
@@ -279,11 +285,13 @@ function parseTickets(input: unknown, max: number): Parsed<Tickets, RulesIssue> 
     sub_t1: 0,
     sub_t2: 0,
     sub_t3: 0,
+    member: 0,
     vip: 0,
     moderator: 0,
   }
   for (const group of groups) {
-    const count = ownValue(input, group)
+    const given = ownValue(input, group)
+    const count = given === undefined && groupsAddedLater.includes(group) ? 0 : given
     if (count === undefined) return fail(`tickets.${group}`, "missing")
     if (!isNonNegativeInteger(count)) {
       return fail(`tickets.${group}`, "not-a-non-negative-integer")

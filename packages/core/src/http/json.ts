@@ -229,11 +229,15 @@ export interface RequestBudgetJson {
   readonly budget: { readonly limit: number; readonly remaining: number } | null
 }
 
-/** Today's YouTube units left under the install's cap, and what a minute of reading a live chat costs, for the wizard's quota note. */
+/**
+ * Today's YouTube units left under the install's cap, and what a minute of reading a live chat costs while
+ * entries are open and after the draw, for the wizard's quota note.
+ */
 export interface YouTubeBudgetJson {
   readonly limit: number
   readonly remaining: number
   readonly unitsPerMinute: number
+  readonly winnerUnitsPerMinute: number
 }
 
 /** The streamer's block list on the dashboard, newest first; `blockListMax` is how many it may hold. */

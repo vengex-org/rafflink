@@ -129,6 +129,16 @@ describe("admin page", () => {
     expect(view.getByRole("alert").textContent).toContain("72% of the daily cap")
   })
 
+  it("says the YouTube count is unavailable when the server could not read it", async () => {
+    mockAdmin({ "GET /api/admin/usage": () => adminAnswer({ youtubeQuota: "unavailable" }) })
+
+    const view = renderApp("/admin")
+    const card = (await view.findByRole("heading", { name: "YouTube quota" })).closest("section")
+
+    expect(card?.textContent).toContain("Today's usage is unavailable right now.")
+    expect(view.queryByRole("progressbar", { name: "YouTube units today" })).toBeNull()
+  })
+
   it("shows no YouTube quota on an install without YouTube", async () => {
     mockAdmin({ "GET /api/admin/usage": () => adminAnswer() })
 

@@ -226,6 +226,7 @@ export const en = {
   "tier.sub_t1": "Tier 1",
   "tier.sub_t2": "Tier 2",
   "tier.sub_t3": "Tier 3",
+  "tier.member": "Member",
   "tier.vip": "VIP",
   "tier.moderator": "Mod",
   "overlay.enterAt": "Enter at",
@@ -275,6 +276,7 @@ export const en = {
   "group.sub_t1": "Subscribers, tier 1",
   "group.sub_t2": "Subscribers, tier 2",
   "group.sub_t3": "Subscribers, tier 3",
+  "group.member": "Channel members",
   "group.vip": "VIPs",
   "group.moderator": "Moderators",
 
@@ -457,6 +459,7 @@ export const en = {
   "entry.role.sub_t1": "as a tier 1 subscriber",
   "entry.role.sub_t2": "as a tier 2 subscriber",
   "entry.role.sub_t3": "as a tier 3 subscriber",
+  "entry.role.member": "as a channel member",
   "entry.role.vip": "as a VIP",
   "entry.role.moderator": "as a moderator",
   "entry.pending.title": "You are being entered",
@@ -877,6 +880,7 @@ export const en = {
   "odds.sub_t1": "A Tier 1 sub has {times}x the chance of a viewer.",
   "odds.sub_t2": "A Tier 2 sub has {times}x the chance of a viewer.",
   "odds.sub_t3": "A Tier 3 sub has {times}x the chance of a viewer.",
+  "odds.member": "A channel member has {times}x the chance of a viewer.",
   "odds.vip": "A VIP has {times}x the chance of a viewer.",
   "odds.moderator": "A moderator has {times}x the chance of a viewer.",
   "wizard.ending.legend": "When do entries end?",
@@ -935,7 +939,9 @@ export const en = {
   "wizard.chatCost.kick":
     "Kick sends every chat message to Rafflink while entries are open, with or without the keyword, and each one uses a request of this server's daily limit of {limit}. A chat with 100 messages a minute uses 6,000 requests an hour. {remaining} are left today.",
   "wizard.chatCost.youtube":
-    "Rafflink reads the YouTube chat while entries are open and, after the draw, while winners can claim in chat. Each minute of reading uses about {perMinute} of the {limit} YouTube units this server has a day. {remaining} are left today.",
+    "Rafflink reads the YouTube chat while entries are open, using about {perMinute} of the {limit} YouTube units this server has a day each minute, and after the draw until winners claim, using about {winnerPerMinute} a minute. {remaining} are left today.",
+  "wizard.chatCost.youtubeByHand":
+    "You close this giveaway by hand, so the server cannot check in advance that today's units last: they cover about {minutes} minutes of entries. Set an end time to have it checked.",
   "wizard.autoEntry.legend": "Automatic entries",
   "wizard.subEntry.label": "Enter new subscribers",
   "wizard.subEntry.help":
@@ -1023,7 +1029,7 @@ export const en = {
   "privacy.retention.i1":
     "Entries (platform user IDs, names, picture URLs, groups, tickets, entry times, salts) are deleted at most 30 days after the giveaway closes; the operator may set a shorter time. This deletes the entries of the people drawn too; their user ID and names stay with their pick, rerolled picks included (see below).",
   "privacy.retention.i2":
-    "When a streamer removes Rafflink's access on Twitch or Kick, only the stored token is deleted. The account and its giveaways stay until the streamer deletes them on the dashboard, one giveaway or all data at once, or asks the operator to (see the contact above).",
+    "When a streamer removes Rafflink's access on Twitch, Kick or YouTube, only the stored token is deleted. The account and its giveaways stay until the streamer deletes them on the dashboard, one giveaway or all data at once, or asks the operator to (see the contact above).",
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
   "privacy.retention.i4":
     "Host logs are kept by the operator or its hosting provider under their own terms.",
@@ -1038,7 +1044,7 @@ export const en = {
   "privacy.recipients.i1":
     "The hosting provider of this instance stores and delivers the service as the operator's processor and may process data outside the European Economic Area under its own terms and safeguards.",
   "privacy.recipients.i2":
-    "Twitch is the identity provider for Twitch sign-ins. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. The streamer's browser also loads profile pictures and subscriber badges from Twitch's image servers. Twitch is an independent controller under its own privacy notice. Kick is the identity provider for Kick sign-ins. It receives your sign-in and, during a giveaway, the subscription that sends the streamer's chat messages to Rafflink. Kick is an independent controller under its own privacy notice.",
+    "Twitch is the identity provider for Twitch sign-ins. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. The streamer's browser also loads profile pictures and subscriber badges from Twitch's image servers. Twitch is an independent controller under its own privacy notice. Kick is the identity provider for Kick sign-ins. It receives your sign-in and, during a giveaway, the subscription that sends the streamer's chat messages to Rafflink. Kick is an independent controller under its own privacy notice. Google is the identity provider for YouTube sign-ins. It receives the streamer's sign-in and, during a giveaway, the API calls that find the live stream and read its chat. Google is an independent controller under its own privacy policy.",
   "privacy.recipients.i3":
     "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay, and their profile pictures on the live page.",
   "privacy.recipients.i4":
@@ -1048,7 +1054,7 @@ export const en = {
   "privacy.recipients.i6":
     "Winner form answers go to the streamer who runs the giveaway and nobody else: moderators, the overlay and the public pages never show them.",
   "privacy.recipients.i7":
-    "If the operator turns on error reporting, Sentry (Functional Software, Inc.) receives reports of errors in the browser and on the server as the operator's processor and stores them in its EU region in Germany. A report holds the error, where it happened, the browser and the operating system; like any server, Sentry sees the IP address of the connection. Cookies, request contents, sign-in codes, Twitch and Kick tokens and winner form answers are removed before a report is sent.",
+    "If the operator turns on error reporting, Sentry (Functional Software, Inc.) receives reports of errors in the browser and on the server as the operator's processor and stores them in its EU region in Germany. A report holds the error, where it happened, the browser and the operating system; like any server, Sentry sees the IP address of the connection. Cookies, request contents, sign-in codes, Twitch, Kick and Google tokens and winner form answers are removed before a report is sent.",
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "Rafflink uses YouTube API Services. By signing in with YouTube you agree to the YouTube Terms of Service ({youtubeTerms}). The Google Privacy Policy ({googlePrivacy}) applies to what Google does with your data.",
@@ -1082,7 +1088,7 @@ export const en = {
   "privacy.rights.none":
     "This instance's operator has not published contact details here, and the person who shared the link with you may not be the operator. Without a contact there is no promised way to use these rights through this page.",
   "privacy.rights.p2":
-    "You can also remove Rafflink's access at any time in your Twitch settings under Connections, or in your Kick account settings.",
+    "You can also remove Rafflink's access at any time in your Twitch settings under Connections, in your Kick account settings, or in your Google account's permissions.",
   "privacy.rights.i1":
     "Access, correction, restriction of processing and portability of your data.",
   "privacy.rights.i2":
@@ -1098,9 +1104,9 @@ export const en = {
     "By signing in or entering a giveaway on Rafflink you accept these terms. If you do not accept them, do not use the service.",
   "terms.service.h": "The service",
   "terms.service.p1":
-    "Rafflink lets a Twitch or Kick streamer create a giveaway, collect entries and draw winners live. This instance is run by {operator}.",
+    "Rafflink lets a Twitch, Kick or YouTube streamer create a giveaway, collect entries and draw winners live. This instance is run by {operator}.",
   "terms.service.none":
-    "Rafflink lets a Twitch or Kick streamer create a giveaway, collect entries and draw winners live. This instance is run by its operator, who has not published contact details here. Contact the person who shared the link with you.",
+    "Rafflink lets a Twitch, Kick or YouTube streamer create a giveaway, collect entries and draw winners live. This instance is run by its operator, who has not published contact details here. Contact the person who shared the link with you.",
   "terms.service.p2":
     "The service is provided as is and as available, without any warranty. It may change, be limited or be stopped at any time, and it has no uptime guarantee.",
   "terms.source.h": "Open source",
@@ -1119,7 +1125,7 @@ export const en = {
     "You are responsible for how you use the entrants' data that you see, under the privacy law that applies to you.",
   "terms.viewers.h": "Viewers",
   "terms.viewers.i1":
-    "Entering is always free on Rafflink's side and needs a Twitch or Kick account. Rafflink never asks viewers to pay.",
+    "Entering is always free on Rafflink's side and needs a Twitch, Kick or YouTube account. Rafflink never asks viewers to pay.",
   "terms.viewers.i2":
     "The prize comes from the streamer, not from Rafflink. Rafflink is not a party to the giveaway and does not promise a prize or its delivery.",
   "terms.viewers.i3":
@@ -1139,7 +1145,7 @@ export const en = {
     "run unlawful giveaways or put unlawful or abusive content into a title or prize text.",
   "terms.liability.h": "Liability",
   "terms.liability.p1":
-    "As far as the law allows, we are not liable for indirect or consequential loss, for a giveaway, a prize or a dispute between a streamer and a viewer, or for an outage of Rafflink, Twitch or Kick. Our total liability is limited to the amount you paid us for the service, which is nothing for a free account.",
+    "As far as the law allows, we are not liable for indirect or consequential loss, for a giveaway, a prize or a dispute between a streamer and a viewer, or for an outage of Rafflink, Twitch, Kick or YouTube. Our total liability is limited to the amount you paid us for the service, which is nothing for a free account.",
   "terms.liability.p2":
     "Nothing here limits liability that cannot be limited by law, such as liability for intent or for injury, or your rights as a consumer.",
   "terms.changes.h": "Changes",

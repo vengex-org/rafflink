@@ -13,11 +13,13 @@ import type { Clock, Instant } from "../ports.ts"
 import { YouTubeInvalid, YouTubeQuotaExhausted } from "./errors.ts"
 import type { YouTubeChatItem } from "./lib/parse-response.ts"
 import { youtubeLogin } from "./lib/login.ts"
+import { nextQuotaDayStart } from "./quota.ts"
 import type { YouTubeClient } from "./youtube-client.ts"
 
 export type YouTubeChatConfig = Pick<
   ResolvedConfig,
   | "youtubeChatPollMinMs"
+  | "youtubeWinnerPollMinMs"
   | "youtubeChatRetryDelaySeconds"
   | "youtubeChatMaxAttempts"
   | "youtubeBroadcastRetrySeconds"
@@ -41,10 +43,12 @@ const chatGoneReasons = ["liveChatEnded", "liveChatNotFound", "liveChatDisabled"
 
 /**
  * Reads the live chat of the streamer's active broadcast while open: one read at a time, the next one at
- * {@link YouTubeChat.wakeAt}, no sooner than YOUTUBE_CHAT_POLL_MIN_MS. Nothing is held at YouTube, so a
- * close only stops reading. Without an active broadcast, or after its chat ended, it looks for one every
- * YOUTUBE_BROADCAST_RETRY_SECONDS. It gives up after YOUTUBE_CHAT_MAX_ATTEMPTS failed reads in a row, and
- * at once when YouTube refuses the token or the install's daily quota is spent.
+ * {@link YouTubeChat.wakeAt}, no sooner than YOUTUBE_CHAT_POLL_MIN_MS while it reads the entry keyword and
+ * YOUTUBE_WINNER_POLL_MIN_MS while it reads winners. Nothing is held at YouTube, so a close only stops
+ * reading. Without an active broadcast, or after its chat ended, it looks for one every
+ * YOUTUBE_BROADCAST_RETRY_SECONDS, and once the install's daily quota is spent it waits for Google's next
+ * quota day. It gives up after YOUTUBE_CHAT_MAX_ATTEMPTS failed reads in a row, and at once when YouTube
+ * refuses the token's access.
  */
 export class YouTubeChat implements ChatSource {
   private running = false
@@ -58,6 +62,8 @@ export class YouTubeChat implements ChatSource {
   private pageToken: string | null = null
   // The first page of a chat holds what was written before the watch opened; that is not read.
   private openedAt: Instant = 0
+  // Kept across reads, so a read costs no account store lookup; dropped when YouTube rejects it.
+  private access: StreamerAccess | null = null
 
   constructor(
     private readonly deps: YouTubeChatDeps,
@@ -79,6 +85,7 @@ export class YouTubeChat implements ChatSource {
     this.nextReadAt = null
     this.liveChatId = null
     this.pageToken = null
+    this.access = null
   }
 
   wakeAt(): Instant | null {
@@ -112,7 +119,8 @@ export class YouTubeChat implements ChatSource {
 
   // The instant of the next read.
   private async readOnce(generation: number): Promise<Instant> {
-    const { accessToken } = await this.deps.streamerAccess()
+    this.access ??= await this.deps.streamerAccess()
+    const { accessToken } = this.access
     const liveChatId = this.liveChatId ?? (await this.deps.client.activeLiveChatId(accessToken))
     const now = () => this.deps.clock.now()
     if (liveChatId === null) return now() + this.deps.config.youtubeBroadcastRetrySeconds * 1000
@@ -138,7 +146,11 @@ export class YouTubeChat implements ChatSource {
       this.forgetChat()
       return now() + this.deps.config.youtubeBroadcastRetrySeconds * 1000
     }
-    return now() + Math.max(page.pollingIntervalMillis, this.deps.config.youtubeChatPollMinMs)
+    const leastWait =
+      this.audience.kind === "keyword"
+        ? this.deps.config.youtubeChatPollMinMs
+        : this.deps.config.youtubeWinnerPollMinMs
+    return now() + Math.max(page.pollingIntervalMillis, leastWait)
   }
 
   private forgetChat(): void {
@@ -156,6 +168,14 @@ export class YouTubeChat implements ChatSource {
 
   private failed(error: unknown): void {
     if (!this.running) return
+    // Another room may have spent the cap: this one waits for the next quota day instead of giving up.
+    if (error instanceof YouTubeQuotaExhausted) {
+      this.nextReadAt = nextQuotaDayStart(this.deps.clock.now())
+      return
+    }
+    // A cached access token that expired is fetched again on the next read.
+    const expired = error instanceof YouTubeInvalid && error.status === 401
+    if (expired) this.access = null
     this.failures += 1
     console.warn("youtube chat read failed", {
       giveawayId: this.deps.giveawayId,
@@ -163,8 +183,7 @@ export class YouTubeChat implements ChatSource {
       attempt: this.failures,
     })
     const permanent =
-      error instanceof YouTubeQuotaExhausted
-      || (error instanceof YouTubeInvalid && error.reason !== "rateLimitExceeded")
+      error instanceof YouTubeInvalid && !expired && error.reason !== "rateLimitExceeded"
     if (!permanent && this.failures < this.deps.config.youtubeChatMaxAttempts) {
       this.nextReadAt = this.deps.clock.now() + this.deps.config.youtubeChatRetryDelaySeconds * 1000
       return
@@ -174,7 +193,7 @@ export class YouTubeChat implements ChatSource {
   }
 }
 
-// A member reads as tier 1 (YouTube has one level here); the channel's owner counts as its moderator.
+// The channel's owner counts as its moderator.
 function chatMessageOf(item: YouTubeChatItem): ChatMessage {
   return {
     platformUserId: item.authorChannelId,
@@ -182,7 +201,8 @@ function chatMessageOf(item: YouTubeChatItem): ChatMessage {
     displayName: item.displayName,
     text: item.text,
     roles: {
-      subTier: item.isChatSponsor ? 1 : null,
+      subTier: null,
+      isMember: item.isChatSponsor,
       isVip: false,
       isModerator: item.isChatModerator || item.isChatOwner,
     },

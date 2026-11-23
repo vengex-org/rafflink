@@ -67,9 +67,10 @@ bun run check
 `bun run check` runs lint (oxlint), format check (oxfmt), typecheck and all tests. `bun run format` applies
 the formatter. `bun run build` builds the web app and the Worker bundle.
 
-### Bun server with a fake Twitch and a fake Kick
+### Bun server with a fake Twitch, Kick and YouTube
 
-You need no Twitch or Kick app for development. The Bun server serves a fake Twitch and a fake Kick next to itself:
+You need no Twitch, Kick or Google app for development. The Bun server serves a fake Twitch, a fake Kick and a fake
+YouTube next to itself:
 
 ```sh
 bun run --filter @rafflink/server dev
@@ -85,6 +86,11 @@ The Kick sign-in buttons open the fake Kick, with its own test users: `Fake_Kick
 local origin. It answers sign-in and the Kick API, but nothing in dev sends Kick chat messages. Set
 `DEV_FAKE_KICK=false` and leave the `KICK_*` lines out of `dev.env` to try the server with Twitch only.
 
+The YouTube sign-in button signs in the fake channel `Fake YouTube Streamer` at once, without a consent page. The
+fake exists only when `DEV_FAKE_YOUTUBE=true` with `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` set and a local
+`PUBLIC_URL`. The channel is live from the start, so a YouTube giveaway reads its chat, but nothing in dev writes
+in that chat.
+
 The dev server does not watch `apps/web` or `packages/core`, so restart it after editing them. The fake Twitch
 exists only when `DEV_FAKE_TWITCH=true`; a production server answers 404 on its routes. The fake Twitch signs
 anyone in, so `DEV_FAKE_TWITCH=true` only starts when `PUBLIC_URL` is a `localhost` or `127.0.0.1` origin;
@@ -96,8 +102,8 @@ and viewer sockets and the page never updates.
 
 ### Cloudflare dev
 
-The fake Twitch cannot run inside the Worker, so it runs as its own process. The fake Kick runs only inside the
-Bun server, so Cloudflare dev signs in with Twitch only. Build the web app once with
+The fake Twitch cannot run inside the Worker, so it runs as its own process. The fake Kick and the fake YouTube
+run only inside the Bun server, so Cloudflare dev signs in with Twitch only. Build the web app once with
 `bun run build` in the repository root, because wrangler serves it as static assets from `apps/web/dist`. Create the local
 database tables once with `bunx wrangler d1 migrations apply rafflink --local` in `apps/cloudflare`. Then use
 two terminals there:
@@ -257,18 +263,22 @@ verified domain, a privacy page and a demo video, and takes days to weeks.
 
 What a YouTube giveaway can do:
 
-- Viewers enter only with the chat keyword. A channel member gets the subscriber tickets and a moderator the
-  moderator tickets, as the chat message tells them. YouTube has no followers and no VIPs, so the create form
+- Viewers enter only with the chat keyword. A channel member gets the tickets of the channel members group and a
+  moderator the moderator tickets, as the chat message tells them. YouTube has no followers and no VIPs, so the create form
   does not offer those rules. A winner claims by writing in the chat, or the streamer marks the claim by hand.
 - The giveaway reads the chat of the channel's active live stream. A giveaway made before the stream starts
   looks for the stream every `YOUTUBE_BROADCAST_RETRY_SECONDS` and reads its chat once it is live.
-- Rafflink reads the chat while chat entries are open and from the draw until the claim and reroll time ends,
-  as often as YouTube asks and at most every `YOUTUBE_CHAT_POLL_MIN_MS`. Reading stops when entries close.
+- Rafflink reads the chat while chat entries are open, as often as YouTube asks and at most every
+  `YOUTUBE_CHAT_POLL_MIN_MS`. Reading stops when entries close. From the draw it reads again, at most every
+  `YOUTUBE_WINNER_POLL_MIN_MS`, until every winner claimed or their claim time ended; unlike Twitch and Kick it
+  does not keep watching through the reroll time.
 - Every YouTube API call costs quota units: 1 for a channel or a broadcast lookup, 5 for a page of chat. A
   Google project has 10,000 units a day by default, shared by every giveaway of the install, and the day starts
   at midnight Pacific time. Rafflink counts the units in its database and never spends more than
-  `YOUTUBE_DAILY_QUOTA_UNITS` a day: a giveaway whose chat reads until its close would pass the cap is refused,
-  and a running chat watch stops when the cap is reached. Reading every 5 seconds costs 60 units a minute, so
+  `YOUTUBE_DAILY_QUOTA_UNITS` a day: a giveaway whose chat reads until its close and through one claim time would
+  pass the cap is refused, and a running chat watch pauses at the cap until the next quota day. A giveaway closed
+  by hand has no end to check, so only its first minute counts and the create form says how many minutes
+  today's units cover. Reading every 5 seconds costs 60 units a minute, so
   the default quota covers about two and a half hours of chat a day. The create form shows the cost and what
   is left today, and the admin page shows today's units and warns from `YOUTUBE_QUOTA_ALERT_PERCENT` on. Ask
   Google for more quota in the Cloud console before you need it, then raise `YOUTUBE_DAILY_QUOTA_UNITS`.
@@ -315,10 +325,10 @@ which is the default for local development, the tests and self-hosting.
 
 Only errors are sent: no tracing, no session replay, no logs. The reports leave out cookies, headers, request
 bodies, query parameters and the user, and a filter removes the `Authorization` header, OAuth `code` and `state`,
-Twitch and Kick tokens, token-shaped strings, secrets in a path and winner form answers before a report leaves. A
+Twitch, Kick and Google tokens, token-shaped strings, secrets in a path and winner form answers before a report leaves. A
 report of the Worker or the Bun server carries the error class and the stack but not the message, which can quote
 a login or a platform id. Expected outcomes are not reported: a 401
-after a session expired, a Twitch or Kick 429 that is retried, and a Kick webhook with a wrong signature.
+after a session expired, a Twitch, Kick or YouTube 429 that is retried, and a Kick webhook with a wrong signature.
 
 Source maps: `bun run build` writes them next to the bundles in `apps/web/dist` and `apps/cloudflare/dist`. A
 push to master uploads them from CI to the Sentry projects `rafflink-web` and `rafflink-worker` of the

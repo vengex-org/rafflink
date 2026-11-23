@@ -29,6 +29,7 @@ export type ConfigReason =
   | "below-claim-and-reroll-windows"
   | "fake-twitch-needs-local-public-url"
   | "fake-kick-needs-local-public-url"
+  | "fake-youtube-needs-local-public-url"
   | "not-a-cloudflare-plan"
   | "not-a-login"
   | "not-a-sentry-dsn"
@@ -151,6 +152,12 @@ export const configSchema = {
     bool,
     "false",
     "Mounts the fake Kick routes, whose app is KICK_CLIENT_ID and KICK_CLIENT_SECRET; never true in production",
+  ),
+  devFakeYouTube: withDefault(
+    "DEV_FAKE_YOUTUBE",
+    bool,
+    "false",
+    "Mounts the fake Google OAuth and YouTube routes, whose client is YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET; never true in production",
   ),
   defaultClaimSeconds: withDefault(
     "DEFAULT_CLAIM_SECONDS",
@@ -427,6 +434,12 @@ export const configSchema = {
     int(1000),
     "5000",
     "Least wait between two reads of a YouTube live chat, whatever shorter interval YouTube suggests; each read costs 5 units, so 5 seconds is 60 units a minute, which is also the rate the create form estimates with; starting guess",
+  ),
+  youtubeWinnerPollMinMs: withDefault(
+    "YOUTUBE_WINNER_POLL_MIN_MS",
+    int(1000),
+    "30000",
+    "Least wait between two reads of a YouTube live chat after the draw, while only winners' claims are read: 30 seconds is 10 units a minute, and a claim still lands well within a claim time of minutes; starting guess",
   ),
   youtubeChatRetryDelaySeconds: withDefault(
     "YOUTUBE_CHAT_RETRY_DELAY_SECONDS",
@@ -1012,6 +1025,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     streamerAccessListMax: read(env, configSchema.streamerAccessListMax),
     devFakeTwitch: read(env, configSchema.devFakeTwitch),
     devFakeKick: read(env, configSchema.devFakeKick),
+    devFakeYouTube: read(env, configSchema.devFakeYouTube),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
     chatEntryCheckSeconds: read(env, configSchema.chatEntryCheckSeconds),
@@ -1058,6 +1072,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     youtubeDailyQuotaUnits: read(env, configSchema.youtubeDailyQuotaUnits),
     youtubeQuotaAlertPercent: read(env, configSchema.youtubeQuotaAlertPercent),
     youtubeChatPollMinMs: read(env, configSchema.youtubeChatPollMinMs),
+    youtubeWinnerPollMinMs: read(env, configSchema.youtubeWinnerPollMinMs),
     youtubeChatRetryDelaySeconds: read(env, configSchema.youtubeChatRetryDelaySeconds),
     youtubeChatMaxAttempts: read(env, configSchema.youtubeChatMaxAttempts),
     youtubeBroadcastRetrySeconds: read(env, configSchema.youtubeBroadcastRetrySeconds),
@@ -1221,6 +1236,13 @@ export function resolveConfig(env: Env): ResolvedConfig {
   // The fake Kick takes the Kick app's id and secret, so a fake without them would sign no one in.
   if (config.devFakeKick && config.kickClientId === null) {
     throw new ConfigError(configSchema.kickClientId.env, "missing")
+  }
+  // The fake YouTube signs anyone in as well, and takes the Google client's id and secret.
+  if (config.devFakeYouTube && !isLocalOrigin(config.publicUrl)) {
+    throw new ConfigError(configSchema.devFakeYouTube.env, "fake-youtube-needs-local-public-url")
+  }
+  if (config.devFakeYouTube && config.youtubeClientId === null) {
+    throw new ConfigError(configSchema.youtubeClientId.env, "missing")
   }
   return config
 }

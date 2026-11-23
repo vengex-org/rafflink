@@ -63,7 +63,7 @@ describe("KickProvider", () => {
     world.fake.control.revokeUserTokens(kickStreamer.id)
     const after = await provider.validate(tokens.accessToken)
 
-    expect(before).toEqual({ status: "valid", userId: kickStreamer.id })
+    expect(before).toEqual({ status: "valid" })
     expect(after).toEqual({ status: "invalid" })
   })
 

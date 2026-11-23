@@ -31,6 +31,7 @@
         "@rafflink/core": "workspace:*",
         "@rafflink/fake-kick": "workspace:*",
         "@rafflink/fake-twitch": "workspace:*",
+        "@rafflink/fake-youtube": "workspace:*",
         "@rafflink/web": "workspace:*",
         "@sentry/bun": "11.11.0",
         "@sentry/core": "11.11.0",

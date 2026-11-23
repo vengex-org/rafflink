@@ -168,7 +168,7 @@ function chatMessage(platformUserId: string, text: string): ChatMessage {
     login: `user_${platformUserId}`,
     displayName: `User_${platformUserId}`,
     text,
-    roles: { subTier: 1, isVip: false, isModerator: false },
+    roles: { subTier: 1, isMember: false, isVip: false, isModerator: false },
   }
 }
 
@@ -325,19 +325,19 @@ describe("ChatWatcher connection", () => {
 
   it("reads the sub tier, VIP and moderator from the chatter's badges", async () => {
     const cases: readonly [readonly Badge[], ChatMessage["roles"]][] = [
-      [[], { subTier: null, isVip: false, isModerator: false }],
-      [[subscriberT1], { subTier: 1, isVip: false, isModerator: false }],
+      [[], { subTier: null, isMember: false, isVip: false, isModerator: false }],
+      [[subscriberT1], { subTier: 1, isMember: false, isVip: false, isModerator: false }],
       [
         [{ set_id: "subscriber", id: "2003", info: "3" }],
-        { subTier: 2, isVip: false, isModerator: false },
+        { subTier: 2, isMember: false, isVip: false, isModerator: false },
       ],
       [
         [{ set_id: "subscriber", id: "3012", info: "12" }],
-        { subTier: 3, isVip: false, isModerator: false },
+        { subTier: 3, isMember: false, isVip: false, isModerator: false },
       ],
       [
         [{ set_id: "founder", id: "0", info: "1" }],
-        { subTier: 1, isVip: false, isModerator: false },
+        { subTier: 1, isMember: false, isVip: false, isModerator: false },
       ],
       [
         [
@@ -345,7 +345,7 @@ describe("ChatWatcher connection", () => {
           { set_id: "moderator", id: "1", info: "" },
           { set_id: "premium", id: "1", info: "" },
         ],
-        { subTier: null, isVip: true, isModerator: true },
+        { subTier: null, isMember: false, isVip: true, isModerator: true },
       ],
     ]
     for (const [badges, roles] of cases) {
@@ -750,7 +750,16 @@ describe("ChatWatcher attempts", () => {
 })
 
 const rules: GiveawayRules = {
-  tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 2,
+    sub_t1: 3,
+    sub_t2: 4,
+    sub_t3: 5,
+    member: 0,
+    vip: 6,
+    moderator: 7,
+  },
   subsOnly: false,
   followersOnly: false,
   minAccountAgeDays: null,

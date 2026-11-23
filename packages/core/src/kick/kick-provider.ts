@@ -115,7 +115,8 @@ export class KickProvider implements PlatformProvider {
   /** Kick deprecated its token introspection, so the token is checked by reading its own user. */
   async validate(accessToken: string): Promise<TokenValidation> {
     try {
-      return { status: "valid", userId: (await this.client.currentUser(accessToken)).id }
+      await this.client.currentUser(accessToken)
+      return { status: "valid" }
     } catch (error) {
       if (error instanceof KickInvalid && error.status === 401) return { status: "invalid" }
       if (error instanceof KickRateLimited || error instanceof KickUnavailable) {

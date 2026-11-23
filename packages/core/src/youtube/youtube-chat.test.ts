@@ -10,7 +10,6 @@ import {
 } from "../../test/youtube-fixture.ts"
 import type { ChatListener, ChatMessage, ChatSource } from "../platform/chat-source.ts"
 import type { StreamerAccess } from "../platform/provider.ts"
-import { YouTubeQuotaExhausted } from "./errors.ts"
 import { youtubeChat } from "./youtube-chat.ts"
 
 let world: YouTubeWorld
@@ -109,14 +108,14 @@ describe("youtubeChat", () => {
         login: "yt_viewer",
         displayName: "@yt_viewer",
         text: "!enter",
-        roles: { subTier: 1, isVip: false, isModerator: false },
+        roles: { subTier: null, isMember: true, isVip: false, isModerator: false },
       },
       {
         platformUserId: youtubeSecond.id,
         login: "yt_second",
         displayName: "@yt_second",
         text: "!ENTER now",
-        roles: { subTier: null, isVip: false, isModerator: true },
+        roles: { subTier: null, isMember: false, isVip: false, isModerator: true },
       },
     ])
   })
@@ -215,18 +214,60 @@ describe("youtubeChat", () => {
     expect(chat.wakeAt()).toBeNull()
   })
 
-  it("gives up at once when the day's units are spent", async () => {
+  it("waits for Google's next quota day once the day's units are spent, and reads again then", async () => {
     await useWorld(youtubeWorld({ YOUTUBE_DAILY_QUOTA_UNITS: "6" }))
+    world.clock.advance(Date.parse("2026-11-23T20:00:00Z") - world.clock.now())
     world.fake.control.goLive(youtubeStreamer.id)
     const chat = source()
 
     chat.open(keyword)
     await settle()
     await nextRead(chat)
+    const waitUntil = chat.wakeAt()
+    await nextRead(chat)
 
-    expect(unavailable).toHaveLength(1)
-    expect(unavailable[0]).toBeInstanceOf(YouTubeQuotaExhausted)
-    expect(chatPageCalls()).toBe(1)
+    expect(unavailable).toEqual([])
+    // Midnight in Los Angeles is 08:00 UTC in November.
+    expect(waitUntil).toBe(Date.parse("2026-11-24T08:00:00Z"))
+    expect(chatPageCalls()).toBe(2)
+  })
+
+  it("reads winners no more often than the winner wait", async () => {
+    world.fake.control.goLive(youtubeStreamer.id)
+    world.fake.control.setPollingInterval(1000)
+    const chat = source()
+
+    chat.open({ kind: "chatters", userIds: [youtubeViewer.id] })
+    await settle()
+
+    expect((chat.wakeAt() ?? 0) - world.clock.now()).toBe(30_000)
+  })
+
+  it("keeps the streamer's access between reads and fetches it again after YouTube rejects it", async () => {
+    let fetched = 0
+    world.fake.control.goLive(youtubeStreamer.id)
+    const chat = youtubeChat({
+      giveawayId: "g1",
+      client: world.client,
+      clock: world.clock,
+      config: world.config,
+      streamerAccess: async () => {
+        fetched += 1
+        return access
+      },
+    })(listener)
+
+    chat.open(keyword)
+    await settle()
+    await nextRead(chat)
+    const kept = fetched
+    world.fake.control.failNext("live-chat-messages", 401, 1, "authError")
+    await nextRead(chat)
+    await nextRead(chat)
+
+    expect(kept).toBe(1)
+    expect(fetched).toBe(2)
+    expect(unavailable).toEqual([])
   })
 
   it("gives up at once when YouTube refuses the token", async () => {

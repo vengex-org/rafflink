@@ -8,6 +8,7 @@ import {
 } from "../../test/youtube-fixture.ts"
 import { PlatformNoChannel } from "../platform/errors.ts"
 import { YouTubeQuotaExhausted } from "./errors.ts"
+import { YouTubeProvider } from "./youtube-provider.ts"
 
 let world: YouTubeWorld
 
@@ -97,9 +98,28 @@ describe("YouTubeProvider", () => {
     world.fake.control.revokeTokens(youtubeStreamer.id)
     const after = await world.provider.validate(tokens.accessToken)
 
-    expect(before).toEqual({ status: "valid", userId: null })
+    expect(before).toEqual({ status: "valid" })
     expect(after).toEqual({ status: "invalid" })
     expect(await unitsToday(world)).toBe(0)
+  })
+
+  it("finds a token Google issued to another client invalid", async () => {
+    const tokens = await streamerTokens(world, youtubeStreamer)
+    const otherClient = new YouTubeProvider(
+      world.client,
+      world.quota,
+      { clientId: "other" },
+      world.config,
+    )
+
+    expect(await otherClient.validate(tokens.accessToken)).toEqual({ status: "invalid" })
+  })
+
+  it("keeps a token whose check Google could not answer", async () => {
+    const tokens = await streamerTokens(world, youtubeStreamer)
+    world.fake.control.failNext("tokeninfo", 503, 1)
+
+    expect(await world.provider.validate(tokens.accessToken)).toEqual({ status: "unavailable" })
   })
 
   it("sends no call once the day's units are spent", async () => {

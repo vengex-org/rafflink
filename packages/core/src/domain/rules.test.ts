@@ -13,7 +13,16 @@ import {
 } from "./rules.ts"
 
 const rules: GiveawayRules = {
-  tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 2,
+    sub_t1: 3,
+    sub_t2: 4,
+    sub_t3: 5,
+    member: 0,
+    vip: 6,
+    moderator: 7,
+  },
   subsOnly: false,
   followersOnly: false,
   minAccountAgeDays: null,
@@ -33,6 +42,7 @@ const viewer: ViewerFacts = {
   userId: "100",
   isFollower: false,
   subTier: null,
+  isMember: false,
   isVip: false,
   isModerator: false,
   accountAgeDays: 400,
@@ -51,7 +61,16 @@ const config = {
 }
 
 const validInput = {
-  tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 2,
+    sub_t1: 3,
+    sub_t2: 4,
+    sub_t3: 5,
+    member: 0,
+    vip: 6,
+    moderator: 7,
+  },
 }
 
 describe("evaluateEligibility", () => {
@@ -103,7 +122,7 @@ describe("evaluateEligibility", () => {
   it("uses the tickets of the best group, not their sum", () => {
     const outcome = evaluateEligibility(
       rules,
-      { ...viewer, isFollower: true, subTier: 2, isVip: true },
+      { ...viewer, isFollower: true, subTier: 2, isMember: false, isVip: true },
       "999",
     )
     expect(outcome).toEqual({ eligible: true, group: "vip", tickets: 6 })
@@ -112,6 +131,17 @@ describe("evaluateEligibility", () => {
   it("puts a tier 3 subscriber in the sub_t3 group only", () => {
     const outcome = evaluateEligibility(rules, { ...viewer, subTier: 3 }, "999")
     expect(outcome).toEqual({ eligible: true, group: "sub_t3", tickets: 5 })
+  })
+
+  it("puts a channel member in the member group with its tickets", () => {
+    const memberRules = { ...rules, tickets: { ...rules.tickets, member: 4 } }
+
+    expect(evaluateEligibility(memberRules, { ...viewer, isMember: true }, "999")).toEqual({
+      eligible: true,
+      group: "member",
+      tickets: 4,
+    })
+    expect(evaluateEligibility(memberRules, viewer, "999")).toMatchObject({ group: "viewer" })
   })
 
   it("refuses a non-subscriber when subs only", () => {
@@ -553,6 +583,22 @@ describe("parseRules", () => {
   })
 })
 
+describe("parseRules member tickets", () => {
+  it("reads rules stored before the member group as no member tickets, and still needs every other count", () => {
+    const { member: _member, ...stored } = validInput.tickets
+    const { vip: _vip, ...noVip } = validInput.tickets
+
+    expect(parseRules({ ...validInput, tickets: stored }, config)).toMatchObject({
+      ok: true,
+      value: { tickets: { member: 0 } },
+    })
+    expect(parseRules({ ...validInput, tickets: noVip }, config)).toEqual({
+      ok: false,
+      issue: { field: "tickets.vip", code: "missing" },
+    })
+  })
+})
+
 describe("parseRules recent winners", () => {
   it("reads an absent or null exclusion as none", () => {
     for (const excludeRecentWinners of [undefined, null]) {
@@ -686,7 +732,7 @@ describe("unsupportedRule", () => {
     }
     const chatOnly: GiveawayRules = {
       ...rules,
-      tickets: { ...rules.tickets, sub_t1: 2, sub_t2: 0, sub_t3: 0, moderator: 3 },
+      tickets: { ...rules.tickets, sub_t1: 2, sub_t2: 0, sub_t3: 0, member: 0, moderator: 3 },
       chatKeyword: "!enter",
       pageEntry: false,
       subEntry: true,

@@ -116,8 +116,7 @@ export interface ChannelRoles {
  * `unavailable`, so a caller keeps the token (spec AC-22).
  */
 export type TokenValidation =
-  /** `userId` is null when the platform's check does not tell whose token it is. */
-  | { readonly status: "valid"; readonly userId: string | null }
+  | { readonly status: "valid" }
   | { readonly status: "invalid" }
   | { readonly status: "unavailable" }
 
@@ -255,6 +254,14 @@ export function readyEntryWays(
  */
 export function keepsWinnerNames(platform: string): boolean {
   return platform !== "youtube"
+}
+
+/**
+ * Whether the winners' chat watch ends once no winner can still claim, instead of with the reroll window.
+ * YouTube's chat is read by polling and every read spends the install's daily quota.
+ */
+export function winnerChatEndsWithClaims(platform: string): boolean {
+  return platform === "youtube"
 }
 
 export function isPlatform(value: string): value is Platform {

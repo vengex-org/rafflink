@@ -7,7 +7,16 @@ import { defaultRules, scenario, type CreatedGiveaway, type World } from "./worl
 
 // YouTube tells members and moderators in chat, nothing else; viewers enter only by chat keyword.
 const youtubeRules = {
-  tickets: { viewer: 1, follower: 0, sub_t1: 3, sub_t2: 0, sub_t3: 0, vip: 0, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 0,
+    sub_t1: 0,
+    sub_t2: 0,
+    sub_t3: 0,
+    member: 3,
+    vip: 0,
+    moderator: 7,
+  },
   chatKeyword: "!enter",
   pageEntry: false,
 }
@@ -75,7 +84,7 @@ export function youtubeScenarios(context: ContractContext): void {
       expect(
         (await entrants(giveaway)).map(({ login, group, tickets }) => ({ login, group, tickets })),
       ).toEqual([
-        { login: "contract_viewer", group: "sub_t1", tickets: 3 },
+        { login: "contract_viewer", group: "member", tickets: 3 },
         { login: "contract_viewer2", group: "moderator", tickets: 7 },
       ])
       expect(chatPageCalls(world)).toBeLessThanOrEqual(readsAtClose + 1)
@@ -115,8 +124,11 @@ export function youtubeScenarios(context: ContractContext): void {
     context,
     "a YouTube giveaway whose chat watch would pass the day's units is refused, and the admin page counts them",
     async (world) => {
-      // A minute of chat reads at one per second costs 300 units, and the sign-in 2.
-      const target = await world.start({ YOUTUBE_DAILY_QUOTA_UNITS: "302" })
+      // A minute of chat reads at one per second costs 300 units, five minutes of claim reads 50, the sign-in 2.
+      const target = await world.start({
+        YOUTUBE_DAILY_QUOTA_UNITS: "352",
+        YOUTUBE_WINNER_POLL_MIN_MS: "30000",
+      })
       const streamer = await world.signInYouTubeStreamer(target)
 
       const fits = await streamer.postJson("/api/dash/giveaways", {
@@ -132,9 +144,9 @@ export function youtubeScenarios(context: ContractContext): void {
 
       expect(fits.status).toBe(201)
       expect(tooLong.status).toBe(409)
-      expect(await tooLong.json()).toMatchObject({ error: "youtube-quota", needed: 3000 })
-      expect(budget).toMatchObject({ limit: 302, unitsPerMinute: 300 })
-      expect(usage.youtubeQuota).toMatchObject({ limit: 302, alert: false })
+      expect(await tooLong.json()).toMatchObject({ error: "youtube-quota", needed: 3050 })
+      expect(budget).toMatchObject({ limit: 352, unitsPerMinute: 300, winnerUnitsPerMinute: 10 })
+      expect(usage.youtubeQuota).toMatchObject({ limit: 352, alert: false })
       expect(usage.youtubeQuota.used).toBeGreaterThanOrEqual(1)
     },
   )

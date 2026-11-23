@@ -367,7 +367,16 @@ describe("create wizard", () => {
       title: "Cup",
       prize: "A chair",
       rules: {
-        tickets: { viewer: 1, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 5, moderator: 1 },
+        tickets: {
+          viewer: 1,
+          follower: 1,
+          sub_t1: 1,
+          sub_t2: 1,
+          sub_t3: 1,
+          member: 0,
+          vip: 5,
+          moderator: 1,
+        },
         subsOnly: true,
         followersOnly: false,
         minAccountAgeDays: 7,
@@ -481,7 +490,16 @@ describe("create wizard", () => {
       title: "Cup",
       prize: "A chair",
       rules: {
-        tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 0 },
+        tickets: {
+          viewer: 1,
+          follower: 2,
+          sub_t1: 3,
+          sub_t2: 4,
+          sub_t3: 5,
+          member: 0,
+          vip: 6,
+          moderator: 0,
+        },
         subsOnly: false,
         followersOnly: true,
         minAccountAgeDays: 30,
@@ -885,7 +903,16 @@ describe("create wizard", () => {
     const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
     expect(body).toMatchObject({
       rules: {
-        tickets: { viewer: 1, follower: 0, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 0, moderator: 2 },
+        tickets: {
+          viewer: 1,
+          follower: 0,
+          sub_t1: 1,
+          sub_t2: 1,
+          sub_t3: 1,
+          member: 0,
+          vip: 0,
+          moderator: 2,
+        },
         followersOnly: false,
         chatKeyword: null,
         pageEntry: true,
@@ -932,7 +959,7 @@ describe("create wizard", () => {
       pageEntry: false,
       subEntry: false,
       pointsEntry: false,
-      chatBadgeGroups: ["sub_t1", "moderator"],
+      chatBadgeGroups: ["member", "moderator"],
     }
     mockFetch({
       ...withCreate({ status: 409, body: { error: "youtube-quota", needed: 600, remaining: 100 } }),
@@ -942,12 +969,13 @@ describe("create wizard", () => {
           streamer: { ...supportedSession.streamer, platform: "youtube", capabilities },
         }),
       "GET /api/dash/youtube-budget": () =>
-        ok({ limit: 10_000, remaining: 4_000, unitsPerMinute: 60 }),
+        ok({ limit: 10_000, remaining: 4_000, unitsPerMinute: 60, winnerUnitsPerMinute: 10 }),
     })
     const view = await openWizard()
     fillGiveaway(view)
     await toRules(view)
     const note = await view.findByText(/4,000 are left today/)
+    const memberTickets = view.getByLabelText("Channel members")
     next(view)
     await view.findByText("Step 3 of 3: Review")
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
@@ -955,6 +983,10 @@ describe("create wizard", () => {
     expect(await view.findByText(/Today's YouTube units are not enough/)).toBeTruthy()
     expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
     expect(note.textContent).toContain("about 60 of the 10,000 YouTube units")
+    expect(note.textContent).toContain("about 10 a minute")
+    expect(note.textContent).toContain("about 66 minutes of entries")
+    expect(memberTickets).toBeTruthy()
+    expect(view.queryByLabelText("Subscribers, tier 1")).toBeNull()
     expect(view.queryByRole("radio", { name: /Giveaway page/ })).toBeNull()
     expect(view.getByRole("radio", { name: /Chat only/ })).toBeTruthy()
   })
@@ -1001,7 +1033,16 @@ describe("create wizard", () => {
     const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
     expect(body).toMatchObject({
       rules: {
-        tickets: { viewer: 1, follower: 0, sub_t1: 3, sub_t2: 0, sub_t3: 0, vip: 0, moderator: 5 },
+        tickets: {
+          viewer: 1,
+          follower: 0,
+          sub_t1: 3,
+          sub_t2: 0,
+          sub_t3: 0,
+          member: 0,
+          vip: 0,
+          moderator: 5,
+        },
         pageEntry: false,
       },
     })

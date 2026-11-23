@@ -32,7 +32,7 @@ export type YouTubeProviderConfig = YouTubeClientConfig & YouTubeQuotaConfig & Y
 
 /**
  * Viewers enter only by chat keyword: a viewer sign-in would ask them for a sensitive Google scope. The
- * chat tells a member (`isChatSponsor`, one level) and a moderator; YouTube has no followers and no VIPs.
+ * chat tells a member (`isChatSponsor`) and a moderator; YouTube has no followers and no VIPs.
  */
 const youtubeCapabilities: PlatformCapabilities = {
   followerCheck: false,
@@ -44,7 +44,7 @@ const youtubeCapabilities: PlatformCapabilities = {
   chatEntry: true,
   subEntry: false,
   pointsEntry: false,
-  chatBadgeGroups: ["sub_t1", "moderator"],
+  chatBadgeGroups: ["member", "moderator"],
 }
 
 const noBadges: SubscriberBadges = { sub_t1: null, sub_t2: null, sub_t3: null }
@@ -114,14 +114,12 @@ export class YouTubeProvider implements PlatformProvider {
 
   /**
    * Google's token info costs no quota, unlike a channel read every hour per streamer. The caller has
-   * just refreshed the token, which already fails for a revoked grant. Token info names no channel.
+   * just refreshed the token, which already fails for a revoked grant.
    */
   async validate(accessToken: string): Promise<TokenValidation> {
     try {
       const audience = await this.client.tokenAudience(accessToken)
-      return audience === this.app.clientId
-        ? { status: "valid", userId: null }
-        : { status: "invalid" }
+      return audience === this.app.clientId ? { status: "valid" } : { status: "invalid" }
     } catch (error) {
       if (error instanceof YouTubeInvalid) return { status: "invalid" }
       if (error instanceof YouTubeRateLimited || error instanceof YouTubeUnavailable) {

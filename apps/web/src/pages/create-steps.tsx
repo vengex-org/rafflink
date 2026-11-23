@@ -368,7 +368,9 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
         />
       ) : null}
       {usesChat && streamer?.platform === "kick" ? <KickChatCostNote /> : null}
-      {usesChat && streamer?.platform === "youtube" ? <YouTubeQuotaNote /> : null}
+      {usesChat && streamer?.platform === "youtube" ? (
+        <YouTubeQuotaNote closedByHand={values.ending === "never"} />
+      ) : null}
       {offersSupport && (capabilities.subEntry || capabilities.pointsEntry) ? (
         <fieldset className="field">
           <legend>{t("wizard.autoEntry.legend")}</legend>
@@ -507,9 +509,10 @@ function KickChatCostNote() {
 
 /**
  * Rafflink reads a YouTube chat by polling, and every read spends the install's daily YouTube units, so a
- * YouTube giveaway shows what a minute of reading costs and what is left today.
+ * YouTube giveaway shows what a minute of reading costs and what is left today. A giveaway closed by hand
+ * has no end the server can check its units against, so it says how many minutes today's units cover.
  */
-function YouTubeQuotaNote() {
+function YouTubeQuotaNote({ closedByHand }: { readonly closedByHand: boolean }) {
   const i18n = useI18n()
   const { result } = useLoad(getYouTubeBudget)
   const budget = result.state === "ready" && result.value !== "unauthorized" ? result.value : null
@@ -518,9 +521,15 @@ function YouTubeQuotaNote() {
     <p className="help" role="note">
       {i18n.t("wizard.chatCost.youtube", {
         perMinute: i18n.number(budget.unitsPerMinute),
+        winnerPerMinute: i18n.number(budget.winnerUnitsPerMinute),
         limit: i18n.number(budget.limit),
         remaining: i18n.number(Math.max(0, budget.remaining)),
       })}
+      {closedByHand
+        ? ` ${i18n.t("wizard.chatCost.youtubeByHand", {
+            minutes: i18n.number(Math.max(0, Math.floor(budget.remaining / budget.unitsPerMinute))),
+          })}`
+        : null}
     </p>
   )
 }
