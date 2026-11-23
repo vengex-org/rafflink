@@ -16,7 +16,7 @@ import {
   type MessageKey,
 } from "./dictionaries.ts"
 import { en } from "./en.ts"
-import { initialLanguage, storeLanguage, type Language } from "./language.ts"
+import { openingLanguage, storeLanguage, type Language } from "./language.ts"
 
 export type PluralBase =
   | "ticket"
@@ -55,18 +55,28 @@ export interface I18n {
   time(ms: number): string
 }
 
-export function I18nProvider({ children }: { readonly children: ReactNode }) {
-  const [shown, setShown] = useState(firstShown)
+/**
+ * `addressLanguage` is the language in the address of a localized page: the page shows it, and follows when the
+ * address changes, without storing it as the person's choice. Null or left out on every other page.
+ */
+export function I18nProvider({
+  addressLanguage = null,
+  children,
+}: {
+  readonly addressLanguage?: Language | null | undefined
+  readonly children: ReactNode
+}) {
+  const [shown, setShown] = useState(() => firstShown(addressLanguage))
   const [loadFailed, setLoadFailed] = useState(false)
   const requestedRef = useRef(shown.language)
-  const setLanguage = useCallback((next: Language) => {
+  const show = useCallback((next: Language, store: boolean) => {
     requestedRef.current = next
     setLoadFailed(false)
     // A slow chunk must not override a language picked after it, so only the last request lands.
     loadDictionary(next).then(
       (dictionary) => {
         if (requestedRef.current !== next) return
-        storeLanguage(next)
+        if (store) storeLanguage(next)
         setShown({ language: next, dictionary })
       },
       (error: unknown) => {
@@ -75,6 +85,12 @@ export function I18nProvider({ children }: { readonly children: ReactNode }) {
       },
     )
   }, [])
+  const setLanguage = useCallback((next: Language) => show(next, true), [show])
+  useEffect(() => {
+    if (addressLanguage !== null && addressLanguage !== requestedRef.current) {
+      show(addressLanguage, false)
+    }
+  }, [addressLanguage, show])
   const value = useMemo(
     () => ({ ...createI18n(shown.language, shown.dictionary, loadFailed), setLanguage }),
     [shown, setLanguage, loadFailed],
@@ -100,8 +116,8 @@ interface Shown {
 }
 
 /** The wanted language when `main.tsx` loaded its dictionary before the first render, else English, which needs no loading. */
-function firstShown(): Shown {
-  const language = initialLanguage()
+function firstShown(addressLanguage: Language | null): Shown {
+  const language = openingLanguage(addressLanguage)
   const dictionary = loadedDictionary(language)
   return dictionary === undefined ? { language: "en", dictionary: en } : { language, dictionary }
 }

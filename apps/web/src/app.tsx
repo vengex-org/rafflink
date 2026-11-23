@@ -1,10 +1,12 @@
+import { sourceLanguage } from "@rafflink/core/lib/languages"
 import { useEffect, useEffectEvent, type ReactNode } from "react"
-import { Navigate, Route, Routes, useLocation, useParams } from "react-router"
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router"
 import { ErrorBoundary } from "./components/error-boundary.tsx"
 import { Layout } from "./components/layout.tsx"
 import { Failed, NotFound } from "./components/notice.tsx"
-import { I18nProvider, useI18n } from "./i18n/i18n.tsx"
-import { parseLanguage } from "./i18n/language.ts"
+import { I18nProvider } from "./i18n/i18n.tsx"
+import { addressLanguage, languages, parseLanguage, storedLanguage } from "./i18n/language.ts"
+import { useChooseLanguage } from "./i18n/localized-pages.ts"
 import { AdminPage } from "./pages/admin-page.tsx"
 import { CreatedGiveawayPage, NewGiveawayPage } from "./pages/create-page.tsx"
 import { DashboardPage } from "./pages/dashboard-page.tsx"
@@ -18,13 +20,24 @@ import { OverlayPage } from "./pages/overlay-page.tsx"
 import { VerifyLookupPage } from "./pages/verify-lookup-page.tsx"
 import { VerifyPage } from "./pages/verify-page.tsx"
 import { parseGiveawayCode } from "./lib/giveaway-code.ts"
-import { giveawayPath, staticSegments, staticSubSegments, verifyPath } from "./lib/routes.ts"
+import {
+  giveawayPath,
+  localizedPages,
+  localizedPath,
+  pageOfPath,
+  staticSegments,
+  staticSubSegments,
+  verifyPath,
+  type LocalizedPage,
+} from "./lib/routes.ts"
 import { useConsumedParam } from "./lib/use-consumed-param.ts"
 import { HomePage, siteRoutes } from "./site/site.tsx"
 
 export function AppRoutes() {
+  const { pathname } = useLocation()
   return (
-    <I18nProvider>
+    <I18nProvider addressLanguage={addressLanguage(pathname)}>
+      <ChosenLanguageHome />
       <LinkedLanguage />
       <ErrorBoundary fallback={<Failed />}>
         <CanonicalPath>
@@ -46,10 +59,8 @@ export function AppRoutes() {
               <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
               <Route path="dashboard/created/:id" caseSensitive element={<CreatedGiveawayPage />} />
               <Route path="admin" caseSensitive element={<AdminPage />} />
-              <Route path="privacy" caseSensitive element={<PrivacyPage />} />
-              <Route path="terms" caseSensitive element={<TermsPage />} />
+              {localizedRoutes}
               <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
-              <Route index element={<HomePage />} />
               <Route path="*" element={<NotFound title="notFound.page" />} />
             </Route>
             {/* The list draw makes no request but the drand round, and a moderator link's opener needs no streamer header, so both skip the session lookup. */}
@@ -72,13 +83,51 @@ export function AppRoutes() {
   )
 }
 
+// The home page and the legal texts at their address in every language.
+const localizedRoutes = localizedPages.flatMap((page) =>
+  languages.map((language) => {
+    const path = localizedPath(language, page)
+    return <Route key={path} path={path} caseSensitive element={localizedPage(page)} />
+  }),
+)
+
+function localizedPage(page: LocalizedPage): ReactNode {
+  switch (page) {
+    case "home":
+      return <HomePage />
+    case "privacy":
+      return <PrivacyPage />
+    case "terms":
+      return <TermsPage />
+  }
+}
+
+/**
+ * `/` is the home page in English, as search engines and shared links know it. A person who chose another language
+ * before gets the home page in it once the page has loaded; the browser's language alone moves nobody.
+ */
+function ChosenLanguageHome() {
+  const { pathname, search, hash } = useLocation()
+  const navigate = useNavigate()
+  const redirect = useEffectEvent(() => {
+    const opened = pageOfPath(pathname)
+    if (opened?.page !== "home" || opened.language !== sourceLanguage) return
+    const chosen = storedLanguage()
+    if (chosen === null || chosen === sourceLanguage) return
+    navigate({ pathname: localizedPath(chosen, "home"), search, hash }, { replace: true })
+  })
+  // Only the address the page opened at: picking English on `/de/` leads to `/` before the choice is stored.
+  useEffect(() => redirect(), [])
+  return null
+}
+
 /** A `?lang=` in the address, such as a link in a chat, picks the language once and is stored like a choice made in the menu. */
 function LinkedLanguage() {
-  const { setLanguage } = useI18n()
+  const choose = useChooseLanguage()
   const consumed = useConsumedParam("lang")
   const apply = useEffectEvent((param: typeof consumed) => {
     const linked = parseLanguage(param?.value ?? null)
-    if (linked !== null) setLanguage(linked)
+    if (linked !== null) choose(linked)
   })
   useEffect(() => apply(consumed), [consumed])
   return null
@@ -92,6 +141,17 @@ function LinkedLanguage() {
  */
 function CanonicalPath({ children }: { readonly children: ReactNode }) {
   const { pathname, search, hash } = useLocation()
+  const canonical = canonicalPathOf(pathname)
+  // Nothing else renders while it redirects, so a route cannot redirect the same address elsewhere.
+  return canonical === pathname ? (
+    children
+  ) : (
+    <Navigate replace to={{ pathname: canonical, search, hash }} />
+  )
+}
+
+/** A localized page has the spelling of {@link localizedPath}: the home page of a language ends in a slash, as its prerendered folder is served. */
+function canonicalPathOf(pathname: string): string {
   const segments = pathname.replace(/\/+$/, "").split("/")
   const first = segments[1]
   if (
@@ -108,12 +168,8 @@ function CanonicalPath({ children }: { readonly children: ReactNode }) {
     segments[wordAt] = word.toLowerCase()
   }
   const canonical = segments.join("/")
-  // Nothing else renders while it redirects, so a route cannot redirect the same address elsewhere.
-  return canonical === "" || canonical === pathname ? (
-    children
-  ) : (
-    <Navigate replace to={{ pathname: canonical, search, hash }} />
-  )
+  const localized = pageOfPath(canonical)
+  return localized === null ? canonical : localizedPath(localized.language, localized.page)
 }
 
 /** Where giveaway links pointed before `/<code>`; kept so links already shared still open. */

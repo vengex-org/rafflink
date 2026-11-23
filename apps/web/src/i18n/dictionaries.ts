@@ -1,5 +1,5 @@
+import type { Language } from "@rafflink/core/lib/languages"
 import { en, type MessageKey } from "./en.ts"
-import type { KnownLanguage } from "./language.ts"
 
 export type { MessageKey }
 
@@ -7,8 +7,9 @@ export type Dictionary = Readonly<Record<MessageKey, string>>
 
 /**
  * Where each language's dictionary comes from. English is the source and ships in the main bundle; every other
- * dictionary is its own chunk, loaded when the language is first shown. A new language is its dictionary file
- * plus one line here; the picker and the browser detection follow this list.
+ * dictionary is its own chunk, loaded when the language is first shown. A new language is its dictionary file,
+ * one line here and its code in the `languages` of core, which the picker, the browser detection and the
+ * localized addresses follow.
  */
 export const dictionaryLoaders = {
   en: async () => en,
@@ -20,9 +21,7 @@ export const dictionaryLoaders = {
   it: async () => (await import("./it.ts")).it,
   fr: async () => (await import("./fr.ts")).fr,
   pl: async () => (await import("./pl.ts")).pl,
-} satisfies { readonly [Code in KnownLanguage]?: () => Promise<Dictionary> }
-
-export type Language = keyof typeof dictionaryLoaders
+} satisfies { readonly [Code in Language]: () => Promise<Dictionary> }
 
 const loaded = new Map<Language, Dictionary>([["en", en]])
 

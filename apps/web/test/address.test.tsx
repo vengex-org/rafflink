@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent, waitFor } from "@testing-library/react"
-import { staticSegments, staticSubSegments } from "../src/lib/routes.ts"
+import { act, cleanup, fireEvent, waitFor } from "@testing-library/react"
+import { loadDictionary } from "../src/i18n/dictionaries.ts"
+import { de } from "../src/i18n/de.ts"
+import { en } from "../src/i18n/en.ts"
+import { languages } from "../src/i18n/language.ts"
+import { localizedPath, staticSegments, staticSubSegments } from "../src/lib/routes.ts"
 import { dashboardGiveaway, giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
@@ -146,6 +150,56 @@ describe("canonical spelling", () => {
   })
 })
 
+describe("localized pages", () => {
+  it("open the home page in every language at its address", async () => {
+    mockFetch({})
+    for (const language of languages) {
+      const dictionary = await loadDictionary(language)
+      const view = renderApp(localizedPath(language, "home"))
+
+      expect([language, view.getByRole("heading", { level: 1 }).textContent]).toEqual([
+        language,
+        dictionary["home.title"],
+      ])
+      expect(document.documentElement.lang).toBe(language)
+      cleanup()
+    }
+  })
+
+  it("keep the slash of a language's home page, which its folder is served with", async () => {
+    mockFetch({})
+    const view = renderApp("/de/")
+
+    await act(async () => {})
+    expect(view.address()).toBe("/de/")
+  })
+
+  it.each([
+    ["/de", "/de/"],
+    ["/DE", "/de/"],
+    ["/de/privacy/", "/de/privacy"],
+    ["/DE/terms", "/de/terms"],
+    ["/privacy/", "/privacy"],
+  ])("open %s at %s", async (typed, canonical) => {
+    mockFetch({})
+    const view = renderApp(typed)
+
+    await waitFor(() => expect(view.address()).toBe(canonical))
+    const heading = (await view.findByRole("heading", { level: 1 })).textContent
+    expect([en["notFound.page"], de["notFound.page"]]).not.toContain(heading)
+  })
+
+  it("answer a page a language does not have with the page 404", async () => {
+    mockFetch({})
+    const view = renderApp("/de/dashboard")
+
+    expect(await view.findByRole("heading", { level: 1 })).toHaveProperty(
+      "textContent",
+      en["notFound.page"],
+    )
+  })
+})
+
 describe("one-time parameters", () => {
   it("shows why a sign-in failed and removes ?signin= so a reload does not repeat it", async () => {
     mockFetch({})
@@ -169,7 +223,7 @@ describe("one-time parameters", () => {
     await waitFor(() => expect(view.address()).toBe("/?ref=giveaway"))
   })
 
-  it("picks the language of ?lang=, stores it and removes the parameter", async () => {
+  it("picks the language of ?lang=, stores it and opens the page at its address in that language", async () => {
     mockFetch({})
 
     const view = renderApp("/?lang=sk")
@@ -181,7 +235,17 @@ describe("one-time parameters", () => {
     ).toBeTruthy()
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
     await waitFor(() => expect(document.documentElement.lang).toBe("sk"))
-    await waitFor(() => expect(view.address()).toBe("/"))
+    await waitFor(() => expect(view.address()).toBe("/sk/"))
+  })
+
+  it("removes ?lang= on a page that is not localized and keeps the address", async () => {
+    mockFetch({})
+
+    const view = renderApp("/verify?lang=sk")
+
+    await waitFor(() => expect(view.address()).toBe("/verify"))
+    await waitFor(() => expect(document.documentElement.lang).toBe("sk"))
+    expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
   })
 
   it("lets the menu change the language again after a ?lang= link", async () => {
@@ -190,13 +254,14 @@ describe("one-time parameters", () => {
     await view.findByRole("heading", {
       name: "Férové súťaže, žrebované naživo na streame.",
     })
-    await waitFor(() => expect(view.address()).toBe("/"))
+    await waitFor(() => expect(view.address()).toBe("/sk/"))
 
     fireEvent.click(view.getByRole("radio", { name: "English" }))
 
     expect(
       await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
     ).toBeTruthy()
+    expect(view.address()).toBe("/")
   })
 
   it("applies a ?lang= link followed later in the page, though the language was chosen again since", async () => {
@@ -205,7 +270,7 @@ describe("one-time parameters", () => {
     await view.findByRole("heading", {
       name: "Férové súťaže, žrebované naživo na streame.",
     })
-    await waitFor(() => expect(view.address()).toBe("/"))
+    await waitFor(() => expect(view.address()).toBe("/sk/"))
     fireEvent.click(view.getByRole("radio", { name: "English" }))
     await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." })
 
@@ -216,7 +281,7 @@ describe("one-time parameters", () => {
         name: "Férové súťaže, žrebované naživo na streame.",
       }),
     ).toBeTruthy()
-    await waitFor(() => expect(view.address()).toBe("/"))
+    await waitFor(() => expect(view.address()).toBe("/sk/"))
   })
 
   it("ignores a language it does not offer and still removes the parameter", async () => {

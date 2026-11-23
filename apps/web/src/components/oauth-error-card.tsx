@@ -5,7 +5,8 @@ import type { MessageKey } from "../i18n/dictionaries.ts"
 import { parseGiveawayCode } from "../lib/giveaway-code.ts"
 import { appSetupUrls } from "../lib/links.ts"
 import { platformNames } from "../lib/platform-name.ts"
-import { dashboardPath, homePath, streamerSignInPath, viewerSignInPath } from "../lib/routes.ts"
+import { dashboardPath, pageOfPath, streamerSignInPath, viewerSignInPath } from "../lib/routes.ts"
+import { useHydrated } from "../lib/use-hydrated.ts"
 import { ExternalLink } from "./external-link.tsx"
 import { AlertIcon, LogInIcon } from "./icons.tsx"
 import { Page } from "./page.tsx"
@@ -23,9 +24,10 @@ export function OAuthErrorCard() {
   const { t } = useI18n()
   const [query, setQuery] = useSearchParams()
   const { pathname } = useLocation()
+  const hydrated = useHydrated()
   const error = query.get("error")
   const platform = query.get("platform")
-  if (error === null || platform === null || !isPlatform(platform)) return null
+  if (!hydrated || error === null || platform === null || !isPlatform(platform)) return null
 
   const dismiss = () =>
     setQuery(
@@ -97,6 +99,9 @@ function signInOf(
   if (code !== null) return { viewer: true, href: viewerSignInPath(platform, code) }
   return {
     viewer: false,
-    href: streamerSignInPath(platform, pathname === homePath ? dashboardPath : pathname),
+    href: streamerSignInPath(
+      platform,
+      pageOfPath(pathname)?.page === "home" ? dashboardPath : pathname,
+    ),
   }
 }

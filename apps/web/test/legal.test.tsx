@@ -3,6 +3,7 @@ import type { OperatorJson } from "@rafflink/core/http/json"
 import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import { loadDictionary } from "../src/i18n/dictionaries.ts"
 import { languages, type Language } from "../src/i18n/language.ts"
+import { localizedPath } from "../src/lib/routes.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -70,14 +71,12 @@ const titles = eachLanguage({
 describe("legal pages", () => {
   for (const [language, title] of titles) {
     it(`render the privacy policy and the terms in ${language}`, () => {
-      browserLanguage(language)
-
-      const privacy = renderApp("/privacy")
+      const privacy = renderApp(localizedPath(language, "privacy"))
       expect(privacy.getByRole("heading", { level: 1 }).textContent).toBe(title.privacy)
       expect(privacy.getAllByRole("heading", { level: 2 }).length).toBeGreaterThan(5)
       cleanup()
 
-      const terms = renderApp("/terms")
+      const terms = renderApp(localizedPath(language, "terms"))
       expect(terms.getByRole("heading", { level: 1 }).textContent).toBe(title.terms)
       expect(terms.getAllByRole("heading", { level: 2 }).length).toBeGreaterThan(5)
     })
@@ -85,9 +84,8 @@ describe("legal pages", () => {
 
   it("say in every translation, and only there, that the English version prevails", async () => {
     for (const language of languages) {
-      browserLanguage(language)
       const translated = (await loadDictionary(language))["legal.englishPrevails"]
-      for (const path of ["/privacy", "/terms"]) {
+      for (const path of [localizedPath(language, "privacy"), localizedPath(language, "terms")]) {
         const view = renderApp(path)
 
         const text = view.getByRole("article").textContent
@@ -135,8 +133,7 @@ describe("legal pages", () => {
   it("name the operator, address, business ID and contact in every language", async () => {
     withOperator(operator)
     for (const language of languages) {
-      browserLanguage(language)
-      for (const path of ["/privacy", "/terms"]) {
+      for (const path of [localizedPath(language, "privacy"), localizedPath(language, "terms")]) {
         const view = renderApp(path)
 
         await view.findByText(new RegExp(operator.name))
@@ -171,14 +168,12 @@ describe("legal pages", () => {
       de: "keine Kontaktdaten veröffentlicht",
     })
     for (const [language, words] of generic) {
-      browserLanguage(language)
-
-      const privacy = renderApp("/privacy")
+      const privacy = renderApp(localizedPath(language, "privacy"))
       await privacy.findAllByText(new RegExp(words))
       expect(privacy.getByRole("article").textContent).not.toContain("{operator}")
       cleanup()
 
-      const terms = renderApp("/terms")
+      const terms = renderApp(localizedPath(language, "terms"))
       await terms.findAllByText(new RegExp(words))
       cleanup()
     }
@@ -296,8 +291,7 @@ describe("legal pages", () => {
       },
     })
     for (const [language, expected] of words) {
-      browserLanguage(language)
-      const view = renderApp("/terms")
+      const view = renderApp(localizedPath(language, "terms"))
 
       const text = view.getByRole("article").textContent
       expect(text).toContain(expected.organizer)
@@ -337,7 +331,7 @@ describe("legal pages", () => {
     expect(text).toContain("never stored or logged")
   })
 
-  it("follow the language switch", async () => {
+  it("follow the language switch to the address of the text in the picked language, and store the choice", async () => {
     browserLanguage("en-US")
     const view = renderApp("/privacy")
 
@@ -347,6 +341,32 @@ describe("legal pages", () => {
       await view.findByRole("heading", { level: 1, name: "Zásady ochrany osobních údajů" }),
     ).toBeTruthy()
     await waitFor(() => expect(document.documentElement.lang).toBe("cs"))
+    expect(view.address()).toBe("/cs/privacy")
+    expect(window.localStorage.getItem("rafflink-language")).toBe("cs")
+  })
+
+  it("show the language of the address, not the stored choice or the browser's", () => {
+    window.localStorage.setItem("rafflink-language", "de")
+    browserLanguage("sk-SK")
+
+    const english = renderApp("/privacy")
+    expect(english.getByRole("heading", { level: 1 }).textContent).toBe("Privacy policy")
+    cleanup()
+
+    const czech = renderApp("/cs/terms")
+    expect(czech.getByRole("heading", { level: 1 }).textContent).toBe("Podmínky používání")
+    expect(window.localStorage.getItem("rafflink-language")).toBe("de")
+  })
+
+  it("follow the address back to another language without storing it", async () => {
+    const view = renderApp("/de/privacy")
+    fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
+    await view.findByRole("heading", { level: 1, name: "Zásady ochrany osobních údajů" })
+
+    view.go("/de/terms")
+
+    expect(await view.findByRole("heading", { level: 1, name: "Nutzungsbedingungen" })).toBeTruthy()
+    expect(window.localStorage.getItem("rafflink-language")).toBe("cs")
   })
 
   it("keep the routes case sensitive so a giveaway code like TERMS opens the giveaway page", () => {
@@ -392,5 +412,33 @@ describe("legal footer links", () => {
     const view = renderApp("/")
 
     expect(view.queryByRole("navigation", { name: "Legal" })).toBeNull()
+  })
+
+  it("point to the texts and the home page in the language shown", () => {
+    const home = renderApp("/de/")
+    const homeFooter = within(home.getByRole("navigation", { name: "Fußzeile" }))
+    expect(homeFooter.getByRole("link", { name: "Datenschutz" }).getAttribute("href")).toBe(
+      "/de/privacy",
+    )
+    expect(homeFooter.getByRole("link", { name: "Nutzungsbedingungen" }).getAttribute("href")).toBe(
+      "/de/terms",
+    )
+    expect(home.queryByRole("navigation", { name: "Rechtliches" })).toBeNull()
+    cleanup()
+
+    window.localStorage.setItem("rafflink-language", "de")
+    for (const path of ["/de/privacy", "/verify"]) {
+      const view = renderApp(path)
+      const footer = within(view.getByRole("navigation", { name: "Rechtliches" }))
+      expect([
+        path,
+        footer.getByRole("link", { name: "Datenschutz" }).getAttribute("href"),
+      ]).toEqual([path, "/de/privacy"])
+      expect(footer.getByRole("link", { name: "Nutzungsbedingungen" }).getAttribute("href")).toBe(
+        "/de/terms",
+      )
+      expect(view.getByRole("link", { name: "Rafflink" }).getAttribute("href")).toBe("/de/")
+      cleanup()
+    }
   })
 })
