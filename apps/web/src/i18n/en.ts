@@ -54,7 +54,7 @@ export const en = {
   "home.text": "Viewers enter with one click and you draw in front of your chat.",
   "home.login": "Sign in and start",
   "home.stage.toClaim": "to claim",
-  "home.reads": "We only read your name, VIPs, moderators and chat.",
+  "home.reads": "We only read your name and chat.",
   "home.worksWith": "Works with",
   "home.trust.supportKoFi": "Support on Ko-fi",
   "home.trust.support": "Support Rafflink",
@@ -963,12 +963,16 @@ export const en = {
   "wizard.entry.chat": "Chat only",
   "wizard.entry.chat.help":
     "Viewers enter only by typing a keyword in your chat. The page shows the keyword and lets them check whether they are in.",
-  "wizard.reconnect.chat.info":
-    "To check whether a chat entrant follows you, Rafflink needs one more Twitch permission (read your followers). Reconnect Twitch; your answers stay.",
-  "wizard.reconnect.sub.info":
-    "To enter new subscribers, Rafflink needs to read your subscribers and followers. Reconnect Twitch; your answers stay.",
-  "wizard.reconnect.points.info":
-    "To enter viewers who redeem a channel point reward, Rafflink needs to read your rewards, redemptions, subscribers and followers. Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.followers.info":
+    "To check who follows you, Rafflink needs to read your followers. Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.subs.info":
+    "To enter new subscribers or give subscribers their tickets, Rafflink needs to read your subscribers. Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.redemptions.info":
+    "To enter viewers who redeem a channel point reward, Rafflink needs to read your rewards and redemptions. Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.roles.info":
+    "To give VIPs and moderators their tickets, Rafflink needs to read your VIPs and moderators. Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.modlinks.info":
+    "To check who moderates your channel, Rafflink needs to read your moderators. Reconnect Twitch, then create the link.",
   "wizard.reconnect.points.info.kick":
     "To list your channel point rewards, Rafflink needs to read them. Reconnect Kick; your answers stay.",
   "wizard.reconnect.button": "Reconnect {platform}",
@@ -1124,7 +1128,7 @@ export const en = {
   "privacy.cookies.i5":
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
   "privacy.cookies.i7":
-    "rl_entry_scopes: remembers which extra permissions (followers for chat entry, subscribers and rewards for sub and points entry) the last streamer sign-in in this browser allowed, so the next sign-in asks for them again; 400 days, kept when signing out.",
+    "rl_entry_scopes: remembers which extra permissions (followers, subscribers, rewards, VIPs and moderators) the last streamer sign-in in this browser allowed, so the next sign-in asks for them again; 400 days, kept when signing out.",
   "privacy.cookies.i6":
     "rl_mod_*: lets whoever opened a moderator link use that giveaway's moderator page, 7 days by default or until the streamer revokes the link. rl_mod_pending: remembers which link waits for the moderator's Twitch sign-in, 10 minutes by default.",
   "privacy.rights.h": "Your rights",
@@ -1342,6 +1346,8 @@ export const en = {
   "live.mod.who.mods": "Moderators of my channel",
   "live.mod.who.mods.help":
     "They sign in with Twitch and Rafflink checks that they moderate your channel.",
+  "live.mod.reconnect": "Moderator-only links need one more Twitch permission.",
+  "live.rolesPaused": "VIP and mod tickets paused. Reconnect Twitch.",
   "live.mod.who.anyone": "Anyone with the link",
   "live.mod.create": "Create link",
   "live.mod.new": "New link. Copy it now, it is shown only once.",

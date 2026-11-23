@@ -55,7 +55,7 @@ export const pt: Translation = {
   "home.text": "Os espectadores participam com um clique e você sorteia na frente do seu chat.",
   "home.login": "Entre e comece",
   "home.stage.toClaim": "para resgatar",
-  "home.reads": "Só lemos seu nome, seus VIPs, seus moderadores e seu chat.",
+  "home.reads": "Só lemos seu nome e seu chat.",
   "home.worksWith": "Funciona com",
   "home.trust.supportKoFi": "Apoie no Ko-fi",
   "home.trust.support": "Apoie o Rafflink",
@@ -998,12 +998,16 @@ export const pt: Translation = {
   "wizard.entry.chat": "Só chat",
   "wizard.entry.chat.help":
     "Os espectadores só participam digitando uma palavra-chave no seu chat. A página mostra a palavra-chave e permite verificar se eles estão participando.",
-  "wizard.reconnect.chat.info":
-    "Para verificar se quem se inscreve pelo chat segue você, o Rafflink precisa de mais uma permissão da Twitch (ler seus seguidores). Reconecte a Twitch; suas respostas ficam salvas.",
-  "wizard.reconnect.sub.info":
-    "Para inscrever novos inscritos, o Rafflink precisa ler seus inscritos e seguidores. Reconecte a Twitch; suas respostas ficam salvas.",
-  "wizard.reconnect.points.info":
-    "Para inscrever espectadores que resgatam uma recompensa de pontos do canal, o Rafflink precisa ler suas recompensas, resgates, inscritos e seguidores. Reconecte a Twitch; suas respostas ficam salvas.",
+  "wizard.reconnect.followers.info":
+    "Para verificar quem segue você, o Rafflink precisa ler seus seguidores. Reconecte a Twitch; suas respostas ficam salvas.",
+  "wizard.reconnect.subs.info":
+    "Para inscrever novos inscritos ou dar aos inscritos seus bilhetes, o Rafflink precisa ler seus inscritos. Reconecte a Twitch; suas respostas ficam salvas.",
+  "wizard.reconnect.redemptions.info":
+    "Para inscrever espectadores que resgatam uma recompensa de pontos do canal, o Rafflink precisa ler suas recompensas e resgates. Reconecte a Twitch; suas respostas ficam salvas.",
+  "wizard.reconnect.roles.info":
+    "Para dar aos VIPs e moderadores seus bilhetes, o Rafflink precisa ler seus VIPs e moderadores. Reconecte a Twitch; suas respostas ficam salvas.",
+  "wizard.reconnect.modlinks.info":
+    "Para verificar quem modera seu canal, o Rafflink precisa ler seus moderadores. Reconecte a Twitch e depois crie o link.",
   "wizard.reconnect.points.info.kick":
     "Para listar suas recompensas de pontos do canal, o Rafflink precisa lê-las. Reconecte a Kick; suas respostas ficam salvas.",
   "wizard.reconnect.button": "Reconectar {platform}",
@@ -1162,7 +1166,7 @@ export const pt: Translation = {
   "privacy.cookies.i5":
     "O armazenamento local do seu navegador guarda sua escolha de idioma e de tema e o modo limpo da página ao vivo. O armazenamento de sessão guarda uma cópia da página do sorteio que você carregou, incluindo o seu próprio estado nela, por cerca de 30 segundos. Nenhum dos dois sai do seu dispositivo.",
   "privacy.cookies.i7":
-    "rl_entry_scopes: lembra quais permissões extras (seguidores para inscrição pelo chat, inscritos e recompensas para inscrição por sub e por pontos) o último login de streamer neste navegador permitiu, para que o próximo login as peça de novo; 400 dias, mantido ao sair.",
+    "rl_entry_scopes: lembra quais permissões extras (seguidores, inscritos, recompensas, VIPs e moderadores) o último login de streamer neste navegador permitiu, para que o próximo login as peça de novo; 400 dias, mantido ao sair.",
   "privacy.cookies.i6":
     "rl_mod_*: permite que quem abriu um link de moderador use a página de moderador daquele sorteio, 7 dias por padrão ou até o streamer revogar o link. rl_mod_pending: lembra qual link aguarda o login do moderador com a Twitch, 10 minutos por padrão.",
   "privacy.rights.h": "Seus direitos",
@@ -1388,6 +1392,8 @@ export const pt: Translation = {
   "live.mod.who.mods": "Moderadores do meu canal",
   "live.mod.who.mods.help":
     "Eles entram com a Twitch e o Rafflink verifica se moderam o seu canal.",
+  "live.mod.reconnect": "Links só para moderadores precisam de mais uma permissão da Twitch.",
+  "live.rolesPaused": "Bilhetes de VIPs e moderadores pausados. Reconecte a Twitch.",
   "live.mod.who.anyone": "Qualquer pessoa com o link",
   "live.mod.create": "Criar link",
   "live.mod.new": "Novo link. Copie agora, ele só é mostrado uma vez.",
