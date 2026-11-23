@@ -56,10 +56,24 @@ export interface ChatListener {
  * The chat and the other events of the room's channel. It has no timers: the owner calls {@link ChatSource.onAlarm} at
  * {@link ChatSource.wakeAt}.
  */
+/**
+ * Whose messages the owner reads now: every chatter's while chat entries are open, otherwise only the
+ * winners'. A source may drop the others before they reach the owner.
+ */
+export type ChatAudience =
+  | { readonly kind: "everyone" }
+  | { readonly kind: "chatters"; readonly userIds: readonly string[] }
+
 export interface ChatSource {
-  /** Starts listening; a source that already listens is left alone. */
-  open(): void
-  /** Stops listening; a closed source is left alone. */
+  /**
+   * Starts listening; a source that already listens is left alone, except that it takes the new
+   * `audience`. The owner calls it after every write that can change the audience.
+   */
+  open(audience: ChatAudience): void
+  /**
+   * Stops listening; a closed source is left alone. A fresh source that never opened also releases what
+   * an earlier source of the same room left at the platform, if anything outlives the process there.
+   */
   close(): void
   /** The next instant {@link ChatSource.onAlarm} has work, `null` while closed. */
   wakeAt(): Instant | null

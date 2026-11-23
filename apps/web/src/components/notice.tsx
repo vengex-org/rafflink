@@ -1,3 +1,4 @@
+import type { Platform } from "@rafflink/core/platform/provider"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
@@ -6,6 +7,7 @@ import { homePath, streamerSignInPath } from "../lib/routes.ts"
 import { AlertIcon, ArrowLeftIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
 import { StateColumn } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
+import { useStreamerSession } from "./streamer-session.tsx"
 
 export function Loading() {
   const { t } = useI18n()
@@ -91,18 +93,30 @@ export function Status({ children }: { readonly children: ReactNode }) {
   )
 }
 
-/** Signing in brings the streamer back to the page they are on. */
+const signInLabels: Readonly<Record<Platform, MessageKey>> = {
+  twitch: "signIn.button",
+  kick: "signIn.buttonKick",
+}
+
+/** Signing in brings the streamer back to the page they are on; one button per platform the install signs in with. */
 export function SignIn({ why }: { readonly why: MessageKey }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
+  const { signInPlatforms } = useStreamerSession()
   return (
     <StateColumn>
       <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
         <p>{t(why)}</p>
-        <a className="button block" href={streamerSignInPath(`${pathname}${search}`)}>
-          <LogInIcon />
-          {t("signIn.button")}
-        </a>
+        {signInPlatforms.map((platform) => (
+          <a
+            key={platform}
+            className="button block"
+            href={streamerSignInPath(platform, `${pathname}${search}`)}
+          >
+            <LogInIcon />
+            {t(signInLabels[platform])}
+          </a>
+        ))}
       </StateCard>
     </StateColumn>
   )

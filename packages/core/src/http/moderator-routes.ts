@@ -9,7 +9,7 @@ import { tokenHash } from "../lib/token-hash.ts"
 import type { Instant } from "../ports.ts"
 import { PlatformError, PlatformIdentityRejected } from "../platform/errors.ts"
 import { codeChallenge, codeVerifier } from "../platform/pkce.ts"
-import type { PlatformProvider } from "../platform/provider.ts"
+import { configuredProviders, type PlatformProvider } from "../platform/provider.ts"
 import { callbackPath, redirectUri } from "../platform/redirect.ts"
 import { openGiveawayStreamerAccess, StreamerTokenMissing } from "../room/streamer-access.ts"
 import type { AppDeps } from "./deps.ts"
@@ -95,7 +95,7 @@ export function moderatorRoutes(deps: AppDeps): Hono {
     return c.json(body)
   })
 
-  for (const provider of Object.values(deps.platforms)) {
+  for (const provider of configuredProviders(deps.platforms)) {
     app.get(`/auth/${provider.platform}/moderator/start`, async (c) => {
       const linkId = await takeModeratorPending(c, deps)
       if (linkId === null) return c.redirect(outcomePath("invalid-state"))

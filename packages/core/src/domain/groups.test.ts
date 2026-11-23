@@ -37,6 +37,7 @@ describe("supportedGroups", () => {
     subTiers: true,
     vip: true,
     accountAge: true,
+    moderatorRole: true,
     pageEntry: true,
     chatEntry: true,
     subEntry: true,
@@ -60,5 +61,17 @@ describe("supportedGroups", () => {
       "viewer",
       "moderator",
     ])
+  })
+
+  it("keeps only viewers on a platform that tells no channel role either", () => {
+    expect(
+      supportedGroups({
+        ...all,
+        followerCheck: false,
+        subTiers: false,
+        vip: false,
+        moderatorRole: false,
+      }),
+    ).toEqual(["viewer"])
   })
 })

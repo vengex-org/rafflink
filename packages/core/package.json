@@ -14,6 +14,7 @@
     "jose": "6.2.18"
   },
   "devDependencies": {
+    "@rafflink/fake-kick": "workspace:*",
     "@rafflink/fake-twitch": "workspace:*"
   }
 }

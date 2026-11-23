@@ -194,6 +194,28 @@ describe("resolveConfig", () => {
     }
   })
 
+  it("turns Kick off without a Kick app and reads one given as id and secret", () => {
+    const off = resolveConfig(required)
+    const on = resolveConfig({
+      ...required,
+      KICK_CLIENT_ID: " kid ",
+      KICK_CLIENT_SECRET: "ksecret",
+    })
+
+    expect([off.kickClientId, off.kickClientSecret]).toEqual([null, null])
+    expect([on.kickClientId, on.kickClientSecret]).toEqual(["kid", "ksecret"])
+  })
+
+  it("names the missing half of a Kick app", () => {
+    expect(failure({ ...required, KICK_CLIENT_ID: "kid" })).toMatchObject({
+      env: "KICK_CLIENT_SECRET",
+      reason: "missing",
+    })
+    expect(
+      failure({ ...required, KICK_CLIENT_SECRET: "ksecret", KICK_CLIENT_ID: " " }),
+    ).toMatchObject({ env: "KICK_CLIENT_ID", reason: "missing" })
+  })
+
   it("rejects a blank required key", () => {
     expect(failure({ ...required, SESSION_SECRET: "  " })).toMatchObject({
       env: "SESSION_SECRET",

@@ -38,6 +38,7 @@ export const en = {
 
   "signIn.title": "Sign in",
   "signIn.button": "Sign in with Twitch",
+  "signIn.buttonKick": "Sign in with Kick",
   "signIn.why.admin": "Sign in with Twitch to open the admin page.",
   "signIn.why.expired": "Your session ended. Sign in with Twitch to go on.",
   "signIn.why.dashboard": "Sign in with Twitch to create and run giveaways.",
@@ -410,6 +411,7 @@ export const en = {
   "giveaway.ready.text":
     "Sign in with your Twitch account to get your ticket. It takes a few seconds.",
   "giveaway.enter": "Enter with Twitch",
+  "giveaway.enterKick": "Enter with Kick",
   "giveaway.signedOut.title": "Sign in to enter",
   "giveaway.waiting.title": "Waiting for the draw",
   "giveaway.waiting.text":

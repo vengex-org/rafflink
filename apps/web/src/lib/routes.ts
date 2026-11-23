@@ -1,4 +1,5 @@
 import type { ChannelEntryVia } from "@rafflink/core/domain/rules"
+import type { Platform } from "@rafflink/core/platform/provider"
 import type { OverlayOptions } from "./overlay-options.ts"
 
 export {
@@ -61,11 +62,11 @@ export function dashboardCreatedPath(id: string): string {
   return `/dashboard/created/${encodeURIComponent(id)}`
 }
 
-/** Signs a streamer in and sends them back to `returnTo`; the dashboard is where they land when the link names none. */
-export function streamerSignInPath(returnTo: string): string {
+/** Signs a streamer in on `platform` and sends them back to `returnTo`; the dashboard is where they land when the link names none. */
+export function streamerSignInPath(platform: Platform, returnTo: string): string {
   const query = new URLSearchParams()
   if (returnTo !== dashboardPath) query.set("return", returnTo)
-  return withQuery("/auth/twitch/streamer/start", query)
+  return withQuery(`/auth/${platform}/streamer/start`, query)
 }
 
 /** A moderator's sign-in for the link that just asked for it; the server remembers which link in a cookie. */
@@ -76,8 +77,9 @@ export function entryReconnectPath(ways: readonly ChannelEntryVia[], returnTo: s
   return withQuery("/auth/twitch/streamer/start", query)
 }
 
-export function viewerSignInPath(code: string): string {
-  return `/auth/twitch/viewer/start?giveaway=${encodeURIComponent(code)}`
+/** Signs a viewer in on the giveaway's platform; the server sends a link naming another platform on to the giveaway's. */
+export function viewerSignInPath(platform: Platform, code: string): string {
+  return `/auth/${platform}/viewer/start?giveaway=${encodeURIComponent(code)}`
 }
 
 function withQuery(path: string, query: URLSearchParams): string {

@@ -613,6 +613,7 @@ describe("unsupportedRule", () => {
     subTiers: true,
     vip: true,
     accountAge: true,
+    moderatorRole: true,
     pageEntry: true,
     chatEntry: true,
     subEntry: true,

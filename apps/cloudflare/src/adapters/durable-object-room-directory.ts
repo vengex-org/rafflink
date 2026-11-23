@@ -113,6 +113,9 @@ class DurableObjectRoomStub implements RoomStub {
   pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
     return inRoom(() => this.stub.pushOverlayTheme(...args))
   }
+  receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
+    return inRoom(() => this.stub.receiveChat(...args))
+  }
   liveCounts() {
     return inRoom(() => this.stub.liveCounts())
   }

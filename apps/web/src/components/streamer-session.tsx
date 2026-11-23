@@ -1,4 +1,5 @@
 import type { OperatorJson, SessionJson } from "@rafflink/core/http/json"
+import type { Platform } from "@rafflink/core/platform/provider"
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router"
 import { getSession, logout, sessionLost } from "../api/client.ts"
@@ -15,6 +16,8 @@ export interface StreamerSession {
   readonly streamer: SignedInStreamer | null
   /** The deployment's support page, signed in or not; null while the session is unknown or when `DONATE_URL` is unset. */
   readonly donateUrl: string | null
+  /** The platforms a streamer can sign in with; Twitch alone while the session is unknown. */
+  readonly signInPlatforms: readonly Platform[]
   /** Who runs the instance: null inside `ready` when `OPERATOR_NAME` is unset, never null for a call that has not answered or failed. */
   readonly operator: Load<OperatorJson | null>
   readonly reload: () => void
@@ -23,9 +26,13 @@ export interface StreamerSession {
   readonly signOut: () => void
 }
 
+// Every install signs in with Twitch, so that button can show before the session answers.
+const twitchOnly: readonly Platform[] = ["twitch"]
+
 const unknownSession: StreamerSession = {
   streamer: null,
   donateUrl: null,
+  signInPlatforms: twitchOnly,
   operator: { state: "loading" },
   reload: () => {},
   busy: false,
@@ -47,6 +54,7 @@ export function StreamerSessionProvider({ children }: { readonly children: React
   const streamer = session?.streamer ?? null
   // A deployment fact, so it outlives a logout.
   const donateUrl = result.state === "ready" ? result.value.donateUrl : null
+  const signInPlatforms = result.state === "ready" ? result.value.signInPlatforms : twitchOnly
   const operator: Load<OperatorJson | null> =
     result.state === "ready" ? { state: "ready", value: result.value.operator } : result
 
@@ -70,6 +78,7 @@ export function StreamerSessionProvider({ children }: { readonly children: React
       value={{
         streamer,
         donateUrl,
+        signInPlatforms,
         operator,
         reload,
         busy,

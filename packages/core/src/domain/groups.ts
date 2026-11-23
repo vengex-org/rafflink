@@ -33,7 +33,7 @@ export function bestGroup(tickets: Tickets, memberOf: readonly Group[]): BestGro
   return best
 }
 
-/** The groups a platform can tell a viewer is in; every platform knows viewers and the channel's moderators. */
+/** The groups a platform can tell a viewer is in; every platform knows viewers. */
 export function supportedGroups(capabilities: PlatformCapabilities): readonly Group[] {
   return groups.filter((group) => isSupported(group, capabilities))
 }
@@ -41,8 +41,9 @@ export function supportedGroups(capabilities: PlatformCapabilities): readonly Gr
 function isSupported(group: Group, capabilities: PlatformCapabilities): boolean {
   switch (group) {
     case "viewer":
-    case "moderator":
       return true
+    case "moderator":
+      return capabilities.moderatorRole
     case "follower":
       return capabilities.followerCheck
     case "sub_t1":

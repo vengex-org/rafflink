@@ -39,6 +39,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
 
   "signIn.title": "Prihlásenie",
   "signIn.button": "Prihlásiť sa cez Twitch",
+  "signIn.buttonKick": "Prihlásiť sa cez Kick",
   "signIn.why.admin": "Na otvorenie administrácie sa prihlás cez Twitch.",
   "signIn.why.expired": "Prihlásenie vypršalo. Prihlás sa cez Twitch a pokračuj.",
   "signIn.why.dashboard": "Na vytváranie a vedenie súťaží sa prihlás cez Twitch.",
@@ -411,6 +412,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "giveaway.ready.text":
     "Prihlás sa účtom na Twitchi a získaj svoj lístok. Trvá to len pár sekúnd.",
   "giveaway.enter": "Zapojiť sa cez Twitch",
+  "giveaway.enterKick": "Zapojiť sa cez Kick",
   "giveaway.signedOut.title": "Prihlás sa a zapoj sa",
   "giveaway.waiting.title": "Čaká sa na žrebovanie",
   "giveaway.waiting.text":

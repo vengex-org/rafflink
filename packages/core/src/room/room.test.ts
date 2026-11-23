@@ -8,6 +8,7 @@ import { quicknet, roundTime } from "../lib/drand.ts"
 import { toHex } from "../lib/encoding.ts"
 import { leafHash, merkleRoot } from "../lib/merkle.ts"
 import type { Alarm, Clock, Instant, LiveHub, Random, SqlRow, SqlValue, SyncSql } from "../ports.ts"
+import type { ChatAudience, ChatMessage, ChatOpener } from "../platform/chat-source.ts"
 import { BunSqliteSyncSql } from "../sqlite-bun.ts"
 import { FakeBeacon, fakeRandomness } from "../../test/fake-beacon.ts"
 import { idleChat } from "../../test/idle-chat.ts"
@@ -3369,5 +3370,106 @@ describe("winner form answers", () => {
 
     expect(room.picks()[0]?.answers).toBe("closed")
     expect(room.saveWinnerAnswers(0, winner, "sealed")).toEqual({ kind: "form-closed" })
+  })
+})
+
+function chatMessage(platformUserId: string, text: string): ChatMessage {
+  return {
+    platformUserId,
+    login: `login${platformUserId}`,
+    displayName: `Name${platformUserId}`,
+    text,
+    roles: { subTier: null, isVip: false, isModerator: false },
+  }
+}
+
+describe("GiveawayRoom webhook chat", () => {
+  interface RecordedSource {
+    readonly opened: ChatAudience[]
+    closed: number
+  }
+
+  /** A room whose chat sources record what the room asks of them; passing `sql` again revives the same storage. */
+  function roomWithChat(sources: RecordedSource[], sql: SyncSql, clock: TestClock): GiveawayRoom {
+    const chat: ChatOpener = () => {
+      const recorded: RecordedSource = { opened: [], closed: 0 }
+      sources.push(recorded)
+      return {
+        open: (audience) => {
+          recorded.opened.push(audience)
+        },
+        close: () => {
+          recorded.closed += 1
+        },
+        wakeAt: () => null,
+        onAlarm: () => {},
+      }
+    }
+    return new GiveawayRoom({
+      sql,
+      alarm: new TestAlarm(),
+      live: new TestHub(),
+      clock,
+      random,
+      config,
+      chat,
+      beacon: new FakeBeacon(),
+    })
+  }
+
+  async function drawnWithChat() {
+    const sources: RecordedSource[] = []
+    const sql = new BunSqliteSyncSql(new Database(":memory:"))
+    applyMigrations(sql, roomMigrations)
+    const clock = new TestClock(0)
+    const room = roomWithChat(sources, sql, clock)
+    room.init(giveaway)
+    room.loadExclusions(noExclusions)
+    enterMany(room, ["1", "2"])
+    room.close(null)
+    await room.draw(1, null)
+    const winnerId = String(picks(sql)[0]?.platform_user_id)
+    return { room, sources, sql, clock, winnerId }
+  }
+
+  // The claim time of `giveaway` plus REROLL_WINDOW_SECONDS of `baseEnv`, and one millisecond.
+  const watchOverMs = (300 + 600) * 1000 + 1
+
+  it("opens the chat for the winners only after the draw", async () => {
+    const { sources, winnerId } = await drawnWithChat()
+
+    expect(sources.at(-1)?.opened.at(-1)).toEqual({ kind: "chatters", userIds: [winnerId] })
+  })
+
+  it("claims via chat with a message a webhook brought from the winner", async () => {
+    const { room, sql, winnerId } = await drawnWithChat()
+
+    room.receiveChat(chatMessage(winnerId, "mine!"))
+
+    expect(picks(sql)[0]).toMatchObject({ claimed_via: "chat" })
+  })
+
+  it("drops a webhook message once the chat watch is over", async () => {
+    const { room, sql, clock, winnerId } = await drawnWithChat()
+    clock.advance(watchOverMs)
+
+    room.receiveChat(chatMessage(winnerId, "too late"))
+
+    expect(picks(sql)[0]).toMatchObject({ claimed_via: null })
+  })
+
+  it("closes a fresh source when the watch ends in a room that lost its source with the process", async () => {
+    const { sql, clock } = await drawnWithChat()
+    const revived: RecordedSource[] = []
+    const room = roomWithChat(revived, sql, clock)
+    clock.advance(watchOverMs)
+
+    room.onAlarm()
+    room.onAlarm()
+
+    // One source for the lost one, closed and never opened; a closed source ignores a repeated close.
+    expect(revived).toHaveLength(1)
+    expect(revived[0]?.opened).toEqual([])
+    expect(revived[0]?.closed).toBeGreaterThan(0)
   })
 })

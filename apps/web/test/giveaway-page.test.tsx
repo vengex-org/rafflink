@@ -447,6 +447,16 @@ describe("giveaway landing", () => {
     expect(view.queryByRole("list", { name: "Steps" })).toBeNull()
   })
 
+  it("signs a viewer of a Kick giveaway in with Kick", async () => {
+    mockFetch({ "GET /api/g/ABCDE": () => ok({ ...giveaway, platform: "kick" }) })
+
+    const view = renderApp("/ABCDE")
+
+    expect((await view.findByRole("link", { name: "Enter with Kick" })).getAttribute("href")).toBe(
+      "/auth/kick/viewer/start?giveaway=ABCDE",
+    )
+  })
+
   it("answers not found for an unknown code", async () => {
     mockFetch({ "GET /api/g/ABCDE": () => ({ status: 404, body: { error: "not-found" } }) })
 

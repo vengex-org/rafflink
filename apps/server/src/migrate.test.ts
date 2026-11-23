@@ -104,10 +104,14 @@ describe("applyAccountsMigrations", () => {
       "0013_public_history.sql",
       "0014_delivery_counts.sql",
       "0015_history_indexing.sql",
+      "0016_kick_chat.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",
       "giveaways",
+      "kick_chat_subscriptions",
+      "kick_chat_watches",
+      "kick_webhook_messages",
       "metrics_minute",
       "moderator_links",
       "referrals",

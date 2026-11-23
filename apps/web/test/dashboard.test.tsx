@@ -33,6 +33,26 @@ describe("dashboard", () => {
     ).toBe("/auth/twitch/streamer/start")
   })
 
+  it("offers Sign in with Kick next to Twitch when the install signs in with Kick", async () => {
+    mockFetch({
+      "GET /api/session": () =>
+        ok({
+          streamer: null,
+          signInPlatforms: ["twitch", "kick"],
+          donateUrl: null,
+          operator: null,
+        }),
+      "GET /api/dash/giveaways": () => ({ status: 401, body: { error: "unauthorized" } }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    expect(
+      (await view.findByRole("link", { name: "Sign in with Kick" })).getAttribute("href"),
+    ).toBe("/auth/kick/streamer/start")
+    expect(view.getByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
+  })
+
   it("teaches an empty dashboard in three steps with one button to start", async () => {
     mockFetch(empty)
 
@@ -371,6 +391,7 @@ describe("dashboard", () => {
             canCreate: false,
             ...twitchPlatform,
           },
+          signInPlatforms: ["twitch"],
           donateUrl: null,
           operator: null,
         }),
@@ -395,6 +416,7 @@ describe("dashboard", () => {
             canCreate: false,
             ...twitchPlatform,
           },
+          signInPlatforms: ["twitch"],
           donateUrl: null,
           operator: null,
         }),

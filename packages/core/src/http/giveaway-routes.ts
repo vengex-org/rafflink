@@ -274,13 +274,15 @@ async function pickOf(
 }
 
 function publicGiveaway(deps: AppDeps, giveaway: Giveaway, summary: PublicSummary): PublicGiveaway {
+  const provider = providerFor(deps.platforms, giveaway.platform)
   return {
     code: giveaway.code,
     title: giveaway.title,
     prize: giveaway.prize,
     streamerName: giveaway.streamerName,
+    platform: provider.platform,
     rules: giveaway.rules,
-    capabilities: providerFor(deps.platforms, giveaway.platform).capabilities,
+    capabilities: provider.capabilities,
     status: summary.status,
     closesAt: summary.closesAt,
     claimSeconds: giveaway.claimSeconds,

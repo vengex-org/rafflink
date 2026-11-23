@@ -40,14 +40,15 @@ describe("route paths", () => {
   })
 
   it("asks the streamer sign-in to return to a page, and to the dashboard when none is named", () => {
-    expect(streamerSignInPath("/dashboard")).toBe("/auth/twitch/streamer/start")
-    expect(streamerSignInPath("/live/g1?q=a&clean=1")).toBe(
+    expect(streamerSignInPath("twitch", "/dashboard")).toBe("/auth/twitch/streamer/start")
+    expect(streamerSignInPath("twitch", "/live/g1?q=a&clean=1")).toBe(
       "/auth/twitch/streamer/start?return=%2Flive%2Fg1%3Fq%3Da%26clean%3D1",
     )
   })
 
-  it("starts the viewer sign-in for a giveaway code", () => {
-    expect(viewerSignInPath("ABCDE")).toBe("/auth/twitch/viewer/start?giveaway=ABCDE")
+  it("starts the viewer sign-in for a giveaway code on its platform", () => {
+    expect(viewerSignInPath("twitch", "ABCDE")).toBe("/auth/twitch/viewer/start?giveaway=ABCDE")
+    expect(viewerSignInPath("kick", "ABCDE")).toBe("/auth/kick/viewer/start?giveaway=ABCDE")
   })
 })
 

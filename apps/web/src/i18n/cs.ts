@@ -39,6 +39,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
 
   "signIn.title": "Přihlášení",
   "signIn.button": "Přihlásit se přes Twitch",
+  "signIn.buttonKick": "Přihlásit se přes Kick",
   "signIn.why.admin": "Pro otevření administrace se přihlas přes Twitch.",
   "signIn.why.expired": "Přihlášení vypršelo. Přihlas se přes Twitch a pokračuj.",
   "signIn.why.dashboard": "Pro vytváření a vedení soutěží se přihlas přes Twitch.",
@@ -410,6 +411,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "giveaway.ready.title": "Chceš se zapojit?",
   "giveaway.ready.text": "Přihlas se účtem na Twitchi a získej svůj los. Zabere to jen pár vteřin.",
   "giveaway.enter": "Zapojit se přes Twitch",
+  "giveaway.enterKick": "Zapojit se přes Kick",
   "giveaway.signedOut.title": "Přihlas se a zapoj se",
   "giveaway.waiting.title": "Čeká se na losování",
   "giveaway.waiting.text":

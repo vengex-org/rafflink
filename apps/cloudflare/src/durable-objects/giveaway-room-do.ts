@@ -158,6 +158,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
     return (await this.opened).room.pushOverlayTheme(...args)
   }
+  async receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
+    return (await this.opened).room.receiveChat(...args)
+  }
   async liveCounts() {
     const { room } = await this.opened
     return { ...room.liveCounts(), viewers: this.ctx.getWebSockets(viewerTag).length }

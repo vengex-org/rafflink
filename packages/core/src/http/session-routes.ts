@@ -3,7 +3,7 @@ import type { StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import type { ResolvedConfig } from "../config.ts"
 import type { ChannelEntryVia } from "../domain/rules.ts"
-import { providerFor, readyEntryWays } from "../platform/provider.ts"
+import { configuredProviders, providerFor, readyEntryWays } from "../platform/provider.ts"
 import type { AppDeps } from "./deps.ts"
 import type { OperatorJson, SessionJson } from "./json.ts"
 import { endStreamerSession, readStreamerSession, type StreamerSession } from "./session.ts"
@@ -33,6 +33,7 @@ export function sessionRoutes(deps: AppDeps): Hono {
               publicHistory: current.streamer.publicHistory,
               historyIndexed: current.streamer.historyIndexed,
             },
+      signInPlatforms: configuredProviders(deps.platforms).map((provider) => provider.platform),
       donateUrl: deps.config.donateUrl,
       operator: operatorOf(deps.config),
     }

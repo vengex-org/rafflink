@@ -77,8 +77,8 @@ function GiveawayDetails({
   // The viewer state was read before a queued sign-in finished, so the poll answer is the fresher entry.
   const entered = entry?.kind === "entered" || entry?.kind === "already-in" ? entry.entry : null
   const tickets = entered ?? (me.kind === "entered" ? me.entry : null)
-  const signInHref = viewerSignInPath(code)
-  const channelUrl = twitchChannelUrl(giveaway.streamerName)
+  const signInHref = viewerSignInPath(giveaway.platform, code)
+  const channelUrl = giveaway.platform === "twitch" ? twitchChannelUrl(giveaway.streamerName) : null
   const isWinner = me.kind === "won"
   const isIn = entered !== null && !isWinner && giveaway.status !== "drawn"
   // A chat-only giveaway offers no sign-in while entries are open: the chat keyword and the lookup are the way in.

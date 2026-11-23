@@ -324,6 +324,9 @@ class LocalRoomStub implements RoomStub {
   pushOverlayTheme(...args: Parameters<GiveawayRoom["pushOverlayTheme"]>) {
     return inRoom(() => this.room.pushOverlayTheme(...args))
   }
+  receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
+    return inRoom(() => this.room.receiveChat(...args))
+  }
   liveCounts() {
     return inRoom(() => ({ ...this.room.liveCounts(), viewers: this.viewers() }))
   }

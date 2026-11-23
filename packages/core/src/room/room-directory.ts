@@ -37,6 +37,7 @@ export type RoomStub = Remote<
     | "liveSnapshot"
     | "entriesPerSecondBefore"
     | "pushOverlayTheme"
+    | "receiveChat"
   >
 >
 

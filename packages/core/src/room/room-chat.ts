@@ -12,6 +12,7 @@ export function roomChat(
 ): ChatOpener {
   return (platform, listener) =>
     providerFor(deps.platforms, platform).chatSource({
+      giveawayId,
       connector,
       clock: deps.clock,
       streamerAccess: () => openGiveawayStreamerAccess(deps, giveawayId),

@@ -13,12 +13,16 @@ export interface ValidationResult {
 
 type Verdict = "valid" | "invalid" | "unavailable"
 
-// Twitch answers a refresh token it does not know with 400 "Invalid refresh token". A wrong client id is
-// also 400 ("invalid client") and a wrong secret 403: those are setup faults and must not delete tokens.
-const revokedRefreshReason = "Invalid refresh token"
+// Twitch answers a refresh token it does not know with 400 "Invalid refresh token", Kick with the OAuth
+// code `invalid_grant`. A wrong client id is also 400 ("invalid client") and a wrong secret 403: those are
+// setup faults and must not delete tokens.
+const revokedRefreshReasons = ["Invalid refresh token", "invalid_grant"]
 
 function isRevoked(error: PlatformInvalid): boolean {
-  return error.status === 401 || (error.status === 400 && error.reason === revokedRefreshReason)
+  return (
+    error.status === 401
+    || (error.status === 400 && revokedRefreshReasons.includes(error.reason ?? ""))
+  )
 }
 
 /**

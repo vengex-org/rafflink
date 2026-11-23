@@ -78,6 +78,7 @@ describe("verify link in the header and the home footer", () => {
             canCreate: true,
             ...twitchPlatform,
           },
+          signInPlatforms: ["twitch"],
           donateUrl: null,
           operator: null,
         }),

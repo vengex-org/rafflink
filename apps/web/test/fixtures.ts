@@ -27,6 +27,7 @@ export const giveaway: GiveawayView & { readonly me: ViewerState } = {
   title: "Summer giveaway",
   prize: "A gaming chair",
   streamerName: "Streamy",
+  platform: "twitch",
   rules,
   capabilities: everyCapability,
   status: "open",
@@ -99,6 +100,7 @@ export const twitchPlatform = {
     subTiers: true,
     vip: true,
     accountAge: true,
+    moderatorRole: true,
     pageEntry: true,
     chatEntry: true,
     subEntry: true,
@@ -118,6 +120,7 @@ export const supportedSession = {
     canCreate: true,
     ...twitchPlatform,
   },
+  signInPlatforms: ["twitch"],
   donateUrl,
   operator: null,
 }

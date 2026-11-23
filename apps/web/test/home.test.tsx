@@ -53,6 +53,7 @@ describe("home page", () => {
             canCreate: true,
             ...twitchPlatform,
           },
+          signInPlatforms: ["twitch"],
           donateUrl: null,
           operator: null,
         }),
@@ -68,7 +69,10 @@ describe("home page", () => {
   })
 
   it("links the configured Ko-fi page in the footer for a signed-out visitor, opening in a new tab", async () => {
-    mockFetch({ "GET /api/session": () => ok({ streamer: null, donateUrl, operator: null }) })
+    mockFetch({
+      "GET /api/session": () =>
+        ok({ streamer: null, signInPlatforms: ["twitch"], donateUrl, operator: null }),
+    })
     const view = renderApp("/")
 
     const link = await view.findByRole("link", { name: "Support on Ko-fi" })
@@ -93,7 +97,8 @@ describe("home page", () => {
   it("names no platform on a support page other than Ko-fi", async () => {
     const sponsors = "https://github.com/sponsors/rafflink"
     mockFetch({
-      "GET /api/session": () => ok({ streamer: null, donateUrl: sponsors, operator: null }),
+      "GET /api/session": () =>
+        ok({ streamer: null, signInPlatforms: ["twitch"], donateUrl: sponsors, operator: null }),
     })
     const view = renderApp("/")
 

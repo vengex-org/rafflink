@@ -228,9 +228,12 @@ export function unsupportedRule(
   return null
 }
 
-/** Whole days since the account was created; never negative, so a clock ahead of the platform's does not make an account younger than new. */
-export function accountAgeDays(now: Instant, createdAt: Instant): number {
-  return Math.max(0, Math.floor((now - createdAt) / msPerDay))
+/**
+ * Whole days since the account was created; never negative, so a clock ahead of the platform's does not
+ * make an account younger than new. `null` when the platform does not tell when the account was made.
+ */
+export function accountAgeDays(now: Instant, createdAt: Instant | null): number | null {
+  return createdAt === null ? null : Math.max(0, Math.floor((now - createdAt) / msPerDay))
 }
 
 /** Whether a chat message asks to enter: its text starts with the keyword as a whole word, in any letter case. */

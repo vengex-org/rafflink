@@ -90,6 +90,18 @@ export const configSchema = {
     text,
     "Twitch app registration, see the README",
   ),
+  kickClientId: withDefault(
+    "KICK_CLIENT_ID",
+    optional(text),
+    "",
+    "Kick app registration, see the README; blank turns Kick sign-in off, set together with KICK_CLIENT_SECRET",
+  ),
+  kickClientSecret: withDefault(
+    "KICK_CLIENT_SECRET",
+    optional(text),
+    "",
+    "Kick app registration, see the README; set together with KICK_CLIENT_ID",
+  ),
   tokenSealKeys: required(
     "TOKEN_SEAL_KEYS",
     list(text),
@@ -305,6 +317,48 @@ export const configSchema = {
     int(1),
     "5000",
     "Timeout of every outbound Twitch call; starting guess",
+  ),
+  kickIdBaseUrl: withDefault(
+    "KICK_ID_BASE_URL",
+    url,
+    "https://id.kick.com",
+    "Origin of Kick OAuth (authorize, token); only tests and the fake Kick change it",
+  ),
+  kickApiBaseUrl: withDefault(
+    "KICK_API_BASE_URL",
+    url,
+    "https://api.kick.com",
+    "Origin of the Kick public API (users, channels, event subscriptions, webhook public key); only tests and the fake Kick change it",
+  ),
+  kickTimeoutMs: withDefault(
+    "KICK_TIMEOUT_MS",
+    int(1),
+    "5000",
+    "Timeout of every outbound Kick call; starting guess, the same as TWITCH_TIMEOUT_MS",
+  ),
+  kickWebhookMaxAgeSeconds: withDefault(
+    "KICK_WEBHOOK_MAX_AGE_SECONDS",
+    int(1),
+    "300",
+    "A Kick webhook whose signed timestamp is further than this from now, either way, is refused as a replay; Kick names no window, five minutes is a starting guess that allows clock skew",
+  ),
+  kickPublicKeyRefreshSeconds: withDefault(
+    "KICK_PUBLIC_KEY_REFRESH_SECONDS",
+    int(1),
+    "60",
+    "Least time between two reads of Kick's webhook public key after a signature fails, so forged webhooks cannot make the Worker fetch the key on every request; starting guess",
+  ),
+  kickSubscribeRetryDelaySeconds: withDefault(
+    "KICK_SUBSCRIBE_RETRY_DELAY_SECONDS",
+    int(1),
+    "5",
+    "Wait before the next attempt to subscribe to a channel's Kick chat after one failed; starting guess, Kick publishes no rate limits",
+  ),
+  kickSubscribeMaxAttempts: withDefault(
+    "KICK_SUBSCRIBE_MAX_ATTEMPTS",
+    int(1),
+    "3",
+    "Attempts to subscribe to a channel's Kick chat before the room shows chat claim unavailable; starting guess",
   ),
   eventSubUrl: withDefault(
     "EVENTSUB_URL",
@@ -810,6 +864,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
   const config = {
     twitchClientId: read(env, configSchema.twitchClientId),
     twitchClientSecret: read(env, configSchema.twitchClientSecret),
+    kickClientId: read(env, configSchema.kickClientId),
+    kickClientSecret: read(env, configSchema.kickClientSecret),
     tokenSealKeys: read(env, configSchema.tokenSealKeys),
     sessionSecret: read(env, configSchema.sessionSecret),
     admins: read(env, configSchema.admins),
@@ -848,6 +904,13 @@ export function resolveConfig(env: Env): ResolvedConfig {
     twitchIdBaseUrl: read(env, configSchema.twitchIdBaseUrl),
     twitchHelixBaseUrl: read(env, configSchema.twitchHelixBaseUrl),
     twitchTimeoutMs: read(env, configSchema.twitchTimeoutMs),
+    kickIdBaseUrl: read(env, configSchema.kickIdBaseUrl),
+    kickApiBaseUrl: read(env, configSchema.kickApiBaseUrl),
+    kickTimeoutMs: read(env, configSchema.kickTimeoutMs),
+    kickWebhookMaxAgeSeconds: read(env, configSchema.kickWebhookMaxAgeSeconds),
+    kickPublicKeyRefreshSeconds: read(env, configSchema.kickPublicKeyRefreshSeconds),
+    kickSubscribeRetryDelaySeconds: read(env, configSchema.kickSubscribeRetryDelaySeconds),
+    kickSubscribeMaxAttempts: read(env, configSchema.kickSubscribeMaxAttempts),
     eventSubUrl: read(env, configSchema.eventSubUrl),
     eventSubSubscribeSeconds: read(env, configSchema.eventSubSubscribeSeconds),
     eventSubConnectionMaxSeconds: read(env, configSchema.eventSubConnectionMaxSeconds),
@@ -945,6 +1008,12 @@ export function resolveConfig(env: Env): ResolvedConfig {
     }
   } else if (config.operatorEmail === null) {
     throw new ConfigError(configSchema.operatorEmail.env, "missing")
+  }
+  // A Kick app is its id and its secret; one without the other cannot sign anyone in.
+  if ((config.kickClientId === null) !== (config.kickClientSecret === null)) {
+    const missing =
+      config.kickClientId === null ? configSchema.kickClientId : configSchema.kickClientSecret
+    throw new ConfigError(missing.env, "missing")
   }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {

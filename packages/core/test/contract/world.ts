@@ -6,6 +6,12 @@ import type { LiveSnapshot } from "../../src/room/giveaway-room.ts"
 import { Browser } from "./browser.ts"
 import { startFakeDrand, type RunningFakeDrand } from "./fake-drand.ts"
 import { clientCredentials, startFakeTwitch, users, type RunningFakeTwitch } from "./fake-twitch.ts"
+import {
+  kickClientCredentials,
+  kickUsers,
+  startFakeKick,
+  type RunningFakeKick,
+} from "./fake-kick.ts"
 import { openSocket, type LiveMessage } from "./socket.ts"
 import { webFixture } from "./spa-fixture.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
@@ -16,6 +22,7 @@ const scenarioTimeoutMs = 30_000
 const waitTimeoutMs = 15_000
 
 export const eventSubPath = "/eventsub/ws"
+export const kickWebhookPath = "/api/kick/webhook"
 export const vipsPath = "/helix/channels/vips"
 export const moderatorsPath = "/helix/moderation/moderators"
 
@@ -89,6 +96,7 @@ export function scenario(
 
 export class World {
   readonly twitch: RunningFakeTwitch = startFakeTwitch()
+  readonly kick: RunningFakeKick = startFakeKick()
   readonly drand: RunningFakeDrand = startFakeDrand()
   private readonly targets: ContractTarget[] = []
   private readonly sockets: WebSocket[] = []
@@ -103,6 +111,7 @@ export class World {
       this.web.path,
     )
     this.targets.push(target)
+    this.kick.fake.control.setWebhookUrl(new URL(kickWebhookPath, target.url).toString())
     return target
   }
 
@@ -110,6 +119,7 @@ export class World {
     for (const socket of this.sockets) socket.close()
     for (const target of this.targets) await target.stop()
     await this.twitch.stop()
+    await this.kick.stop()
     await this.drand.stop()
     this.web.remove()
   }
@@ -131,6 +141,26 @@ export class World {
     const streamer = new Browser(target.url)
     await streamer.signInAs(userId, "/auth/twitch/streamer/start", this.twitch.fake.control)
     return streamer
+  }
+
+  async signInKickStreamer(
+    target: ContractTarget,
+    userId: string = kickUsers.streamer.id,
+  ): Promise<Browser> {
+    const streamer = new Browser(target.url)
+    await streamer.signInAs(userId, "/auth/kick/streamer/start", this.kick.fake.control)
+    return streamer
+  }
+
+  /** Signs `userId` in at the fake Kick as a viewer of the giveaway. */
+  async enterKick(target: ContractTarget, code: string, userId: string): Promise<EntryResult> {
+    const viewer = new Browser(target.url)
+    const response = await viewer.signInAs(
+      userId,
+      `/auth/kick/viewer/start?giveaway=${code}`,
+      this.kick.fake.control,
+    )
+    return { viewer, ...callbackOutcome(response) }
   }
 
   async createGiveaway(
@@ -238,6 +268,11 @@ export class World {
       ADMIN_TWITCH_IDS: users.streamer.id,
       OPEN_SIGNUP: "true",
       PUBLIC_URL: publicOrigin,
+      KICK_CLIENT_ID: kickClientCredentials.id,
+      KICK_CLIENT_SECRET: kickClientCredentials.secret,
+      KICK_ID_BASE_URL: this.kick.origin,
+      KICK_API_BASE_URL: this.kick.origin,
+      KICK_TIMEOUT_MS: "2000",
       TWITCH_ID_BASE_URL: this.twitch.origin,
       TWITCH_HELIX_BASE_URL: this.twitch.origin,
       EVENTSUB_URL: `${this.twitch.origin.replace(/^http/, "ws")}${eventSubPath}`,

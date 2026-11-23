@@ -39,7 +39,10 @@ const minimalOperator: OperatorJson = {
 }
 
 function withOperator(value: OperatorJson) {
-  mockFetch({ "GET /api/session": () => ok({ streamer: null, donateUrl: null, operator: value }) })
+  mockFetch({
+    "GET /api/session": () =>
+      ok({ streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator: value }),
+  })
 }
 
 /** A session call that answers when the test says so. */
@@ -159,7 +162,7 @@ describe("legal pages", () => {
     expect(text()).not.toContain("Write to")
     expect(text()).not.toContain("Last updated")
     await act(async () => {
-      answer(ok({ streamer: null, donateUrl: null, operator }))
+      answer(ok({ streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator }))
     })
     await view.findByText(/Last updated/)
     expect(text()).toContain("legal@example.com")
@@ -173,7 +176,7 @@ describe("legal pages", () => {
         calls += 1
         return calls === 1
           ? { status: 500, body: null }
-          : ok({ streamer: null, donateUrl: null, operator })
+          : ok({ streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator })
       },
     })
     browserLanguage("en-US")

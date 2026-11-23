@@ -22,6 +22,7 @@ import { TokenQueue, type TokenQueueStub } from "@rafflink/core/queue/token-queu
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
+import { kickPlatform } from "@rafflink/core/kick/kick-provider"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
 import { existsSync, mkdirSync, readdirSync } from "node:fs"
@@ -73,7 +74,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const stats = new StatsStore(accountsSql, config)
   const twitch = new TwitchClient(config, fetch)
   const keyRing = await openKeyRing(config.tokenSealKeys)
-  const platforms = { twitch: new TwitchProvider(twitch, clock, config) }
+  const platforms = {
+    twitch: new TwitchProvider(twitch, clock, config),
+    ...kickPlatform(config, fetch, clock, accountsSql),
+  }
   const tokenDeps: StreamerTokenDeps = { clock, random, platforms, accounts, keyRing }
   const connector = new BunSocketConnector()
   const alarmDeps: RoomAlarmDeps = { ...tokenDeps, stats }

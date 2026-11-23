@@ -63,6 +63,13 @@ export const winnerChatNameSql = `SELECT e.display_name FROM draws d
   WHERE d.platform = (SELECT platform FROM room_state WHERE id = 1)
     AND d.platform_user_id = ? AND d.rerolled = 0`
 
+/** The chatters of the room's platform (parameter 1) who hold a pick that is not rerolled, each once, in a stable order. */
+export const watchedChattersSql = `SELECT DISTINCT platform_user_id FROM draws
+  WHERE platform = ? AND rerolled = 0 ORDER BY platform_user_id`
+
+/** A row while the room's chat source may hold a watch at the platform; none otherwise. */
+export const chatWatchedSql = "SELECT 1 FROM room_state WHERE id = 1 AND chat_watched = 1"
+
 /** Entrants after a sequence number (parameter 1), oldest first (parameter 2 is how many). */
 export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, tickets, profile_image_url FROM entries
   WHERE seq > ? ORDER BY seq LIMIT ?`
