@@ -25,6 +25,10 @@ export class MemoryPublicCache implements PublicCache {
     return entry.text
   }
 
+  async delete(key: string): Promise<void> {
+    this.entries.delete(key)
+  }
+
   async write(key: string, text: string, ttlSeconds: number): Promise<void> {
     const now = this.clock.now()
     for (const [name, entry] of this.entries) {

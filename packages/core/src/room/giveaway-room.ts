@@ -245,12 +245,20 @@ export type ClaimOutcome =
   | { readonly kind: "rerolled" }
   | { readonly kind: "not-a-winner" }
 
+/** What the account store keeps of the room: the status, and the counts the public history lists without waking the room. */
+export interface RoomMirror {
+  readonly status: RoomStatus
+  readonly entrantCount: number
+  /** The picks that were not rerolled. */
+  readonly winners: number
+}
+
 /** What the caller of {@link GiveawayRoom.onAlarm} still has to do, because it needs a port the room lacks. */
 export interface AlarmDuties {
   /** Fetch the VIP and moderator lists, then call `replaceRoles` or `recordFailure`. */
   readonly refreshRoles: boolean
-  /** Mirror this status to the account store, then call `markMirrored`. Null when nothing is pending. */
-  readonly mirrorStatus: RoomStatus | null
+  /** Mirror {@link GiveawayRoom.mirrorState} to the account store, then call `markMirrored` with it. */
+  readonly mirrorDue: boolean
   /** Call `commit`: the room is closed and has no commitment yet. */
   readonly commit: boolean
   /** Call `draw`: the streamer asked for it and the committed drand round is published. */
@@ -781,7 +789,7 @@ export class GiveawayRoom {
     this.guarded("alarm", () => this.rearm())
     return {
       refreshRoles,
-      mirrorStatus: mirrorDue ? state.status : null,
+      mirrorDue,
       commit: commitDue,
       draw: drawDue,
       metrics,
@@ -925,9 +933,26 @@ export class GiveawayRoom {
     return Math.max(retryAt, state.closedAt + 2 * this.config.chatEntryCheckSeconds * 1000)
   }
 
-  /** Clears the pending mirror once `status` reached the account store; a newer status stays pending. */
-  markMirrored(status: RoomStatus): void {
-    this.sql.exec("UPDATE room_state SET mirror_pending = 0 WHERE id = 1 AND status = ?", [status])
+  /** What the account store should hold of the room now. */
+  mirrorState(): RoomMirror {
+    const state = this.readState()
+    return {
+      status: state.status,
+      entrantCount: state.entrantCount,
+      winners: this.readDraws().filter((draw) => !draw.rerolled).length,
+    }
+  }
+
+  /** Clears the pending mirror once `mirrored` reached the account store; a room that changed since stays pending. */
+  markMirrored(mirrored: RoomMirror): void {
+    const current = this.mirrorState()
+    if (
+      current.status === mirrored.status
+      && current.entrantCount === mirrored.entrantCount
+      && current.winners === mirrored.winners
+    ) {
+      this.sql.exec("UPDATE room_state SET mirror_pending = 0 WHERE id = 1", [])
+    }
     this.guarded("alarm", () => this.rearm())
   }
 
@@ -1076,10 +1101,16 @@ export class GiveawayRoom {
       }
       for (const winner of winners) this.insertPick(winner, now, claimSeconds, by)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
-      this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
+      this.sql.exec(
+        "UPDATE room_state SET chat_unavailable = 0, mirror_pending = 1 WHERE id = 1",
+        [],
+      )
       return { kind: "drawn", winners }
     })
-    if (outcome.kind === "drawn") this.afterOutcomeWrite()
+    if (outcome.kind === "drawn") {
+      this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+      this.afterOutcomeWrite()
+    }
     return outcome
   }
 
@@ -1113,10 +1144,14 @@ export class GiveawayRoom {
       if (marked.length === 0) return rerollRefusal(this.readDraw(n)) ?? { kind: "unknown-pick" }
       this.insertPick(winner, now, state.claimSeconds, by)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
-      this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
+      this.sql.exec(
+        "UPDATE room_state SET chat_unavailable = 0, mirror_pending = 1 WHERE id = 1",
+        [],
+      )
       return { kind: "rerolled", replaced: n, winner }
     })
     if (outcome.kind === "rerolled") {
+      this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
       this.dropChatOf(draws.find((draw) => draw.n === n)?.platformUserId)
       this.afterOutcomeWrite()
     }

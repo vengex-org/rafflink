@@ -167,29 +167,82 @@ describe("public giveaway history", () => {
     expect(await sessionOf()).toBe(true)
   })
 
-  it("is gone again after the streamer turns it off, once the cache window is over", async () => {
-    const { browser } = await drawnGiveaway()
-    await turnOn(browser)
-    expect((await history()).status).toBe(200)
+  it("drops the cached answer when the streamer turns the page off, hides or deletes a giveaway", async () => {
+    const first = await drawnGiveaway({ title: "First" })
+    harness.clock.advance(1000)
+    const second = await drawnGiveaway({ title: "Second" })
+    harness.clock.advance(1000)
+    const third = await drawnGiveaway({ title: "Third" })
+    await turnOn(first.browser)
+    const codes = async () => {
+      const body: PublicHistoryJson = await (await history()).json()
+      return body.giveaways.map((giveaway) => giveaway.code)
+    }
+    const before = await codes()
 
-    await turnOn(browser, false)
-    harness.clock.advance(harness.config.publicHistoryCacheSeconds * 1000)
+    await sameOriginPost(first.browser, `/api/dash/giveaways/${third.id}/history`, {
+      hidden: true,
+    })
+    const afterHide = await codes()
+    await sameOriginPost(first.browser, `/api/dash/giveaways/${second.id}/delete`, {})
+    const afterDelete = await codes()
+    await turnOn(first.browser, false)
 
+    expect(before).toEqual([third.code, second.code, first.code])
+    expect(afterHide).toEqual([second.code, first.code])
+    expect(afterDelete).toEqual([first.code])
     expect((await history()).status).toBe(404)
   })
 
-  it("answers a repeated view within the cache window without the account store or a room", async () => {
+  it("reads no room for an answer, and neither D1 nor a room for a repeated view within the cache window", async () => {
     const { browser } = await drawnGiveaway()
     await turnOn(browser)
+    const rooms = spyOn(harness.rooms, "get")
     const first = await (await history()).text()
     const store = spyOn(harness.deps.accounts, "findPublicHistory")
-    const rooms = spyOn(harness.rooms, "get")
 
     const again = await history()
 
     expect(await again.text()).toBe(first)
     expect(store).not.toHaveBeenCalled()
     expect(rooms).not.toHaveBeenCalled()
+  })
+
+  it("lists by close time, latest first, whenever the giveaways were created", async () => {
+    const early = await createGiveaway(harness, users.streamerA.id, { title: "Created first" })
+    harness.clock.advance(1000)
+    const late = await drawnGiveaway({ title: "Created second" })
+    harness.clock.advance(1000)
+    await new Browser(harness).signInAs(
+      users.viewer.id,
+      `/auth/twitch/viewer/start?giveaway=${early.code}`,
+    )
+    await early.browser.postJson(`/api/dash/giveaways/${early.id}/close`, {})
+    await early.browser.postJson(`/api/dash/giveaways/${early.id}/draw`, { count: 1 })
+    await turnOn(late.browser)
+
+    const body: PublicHistoryJson = await (await history()).json()
+
+    expect(body.giveaways.map((giveaway) => giveaway.code)).toEqual([early.code, late.code])
+  })
+
+  it("counts winners drawn later in a drawn giveaway, and keeps the count across a reroll", async () => {
+    const created = await createGiveaway(harness, users.streamerA.id)
+    for (const viewer of [users.viewer, users.viewer2, users.viewer3]) {
+      await new Browser(harness).signInAs(
+        viewer.id,
+        `/auth/twitch/viewer/start?giveaway=${created.code}`,
+      )
+    }
+    await created.browser.postJson(`/api/dash/giveaways/${created.id}/close`, {})
+    await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, { count: 1 })
+    await created.browser.postJson(`/api/dash/giveaways/${created.id}/draw`, { count: 1 })
+    await created.browser.postJson(`/api/dash/giveaways/${created.id}/reroll`, { n: 0 })
+    await turnOn(created.browser)
+
+    const body: PublicHistoryJson = await (await history()).json()
+
+    expect(body.giveaways).toMatchObject([{ entrantCount: 3, winners: 2 }])
   })
 
   it("finds the streamer by a login in any case, and nobody on an unknown platform or login", async () => {
@@ -207,19 +260,32 @@ describe("public giveaway history", () => {
   })
 })
 
-describe("public giveaway history size", () => {
-  it("lists only the newest PUBLIC_HISTORY_MAX giveaways, one room read apiece", async () => {
+describe("public giveaway history settings", () => {
+  it("lists only the latest PUBLIC_HISTORY_MAX giveaways", async () => {
     await harness.stop()
     harness = await createHarness({ env: { PUBLIC_HISTORY_MAX: "1" } })
     await drawnGiveaway({ title: "Old" })
     harness.clock.advance(1000)
     const newest = await drawnGiveaway({ title: "New" })
     await turnOn(newest.browser)
-    const rooms = spyOn(harness.rooms, "get")
 
     const body: PublicHistoryJson = await (await history()).json()
 
     expect(body.giveaways.map((giveaway) => giveaway.code)).toEqual([newest.code])
-    expect(rooms.mock.calls).toEqual([[newest.id]])
+  })
+
+  it("has no page for a streamer an admin has not approved while sign-up is closed", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { OPEN_SIGNUP: "false" } })
+    const { browser } = await drawnGiveaway()
+    await turnOn(browser)
+
+    const waiting = await history()
+    harness.accountsDb.run("UPDATE streamers SET approved_at = 1 WHERE platform_user_id = ?", [
+      users.streamerA.id,
+    ])
+    const approved = await history()
+
+    expect([waiting.status, approved.status]).toEqual([404, 200])
   })
 })

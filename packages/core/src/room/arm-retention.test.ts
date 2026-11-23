@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { AccountStore } from "../accounts/account-store.ts"
 import { resolveConfig } from "../config.ts"
 import { BunSqliteAsyncSql } from "../sqlite-bun.ts"
-import { accountsSchema, InProcessRooms, TestClock, validRules } from "../../test/app-fixture.ts"
+import {
+  accountsSchema,
+  InProcessRooms,
+  mirrored,
+  TestClock,
+  validRules,
+} from "../../test/app-fixture.ts"
 import { armRetentionAlarms } from "./arm-retention.ts"
 
 const config = resolveConfig({
@@ -50,7 +56,7 @@ async function setup(closedIds: readonly string[]) {
       overlayToken: "o",
       createdAt: index,
     })
-    await accounts.setStatus(id, "closed", 0)
+    await accounts.setStatus(id, mirrored("closed"), 0)
     await rooms.get(id).init({
       id,
       platform: "twitch",

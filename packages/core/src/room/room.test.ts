@@ -620,7 +620,7 @@ describe("GiveawayRoom requested draw", () => {
     expect(room.requestDraw(1, null)).toEqual({ kind: "not-open", status: "closed" })
 
     expect(room.onAlarm()).toMatchObject({ commit: true, draw: false })
-    room.markMirrored("closed")
+    room.markMirrored(room.mirrorState())
     clock.advance(config.liveIntervalMs)
     await room.commit()
     expect(alarm.at).toBe(roundTimeOf(room) + 500)
@@ -735,7 +735,7 @@ describe("GiveawayRoom requested draw", () => {
       beacon: new FakeBeacon(),
     })
 
-    evicted.markMirrored("closed")
+    evicted.markMirrored(evicted.mirrorState())
     expect(alarm.at).toBe(roundTimeOf(room) + 500)
     advanceToAlarm(clock, alarm)
 
@@ -1186,7 +1186,7 @@ describe("GiveawayRoom alarm", () => {
     const { room, clock, alarm } = setup({ ...giveaway, closesAt: 5000 })
     expect(room.onAlarm()).toEqual({
       refreshRoles: true,
-      mirrorStatus: null,
+      mirrorDue: false,
       commit: false,
       draw: false,
       metrics: [],
@@ -1201,7 +1201,7 @@ describe("GiveawayRoom alarm", () => {
     expect(room.summary().status).toBe("closed")
     expect(duties).toEqual({
       refreshRoles: false,
-      mirrorStatus: "closed",
+      mirrorDue: true,
       commit: true,
       draw: false,
       metrics: [],
@@ -1240,14 +1240,14 @@ describe("GiveawayRoom alarm", () => {
     room.close(null)
     clock.advance(config.liveIntervalMs)
     await room.commit()
-    expect(room.onAlarm().mirrorStatus).toBeNull()
+    expect(room.onAlarm().mirrorDue).toBe(false)
     expect(alarm.at).toBe(30_000)
 
     clock.advance(30_000)
-    expect(room.onAlarm().mirrorStatus).toBe("closed")
-    room.markMirrored("closed")
+    expect(room.onAlarm().mirrorDue).toBe(true)
+    room.markMirrored(room.mirrorState())
     clock.advance(30_000)
-    expect(room.onAlarm().mirrorStatus).toBeNull()
+    expect(room.onAlarm().mirrorDue).toBe(false)
     expect(alarm.at).toBeNull()
   })
 
@@ -1255,13 +1255,55 @@ describe("GiveawayRoom alarm", () => {
     const { room, clock } = setup()
     enterMany(room, ["1"])
     room.close(null)
+    const closed = room.mirrorState()
     await room.draw(1, null)
 
-    room.markMirrored("closed")
+    room.markMirrored(closed)
     clock.advance(30_000)
 
-    expect(room.onAlarm().mirrorStatus).toBe("drawn")
+    expect(closed.status).toBe("closed")
+    expect(room.onAlarm().mirrorDue).toBe(true)
   })
+
+  it("mirrors the entrant count and the picks that were not rerolled", async () => {
+    const { room } = await drawnRoom()
+    await room.draw(1, null)
+    await room.reroll(0, null)
+
+    expect(room.mirrorState()).toEqual({ status: "drawn", entrantCount: 3, winners: 2 })
+  })
+
+  it("keeps newer counts pending when older ones were mirrored", async () => {
+    const { room, clock } = await drawnRoom()
+    const one = room.mirrorState()
+    await room.draw(1, null)
+
+    room.markMirrored(one)
+    clock.advance(30_000)
+
+    expect(room.onAlarm().mirrorDue).toBe(true)
+  })
+
+  for (const [name, change] of [
+    ["a reroll", (room: GiveawayRoom) => room.reroll(0, null)],
+    ["a later draw", (room: GiveawayRoom) => room.draw(1, null)],
+  ] as const) {
+    it(`asks for a mirror after ${name} in a drawn room, until marked`, async () => {
+      const { room, clock } = await drawnRoom()
+      room.markMirrored(room.mirrorState())
+      clock.advance(30_000)
+      expect(room.onAlarm().mirrorDue).toBe(false)
+
+      await change(room)
+      clock.advance(30_000)
+      const due = room.onAlarm().mirrorDue
+      room.markMirrored(room.mirrorState())
+      clock.advance(30_000)
+
+      expect(due).toBe(true)
+      expect(room.onAlarm().mirrorDue).toBe(false)
+    })
+  }
 })
 
 describe("GiveawayRoom live push", () => {
@@ -1900,7 +1942,7 @@ describe("public summary", () => {
     room.enter(viewer("1"), current)
     room.close(null)
     await room.draw(1, null)
-    room.markMirrored("drawn")
+    room.markMirrored(room.mirrorState())
     expect(room.summary().finished).toBe(false)
 
     clock.advance(300_000)
@@ -1922,7 +1964,7 @@ describe("public summary", () => {
 
   it("is finished and pushed once the reroll window after the last claim time has passed", async () => {
     const { room, clock, alarm, hub } = await drawnRoom()
-    room.markMirrored("drawn")
+    room.markMirrored(room.mirrorState())
     clock.advance(300_001)
     room.onAlarm()
     expect(alarm.at).toBe(900_001)
@@ -1941,7 +1983,7 @@ describe("public summary", () => {
 
   it("tells the live snapshot when the reroll window is over and pushes it to the live pages", async () => {
     const { room, clock, hub } = await drawnRoom()
-    room.markMirrored("drawn")
+    room.markMirrored(room.mirrorState())
     clock.advance(1000)
     room.onAlarm()
     const open = room.liveSnapshot().rerollOpen
@@ -1957,7 +1999,7 @@ describe("public summary", () => {
 
   it("pushes the end of the reroll window from a new room instance over the same storage", async () => {
     const { room, sql, clock, alarm } = await drawnRoom()
-    room.markMirrored("drawn")
+    room.markMirrored(room.mirrorState())
     clock.advance(1000)
     room.onAlarm()
     const hub = new TestHub()
@@ -2375,7 +2417,7 @@ describe("GiveawayRoom retention", () => {
     room.close(null)
     clock.advance(config.liveIntervalMs)
     await room.commit()
-    room.markMirrored("closed")
+    room.markMirrored(room.mirrorState())
     expect(alarm.at).toBe(61_000 + retentionMs)
 
     clock.advance(retentionMs)
@@ -2685,7 +2727,7 @@ describe("GiveawayRoom commit", () => {
     const { room, clock, alarm } = setup()
     room.replaceRoles([], [])
     room.close(null)
-    room.markMirrored("closed")
+    room.markMirrored(room.mirrorState())
 
     const waits: number[] = []
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -2702,7 +2744,7 @@ describe("GiveawayRoom commit", () => {
     const { room, clock, alarm } = setup()
     room.replaceRoles([], [])
     room.close(null)
-    room.markMirrored("closed")
+    room.markMirrored(room.mirrorState())
     for (let attempt = 0; attempt < config.commitMaxAttempts; attempt++) {
       expect(room.onAlarm().commit).toBe(true)
       advanceToAlarm(clock, alarm)
@@ -2727,7 +2769,7 @@ describe("GiveawayRoom commit", () => {
     const { room, sql, clock, alarm } = setup()
     room.replaceRoles([], [])
     room.close(null)
-    room.markMirrored("closed")
+    room.markMirrored(room.mirrorState())
     const revive = () =>
       new GiveawayRoom({
         sql,
@@ -2762,7 +2804,7 @@ describe("GiveawayRoom commit", () => {
     const { room, clock, alarm } = setup()
     room.replaceRoles([], [])
     room.close(null)
-    room.markMirrored("closed")
+    room.markMirrored(room.mirrorState())
     for (let attempt = 0; attempt <= config.commitMaxAttempts; attempt++) {
       room.onAlarm()
       advanceToAlarm(clock, alarm)

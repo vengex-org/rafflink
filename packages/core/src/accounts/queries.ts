@@ -23,14 +23,17 @@ export const openGiveawaysOfStreamerSql = `SELECT id FROM giveaways WHERE stream
 export const recentDrawnGiveawaysSql = `SELECT id FROM giveaways WHERE streamer_id = ? AND status = 'drawn' AND created_at >= ?
   ORDER BY created_at DESC, id DESC LIMIT ?`
 
-/** Parameters: platform, login. The newest streamer with that login whose public history is on; an older row holds a login its account gave up. */
-export const publicHistoryStreamerSql = `SELECT id, login, display_name FROM streamers
-  WHERE platform = ? AND login = ? AND public_history = 1 ORDER BY created_at DESC LIMIT 1`
+/**
+ * Parameters: platform, login. The streamer whose sign-in saw that login last; an older row holds a login its
+ * account gave up and has not signed in since, so it never answers for the login, whatever its switch says.
+ */
+export const publicHistoryStreamerSql = `SELECT id, login, display_name, public_history, approved_at FROM streamers
+  WHERE platform = ? AND login = ? ORDER BY login_seen_at DESC LIMIT 1`
 
-/** A streamer's (parameter 1) drawn giveaways they did not hide from their public history, newest first; parameter 2 is how many. */
-export const publicHistoryGiveawaysSql = `SELECT id, code, title, prize, closed_at FROM giveaways
-  WHERE streamer_id = ? AND status = 'drawn' AND hidden_from_history = 0
-  ORDER BY created_at DESC, id DESC LIMIT ?`
+/** A streamer's (parameter 1) drawn giveaways they did not hide from their public history, with the counts the room mirrored, latest close first; parameter 2 is how many. */
+export const publicHistoryGiveawaysSql = `SELECT id, code, title, prize, closed_at, entrant_count, winners FROM giveaways
+  WHERE streamer_id = ? AND status = 'drawn' AND hidden_from_history = 0 AND entrant_count IS NOT NULL
+  ORDER BY closed_at DESC, id DESC LIMIT ?`
 
 /** Parameters: 1 or 0, streamer id. */
 export const setPublicHistorySql = "UPDATE streamers SET public_history = ? WHERE id = ?"
@@ -77,9 +80,9 @@ export const insertGiveawaySql = `INSERT INTO giveaways
   ON CONFLICT (code) DO NOTHING
   RETURNING id`
 
-/** Parameters: status, the close time to keep unless one is stored (NULL for open), giveaway id. */
+/** Parameters: status, the close time to keep unless one is stored (NULL for open), entrant count, winners, giveaway id. */
 export const setStatusSql =
-  "UPDATE giveaways SET status = ?, closed_at = COALESCE(closed_at, ?) WHERE id = ?"
+  "UPDATE giveaways SET status = ?, closed_at = COALESCE(closed_at, ?), entrant_count = ?, winners = ? WHERE id = ?"
 
 /** Ids of giveaways the room reported as no longer open and the retention sweep has not woken yet, fewest failed sweeps first, then oldest. Parameters: attempts below which a giveaway is tried, how many. */
 export const unarmedRetentionSql =
@@ -130,13 +133,14 @@ export const revokeModeratorLinkSql = `UPDATE moderator_links SET revoked_at = C
 /** A streamer by id (parameter 1), once their giveaways and token are gone. */
 export const deleteStreamerSql = "DELETE FROM streamers WHERE id = ?"
 
-/** Parameters: id, platform, platform user id, login, display name, profile image URL, created at. */
-export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, profile_image_url, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+/** Parameters: id, platform, platform user id, login, display name, profile image URL, created at, login seen at (the sign-in time). */
+export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, profile_image_url, created_at, login_seen_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT (platform, platform_user_id) DO UPDATE SET
     login = excluded.login,
     display_name = excluded.display_name,
-    profile_image_url = excluded.profile_image_url`
+    profile_image_url = excluded.profile_image_url,
+    login_seen_at = excluded.login_seen_at`
 
 /** Parameters: sealed token, scopes, validated at, platform, platform user id. */
 export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id, refresh_token_enc, scopes, validated_at)

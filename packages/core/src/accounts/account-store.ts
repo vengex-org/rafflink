@@ -6,6 +6,7 @@ import {
 } from "../domain/overlay-theme.ts"
 import { parseRules, type GiveawayRules, type RulesConfig } from "../domain/rules.ts"
 import type { AsyncSql, Instant, SqlRow } from "../ports.ts"
+import type { RoomMirror } from "../room/giveaway-room.ts"
 import { RoomRowError, roomStatuses, RowReader, type RoomStatus } from "../room/rows.ts"
 import {
   cloudflarePlanSql,
@@ -177,9 +178,12 @@ export interface PublicHistory {
   readonly giveaways: readonly HistoryGiveaway[]
 }
 
-/** A drawn giveaway on a public history page; its counts are in its room. */
-export type HistoryGiveaway = Pick<Giveaway, "id" | "code" | "title" | "prize"> & {
+/** A drawn giveaway on a public history page, with the counts its room mirrored. */
+export type HistoryGiveaway = Pick<Giveaway, "code" | "title" | "prize"> & {
   readonly closedAt: Instant
+  readonly entrantCount: number
+  /** The picks that were not rerolled. */
+  readonly winners: number
 }
 
 /** `full` when the streamer holds the most blocks allowed; nothing is written then, nor for `exists`. */
@@ -204,6 +208,7 @@ export class AccountStore {
           input.login,
           input.displayName,
           input.profileImageUrl,
+          input.now,
           input.now,
         ],
       },
@@ -303,22 +308,29 @@ export class AccountStore {
   async findPublicHistory(
     platform: string,
     login: string,
-    limit: number,
+    options: {
+      readonly limit: number
+      /** Only a streamer an admin approved has the page, as while OPEN_SIGNUP is off. */
+      readonly approvedOnly: boolean
+    },
   ): Promise<PublicHistory | null> {
     const [row] = await this.sql.all(publicHistoryStreamerSql, [platform, login])
     if (row === undefined) return null
     const streamer = new RowReader("streamers", row)
-    const rows = await this.sql.all(publicHistoryGiveawaysSql, [streamer.text("id"), limit])
+    if (streamer.int("public_history") !== 1) return null
+    if (options.approvedOnly && streamer.nullableInt("approved_at") === null) return null
+    const rows = await this.sql.all(publicHistoryGiveawaysSql, [streamer.text("id"), options.limit])
     return {
       streamer: { login: streamer.text("login"), displayName: streamer.text("display_name") },
       giveaways: rows.map((giveaway) => {
         const reader = new RowReader("giveaways", giveaway)
         return {
-          id: reader.text("id"),
           code: reader.text("code"),
           title: reader.nullableText("title"),
           prize: reader.nullableText("prize"),
           closedAt: reader.int("closed_at"),
+          entrantCount: reader.int("entrant_count"),
+          winners: reader.int("winners"),
         }
       }),
     }
@@ -437,9 +449,15 @@ export class AccountStore {
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
   }
 
-  /** Idempotent mirror of the room's status; the first status past open also stores `at` as the close time. */
-  async setStatus(giveawayId: string, status: RoomStatus, at: Instant): Promise<void> {
-    await this.sql.run(setStatusSql, [status, status === "open" ? null : at, giveawayId])
+  /** Idempotent mirror of the room's status and counts; the first status past open also stores `at` as the close time. */
+  async setStatus(giveawayId: string, mirror: RoomMirror, at: Instant): Promise<void> {
+    await this.sql.run(setStatusSql, [
+      mirror.status,
+      mirror.status === "open" ? null : at,
+      mirror.entrantCount,
+      mirror.winners,
+      giveawayId,
+    ])
   }
 
   /**

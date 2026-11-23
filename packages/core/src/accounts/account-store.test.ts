@@ -1,6 +1,12 @@
 import { Database } from "bun:sqlite"
 import { describe, expect, it } from "bun:test"
-import { accountsSchema, explainPlan, sqlRows, validRules } from "../../test/app-fixture.ts"
+import {
+  accountsSchema,
+  explainPlan,
+  mirrored,
+  sqlRows,
+  validRules,
+} from "../../test/app-fixture.ts"
 import { resolveConfig } from "../config.ts"
 import { defaultOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
 import type { SqlValue } from "../ports.ts"
@@ -164,6 +170,87 @@ describe("AccountStore streamers", () => {
     await store.signInStreamer(signIn({ id: "s2", platform: "kick" }))
 
     expect(sqlRows(db, "SELECT id FROM streamers ORDER BY id")).toHaveLength(2)
+  })
+})
+
+describe("AccountStore public history", () => {
+  const open = { limit: 20, approvedOnly: false }
+
+  it("answers a login for the account whose sign-in saw it last, not for a renamed account that has not signed in since", async () => {
+    const { store } = setup()
+    // B is the older account; A signed in as "taken", then renamed on Twitch without signing in again.
+    await store.signInStreamer(
+      signIn({ id: "b", platformUserId: "300", login: "before", now: 1000 }),
+    )
+    await store.signInStreamer(
+      signIn({ id: "a", platformUserId: "301", login: "taken", now: 2000 }),
+    )
+    await store.setPublicHistory("a", true)
+    await store.setPublicHistory("b", true)
+    const beforeB = await store.findPublicHistory("twitch", "taken", open)
+
+    await store.signInStreamer(
+      signIn({ id: "b", platformUserId: "300", login: "taken", displayName: "B", now: 3000 }),
+    )
+
+    expect(beforeB?.streamer.login).toBe("taken")
+    expect(await store.findPublicHistory("twitch", "taken", open)).toEqual({
+      streamer: { login: "taken", displayName: "B" },
+      giveaways: [],
+    })
+  })
+
+  it("finds nobody when the account that saw the login last has its page off, even if an older holder has it on", async () => {
+    const { store } = setup()
+    await store.signInStreamer(
+      signIn({ id: "a", platformUserId: "301", login: "taken", now: 1000 }),
+    )
+    await store.setPublicHistory("a", true)
+    await store.signInStreamer(
+      signIn({ id: "b", platformUserId: "300", login: "taken", now: 2000 }),
+    )
+
+    expect(await store.findPublicHistory("twitch", "taken", open)).toBeNull()
+  })
+
+  it("lists only what a mirror wrote counts for, and keeps the counts of the latest mirror", async () => {
+    const { db, store } = await withStreamers()
+    await store.setPublicHistory("s1", true)
+    await store.insertGiveaway(giveaway())
+    await store.insertGiveaway(giveaway({ id: "g2", code: "FGHJK" }))
+    await store.setStatus("g1", { status: "drawn", entrantCount: 4, winners: 1 }, 7000)
+    await store.setStatus("g1", { status: "drawn", entrantCount: 4, winners: 2 }, 8000)
+    // A drawn row whose counts no mirror has written yet.
+    db.run("UPDATE giveaways SET status = 'drawn', closed_at = 9000 WHERE id = 'g2'")
+
+    const history = await store.findPublicHistory("twitch", "streamer", open)
+
+    expect(history?.giveaways).toEqual([
+      {
+        code: "ABCDE",
+        title: "Title",
+        prize: "Prize",
+        closedAt: 7000,
+        entrantCount: 4,
+        winners: 2,
+      },
+    ])
+  })
+
+  it("has no page for an unapproved streamer when only approved ones have one", async () => {
+    const { store } = await withStreamers()
+    await store.setPublicHistory("s1", true)
+
+    const waiting = await store.findPublicHistory("twitch", "streamer", {
+      limit: 20,
+      approvedOnly: true,
+    })
+    await store.approveStreamer("s1", "1", 9000)
+
+    expect(waiting).toBeNull()
+    expect(
+      await store.findPublicHistory("twitch", "streamer", { limit: 20, approvedOnly: true }),
+    ).not.toBeNull()
   })
 })
 
@@ -367,8 +454,8 @@ describe("AccountStore giveaways", () => {
     const { store } = await withStreamers()
     await store.insertGiveaway(giveaway())
 
-    await store.setStatus("g1", "closed", 0)
-    await store.setStatus("g1", "closed", 0)
+    await store.setStatus("g1", mirrored("closed"), 0)
+    await store.setStatus("g1", mirrored("closed"), 0)
 
     expect(await store.findGiveawayById("g1")).toMatchObject({ status: "closed" })
   })
@@ -379,10 +466,10 @@ describe("AccountStore giveaways", () => {
     await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 0 }))
     await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 0 }))
     await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", createdAt: 0 }))
-    await store.setStatus("g1", "closed", 20)
-    await store.setStatus("g1", "drawn", 90)
-    await store.setStatus("g2", "drawn", 10)
-    await store.setStatus("g3", "closed", 5)
+    await store.setStatus("g1", mirrored("closed"), 20)
+    await store.setStatus("g1", mirrored("drawn"), 90)
+    await store.setStatus("g2", mirrored("drawn"), 10)
+    await store.setStatus("g3", mirrored("closed"), 5)
 
     expect(await store.listExpiredGiveaways(50, 10)).toEqual(["g2", "g1"])
     expect(await store.listExpiredGiveaways(20, 10)).toEqual(["g2"])
@@ -395,9 +482,9 @@ describe("AccountStore giveaways", () => {
     await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 1 }))
     await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 2 }))
     await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", createdAt: 0 }))
-    await store.setStatus("g1", "closed", 0)
-    await store.setStatus("g2", "drawn", 0)
-    await store.setStatus("g3", "closed", 0)
+    await store.setStatus("g1", mirrored("closed"), 0)
+    await store.setStatus("g2", mirrored("drawn"), 0)
+    await store.setStatus("g3", mirrored("closed"), 0)
 
     expect(await store.listUnarmedRetention(10, 5)).toEqual(["g2", "g3", "g1"])
     expect(await store.listUnarmedRetention(2, 5)).toEqual(["g2", "g3"])
@@ -407,8 +494,8 @@ describe("AccountStore giveaways", () => {
     const { store } = await withStreamers()
     await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 1 }))
     await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 2 }))
-    await store.setStatus("g1", "closed", 0)
-    await store.setStatus("g2", "closed", 0)
+    await store.setStatus("g1", mirrored("closed"), 0)
+    await store.setStatus("g2", mirrored("closed"), 0)
 
     await store.markRetentionArmed("g1")
     await store.markRetentionArmed("g1")
@@ -421,7 +508,7 @@ describe("AccountStore giveaways", () => {
     await store.insertGiveaway(giveaway({ id: "g1", code: "AAAAA", createdAt: 1 }))
     await store.insertGiveaway(giveaway({ id: "g2", code: "BBBBB", createdAt: 2 }))
     await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC", createdAt: 3 }))
-    for (const id of ["g1", "g2", "g3"]) await store.setStatus(id, "closed", 0)
+    for (const id of ["g1", "g2", "g3"]) await store.setStatus(id, mirrored("closed"), 0)
 
     expect(await store.recordRetentionFailure("g1")).toBe(1)
     expect(await store.recordRetentionFailure("g1")).toBe(2)
@@ -657,7 +744,7 @@ describe("AccountStore overlay themes", () => {
     await store.insertGiveaway(giveaway({ id: "g3", code: "CCCCC" }))
     await store.insertGiveaway(giveaway({ id: "g4", code: "DDDDD", streamerId: "s2" }))
     await store.setGiveawayOverlayTheme("s1", "g2", special)
-    await store.setStatus("g3", "drawn", 0)
+    await store.setStatus("g3", mirrored("drawn"), 0)
 
     expect(await store.streamerThemedGiveaways("s1")).toEqual(["g1"])
   })
@@ -794,7 +881,7 @@ describe("AccountStore giveaways of a streamer by status", () => {
     await store.insertGiveaway(giveaway())
     await store.insertGiveaway(giveaway({ id: "g2", code: "BCDEF" }))
     await store.insertGiveaway(giveaway({ id: "g3", code: "CDEFG", streamerId: "s2" }))
-    await store.setStatus("g2", "closed", 0)
+    await store.setStatus("g2", mirrored("closed"), 0)
 
     expect(await store.listOpenGiveawayIds("s1", 10)).toEqual(["g1"])
   })
@@ -818,13 +905,13 @@ describe("AccountStore giveaways of a streamer by status", () => {
     ]
     for (const item of drawn) {
       await store.insertGiveaway(giveaway(item))
-      await store.setStatus(item.id, "drawn", item.createdAt)
+      await store.setStatus(item.id, mirrored("drawn"), item.createdAt)
     }
     await store.insertGiveaway(giveaway({ id: "g5", code: "EEEEE", createdAt: 500 }))
     await store.insertGiveaway(
       giveaway({ id: "g6", code: "FFFFF", streamerId: "s2", createdAt: 600 }),
     )
-    await store.setStatus("g6", "drawn", 600)
+    await store.setStatus("g6", mirrored("drawn"), 600)
 
     expect(await store.listRecentDrawnGiveawayIds("s1", 0, 2)).toEqual(["g4", "g3"])
     expect(await store.listRecentDrawnGiveawayIds("s1", 200, 10)).toEqual(["g4", "g3", "g2"])

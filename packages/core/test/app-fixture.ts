@@ -33,7 +33,8 @@ import type {
 } from "../src/ports.ts"
 import { queueMigrations } from "../src/queue/migrations.ts"
 import { TokenQueue, type TokenQueueStub } from "../src/queue/token-queue.ts"
-import { GiveawayRoom, type GiveawayInit } from "../src/room/giveaway-room.ts"
+import { GiveawayRoom, type GiveawayInit, type RoomMirror } from "../src/room/giveaway-room.ts"
+import type { RoomStatus } from "../src/room/rows.ts"
 import { applyMigrations } from "../src/room/migrate.ts"
 import { roomMigrations } from "../src/room/migrations.ts"
 import type { RoomDirectory, RoomStub } from "../src/room/room-directory.ts"
@@ -236,8 +237,11 @@ class InProcessRoomStub implements RoomStub {
   async removeWinnerName(n: number) {
     return this.room.removeWinnerName(n)
   }
-  async markMirrored(status: Parameters<GiveawayRoom["markMirrored"]>[0]) {
-    this.room.markMirrored(status)
+  async mirrorState() {
+    return this.room.mirrorState()
+  }
+  async markMirrored(mirror: Parameters<GiveawayRoom["markMirrored"]>[0]) {
+    this.room.markMirrored(mirror)
   }
   async liveSnapshot() {
     return this.room.liveSnapshot()
@@ -312,6 +316,11 @@ export const validRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+}
+
+/** What a room with `status` mirrors when it has no entrants and no picks. */
+export function mirrored(status: RoomStatus): RoomMirror {
+  return { status, entrantCount: 0, winners: 0 }
 }
 
 /** The header a test sets to give a request a client address; the real targets read the one their edge sets. */

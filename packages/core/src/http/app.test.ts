@@ -1556,7 +1556,7 @@ describe("closing", () => {
     expect(response.status).toBe(200)
     expect(harness.rooms.roomFor(id).summary().status).toBe("closed")
     harness.clock.advance(harness.config.mirrorRetrySeconds * 1000)
-    expect(harness.rooms.roomFor(id).onAlarm().mirrorStatus).toBe("closed")
+    expect(harness.rooms.roomFor(id).onAlarm().mirrorDue).toBe(true)
     warn.mockRestore()
   })
 

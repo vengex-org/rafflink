@@ -231,7 +231,7 @@ describe("runRoomAlarm status mirror", () => {
     await runRoomAlarm(deps, giveawayId, room)
 
     expect((await accounts.findGiveawayById(giveawayId))?.status).toBe("closed")
-    expect(room.onAlarm().mirrorStatus).toBeNull()
+    expect(room.onAlarm().mirrorDue).toBe(false)
   })
 
   it("leaves the mirror pending when the account store fails and retries after the delay", async () => {
@@ -249,9 +249,9 @@ describe("runRoomAlarm status mirror", () => {
       status: "closed",
       errorClass: "RangeError",
     })
-    expect(room.onAlarm().mirrorStatus).toBeNull()
+    expect(room.onAlarm().mirrorDue).toBe(false)
     clock.advance(config.mirrorRetrySeconds * 1000)
-    expect(room.onAlarm().mirrorStatus).toBe("closed")
+    expect(room.onAlarm().mirrorDue).toBe(true)
     warn.mockRestore()
   })
 })

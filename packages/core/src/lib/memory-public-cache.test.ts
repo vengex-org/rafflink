@@ -23,6 +23,17 @@ describe("MemoryPublicCache", () => {
     expect(await cache.read("a")).toBe("first")
   })
 
+  it("forgets a deleted key and keeps the others", async () => {
+    const cache = new MemoryPublicCache(new TestClock(0), 10)
+    await cache.write("a", "first", 5)
+    await cache.write("b", "second", 5)
+
+    await cache.delete("a")
+
+    expect(await cache.read("a")).toBeNull()
+    expect(await cache.read("b")).toBe("second")
+  })
+
   it("replaces an entry with a later write and restarts its time to live", async () => {
     const clock = new TestClock(0)
     const cache = new MemoryPublicCache(clock, 10)

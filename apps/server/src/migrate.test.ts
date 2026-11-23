@@ -101,7 +101,7 @@ describe("applyAccountsMigrations", () => {
       "0010_overlay_theme.sql",
       "0011_moderator_links.sql",
       "0012_streamer_blocks.sql",
-      "0014_public_history.sql",
+      "0013_public_history.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",

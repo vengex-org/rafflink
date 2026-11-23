@@ -400,13 +400,13 @@ export const configSchema = {
     "PUBLIC_HISTORY_CACHE_SECONDS",
     int(0),
     "300",
-    "How long a streamer's public history page answer is reused, so a repeated view reads neither D1 nor a room; turning the page off or hiding a giveaway shows after at most this long; 0 turns the cache off; the Cloudflare Cache API stores nothing on a workers.dev address; starting guess, a history changes rarely",
+    "How long a streamer's public history page answer is reused, so a repeated view reads no D1; turning the page off, hiding or deleting a giveaway drops the copy of the data centre that saved it at once, while other data centres and a newly drawn giveaway show the change after at most this long; 0 turns the cache off; the Cloudflare Cache API stores nothing on a workers.dev address; starting guess, a history changes rarely",
   ),
   publicHistoryMax: withDefault(
     "PUBLIC_HISTORY_MAX",
-    int(1, 40),
+    int(1),
     "20",
-    "Most giveaways, newest first, a streamer's public history page lists; an answer the cache does not hold reads the counts of each from its room, one Durable Object subrequest apiece, so the bound of 40 stays inside the Free plan's 50 subrequests next to the 2 D1 queries and the cache read and write; 20 is a starting guess",
+    "Most giveaways, latest close first, a streamer's public history page lists; they come from one D1 query with the counts the rooms mirrored, so the bound only keeps the page short; starting guess",
   ),
   publicCacheMaxEntries: withDefault(
     "PUBLIC_CACHE_MAX_ENTRIES",

@@ -29,6 +29,7 @@ export type RoomStub = Remote<
     | "claim"
     | "picks"
     | "removeWinnerName"
+    | "mirrorState"
     | "markMirrored"
     | "liveSnapshot"
     | "entriesPerSecondBefore"
