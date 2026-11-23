@@ -32,13 +32,17 @@ describe("repository", () => {
   })
 
   // A part without its test file would drop its scenarios from that target without a failing test.
-  it("runs every contract part against both targets, one test file each", () => {
+  it("runs every contract part against both targets, one test file each", async () => {
     const expected = contractParts.map((_, index) => `contract-${index + 1}.test.ts`)
     for (const app of ["apps/server/test", "apps/cloudflare/test"]) {
-      const files = [
-        ...new Bun.Glob("contract-*.test.ts").scanSync(fileURLToPath(new URL(app, root))),
-      ]
+      const dir = new URL(`${app}/`, root)
+      const files = [...new Bun.Glob("contract-*.test.ts").scanSync(fileURLToPath(dir))]
       expect(files.toSorted()).toEqual(expected)
+      for (const [index, name] of expected.entries()) {
+        // The part number is the last argument of the define call that ends the file.
+        const source = await Bun.file(new URL(name, dir)).text()
+        expect(source.match(/(\d+)\)\s*$/)?.[1]).toBe(String(index + 1))
+      }
     }
   })
 
