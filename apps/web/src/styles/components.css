@@ -64,15 +64,63 @@ main.container {
   font-size: var(--fs-xs);
 }
 
-/* Nine languages do not fit one row of the settings panel, so the codes wrap; each segment draws its left and top line, and the row's border clips the outer ones. */
-.language-switch .segmented {
-  flex-wrap: wrap;
+/* The language dropdown: a native select, so phones open their own picker; the flag and the chevron sit over it. */
+.language-switch > label {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
 }
 
-.language-switch .segmented .segment {
-  flex: 1 0 2.75rem;
-  border-left: 0;
-  box-shadow: -1px -1px 0 var(--line-strong);
+.language-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.language-select select {
+  width: 100%;
+  min-width: 12rem;
+  min-height: var(--target);
+  padding: 0 2.5rem 0 2.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background-color: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  appearance: none;
+  cursor: pointer;
+}
+
+.language-select select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.language-select .flag,
+.language-select .icon {
+  position: absolute;
+  pointer-events: none;
+}
+
+.language-select .flag {
+  left: 0.75rem;
+}
+
+.language-select .icon {
+  right: 0.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--ink-2);
+}
+
+.flag {
+  flex: none;
+  width: 1.25rem;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 /* Buttons: ink (default), tonal, outlined, text */

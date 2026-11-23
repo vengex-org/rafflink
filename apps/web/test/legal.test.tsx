@@ -5,6 +5,7 @@ import { loadDictionary } from "../src/i18n/dictionaries.ts"
 import { languages, type Language } from "../src/i18n/language.ts"
 import { localizedPath } from "../src/lib/routes.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
+import { chooseLanguage } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
 
 beforeEach(() => {
@@ -335,7 +336,7 @@ describe("legal pages", () => {
     browserLanguage("en-US")
     const view = renderApp("/privacy")
 
-    fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
+    chooseLanguage(view.container, "Čeština")
 
     expect(
       await view.findByRole("heading", { level: 1, name: "Zásady ochrany osobních údajů" }),
@@ -360,7 +361,7 @@ describe("legal pages", () => {
 
   it("follow the address back to another language without storing it", async () => {
     const view = renderApp("/de/privacy")
-    fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
+    chooseLanguage(view.container, "Čeština")
     await view.findByRole("heading", { level: 1, name: "Zásady ochrany osobních údajů" })
     // The address follows the shown language a moment later; a link followed before that would be replaced by it.
     await waitFor(() => expect(view.address()).toBe("/cs/privacy"))
