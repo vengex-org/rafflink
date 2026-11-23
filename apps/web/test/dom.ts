@@ -1,10 +1,15 @@
 import { beforeEach } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
+import { configure } from "@testing-library/dom"
 import { loadDictionary } from "../src/i18n/dictionaries.ts"
 import { languages } from "../src/i18n/language.ts"
 
 // Registered through bunfig.toml for `bun test` inside apps/web only: the other packages' tests keep Bun's own fetch and WebSocket.
 GlobalRegistrator.register({ url: "http://rafflink.test/" })
+
+// `bun run check` runs the test files in parallel, so a render shares the CPU with the other workers; the 1 s default of
+// findBy and waitFor then fails a correct page that is only slow. A wrong page still fails, within the 5 s test timeout.
+configure({ asyncUtilTimeout: 3000 })
 
 // The giveaway page keeps its last answer in sessionStorage and the header whether a streamer signed in in
 // localStorage; a test must not start from the one before it.

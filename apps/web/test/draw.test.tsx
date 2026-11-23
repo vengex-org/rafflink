@@ -122,6 +122,8 @@ describe("list draw form", () => {
     await act(async () => {
       jest.advanceTimersByTime(60_000)
     })
+    // waitFor does not see Bun's fake timers and would wait on the frozen clock.
+    jest.useRealTimers()
 
     await waitFor(() => expect(winnersOf(view)).toEqual(["Alice", "Dave", "alice"]))
     expect(
@@ -278,10 +280,11 @@ describe("shared list draw", () => {
     const view = renderApp(await linkTo(shortList))
 
     const gaveUp = () => view.queryByText("Could not read drand round 1000000. Try again later.")
-    // Each try awaits two answers before its pause; the loop lets them settle, then skips the pause.
+    // Each try awaits two answers before its pause; the loop lets them settle, then skips the pause. setImmediate is
+    // not faked and waits a whole event loop turn, which a busy machine needs for the answers.
     for (let step = 0; step < 50 && gaveUp() === null; step++) {
       await act(async () => {
-        await new Promise<void>((resolve) => queueMicrotask(resolve))
+        await new Promise<void>((resolve) => setImmediate(resolve))
         jest.advanceTimersByTime(500)
       })
     }

@@ -276,6 +276,7 @@ describe("one-time parameters", () => {
     await waitFor(() => expect(view.address()).toBe("/sk/"))
     chooseLanguage(view.container, "English")
     await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." })
+    await waitFor(() => expect(view.address()).toBe("/"))
 
     view.go("/?lang=sk")
 

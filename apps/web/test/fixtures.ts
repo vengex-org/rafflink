@@ -46,7 +46,9 @@ export const giveaway: GiveawayView & { readonly me: ViewerState } = {
   entrantCount: 42,
   finished: false,
   chatEntryOff: false,
-  poll: { intervalMs: 10, maxMs: 80 },
+  // A test that wants the poll to run out sets its own maximum: a short one runs out on a busy machine before the
+  // first answer.
+  poll: { intervalMs: 10, maxMs: 60_000 },
   me: { kind: "signed-out" },
 }
 

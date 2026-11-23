@@ -274,6 +274,7 @@ describe("verify page", () => {
     ).toBeTruthy()
   })
 
+  // The test and the page each hash 500 picks over 600 entrants; beside other test workers that takes seconds.
   it("replays a 500-pick batch the room drew and lists the first 50 picks until asked for all", async () => {
     const entrants = Array.from({ length: 600 }, (_, index) => ({
       platform: "twitch",
@@ -313,12 +314,14 @@ describe("verify page", () => {
     expect(
       await view.findByText(
         "The winners follow from the list and the random number of drand round 1000000.",
+        {},
+        { timeout: 10_000 },
       ),
     ).toBeTruthy()
     expect(view.container.querySelectorAll(".verify-picks li")).toHaveLength(50)
     fireEvent.click(view.getByRole("button", { name: "Show all 500 picks" }))
     expect(view.container.querySelectorAll(".verify-picks li")).toHaveLength(500)
-  })
+  }, 15_000)
 
   it("says the counts do not match when the announced tickets differ from the list", async () => {
     const view = await verified({

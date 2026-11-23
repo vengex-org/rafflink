@@ -1,5 +1,5 @@
 import { act, render } from "@testing-library/react"
-import { useEffect } from "react"
+import { useLayoutEffect } from "react"
 import {
   MemoryRouter,
   parsePath,
@@ -17,7 +17,8 @@ export function renderApp(path: string, state: unknown = null) {
   function Probe() {
     const location = useLocation()
     const navigation = useNavigate()
-    useEffect(() => {
+    // In the commit itself: a passive effect can still be pending when a findBy query sees the new page.
+    useLayoutEffect(() => {
       address = `${location.pathname}${location.search}`
       historyState = location.state
       navigate = navigation
