@@ -148,6 +148,17 @@ describe("session", () => {
     })
   })
 
+  it("marks a streamer outside the admin list as no admin", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+
+    const body: { streamer: { login: string; admin: boolean } } = await (
+      await browser.request("/api/session")
+    ).json()
+
+    expect(body.streamer).toMatchObject({ login: users.streamerB.login, admin: false })
+  })
+
   it("gives the configured support link to a signed-out visitor and a signed-in streamer", async () => {
     await harness.stop()
     harness = await createHarness({ env: { DONATE_URL: "https://ko-fi.com/rafflink" } })

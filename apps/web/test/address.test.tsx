@@ -101,6 +101,7 @@ describe("static pages", () => {
     ["/LIVE/gid-1", "/live/gid-1"],
     ["/Dashboard/Created/AbC", "/dashboard/created/AbC"],
     ["/dashboard/NEW?step=2", "/dashboard/new?step=2"],
+    ["/Dashboard/Settings", "/dashboard/settings"],
     ["/ABCDE/Verify", "/ABCDE/verify"],
     ["/G/abcde/VERIFY", "/ABCDE/verify"],
   ])("replaces %s with the lowercase path %s, never a giveaway code", async (typed, expected) => {
