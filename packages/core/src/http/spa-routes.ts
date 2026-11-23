@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { codeAlphabet, codeLength } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
-import { isPlatform, providerFor } from "../platform/provider.ts"
+import { isPlatform } from "../platform/provider.ts"
 import { parseReferral } from "../stats/referral.ts"
 import {
   drawPath,
@@ -45,13 +45,12 @@ export function spaRoutes(deps: AppDeps, loadTemplate: SpaTemplateLoader): Hono 
     const template = await loadTemplate()
     if (template === null) return next()
     const platform = c.req.param("platform")
-    const login = isPlatform(platform)
-      ? providerFor(deps.platforms, platform).parseLogin(c.req.param("login"))
-      : null
+    const provider = isPlatform(platform) ? deps.platforms[platform] : undefined
+    const login = provider === undefined ? null : provider.parseLogin(c.req.param("login"))
     const answer: PublicHistoryAnswer =
-      login === null || !isPlatform(platform)
+      provider === undefined || login === null
         ? { kind: "missing" }
-        : await publicHistoryAnswer(deps, platform, login)
+        : await publicHistoryAnswer(deps, provider.platform, login)
     const scriptHashes = await inlineScriptHashes(template)
     const headers = {
       "Content-Security-Policy": contentSecurityPolicy(scriptHashes),

@@ -26,6 +26,9 @@ beforeEach(async () => {
 
 const listener: ChatListener = {
   onMessage: () => {},
+  onChannelEntry: () => {},
+  onChannelEntryUnavailable: () => {},
+  topics: () => ({ chat: true, subscriptions: false, pointsRewardId: null }),
   onUnavailable: (cause) => unavailable.push(cause),
   onSchedule: () => {
     scheduled += 1

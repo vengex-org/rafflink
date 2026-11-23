@@ -1,3 +1,4 @@
+import type { PointsReward } from "../domain/rules.ts"
 import type { ChatSourceFactory } from "../platform/chat-source.ts"
 import type {
   AuthorizeParams,
@@ -9,6 +10,7 @@ import type {
   PlatformCapabilities,
   PlatformProvider,
   SubscriberBadges,
+  SubscriberTiers,
   SubscriptionGroup,
   TokenValidation,
   UserProfile,
@@ -29,7 +31,7 @@ import {
 export type KickProviderConfig = KickChatConfig & KickWebhookConfig
 
 // Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages, so a Kick giveaway
-// can only weigh everyone as a viewer. Chat entry waits for the badges of #61.
+// can only weigh everyone as a viewer. Chat, sub and channel point entry wait for #61.
 const kickCapabilities: PlatformCapabilities = {
   followerCheck: false,
   subTiers: false,
@@ -38,6 +40,8 @@ const kickCapabilities: PlatformCapabilities = {
   moderatorRole: false,
   pageEntry: true,
   chatEntry: false,
+  subEntry: false,
+  pointsEntry: false,
 }
 
 const noBadges: SubscriberBadges = { sub_t1: null, sub_t2: null, sub_t3: null }
@@ -71,7 +75,7 @@ export class KickProvider implements PlatformProvider {
     viewer: ["user:read"],
     moderator: ["user:read"],
   } as const
-  readonly chatEntryScopes = [] as const
+  readonly entryScopes = { chat: [], sub: [], points: [] } as const
   private readonly key: KickWebhookKey
   private readonly orphans: KickOrphanSubscriptions
 
@@ -137,6 +141,18 @@ export class KickProvider implements PlatformProvider {
 
   async subscriberBadges(): Promise<SubscriberBadges> {
     return noBadges
+  }
+
+  async subscriberTiers(): Promise<SubscriberTiers> {
+    return new Map()
+  }
+
+  async hasChannelPoints(): Promise<boolean> {
+    return false
+  }
+
+  async pointsRewards(): Promise<readonly PointsReward[]> {
+    return []
   }
 
   async channelRoles(): Promise<ChannelRoles> {

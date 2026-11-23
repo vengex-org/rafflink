@@ -1805,7 +1805,7 @@ export class GiveawayRoom {
   // Every chatter while entries are open to a keyword, otherwise the winners whose pick is not rerolled:
   // the only ones whose messages the room shows or claims with.
   private chatAudience(state: RoomState): ChatAudience {
-    if (this.chatEntrySettings !== null) return { kind: "everyone" }
+    if ((this.channelEntrySettings?.keyword ?? null) !== null) return { kind: "everyone" }
     const rows = this.sql.exec(watchedChattersSql, [state.platform])
     return {
       kind: "chatters",
