@@ -746,7 +746,7 @@ label,
 .check {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-1);
   font-weight: 400;
   cursor: pointer;
 }
@@ -780,8 +780,8 @@ input[type="checkbox"]::before {
   content: "";
   transform: scale(0);
   transition: transform var(--dur) var(--ease);
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E")
-    center / contain no-repeat;
+  -webkit-mask: var(--check-mark) center / contain no-repeat;
+  mask: var(--check-mark) center / contain no-repeat;
 }
 
 input[type="checkbox"]:checked {
@@ -806,6 +806,36 @@ input[type="checkbox"]:disabled {
 @media (hover: hover) {
   input[type="checkbox"]:hover:not(:disabled, :checked) {
     border-color: var(--ink);
+  }
+}
+
+/* High contrast themes would repaint the masked check to the box color, so checked must use system colors. */
+@media (forced-colors: active) {
+  input[type="checkbox"] {
+    border-color: CanvasText;
+    background: Canvas;
+    forced-color-adjust: none;
+  }
+
+  input[type="checkbox"]::before {
+    background: HighlightText;
+  }
+
+  input[type="checkbox"]:checked {
+    border-color: Highlight;
+    background: Highlight;
+  }
+
+  input[type="checkbox"]:hover:not(:disabled, :checked) {
+    border-color: Highlight;
+  }
+
+  input[type="checkbox"]:focus-visible {
+    outline-color: CanvasText;
+  }
+
+  input[type="checkbox"]:disabled {
+    border-color: GrayText;
   }
 }
 
