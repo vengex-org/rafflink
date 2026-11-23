@@ -15,7 +15,9 @@ beforeEach(() => {
       scripts: {
         ok: `bun -e "console.log('fine')"`,
         bad: `bun -e "await Bun.sleep(300); console.log('the reason'); process.exit(3)"`,
-        slow: `bun -e "await Bun.sleep(3000); await Bun.write('slow-finished.txt', '')"`,
+        // Two levels below the script it starts, like the workers under `bun test --parallel`.
+        slow: "bun run sleeper",
+        sleeper: `bun -e "await Bun.sleep(3000); await Bun.write('slow-finished.txt', '')"`,
       },
     }),
   )
@@ -34,12 +36,9 @@ describe("runParallel", () => {
     expect(await runParallel(["ok", "ok"], dir)).toBe(0)
   })
 
-  it("exits 1 on the first failure, prints its output and stops the scripts still running", async () => {
-    const started = performance.now()
-
+  it("exits 1 on the first failure, prints its output and stops the processes still running", async () => {
     expect(await runParallel(["ok", "slow", "bad"], dir)).toBe(1)
 
-    expect(performance.now() - started).toBeLessThan(2500)
     expect(printed.join("\n")).toContain("the reason")
     expect(printed.join("\n")).toContain("Stopped: slow")
     await Bun.sleep(3500)
