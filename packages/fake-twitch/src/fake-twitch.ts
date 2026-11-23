@@ -58,6 +58,8 @@ export interface FakeTwitchControl {
   setCustomRewards(broadcasterId: string, rewards: readonly FakeReward[]): void
   /** Sends `session_reconnect` on every open EventSub socket. */
   reconnect(): void
+  /** The next subscription request sends `session_reconnect` on its socket before it answers, as Twitch may while a session still subscribes. */
+  reconnectOnNextSubscription(): void
   /** Sends `revocation` for every subscription and drops the subscriptions; the sockets stay open. */
   revokeChatSubscriptions(): void
   /** EventSub sockets that are open now. */
@@ -158,6 +160,7 @@ export function createFakeTwitch(options: FakeTwitchOptions): FakeTwitch {
       state.customRewards.set(broadcasterId, [...rewards])
     },
     reconnect: eventSub.reconnect,
+    reconnectOnNextSubscription: eventSub.reconnectOnNextSubscription,
     revokeChatSubscriptions: eventSub.revokeSubscriptions,
     eventSubConnections: eventSub.connectionCount,
     eventSubSubscriptions: eventSub.subscriptionCount,

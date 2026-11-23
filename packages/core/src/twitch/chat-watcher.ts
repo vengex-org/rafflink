@@ -68,6 +68,8 @@ interface Handshake {
   readonly resumed: boolean
   deadline: Instant
   keepaliveMs: number | null
+  /** A `session_reconnect` that came before the subscription answered; followed once the connection is live. */
+  reconnectUrl: string | null
 }
 
 interface Live {
@@ -160,7 +162,13 @@ export class ChatWatcher implements ChatSource {
       onText: (text) => this.onText(socket, text),
       onClose: (cause) => this.onClose(socket, cause),
     })
-    this.handshake = { socket, resumed, deadline: this.handshakeDeadline(), keepaliveMs: null }
+    this.handshake = {
+      socket,
+      resumed,
+      deadline: this.handshakeDeadline(),
+      keepaliveMs: null,
+      reconnectUrl: null,
+    }
   }
 
   private onText(socket: TextSocket, text: string): void {
@@ -194,6 +202,7 @@ export class ChatWatcher implements ChatSource {
         return
       case "reconnect":
         if (live !== null) this.connect(message.url, true)
+        else if (handshake !== null) handshake.reconnectUrl = message.url
         return
       case "revoked":
         if (live !== null) this.giveUp(new ChatConnectionLost("revoked"))
@@ -251,6 +260,7 @@ export class ChatWatcher implements ChatSource {
     this.retryAt = null
     this.replacementGivenUp = false
     previous?.socket.close()
+    if (handshake.reconnectUrl !== null) this.connect(handshake.reconnectUrl, true)
     this.deps.onSchedule()
   }
 

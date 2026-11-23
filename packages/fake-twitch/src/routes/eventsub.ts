@@ -13,6 +13,7 @@ export interface EventSub {
   sendSubscription(broadcasterId: string, userId: string, kind: SubscriptionKind, tier: Tier): void
   sendRedemption(broadcasterId: string, userId: string, rewardId: string): void
   reconnect(): void
+  reconnectOnNextSubscription(): void
   revokeSubscriptions(): void
   /** EventSub sockets that are open now. */
   connectionCount(): number
@@ -69,6 +70,7 @@ export function createEventSub(state: FakeState): EventSub {
   const open = new Set<Session>()
   const socketRoutes = new Hono()
   const subscriptionRoutes = new Hono<HelixEnv>()
+  let reconnectOnSubscription = false
 
   socketRoutes.get(
     "/ws",
@@ -114,6 +116,10 @@ export function createEventSub(state: FakeState): EventSub {
       createdAt: new Date().toISOString(),
     }
     session.subscriptions.push(subscription)
+    if (reconnectOnSubscription) {
+      reconnectOnSubscription = false
+      sendReconnect(session)
+    }
     return c.json(
       {
         data: [subscriptionJson(subscription, session.id)],
@@ -216,20 +222,10 @@ export function createEventSub(state: FakeState): EventSub {
     subscriptionCount: () =>
       [...open].reduce((count, session) => count + session.subscriptions.length, 0),
     reconnect() {
-      for (const session of sessions.values()) {
-        send(session.ws, {
-          metadata: metadata("session_reconnect"),
-          payload: {
-            session: {
-              id: session.id,
-              status: "reconnecting",
-              keepalive_timeout_seconds: null,
-              reconnect_url: session.reconnectUrl.toString(),
-              connected_at: new Date().toISOString(),
-            },
-          },
-        })
-      }
+      for (const session of sessions.values()) sendReconnect(session)
+    },
+    reconnectOnNextSubscription() {
+      reconnectOnSubscription = true
     },
   }
 
@@ -254,6 +250,21 @@ export function createEventSub(state: FakeState): EventSub {
         })
       }
     }
+  }
+
+  function sendReconnect(session: Session): void {
+    send(session.ws, {
+      metadata: metadata("session_reconnect"),
+      payload: {
+        session: {
+          id: session.id,
+          status: "reconnecting",
+          keepalive_timeout_seconds: null,
+          reconnect_url: session.reconnectUrl.toString(),
+          connected_at: new Date().toISOString(),
+        },
+      },
+    })
   }
 
   function openSession(ws: WSContext, url: URL): Session {
