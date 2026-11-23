@@ -52,6 +52,9 @@ export function rememberedSignIn(): boolean {
 
 export const useStreamerSession = () => useContext(sessionContext)
 
+/** Whether a {@link StreamerSessionProvider} is above; pages outside the layout, such as the live page, have none. */
+export const useHasStreamerSession = () => useContext(sessionContext) !== unknownSession
+
 /** Asks the server who the streamer is once for the whole page, so the header and the page body share one answer. */
 export function StreamerSessionProvider({ children }: { readonly children: ReactNode }) {
   const { result, reload } = useLoad(getSession)

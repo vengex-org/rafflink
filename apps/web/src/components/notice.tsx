@@ -15,7 +15,11 @@ import {
 } from "./icons.tsx"
 import { StateColumn } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
-import { useStreamerSession } from "./streamer-session.tsx"
+import {
+  StreamerSessionProvider,
+  useHasStreamerSession,
+  useStreamerSession,
+} from "./streamer-session.tsx"
 
 export function Loading() {
   const { t } = useI18n()
@@ -110,9 +114,20 @@ const signInLabels: Readonly<Record<Platform, MessageKey>> = {
 
 /**
  * Signing in brings the streamer back to the page they are on; one button per platform the install signs in with.
- * `why` says what the sign-in is for when the page around it does not.
+ * `why` says what the sign-in is for when the page around it does not. A page outside the layout asks the session
+ * here, so its buttons follow the install's platforms too.
  */
 export function SignIn({ why }: { readonly why?: MessageKey | undefined }) {
+  return useHasStreamerSession() ? (
+    <SignInCard why={why} />
+  ) : (
+    <StreamerSessionProvider>
+      <SignInCard why={why} />
+    </StreamerSessionProvider>
+  )
+}
+
+function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
   const { signInPlatforms } = useStreamerSession()
