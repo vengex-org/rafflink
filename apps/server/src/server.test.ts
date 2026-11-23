@@ -147,6 +147,25 @@ describe("routes", () => {
     expect(await response.json()).toHaveProperty("keys")
   })
 
+  it("mounts the fake Kick routes only with DEV_FAKE_KICK", async () => {
+    // The Kick URLs point at a closed local port, so nothing reaches the real Kick.
+    const kickApp = {
+      KICK_CLIENT_ID: "fake-kick-id",
+      KICK_CLIENT_SECRET: "fake-kick-secret",
+      KICK_ID_BASE_URL: "http://127.0.0.1:9",
+      KICK_API_BASE_URL: "http://127.0.0.1:9",
+    }
+    const without = await launch(kickApp)
+    const withFake = await launch({ ...kickApp, DEV_FAKE_KICK: "true" })
+
+    const missing = await fetch(new URL("/public/v1/public-key", without.url))
+    const mounted = await fetch(new URL("/public/v1/public-key", withFake.url))
+
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toEqual({ error: "not-found" })
+    expect(mounted.status).toBe(200)
+  })
+
   it("lets a dev sign-in pick the second fake user with login_hint", async () => {
     const server = await launch({ DEV_FAKE_TWITCH: "true" })
     const known = await fetch(

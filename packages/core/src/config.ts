@@ -28,6 +28,7 @@ export type ConfigReason =
   | "not-above-queued-entry-twitch-time"
   | "below-claim-and-reroll-windows"
   | "fake-twitch-needs-local-public-url"
+  | "fake-kick-needs-local-public-url"
   | "not-a-cloudflare-plan"
   | "not-a-login"
 
@@ -131,6 +132,12 @@ export const configSchema = {
     bool,
     "false",
     "Mounts the fake Twitch routes and the dev SPA; never true in production",
+  ),
+  devFakeKick: withDefault(
+    "DEV_FAKE_KICK",
+    bool,
+    "false",
+    "Mounts the fake Kick routes, whose app is KICK_CLIENT_ID and KICK_CLIENT_SECRET; never true in production",
   ),
   defaultClaimSeconds: withDefault(
     "DEFAULT_CLAIM_SECONDS",
@@ -879,6 +886,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     openSignup: read(env, configSchema.openSignup),
     streamerAccessListMax: read(env, configSchema.streamerAccessListMax),
     devFakeTwitch: read(env, configSchema.devFakeTwitch),
+    devFakeKick: read(env, configSchema.devFakeKick),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
     chatEntryCheckSeconds: read(env, configSchema.chatEntryCheckSeconds),
@@ -1058,6 +1066,14 @@ export function resolveConfig(env: Env): ResolvedConfig {
   // The fake Twitch signs in anyone, so it must never run behind a public origin.
   if (config.devFakeTwitch && !isLocalOrigin(config.publicUrl)) {
     throw new ConfigError(configSchema.devFakeTwitch.env, "fake-twitch-needs-local-public-url")
+  }
+  // The fake Kick signs anyone in as well.
+  if (config.devFakeKick && !isLocalOrigin(config.publicUrl)) {
+    throw new ConfigError(configSchema.devFakeKick.env, "fake-kick-needs-local-public-url")
+  }
+  // The fake Kick takes the Kick app's id and secret, so a fake without them would sign no one in.
+  if (config.devFakeKick && config.kickClientId === null) {
+    throw new ConfigError(configSchema.kickClientId.env, "missing")
   }
   return config
 }

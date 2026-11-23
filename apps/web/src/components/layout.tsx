@@ -8,7 +8,7 @@ import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
 import { AppFrame } from "./page.tsx"
 import { SettingsMenu } from "./header-controls.tsx"
-import { TwitchIcon } from "./icons.tsx"
+import { LogInIcon } from "./icons.tsx"
 import { Avatar } from "./live-parts.tsx"
 import {
   StreamerSessionProvider,
@@ -199,7 +199,7 @@ function LoginLink() {
   const { t } = useI18n()
   return (
     <Link className="button" to={dashboardPath}>
-      <TwitchIcon />
+      <LogInIcon />
       {t("nav.login")}
     </Link>
   )

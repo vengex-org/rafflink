@@ -1,6 +1,7 @@
 import { supportedGroups, type Group } from "@rafflink/core/domain/groups"
 import type { GiveawayView } from "../api/client.ts"
 import type { I18n } from "../i18n/i18n.tsx"
+import { platformNames } from "./platform-name.ts"
 import {
   claimTimeText,
   oddsText,
@@ -30,8 +31,7 @@ export function officialRules(
   const recentWinners = recentWinnersText(i18n, rules.excludeRecentWinners)
   const lines = [
     t("rules.organizer", { name }),
-    // Twitch is the only provider and the public JSON names no platform; this becomes a parameter when a second provider lands.
-    t("rules.platform"),
+    t("rules.platform", { platform: platformNames[giveaway.platform] }),
     giveaway.prize === null
       ? t("rules.prizeNone", { name })
       : t("rules.prize", { prize: giveaway.prize }),
@@ -101,11 +101,18 @@ export function officialRulesText(i18n: I18n, rules: OfficialRules, giveawayUrl:
 
 function entryLines(i18n: I18n, giveaway: GiveawayView): string[] {
   const { chatKeyword, pageEntry, subEntry, pointsReward } = giveaway.rules
+  const platform = platformNames[giveaway.platform]
   return [
-    ...(pageEntry ? [i18n.t("rules.enterPage")] : []),
+    ...(pageEntry ? [i18n.t("rules.enterPage", { platform })] : []),
     ...(chatKeyword === null
       ? []
-      : [i18n.t("rules.enterChat", { keyword: chatKeyword, name: giveaway.streamerName })]),
+      : [
+          i18n.t("rules.enterChat", {
+            keyword: chatKeyword,
+            name: giveaway.streamerName,
+            platform,
+          }),
+        ]),
     ...(subEntry ? [i18n.t("rules.enterSub", { name: giveaway.streamerName })] : []),
     ...(pointsReward === null ? [] : [i18n.t("rules.enterPoints", { reward: pointsReward.title })]),
   ]

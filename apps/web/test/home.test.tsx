@@ -20,7 +20,7 @@ describe("home page", () => {
     const headings = view.getAllByRole("heading", { level: 1 })
 
     expect(headings.map((heading) => heading.textContent)).toEqual([
-      "Fair Twitch giveaways, drawn live on stream.",
+      "Fair giveaways, drawn live on stream.",
     ])
   })
 
@@ -37,7 +37,7 @@ describe("home page", () => {
   it("links the log-in button to the sign-in target", () => {
     const view = renderApp("/")
 
-    const login = view.getByRole("link", { name: "Log in with Twitch" })
+    const login = view.getByRole("link", { name: "Sign in and start" })
 
     expect(login.getAttribute("href")).toBe("/dashboard")
   })
@@ -64,7 +64,7 @@ describe("home page", () => {
 
     const cta = view.getByRole("link", { name: "My giveaways" })
     expect(cta.getAttribute("href")).toBe("/dashboard")
-    expect(view.queryByRole("link", { name: "Log in with Twitch" })).toBeNull()
+    expect(view.queryByRole("link", { name: "Sign in and start" })).toBeNull()
     expect(requests.filter((request) => request.route === "GET /api/session")).toHaveLength(1)
   })
 
@@ -179,6 +179,8 @@ describe("home page", () => {
   it("shows why a failed sign-in came back to the home page", () => {
     const view = renderApp("/?signin=try-again")
 
-    expect(view.getByRole("alert").textContent).toBe("Twitch did not answer. Please try again.")
+    expect(view.getByRole("alert").textContent).toBe(
+      "The streaming platform did not answer. Please try again.",
+    )
   })
 })

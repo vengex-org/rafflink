@@ -99,6 +99,19 @@ describe("resolveConfig", () => {
     )
   })
 
+  it("refuses the fake Kick behind a public URL or without a Kick app", () => {
+    const kickApp = { KICK_CLIENT_ID: "kick-id", KICK_CLIENT_SECRET: "kick-secret" }
+    const local = { ...required, DEV_FAKE_KICK: "true", PUBLIC_URL: "http://localhost:3000" }
+
+    expect(resolveConfig({ ...local, ...kickApp }).devFakeKick).toBe(true)
+    expect(failure({ ...local, ...kickApp, PUBLIC_URL: "https://rafflink.app" })).toMatchObject({
+      env: "DEV_FAKE_KICK",
+      reason: "fake-kick-needs-local-public-url",
+    })
+    expect(failure(local)).toMatchObject({ env: "KICK_CLIENT_ID", reason: "missing" })
+    expect(resolveConfig(required).devFakeKick).toBe(false)
+  })
+
   it("rejects a processing timeout that does not exceed the Twitch requests of one queued code in a row", () => {
     const limitSeconds = queuedEntryTwitchRequests * 5
     for (const seconds of [limitSeconds - 1, limitSeconds]) {

@@ -1,27 +1,31 @@
+import { isPlatform, type Platform } from "@rafflink/core/platform/provider"
 import { useLocation, useSearchParams } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { parseGiveawayCode } from "../lib/giveaway-code.ts"
-import { setupGuideUrl } from "../lib/links.ts"
+import { appSetupUrls } from "../lib/links.ts"
+import { platformNames } from "../lib/platform-name.ts"
 import { dashboardPath, homePath, streamerSignInPath, viewerSignInPath } from "../lib/routes.ts"
 import { ExternalLink } from "./external-link.tsx"
 import { AlertIcon, LogInIcon } from "./icons.tsx"
 import { Page } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
 
-// What Twitch puts in the query of a failed sign-in, besides `error`: the sign-in's own state.
-const signInParams = ["error", "error_description", "state", "nonce"] as const
+// What the platform puts in the query of a failed sign-in, besides `error`: the sign-in's own state, and the platform
+// the callback names.
+const signInParams = ["error", "error_description", "state", "nonce", "platform"] as const
 
 /**
- * Shown above any page that Twitch or the sign-in callback sent back with `error` in the query. The error
- * code is untrusted text; `error_description` is never shown.
+ * Shown above any page that a sign-in callback sent back with `error` and `platform` in the query. Both are untrusted
+ * text: an unknown platform shows no card, and `error_description` is never shown.
  */
 export function OAuthErrorCard() {
   const { t } = useI18n()
   const [query, setQuery] = useSearchParams()
   const { pathname } = useLocation()
   const error = query.get("error")
-  if (error === null) return null
+  const platform = query.get("platform")
+  if (error === null || platform === null || !isPlatform(platform)) return null
 
   const dismiss = () =>
     setQuery(
@@ -34,15 +38,21 @@ export function OAuthErrorCard() {
     )
 
   // Above a giveaway page it is as wide as the viewer's card; above any other page, a text column.
-  const signIn = signInOf(pathname)
+  const signIn = signInOf(platform, pathname)
+  const name = { platform: platformNames[platform] }
   return (
     <Page width={signIn.viewer ? "compact" : "text"} className="oauth-error">
-      <StateCard tone="danger" align="center" icon={<AlertIcon />} title={t("oauthError.title")}>
-        <p role="alert">{t(messageOf(error))}</p>
+      <StateCard
+        tone="danger"
+        align="center"
+        icon={<AlertIcon />}
+        title={t("oauthError.title", name)}
+      >
+        <p role="alert">{t(messageOf(error), name)}</p>
         {error === "redirect_mismatch" ? (
           <p>
-            <ExternalLink kind="own" href={setupGuideUrl}>
-              {t("oauthError.setupLink")}
+            <ExternalLink kind="own" href={appSetupUrls[platform]}>
+              {t("oauthError.setupLink", name)}
             </ExternalLink>
           </p>
         ) : null}
@@ -73,17 +83,20 @@ function messageOf(error: string): MessageKey {
 }
 
 /**
- * A giveaway page signs a viewer in; any other page signs a streamer in and brings them back to it. The query is
- * left out, it holds the error. The home page, where a failed streamer sign-in lands, stands for the dashboard.
+ * A giveaway page signs a viewer in; any other page signs a streamer in and brings them back to it, both on the
+ * platform that refused. The query is left out, it holds the error. The home page, where a failed streamer sign-in
+ * lands, stands for the dashboard.
  */
-function signInOf(pathname: string): { readonly viewer: boolean; readonly href: string } {
+function signInOf(
+  platform: Platform,
+  pathname: string,
+): { readonly viewer: boolean; readonly href: string } {
   const segments = pathname.split("/").filter((segment) => segment !== "")
   const [first] = segments
   const code = segments.length === 1 && first !== undefined ? parseGiveawayCode(first) : null
-  // The card does not know the giveaway's platform; the server sends the viewer on to it.
-  if (code !== null) return { viewer: true, href: viewerSignInPath("twitch", code) }
+  if (code !== null) return { viewer: true, href: viewerSignInPath(platform, code) }
   return {
     viewer: false,
-    href: streamerSignInPath("twitch", pathname === homePath ? dashboardPath : pathname),
+    href: streamerSignInPath(platform, pathname === homePath ? dashboardPath : pathname),
   }
 }

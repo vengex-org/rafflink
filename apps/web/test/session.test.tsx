@@ -144,9 +144,7 @@ describe("header session", () => {
 
     expect(await view.findByRole("link", { name: "Log in" })).toBeTruthy()
     expect(view.queryByRole("button", { name: "Log out" })).toBeNull()
-    expect(
-      await view.findByRole("heading", { level: 1, name: /Fair Twitch giveaways/ }),
-    ).toBeTruthy()
+    expect(await view.findByRole("heading", { level: 1, name: /Fair giveaways/ })).toBeTruthy()
     expect(requests.map((request) => request.route)).toContain("POST /auth/logout")
   })
 

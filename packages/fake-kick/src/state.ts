@@ -10,6 +10,8 @@ export interface FakeKickOptions {
   clientSecret: string
   /** Signed in by `/oauth/authorize` until `control.signInAs` picks another user. */
   defaultUser: FakeKickUser
+  /** `/oauth/authorize` without `login_hint` answers a page to pick the user, for local development. */
+  userPicker?: boolean
 }
 
 export type FailableEndpoint = "token" | "users" | "subscribe" | "unsubscribe" | "public-key"

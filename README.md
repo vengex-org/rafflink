@@ -67,9 +67,9 @@ bun run check
 `bun run check` runs lint (oxlint), format check (oxfmt), typecheck and all tests. `bun run format` applies
 the formatter. `bun run build` builds the web app and the Worker bundle.
 
-### Bun server with a fake Twitch
+### Bun server with a fake Twitch and a fake Kick
 
-You need no Twitch app for development. The Bun server serves a fake Twitch next to itself:
+You need no Twitch or Kick app for development. The Bun server serves a fake Twitch and a fake Kick next to itself:
 
 ```sh
 bun run --filter @rafflink/server dev
@@ -78,6 +78,12 @@ bun run --filter @rafflink/server dev
 It listens on <http://localhost:3000> with the settings of [apps/server/dev.env](apps/server/dev.env) and keeps
 its data in `apps/server/data`. Signing in opens a page with test users: `Fake_Viewer` (id 1000, also the
 admin) and `Fake_Streamer` (id 1001). The session is a cookie, so use a private window per user.
+
+The Kick sign-in buttons open the fake Kick, with its own test users: `Fake_Kick_Viewer` (id 2000) and
+`Fake_Kick_Streamer` (id 2001). It exists only when `DEV_FAKE_KICK=true` and takes `KICK_CLIENT_ID` and
+`KICK_CLIENT_SECRET` as its app, so both must be set. Like the fake Twitch, it only starts when `PUBLIC_URL` is a
+local origin. It answers sign-in and the Kick API, but nothing in dev sends Kick chat messages. Set
+`DEV_FAKE_KICK=false` and leave the `KICK_*` lines out of `dev.env` to try the server with Twitch only.
 
 The dev server does not watch `apps/web` or `packages/core`, so restart it after editing them. The fake Twitch
 exists only when `DEV_FAKE_TWITCH=true`; a production server answers 404 on its routes. The fake Twitch signs
@@ -90,7 +96,8 @@ and viewer sockets and the page never updates.
 
 ### Cloudflare dev
 
-The fake Twitch cannot run inside the Worker, so it runs as its own process. Build the web app once with
+The fake Twitch cannot run inside the Worker, so it runs as its own process. The fake Kick runs only inside the
+Bun server, so Cloudflare dev signs in with Twitch only. Build the web app once with
 `bun run build` in the repository root, because wrangler serves it as static assets from `apps/web/dist`. Create the local
 database tables once with `bunx wrangler d1 migrations apply rafflink --local` in `apps/cloudflare`. Then use
 two terminals there:

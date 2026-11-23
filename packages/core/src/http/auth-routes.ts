@@ -12,6 +12,7 @@ import {
   configuredProviders,
   providerFor,
   readyEntryWays,
+  type Platform,
   type PlatformProvider,
 } from "../platform/provider.ts"
 import { callbackPath, redirectUri } from "../platform/redirect.ts"
@@ -93,7 +94,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
   app.get(streamerCallbackPath, async (c) => {
     const saved = await takeOAuthState(c, deps, "streamer", c.req.query("state"))
     const refused = refusalCode(c.req.query("error"))
-    if (refused !== null) return c.redirect(`/?error=${refused}`)
+    if (refused !== null) return c.redirect(`/?${refusalQuery(refused, platform)}`)
     const code = c.req.query("code")
     if (
       saved === null
@@ -178,7 +179,9 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     }
     const refused = refusalCode(c.req.query("error"))
     if (refused !== null)
-      return c.redirect(`${pagePath(saved?.giveawayCode ?? null)}?error=${refused}`)
+      return c.redirect(
+        `${pagePath(saved?.giveawayCode ?? null)}?${refusalQuery(refused, platform)}`,
+      )
     const code = c.req.query("code")
     if (
       saved === null
@@ -296,6 +299,11 @@ function pagePath(giveawayCode: string | null): string {
 function refusalCode(error: string | undefined): string | null {
   if (error === undefined) return null
   return /^[a-z_]{1,50}$/.test(error) ? error : "error"
+}
+
+// The page names the platform that refused and offers its sign-in again.
+function refusalQuery(refused: string, platform: Platform): string {
+  return new URLSearchParams({ error: refused, platform }).toString()
 }
 
 async function sameText(received: string | undefined, expected: string): Promise<boolean> {

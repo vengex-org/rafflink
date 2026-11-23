@@ -6,7 +6,7 @@ import type { ReactElement } from "react"
 import { Link } from "react-router"
 import { DonateLink } from "../components/donate-link.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
-import { AlertIcon, TwitchIcon } from "../components/icons.tsx"
+import { AlertIcon, LogInIcon } from "../components/icons.tsx"
 import { StateCard } from "../components/state-card.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
@@ -40,7 +40,7 @@ export function HomePage() {
           <p className="home-sub">{t("home.text")}</p>
           <div className="home-actions">
             <Link className="button home-cta" to={dashboardPath}>
-              {streamer === null ? <TwitchIcon /> : null}
+              {streamer === null ? <LogInIcon /> : null}
               {t(streamer === null ? "home.login" : "nav.myGiveaways")}
             </Link>
           </div>

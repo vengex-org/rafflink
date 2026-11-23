@@ -40,13 +40,13 @@ export const en = {
   "signIn.button": "Sign in with Twitch",
   "signIn.buttonKick": "Sign in with Kick",
   "signIn.why.admin": "Sign in with Twitch to open the admin page.",
-  "signIn.why.expired": "Your session ended. Sign in with Twitch to go on.",
-  "signIn.why.dashboard": "Sign in with Twitch to create and run giveaways.",
-  "signIn.why.live": "Sign in with Twitch to open the live page of your giveaway.",
+  "signIn.why.expired": "Your session ended. Sign in to go on.",
+  "signIn.why.dashboard": "Sign in to create and run giveaways.",
+  "signIn.why.live": "Sign in to open the live page of your giveaway.",
 
-  "home.title": "Fair Twitch giveaways, drawn live on stream.",
+  "home.title": "Fair giveaways, drawn live on stream.",
   "home.text": "Viewers enter with one click and you draw in front of your chat.",
-  "home.login": "Log in with Twitch",
+  "home.login": "Sign in and start",
   "home.stage.toClaim": "to claim",
   "home.reads": "We only read your name, VIPs, moderators and chat.",
   "home.trust.supportKoFi": "Support on Ko-fi",
@@ -55,14 +55,14 @@ export const en = {
   "home.footer.label": "Footer",
   "home.problemTitle": "Sign-in did not work",
   "home.problem.invalidState": "The sign-in expired. Please try again.",
-  "home.problem.tryAgain": "Twitch did not answer. Please try again.",
+  "home.problem.tryAgain": "The streaming platform did not answer. Please try again.",
 
-  "oauthError.title": "Sign-in with Twitch failed",
-  "oauthError.access_denied": "You cancelled the Twitch sign-in.",
+  "oauthError.title": "Sign-in with {platform} failed",
+  "oauthError.access_denied": "You cancelled the {platform} sign-in.",
   "oauthError.redirect_mismatch":
-    "This Rafflink installation is not set up correctly in the Twitch developer console. The operator must add the redirect URLs.",
-  "oauthError.setupLink": "See the Twitch app setup steps",
-  "oauthError.generic": "Twitch could not sign you in.",
+    "This Rafflink installation is not set up correctly in the {platform} developer settings. The operator must add the redirect URLs.",
+  "oauthError.setupLink": "See the {platform} app setup steps",
+  "oauthError.generic": "{platform} could not sign you in.",
   "oauthError.code": "Error code: {code}",
   "oauthError.tryAgain": "Try again",
   "oauthError.dismiss": "Dismiss",
@@ -185,8 +185,7 @@ export const en = {
   "entrants.none": "Nobody has entered yet.",
   "entrants.title": "Entrants",
   "entrants.search.label": "Search by name",
-  "entrants.search.help":
-    "Type a few letters of a name or Twitch login. Capital letters do not matter.",
+  "entrants.search.help": "Type a few letters of a name or login. Capital letters do not matter.",
   "entrants.col.name": "Name",
   "entrants.col.tickets": "Tickets",
   "entrants.col.status": "Status",
@@ -246,8 +245,8 @@ export const en = {
   "reason.no-tickets": "Your group gets no tickets in this giveaway.",
   "reason.page-entry-off": "This giveaway takes entries in the stream chat only.",
   "reasonHelp.page-entry-off": "Type the keyword shown on this page in the stream chat to enter.",
-  "reasonHelp.broadcaster": "Sign in with a different Twitch account to enter.",
-  "entry.otherAccount": "Use another Twitch account",
+  "reasonHelp.broadcaster": "Sign in with a different {platform} account to enter.",
+  "entry.otherAccount": "Use another {platform} account",
   "reason.blocked": "You cannot enter this giveaway.",
   "reasonHelp.blocked": "If you have questions, ask the streamer.",
   "reason.recent-winner":
@@ -273,8 +272,7 @@ export const en = {
   "viewerClaim.expired": "The claim time ran out.",
   "viewerClaim.rerolled": "The streamer picked another winner.",
   "viewerClaim.not-a-winner": "You are not a winner of this giveaway.",
-  "viewerClaim.rejected":
-    "Your claim did not go through. Sign in with Twitch again and press Claim my prize.",
+  "viewerClaim.rejected": "Your claim did not go through. Sign in again and press Claim my prize.",
 
   "closeResult.closed": "Entries closed.",
   "closeResult.not-open": "Entries were already closed.",
@@ -404,12 +402,12 @@ export const en = {
   "giveaway.aboutToClose": "Entries are about to close.",
   "giveaway.closesIn": "Entries close in {time}.",
   "giveaway.drawn.title": "The winners are drawn",
-  "giveaway.drawn.text": "Sign in with Twitch to see whether you won.",
+  "giveaway.drawn.text": "Sign in with {platform} to see whether you won.",
   "giveaway.notThisTime.title": "Not this time",
   "giveaway.notThisTime.text": "The winner was drawn. It was not you this time.",
   "giveaway.ready.title": "Ready to enter?",
   "giveaway.ready.text":
-    "Sign in with your Twitch account to get your ticket. It takes a few seconds.",
+    "Sign in with your {platform} account to get your ticket. It takes a few seconds.",
   "giveaway.enter": "Enter with Twitch",
   "giveaway.enterKick": "Enter with Kick",
   "giveaway.signedOut.title": "Sign in to enter",
@@ -435,7 +433,7 @@ export const en = {
   "entry.role.moderator": "as a moderator",
   "entry.pending.title": "You are being entered",
   "entry.pending.detail": "This takes up to {wait}. Do not close this page.",
-  "entry.pending.help": "Twitch is busy. This page updates by itself.",
+  "entry.pending.help": "{platform} is busy. This page updates by itself.",
   "entry.notEligible.title": "You cannot enter",
   "entry.dropped.title": "Your entry took too long",
   "entry.dropped.detail": "Too many people entered at once and your entry was dropped.",
@@ -444,7 +442,7 @@ export const en = {
   "entry.timedOut.detail": "We did not hear back in time.",
   "entry.timedOut.help": "Press the button to enter again.",
   "entry.tryAgain.title": "Try again",
-  "entry.tryAgain.detail": "Twitch did not answer in time.",
+  "entry.tryAgain.detail": "{platform} did not answer in time.",
   "entry.tryAgain.help": "Press the button to give it another go.",
   "entry.rateLimited.title": "Too many attempts",
   "entry.rateLimited.detail": "You tried to enter too often in a short time.",
@@ -503,11 +501,12 @@ export const en = {
   "rules.blocked": "Accounts {name} has blocked cannot enter.",
   "rules.broadcaster": "{name} cannot enter their own giveaway.",
   "rules.platform":
-    "Twitch does not sponsor, endorse or run this giveaway and is not connected to it.",
+    "{platform} does not sponsor, endorse or run this giveaway and is not connected to it.",
   "rules.prize": "Prize: {prize}",
   "rules.prizeNone": "The prize is not described here. Ask {name}.",
-  "rules.enterPage": "To enter, sign in with Twitch on this page.",
-  "rules.enterChat": 'To enter, type "{keyword}" in {name}\'s Twitch chat while entries are open.',
+  "rules.enterPage": "To enter, sign in with {platform} on this page.",
+  "rules.enterChat":
+    'To enter, type "{keyword}" in {name}\'s {platform} chat while entries are open.',
   "rules.enterSub":
     "Subscribing to {name}, resubscribing or receiving a gift sub while entries are open also enters you. You never have to subscribe to enter.",
   "rules.enterPoints":
@@ -539,7 +538,7 @@ export const en = {
   "dash.roomNotReady":
     "The giveaway is not fully ready yet. Open the live page to finish setting it up.",
   "dash.next":
-    "Next, tell your chat. Paste the message below into your Twitch chat. The giveaway code is {code}.",
+    "Next, tell your chat. Paste the message below into your stream chat. The giveaway code is {code}.",
   "dash.openLive": "Open live page",
   "dash.obs.title": "Add to OBS (optional)",
   "dash.obs.text": "Show the entries on your stream while people join.",
@@ -554,7 +553,7 @@ export const en = {
   "dash.empty.create.lead": "Create it.",
   "dash.empty.create.rest": "Say what you give away and who can enter.",
   "dash.empty.share.lead": "Share the link.",
-  "dash.empty.share.rest": "Paste it in your chat. Viewers sign in with Twitch to enter.",
+  "dash.empty.share.rest": "Paste it in your chat. Viewers sign in on the giveaway page to enter.",
   "dash.empty.draw.lead": "Draw live.",
   "dash.empty.draw.rest": "Close entries and pick the winner on your stream.",
   "dash.empty.button": "Create giveaway",
@@ -582,14 +581,14 @@ export const en = {
   "dash.deleteData.button": "Delete all my data",
   "dash.deleteData.question": "Delete all your data?",
   "dash.deleteData.detail":
-    "Every giveaway with its entrants, winners and draw proof, your account and your stored Twitch token are deleted for good, and you are signed out.",
+    "Every giveaway with its entrants, winners and draw proof, your account and your stored sign-in token are deleted for good, and you are signed out.",
   "dash.deleteData.confirm": "Yes, delete everything",
   "dash.blocks.title": "Blocked accounts",
   "dash.blocks.text":
     "Blocked accounts cannot enter any of your giveaways. Their entries in giveaways that are still open are removed; entries in closed giveaways stay. The list is deleted with your account.",
   "dash.blocks.count": "{count} of {max} accounts blocked",
   "dash.blocks.none": "No accounts blocked.",
-  "dash.blocks.label": "Twitch username to block",
+  "dash.blocks.label": "Username to block",
   "dash.blocks.add": "Block",
   "dash.blocks.remove": "Remove",
   "dash.blocks.remove.label": "Remove {login} from the block list",
@@ -597,10 +596,11 @@ export const en = {
   "dash.blocks.added": "Account blocked.",
   "dash.blocks.exists": "This account is already blocked.",
   "dash.blocks.removed": "Account removed from the block list.",
-  "dash.blocks.invalid-input": "Enter a Twitch username.",
-  "dash.blocks.unknown-login": "There is no Twitch account with that username.",
+  "dash.blocks.invalid-input": "Enter a username.",
+  "dash.blocks.unknown-login": "There is no account with that username.",
   "dash.blocks.block-list-full": "The block list is full. Remove an account first.",
-  "dash.blocks.platform-unavailable": "Twitch did not answer. Try again in a moment.",
+  "dash.blocks.platform-unavailable":
+    "The streaming platform did not answer. Try again in a moment.",
   "dash.blocks.room-unavailable":
     "Saved, but a running giveaway did not get the change yet. Try the same action again.",
   "dash.history.title": "Public history",
@@ -792,7 +792,7 @@ export const en = {
   "wizard.prize.label": "What does the winner get? (optional)",
   "wizard.prize.help": "Example: A gaming chair, or a 25 euro Steam card",
   "wizard.audience.everyone": "Everyone",
-  "wizard.audience.everyone.help": "Any viewer with a Twitch account can enter.",
+  "wizard.audience.everyone.help": "Any viewer can enter.",
   "wizard.audience.followers": "Followers only",
   "wizard.audience.followers.help": "Only people who follow your channel can enter.",
   "wizard.audience.subscribers": "Subscribers only",
@@ -881,7 +881,7 @@ export const en = {
   "review.keywordChat": 'The winner can also type "{keyword}" in your chat.',
   "wizard.entry.legend": "How viewers enter",
   "wizard.entry.page": "Giveaway page",
-  "wizard.entry.page.help": "Viewers sign in with Twitch on the giveaway page.",
+  "wizard.entry.page.help": "Viewers sign in on the giveaway page.",
   "wizard.entry.both": "Page and chat",
   "wizard.entry.both.help": "Viewers can also enter by typing a keyword in your chat.",
   "wizard.entry.chat": "Chat only",
@@ -915,7 +915,7 @@ export const en = {
   "review.pointsEntry": 'Redeeming "{reward}" enters a viewer.',
   "giveaway.chatEntry": "Or type {keyword} in the chat of {name} to enter.",
   "giveaway.lookup.legend": "Entered by chat?",
-  "giveaway.lookup.label": "Your Twitch login",
+  "giveaway.lookup.label": "Your username",
   "giveaway.lookup.button": "Am I in?",
   "giveaway.lookup.yes": "{login} is in the giveaway.",
   "giveaway.lookup.no":
@@ -933,7 +933,7 @@ export const en = {
 
   "privacy.title": "Privacy policy",
   "privacy.intro":
-    "Rafflink draws winners of Twitch giveaways. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
+    "Rafflink draws winners of giveaways on Twitch and Kick. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
   "privacy.controller.h": "Who is responsible",
   "privacy.controller.p1":
     "The controller of your personal data on this instance is {operator}. Contact: {contact}.",
@@ -943,17 +943,17 @@ export const en = {
     "Rafflink is open source and anyone can run their own copy. This text describes what the software does; the person who runs an instance is the controller of the data on it. The Rafflink project receives no data from instances run by others.",
   "privacy.data.h": "What data is processed",
   "privacy.data.p1":
-    "Everything comes from Twitch when you sign in with it. Rafflink asks for read access only and never posts to chat.",
+    "Everything comes from Twitch or Kick, whichever you sign in with. Rafflink asks for read access only and never posts to chat.",
   "privacy.data.i1":
-    "Streamers: Twitch user ID, login name, the previous login name after a rename (kept so a link to the old public history page redirects), display name, the URL of the Twitch profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
+    "Streamers: platform user ID, login name, the previous login name after a rename (kept so a link to the old public history page redirects), display name, the URL of the profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
   "privacy.data.i2":
-    "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway, and check that someone who opens a moderator link moderates the channel.",
+    "Streamers: the platform's refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway, and check that someone who opens a moderator link moderates the channel.",
   "privacy.data.i3":
-    "Entrants: Twitch user ID, login name, display name, the URL of the Twitch profile picture, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
+    "Entrants: platform user ID, login name, display name, the URL of the profile picture, the group that gave the tickets (viewer, follower, subscriber tier, VIP or moderator), number of tickets, time of entry and a random value (salt) that makes the draw verifiable. The follow and subscription check uses your Twitch token once and the token is not stored.",
   "privacy.data.i4":
-    'Everyone drawn, rerolled picks included: Twitch user ID, login name, display name, the draw result and whether and how the prize was claimed. The user ID stays with the pick also after the name was replaced with "removed".',
+    'Everyone drawn, rerolled picks included: platform user ID, login name, display name, the draw result and whether and how the prize was claimed. The user ID stays with the pick also after the name was replaced with "removed".',
   "privacy.data.i5":
-    "Chat messages: read in memory to recognise the entry keyword and a winner's claim, and to show the winner's messages on the live page. They are never stored or logged. Typing the entry keyword stores your Twitch user ID, login, display name and the roles your chat badges show until the entry is checked; then you are an entrant like on the page, and the follow is checked with the streamer's token.",
+    "Chat messages: read in memory to recognise the entry keyword and a winner's claim, and to show the winner's messages on the live page. They are never stored or logged. Typing the entry keyword stores your platform user ID, login, display name and the roles your chat badges show until the entry is checked; then you are an entrant like on the page, and the follow is checked with the streamer's token.",
   "privacy.data.i6":
     "Technical data: the host processes your IP address and request details to deliver the page and to protect it from abuse, for example with rate limits.",
   "privacy.data.i7":
@@ -961,9 +961,9 @@ export const en = {
   "privacy.data.i8":
     "Moderators who open a moderator link: the link stores only a hash of its secret. When a link is for channel moderators, the moderator signs in with Twitch and Rafflink checks the Twitch user ID against the channel's moderators. The ID is kept only in the moderator's cookie, nothing else about them is stored, and no Twitch token is kept.",
   "privacy.data.i9":
-    "Blocked accounts: a streamer can block accounts from their giveaways. Rafflink then stores the blocked person's Twitch user ID and login name, and the time of the block, with the streamer's account. Each giveaway room of the streamer keeps a copy of the blocked user IDs so it can refuse them. If the person had already entered a giveaway that is still open, that entry is deleted.",
+    "Blocked accounts: a streamer can block accounts from their giveaways. Rafflink then stores the blocked person's platform user ID and login name, and the time of the block, with the streamer's account. Each giveaway room of the streamer keeps a copy of the blocked user IDs so it can refuse them. If the person had already entered a giveaway that is still open, that entry is deleted.",
   "privacy.data.i10":
-    "Recent winners: when a streamer keeps recent winners out, the Twitch user IDs of the winners of their earlier giveaways are copied into the new giveaway's room so it can refuse them.",
+    "Recent winners: when a streamer keeps recent winners out, the platform user IDs of the winners of their earlier giveaways are copied into the new giveaway's room so it can refuse them.",
   "privacy.data.i11":
     "Winners who fill in a winner form: the answers the streamer asked for, such as name, e-mail, shipping address, a game account ID or a message to the streamer. They are stored encrypted, only the streamer of the giveaway can read them, to deliver the prize, and they are never written to logs. The winner can send the form once.",
   "privacy.purposes.h": "Why and on what legal basis",
@@ -975,16 +975,16 @@ export const en = {
     "To keep you signed in with cookies that are strictly necessary for that. Rafflink uses no advertising, no analytics tools and no tracking, and it does not sell or share data for marketing. It keeps only aggregate counts that contain no personal data, such as visits per referral label per day and entries and claims per minute.",
   "privacy.retention.h": "How long data is kept",
   "privacy.retention.i1":
-    "Entries (Twitch user IDs, names, picture URLs, groups, tickets, entry times, salts) are deleted at most 30 days after the giveaway closes; the operator may set a shorter time. This deletes the entries of the people drawn too; their user ID and names stay with their pick, rerolled picks included (see below).",
+    "Entries (platform user IDs, names, picture URLs, groups, tickets, entry times, salts) are deleted at most 30 days after the giveaway closes; the operator may set a shorter time. This deletes the entries of the people drawn too; their user ID and names stay with their pick, rerolled picks included (see below).",
   "privacy.retention.i2":
-    "When a streamer removes Rafflink's access on Twitch, only the stored Twitch token is deleted. The account and its giveaways stay until the streamer deletes them on the dashboard, one giveaway or all data at once, or asks the operator to (see the contact above).",
+    "When a streamer removes Rafflink's access on Twitch or Kick, only the stored token is deleted. The account and its giveaways stay until the streamer deletes them on the dashboard, one giveaway or all data at once, or asks the operator to (see the contact above).",
   "privacy.retention.i3": "Sign-in codes waiting in the queue are dropped after a few minutes.",
   "privacy.retention.i4":
     "Host logs are kept by the operator or its hosting provider under their own terms.",
   "privacy.retention.i5":
-    "The giveaway (title, prize, rules, dates, entrant and ticket counts), everyone drawn, rerolled picks included, with Twitch user ID, login name, display name and claim state, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay until the streamer deletes the giveaway, so the prize can be delivered and anyone can check the draw later. The operator may set a number of days after the draw closed when giveaways are deleted.",
+    "The giveaway (title, prize, rules, dates, entrant and ticket counts), everyone drawn, rerolled picks included, with platform user ID, login name, display name and claim state, the Merkle root of the entry list and the list of its leaves (hashes and ticket counts, no names) stay until the streamer deletes the giveaway, so the prize can be delivered and anyone can check the draw later. The operator may set a number of days after the draw closed when giveaways are deleted.",
   "privacy.retention.i6":
-    "A block (Twitch user ID and login name) is kept to keep that person out of the streamer's giveaways, until the streamer removes it on the dashboard or deletes their account. The copies of blocked and recent-winner user IDs in a giveaway room are deleted with that giveaway's entries, at most 30 days after it closes.",
+    "A block (platform user ID and login name) is kept to keep that person out of the streamer's giveaways, until the streamer removes it on the dashboard or deletes their account. The copies of blocked and recent-winner user IDs in a giveaway room are deleted with that giveaway's entries, at most 30 days after it closes.",
   "privacy.retention.i7":
     "Winner form answers are deleted when the streamer marks the prize delivered, at the latest 30 days after the claim; the operator may set a shorter time. Only the times when the form was sent and when the prize was delivered stay with the pick. Deleting the giveaway or the streamer's account deletes the answers at once.",
   "privacy.recipients.h": "Who else sees the data",
@@ -992,7 +992,7 @@ export const en = {
   "privacy.recipients.i1":
     "The hosting provider of this instance stores and delivers the service as the operator's processor and may process data outside the European Economic Area under its own terms and safeguards.",
   "privacy.recipients.i2":
-    "Twitch is the identity provider. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. The streamer's browser also loads profile pictures and subscriber badges from Twitch's image servers. Twitch is an independent controller under its own privacy notice.",
+    "Twitch is the identity provider for Twitch sign-ins. It receives your sign-in and, during a giveaway, API calls that check follows, subscriptions and roles, and the chat subscription used to recognise a claim. The streamer's browser also loads profile pictures and subscriber badges from Twitch's image servers. Twitch is an independent controller under its own privacy notice. Kick is the identity provider for Kick sign-ins. It receives your sign-in and, during a giveaway, the subscription that sends the streamer's chat messages to Rafflink. Kick is an independent controller under its own privacy notice.",
   "privacy.recipients.i3":
     "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay, and their profile pictures on the live page.",
   "privacy.recipients.i4":
@@ -1023,7 +1023,7 @@ export const en = {
   "privacy.rights.none":
     "This instance's operator has not published contact details here, and the person who shared the link with you may not be the operator. Without a contact there is no promised way to use these rights through this page.",
   "privacy.rights.p2":
-    "You can also remove Rafflink's access at any time in your Twitch settings under Connections.",
+    "You can also remove Rafflink's access at any time in your Twitch settings under Connections, or in your Kick account settings.",
   "privacy.rights.i1":
     "Access, correction, restriction of processing and portability of your data.",
   "privacy.rights.i2":
@@ -1039,9 +1039,9 @@ export const en = {
     "By signing in or entering a giveaway on Rafflink you accept these terms. If you do not accept them, do not use the service.",
   "terms.service.h": "The service",
   "terms.service.p1":
-    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. This instance is run by {operator}.",
+    "Rafflink lets a Twitch or Kick streamer create a giveaway, collect entries and draw winners live. This instance is run by {operator}.",
   "terms.service.none":
-    "Rafflink lets a Twitch streamer create a giveaway, collect entries and draw winners live. This instance is run by its operator, who has not published contact details here. Contact the person who shared the link with you.",
+    "Rafflink lets a Twitch or Kick streamer create a giveaway, collect entries and draw winners live. This instance is run by its operator, who has not published contact details here. Contact the person who shared the link with you.",
   "terms.service.p2":
     "The service is provided as is and as available, without any warranty. It may change, be limited or be stopped at any time, and it has no uptime guarantee.",
   "terms.source.h": "Open source",
@@ -1060,14 +1060,14 @@ export const en = {
     "You are responsible for how you use the entrants' data that you see, under the privacy law that applies to you.",
   "terms.viewers.h": "Viewers",
   "terms.viewers.i1":
-    "Entering is always free on Rafflink's side and needs a Twitch account. Rafflink never asks viewers to pay.",
+    "Entering is always free on Rafflink's side and needs a Twitch or Kick account. Rafflink never asks viewers to pay.",
   "terms.viewers.i2":
     "The prize comes from the streamer, not from Rafflink. Rafflink is not a party to the giveaway and does not promise a prize or its delivery.",
   "terms.viewers.i3":
     "A win must be claimed within the time the streamer set. After that the streamer may draw again.",
-  "terms.twitch.h": "Twitch",
+  "terms.twitch.h": "Twitch and Kick",
   "terms.twitch.p1":
-    "Twitch's Terms of Service, Community Guidelines and Developer Services Agreement apply to your use of Twitch through Rafflink. Rafflink is not affiliated with or endorsed by Twitch.",
+    "Twitch's Terms of Service, Community Guidelines and Developer Services Agreement apply to your use of Twitch through Rafflink. Rafflink is not affiliated with or endorsed by Twitch. Kick's terms and policies apply to your use of Kick through Rafflink, and Rafflink is not affiliated with or endorsed by Kick either.",
   "terms.use.h": "Acceptable use",
   "terms.use.p1": "You agree not to:",
   "terms.use.i1": "use bots, scripts or other automation to enter or to claim,",
@@ -1078,7 +1078,7 @@ export const en = {
     "run unlawful giveaways or put unlawful or abusive content into a title or prize text.",
   "terms.liability.h": "Liability",
   "terms.liability.p1":
-    "As far as the law allows, we are not liable for indirect or consequential loss, for a giveaway, a prize or a dispute between a streamer and a viewer, or for an outage of Rafflink or Twitch. Our total liability is limited to the amount you paid us for the service, which is nothing for a free account.",
+    "As far as the law allows, we are not liable for indirect or consequential loss, for a giveaway, a prize or a dispute between a streamer and a viewer, or for an outage of Rafflink, Twitch or Kick. Our total liability is limited to the amount you paid us for the service, which is nothing for a free account.",
   "terms.liability.p2":
     "Nothing here limits liability that cannot be limited by law, such as liability for intent or for injury, or your rights as a consumer.",
   "terms.changes.h": "Changes",

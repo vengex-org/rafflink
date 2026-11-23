@@ -87,4 +87,37 @@ describe("fake Kick", () => {
 
     expect(await fake.control.chatWebhook(viewer.id, viewer.id, "hi")).toBeNull()
   })
+
+  it("shows the user picker in dev and signs in the user its login_hint names", async () => {
+    const streamer = { id: "300", name: "Streamer" }
+    fake = createFakeKick({
+      clientId: "c",
+      clientSecret: "s",
+      defaultUser: viewer,
+      userPicker: true,
+    })
+    fake.control.addUser(streamer)
+    const query = new URLSearchParams({
+      client_id: "c",
+      response_type: "code",
+      redirect_uri: redirectUri,
+      state: "st",
+      scope: "user:read",
+      code_challenge: await challengeOf(verifier),
+      code_challenge_method: "S256",
+    })
+
+    const picker = await fake.app.request(`/oauth/authorize?${query}`)
+    const unknown = await fake.app.request(`/oauth/authorize?${query}&login_hint=42`)
+    const picked = await fake.app.request(`/oauth/authorize?${query}&login_hint=${streamer.id}`)
+    const code = new URL(picked.headers.get("location") ?? "").searchParams.get("code") ?? ""
+    const tokens: { access_token: string } = await (await token(code, verifier)).json()
+    const users = await fake.app.request("/public/v1/users", {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    })
+
+    expect(await picker.text()).toContain(`login_hint=${streamer.id}`)
+    expect(unknown.status).toBe(400)
+    expect(await users.json()).toMatchObject({ data: [{ user_id: 300, name: "Streamer" }] })
+  })
 })

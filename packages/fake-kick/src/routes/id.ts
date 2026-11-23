@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import { userPickerPage } from "../lib/user-picker.ts"
 import { takeFailure, type FakeState } from "../state.ts"
 
 /** Kick user access tokens last about two hours. */
@@ -24,9 +25,17 @@ export function idRoutes(state: FakeState): Hono {
     if (query.code_challenge === undefined || query.code_challenge_method !== "S256") {
       return c.json({ error: "Invalid request" }, 400)
     }
+    // Kick knows no `login_hint`; the fake's own user picker adds it.
+    const hint = query.login_hint
+    if (hint !== undefined && !state.users.has(hint)) {
+      return c.json({ error: "Invalid request" }, 400)
+    }
+    if (hint === undefined && state.options.userPicker === true) {
+      return c.html(userPickerPage(state.users.values(), new URL(c.req.url)))
+    }
     const code = crypto.randomUUID()
     state.codes.set(code, {
-      userId: state.signInUserId,
+      userId: hint ?? state.signInUserId,
       scopes: query.scope.split(" ").filter((scope) => scope !== ""),
       redirectUri,
       codeChallenge: query.code_challenge,
