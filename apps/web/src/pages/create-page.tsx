@@ -1,11 +1,13 @@
 import { useState } from "react"
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
+import { everyCapability } from "@rafflink/core/platform/provider"
 import { Disclosure } from "../components/disclosure.tsx"
 import { ActivityIcon, ArrowLeftIcon, CheckIcon, TvIcon } from "../components/icons.tsx"
-import { NotFound, SignIn } from "../components/notice.tsx"
+import { Loading, NotFound, SignIn } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
 import { ObsStepList, OverlayLink, ShareLinks } from "../components/share-panel.tsx"
+import { useStreamerSession } from "../components/streamer-session.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { readNotice, type DashboardNotice } from "../lib/dashboard-notice.ts"
 import { dashboardCreatedPath, dashboardPath, livePath } from "../lib/routes.ts"
@@ -20,18 +22,22 @@ export function NewGiveawayPage() {
   const [query] = useSearchParams()
   const from = query.get("from")
   const [signedOut, setSignedOut] = useState(false)
+  const { streamer, operator } = useStreamerSession()
   if (signedOut) return <SignIn why="signIn.why.expired" />
   return (
     <DashboardGate>
       {(giveaways) => {
         const source = giveaways.find((giveaway) => giveaway.id === from)
+        // A copy waits for the session (the operator comes with it): its tickets are read with the platform's groups.
+        if (source !== undefined && operator.state === "loading") return <Loading />
+        const capabilities = streamer?.capabilities ?? everyCapability
         return (
           <Page width="text" className="create">
             <div className="page-head">
               <h1>{t("dash.new.title")}</h1>
             </div>
             <CreateForm
-              seed={source === undefined ? initialValues : valuesFrom(source)}
+              seed={source === undefined ? initialValues : valuesFrom(source, capabilities)}
               onCreated={({ giveaway, roomReady, usageLow }) => {
                 const notice: DashboardNotice = {
                   kind: "created",

@@ -382,7 +382,7 @@ describe("create wizard", () => {
     })
   })
 
-  it("keeps the bonus tickets of a group the entry ways hide out of the submitted rules", async () => {
+  it("keeps Bonus tickets on across the steps while a group the entry ways hid still holds a bonus", async () => {
     const capabilities = {
       ...supportedSession.streamer.capabilities,
       moderatorRole: false,
@@ -400,15 +400,22 @@ describe("create wizard", () => {
     fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "5" } })
 
     fireEvent.click(view.getByRole("radio", { name: /Giveaway page/ }))
-    expect(view.queryByLabelText("Moderators")).toBeNull()
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Back" }))
+    await view.findByText("Step 2 of 3: Entry rules")
+    fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
+    const shown = inputOf(view.getByRole("checkbox", { name: "Bonus tickets" })).checked
     next(view)
     await view.findByText("Step 3 of 3: Review")
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
     await view.findByRole("heading", { name: "Your giveaway is live!" })
 
-    expect(
-      requests.find((request) => request.route === "POST /api/dash/giveaways")?.body,
-    ).toMatchObject({ rules: { tickets: { moderator: 0 } } })
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect({ shown, body }).toMatchObject({
+      shown: true,
+      body: { rules: { tickets: { moderator: 5 } } },
+    })
   })
 
   it("sends the answers as the API expects", async () => {

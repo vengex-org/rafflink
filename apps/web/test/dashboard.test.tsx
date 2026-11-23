@@ -302,6 +302,43 @@ describe("dashboard", () => {
     expect(inputOf(view.getByLabelText("Claim word optional")).value).toBe("mine")
   })
 
+  it("leaves Bonus tickets off for a copy whose only zeros are groups the platform cannot tell", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      followerCheck: false,
+      subTiers: false,
+      vip: false,
+      moderatorRole: false,
+      chatBadgeGroups: ["sub_t1", "moderator"],
+    }
+    const tickets = {
+      viewer: 1,
+      follower: 0,
+      sub_t1: 0,
+      sub_t2: 0,
+      sub_t3: 0,
+      member: 0,
+      vip: 0,
+      moderator: 0,
+    }
+    mockFetch({
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick", capabilities },
+        }),
+      "GET /api/dash/giveaways": () =>
+        ok({ giveaways: [{ ...dashboardGiveaway, rules: { ...rules, tickets } }] }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("link", { name: "Duplicate Summer giveaway" }))
+    await view.findByText("Step 1 of 3: Basics")
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+
+    expect(inputOf(view.getByRole("checkbox", { name: "Bonus tickets" })).checked).toBe(false)
+  })
+
   it("copies the recent-winners rule of a giveaway into the create form", async () => {
     mockFetch({
       "GET /api/dash/giveaways": () =>

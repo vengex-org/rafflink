@@ -155,18 +155,21 @@ export function entryWaysOffered(ways: EntryWays, capabilities: PlatformCapabili
   }
 }
 
-/** The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. */
-export function valuesFrom(giveaway: DashboardGiveaway): Values {
+/**
+ * The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. Bonus tickets
+ * starts on only when a group the platform can tell has other tickets than the default: the 0 a group it cannot
+ * tell was stored with is no bonus.
+ */
+export function valuesFrom(
+  giveaway: DashboardGiveaway,
+  capabilities: PlatformCapabilities,
+): Values {
   const { rules } = giveaway
-  return {
+  const values: Values = {
     ...initialValues,
     title: giveaway.title ?? "",
     prize: giveaway.prize ?? "",
     audience: rules.subsOnly ? "subscribers" : rules.followersOnly ? "followers" : "everyone",
-    // A group the platform cannot tell holds 0 too, so such a copy opens with Bonus tickets on.
-    bonusTickets: groups.some(
-      (group) => String(rules.tickets[group]) !== initialValues.tickets[group],
-    ),
     tickets: {
       viewer: String(rules.tickets.viewer),
       follower: String(rules.tickets.follower),
@@ -194,6 +197,10 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
     extraTerms: rules.extraTerms ?? "",
     winnerForm: rules.winnerForm,
   }
+  const bonusTickets = ticketGroups(values, capabilities).some(
+    (group) => values.tickets[group] !== initialValues.tickets[group],
+  )
+  return { ...values, bonusTickets }
 }
 
 /**
