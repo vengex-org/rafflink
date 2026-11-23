@@ -92,6 +92,7 @@ export const liveSnapshot: LiveSnapshot = {
   chatEntryOff: false,
   subEntryOff: false,
   pointsEntryOff: false,
+  rolesPaused: false,
 }
 
 /** A claim time and how the English interface writes it with its date, in the zone the test runs in. */

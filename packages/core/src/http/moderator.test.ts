@@ -115,6 +115,24 @@ describe("moderator links of the streamer", () => {
     }
   })
 
+  it("asks to reconnect before the first mods-only link when the token cannot read moderators", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    // VIP and moderator tickets equal to the viewer's need no roles scope, so the sign-in grants none.
+    const tickets = { ...validRules.tickets, vip: 1, moderator: 1 }
+    const created = await browser.postJson("/api/dash/giveaways", {
+      rules: { ...validRules, tickets },
+    })
+    const { giveaway } = await created.json()
+    const path = `/api/dash/giveaways/${giveaway.id}/moderator-links`
+
+    const modsOnly = await sameOriginPost(browser, path, { requireMod: true })
+    const anyone = await sameOriginPost(browser, path, { requireMod: false })
+
+    expect([modsOnly.status, await modsOnly.json()]).toEqual([422, { error: "reconnect" }])
+    expect(anyone.status).toBe(201)
+  })
+
   it("refuses a mods-only link where the platform does not tell who moderates the channel", async () => {
     await harness.stop()
     harness = await createHarness({ capabilities: { moderatorRole: false } })

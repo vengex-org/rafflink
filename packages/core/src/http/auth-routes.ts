@@ -127,7 +127,8 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
         streamerTokenAad(platform, signIn.userId),
         deps.random,
       ),
-      scopes: streamerScopes(provider, saved.features).join(" "),
+      // What the platform granted, so a scope the streamer declined is not taken as held.
+      scopes: (signIn.scopes ?? streamerScopes(provider, saved.features)).join(" "),
       now: deps.clock.now(),
     })
     // A copy cached before the rename would show the history under the old login instead of its redirect.
@@ -243,6 +244,7 @@ interface StreamerGrant {
   readonly displayName: string
   readonly profileImageUrl: string | null
   readonly refreshToken: string
+  readonly scopes: readonly string[] | null
 }
 
 // The browser's last sign-in granted them, or the signed-in streamer's stored token holds them.
@@ -301,6 +303,7 @@ async function exchangeStreamer(
     displayName: profile.displayName,
     profileImageUrl: profile.profileImageUrl,
     refreshToken: tokens.refreshToken,
+    scopes: tokens.scopes,
   }
 }
 

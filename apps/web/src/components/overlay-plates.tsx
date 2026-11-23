@@ -173,6 +173,7 @@ const previewSnapshot: OverlaySnapshot = {
   chatEntryOff: false,
   subEntryOff: false,
   pointsEntryOff: false,
+  rolesPaused: false,
   rerollOpen: false,
   rerollBlocked: null,
   title: null,

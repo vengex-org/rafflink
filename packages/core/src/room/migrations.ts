@@ -15,6 +15,7 @@ import channelEntry from "../../schema/room/0014_channel_entry.sql" with { type:
 import chatWatched from "../../schema/room/0015_chat_watched.sql" with { type: "text" }
 import entryWayRefusal from "../../schema/room/0016_entry_way_refusal.sql" with { type: "text" }
 import memberGroup from "../../schema/room/0017_member_group.sql" with { type: "text" }
+import rolesPaused from "../../schema/room/0018_roles_paused.sql" with { type: "text" }
 
 /**
  * The room schema files in application order; file `NNNN_*.sql` is entry NNNN - 1. An entry never leaves
@@ -38,4 +39,5 @@ export const roomMigrations: readonly string[] = [
   chatWatched,
   entryWayRefusal,
   memberGroup,
+  rolesPaused,
 ]

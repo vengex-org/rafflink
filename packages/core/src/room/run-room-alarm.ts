@@ -1,4 +1,5 @@
 import { errorClass } from "../lib/error-class.ts"
+import { PlatformInvalid } from "../platform/errors.ts"
 import type { StreamerTokenDeps } from "../accounts/streamer-token.ts"
 import { accountAgeDays } from "../domain/rules.ts"
 import { enabledProviderFor, grantedFeatures, type SubscriberTiers } from "../platform/provider.ts"
@@ -233,13 +234,21 @@ async function refreshRoles(
   room: GiveawayRoom,
 ): Promise<void> {
   try {
-    const { provider, accessToken, broadcasterId } = await openGiveawayStreamerAccess(
+    const { provider, accessToken, broadcasterId, scopes } = await openGiveawayStreamerAccess(
       deps,
       giveawayId,
     )
+    if (!grantedFeatures(provider, scopes).includes("roles")) {
+      room.pauseRoles()
+      return
+    }
     const roles = await provider.channelRoles(accessToken, broadcasterId)
     room.replaceRoles(roles.vips, roles.moderators)
   } catch (error) {
+    // Twitch answers 401 or 403 to a token that lost a role scope.
+    if (error instanceof PlatformInvalid && (error.status === 401 || error.status === 403)) {
+      room.pauseRoles()
+    }
     room.recordFailure("role-refresh", error)
   }
 }

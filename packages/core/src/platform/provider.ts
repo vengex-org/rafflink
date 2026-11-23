@@ -76,6 +76,8 @@ export interface ExchangedCode {
   readonly expiresInSeconds: number
   /** The OpenID Connect `id_token`; `null` when the platform or the scopes give none. */
   readonly idToken: string | null
+  /** The scopes the platform granted, as its answer lists them; `null` when the answer names none. */
+  readonly scopes: readonly string[] | null
 }
 
 /** What the sign-in callback proves the user with besides the code. */

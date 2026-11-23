@@ -321,6 +321,8 @@ export interface RoomSummary {
   readonly subEntryOff: boolean
   /** Entries are open to a channel point reward but the watch gave up or the platform refused its redemptions, so a redemption enters nobody. */
   readonly pointsEntryOff: boolean
+  /** Entries are open but the streamer's token cannot read VIPs and moderators, so they enter with viewer tickets. */
+  readonly rolesPaused: boolean
 }
 
 /** The room as a viewer's page loads it. */
@@ -1267,7 +1269,7 @@ export class GiveawayRoom {
   /** Replaces both role lists in one transaction, so a viewer never sees a half-refreshed list. */
   replaceRoles(vips: readonly string[], moderators: readonly string[]): void {
     const now = this.clock.now()
-    const { platform } = this.readState()
+    const { platform, rolesPaused: wasPaused } = this.readState()
     const rows: SqlValue[][] = [
       ...vips.map((id) => [platform, id, "vip", now]),
       ...moderators.map((id) => [platform, id, "moderator", now]),
@@ -1275,11 +1277,22 @@ export class GiveawayRoom {
     this.sql.transaction(() => {
       this.sql.exec("DELETE FROM channel_roles", [])
       this.insertChunked("channel_roles", roleColumns, rows)
-      this.sql.exec("UPDATE room_state SET roles_refresh_at = ? WHERE id = 1", [
+      this.sql.exec("UPDATE room_state SET roles_refresh_at = ?, roles_paused = 0 WHERE id = 1", [
         now + this.config.roleRefreshSeconds * 1000,
       ])
     })
-    this.guarded("alarm", () => this.rearm())
+    if (wasPaused) this.afterWrite()
+    else this.guarded("alarm", () => this.rearm())
+  }
+
+  /**
+   * The streamer's token cannot read VIPs and moderators: entries go on, VIPs and moderators with viewer
+   * tickets, and the live page asks the streamer to reconnect. The next refresh tries again.
+   */
+  pauseRoles(): void {
+    if (this.readState().rolesPaused) return
+    this.sql.exec("UPDATE room_state SET roles_paused = 1 WHERE id = 1", [])
+    this.afterWrite()
   }
 
   /** Closes the chat watch and nothing else, for the host that is shutting the room down. */
@@ -2341,6 +2354,7 @@ function summarize(state: RoomState): RoomSummary {
       state.status === "open"
       && state.rules.pointsReward !== null
       && (state.chatUnavailable || state.pointsEntryUnavailable),
+    rolesPaused: state.status === "open" && state.rolesPaused,
   }
 }
 

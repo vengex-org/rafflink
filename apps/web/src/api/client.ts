@@ -1444,6 +1444,7 @@ function parseSharedSnapshotFields(source: Json) {
     chatEntryOff: bool(source, "chatEntryOff"),
     subEntryOff: bool(source, "subEntryOff"),
     pointsEntryOff: bool(source, "pointsEntryOff"),
+    rolesPaused: bool(source, "rolesPaused"),
   }
 }
 
