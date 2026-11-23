@@ -6,6 +6,7 @@ import {
   users,
   type Harness,
 } from "../../test/app-fixture.ts"
+import { inlineScriptSource, spaTemplate } from "../../test/contract/spa-fixture.ts"
 import type { PublicHistoryJson } from "./json.ts"
 
 let harness: Harness
@@ -50,6 +51,35 @@ async function history(): Promise<Response> {
   return new Browser(harness).request(historyPath)
 }
 
+function allowIndexing(browser: Browser) {
+  return sameOriginPost(browser, "/api/dash/history/indexing", { on: true })
+}
+
+async function historyIndexed(): Promise<boolean> {
+  const body: PublicHistoryJson = await (await history()).json()
+  return body.streamer.indexed
+}
+
+// The streamer renames their Twitch account and signs in again.
+async function rename(login: string) {
+  harness.fake.control.addUser({ ...users.streamerA, login })
+  await new Browser(harness).signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+}
+
+function page(path: string) {
+  return new Browser(harness).request(path)
+}
+
+// The page the server names in the history data, and the data.
+function embeddedHistory(html: string): { path: string; data: unknown } {
+  const [, path, json] =
+    /<script type="application\/json" id="history-data" data-path="([^"]*)">([^<]*)<\/script>/.exec(
+      html,
+    ) ?? []
+  if (path === undefined || json === undefined) throw new Error("the page carries no history data")
+  return { path, data: JSON.parse(json) }
+}
+
 describe("public giveaway history", () => {
   it("shows nothing until the streamer turns it on", async () => {
     await drawnGiveaway()
@@ -77,6 +107,7 @@ describe("public giveaway history", () => {
         platform: "twitch",
         login: users.streamerA.login,
         displayName: users.streamerA.displayName,
+        indexed: false,
       },
       giveaways: [
         {
@@ -257,6 +288,155 @@ describe("public giveaway history", () => {
 
     expect(upper.status).toBe(200)
     expect([platform.status, login.status]).toEqual([404, 404])
+  })
+})
+
+describe("public history indexing", () => {
+  it("shows the indexing switch in the session and the history, and refuses a value that is no boolean", async () => {
+    const { browser } = await drawnGiveaway()
+    await turnOn(browser)
+    const sessionOf = async () => {
+      const session: { streamer: { historyIndexed: boolean } } = await (
+        await browser.request("/api/session")
+      ).json()
+      return session.streamer.historyIndexed
+    }
+
+    const before = [await sessionOf(), await historyIndexed()]
+    const invalid = await sameOriginPost(browser, "/api/dash/history/indexing", { on: "yes" })
+    const saved = await allowIndexing(browser)
+
+    expect(before).toEqual([false, false])
+    expect(invalid.status).toBe(400)
+    expect(await saved.json()).toEqual({ kind: "saved", on: true })
+    expect([await sessionOf(), await historyIndexed()]).toEqual([true, true])
+  })
+
+  it("takes the switch only from the app's own origin", async () => {
+    const { browser } = await drawnGiveaway()
+
+    const foreign = await browser.request("/api/dash/history/indexing", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: JSON.stringify({ on: true }),
+    })
+
+    expect(foreign.status).toBe(403)
+  })
+})
+
+describe("public history after a rename", () => {
+  it("redirects the old login's API answer to the new login, and the new login answers the history", async () => {
+    const { browser } = await drawnGiveaway()
+    await turnOn(browser)
+    await rename("streamer_new")
+
+    const old = await history()
+    const current: PublicHistoryJson = await (
+      await new Browser(harness).request("/api/s/twitch/streamer_new")
+    ).json()
+
+    expect(old.status).toBe(308)
+    expect(old.headers.get("location")).toBe("/api/s/twitch/streamer_new")
+    expect(current.streamer.login).toBe("streamer_new")
+  })
+
+  it("drops the cached answer of the old login at the sign-in that sees the rename", async () => {
+    const { browser } = await drawnGiveaway()
+    await turnOn(browser)
+    const cached = await history()
+
+    await rename("streamer_new")
+
+    expect(cached.status).toBe(200)
+    expect((await history()).status).toBe(308)
+  })
+
+  it("drops no cached answer at a sign-in that keeps the login", async () => {
+    await rename("streamer_new")
+    const deleted = spyOn(harness.deps.publicCache, "delete")
+
+    await rename("streamer_new")
+
+    expect(deleted).not.toHaveBeenCalled()
+  })
+})
+
+describe("public history page", () => {
+  beforeEach(async () => {
+    await harness.stop()
+    harness = await createHarness({ spaTemplate })
+  })
+
+  it("previews the streamer's history with its canonical URL, carries the API answer and stays noindex until the streamer allows indexing", async () => {
+    const { browser } = await drawnGiveaway({ title: "</script><script>alert(1)</script>" })
+    await turnOn(browser)
+    const api = await (await history()).json()
+
+    const hidden = await page(`/s/twitch/${users.streamerA.login.toUpperCase()}`)
+    const html = await hidden.text()
+    await allowIndexing(browser)
+    const indexed = await page(`/s/twitch/${users.streamerA.login}`)
+
+    expect(hidden.status).toBe(200)
+    expect(hidden.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+    expect(hidden.headers.get("content-security-policy")).toContain(inlineScriptSource)
+    expect(html).toContain(`<title>Giveaways of ${users.streamerA.displayName}</title>`)
+    expect(html).toContain(
+      `<link rel="canonical" href="http://localhost/s/twitch/${users.streamerA.login}" />`,
+    )
+    expect(html).toContain(
+      `<meta property="og:url" content="http://localhost/s/twitch/${users.streamerA.login}" />`,
+    )
+    expect(html).not.toContain("</script><script>alert")
+    expect(embeddedHistory(html)).toEqual({ path: `/s/twitch/${users.streamerA.login}`, data: api })
+    expect(indexed.status).toBe(200)
+    expect(indexed.headers.get("x-robots-tag")).toBeNull()
+  })
+
+  it("answers 404 with the plain page and no history for a streamer without the page", async () => {
+    await drawnGiveaway()
+
+    const response = await page(`/s/twitch/${users.streamerA.login}`)
+    const html = await response.text()
+
+    expect(response.status).toBe(404)
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+    expect(html).toContain("<title>Rafflink home</title>")
+    expect(embeddedHistory(html)).toEqual({
+      path: `/s/twitch/${users.streamerA.login}`,
+      data: null,
+    })
+  })
+
+  it("answers 404 for an unknown platform or a login the platform does not allow", async () => {
+    for (const path of [`/s/kick/${users.streamerA.login}`, "/s/twitch/not%20a%20login"]) {
+      expect((await page(path)).status).toBe(404)
+    }
+  })
+
+  it("redirects the login a streamer gave up to their page, keeping the query", async () => {
+    const { browser } = await drawnGiveaway()
+    await turnOn(browser)
+    await rename("streamer_new")
+
+    const response = await page(`/s/twitch/${users.streamerA.login}?ref=panel`)
+
+    expect(response.status).toBe(301)
+    expect(response.headers.get("location")).toBe("/s/twitch/streamer_new?ref=panel")
+    expect(response.headers.get("cache-control")).toBe("no-cache")
+  })
+
+  it("reads D1 once for a page and its repeated view within the cache window", async () => {
+    const { browser } = await drawnGiveaway()
+    await turnOn(browser)
+    const store = spyOn(harness.deps.accounts, "findPublicHistory")
+
+    await page(`/s/twitch/${users.streamerA.login}`)
+    await page(`/s/twitch/${users.streamerA.login}`)
+    await history()
+
+    expect(store).toHaveBeenCalledTimes(1)
   })
 })
 

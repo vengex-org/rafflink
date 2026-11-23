@@ -9,7 +9,7 @@ export interface WorkerAppOptions {
   readonly rooms: DurableObjectNamespace<GiveawayRoomObject>
 }
 
-/** Everything the Worker answers: WebSocket upgrades of the live, overlay and viewer routes, and the API and the indexable pages of core. */
+/** Everything the Worker answers: WebSocket upgrades of the live, overlay and viewer routes, and the API and the pages of core that `run_worker_first` sends to it. */
 export function createWorkerApp(options: WorkerAppOptions): Hono {
   const { api, rooms } = options
   const app = new Hono()

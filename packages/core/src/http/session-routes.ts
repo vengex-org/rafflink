@@ -31,6 +31,7 @@ export function sessionRoutes(deps: AppDeps): Hono {
               capabilities: providerFor(deps.platforms, current.session.platform).capabilities,
               readyEntryWays: await grantedEntryWays(deps, current.session),
               publicHistory: current.streamer.publicHistory,
+              historyIndexed: current.streamer.historyIndexed,
             },
       donateUrl: deps.config.donateUrl,
       operator: operatorOf(deps.config),

@@ -106,6 +106,7 @@ describe("session", () => {
         },
         readyEntryWays: [],
         publicHistory: false,
+        historyIndexed: false,
       },
       donateUrl: null,
       operator: null,

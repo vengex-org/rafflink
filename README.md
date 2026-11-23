@@ -417,18 +417,23 @@ the day, and the page lists the busiest labels. The count has no cookie, address
 new label beyond `REFERRAL_SOURCES_PER_DAY_MAX` (100) a day, and every visit beyond `REFERRAL_VISITS_PER_DAY_MAX` (2000) a day, is ignored (each count is a D1 write). Cloudflare's own request analytics
 (the usage meter above) are the only other source; no analytics service or script is added.
 Scripts, styles, icons and the app pages are static assets that Cloudflare serves without the Worker. Only
-`/api/*`, `/auth/*` and the pages search engines index (`/`, `/privacy` and `/terms`) count as Worker requests;
-the Worker writes `PUBLIC_URL` into the canonical and Open Graph tags of those pages. A giveaway page load makes one such request, and the
+`/api/*`, `/auth/*`, the pages search engines index (`/`, `/privacy` and `/terms`) and the public history pages
+(`/s/*`) count as Worker requests; the Worker writes `PUBLIC_URL` into the canonical and Open Graph tags of those pages. A giveaway page load makes one such request, and the
 public part of its answer is kept for `PUBLIC_GIVEAWAY_CACHE_SECONDS` (5 by default) in the Cache API, so a
 refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache API stores nothing on a
 `workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
 seconds old.
-A streamer's public history page makes one Worker request too (`/api/s/<platform>/<login>`, no session request).
-Its answer is kept for `PUBLIC_HISTORY_CACHE_SECONDS` (300) in the Cache API; a miss reads D1 twice and no Durable
+A streamer's public history page makes one Worker request too: the Worker answers `/s/<platform>/<login>` with the
+page and the history in it, so the page asks `/api/s/<platform>/<login>` only after navigating inside the app, and makes
+no session request. A static page that fetched the history would also cost one request, so running the Worker first
+for `/s/*` adds none. The history answer is kept for `PUBLIC_HISTORY_CACHE_SECONDS` (300) in the Cache API; a miss reads D1 twice and no Durable
 Object, because each room copies its entrant and winner counts into D1 with its status. The page lists the latest
 `PUBLIC_HISTORY_MAX` (20) giveaways by close time. Turning the page off, hiding or deleting a giveaway drops the
 cached answer of the data centre that saved the change; elsewhere it shows once the cached answer expires. While
-`OPEN_SIGNUP` is off only an approved streamer has the page. The page stays `noindex`.
+`OPEN_SIGNUP` is off only an approved streamer has the page. The page is `noindex` until the streamer allows search
+engines in the dashboard; then it drops `X-Robots-Tag` and keeps its canonical and Open Graph tags. When a sign-in sees
+a renamed Twitch account, the login it replaced is kept, and `/s/<platform>/<old login>` answers 301 to the new login
+(308 for the API path) while no account holds the old login and the page is on. Only the latest rename is kept.
 The home page is one Worker request itself. The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
 `/api/g/<code>` request when it shows winners, to read the prize; the giveaway pages make no session request. An
 overlay reads its style (`/api/overlay/<id>/<token>/theme`, one D1 read) when it loads and when its socket reconnects;
@@ -498,7 +503,7 @@ no manual step; a test fails if the built page has a second inline script.
 
 On Cloudflare the app pages are static: the headers above come from `apps/web/dist/_headers`, which the web build
 writes (with the hash of the inline script), and `X-Robots-Tag: noindex, nofollow` covers every path except
-the home and legal pages. Those three run the Worker, which answers them like the Bun server does, with `PUBLIC_URL`
+the home and legal pages. Those three and the public history pages run the Worker, which answers them like the Bun server does, with `PUBLIC_URL`
 in the canonical, `og:url`, `og:image` and `twitter:image` tags; link previews and search engines ignore relative
 URLs there. A pasted giveaway link shows the generic preview of the home page with its relative URLs, so most
 previews show no image. The Bun server

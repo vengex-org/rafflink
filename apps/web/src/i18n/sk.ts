@@ -607,11 +607,15 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Uložené, ale bežiaci giveaway zmenu ešte nedostal. Skús tú istú akciu znova.",
   "dash.history.title": "Verejná história",
   "dash.history.text":
-    "Verejná stránka môže ukázať tvoje ukončené giveawaye s cenou, dátumom, počtom zapísaných a počtom víťazov a s odkazom na overenie každého žrebovania. Neuvádza mená zapísaných ani víťazov a vyhľadávače ju neindexujú. Tlačidlom pri ukončenom giveawayi ho zo stránky skryješ.",
+    "Verejná stránka môže ukázať tvoje ukončené giveawaye s cenou, dátumom, počtom zapísaných a počtom víťazov a s odkazom na overenie každého žrebovania. Neuvádza mená zapísaných ani víťazov a vyhľadávače ju indexujú, len ak to povolíš. Tlačidlom pri ukončenom giveawayi ho zo stránky skryješ.",
   "dash.history.link": "Otvoriť tvoju verejnú históriu",
   "dash.history.turnOn": "Zapnúť verejnú históriu",
   "dash.history.turnOff": "Vypnúť verejnú históriu",
   "dash.history.saved": "Uložené. Verejná stránka môže zmenu ukázať až o pár minút.",
+  "dash.history.notIndexed": "Vyhľadávače stránku neindexujú.",
+  "dash.history.indexed": "Vyhľadávače môžu stránku indexovať a ukázať ju vo výsledkoch.",
+  "dash.history.allowIndexing": "Povoliť indexovanie vyhľadávačmi",
+  "dash.history.stopIndexing": "Zakázať indexovanie vyhľadávačmi",
   "dash.history.hide": "Skryť z histórie",
   "dash.history.show": "Ukázať v histórii",
   "dash.history.hide.label": "Skryť {name} z tvojej verejnej histórie",
@@ -945,7 +949,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.data.p1":
     "Všetko pochádza z Twitchu, keď sa ním prihlásiš. Rafflink žiada iba prístup na čítanie a nikdy nepíše do chatu.",
   "privacy.data.i1":
-    "Streameri: Twitch user ID, prihlasovacie meno, zobrazované meno, URL profilového obrázka na Twitchi a čas prvého prihlásenia, ďalej giveawaye, ktoré vytvoria (názov, text výhry, pravidlá, kód odkazu, časy) a ich výsledky.",
+    "Streameri: Twitch user ID, prihlasovacie meno, predchádzajúce prihlasovacie meno po premenovaní (aby odkaz na starú verejnú históriu presmeroval), zobrazované meno, URL profilového obrázka na Twitchi a čas prvého prihlásenia, ďalej giveawaye, ktoré vytvoria (názov, text výhry, pravidlá, kód odkazu, časy) a ich výsledky.",
   "privacy.data.i2":
     "Streameri: Twitch refresh token, uložený šifrovane. Vďaka nemu Rafflink počas giveawayu číta zoznam VIP a moderátorov kanála a chat a overí, že ten, kto otvorí odkaz pre moderátora, kanál moderuje.",
   "privacy.data.i3":
@@ -999,7 +1003,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.recipients.i4":
     "Pri žrebovaní sa číta verejný maják náhodnosti drand. Neposielajú sa mu žiadne osobné údaje.",
   "privacy.recipients.i5":
-    "Keď streamer zapne verejnú históriu, ktokoľvek na nej vidí meno streamera a jeho ukončené giveawaye: názov, cenu, dátum uzavretia a počet zapísaných a víťazov. Stránka neuvádza mená zapísaných ani víťazov a streamer môže jednotlivé giveawaye skryť alebo stránku vypnúť.",
+    "Keď streamer zapne verejnú históriu, ktokoľvek na nej vidí meno streamera a jeho ukončené giveawaye: názov, cenu, dátum uzavretia a počet zapísaných a víťazov. Stránka neuvádza mená zapísaných ani víťazov a streamer môže jednotlivé giveawaye skryť alebo stránku vypnúť. Vyhľadávače stránku indexujú, len ak to streamer povolí.",
   "privacy.recipients.i6":
     "Odpovede z formulára pre víťaza dostane iba streamer, ktorý giveaway vedie: moderátori, overlay ani verejné stránky ich nikdy nezobrazia.",
   "privacy.cookies.h": "Cookies a lokálne úložisko",

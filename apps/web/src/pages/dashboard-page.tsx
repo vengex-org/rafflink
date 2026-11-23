@@ -10,6 +10,7 @@ import {
   listGiveaways,
   removeBlock,
   setHiddenFromHistory,
+  setHistoryIndexed,
   setPublicHistory,
   winnersCsvPath,
   type AddBlockResult,
@@ -273,7 +274,36 @@ function PublicHistorySetting() {
         {t(on ? "dash.history.turnOff" : "dash.history.turnOn")}
       </button>
       {message === null ? null : <Status>{t(message)}</Status>}
+      {on ? <HistoryIndexingSetting indexed={streamer.historyIndexed} /> : null}
     </section>
+  )
+}
+
+/** Lets search engines index the public history page, or stops them; only while the page is on. */
+function HistoryIndexingSetting({ indexed }: { readonly indexed: boolean }) {
+  const { t } = useI18n()
+  const { reload: reloadSession } = useStreamerSession()
+  const { message, busy, run } = useAction()
+  return (
+    <>
+      <p>{t(indexed ? "dash.history.indexed" : "dash.history.notIndexed")}</p>
+      <button
+        type="button"
+        className="button outlined"
+        disabled={busy}
+        onClick={() =>
+          void run(
+            () => setHistoryIndexed(!indexed),
+            (outcome) => (outcome === "saved" ? "dash.history.saved" : "action.failed"),
+          ).then((outcome) => {
+            if (outcome === "saved") reloadSession()
+          })
+        }
+      >
+        {t(indexed ? "dash.history.stopIndexing" : "dash.history.allowIndexing")}
+      </button>
+      {message === null ? null : <Status>{t(message)}</Status>}
+    </>
   )
 }
 

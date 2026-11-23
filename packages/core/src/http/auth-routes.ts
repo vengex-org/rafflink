@@ -14,8 +14,10 @@ import { enterGiveaway } from "../viewer/enter-giveaway.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { QueuedCode, EnqueueCause } from "../queue/token-queue.ts"
 import type { AppDeps } from "./deps.ts"
+import { historyCacheKey } from "./history-routes.ts"
 import { finishModeratorSignIn } from "./moderator-routes.ts"
 import { outcomeQuery } from "./json.ts"
+import { deletePublicCache } from "./public-cache.ts"
 import { defaultReturnPath, safeReturnPath } from "./return-path.ts"
 import {
   type OAuthState,
@@ -117,6 +119,10 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       scopes: streamerScopes(provider, saved.entryWays).join(" "),
       now: deps.clock.now(),
     })
+    // A copy cached before the rename would show the history under the old login instead of its redirect.
+    if (streamer.renamedFrom !== null) {
+      await deletePublicCache(deps, historyCacheKey(deps.config, platform, streamer.renamedFrom))
+    }
     await startStreamerSession(c, deps, {
       streamerId: streamer.id,
       platform,

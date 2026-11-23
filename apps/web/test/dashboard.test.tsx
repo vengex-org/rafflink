@@ -820,6 +820,40 @@ describe("dashboard public history", () => {
     })
   })
 
+  it("lets search engines index the page while it is on", async () => {
+    let historyIndexed = false
+    const requests = mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, publicHistory: true, historyIndexed },
+        }),
+      "POST /api/dash/history/indexing": () => {
+        historyIndexed = true
+        return ok({ kind: "saved", on: true })
+      },
+    })
+
+    const view = renderApp("/dashboard")
+    expect(await view.findByText("Search engines do not index the page.")).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "Let search engines index it" }))
+
+    expect(await view.findByRole("button", { name: "Stop search engine indexing" })).toBeTruthy()
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/history/indexing")?.body,
+    ).toEqual({ on: true })
+  })
+
+  it("offers no indexing switch while the page is off", async () => {
+    mockFetch({ ...listed, "GET /api/session": () => ok(supportedSession) })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByRole("button", { name: "Turn on public history" })).toBeTruthy()
+    expect(view.queryByRole("button", { name: "Let search engines index it" })).toBeNull()
+  })
+
   it("hides a finished giveaway from the public history and offers to show it again", async () => {
     let hidden = false
     const requests = mockFetch({

@@ -1,16 +1,28 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, within } from "@testing-library/react"
 import type { PublicHistoryJson } from "@rafflink/core/http/json"
+import { historyDataElementId } from "@rafflink/core/lib/page-paths"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
 afterEach(() => {
   cleanup()
   mock.restore()
+  document.getElementById(historyDataElementId)?.remove()
 })
 
+// What the server writes into the history page it serves.
+function embed(json: string, path = "/s/twitch/streamy") {
+  const element = document.createElement("script")
+  element.type = "application/json"
+  element.id = historyDataElementId
+  element.dataset.path = path
+  element.textContent = json
+  document.head.append(element)
+}
+
 const history: PublicHistoryJson = {
-  streamer: { platform: "twitch", login: "streamy", displayName: "Streamy" },
+  streamer: { platform: "twitch", login: "streamy", displayName: "Streamy", indexed: false },
   giveaways: [
     {
       code: "ABCDE",
@@ -76,5 +88,54 @@ describe("public history page", () => {
     expect(
       await view.findByRole("heading", { name: "This streamer has no public giveaway history" }),
     ).toBeTruthy()
+  })
+
+  it("shows the history the server put into the page without asking the API, and asks it on the next visit", async () => {
+    const requests = mockFetch({ "GET /api/s/twitch/streamy": () => ok(history) })
+    embed(JSON.stringify(history))
+
+    const first = renderApp("/s/twitch/streamy")
+    expect(
+      await first.findByRole("heading", { level: 1, name: "Giveaways of Streamy" }),
+    ).toBeTruthy()
+    const before = requests.length
+    cleanup()
+    const second = renderApp("/s/twitch/streamy")
+    expect(
+      await second.findByRole("heading", { level: 1, name: "Giveaways of Streamy" }),
+    ).toBeTruthy()
+
+    expect(before).toBe(0)
+    expect(requests.map((request) => request.route)).toEqual(["GET /api/s/twitch/streamy"])
+  })
+
+  it("asks the API when the server's history is for another page, and matches a login in any case", async () => {
+    const requests = mockFetch({ "GET /api/s/twitch/streamy": () => ok(history) })
+    embed("null", "/s/twitch/someone_else")
+
+    const other = renderApp("/s/twitch/streamy")
+    expect(
+      await other.findByRole("heading", { level: 1, name: "Giveaways of Streamy" }),
+    ).toBeTruthy()
+    cleanup()
+    embed(JSON.stringify(history))
+    const upper = renderApp("/s/twitch/Streamy")
+    expect(
+      await upper.findByRole("heading", { level: 1, name: "Giveaways of Streamy" }),
+    ).toBeTruthy()
+
+    expect(requests.map((request) => request.route)).toEqual(["GET /api/s/twitch/streamy"])
+  })
+
+  it("shows not found from the page's empty history without asking the API", async () => {
+    const requests = mockFetch({})
+    embed("null")
+
+    const view = renderApp("/s/twitch/streamy")
+
+    expect(
+      await view.findByRole("heading", { name: "This streamer has no public giveaway history" }),
+    ).toBeTruthy()
+    expect(requests).toEqual([])
   })
 })

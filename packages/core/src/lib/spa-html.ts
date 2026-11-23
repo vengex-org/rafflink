@@ -31,6 +31,15 @@ export function renderSpaHtml(template: string, meta: PageMeta): string {
   return replaceTag(html, "meta", "name", "twitter:description", "content", description)
 }
 
+/**
+ * Adds `json` to the end of the head as a JSON element with this id and `data-path`, which a CSP does not block:
+ * the browser never runs it. `<` is written as a JSON escape, so no text inside can close the element.
+ */
+export function embedJson(html: string, id: string, path: string, json: string): string {
+  const element = `<script type="application/json" id="${escapeHtml(id)}" data-path="${escapeHtml(path)}">${json.replaceAll("<", "\\u003c")}</script>`
+  return html.replace("</head>", () => `${element}</head>`)
+}
+
 /** The CSP hash sources (`sha256-...`) of the inline scripts of `html`, which a CSP without `unsafe-inline` allows by hash. */
 export async function inlineScriptHashes(html: string): Promise<string[]> {
   const hashes: string[] = []

@@ -103,6 +103,7 @@ describe("applyAccountsMigrations", () => {
       "0012_streamer_blocks.sql",
       "0013_public_history.sql",
       "0014_delivery_counts.sql",
+      "0015_history_indexing.sql",
     ])
     expect(tables()).toEqual([
       "cloudflare_plan",
