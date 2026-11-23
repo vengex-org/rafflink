@@ -7,7 +7,7 @@ import { stubClipboard } from "./clipboard.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
 import { claimedAt, claimedAtText, donateUrl, giveaway, liveSnapshot } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
-import { inputOf } from "./queries.ts"
+import { chooseLanguage, inputOf } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
 
 let restoreSocket = () => {}
@@ -1730,7 +1730,7 @@ describe("live page: its own frame", () => {
     const bar = within(view.getByRole("banner"))
     fireEvent.click(bar.getByRole("button", { name: "Display settings" }))
     fireEvent.click(bar.getByRole("radio", { name: "Dark" }))
-    fireEvent.click(bar.getByRole("radio", { name: "Čeština" }))
+    chooseLanguage(view.getByRole("banner"), "Čeština")
 
     expect(document.documentElement.dataset.theme).toBe("dark")
     expect(await view.findByText("Přihlašování je otevřené")).toBeTruthy()

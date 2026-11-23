@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
-import { languageNames, languages } from "../i18n/language.ts"
+import { languageNames, languages, parseLanguage } from "../i18n/language.ts"
 import { useChooseLanguage } from "../i18n/localized-pages.ts"
 import {
   applyTheme,
@@ -11,7 +11,8 @@ import {
   themes,
   type Theme,
 } from "../theme/theme.ts"
-import { MoonIcon, SlidersIcon, SunIcon, TvIcon } from "./icons.tsx"
+import { Flag } from "./flag.tsx"
+import { ChevronDownIcon, MoonIcon, SlidersIcon, SunIcon, TvIcon } from "./icons.tsx"
 import { SegmentRow } from "./segment-row.tsx"
 
 /** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. `children` come first in the popover. */
@@ -85,30 +86,38 @@ export function ThemeSwitch() {
   )
 }
 
+/** A native dropdown of every language, each named in itself, with the current language's flag beside it. */
 export function LanguageSwitch() {
   const { t, language, languageLoadFailed } = useI18n()
   const choose = useChooseLanguage()
-  const options = languages.map((value) => ({
-    value,
-    label: languageNames[value],
-    icon: <span aria-hidden="true">{value.toUpperCase()}</span>,
-  }))
+  const id = useId()
   return (
-    <fieldset className="toggle language-switch">
-      <legend>{t("language.legend")}</legend>
-      <SegmentRow
-        name="language"
-        options={options}
-        value={language}
-        labels="hidden"
-        onSelect={choose}
-      />
+    <div className="toggle language-switch">
+      <label htmlFor={id}>{t("language.legend")}</label>
+      <div className="language-select">
+        <Flag language={language} />
+        <select
+          id={id}
+          value={language}
+          onChange={(event) => {
+            const picked = parseLanguage(event.currentTarget.value)
+            if (picked !== null) choose(picked)
+          }}
+        >
+          {languages.map((value) => (
+            <option key={value} value={value} lang={value}>
+              {languageNames[value]}
+            </option>
+          ))}
+        </select>
+        <ChevronDownIcon />
+      </div>
       {languageLoadFailed ? (
         <p className="field-error" role="alert">
           {t("language.loadFailed")}
         </p>
       ) : null}
-    </fieldset>
+    </div>
   )
 }
 

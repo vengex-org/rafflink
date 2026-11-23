@@ -173,7 +173,7 @@ describe("home page", () => {
     expect(button.getAttribute("popovertarget")).toBe(panel?.id ?? "no panel")
     const inPanel = within(panel instanceof HTMLElement ? panel : document.body)
     expect(inPanel.getByRole("radio", { name: "Dark" })).toBeTruthy()
-    expect(inPanel.getByRole("radio", { name: "Slovenčina" })).toBeTruthy()
+    expect(inPanel.getByRole("combobox", { name: "Language" })).toBeTruthy()
   })
 
   it("tells a Google account without a YouTube channel to sign in with the channel's account", () => {

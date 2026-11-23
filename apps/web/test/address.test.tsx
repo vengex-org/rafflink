@@ -8,6 +8,7 @@ import { languages } from "../src/i18n/language.ts"
 import { localizedPath, staticSegments, staticSubSegments } from "../src/lib/routes.ts"
 import { dashboardGiveaway, giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
+import { chooseLanguage } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
 
 afterEach(() => {
@@ -258,7 +259,7 @@ describe("one-time parameters", () => {
     })
     await waitFor(() => expect(view.address()).toBe("/sk/"))
 
-    fireEvent.click(view.getByRole("radio", { name: "English" }))
+    chooseLanguage(view.container, "English")
 
     expect(
       await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
@@ -273,7 +274,7 @@ describe("one-time parameters", () => {
       name: "Férové súťaže, žrebované naživo na streame.",
     })
     await waitFor(() => expect(view.address()).toBe("/sk/"))
-    fireEvent.click(view.getByRole("radio", { name: "English" }))
+    chooseLanguage(view.container, "English")
     await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." })
 
     view.go("/?lang=sk")

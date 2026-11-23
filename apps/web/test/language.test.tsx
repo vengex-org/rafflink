@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react"
+import { act, cleanup, render, waitFor, within } from "@testing-library/react"
 import { dictionaryLoaders, loadDictionary } from "../src/i18n/dictionaries.ts"
 import { cs } from "../src/i18n/cs.ts"
 import { de } from "../src/i18n/de.ts"
@@ -9,6 +9,7 @@ import { I18nProvider, pluralForm, useI18n } from "../src/i18n/i18n.tsx"
 import { detectLanguage, languageNames, languages } from "../src/i18n/language.ts"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
+import { chooseLanguage } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
 
 beforeEach(() => {
@@ -41,15 +42,18 @@ describe("language", () => {
     expect(detectLanguage("")).toBe("en")
   })
 
-  it("lists every language with a dictionary in the switch, each named in itself", () => {
+  it("lists every language with a dictionary in the dropdown, each named in itself", () => {
     browserLanguage("en-US")
     const view = renderApp("/")
 
-    const group = within(view.getByRole("group", { name: "Language" }))
-    expect(group.getAllByRole("radio").map((radio) => radio.parentElement?.textContent)).toEqual(
-      languages.map((language) => `${language.toUpperCase()}${languageNames[language]}`),
-    )
-    expect(group.getByRole("radio", { name: "Deutsch" })).toBeTruthy()
+    const select = view.getByRole("combobox", { name: "Language" })
+
+    expect(
+      within(select)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(languages.map((language) => languageNames[language]))
+    expect(select).toHaveProperty("value", "en")
   })
 
   it("detects German from de-DE on the first visit and sets the page language", () => {
@@ -109,7 +113,7 @@ describe("language", () => {
     browserLanguage("en-US")
     const view = renderApp("/verify")
 
-    fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
+    chooseLanguage(view.container, "Slovenčina")
 
     expect(
       await view.findByRole("heading", { level: 1, name: sk["verifyLookup.title"] }),
@@ -180,7 +184,7 @@ describe("language", () => {
     expect(
       view.getByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
     ).toBeTruthy()
-    fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
+    chooseLanguage(view.container, "Čeština")
 
     expect(
       await view.findByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
@@ -194,7 +198,7 @@ describe("language", () => {
     spyOn(dictionaryLoaders, "sk").mockImplementation(() => Promise.reject(failure))
     const view = renderApp("/")
 
-    fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
+    chooseLanguage(view.container, "Slovenčina")
 
     expect(await view.findByRole("alert")).toHaveProperty(
       "textContent",
@@ -205,7 +209,7 @@ describe("language", () => {
       error: failure,
     })
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
-    expect(view.getByRole("radio", { name: "English" })).toHaveProperty("checked", true)
+    expect(view.getByRole("combobox", { name: "Language" })).toHaveProperty("value", "en")
     expect(window.localStorage.getItem("rafflink-language")).toBeNull()
     expect(view.address()).toBe("/")
   })
@@ -215,7 +219,7 @@ describe("language", () => {
     spyOn(dictionaryLoaders, "de").mockImplementation(() => german.promise)
     const view = renderApp("/privacy")
 
-    fireEvent.click(view.getByRole("radio", { name: "Deutsch" }))
+    chooseLanguage(view.container, "Deutsch")
     await act(async () => {})
     expect(view.address()).toBe("/privacy")
     await act(async () => german.resolve(de))
@@ -255,8 +259,8 @@ describe("language", () => {
     spyOn(dictionaryLoaders, "sk").mockImplementation(() => slovak.promise)
     const view = renderApp("/")
 
-    fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
-    fireEvent.click(view.getByRole("radio", { name: "Deutsch" }))
+    chooseLanguage(view.container, "Slovenčina")
+    chooseLanguage(view.container, "Deutsch")
     expect(
       await view.findByRole("heading", { name: "Faire Gewinnspiele, live im Stream gezogen." }),
     ).toBeTruthy()
