@@ -4,8 +4,25 @@
  * exits 1.
  */
 export async function runParallel(scripts: readonly string[], cwd: string): Promise<number> {
-  const started = performance.now()
   const runs: Run[] = []
+  // On POSIX the scripts run in process groups of their own, outside the terminal's: Ctrl+C reaches only this process,
+  // which passes it on.
+  const interrupted = (signal: NodeJS.Signals) => {
+    for (const run of runs) stopTree(run.child)
+    process.exit(signal === "SIGINT" ? 130 : 143)
+  }
+  process.on("SIGINT", interrupted)
+  process.on("SIGTERM", interrupted)
+  try {
+    return await runAll(scripts, cwd, runs)
+  } finally {
+    process.off("SIGINT", interrupted)
+    process.off("SIGTERM", interrupted)
+  }
+}
+
+async function runAll(scripts: readonly string[], cwd: string, runs: Run[]): Promise<number> {
+  const started = performance.now()
   for (const script of scripts) {
     try {
       runs.push(start(script, cwd))
@@ -48,6 +65,8 @@ function start(script: string, cwd: string): Run {
     stdout: "pipe",
     stderr: "pipe",
     env: { ...process.env, FORCE_COLOR: process.stdout.isTTY ? "1" : "0" },
+    // A group of its own, so stopTree can signal the script with every process below it. Windows has no groups.
+    detached: process.platform !== "win32",
   })
   const done = (async () => {
     try {
@@ -72,8 +91,12 @@ function stopTree(child: Bun.Subprocess): void {
       stdout: "ignore",
       stderr: "ignore",
     })
-  } else {
-    child.kill("SIGKILL")
+    return
+  }
+  try {
+    process.kill(-child.pid, "SIGKILL")
+  } catch {
+    // The group is gone: the script and everything below it have already exited.
   }
 }
 
