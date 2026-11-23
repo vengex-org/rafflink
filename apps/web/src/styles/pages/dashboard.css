@@ -75,11 +75,17 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0 0.25rem;
+  max-width: 40rem;
   margin-bottom: var(--space-2);
 }
 
 .with-info p {
   margin: 0;
+}
+
+/* Without a cap of its own the explanation takes the whole row, under the line rather than beside it. */
+.with-info .info-tip-text {
+  max-width: none;
 }
 
 /* A setting's next line keeps clear of the button above it. */
