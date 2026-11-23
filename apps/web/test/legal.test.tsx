@@ -341,7 +341,7 @@ describe("legal pages", () => {
       await view.findByRole("heading", { level: 1, name: "Zásady ochrany osobních údajů" }),
     ).toBeTruthy()
     await waitFor(() => expect(document.documentElement.lang).toBe("cs"))
-    expect(view.address()).toBe("/cs/privacy")
+    await waitFor(() => expect(view.address()).toBe("/cs/privacy"))
     expect(window.localStorage.getItem("rafflink-language")).toBe("cs")
   })
 

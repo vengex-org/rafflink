@@ -179,6 +179,7 @@ describe("localized pages", () => {
     ["/DE", "/de/"],
     ["/de/privacy/", "/de/privacy"],
     ["/DE/terms", "/de/terms"],
+    ["/DE/PRIVACY", "/de/privacy"],
     ["/privacy/", "/privacy"],
   ])("open %s at %s", async (typed, canonical) => {
     mockFetch({})
@@ -261,7 +262,7 @@ describe("one-time parameters", () => {
     expect(
       await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
     ).toBeTruthy()
-    expect(view.address()).toBe("/")
+    await waitFor(() => expect(view.address()).toBe("/"))
   })
 
   it("applies a ?lang= link followed later in the page, though the language was chosen again since", async () => {

@@ -1,4 +1,4 @@
-import { sourceLanguage } from "@rafflink/core/lib/languages"
+import { isLanguage, sourceLanguage } from "@rafflink/core/lib/languages"
 import { useEffect, useEffectEvent, type ReactNode } from "react"
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router"
 import { ErrorBoundary } from "./components/error-boundary.tsx"
@@ -37,7 +37,6 @@ export function AppRoutes() {
   const { pathname } = useLocation()
   return (
     <I18nProvider addressLanguage={addressLanguage(pathname)}>
-      <ChosenLanguageHome />
       <LinkedLanguage />
       <ErrorBoundary fallback={<Failed />}>
         <CanonicalPath>
@@ -79,6 +78,7 @@ export function AppRoutes() {
           </Routes>
         </CanonicalPath>
       </ErrorBoundary>
+      <ChosenLanguageHome />
     </I18nProvider>
   )
 }
@@ -104,7 +104,9 @@ function localizedPage(page: LocalizedPage): ReactNode {
 
 /**
  * `/` is the home page in English, as search engines and shared links know it. A person who chose another language
- * before gets the home page in it once the page has loaded; the browser's language alone moves nobody.
+ * before gets the home page in it once the page has loaded; the browser's language alone moves nobody, and a
+ * `?lang=` link picks the language itself. It renders after the routes, so its redirect follows the one-time
+ * parameters the page removed from the address, and keeps them for the page it opens.
  */
 function ChosenLanguageHome() {
   const { pathname, search, hash } = useLocation()
@@ -112,11 +114,12 @@ function ChosenLanguageHome() {
   const redirect = useEffectEvent(() => {
     const opened = pageOfPath(pathname)
     if (opened?.page !== "home" || opened.language !== sourceLanguage) return
+    if (new URLSearchParams(search).has("lang")) return
     const chosen = storedLanguage()
     if (chosen === null || chosen === sourceLanguage) return
     navigate({ pathname: localizedPath(chosen, "home"), search, hash }, { replace: true })
   })
-  // Only the address the page opened at: picking English on `/de/` leads to `/` before the choice is stored.
+  // Once, for the address the page opened at.
   useEffect(() => redirect(), [])
   return null
 }
@@ -161,10 +164,13 @@ function canonicalPathOf(pathname: string): string {
   ) {
     segments[1] = first.toLowerCase()
   }
-  // After `/g/<code>` the fixed word is the fourth segment, otherwise the third.
+  // After `/g/<code>` the fixed word is the fourth segment, otherwise the third; after a language, a page name.
   const wordAt = segments[1] === "g" ? 3 : 2
   const word = segments[wordAt]
-  if (word !== undefined && staticSubSegments.includes(word.toLowerCase())) {
+  const words: readonly string[] = isLanguage(segments[1] ?? "")
+    ? localizedPages
+    : staticSubSegments
+  if (word !== undefined && words.includes(word.toLowerCase())) {
     segments[wordAt] = word.toLowerCase()
   }
   const canonical = segments.join("/")

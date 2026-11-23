@@ -10,9 +10,11 @@ startErrorReporting()
 const root = document.getElementById("root")
 if (root === null) throw new Error("index.html has no #root")
 // The first render shows the wanted language instead of English for a moment; a failed load renders in English.
-await loadDictionary(openingLanguage(addressLanguage(location.pathname))).catch(
+const loaded = await loadDictionary(openingLanguage(addressLanguage(location.pathname))).then(
+  () => true,
   (error: unknown) => {
     console.error("dictionary failed to load", { error })
+    return false
   },
 )
 const app = (
@@ -21,6 +23,11 @@ const app = (
     <AppRoutes />
   </BrowserRouter>
 )
-// A prerendered page arrives with its markup in #root, which React takes over; the app's shell arrives empty.
-if (root.firstElementChild === null) createRoot(root).render(app)
-else hydrateRoot(root, app)
+// A prerendered page arrives with its markup in #root, which React takes over; the app's shell arrives empty. English
+// cannot take over a page prerendered in a language whose dictionary failed, so that page renders anew.
+if (root.firstElementChild !== null && loaded) {
+  hydrateRoot(root, app)
+} else {
+  root.replaceChildren()
+  createRoot(root).render(app)
+}

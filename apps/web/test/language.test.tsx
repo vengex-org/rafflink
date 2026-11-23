@@ -144,17 +144,6 @@ describe("language", () => {
     expect(view.address()).toBe("/cs/?ref=giveaway")
   })
 
-  it("lets a ?lang= link on / win over the remembered language", async () => {
-    window.localStorage.setItem("rafflink-language", "cs")
-
-    const view = renderApp("/?lang=en")
-
-    await waitFor(() => expect(window.localStorage.getItem("rafflink-language")).toBe("en"))
-    await act(async () => {})
-    expect(view.address()).toBe("/")
-    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
-  })
-
   it("leaves / in English when English is the remembered choice", async () => {
     window.localStorage.setItem("rafflink-language", "en")
     browserLanguage("de-DE")
@@ -218,6 +207,46 @@ describe("language", () => {
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
     expect(view.getByRole("radio", { name: "English" })).toHaveProperty("checked", true)
     expect(window.localStorage.getItem("rafflink-language")).toBeNull()
+    expect(view.address()).toBe("/")
+  })
+
+  it("opens a localized page in the picked language only once its dictionary has loaded", async () => {
+    const german = Promise.withResolvers<typeof de>()
+    spyOn(dictionaryLoaders, "de").mockImplementation(() => german.promise)
+    const view = renderApp("/privacy")
+
+    fireEvent.click(view.getByRole("radio", { name: "Deutsch" }))
+    await act(async () => {})
+    expect(view.address()).toBe("/privacy")
+    await act(async () => german.resolve(de))
+
+    expect(view.address()).toBe("/de/privacy")
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(de["privacy.title"])
+  })
+
+  it.each([
+    ["cs", "sk"],
+    ["de", "en"],
+  ])("goes from / to the language of a ?lang= link with %s stored", async (stored, linked) => {
+    window.localStorage.setItem("rafflink-language", stored)
+
+    const view = renderApp(`/?lang=${linked}`)
+
+    await waitFor(() => expect(window.localStorage.getItem("rafflink-language")).toBe(linked))
+    await act(async () => {})
+    expect(view.address()).toBe(linked === "en" ? "/" : `/${linked}/`)
+  })
+
+  it("keeps a one-time parameter when / opens in the remembered language", async () => {
+    window.localStorage.setItem("rafflink-language", "de")
+
+    const view = renderApp("/?signin=try-again")
+
+    expect(await view.findByRole("alert")).toHaveProperty(
+      "textContent",
+      de["home.problem.tryAgain"],
+    )
+    await waitFor(() => expect(view.address()).toBe("/de/"))
   })
 
   it("shows the language picked last when an earlier pick loads later", async () => {

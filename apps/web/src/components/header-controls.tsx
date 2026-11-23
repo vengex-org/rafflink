@@ -3,11 +3,9 @@ import { useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import { languageNames, languages } from "../i18n/language.ts"
 import { useChooseLanguage } from "../i18n/localized-pages.ts"
-import { useHydrated } from "../lib/use-hydrated.ts"
 import {
   applyTheme,
   darkQuery,
-  defaultTheme,
   storedTheme,
   storeTheme,
   themes,
@@ -55,7 +53,6 @@ export function SettingsMenu({ children }: { readonly children?: ReactNode | und
 export function ThemeSwitch() {
   const { t } = useI18n()
   const [theme, setTheme] = useState(storedTheme)
-  const shown = useHydrated() ? theme : defaultTheme
 
   useEffect(() => {
     applyTheme(theme)
@@ -77,7 +74,7 @@ export function ThemeSwitch() {
       <SegmentRow
         name="theme"
         options={options}
-        value={shown}
+        value={theme}
         labels="hidden"
         onSelect={(next) => {
           storeTheme(next)

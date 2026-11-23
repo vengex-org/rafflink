@@ -8,11 +8,8 @@ export const themeStorageKey = "rafflink-theme"
 
 export const darkQuery = "(prefers-color-scheme: dark)"
 
-/** The theme of a person who never chose one. */
-export const defaultTheme = "system" satisfies Theme
-
 export function storedTheme(): Theme {
-  return parseTheme(readStored(themeStorageKey)) ?? defaultTheme
+  return parseTheme(readStored(themeStorageKey)) ?? "system"
 }
 
 export function storeTheme(theme: Theme): void {

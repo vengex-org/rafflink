@@ -9,16 +9,18 @@ export function useLocalizedPath(page: LocalizedPage): string {
 }
 
 /**
- * Picks a language as the person's choice. On a localized page the address names the language, so the page opens
- * at its address in the picked language; the query is left behind, since a one-time parameter in it was used.
+ * Picks a language as the person's choice. On a localized page the address names the language, so once the
+ * language is shown the page opens at its address in it; a language that fails to load leaves the address as it
+ * is. The query is left behind, since a one-time parameter in it was used.
  */
 export function useChooseLanguage(): (language: Language) => void {
   const { setLanguage } = useI18n()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   return (language) => {
-    setLanguage(language)
     const page = pageOfPath(pathname)?.page
-    if (page !== undefined) navigate(localizedPath(language, page), { replace: true })
+    void setLanguage(language).then((shown) => {
+      if (shown && page !== undefined) navigate(localizedPath(language, page), { replace: true })
+    })
   }
 }

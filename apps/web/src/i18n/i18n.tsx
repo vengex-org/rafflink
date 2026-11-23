@@ -38,8 +38,11 @@ type Params = Readonly<Record<string, string | number>>
 /** Everything a component needs to speak the chosen language: texts, plurals and locale-aware numbers and times. */
 export interface I18n {
   readonly language: Language
-  /** Shows `language` once its dictionary has loaded; until then, or when loading fails, the current one stays. */
-  setLanguage(language: Language): void
+  /**
+   * Shows `language` once its dictionary has loaded; until then, or when loading fails, the current one stays.
+   * Resolves to whether it is shown: false when loading failed or a later pick replaced it.
+   */
+  setLanguage(language: Language): Promise<boolean>
   /** The dictionary of the language picked last failed to load. */
   readonly languageLoadFailed: boolean
   t(key: MessageKey, params?: Params): string
@@ -73,22 +76,28 @@ export function I18nProvider({
     requestedRef.current = next
     setLoadFailed(false)
     // A slow chunk must not override a language picked after it, so only the last request lands.
-    loadDictionary(next).then(
+    return loadDictionary(next).then(
       (dictionary) => {
-        if (requestedRef.current !== next) return
+        if (requestedRef.current !== next) return false
         if (store) storeLanguage(next)
         setShown({ language: next, dictionary })
+        return true
       },
       (error: unknown) => {
         console.error("dictionary failed to load", { language: next, error })
         if (requestedRef.current === next) setLoadFailed(true)
+        return false
       },
     )
   }, [])
   const setLanguage = useCallback((next: Language) => show(next, true), [show])
+  // The first render took the address's language already, and a pick in a child's mount effect runs before this one.
+  const addressRef = useRef(addressLanguage)
   useEffect(() => {
+    if (addressLanguage === addressRef.current) return
+    addressRef.current = addressLanguage
     if (addressLanguage !== null && addressLanguage !== requestedRef.current) {
-      show(addressLanguage, false)
+      void show(addressLanguage, false)
     }
   }, [addressLanguage, show])
   const value = useMemo(
