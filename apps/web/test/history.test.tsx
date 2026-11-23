@@ -12,10 +12,11 @@ afterEach(() => {
 })
 
 // What the server writes into the history page it serves.
-function embed(json: string) {
+function embed(json: string, path = "/s/twitch/streamy") {
   const element = document.createElement("script")
   element.type = "application/json"
   element.id = historyDataElementId
+  element.dataset.path = path
   element.textContent = json
   document.head.append(element)
 }
@@ -105,6 +106,24 @@ describe("public history page", () => {
     ).toBeTruthy()
 
     expect(before).toBe(0)
+    expect(requests.map((request) => request.route)).toEqual(["GET /api/s/twitch/streamy"])
+  })
+
+  it("asks the API when the server's history is for another page, and matches a login in any case", async () => {
+    const requests = mockFetch({ "GET /api/s/twitch/streamy": () => ok(history) })
+    embed("null", "/s/twitch/someone_else")
+
+    const other = renderApp("/s/twitch/streamy")
+    expect(
+      await other.findByRole("heading", { level: 1, name: "Giveaways of Streamy" }),
+    ).toBeTruthy()
+    cleanup()
+    embed(JSON.stringify(history))
+    const upper = renderApp("/s/twitch/Streamy")
+    expect(
+      await upper.findByRole("heading", { level: 1, name: "Giveaways of Streamy" }),
+    ).toBeTruthy()
+
     expect(requests.map((request) => request.route)).toEqual(["GET /api/s/twitch/streamy"])
   })
 

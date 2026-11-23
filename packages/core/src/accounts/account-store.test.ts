@@ -17,6 +17,7 @@ import {
   AccountStore,
   type NewGiveaway,
   type PublicHistoryLookup,
+  type SignedInStreamer,
   type StreamerRecord,
   type StreamerSignIn,
 } from "./account-store.ts"
@@ -99,7 +100,7 @@ describe("AccountStore streamers", () => {
 
     const streamer = await store.signInStreamer(signIn())
 
-    expect(streamer).toEqual<StreamerRecord>({
+    expect(streamer).toEqual<SignedInStreamer>({
       id: "s1",
       platform: "twitch",
       platformUserId: "200",
@@ -110,7 +111,7 @@ describe("AccountStore streamers", () => {
       approvedAt: null,
       publicHistory: false,
       historyIndexed: false,
-      previousLogin: null,
+      renamedFrom: null,
     })
     expect(
       sqlRows(db, "SELECT streamer_id, refresh_token_enc, scopes FROM streamer_tokens"),
@@ -131,7 +132,6 @@ describe("AccountStore streamers", () => {
       approvedAt: null,
       publicHistory: false,
       historyIndexed: false,
-      previousLogin: null,
     })
     expect(await store.findStreamer("missing")).toBeNull()
   })
@@ -156,17 +156,18 @@ describe("AccountStore streamers", () => {
     ])
   })
 
-  it("keeps the login a sign-in replaced, across later sign-ins with the same login, until the next rename", async () => {
+  it("names the login a sign-in replaced, and none for a sign-in with the same login", async () => {
     const { store } = setup()
-    await store.signInStreamer(signIn())
+    const first = await store.signInStreamer(signIn())
 
     const renamed = await store.signInStreamer(signIn({ login: "renamed", now: 2000 }))
     const same = await store.signInStreamer(signIn({ login: "renamed", now: 3000 }))
     const again = await store.signInStreamer(signIn({ login: "third", now: 4000 }))
 
-    expect([renamed.previousLogin, same.previousLogin, again.previousLogin]).toEqual([
+    expect([first, renamed, same, again].map((streamer) => streamer.renamedFrom)).toEqual([
+      null,
       "streamer",
-      "streamer",
+      null,
       "renamed",
     ])
   })
@@ -258,6 +259,19 @@ describe("AccountStore public history", () => {
 
     expect(on).toEqual({ kind: "moved", login: "new" })
     expect(await store.findPublicHistory("twitch", "old", open)).toEqual({ kind: "missing" })
+  })
+
+  it("keeps moving the old login across later sign-ins with the new login", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn({ login: "old" }))
+    await store.setPublicHistory("s1", true)
+    await store.signInStreamer(signIn({ login: "new", now: 2000 }))
+    await store.signInStreamer(signIn({ login: "new", now: 3000 }))
+
+    expect(await store.findPublicHistory("twitch", "old", open)).toEqual({
+      kind: "moved",
+      login: "new",
+    })
   })
 
   it("never moves a login another account holds now, even with that account's page off", async () => {

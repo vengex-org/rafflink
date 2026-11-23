@@ -53,10 +53,7 @@ export async function publicHistoryAnswer(
   const ttlSeconds = deps.config.publicHistoryCacheSeconds
   const key = historyCacheKey(deps.config, platform, login)
   const cached = await readPublicCache(deps, key, ttlSeconds)
-  const cachedStreamer = cached === null ? null : streamerOf(cached)
-  if (cached !== null && cachedStreamer !== null) {
-    return { kind: "found", text: cached, streamer: cachedStreamer }
-  }
+  if (cached !== null) return { kind: "found", text: cached, streamer: streamerOf(cached) }
   const lookup = await deps.accounts.findPublicHistory(platform, login, {
     limit: deps.config.publicHistoryMax,
     approvedOnly: !deps.config.openSignup,
@@ -86,16 +83,21 @@ export function historyCacheKey(
   return `${config.publicUrl}/api${historyPath(platform, login)}`
 }
 
-// The cache holds what publicHistoryAnswer wrote, but a copy saved by the previous deployment can lack a newer
-// field until it expires; such a copy counts as a miss.
-function streamerOf(text: string): PublicHistoryJson["streamer"] | null {
+// The streamer of a cached answer, which publicHistoryAnswer wrote; a copy of another shape is a bug, not a miss.
+function streamerOf(text: string): PublicHistoryJson["streamer"] {
   const streamer = objectField(JSON.parse(text), "streamer")
   const platform = objectField(streamer, "platform")
   const login = objectField(streamer, "login")
   const displayName = objectField(streamer, "displayName")
   const indexed = objectField(streamer, "indexed")
-  if (typeof platform !== "string" || !isPlatform(platform)) return null
-  if (typeof login !== "string" || typeof displayName !== "string") return null
-  if (typeof indexed !== "boolean") return null
+  if (
+    typeof platform !== "string"
+    || !isPlatform(platform)
+    || typeof login !== "string"
+    || typeof displayName !== "string"
+    || typeof indexed !== "boolean"
+  ) {
+    throw new TypeError("a cached public history has no streamer")
+  }
   return { platform, login, displayName, indexed }
 }

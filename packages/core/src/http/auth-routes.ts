@@ -119,9 +119,9 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       scopes: streamerScopes(provider, saved.entryWays).join(" "),
       now: deps.clock.now(),
     })
-    // A copy cached before a rename would show the history under the old login instead of its redirect.
-    if (streamer.previousLogin !== null) {
-      await deletePublicCache(deps, historyCacheKey(deps.config, platform, streamer.previousLogin))
+    // A copy cached before the rename would show the history under the old login instead of its redirect.
+    if (streamer.renamedFrom !== null) {
+      await deletePublicCache(deps, historyCacheKey(deps.config, platform, streamer.renamedFrom))
     }
     await startStreamerSession(c, deps, {
       streamerId: streamer.id,

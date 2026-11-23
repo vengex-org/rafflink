@@ -951,7 +951,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.data.p1":
     "Vše pochází z Twitche, když se jím přihlásíš. Rafflink žádá jen přístup pro čtení a nikdy nepíše do chatu.",
   "privacy.data.i1":
-    "Streameři: Twitch user ID, přihlašovací jméno, zobrazované jméno, URL profilového obrázku na Twitchi a čas prvního přihlášení, dále giveawaye, které vytvoří (název, text výhry, pravidla, kód odkazu, časy), a jejich výsledky.",
+    "Streameři: Twitch user ID, přihlašovací jméno, předchozí přihlašovací jméno po přejmenování (aby odkaz na starou veřejnou historii přesměroval), zobrazované jméno, URL profilového obrázku na Twitchi a čas prvního přihlášení, dále giveawaye, které vytvoří (název, text výhry, pravidla, kód odkazu, časy), a jejich výsledky.",
   "privacy.data.i2":
     "Streameři: Twitch refresh token, uložený šifrovaně. Díky němu Rafflink během giveawaye čte seznam VIP a moderátorů kanálu a chat a ověří, že ten, kdo otevře odkaz pro moderátora, kanál moderuje.",
   "privacy.data.i3":

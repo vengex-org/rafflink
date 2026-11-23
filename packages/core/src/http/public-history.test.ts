@@ -70,12 +70,14 @@ function page(path: string) {
   return new Browser(harness).request(path)
 }
 
-function embeddedHistory(html: string): unknown {
-  const json = /<script type="application\/json" id="history-data">([^<]*)<\/script>/.exec(
-    html,
-  )?.[1]
-  if (json === undefined) throw new Error("the page carries no history data")
-  return JSON.parse(json)
+// The page the server names in the history data, and the data.
+function embeddedHistory(html: string): { path: string; data: unknown } {
+  const [, path, json] =
+    /<script type="application\/json" id="history-data" data-path="([^"]*)">([^<]*)<\/script>/.exec(
+      html,
+    ) ?? []
+  if (path === undefined || json === undefined) throw new Error("the page carries no history data")
+  return { path, data: JSON.parse(json) }
 }
 
 describe("public giveaway history", () => {
@@ -349,6 +351,15 @@ describe("public history after a rename", () => {
     expect(cached.status).toBe(200)
     expect((await history()).status).toBe(308)
   })
+
+  it("drops no cached answer at a sign-in that keeps the login", async () => {
+    await rename("streamer_new")
+    const deleted = spyOn(harness.deps.publicCache, "delete")
+
+    await rename("streamer_new")
+
+    expect(deleted).not.toHaveBeenCalled()
+  })
 })
 
 describe("public history page", () => {
@@ -378,7 +389,7 @@ describe("public history page", () => {
       `<meta property="og:url" content="http://localhost/s/twitch/${users.streamerA.login}" />`,
     )
     expect(html).not.toContain("</script><script>alert")
-    expect(embeddedHistory(html)).toEqual(api)
+    expect(embeddedHistory(html)).toEqual({ path: `/s/twitch/${users.streamerA.login}`, data: api })
     expect(indexed.status).toBe(200)
     expect(indexed.headers.get("x-robots-tag")).toBeNull()
   })
@@ -392,7 +403,10 @@ describe("public history page", () => {
     expect(response.status).toBe(404)
     expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
     expect(html).toContain("<title>Rafflink home</title>")
-    expect(embeddedHistory(html)).toBeNull()
+    expect(embeddedHistory(html)).toEqual({
+      path: `/s/twitch/${users.streamerA.login}`,
+      data: null,
+    })
   })
 
   it("answers 404 for an unknown platform or a login the platform does not allow", async () => {

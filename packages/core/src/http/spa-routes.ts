@@ -58,6 +58,8 @@ export function spaRoutes(deps: AppDeps, loadTemplate: SpaTemplateLoader): Hono 
       "Cache-Control": "no-cache",
     }
     const image = `${publicUrl}/og.png`
+    // The page this answer is for, as the app names it from the address bar, in lower case like a parsed login.
+    const dataPath = historyPath(platform, c.req.param("login")).toLowerCase()
     switch (answer.kind) {
       case "moved": {
         // Browsers keep a 301 without a cache rule for good, and the old login can pass to another streamer.
@@ -67,7 +69,12 @@ export function spaRoutes(deps: AppDeps, loadTemplate: SpaTemplateLoader): Hono 
       }
       case "missing": {
         const meta: PageMeta = { url: `${publicUrl}${c.req.path}`, image, text: null }
-        const html = embedJson(renderSpaHtml(template, meta), historyDataElementId, "null")
+        const html = embedJson(
+          renderSpaHtml(template, meta),
+          historyDataElementId,
+          dataPath,
+          "null",
+        )
         return c.html(html, 404, { ...headers, "X-Robots-Tag": noindex })
       }
       case "found": {
@@ -80,7 +87,12 @@ export function spaRoutes(deps: AppDeps, loadTemplate: SpaTemplateLoader): Hono 
             description: `The finished giveaways of ${streamer.displayName} on Rafflink, each with a check of its draw.`,
           },
         }
-        const html = embedJson(renderSpaHtml(template, meta), historyDataElementId, answer.text)
+        const html = embedJson(
+          renderSpaHtml(template, meta),
+          historyDataElementId,
+          dataPath,
+          answer.text,
+        )
         return c.html(
           html,
           200,

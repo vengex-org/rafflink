@@ -166,7 +166,7 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
     validated_at = excluded.validated_at`
 
 const streamerColumns =
-  "id, platform, platform_user_id, login, display_name, profile_image_url, created_at, approved_at, public_history, history_indexed, previous_login"
+  "id, platform, platform_user_id, login, display_name, profile_image_url, created_at, approved_at, public_history, history_indexed"
 
 /** Parameters: platform, platform user id. */
 export const streamerByPlatformUserSql = `SELECT ${streamerColumns} FROM streamers WHERE platform = ? AND platform_user_id = ?`

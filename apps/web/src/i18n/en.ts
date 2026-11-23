@@ -943,7 +943,7 @@ export const en = {
   "privacy.data.p1":
     "Everything comes from Twitch when you sign in with it. Rafflink asks for read access only and never posts to chat.",
   "privacy.data.i1":
-    "Streamers: Twitch user ID, login name, display name, the URL of the Twitch profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
+    "Streamers: Twitch user ID, login name, the previous login name after a rename (kept so a link to the old public history page redirects), display name, the URL of the Twitch profile picture and the time of the first sign-in, plus the giveaways they create (title, prize text, rules, link code, times) and their results.",
   "privacy.data.i2":
     "Streamers: the Twitch refresh token, stored encrypted. It lets Rafflink read the channel's VIP and moderator lists and the chat during a giveaway, and check that someone who opens a moderator link moderates the channel.",
   "privacy.data.i3":

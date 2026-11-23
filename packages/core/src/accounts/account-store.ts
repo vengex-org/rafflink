@@ -81,9 +81,10 @@ export interface StreamerRecord {
   readonly publicHistory: boolean
   /** The streamer lets search engines index their public history page. */
   readonly historyIndexed: boolean
-  /** The login a sign-in replaced with the current one; null until a sign-in sees the account renamed. */
-  readonly previousLogin: string | null
 }
+
+/** The streamer a sign-in stored, with the login that sign-in replaced; null when the login did not change. */
+export type SignedInStreamer = StreamerRecord & { readonly renamedFrom: string | null }
 
 /** What a streamer sign-in stores: the streamer and their sealed refresh token, written together. */
 export interface StreamerSignIn {
@@ -221,7 +222,13 @@ export class AccountStore {
   ) {}
 
   /** Creates or updates the streamer and replaces their refresh token in one batch. */
-  async signInStreamer(input: StreamerSignIn): Promise<StreamerRecord> {
+  async signInStreamer(input: StreamerSignIn): Promise<SignedInStreamer> {
+    const [before] = await this.sql.all(streamerByPlatformUserSql, [
+      input.platform,
+      input.platformUserId,
+    ])
+    const loginBefore =
+      before === undefined ? null : new RowReader("streamers", before).text("login")
     await this.sql.batch([
       {
         sql: upsertStreamerSql,
@@ -252,7 +259,8 @@ export class AccountStore {
       input.platformUserId,
     ])
     if (row === undefined) throw new RoomRowError("streamers", "id")
-    return parseStreamer(row)
+    const renamedFrom = loginBefore === null || loginBefore === input.login ? null : loginBefore
+    return { ...parseStreamer(row), renamedFrom }
   }
 
   /** Every stored token, for the hourly validation. */
@@ -713,7 +721,6 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     approvedAt: reader.nullableInt("approved_at"),
     publicHistory: reader.int("public_history") === 1,
     historyIndexed: reader.int("history_indexed") === 1,
-    previousLogin: reader.nullableText("previous_login"),
   }
 }
 

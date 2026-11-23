@@ -872,8 +872,8 @@ export async function getPublicHistory(
   platform: string,
   login: string,
 ): Promise<PublicHistoryJson | null> {
-  const { status, body } =
-    takeEmbeddedHistory() ?? (await send(`/api${historyPath(platform, login)}`))
+  const path = historyPath(platform, login)
+  const { status, body } = takeEmbeddedHistory(path) ?? (await send(`/api${path}`))
   if (status === 404) return null
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "history")
@@ -1100,11 +1100,13 @@ interface Answer {
 }
 
 // The server put the answer of the history page it served into the page; it is taken once, by the page's first
-// load, so a later visit in the same tab asks the API.
-function takeEmbeddedHistory(): Answer | null {
+// load of that page, so a later visit in the same tab asks the API. The server names the page by the login it
+// parsed, in lower case.
+function takeEmbeddedHistory(path: string): Answer | null {
   const element = document.getElementById(historyDataElementId)
   if (element === null) return null
   element.remove()
+  if (element.dataset.path !== path.toLowerCase()) return null
   const body: unknown = JSON.parse(element.textContent ?? "")
   return { status: body === null ? 404 : 200, body }
 }

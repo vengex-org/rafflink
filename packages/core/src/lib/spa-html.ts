@@ -32,11 +32,11 @@ export function renderSpaHtml(template: string, meta: PageMeta): string {
 }
 
 /**
- * Adds `json` to the end of the head as a JSON element with this id, which a CSP does not block: the browser
- * never runs it. `<` is written as a JSON escape, so no text inside can close the element.
+ * Adds `json` to the end of the head as a JSON element with this id and `data-path`, which a CSP does not block:
+ * the browser never runs it. `<` is written as a JSON escape, so no text inside can close the element.
  */
-export function embedJson(html: string, id: string, json: string): string {
-  const element = `<script type="application/json" id="${escapeHtml(id)}">${json.replaceAll("<", "\\u003c")}</script>`
+export function embedJson(html: string, id: string, path: string, json: string): string {
+  const element = `<script type="application/json" id="${escapeHtml(id)}" data-path="${escapeHtml(path)}">${json.replaceAll("<", "\\u003c")}</script>`
   return html.replace("</head>", () => `${element}</head>`)
 }
 

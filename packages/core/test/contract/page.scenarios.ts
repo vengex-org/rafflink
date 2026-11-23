@@ -100,7 +100,7 @@ export function pageScenarios(context: ContractContext): void {
       expect(response.status).toBe(404)
       expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
       expect(await response.text()).toContain(
-        `<script type="application/json" id="history-data">null</script>`,
+        `<script type="application/json" id="history-data" data-path="/s/twitch/nobody">null</script>`,
       )
     },
   )
