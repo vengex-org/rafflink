@@ -64,6 +64,17 @@ main.container {
   font-size: var(--fs-xs);
 }
 
+/* Nine languages do not fit one row of the settings panel, so the codes wrap; each segment draws its left and top line, and the row's border clips the outer ones. */
+.language-switch .segmented {
+  flex-wrap: wrap;
+}
+
+.language-switch .segmented .segment {
+  flex: 1 0 2.75rem;
+  border-left: 0;
+  box-shadow: -1px -1px 0 var(--line-strong);
+}
+
 /* Buttons: ink (default), tonal, outlined, text */
 
 .button,

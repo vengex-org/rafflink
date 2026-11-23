@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import type { OperatorJson } from "@rafflink/core/http/json"
-import { act, cleanup, fireEvent, within } from "@testing-library/react"
-import { dictionaries } from "../src/i18n/dictionaries.ts"
+import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
+import { loadDictionary } from "../src/i18n/dictionaries.ts"
 import { languages, type Language } from "../src/i18n/language.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
@@ -52,37 +52,66 @@ function delayedSession() {
   return gate.resolve
 }
 
-const titles: Readonly<Record<Language, { privacy: string; terms: string }>> = {
+/** The entries of a per-language expectation, so a new dictionary needs no line in this file. */
+function eachLanguage<T>(expected: Readonly<Partial<Record<Language, T>>>): [Language, T][] {
+  return languages.flatMap((language) => {
+    const value = expected[language]
+    return value === undefined ? [] : [[language, value]]
+  })
+}
+
+const titles = eachLanguage({
   en: { privacy: "Privacy policy", terms: "Terms of use" },
   sk: { privacy: "Zásady ochrany osobných údajov", terms: "Podmienky používania" },
   cs: { privacy: "Zásady ochrany osobních údajů", terms: "Podmínky používání" },
-}
+  de: { privacy: "Datenschutzerklärung", terms: "Nutzungsbedingungen" },
+})
 
 describe("legal pages", () => {
-  for (const language of languages) {
+  for (const [language, title] of titles) {
     it(`render the privacy policy and the terms in ${language}`, () => {
       browserLanguage(language)
 
       const privacy = renderApp("/privacy")
-      expect(privacy.getByRole("heading", { level: 1 }).textContent).toBe(titles[language].privacy)
+      expect(privacy.getByRole("heading", { level: 1 }).textContent).toBe(title.privacy)
       expect(privacy.getAllByRole("heading", { level: 2 }).length).toBeGreaterThan(5)
       cleanup()
 
       const terms = renderApp("/terms")
-      expect(terms.getByRole("heading", { level: 1 }).textContent).toBe(titles[language].terms)
+      expect(terms.getByRole("heading", { level: 1 }).textContent).toBe(title.terms)
       expect(terms.getAllByRole("heading", { level: 2 }).length).toBeGreaterThan(5)
     })
   }
 
-  it("list the profile picture URL among the data of streamers and of entrants in every language", () => {
-    const pictureWords: Readonly<Record<Language, string>> = {
+  it("say in every translation, and only there, that the English version prevails", async () => {
+    for (const language of languages) {
+      browserLanguage(language)
+      const translated = (await loadDictionary(language))["legal.englishPrevails"]
+      for (const path of ["/privacy", "/terms"]) {
+        const view = renderApp(path)
+
+        const text = view.getByRole("article").textContent
+        expect([language, path, text.includes(translated)]).toEqual([
+          language,
+          path,
+          language !== "en",
+        ])
+        cleanup()
+      }
+    }
+  })
+
+  it("list the profile picture URL among the data of streamers and of entrants in every language", async () => {
+    const pictureWords = eachLanguage({
       en: "profile picture",
       sk: "profilového obrázka",
       cs: "profilového obrázku",
-    }
-    for (const language of languages) {
-      expect(dictionaries[language]["privacy.data.i1"]).toContain(pictureWords[language])
-      expect(dictionaries[language]["privacy.data.i3"]).toContain(pictureWords[language])
+      de: "Profilbild",
+    })
+    for (const [language, words] of pictureWords) {
+      const dictionary = await loadDictionary(language)
+      expect(dictionary["privacy.data.i1"]).toContain(words)
+      expect(dictionary["privacy.data.i3"]).toContain(words)
     }
   })
 
@@ -118,21 +147,22 @@ describe("legal pages", () => {
 
   it("say the operator has published no details when none is configured, in every language", async () => {
     mockFetch({})
-    const generic: Readonly<Record<Language, string>> = {
+    const generic = eachLanguage({
       en: "has not published contact details",
       sk: "nezverejnil kontaktné údaje",
       cs: "nezveřejnil kontaktní údaje",
-    }
-    for (const language of languages) {
+      de: "keine Kontaktdaten veröffentlicht",
+    })
+    for (const [language, words] of generic) {
       browserLanguage(language)
 
       const privacy = renderApp("/privacy")
-      await privacy.findAllByText(new RegExp(generic[language]))
+      await privacy.findAllByText(new RegExp(words))
       expect(privacy.getByRole("article").textContent).not.toContain("{operator}")
       cleanup()
 
       const terms = renderApp("/terms")
-      await terms.findAllByText(new RegExp(generic[language]))
+      await terms.findAllByText(new RegExp(words))
       cleanup()
     }
   })
@@ -195,9 +225,9 @@ describe("legal pages", () => {
     expect(text()).not.toContain("could not be loaded")
   })
 
-  it("keep the operator placeholders as markers in the dictionaries, never as values", () => {
+  it("keep the operator placeholders as markers in the dictionaries, never as values", async () => {
     for (const language of languages) {
-      const texts = Object.values(dictionaries[language]).join("\n")
+      const texts = Object.values(await loadDictionary(language)).join("\n")
       expect(texts).toContain("{operator}")
       expect(texts).toContain("{contact}")
       expect(texts).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/)
@@ -211,7 +241,7 @@ describe("legal pages", () => {
       browserLanguage("en-US")
       const view = renderApp("/privacy")
 
-      await view.findByText("Last updated: Nov 22, 2026")
+      await view.findByText("Last updated: Nov 23, 2026")
     } finally {
       process.env.TZ = zone
     }
@@ -239,18 +269,22 @@ describe("legal pages", () => {
   })
 
   it("name the streamer as the organizer and forbid paid entry in the terms in every language", () => {
-    const words: Readonly<Record<Language, { organizer: string; paid: string }>> = {
+    const words = eachLanguage({
       en: { organizer: "Rafflink is not the organizer", paid: "Paid entry is not allowed" },
       sk: { organizer: "Rafflink nie je organizátor", paid: "Platené zapojenie nie je dovolené" },
       cs: { organizer: "Rafflink není pořadatel", paid: "Placené zapojení není dovoleno" },
-    }
-    for (const language of languages) {
+      de: {
+        organizer: "Rafflink ist nicht der Veranstalter",
+        paid: "Kostenpflichtige Teilnahme ist nicht erlaubt",
+      },
+    })
+    for (const [language, expected] of words) {
       browserLanguage(language)
       const view = renderApp("/terms")
 
       const text = view.getByRole("article").textContent
-      expect(text).toContain(words[language].organizer)
-      expect(text).toContain(words[language].paid)
+      expect(text).toContain(expected.organizer)
+      expect(text).toContain(expected.paid)
       cleanup()
     }
   })
@@ -286,14 +320,16 @@ describe("legal pages", () => {
     expect(text).toContain("never stored or logged")
   })
 
-  it("follow the language switch", () => {
+  it("follow the language switch", async () => {
     browserLanguage("en-US")
     const view = renderApp("/privacy")
 
     fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
 
-    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(titles.cs.privacy)
-    expect(document.documentElement.lang).toBe("cs")
+    expect(
+      await view.findByRole("heading", { level: 1, name: "Zásady ochrany osobních údajů" }),
+    ).toBeTruthy()
+    await waitFor(() => expect(document.documentElement.lang).toBe("cs"))
   })
 
   it("keep the routes case sensitive so a giveaway code like TERMS opens the giveaway page", () => {

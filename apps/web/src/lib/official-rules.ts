@@ -19,6 +19,8 @@ export interface OfficialRules {
   /** The heading over the extra terms and the terms; null when the streamer added none. */
   readonly extraTerms: { readonly heading: string; readonly text: string } | null
   readonly notice: string
+  /** That the English rules prevail; null when the rules are in English. */
+  readonly englishPrevails: string | null
 }
 
 export function officialRules(
@@ -86,6 +88,7 @@ export function officialRules(
         ? null
         : { heading: t("rules.extraTerms", { name }), text: rules.extraTerms },
     notice: t("rules.notice"),
+    englishPrevails: i18n.language === "en" ? null : t("legal.englishPrevails"),
   }
 }
 
@@ -97,6 +100,7 @@ export function officialRulesText(i18n: I18n, rules: OfficialRules, giveawayUrl:
     ...rules.lines,
     ...(rules.extraTerms === null ? [] : [rules.extraTerms.heading, rules.extraTerms.text]),
     rules.notice,
+    ...(rules.englishPrevails === null ? [] : [rules.englishPrevails]),
   ].join("\n")
 }
 

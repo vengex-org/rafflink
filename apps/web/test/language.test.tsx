@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { cleanup, fireEvent } from "@testing-library/react"
-import { dictionaries } from "../src/i18n/dictionaries.ts"
-import { detectLanguage, languages } from "../src/i18n/language.ts"
+import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react"
+import { dictionaryLoaders, loadDictionary } from "../src/i18n/dictionaries.ts"
+import { en } from "../src/i18n/en.ts"
+import { sk } from "../src/i18n/sk.ts"
+import { I18nProvider, pluralForm, useI18n } from "../src/i18n/i18n.tsx"
+import { detectLanguage, languageNames, languages } from "../src/i18n/language.ts"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
@@ -25,13 +28,50 @@ function browserLanguage(tag: string) {
 const placeholders = (text: string) => (text.match(/\{\w+\}/g) ?? []).toSorted()
 
 describe("language", () => {
-  it("picks Czech for cs, Slovak for sk and English for everything else", () => {
+  it("picks the language of the primary subtag when it has a dictionary, else English", () => {
     expect(detectLanguage("cs-CZ")).toBe("cs")
     expect(detectLanguage("sk-SK")).toBe("sk")
     expect(detectLanguage("SK")).toBe("sk")
+    expect(detectLanguage("de-AT")).toBe("de")
     expect(detectLanguage("en-GB")).toBe("en")
-    expect(detectLanguage("de-DE")).toBe("en")
+    expect(detectLanguage("ja-JP")).toBe("en")
+    expect(detectLanguage("constructor")).toBe("en")
     expect(detectLanguage("")).toBe("en")
+  })
+
+  it("lists every language with a dictionary in the switch, each named in itself", () => {
+    browserLanguage("en-US")
+    const view = renderApp("/")
+
+    const group = within(view.getByRole("group", { name: "Language" }))
+    expect(group.getAllByRole("radio").map((radio) => radio.parentElement?.textContent)).toEqual(
+      languages.map((language) => `${language.toUpperCase()}${languageNames[language]}`),
+    )
+    expect(group.getByRole("radio", { name: "Deutsch" })).toBeTruthy()
+  })
+
+  it("detects German from de-DE on the first visit and sets the page language", () => {
+    browserLanguage("de-DE")
+
+    const view = renderApp("/")
+
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Faire Gewinnspiele, live im Stream gezogen.",
+    )
+    expect(document.documentElement.lang).toBe("de")
+  })
+
+  it("picks the plural key of every CLDR category the languages use", () => {
+    const polish = new Intl.PluralRules("pl")
+    expect([1, 3, 5, 22, 0].map((count) => pluralForm(polish.select(count)))).toEqual([
+      "one",
+      "few",
+      "many",
+      "few",
+      "many",
+    ])
+    const english = new Intl.PluralRules("en")
+    expect([1, 2].map((count) => pluralForm(english.select(count)))).toEqual(["one", "other"])
   })
 
   it("starts in English when the browser asks for it", () => {
@@ -67,17 +107,17 @@ describe("language", () => {
     expect(document.documentElement.lang).toBe("cs")
   })
 
-  it("changes every visible text and the page language when the switch is used, and remembers it", () => {
+  it("changes every visible text and the page language when the switch is used, and remembers it", async () => {
     browserLanguage("en-US")
     const view = renderApp("/")
 
     fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
 
     expect(
-      view.getByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
+      await view.findByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
     ).toBeTruthy()
     expect(view.getByRole("link", { name: "Prihlásiť sa" })).toBeTruthy()
-    expect(document.documentElement.lang).toBe("sk")
+    await waitFor(() => expect(document.documentElement.lang).toBe("sk"))
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
 
     view.unmount()
@@ -109,7 +149,7 @@ describe("language", () => {
     ).toBeTruthy()
   })
 
-  it("works when the browser refuses storage", () => {
+  it("works when the browser refuses storage", async () => {
     browserLanguage("en-US")
     spyOn(console, "warn").mockImplementation(() => {})
     spyOn(Storage.prototype, "getItem").mockImplementation(() => {
@@ -126,8 +166,67 @@ describe("language", () => {
     fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
 
     expect(
-      view.getByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
+      await view.findByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
     ).toBeTruthy()
+  })
+
+  it("keeps the shown language, says so and logs when a dictionary fails to load", async () => {
+    browserLanguage("en-US")
+    const failure = new Error("chunk failed")
+    const logged = spyOn(console, "error").mockImplementation(() => {})
+    spyOn(dictionaryLoaders, "sk").mockImplementation(() => Promise.reject(failure))
+    const view = renderApp("/")
+
+    fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
+
+    expect(await view.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "This language could not be loaded. Try again.",
+    )
+    expect(logged).toHaveBeenCalledWith("dictionary failed to load", {
+      language: "sk",
+      error: failure,
+    })
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
+    expect(view.getByRole("radio", { name: "English" })).toHaveProperty("checked", true)
+    expect(window.localStorage.getItem("rafflink-language")).toBeNull()
+  })
+
+  it("shows the language picked last when an earlier pick loads later", async () => {
+    browserLanguage("en-US")
+    const slovak = Promise.withResolvers<typeof sk>()
+    spyOn(dictionaryLoaders, "sk").mockImplementation(() => slovak.promise)
+    const view = renderApp("/")
+
+    fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
+    fireEvent.click(view.getByRole("radio", { name: "Deutsch" }))
+    expect(
+      await view.findByRole("heading", { name: "Faire Gewinnspiele, live im Stream gezogen." }),
+    ).toBeTruthy()
+    await act(async () => slovak.resolve(sk))
+
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Faire Gewinnspiele, live im Stream gezogen.",
+    )
+    expect(window.localStorage.getItem("rafflink-language")).toBe("de")
+  })
+
+  it("uses the decimal plural form of Czech and Slovak", () => {
+    const shown: string[] = []
+    function Probe() {
+      shown.push(useI18n().plural("minute", 1.5))
+      return null
+    }
+    for (const language of ["cs", "sk"]) {
+      window.localStorage.setItem("rafflink-language", language)
+      render(
+        <I18nProvider>
+          <Probe />
+        </I18nProvider>,
+      )
+      cleanup()
+    }
+    expect(shown).toEqual(["1,5 minuty", "1,5 minúty"])
   })
 
   it("counts people with the plural form of the language", async () => {
@@ -152,16 +251,14 @@ describe("language", () => {
     }
   })
 
-  it("keeps the same keys and the same placeholders in every language", () => {
-    const [source, ...others] = languages
-    const sourceKeys = Object.keys(dictionaries[source]).toSorted()
-    for (const language of others) {
-      expect(Object.keys(dictionaries[language]).toSorted()).toEqual(sourceKeys)
-    }
-    for (const key of sourceKeys) {
-      const expected = placeholders(String(Reflect.get(dictionaries[source], key)))
-      for (const language of others) {
-        const actual = placeholders(String(Reflect.get(dictionaries[language], key)))
+  it("keeps the keys of en.ts and their placeholders in every language", async () => {
+    const sourceKeys = Object.keys(en).toSorted()
+    for (const language of languages) {
+      const dictionary = await loadDictionary(language)
+      expect([language, Object.keys(dictionary).toSorted()]).toEqual([language, sourceKeys])
+      for (const key of sourceKeys) {
+        const expected = placeholders(String(Reflect.get(en, key)))
+        const actual = placeholders(String(Reflect.get(dictionary, key)))
         expect([language, key, actual]).toEqual([language, key, expected])
       }
     }

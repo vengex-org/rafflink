@@ -1,7 +1,25 @@
 import { readStored, writeStored } from "../lib/safe-storage.ts"
+import { dictionaryLoaders, type Language } from "./dictionaries.ts"
 
-export const languages = ["en", "sk", "cs"] as const
-export type Language = (typeof languages)[number]
+export type { Language }
+
+/** Every language Rafflink speaks or is being translated into, in the picker's order, each named in itself. */
+export const languageNames = {
+  en: "English",
+  sk: "Slovenčina",
+  cs: "Čeština",
+  de: "Deutsch",
+  es: "Español",
+  fr: "Français",
+  it: "Italiano",
+  pl: "Polski",
+  pt: "Português",
+} as const
+
+export type KnownLanguage = keyof typeof languageNames
+
+/** The languages that have a dictionary, in the picker's order. */
+export const languages: readonly Language[] = Object.keys(languageNames).filter(isLanguage)
 
 export const languageStorageKey = "rafflink-language"
 
@@ -16,13 +34,14 @@ export function storeLanguage(language: Language): void {
 
 /** Narrows a stored value once; anything else is not a language. */
 export function parseLanguage(text: string | null): Language | null {
-  return languages.find((language) => language === text) ?? null
+  return text !== null && isLanguage(text) ? text : null
 }
 
-/** Czech for `cs*`, Slovak for `sk*`, English for every other tag. */
+/** The language of the tag's primary subtag (`de` for `de-AT`) when it has a dictionary, else English. */
 export function detectLanguage(browserLanguage: string): Language {
-  const primary = browserLanguage.toLowerCase().split("-")[0]
-  if (primary === "cs") return "cs"
-  if (primary === "sk") return "sk"
-  return "en"
+  return parseLanguage(browserLanguage.toLowerCase().split("-")[0] ?? null) ?? "en"
+}
+
+function isLanguage(text: string): text is Language {
+  return Object.hasOwn(dictionaryLoaders, text)
 }
