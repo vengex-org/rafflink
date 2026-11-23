@@ -1,0 +1,1330 @@
+import type { MessageKey } from "./en.ts"
+
+export const es: Readonly<Record<MessageKey, string>> = {
+  "nav.main": "Principal",
+  "nav.skip": "Saltar al contenido",
+  "nav.myGiveaways": "Mis sorteos",
+  "nav.selfHost": "Alojar por tu cuenta",
+  "nav.verify": "Verificar un sorteo",
+  "nav.github": "GitHub",
+  "link.newTab": "Se abre en una pestaña nueva",
+  "nav.login": "Iniciar sesión",
+  "nav.logout": "Cerrar sesión",
+  "nav.support": "Apoyar a Rafflink",
+  "nav.loggedOut": "Sesión cerrada.",
+  "theme.legend": "Tema",
+  "theme.system": "Sistema",
+  "theme.light": "Claro",
+  "theme.dark": "Oscuro",
+  "language.legend": "Idioma",
+  "language.loadFailed": "No se pudo cargar este idioma. Inténtalo de nuevo.",
+  "settings.label": "Ajustes",
+
+  "common.loading": "Cargando…",
+  "common.cancel": "Cancelar",
+  "common.dismiss": "Cerrar",
+  "common.back": "Atrás",
+  "common.next": "Siguiente",
+  "common.reloadPage": "Recargar la página",
+  "action.failed": "Algo salió mal. Inténtalo de nuevo.",
+
+  "failed.title": "Algo salió mal",
+  "failed.text": "Algo salió mal. Recarga la página.",
+  "notFound.hint": "Revisa el enlace e inténtalo de nuevo.",
+  "notFound.home": "Ir a la página de inicio",
+  "notFound.page": "Página no encontrada",
+  "notFound.giveaway": "Sorteo no encontrado",
+  "notFound.live": "Página en vivo no encontrada",
+  "notFound.generic": "No encontrado",
+  "notFound.history": "Este streamer no tiene un historial público de sorteos",
+
+  "signIn.title": "Iniciar sesión",
+  "signIn.button": "Iniciar sesión con Twitch",
+  "signIn.buttonKick": "Iniciar sesión con Kick",
+  "signIn.why.admin": "Inicia sesión con Twitch para abrir la página de administración.",
+  "signIn.why.expired": "Tu sesión terminó. Inicia sesión para continuar.",
+  "signIn.why.dashboard": "Inicia sesión para crear y gestionar sorteos.",
+  "signIn.why.live": "Inicia sesión para abrir la página en vivo de tu sorteo.",
+
+  "home.title": "Sorteos justos, en vivo en tu stream.",
+  "home.text": "Los espectadores participan con un clic y tú sorteas frente a tu chat.",
+  "home.login": "Inicia sesión y empieza",
+  "home.stage.toClaim": "para reclamar",
+  "home.reads": "Solo leemos tu nombre, tus VIP, tus moderadores y tu chat.",
+  "home.trust.supportKoFi": "Apoyar en Ko-fi",
+  "home.trust.support": "Apoyar a Rafflink",
+  "home.footer.guide": "Guía para alojarlo por tu cuenta",
+  "home.footer.label": "Pie de página",
+  "home.problemTitle": "No se pudo iniciar sesión",
+  "home.problem.invalidState": "El inicio de sesión caducó. Inténtalo de nuevo.",
+  "home.problem.tryAgain": "La plataforma de streaming no respondió. Inténtalo de nuevo.",
+
+  "oauthError.title": "Falló el inicio de sesión con {platform}",
+  "oauthError.access_denied": "Cancelaste el inicio de sesión con {platform}.",
+  "oauthError.redirect_mismatch":
+    "Esta instalación de Rafflink no está bien configurada en los ajustes de desarrollador de {platform}. El operador debe añadir las URL de redirección.",
+  "oauthError.setupLink": "Ver los pasos para configurar la app de {platform}",
+  "oauthError.generic": "{platform} no pudo iniciar tu sesión.",
+  "oauthError.code": "Código de error: {code}",
+  "oauthError.tryAgain": "Intentar de nuevo",
+  "oauthError.dismiss": "Cerrar",
+
+  "admin.title": "Administración",
+  "admin.only.title": "Solo para administradores",
+  "admin.only.text": "Esta cuenta de Twitch no es de un administrador.",
+  "admin.usage.title": "Uso de hoy",
+  "admin.noLimit": "Este servidor no tiene un límite diario de solicitudes.",
+  "admin.unavailable": "El uso de hoy no está disponible en este momento.",
+  "admin.workerRequests": "Solicitudes al Worker",
+  "admin.doRequests": "Solicitudes a Durable Objects",
+  "admin.usageText": "{used} de {limit} solicitudes usadas hoy",
+  "admin.queue.title": "Fila de participaciones",
+  "admin.queue.hint":
+    "Las participaciones esperan aquí cuando muchos espectadores inician sesión a la vez.",
+  "admin.queue.waiting": "participaciones en espera",
+  "admin.queue.rate": "participaciones admitidas por segundo",
+  "admin.queue.dropped": "participaciones descartadas",
+  "admin.queue.abandoned": "resultados que nadie recogió",
+  "admin.queue.lostClaims": "participaciones procesadas dos veces, un resultado descartado",
+  "admin.queue.cooldown": "Pausa de Twitch hasta",
+  "admin.queue.noCooldown": "ninguna",
+  "admin.usageNoLimit": "{used} solicitudes hoy, sin límite diario",
+  "admin.alert.title": "Se acerca el límite de hoy",
+  "admin.alert.workerRequests": "Las solicitudes al Worker van en el {percent}% del límite de hoy.",
+  "admin.alert.doRequests":
+    "Las solicitudes a Durable Objects van en el {percent}% del límite de hoy.",
+  "admin.alert.hint":
+    "Si la carga sigue creciendo, paga Workers Paid en el panel de Cloudflare y luego cambia el plan a Pago aquí abajo.",
+  "admin.plan.title": "Plan de Cloudflare",
+  "admin.plan.hint": "Primero paga Workers Paid en el panel de Cloudflare y luego cambia.",
+  "admin.plan.link": "Planes de Cloudflare",
+  "admin.plan.free": "Gratis",
+  "admin.plan.paid": "Pago",
+  "admin.plan.paid.question": "¿Cambiar a Pago?",
+  "admin.plan.paid.detail":
+    "Solo cuando ya hayas pagado Workers Paid. La app quita entonces los límites diarios y la fila acepta muchas más participaciones a la vez.",
+  "admin.plan.paid.confirm": "Cambiar a Pago",
+  "admin.plan.free.question": "¿Volver a Gratis?",
+  "admin.plan.free.detail":
+    "La app vuelve a los límites diarios del plan Gratis y la fila acepta solo unas pocas participaciones a la vez.",
+  "admin.plan.free.confirm": "Cambiar a Gratis",
+  "admin.plan.switched": "Plan cambiado.",
+  "admin.plan.failed": "No se cambió el plan. Inténtalo de nuevo.",
+  "admin.plan.queueUnavailable":
+    "El plan está guardado, pero la fila todavía no lo aplicó. Cambia de nuevo para reintentarlo.",
+  "admin.access.title": "Acceso de streamers",
+  "admin.access.hint":
+    "El registro está cerrado en este sitio. Los streamers pueden iniciar sesión, pero solo pueden crear sorteos después de que los apruebes.",
+  "admin.access.pending": "Esperando aprobación",
+  "admin.access.approved": "Aprobados",
+  "admin.access.nonePending": "Nadie está esperando.",
+  "admin.access.noneApproved": "Todavía no hay ningún streamer aprobado.",
+  "admin.access.truncated": "Hay más streamers de los que se listan. Se muestran los más nuevos.",
+  "admin.access.firstLogin": "Primer inicio de sesión: {date}",
+  "admin.access.approve": "Aprobar",
+  "admin.access.approve.label": "Aprobar a {name}",
+  "admin.access.revoke": "Revocar",
+  "admin.access.revoke.label": "Revocar a {name}",
+  "admin.access.approvedDone": "Aprobado.",
+  "admin.access.revokedDone": "Aprobación revocada.",
+  "admin.access.failed": "El cambio no se aplicó. Recarga la página e inténtalo de nuevo.",
+  "admin.access.loadFailed": "No se pudieron cargar las listas de streamers.",
+  "admin.limits.overridden": "definido en env",
+  "admin.limits.title": "Límites activos",
+  "admin.limits.workerPerDay": "Solicitudes al Worker por día",
+  "admin.limits.doPerDay": "Solicitudes a Durable Objects por día",
+  "admin.limits.workerPerMonth": "Solicitudes al Worker incluidas por mes",
+  "admin.limits.doPerMonth": "Solicitudes a Durable Objects incluidas por mes",
+  "admin.limits.subrequests": "Subsolicitudes por llamada a la fila",
+  "admin.limits.none": "sin límite diario",
+  "admin.live.updated": "Actualizado a las {time}",
+  "admin.live.failed": "No se pudieron cargar los números en vivo. Reintentando.",
+  "admin.live.title": "Ahora mismo",
+  "admin.live.openGiveaways": "sorteos abiertos",
+  "admin.live.viewers": "espectadores conectados",
+  "admin.live.entriesMinute": "participaciones en el último minuto",
+  "admin.live.claimsMinute": "reclamos en el último minuto",
+  "admin.live.rateLimitedHour": "respuestas 429 de Twitch en la última hora",
+  "admin.live.partial":
+    "Espectadores, participaciones y reclamos cubren los {shown} sorteos más nuevos de {total} abiertos.",
+  "admin.giveaways.title": "Sorteos abiertos",
+  "admin.giveaways.none": "No hay ningún sorteo abierto.",
+  "admin.giveaways.streamer": "Streamer",
+  "admin.giveaways.giveaway": "Sorteo",
+  "admin.giveaways.viewers": "Espectadores",
+  "admin.giveaways.entries": "Participaciones",
+  "admin.giveaways.ends": "Termina",
+  "admin.giveaways.noEnd": "cuando el streamer lo cierre",
+  "admin.hour.title": "Última hora",
+  "admin.hour.hint":
+    "Participaciones y reclamos por minuto, contados por las salas de los sorteos. Un minuto aparece cuando termina.",
+  "admin.hour.entries": "Participaciones",
+  "admin.hour.claims": "Reclamos",
+  "admin.hour.rateLimited": "429 de Twitch",
+  "admin.hour.label":
+    "{entries} participaciones y {claims} reclamos en la última hora, {rateLimited} respuestas 429 de Twitch",
+  "admin.hour.peak": "Pico: {count} por minuto",
+  "admin.growth.title": "Crecimiento",
+  "admin.growth.hint": "Por día (UTC) en los últimos {days} días.",
+  "admin.growth.giveaways": "Sorteos creados",
+  "admin.growth.streamers": "Streamers nuevos",
+  "admin.growth.label":
+    "{giveaways} sorteos y {streamers} streamers nuevos en los últimos {days} días",
+  "admin.growth.returning": "streamers con un segundo sorteo dentro de los {days} días del primero",
+  "admin.growth.pending": "streamers esperando aprobación",
+  "admin.growth.approved": "streamers aprobados",
+  "admin.growth.atLeast": "{count}+",
+  "admin.refs.title": "De dónde vienen los visitantes",
+  "admin.refs.hint":
+    "Visitas a la página de inicio con ?ref=etiqueta en la dirección en los últimos {days} días. Sin cookies, sin direcciones, nada que identifique a un visitante.",
+  "admin.refs.none": "Todavía no hay visitas con una etiqueta ref.",
+  "admin.refs.source": "Origen",
+  "admin.refs.visits": "Visitas",
+  "admin.queue.rateLimited": "Respuestas 429 de Twitch",
+  "admin.queue.lastRateLimited": "último 429 de Twitch",
+  "admin.queue.never": "nunca",
+
+  "stat.people": "personas participaron",
+  "stat.perSecond": "participaciones por segundo",
+  "entrants.none": "Nadie ha participado todavía.",
+  "entrants.title": "Participantes",
+  "entrants.search.label": "Buscar por nombre",
+  "entrants.search.help":
+    "Escribe algunas letras de un nombre o usuario. Las mayúsculas no importan.",
+  "entrants.col.name": "Nombre",
+  "entrants.col.tickets": "Boletos",
+  "entrants.col.status": "Estado",
+  "entrants.col.actions": "Acciones",
+  "entrants.winner": "Ganador {n}",
+  "entrants.list.aria": "Personas que participaron, desplázate para ver más",
+  "entrants.loading.title": "Cargando la lista",
+  "entrants.loading.text": "Tarda unos segundos, incluso cuando participaron muchas personas.",
+  "entrants.failed.title": "La lista no se cargó",
+  "entrants.failed.text":
+    "Rafflink no pudo cargar la lista de personas. Tu sorteo no se ve afectado.",
+  "entrants.retry": "Intentar de nuevo",
+  "entrants.empty.title": "La lista está vacía",
+  "entrants.empty.text": "Las personas aparecen aquí en cuanto participan.",
+  "entrants.noMatch.title": "Nadie coincide con tu búsqueda",
+  "entrants.noMatch.text": "Revisa cómo está escrito o escribe menos letras.",
+  "entrants.clear": "Borrar la búsqueda",
+  "entrants.search.placeholder": "Buscar un participante",
+  "entrants.tiers": "Participantes por nivel",
+  "entrants.showing": "Mostrando {shown} de {total}",
+  "entrants.sort": "Primero los ganadores, luego los más nuevos",
+  "entrants.status.claimed": "Reclamado",
+  "entrants.status.rerolled": "Sorteado de nuevo",
+  "entrants.status.expired": "No reclamó",
+  "tier.viewer": "Espectador",
+  "tier.follower": "Seguidor",
+  "tier.sub_t1": "Nivel 1",
+  "tier.sub_t2": "Nivel 2",
+  "tier.sub_t3": "Nivel 3",
+  "tier.vip": "VIP",
+  "tier.moderator": "Mod",
+  "overlay.enterAt": "Participa en",
+  "overlay.qr": "Código QR con el enlace para participar en el sorteo",
+  "overlay.winners": "Ganadores",
+  "overlay.moreWinners": "y {count} más",
+  "giveaway.fallbackName": "Sorteo {code}",
+
+  "status.open": "Participaciones abiertas",
+  "status.closed": "Participaciones cerradas",
+  "status.drawn": "Ganadores sorteados",
+  "winner.removed": "(participación eliminada)",
+  "claim.claimed.rafflink": "Reclamado en Rafflink",
+  "claim.claimed.chat": "Reclamado en el chat",
+  "claim.claimed.manual": "Reclamado a mano",
+  "claim.at": "{label} el {at}",
+  "claim.waiting": "Esperando el reclamo",
+  "claim.expired": "Se acabó el tiempo para reclamar",
+  "claim.rerolled": "No reclamó, sorteado de nuevo",
+  "claim.tone.info": "para reclamar",
+  "claim.tone.warning": "restantes, date prisa",
+  "claim.tone.danger": "restantes, reclama ya",
+
+  "reason.broadcaster": "El streamer no puede participar en su propio sorteo.",
+  "reason.subs-only": "Este sorteo es solo para suscriptores.",
+  "reason.followers-only": "Este sorteo es solo para seguidores.",
+  "reason.account-too-young": "Tu cuenta de Twitch es demasiado nueva para este sorteo.",
+  "reason.no-tickets": "Tu grupo no recibe boletos en este sorteo.",
+  "reason.page-entry-off": "Este sorteo solo acepta participaciones en el chat del stream.",
+  "reasonHelp.page-entry-off":
+    "Escribe en el chat del stream la palabra clave que aparece en esta página para participar.",
+  "reasonHelp.broadcaster": "Inicia sesión con otra cuenta de {platform} para participar.",
+  "entry.otherAccount": "Usar otra cuenta de {platform}",
+  "reason.blocked": "No puedes participar en este sorteo.",
+  "reasonHelp.blocked": "Si tienes preguntas, pregúntale al streamer.",
+  "reason.recent-winner":
+    "Ganaste uno de los sorteos recientes de este streamer, así que no puedes participar en este.",
+  "reasonHelp.recent-winner":
+    "Podrás participar de nuevo cuando tu premio ya no esté entre sus sorteos recientes.",
+  "reasonHelp.subs-only": "Suscríbete al canal en Twitch y luego abre este enlace otra vez.",
+  "reasonHelp.followers-only": "Sigue el canal en Twitch y luego abre este enlace otra vez.",
+  "reasonHelp.account-too-young":
+    "Vuelve cuando tu cuenta sea más antigua. Participar desde otra cuenta no te ayudará.",
+  "reasonHelp.no-tickets":
+    "El streamer no le dio boletos a tu grupo, así que no puedes ganar este sorteo.",
+
+  "group.viewer": "Espectadores",
+  "group.follower": "Seguidores",
+  "group.sub_t1": "Suscriptores, nivel 1",
+  "group.sub_t2": "Suscriptores, nivel 2",
+  "group.sub_t3": "Suscriptores, nivel 3",
+  "group.vip": "VIP",
+  "group.moderator": "Moderadores",
+
+  "viewerClaim.claimed": "¡Reclamado! El streamer se pondrá en contacto contigo.",
+  "viewerClaim.already-claimed": "Este premio ya fue reclamado.",
+  "viewerClaim.expired": "Se acabó el tiempo para reclamar.",
+  "viewerClaim.rerolled": "El streamer eligió a otro ganador.",
+  "viewerClaim.not-a-winner": "No eres ganador de este sorteo.",
+  "viewerClaim.rejected":
+    "Tu reclamo no se completó. Inicia sesión de nuevo y pulsa Reclamar mi premio.",
+
+  "closeResult.closed": "Participaciones cerradas.",
+  "closeResult.not-open": "Las participaciones ya estaban cerradas.",
+  "closeResult.rejected":
+    "No se pudieron cerrar las participaciones. Recarga la página e inténtalo de nuevo.",
+  "drawResult.entries-deleted":
+    "Los participantes ya se borraron al terminar el tiempo de conservación, así que ya no se pueden sortear ganadores.",
+  "drawResult.rejected": "No se pudo sortear un ganador.",
+  "rerollResult.rerolled": "Se eligió a otro ganador.",
+  "rerollResult.already-rerolled": "Ya se eligió a otro ganador para este puesto.",
+  "rerollResult.already-claimed": "Este ganador ya reclamó.",
+  "rerollResult.unknown-pick": "No existe ese ganador.",
+  "rerollResult.not-drawn": "Primero sortea a los ganadores.",
+  "rerollResult.no-entrants-left": "No quedan participantes para elegir.",
+  "rerollResult.entries-deleted":
+    "Los participantes ya se borraron al terminar el tiempo de conservación, así que no se puede elegir a otro ganador.",
+  "rerollResult.reroll-window-over":
+    "Se acabó el tiempo para elegir a otro ganador. Contacta tú mismo al ganador o empieza un sorteo nuevo.",
+  "rerollResult.try-again": "No funcionó. Inténtalo de nuevo.",
+  "rerollResult.rejected": "No se pudo elegir a otro ganador.",
+  "markResult.claimed": "Marcado como reclamado.",
+  "markResult.already-claimed": "Este ganador ya reclamó.",
+  "markResult.expired": "Se acabó el tiempo para reclamar.",
+  "markResult.rerolled": "Este ganador fue reemplazado por otro.",
+  "markResult.not-a-winner": "No existe ese ganador.",
+  "markResult.rejected": "No se pudo marcar el reclamo.",
+
+  "issue.not-an-object": "Solicitud no válida.",
+  "issue.missing": "Este campo es obligatorio.",
+  "issue.not-a-boolean": "Valor no válido.",
+  "issue.not-a-string": "Escribe un texto.",
+  "issue.not-a-non-negative-integer": "Escribe un número entero, 0 o más.",
+  "issue.not-a-positive-integer": "Escribe un número entero, 1 o más.",
+  "issue.blank": "Este campo no puede estar vacío.",
+  "issue.too-long": "Es demasiado largo. Acórtalo.",
+  "issue.too-large": "Este número es demasiado grande. Escribe uno más pequeño.",
+  "issue.no-entry-way":
+    "Los espectadores necesitan una forma de participar: la página, el chat o ambos.",
+  "issue.reconnect":
+    "Primero vuelve a conectar Twitch: participar con suscripciones y puntos del canal necesita un permiso que Rafflink todavía no tiene.",
+  "issue.not-a-timestamp": "Escribe una fecha y hora válidas.",
+  "issue.in-the-past": "La hora de cierre debe estar en el futuro.",
+  "issue.unknown-kind": "Elige una de las opciones.",
+  "issue.unsupported": "Tu plataforma de streaming no puede comprobar esta regla. Desactívala.",
+  "issue.not-a-list": "Valor no válido.",
+  "issue.duplicate": "Cada opción se puede elegir una sola vez.",
+  "issue.wholeDays": "Escribe un número entero de días o déjalo vacío.",
+  "issue.wholeMinutes": "Escribe un número entero de minutos, 1 o más.",
+  "issue.pickEnd": "Elige la fecha y la hora en que terminan las participaciones.",
+  "issue.future": "Elige una hora en el futuro.",
+  "issue.wholeYears": "Escribe un número entero de años del 1 al 99 o déjalo vacío.",
+
+  "ticket.one": "{count} boleto",
+  "ticket.few": "{count} boletos",
+  "ticket.other": "{count} boletos",
+  "ticket.many": "{count} boletos",
+  "drawBatch.one": "Sortear {count} ganador",
+  "drawBatch.few": "Sortear {count} ganadores",
+  "drawBatch.other": "Sortear {count} ganadores",
+  "drawBatch.many": "Sortear {count} ganadores",
+  "winners.one": "{count} ganador",
+  "winners.few": "{count} ganadores",
+  "winners.other": "{count} ganadores",
+  "winners.many": "{count} ganadores",
+  "minute.one": "{count} minuto",
+  "minute.few": "{count} minutos",
+  "minute.other": "{count} minutos",
+  "minute.many": "{count} minutos",
+  "day.one": "{count} día",
+  "day.few": "{count} días",
+  "day.other": "{count} días",
+  "day.many": "{count} días",
+  "year.one": "{count} año",
+  "year.few": "{count} años",
+  "year.other": "{count} años",
+  "year.many": "{count} años",
+  "recentGiveaways.one": "Los ganadores del último sorteo del streamer no pueden participar.",
+  "recentGiveaways.few":
+    "Los ganadores de los últimos {count} sorteos del streamer no pueden participar.",
+  "recentGiveaways.other":
+    "Los ganadores de los últimos {count} sorteos del streamer no pueden participar.",
+  "recentGiveaways.many":
+    "Los ganadores de los últimos {count} sorteos del streamer no pueden participar.",
+  "recentDays.one":
+    "Los ganadores de los sorteos del streamer del último día no pueden participar.",
+  "recentDays.few":
+    "Los ganadores de los sorteos del streamer de los últimos {count} días no pueden participar.",
+  "recentDays.other":
+    "Los ganadores de los sorteos del streamer de los últimos {count} días no pueden participar.",
+  "recentDays.many":
+    "Los ganadores de los sorteos del streamer de los últimos {count} días no pueden participar.",
+  "entered.one": "{count} persona participó",
+  "entered.few": "{count} personas participaron",
+  "entered.other": "{count} personas participaron",
+  "entered.many": "{count} personas participaron",
+  "usageLow.one":
+    "Atención: al servidor le queda solo {count} solicitud por hoy. Las participaciones pueden dejar de funcionar cuando se agoten.",
+  "usageLow.few":
+    "Atención: al servidor le quedan solo {count} solicitudes por hoy. Las participaciones pueden dejar de funcionar cuando se agoten.",
+  "usageLow.other":
+    "Atención: al servidor le quedan solo {count} solicitudes por hoy. Las participaciones pueden dejar de funcionar cuando se agoten.",
+  "usageLow.many":
+    "Atención: al servidor le quedan solo {count} solicitudes por hoy. Las participaciones pueden dejar de funcionar cuando se agoten.",
+  "roleFailures.one":
+    "Una vez Rafflink no pudo cargar desde Twitch tus listas de VIP y moderadores. A esos espectadores les pueden faltar boletos extra.",
+  "roleFailures.few":
+    "{count} veces Rafflink no pudo cargar desde Twitch tus listas de VIP y moderadores. A esos espectadores les pueden faltar boletos extra.",
+  "roleFailures.other":
+    "{count} veces Rafflink no pudo cargar desde Twitch tus listas de VIP y moderadores. A esos espectadores les pueden faltar boletos extra.",
+  "roleFailures.many":
+    "{count} veces Rafflink no pudo cargar desde Twitch tus listas de VIP y moderadores. A esos espectadores les pueden faltar boletos extra.",
+  "chatFailures.one":
+    "Una vez Rafflink perdió la conexión con tu chat. La lectura del chat pudo perder mensajes.",
+  "chatFailures.few":
+    "{count} veces Rafflink perdió la conexión con tu chat. La lectura del chat pudo perder mensajes.",
+  "chatFailures.other":
+    "{count} veces Rafflink perdió la conexión con tu chat. La lectura del chat pudo perder mensajes.",
+  "chatFailures.many":
+    "{count} veces Rafflink perdió la conexión con tu chat. La lectura del chat pudo perder mensajes.",
+
+  "who.both": "Solo pueden participar los suscriptores que siguen el canal.",
+  "who.subs": "Solo pueden participar los suscriptores.",
+  "who.followers": "Solo pueden participar los seguidores.",
+  "who.everyone": "Todos pueden participar.",
+  "who.ticketGroups": "Solo pueden participar los grupos que reciben boletos.",
+  "extraTickets.subs": "Los suscriptores reciben {tickets}.",
+  "extraTickets.some":
+    "Algunos espectadores reciben boletos extra. La lista de abajo muestra cuántos.",
+  "ticket.cannotEnter": "no puede participar",
+  "claimTime.clock": "{clock} minutos",
+
+  "step.of": "Paso {current} de {total}: {name}",
+  "step.allDone": "Los {total} pasos están listos",
+  "step.list": "Pasos",
+  "step.go": "Paso {number}: {name}",
+  "winners.fewer": "Menos ganadores",
+  "winners.more": "Más ganadores",
+
+  "giveaway.stepSignIn": "Iniciar sesión",
+  "giveaway.stepTicket": "Consigue tu boleto",
+  "giveaway.phase.open": "Participaciones abiertas",
+  "giveaway.phase.closed": "Participaciones cerradas",
+  "giveaway.phase.drawn": "Ganadores sorteados",
+  "giveaway.row.who": "Quién puede participar",
+  "giveaway.row.entries": "Participaciones",
+  "giveaway.row.pool": "Sorteado entre",
+  "giveaway.row.code": "Código",
+  "giveaway.watch": "Ver a {name} en Twitch",
+  "giveaway.openUntilClosed":
+    "Las participaciones siguen abiertas hasta que el streamer las cierre.",
+  "giveaway.aboutToClose": "Las participaciones están por cerrarse.",
+  "giveaway.closesIn": "Las participaciones cierran en {time}.",
+  "giveaway.drawn.title": "Los ganadores ya fueron sorteados",
+  "giveaway.drawn.text": "Inicia sesión con {platform} para ver si ganaste.",
+  "giveaway.notThisTime.title": "Esta vez no",
+  "giveaway.notThisTime.text": "Ya se sorteó al ganador. Esta vez no fuiste tú.",
+  "giveaway.ready.title": "¿Listo para participar?",
+  "giveaway.ready.text":
+    "Inicia sesión con tu cuenta de {platform} para conseguir tu boleto. Tarda unos segundos.",
+  "giveaway.enter": "Participar con Twitch",
+  "giveaway.enterKick": "Participar con Kick",
+  "giveaway.signedOut.title": "Inicia sesión para participar",
+  "giveaway.waiting.title": "Esperando el sorteo",
+  "giveaway.waiting.text":
+    "Las participaciones están cerradas. El streamer sortea al ganador en vivo. Deja esta página abierta: si ganas, cambia sola a la pantalla para reclamar.",
+  "giveaway.closed.title": "Lo sentimos, el sorteo está cerrado.",
+  "giveaway.closed.text":
+    "El streamer dejó de aceptar participaciones. Sigue el canal para no perderte el próximo.",
+  "entry.in.title": "Ya estás participando",
+  "entry.in.detail":
+    "El streamer sortea al ganador en vivo. Deja esta página abierta o vuelve más tarde.",
+  "entry.in.help": "¡Buena suerte!",
+  "entry.already.detail": "Se conserva tu primera participación. No necesitas participar de nuevo.",
+  "entry.already.help":
+    "El streamer sortea al ganador en vivo. Deja esta página abierta o vuelve más tarde.",
+  "entry.in.tickets": "Tu participación: {tickets} {role}.",
+  "entry.role.viewer": "como espectador",
+  "entry.role.follower": "como seguidor",
+  "entry.role.sub_t1": "como suscriptor de nivel 1",
+  "entry.role.sub_t2": "como suscriptor de nivel 2",
+  "entry.role.sub_t3": "como suscriptor de nivel 3",
+  "entry.role.vip": "como VIP",
+  "entry.role.moderator": "como moderador",
+  "entry.pending.title": "Estamos registrando tu participación",
+  "entry.pending.detail": "Esto tarda hasta {wait}. No cierres esta página.",
+  "entry.pending.help": "{platform} está ocupado. Esta página se actualiza sola.",
+  "entry.notEligible.title": "No puedes participar",
+  "entry.dropped.title": "Tu participación tardó demasiado",
+  "entry.dropped.detail":
+    "Demasiadas personas participaron a la vez y tu participación se descartó.",
+  "entry.dropped.help": "Pulsa el botón para participar de nuevo.",
+  "entry.timedOut.title": "Esto está tardando demasiado",
+  "entry.timedOut.detail": "No recibimos respuesta a tiempo.",
+  "entry.timedOut.help": "Pulsa el botón para participar de nuevo.",
+  "entry.tryAgain.title": "Inténtalo de nuevo",
+  "entry.tryAgain.detail": "{platform} no respondió a tiempo.",
+  "entry.tryAgain.help": "Pulsa el botón para intentarlo otra vez.",
+  "entry.rateLimited.title": "Demasiados intentos",
+  "entry.rateLimited.detail": "Intentaste participar demasiadas veces en poco tiempo.",
+  "entry.rateLimited.help": "Espera un minuto y luego pulsa el botón para intentarlo de nuevo.",
+  "entry.invalidState.title": "El inicio de sesión caducó",
+  "entry.invalidState.detail": "Tu inicio de sesión tardó demasiado.",
+  "entry.invalidState.help": "Pulsa el botón para empezar de nuevo.",
+  "win.another.title": "Se eligió a otro ganador",
+  "win.title": "Ganaste",
+  "win.claimed.title": "Premio reclamado",
+  "win.claimedAt": "Reclamado el {at}.",
+  "win.up.title": "Se acabó el tiempo",
+  "win.up.text": "El streamer puede elegir a otro ganador.",
+  "win.press":
+    "Reclama ahora o el streamer puede elegir a otra persona cuando termine el temporizador.",
+  "win.claim": "Reclamar mi premio",
+  "win.orAny": "O escribe cualquier mensaje en el chat del stream.",
+  "win.orType": "O escribe {keyword} en el chat del stream.",
+
+  "winnerField.name": "Nombre",
+  "winnerField.email": "Correo electrónico",
+  "winnerField.address": "Dirección de envío",
+  "winnerField.platform-id": "Cuenta de juego o ID de plataforma",
+  "winnerField.text": "Mensaje para el streamer",
+  "winnerForm.title": "¿A dónde enviamos el premio?",
+  "winnerForm.notice":
+    "Solo {name}, quien organiza este sorteo, ve tus respuestas, para entregarte el premio. Se borran cuando el premio se marca como entregado, a más tardar 30 días después de tu reclamo. Puedes enviar el formulario una sola vez.",
+  "winnerForm.send": "Enviar",
+  "winnerForm.saved": "Tus respuestas se enviaron al streamer.",
+  "winnerForm.already-answered": "Ya enviaste tus respuestas.",
+  "winnerForm.not-claimed": "Primero reclama el premio.",
+  "winnerForm.form-closed": "El formulario está cerrado.",
+  "winnerForm.not-a-winner": "No eres ganador de este sorteo.",
+  "winnerForm.rejected": "No se pudo enviar. Inténtalo de nuevo.",
+  "winnerForm.invalid": "Completa todos los campos. El correo necesita una @.",
+  "answers.title": "Respuestas de los ganadores",
+  "answers.none": "Ningún ganador ha reclamado todavía.",
+  "answers.pick": "Elección {n}: {name}",
+  "answers.unnamed": "ganador desconocido",
+  "answers.waiting": "Todavía no se envió.",
+  "answers.deleted": "Las respuestas se borraron.",
+  "answers.closed": "No se envió. El formulario está cerrado.",
+  "answers.delivered": "Entregado el {at}.",
+  "answers.markDelivered": "Marcar como entregado",
+  "answers.deliverFailed": "No se pudo marcar el premio como entregado. Recarga la página.",
+  "answers.failed": "No se pudieron cargar las respuestas.",
+  "answers.privacy":
+    "Solo tú ves estas respuestas, los moderadores no. Marcar el premio como entregado las borra; si no, se borran 30 días después del reclamo.",
+  "rules.summary": "Reglas y boletos",
+  "rules.help": "Cuantos más boletos recibe un grupo, más probabilidades tiene de ganar.",
+  "rules.groupTickets": "{group}: {tickets}",
+  "rules.accountAge": "Cuenta con al menos {days} de antigüedad",
+  "rules.entriesEnd": "Las participaciones terminan el {time}, o antes si {name} las cierra.",
+  "rules.claimTime": "Los ganadores tienen {time} para reclamar.",
+  "rules.claimWhere": "El ganador reclama en esta página o en el chat del stream.",
+  "rules.organizer": "Organizado por {name}. Rafflink no es el organizador.",
+  "rules.blocked": "Las cuentas que {name} bloqueó no pueden participar.",
+  "rules.broadcaster": "{name} no puede participar en su propio sorteo.",
+  "rules.platform":
+    "{platform} no patrocina, respalda ni gestiona este sorteo, y no tiene ninguna relación con él.",
+  "rules.prize": "Premio: {prize}",
+  "rules.prizeNone": "El premio no se describe aquí. Pregúntale a {name}.",
+  "rules.enterPage": "Para participar, inicia sesión con {platform} en esta página.",
+  "rules.enterChat":
+    'Para participar, escribe "{keyword}" en el chat de {platform} de {name} mientras las participaciones estén abiertas.',
+  "rules.enterSub":
+    "Suscribirte a {name}, renovar tu suscripción o recibir una suscripción de regalo mientras las participaciones estén abiertas también te inscribe. Nunca tienes que suscribirte para participar.",
+  "rules.enterPoints":
+    'Canjear la recompensa de puntos del canal "{reward}" mientras las participaciones estén abiertas también te inscribe una vez, sin boletos extra.',
+  "rules.free": "Participar es gratis. No tienes que comprar nada para participar ni para ganar.",
+  "rules.paidOnly":
+    "Solo los suscriptores pueden participar, así que no hay una forma gratuita de participar en este sorteo.",
+  "rules.minAge": "Los ganadores deben tener al menos {age}.",
+  "rules.excludedCountries": "Las personas que viven en estos lugares no pueden ganar: {places}.",
+  "rules.checkedByStreamer":
+    "Rafflink no puede comprobar la edad ni dónde vive alguien. {name} puede comprobarlo y retener el premio.",
+  "rules.entriesEndManual": "Las participaciones terminan cuando {name} las cierre.",
+  "rules.draw":
+    "Los ganadores se sortean al azar, ponderados por boletos, a partir de un número aleatorio público (drand) que nadie aquí controla.",
+  "rules.verify": "Cualquiera puede comprobar el sorteo en {url}",
+  "rules.claimLate":
+    "Hasta que el ganador reclame el premio, {name} puede reemplazarlo con un nuevo sorteo.",
+  "rules.delivery": "{name} entrega el premio. Rafflink no guarda ni envía premios.",
+  "rules.winnerForm":
+    "Después de reclamar, el ganador completa un formulario breve en esta página para la entrega ({fields}). Solo {name} ve las respuestas. Se borran cuando el premio se entrega, a más tardar 30 días después del reclamo.",
+  "rules.extraTerms": "Más condiciones de {name}:",
+  "rules.notice":
+    "Estas reglas se generan a partir de la configuración del sorteo. Son una plantilla, no asesoría legal.",
+  "rules.copy": "Copiar las reglas como texto",
+  "rules.copyHeading": "Reglas del sorteo: {url}",
+
+  "dash.title": "Mis sorteos",
+  "dash.new.title": "Nuevo sorteo",
+  "dash.new.button": "Nuevo sorteo",
+  "dash.created.title": "¡Tu sorteo está en marcha!",
+  "dash.roomNotReady":
+    "El sorteo todavía no está listo del todo. Abre la página en vivo para terminar de configurarlo.",
+  "dash.next":
+    "Ahora avísale a tu chat. Pega el mensaje de abajo en el chat de tu stream. El código del sorteo es {code}.",
+  "dash.openLive": "Abrir la página en vivo",
+  "dash.obs.title": "Añadir a OBS (opcional)",
+  "dash.obs.text": "Muestra las participaciones en tu stream mientras la gente se une.",
+  "dash.back": "Volver a mis sorteos",
+  "dash.access.title": "Esperando aprobación",
+  "dash.access.text":
+    "Iniciaste sesión, pero el administrador de este sitio todavía no aprobó tu cuenta para crear sorteos. Pídeselo al administrador y luego recarga esta página.",
+  "dash.support.text": "Si Rafflink te ahorró tiempo, puedes apoyarlo.",
+  "dash.support.link": "Apoyar",
+  "dash.empty.title": "Crea tu primer sorteo",
+  "dash.empty.text": "Tarda más o menos un minuto. Así funciona.",
+  "dash.empty.create.lead": "Créalo.",
+  "dash.empty.create.rest": "Di qué regalas y quién puede participar.",
+  "dash.empty.share.lead": "Comparte el enlace.",
+  "dash.empty.share.rest":
+    "Pégalo en tu chat. Los espectadores inician sesión en la página del sorteo para participar.",
+  "dash.empty.draw.lead": "Sortea en vivo.",
+  "dash.empty.draw.rest": "Cierra las participaciones y elige al ganador en tu stream.",
+  "dash.empty.button": "Crear sorteo",
+  "dash.prize": "Premio: {prize}",
+  "dash.codeCreated": "Código {code}, creado el {date}",
+  "dash.delivered": "{delivered} de {claimed} entregados",
+  "dash.linkObs": "Enlace y overlay de OBS",
+  "dash.duplicate": "Duplicar",
+  "dash.duplicate.label": "Duplicar {name}",
+  "dash.section.running": "En curso",
+  "dash.section.drawn": "Terminados",
+  "dash.search.label": "Buscar sorteos terminados",
+  "dash.search.placeholder": "Buscar por nombre, premio o código",
+  "dash.search.none": "Ningún sorteo terminado coincide con tu búsqueda.",
+  "dash.csv": "Ganadores en CSV",
+  "dash.csv.label": "Ganadores en CSV, {name}",
+  "dash.delete": "Eliminar",
+  "dash.delete.question": "¿Eliminar {name}?",
+  "dash.delete.detail":
+    "El sorteo, con sus participantes, ganadores y prueba del sorteo, se elimina para siempre y su enlace deja de funcionar.",
+  "dash.delete.confirm": "Sí, eliminarlo",
+  "dash.deleteData.title": "Tus datos",
+  "dash.deleteData.text":
+    "Puedes eliminar todos los sorteos que creaste junto con tu cuenta de Rafflink.",
+  "dash.deleteData.button": "Eliminar todos mis datos",
+  "dash.deleteData.question": "¿Eliminar todos tus datos?",
+  "dash.deleteData.detail":
+    "Todos los sorteos, con sus participantes, ganadores y pruebas del sorteo, tu cuenta y tu token de inicio de sesión guardado se eliminan para siempre, y se cierra tu sesión.",
+  "dash.deleteData.confirm": "Sí, eliminar todo",
+  "dash.blocks.title": "Cuentas bloqueadas",
+  "dash.blocks.text":
+    "Las cuentas bloqueadas no pueden participar en ninguno de tus sorteos. Sus participaciones en sorteos que siguen abiertos se eliminan; las de sorteos cerrados se conservan. La lista se elimina junto con tu cuenta.",
+  "dash.blocks.count": "{count} de {max} cuentas bloqueadas",
+  "dash.blocks.none": "No hay cuentas bloqueadas.",
+  "dash.blocks.label": "Nombre de usuario a bloquear",
+  "dash.blocks.add": "Bloquear",
+  "dash.blocks.remove": "Quitar",
+  "dash.blocks.remove.label": "Quitar a {login} de la lista de bloqueos",
+  "dash.blocks.since": "bloqueado el {date}",
+  "dash.blocks.added": "Cuenta bloqueada.",
+  "dash.blocks.exists": "Esta cuenta ya está bloqueada.",
+  "dash.blocks.removed": "Cuenta quitada de la lista de bloqueos.",
+  "dash.blocks.invalid-input": "Escribe un nombre de usuario.",
+  "dash.blocks.unknown-login": "No existe ninguna cuenta con ese nombre de usuario.",
+  "dash.blocks.block-list-full": "La lista de bloqueos está llena. Primero quita una cuenta.",
+  "dash.blocks.platform-unavailable":
+    "La plataforma de streaming no respondió. Inténtalo de nuevo en un momento.",
+  "dash.blocks.room-unavailable":
+    "Guardado, pero un sorteo en curso todavía no recibió el cambio. Repite la misma acción.",
+  "dash.history.title": "Historial público",
+  "dash.history.text":
+    "Una página pública puede mostrar tus sorteos terminados con el premio, la fecha, cuántas personas participaron y cuántas ganaron, y un enlace para verificar cada sorteo. No nombra a ningún participante ni ganador, y los buscadores la indexan solo si lo permites. El botón de un sorteo terminado lo oculta de la página.",
+  "dash.history.link": "Abrir tu página de historial público",
+  "dash.history.turnOn": "Activar el historial público",
+  "dash.history.turnOff": "Desactivar el historial público",
+  "dash.history.saved":
+    "Guardado. La página pública puede tardar unos minutos en mostrar el cambio.",
+  "dash.history.notIndexed": "Los buscadores no indexan la página.",
+  "dash.history.indexed": "Los buscadores pueden indexar la página y mostrarla en sus resultados.",
+  "dash.history.allowIndexing": "Permitir que los buscadores la indexen",
+  "dash.history.stopIndexing": "Dejar de permitir la indexación",
+  "dash.history.hide": "Ocultar del historial",
+  "dash.history.show": "Mostrar en el historial",
+  "dash.history.hide.label": "Ocultar {name} de tu historial público",
+  "dash.history.show.label": "Mostrar {name} en tu historial público",
+  "history.title": "Sorteos de {name}",
+  "history.intro":
+    "Sorteos terminados de este streamer, los más nuevos primero. Cada sorteo se puede comprobar en su página de verificación. Aquí no se nombra a ningún participante ni ganador.",
+  "history.none": "Todavía no hay sorteos terminados.",
+  "history.closed": "Participaciones cerradas el {date}",
+  "history.verify": "Verificar el sorteo",
+  "history.verify.label": "Verificar el sorteo de {name}",
+
+  "share.link": "Tu enlace",
+  "share.copyLink": "Copiar enlace",
+  "share.overlay": "Enlace del overlay",
+  "share.copyOverlay": "Copiar enlace del overlay",
+  "share.obs.1": "En OBS, busca el recuadro Fuentes y pulsa el botón +.",
+  "share.obs.2": "Elige Navegador y pulsa Aceptar.",
+  "share.obs.3": "Pega el enlace del overlay de abajo en el campo URL.",
+  "share.obs.4": "Pon Ancho en 800 y Alto en 600, y luego pulsa Aceptar.",
+  "copy.copied": "¡Copiado!",
+  "copy.failed": "No se pudo copiar. El texto está seleccionado: pulsa Ctrl+C.",
+
+  "live.reconnecting": "Reconectando con la transmisión en vivo…",
+  "live.chatOff.title": "La lectura del chat está desactivada",
+  "live.chatEntryOff.text":
+    "La participación por chat está desactivada: Rafflink no puede leer tu chat en este momento, así que escribir la palabra clave no inscribe a nadie. Los espectadores aún pueden participar en la página del sorteo si acepta participaciones por la página.",
+  "live.channelEntryOff.text":
+    "La participación con suscripciones y puntos del canal está desactivada: Rafflink no puede leer estos eventos en este momento, a menudo porque se quitó un permiso. La forma gratuita de participar no se ve afectada. Vuelve a conectar tu cuenta antes de tu próximo sorteo.",
+  "live.subEntryOff.text":
+    "La participación con suscripciones está desactivada: Rafflink no puede leer las suscripciones nuevas en este momento, a menudo porque se quitó un permiso, así que una suscripción no inscribe a nadie. Las demás formas de participar no se ven afectadas. Vuelve a conectar tu cuenta antes de tu próximo sorteo.",
+  "live.pointsEntryOff.text":
+    "La participación con puntos del canal está desactivada: Rafflink no puede leer los canjes de la recompensa en este momento, a menudo porque se quitó un permiso, así que canjearla no inscribe a nadie. Las demás formas de participar no se ven afectadas. Vuelve a conectar tu cuenta antes de tu próximo sorteo.",
+  "live.entryWayOff.title": "La participación está desactivada en parte",
+  "live.chatOff.text":
+    "Reclamar por chat no está disponible: Rafflink no puede leer tu chat en este momento, así que los ganadores no pueden reclamar escribiendo ahí. Cuando un ganador te avise que está presente, pulsa Marcar como reclamado junto a su nombre.",
+  "live.open.title": "Las participaciones están abiertas",
+  "live.closesAt": "Las participaciones se cierran solas el {time}.",
+  "live.close.label": "Cerrar participaciones",
+  "live.close.question": "¿Cerrar las participaciones ahora?",
+  "live.close.detail": "Después de esto nadie más podrá participar. No se puede deshacer.",
+  "live.close.confirm": "Sí, cerrar participaciones",
+  "live.share.title": "Compártelo con tu chat",
+  "live.overlay.title": "Muéstralo en tu stream",
+  "live.overlay.mode": "Qué mostrar",
+  "live.overlay.mode.auto": "Automático",
+  "live.overlay.mode.auto.help":
+    "El enlace para participar y el conteo mientras la gente se une, luego los ganadores.",
+  "live.overlay.mode.compact": "Insignia en la esquina",
+  "live.overlay.mode.compact.help":
+    "El enlace para participar, el conteo y los nombres más nuevos, luego una línea pequeña con los ganadores.",
+  "live.overlay.mode.winner": "Solo el ganador",
+  "live.overlay.mode.winner.help": "En blanco hasta el sorteo, luego solo los ganadores.",
+  "live.overlay.qr": "Código QR",
+  "live.overlay.qr.help": "Los espectadores en una TV o consola no pueden hacer clic en el enlace.",
+  "live.overlay.qr.on": "Mostrar",
+  "live.overlay.qr.off": "Ocultar",
+  "overlayStyle.dash.summary": "Estilo del overlay",
+  "overlayStyle.dash.help":
+    "Cómo se ve tu overlay de OBS en todos los sorteos. Un sorteo puede tener su propio estilo en los ajustes del overlay de su página en vivo.",
+  "overlayStyle.giveaway.summary": "Estilo de este overlay",
+  "overlayStyle.giveaway.source": "Estilo",
+  "overlayStyle.giveaway.streamer": "Mi estilo",
+  "overlayStyle.giveaway.streamer.help": "El estilo de tu panel.",
+  "overlayStyle.giveaway.own": "Solo este sorteo",
+  "overlayStyle.giveaway.own.help": "El estilo de tu panel se queda como está.",
+  "overlayStyle.accent": "Acento",
+  "overlayStyle.background": "Placas",
+  "overlayStyle.text": "Texto",
+  "overlayStyle.font": "Fuente",
+  "overlayStyle.size": "Tamaño",
+  "overlayStyle.size.small": "Pequeño",
+  "overlayStyle.size.medium": "Mediano",
+  "overlayStyle.size.large": "Grande",
+  "overlayStyle.position": "Esquina",
+  "overlayStyle.position.top-left": "Arriba a la izquierda",
+  "overlayStyle.position.top-right": "Arriba a la derecha",
+  "overlayStyle.position.bottom-left": "Abajo a la izquierda",
+  "overlayStyle.position.bottom-right": "Abajo a la derecha",
+  "overlayStyle.corners": "Esquinas de las placas",
+  "overlayStyle.corners.rounded": "Redondeadas",
+  "overlayStyle.corners.square": "Rectas",
+  "overlayStyle.sound": "Sonido cuando aparece un ganador",
+  "overlayStyle.sound.help":
+    "Activa Controlar audio mediante OBS en la fuente de navegador para escucharlo en el stream.",
+  "overlayStyle.confetti": "Confeti cuando aparece un ganador",
+  "overlayStyle.confetti.help": "Se omite cuando la computadora pide reducir el movimiento.",
+  "overlayStyle.on": "Activado",
+  "overlayStyle.off": "Desactivado",
+  "overlayStyle.preview": "Vista previa",
+  "overlayStyle.preview.prize": "Una silla gamer",
+  "overlayStyle.lowContrast":
+    "El texto se lee mal sobre estas placas. Elige un color de texto más claro o más oscuro.",
+  "overlayStyle.save": "Guardar estilo",
+  "overlayStyle.reset": "Volver al predeterminado",
+  "overlayStyle.saved": "Guardado. OBS muestra el nuevo estilo de inmediato.",
+  "overlayStyle.rejected": "El estilo no se guardó. Recarga la página e inténtalo de nuevo.",
+  "live.draw.title": "Las participaciones están cerradas",
+  "live.draw.text": "{people}. Sortea al ganador cuando estés listo.",
+  "live.draw.count": "Ganadores previstos",
+  "live.draw.batchCount": "Ganadores a la vez",
+  "live.draw.batchInvalid": "Elige de 1 a {most}",
+  "live.draw.nobody": "Nadie participó, así que no hay a quién sortear.",
+  "live.draw.random": "El ganador se elige al azar entre todos los que participaron.",
+  "live.draw.label": "Sortear ganador",
+  "drawResult.requested":
+    "Las participaciones están cerradas. El ganador se sortea solo cuando el número aleatorio esté listo.",
+  "drawResult.not-open": "El sorteo cambió mientras pulsabas Sortear ganador. Púlsalo de nuevo.",
+  "drawResult.no-entrants-left": "Ya se sorteó a todos los que participaron.",
+  "drawResult.pick-limit":
+    "Este sorteo no admite tantos ganadores más. Sortea menos, o ninguno si ya está lleno.",
+  "drawResult.try-again": "Hubo otro sorteo en el mismo momento. Pulsa Sortear ganador de nuevo.",
+  "live.draw.next": "Sortear el siguiente ganador",
+  "live.draw.question": "¿Cerrar las participaciones y sortear un ganador?",
+  "live.draw.open":
+    "Sortear ganador cierra las participaciones y luego sortea al primer ganador cuando el número aleatorio público (drand) esté listo.",
+  "live.draw.due": "Sorteando al ganador…",
+  "live.draw.nobodyLeft": "Ya se sorteó a todos los que participaron.",
+  "live.draw.detail":
+    "Las participaciones se cierran y no se pueden volver a abrir. El primer ganador se sortea en cuanto el número aleatorio público (drand) esté listo, aunque cierres esta página.",
+  "live.draw.confirm": "Sí, cerrar participaciones y sortear",
+  "live.draw.waiting":
+    "Esperando el número aleatorio público (drand). El ganador se sortea solo en {clock}.",
+  "live.winners.title": "Ganadores",
+  "live.winners.pageOrChat":
+    "Cada ganador tiene un tiempo limitado para reclamar el premio. Reclama en la página del sorteo o escribiendo en tu chat.",
+  "live.winnerFallback": "ganador {n}",
+  "live.mark.label": "Marcar como reclamado",
+  "live.mark.aria": "Marcar como reclamado para {name}",
+  "live.reroll.over":
+    "Se acabó el tiempo para elegir a otro ganador. Contacta a los ganadores que no han reclamado o empieza un sorteo nuevo.",
+  "live.reroll.nobodyLeft":
+    "Ya se sorteó a todos los que participaron. Contacta a los ganadores que no han reclamado o empieza un sorteo nuevo.",
+  "live.reroll.question": "¿Elegir a otro ganador en lugar de {name}?",
+  "live.reroll.detail": "{name} pierde el premio. No se puede deshacer.",
+  "live.reroll.confirm": "Sí, elegir a otro ganador",
+  "live.problems.title": "Problemas",
+  "live.bar.label": "Controles del sorteo",
+  "live.settings.title": "Ajustes del sorteo",
+  "live.stats.title": "Estadísticas",
+  "live.side.label": "Estadísticas y ajustes",
+  "live.bar.waiting": "Esperando a que {name} reclame el premio.",
+  "live.bar.claimed": "{name} reclamó el premio.",
+  "live.bar.unclaimed": "Nadie ha reclamado el premio todavía.",
+  "live.clean.hide": "Ocultar controles",
+  "live.clean.show": "Mostrar controles",
+  "live.support": "Apoyar",
+  "live.chat.title": "Chat",
+  "live.chat.hint": "Los mensajes del ganador en el chat aparecen aquí.",
+  "live.chat.hint.settled": "Si el ganador escribe en el chat, lo verás aquí.",
+  "live.chip": "EN VIVO",
+  "live.gives": "{streamer} regala {prize}",
+  "live.winnerOf": "Ganador {n} de {total}",
+  "live.pickedFrom": "Elegido entre {tickets}",
+  "live.progress": "Ganadores sorteados",
+  "live.winnerSub": "Sub {tier}",
+  "live.claimHint.anyChat":
+    "{name}, escribe lo que sea en el chat o pulsa Reclamar mi premio en tu página del sorteo.",
+  "live.claimHint.keyword":
+    "{name}, escribe {keyword} en el chat o pulsa Reclamar mi premio en tu página del sorteo.",
+  "live.claimHint.page": "{name}, pulsa Reclamar mi premio en tu página del sorteo.",
+  "live.entries.label": "Participaciones",
+  "live.entries.open": "Abiertas",
+  "live.entries.closed": "Cerradas",
+  "live.reroll.bar": "Volver a sortear a {name}",
+  "live.reroll.label": "Volver a sortear",
+  "live.overlay.link": "Enlace del overlay",
+
+  "wizard.step.basics": "Lo básico",
+  "wizard.step.rules": "Reglas de participación",
+  "wizard.step.review": "Revisión",
+  "wizard.q.basics": "Empieza por lo básico",
+  "wizard.q.rules": "Define las reglas de participación",
+  "wizard.q.audience": "¿Quién puede participar?",
+  "wizard.q.review": "Revisa tu sorteo",
+  "wizard.fix": "Corrige esto para continuar.",
+  "wizard.start": "Empezar el sorteo",
+  "wizard.starting": "Empezando…",
+  "wizard.title.label": "Nombre del sorteo (opcional)",
+  "wizard.title.help":
+    "Los espectadores lo ven arriba en la página. Ejemplo: Sorteo del viernes de una silla gamer. Si lo dejas vacío, verán el código del sorteo.",
+  "wizard.prize.label": "¿Qué recibe el ganador? (opcional)",
+  "wizard.prize.help": "Ejemplo: una silla gamer o una tarjeta de Steam de 25 dólares",
+  "wizard.audience.everyone": "Todos",
+  "wizard.audience.everyone.help": "Cualquier espectador puede participar.",
+  "wizard.audience.followers": "Solo seguidores",
+  "wizard.audience.followers.help": "Solo pueden participar quienes siguen tu canal.",
+  "wizard.audience.subscribers": "Solo suscriptores",
+  "wizard.audience.subscribers.help": "Solo pueden participar tus suscriptores de pago.",
+  "wizard.audience.subscribers.warning":
+    "Una suscripción es una compra. En muchos países, un sorteo que exige una compra para participar es una lotería regulada. Considera dejar participar también a los seguidores o a todos los espectadores.",
+  "wizard.minAge.label": "Antigüedad mínima de la cuenta en días (opcional)",
+  "wizard.minAge.help":
+    "Evita que la gente cree cuentas nuevas solo para participar. Déjalo vacío para aceptar cualquier cuenta.",
+  "wizard.minAge.fewer": "Menos días",
+  "wizard.minAge.more": "Más días",
+  "wizard.official.legend": "Reglas oficiales (opcional)",
+  "wizard.official.help":
+    "La página del sorteo muestra reglas generadas a partir de tu configuración. Añade esto solo si tu sorteo lo necesita.",
+  "wizard.winnerAge.label": "Edad mínima para ganar, en años",
+  "wizard.winnerAge.help":
+    "Rafflink no puede comprobar la edad. Compruébala tú antes de entregar el premio.",
+  "wizard.winnerAge.fewer": "Menos años",
+  "wizard.winnerAge.more": "Más años",
+  "wizard.excludedCountries.label": "Lugares donde no se puede ganar",
+  "wizard.excludedCountries.help":
+    "Ejemplo: Quebec, Italia. Rafflink no puede comprobar dónde vive alguien.",
+  "wizard.extraTerms.label": "Condiciones adicionales",
+  "wizard.extraTerms.help": "Se muestran debajo de las reglas tal como las escribas.",
+  "wizard.recent.legend": "Excluir a ganadores recientes",
+  "wizard.recent.off": "Desactivado",
+  "wizard.recent.off.help": "Los ganadores de tus sorteos anteriores pueden participar de nuevo.",
+  "wizard.recent.giveaways": "Últimos sorteos",
+  "wizard.recent.giveaways.help":
+    "Los ganadores de tus últimos sorteos ya sorteados no pueden participar.",
+  "wizard.recent.days": "Últimos días",
+  "wizard.recent.days.help":
+    "Los ganadores de los sorteos que creaste en los últimos días no pueden participar.",
+  "wizard.recent.count.giveaways": "Cuántos sorteos hacia atrás",
+  "wizard.recent.count.days": "Cuántos días hacia atrás",
+  "wizard.recent.fewer": "Menos",
+  "wizard.recent.more": "Más",
+  "wizard.winnerForm.legend": "Formulario del ganador",
+  "wizard.winnerForm.help":
+    "Después de reclamar, el ganador completa estos campos en la página del sorteo. Solo tú ves las respuestas. Se borran cuando marcas el premio como entregado, a más tardar 30 días después del reclamo.",
+  "wizard.tickets.legend": "Boletos por grupo",
+  "wizard.tickets.help":
+    "Cada grupo recibe 1 boleto. Más boletos significan más probabilidades de ganar, por ejemplo 3 para los suscriptores. Déjalo como está si todos deben tener la misma probabilidad.",
+  "wizard.tickets.fewer": "Menos boletos para {group}",
+  "wizard.tickets.more": "Más boletos para {group}",
+  "odds.same": "Todos tienen la misma probabilidad de ganar.",
+  "odds.viewersOut": "Los espectadores no reciben boletos y no pueden ganar.",
+  "odds.noBetter": "Ningún grupo tiene más probabilidades que un espectador.",
+  "odds.follower": "Un seguidor tiene {times}x la probabilidad de un espectador.",
+  "odds.sub_t1": "Un sub de nivel 1 tiene {times}x la probabilidad de un espectador.",
+  "odds.sub_t2": "Un sub de nivel 2 tiene {times}x la probabilidad de un espectador.",
+  "odds.sub_t3": "Un sub de nivel 3 tiene {times}x la probabilidad de un espectador.",
+  "odds.vip": "Un VIP tiene {times}x la probabilidad de un espectador.",
+  "odds.moderator": "Un moderador tiene {times}x la probabilidad de un espectador.",
+  "wizard.ending.legend": "¿Cuándo terminan las participaciones?",
+  "wizard.ending.never": "Cuando yo las cierre",
+  "wizard.ending.never.help":
+    "Las participaciones siguen abiertas hasta que pulses Cerrar participaciones.",
+  "wizard.ending.atTime": "A una hora fija",
+  "wizard.ending.atTime.help": "Las participaciones se cierran solas a la hora que elijas.",
+  "wizard.closesAt.label": "Fin de las participaciones",
+  "wizard.closesAt.help": "Se usa la zona horaria de este dispositivo.",
+  "wizard.claim.legend": "¿Cuánto tiempo tiene un ganador para reclamar el premio?",
+  "wizard.claim.custom": "Personalizado",
+  "wizard.claim.minutes": "Minutos",
+  "wizard.claim.fewer": "Menos minutos",
+  "wizard.claim.more": "Más minutos",
+  "wizard.keyword.label": "Palabra del chat (opcional)",
+  "wizard.keyword.help":
+    "Un ganador también puede reclamar escribiendo esta palabra en tu chat. Si la dejas vacía, cuenta cualquier mensaje del ganador en el chat.",
+  "review.name": "Nombre",
+  "review.prize": "Premio",
+  "review.who": "Quién puede participar",
+  "review.tickets": "Boletos",
+  "review.age": "Antigüedad de la cuenta",
+  "review.end": "Fin de las participaciones",
+  "review.claim": "Tiempo para reclamar",
+  "review.notSet": "Sin definir",
+  "review.everyoneOne": "Todos reciben 1 boleto.",
+  "review.ageText": "Las cuentas deben tener al menos {days} de antigüedad.",
+  "review.winnerAge": "Edad mínima para ganar",
+  "review.excludedCountries": "No se puede ganar en",
+  "review.extraTerms": "Condiciones adicionales",
+  "review.recent": "Ganadores recientes",
+  "review.endsManual": "Cuando las cierres.",
+  "review.claimText": "{time}. {chat}",
+  "review.anyChat": "También cuenta cualquier mensaje del ganador en el chat.",
+  "review.keywordChat": 'El ganador también puede escribir "{keyword}" en tu chat.',
+  "wizard.entry.legend": "Cómo participan los espectadores",
+  "wizard.entry.page": "Página del sorteo",
+  "wizard.entry.page.help": "Los espectadores inician sesión en la página del sorteo.",
+  "wizard.entry.both": "Página y chat",
+  "wizard.entry.both.help":
+    "Los espectadores también pueden participar escribiendo una palabra clave en tu chat.",
+  "wizard.entry.chat": "Solo chat",
+  "wizard.entry.chat.help":
+    "Los espectadores participan solo escribiendo una palabra clave en tu chat. La página muestra la palabra clave y les permite comprobar si están dentro.",
+  "wizard.reconnect.chat.text":
+    "Para comprobar si alguien que participa por chat te sigue, Rafflink necesita un permiso más de Twitch (leer tus seguidores). Vuelve a conectar Twitch; tus respuestas se conservan.",
+  "wizard.reconnect.sub.text":
+    "Para inscribir a los suscriptores nuevos, Rafflink necesita leer tus suscriptores y seguidores. Vuelve a conectar Twitch; tus respuestas se conservan.",
+  "wizard.reconnect.points.text":
+    "Para inscribir a los espectadores que canjean una recompensa de puntos del canal, Rafflink necesita leer tus recompensas, canjes, suscriptores y seguidores. Vuelve a conectar Twitch; tus respuestas se conservan.",
+  "wizard.reconnect.points.text.kick":
+    "Para mostrar tus recompensas de puntos del canal, Rafflink necesita leerlas. Vuelve a conectar Kick; tus respuestas se conservan.",
+  "wizard.reconnect.button": "Volver a conectar {platform}",
+  "wizard.chatKeyword.label": "Palabra clave para participar",
+  "wizard.chatKeyword.help":
+    "Un mensaje del chat que empieza con esta palabra inscribe al espectador, con las mismas reglas y boletos que la página. Rafflink nunca escribe en tu chat.",
+  "wizard.chatCost.kick":
+    "Kick envía a Rafflink cada mensaje del chat mientras las participaciones están abiertas, tenga o no la palabra clave, y cada uno usa una solicitud del límite diario de este servidor, que es de {limit}. Un chat con 100 mensajes por minuto usa 6.000 solicitudes por hora. Hoy quedan {remaining}.",
+  "wizard.autoEntry.legend": "Participaciones automáticas",
+  "wizard.subEntry.label": "Inscribir a los suscriptores nuevos",
+  "wizard.subEntry.help":
+    "Todos los que se suscriben, reciben una suscripción de regalo o comparten una renovación en el chat mientras las participaciones están abiertas participan una vez, con los boletos de su nivel. Una renovación automática silenciosa no inscribe: Twitch solo informa de una renovación que el espectador comparte. Participar en la página o en el chat sigue siendo gratis, así que nadie tiene que pagar para participar.",
+  "wizard.subEntry.help.kick":
+    "Todos los que se suscriben, renuevan o reciben una suscripción de regalo mientras las participaciones están abiertas participan una vez, con los boletos de un suscriptor. Kick tiene un solo nivel de suscripción e informa de cada renovación. Participar en la página o en el chat sigue siendo gratis, así que nadie tiene que pagar para participar.",
+  "wizard.points.legend": "Recompensa de puntos del canal",
+  "wizard.points.help":
+    "Los espectadores que canjean esta recompensa mientras las participaciones están abiertas participan una vez, como cualquier otra participación. Canjearla no da boletos extra ni más probabilidades de ganar.",
+  "wizard.points.none":
+    "Tu canal todavía no tiene recompensas de puntos del canal. Crea una en los ajustes de tu canal y luego abre este paso de nuevo.",
+  "wizard.points.off": "Sin recompensa",
+  "wizard.points.selected":
+    "Rafflink no marca el canje como completado; gestiónalo en tu cola de recompensas como siempre.",
+  "review.entry": "Participación",
+  "review.entryPage": "En la página del sorteo.",
+  "review.entryBoth": 'En la página del sorteo o escribiendo "{keyword}" en tu chat.',
+  "review.entryChat": 'Solo escribiendo "{keyword}" en tu chat.',
+  "review.subEntry": "Los suscriptores nuevos se inscriben solos.",
+  "review.pointsEntry": 'Canjear "{reward}" inscribe a un espectador.',
+  "giveaway.chatEntry": "O escribe {keyword} en el chat de {name} para participar.",
+  "giveaway.lookup.legend": "¿Participaste por chat?",
+  "giveaway.lookup.label": "Tu nombre de usuario",
+  "giveaway.lookup.button": "¿Estoy dentro?",
+  "giveaway.lookup.yes": "{login} está participando en el sorteo.",
+  "giveaway.lookup.no":
+    "{login} todavía no está en el sorteo. Una participación por chat puede tardar un minuto en aparecer.",
+  "giveaway.lookup.failed": "La comprobación no funcionó. Inténtalo de nuevo.",
+
+  "legal.privacy": "Privacidad",
+  "legal.terms": "Términos",
+  "legal.footerLabel": "Legal",
+  "legal.updated": "Última actualización: {date}",
+
+  "legal.operator.id": "número de identificación fiscal {id}",
+  "legal.unavailable": "No se pudieron cargar los datos de quién gestiona esta instancia.",
+  "legal.retry": "Intentar de nuevo",
+  "legal.englishPrevails":
+    "Esta es una traducción. Si difiere de la versión en inglés, prevalece la versión en inglés.",
+
+  "privacy.title": "Política de privacidad",
+  "privacy.intro":
+    "Rafflink sortea ganadores de sorteos en Twitch y Kick. Esta política explica qué datos personales trata, por qué, durante cuánto tiempo y qué derechos tienes. Es breve a propósito.",
+  "privacy.controller.h": "Quién es el responsable",
+  "privacy.controller.p1":
+    "El responsable del tratamiento de tus datos personales en esta instancia es {operator}. Contacto: {contact}.",
+  "privacy.controller.none":
+    "Esta instancia la gestiona su operador, que no ha publicado aquí sus datos de contacto. El software no envía datos al proyecto Rafflink. Para ejercer un derecho sobre tus datos o hacer una pregunta, contacta a la persona que compartió el enlace contigo.",
+  "privacy.controller.p2":
+    "Rafflink es de código abierto y cualquiera puede ejecutar su propia copia. Este texto describe lo que hace el software; la persona que gestiona una instancia es la responsable del tratamiento de los datos en ella. El proyecto Rafflink no recibe datos de las instancias gestionadas por otros.",
+  "privacy.data.h": "Qué datos se tratan",
+  "privacy.data.p1":
+    "Todo proviene de Twitch o de Kick, según con cuál inicies sesión. Rafflink solo pide acceso de lectura y nunca publica en el chat.",
+  "privacy.data.i1":
+    "Streamers: ID de usuario de la plataforma, nombre de usuario, el nombre de usuario anterior tras un cambio de nombre (se conserva para que un enlace a la antigua página de historial público redirija), nombre visible, la URL de la foto de perfil y la hora del primer inicio de sesión, además de los sorteos que crean (título, texto del premio, reglas, código del enlace, horas) y sus resultados.",
+  "privacy.data.i2":
+    "Streamers: el token de actualización de la plataforma, guardado cifrado. Permite a Rafflink leer las listas de VIP y moderadores del canal y el chat durante un sorteo, y comprobar que quien abre un enlace de moderador modera el canal.",
+  "privacy.data.i3":
+    "Participantes: ID de usuario de la plataforma, nombre de usuario, nombre visible, la URL de la foto de perfil, el grupo que otorgó los boletos (espectador, seguidor, nivel de suscripción, VIP o moderador), número de boletos, hora de la participación y un valor aleatorio (salt) que hace verificable el sorteo. La comprobación de seguimiento y suscripción usa tu token de Twitch una sola vez y el token no se guarda.",
+  "privacy.data.i4":
+    'Todos los sorteados, incluidas las elecciones sorteadas de nuevo: ID de usuario de la plataforma, nombre de usuario, nombre visible, el resultado del sorteo y si se reclamó el premio y cómo. El ID de usuario permanece con la elección incluso después de que el nombre se reemplace por "eliminado".',
+  "privacy.data.i5":
+    "Mensajes del chat: se leen en memoria para reconocer la palabra clave para participar y el reclamo de un ganador, y para mostrar los mensajes del ganador en la página en vivo. Nunca se guardan ni se registran. Escribir la palabra clave para participar guarda tu ID de usuario de la plataforma, tu nombre de usuario, tu nombre visible y los roles que muestran tus insignias del chat hasta que se comprueba la participación; luego eres un participante como en la página, y el seguimiento se comprueba con el token del streamer.",
+  "privacy.data.i6":
+    "Datos técnicos: el proveedor de alojamiento trata tu dirección IP y los detalles de la solicitud para entregar la página y protegerla contra abusos, por ejemplo con límites de solicitudes.",
+  "privacy.data.i7":
+    "Salas de sorteo: los ID de usuario de Twitch de los VIP y moderadores del canal, guardados para aplicar las reglas de boletos. Se eliminan junto con las participaciones del sorteo.",
+  "privacy.data.i8":
+    "Moderadores que abren un enlace de moderador: el enlace guarda solo un hash de su secreto. Cuando un enlace es para los moderadores del canal, el moderador inicia sesión con Twitch y Rafflink compara su ID de usuario de Twitch con los moderadores del canal. El ID se guarda solo en la cookie del moderador, no se guarda nada más sobre él y no se conserva ningún token de Twitch.",
+  "privacy.data.i9":
+    "Cuentas bloqueadas: un streamer puede bloquear cuentas en sus sorteos. Rafflink guarda entonces el ID de usuario de la plataforma y el nombre de usuario de la persona bloqueada, y la hora del bloqueo, con la cuenta del streamer. Cada sala de sorteo del streamer conserva una copia de los ID de usuario bloqueados para poder rechazarlos. Si la persona ya había participado en un sorteo que sigue abierto, esa participación se elimina.",
+  "privacy.data.i10":
+    "Ganadores recientes: cuando un streamer excluye a los ganadores recientes, los ID de usuario de la plataforma de los ganadores de sus sorteos anteriores se copian en la sala del nuevo sorteo para poder rechazarlos.",
+  "privacy.data.i11":
+    "Ganadores que completan un formulario del ganador: las respuestas que pidió el streamer, como nombre, correo electrónico, dirección de envío, un ID de cuenta de juego o un mensaje para el streamer. Se guardan cifradas, solo el streamer del sorteo puede leerlas, para entregar el premio, y nunca se escriben en los registros. El ganador puede enviar el formulario una sola vez.",
+  "privacy.purposes.h": "Por qué y con qué base legal",
+  "privacy.purposes.i1":
+    "Para gestionar los sorteos que crean los streamers y permitir que los espectadores participen, incluidos el sorteo y el reclamo: ejecución de un contrato contigo, el servicio que pediste (artículo 6, apartado 1, letra b) del RGPD).",
+  "privacy.purposes.i2":
+    "Para mantener el servicio seguro y justo: una participación por cuenta, límites de solicitudes, validación cada hora de los tokens de los streamers. Nuestro interés legítimo (artículo 6, apartado 1, letra f)).",
+  "privacy.purposes.i3":
+    "Para mantener tu sesión iniciada con cookies estrictamente necesarias para ello. Rafflink no usa publicidad, herramientas de analítica ni rastreo, y no vende ni comparte datos con fines de marketing. Solo guarda recuentos agregados que no contienen datos personales, como visitas por etiqueta de referencia por día y participaciones y reclamos por minuto.",
+  "privacy.retention.h": "Cuánto tiempo se conservan los datos",
+  "privacy.retention.i1":
+    "Las participaciones (ID de usuario de la plataforma, nombres, URL de fotos, grupos, boletos, horas de participación, salts) se eliminan como máximo 30 días después de que cierre el sorteo; el operador puede fijar un plazo más corto. Esto elimina también las participaciones de las personas sorteadas; su ID de usuario y sus nombres permanecen con su elección, incluidas las elecciones sorteadas de nuevo (ver abajo).",
+  "privacy.retention.i2":
+    "Cuando un streamer quita el acceso de Rafflink en Twitch o Kick, solo se elimina el token guardado. La cuenta y sus sorteos permanecen hasta que el streamer los elimine en el panel, un sorteo o todos los datos a la vez, o le pida al operador que lo haga (ver el contacto arriba).",
+  "privacy.retention.i3":
+    "Los códigos de inicio de sesión que esperan en la fila se descartan después de unos minutos.",
+  "privacy.retention.i4":
+    "Los registros del alojamiento los conserva el operador o su proveedor de alojamiento según sus propias condiciones.",
+  "privacy.retention.i5":
+    "El sorteo (título, premio, reglas, fechas, recuentos de participantes y boletos), todos los sorteados, incluidas las elecciones sorteadas de nuevo, con su ID de usuario de la plataforma, nombre de usuario, nombre visible y estado del reclamo, la raíz de Merkle de la lista de participaciones y la lista de sus hojas (hashes y recuentos de boletos, sin nombres) permanecen hasta que el streamer elimine el sorteo, para que el premio pueda entregarse y cualquiera pueda comprobar el sorteo más tarde. El operador puede fijar un número de días después del cierre del sorteo tras el cual los sorteos se eliminan.",
+  "privacy.retention.i6":
+    "Un bloqueo (ID de usuario de la plataforma y nombre de usuario) se conserva para mantener a esa persona fuera de los sorteos del streamer, hasta que el streamer lo quite en el panel o elimine su cuenta. Las copias de los ID de usuario bloqueados y de ganadores recientes en una sala de sorteo se eliminan junto con las participaciones de ese sorteo, como máximo 30 días después de su cierre.",
+  "privacy.retention.i7":
+    "Las respuestas del formulario del ganador se eliminan cuando el streamer marca el premio como entregado, a más tardar 30 días después del reclamo; el operador puede fijar un plazo más corto. Solo permanecen con la elección las horas en que se envió el formulario y en que se entregó el premio. Eliminar el sorteo o la cuenta del streamer elimina las respuestas de inmediato.",
+  "privacy.recipients.h": "Quién más ve los datos",
+  "privacy.recipients.p1": "Rafflink no vende datos. Los datos solo llegan a estas partes.",
+  "privacy.recipients.i1":
+    "El proveedor de alojamiento de esta instancia guarda y entrega el servicio como encargado del tratamiento del operador, y puede tratar datos fuera del Espacio Económico Europeo según sus propias condiciones y garantías.",
+  "privacy.recipients.i2":
+    "Twitch es el proveedor de identidad para los inicios de sesión con Twitch. Recibe tu inicio de sesión y, durante un sorteo, llamadas a la API que comprueban seguimientos, suscripciones y roles, y la suscripción al chat que se usa para reconocer un reclamo. El navegador del streamer también carga fotos de perfil e insignias de suscriptor desde los servidores de imágenes de Twitch. Twitch es un responsable del tratamiento independiente según su propio aviso de privacidad. Kick es el proveedor de identidad para los inicios de sesión con Kick. Recibe tu inicio de sesión y, durante un sorteo, la suscripción que envía a Rafflink los mensajes del chat del streamer. Kick es un responsable del tratamiento independiente según su propio aviso de privacidad.",
+  "privacy.recipients.i3":
+    "El streamer que gestiona un sorteo ve a sus participantes y ganadores. Los nombres de los participantes y ganadores se muestran en la página en vivo y en el overlay del sorteo, y sus fotos de perfil en la página en vivo.",
+  "privacy.recipients.i4":
+    "Para el sorteo se lee la baliza pública de aleatoriedad drand. No se le envía ningún dato personal.",
+  "privacy.recipients.i5":
+    "Cuando un streamer activa su historial público, cualquiera puede ver ahí el nombre del streamer y sus sorteos terminados: título, premio, fecha de cierre y el número de participantes y ganadores. La página no nombra a ningún participante ni ganador, y el streamer puede ocultar sorteos concretos o desactivar la página. Los buscadores indexan la página solo cuando el streamer lo permite.",
+  "privacy.recipients.i6":
+    "Las respuestas del formulario del ganador llegan al streamer que gestiona el sorteo y a nadie más: los moderadores, el overlay y las páginas públicas nunca las muestran.",
+  "privacy.cookies.h": "Cookies y almacenamiento local",
+  "privacy.cookies.p1":
+    "Rafflink solo usa cookies estrictamente necesarias, por eso no se muestra ningún aviso de consentimiento. Todas son HTTP-only y no se usan para nada más.",
+  "privacy.cookies.i1": "rl_streamer: mantiene la sesión de un streamer, 7 días por defecto.",
+  "privacy.cookies.i2":
+    "rl_viewer: permite a un espectador que vuelve ver su resultado sin iniciar sesión de nuevo, 30 días por defecto.",
+  "privacy.cookies.i3":
+    "rl_oauth_streamer_* y rl_oauth_viewer_*: protegen un inicio de sesión contra falsificaciones, 10 minutos por defecto.",
+  "privacy.cookies.i4":
+    "rl_pending_*: permite al navegador que puso una participación en la fila recoger su resultado, 10 minutos por defecto.",
+  "privacy.cookies.i5":
+    "El almacenamiento local de tu navegador guarda tu elección de idioma y tema y el modo limpio de la página en vivo. El almacenamiento de sesión guarda una copia de la página del sorteo que cargaste, incluido tu propio estado en ella, durante unos 30 segundos. Ninguno de los dos sale de tu dispositivo.",
+  "privacy.cookies.i7":
+    "rl_entry_scopes: recuerda qué permisos adicionales (seguidores para participar por chat, suscriptores y recompensas para participar con suscripciones y puntos) permitió el último inicio de sesión de un streamer en este navegador, para que el siguiente inicio de sesión los vuelva a pedir; 400 días, se conserva al cerrar sesión.",
+  "privacy.cookies.i6":
+    "rl_mod_*: permite a quien abrió un enlace de moderador usar la página de moderador de ese sorteo, 7 días por defecto o hasta que el streamer revoque el enlace. rl_mod_pending: recuerda qué enlace espera el inicio de sesión del moderador con Twitch, 10 minutos por defecto.",
+  "privacy.rights.h": "Tus derechos",
+  "privacy.rights.p1":
+    "Tienes los derechos que se indican abajo. Escribe a {contact}. Respondemos en el plazo de un mes.",
+  "privacy.rights.none":
+    "El operador de esta instancia no ha publicado aquí sus datos de contacto, y la persona que compartió el enlace contigo puede no ser el operador. Sin un contacto, no hay una forma garantizada de ejercer estos derechos a través de esta página.",
+  "privacy.rights.p2":
+    "También puedes quitar el acceso de Rafflink en cualquier momento en los ajustes de Twitch, en Conexiones, o en los ajustes de tu cuenta de Kick.",
+  "privacy.rights.i1":
+    "Acceso, rectificación, limitación del tratamiento y portabilidad de tus datos.",
+  "privacy.rights.i2":
+    'Supresión, por ejemplo del nombre de un ganador que permanece después del sorteo: el operador lo reemplaza por "eliminado" y el sorteo sigue siendo verificable.',
+  "privacy.rights.i3": "Oposición al tratamiento basado en nuestro interés legítimo.",
+  "privacy.rights.i4":
+    "Una reclamación ante la autoridad de protección de datos del país donde vives o trabajas, o donde crees que se vulneraron tus derechos.",
+  "privacy.changes.h": "Cambios",
+  "privacy.changes.p1": "Cuando esta política cambie, la fecha de arriba cambiará con ella.",
+
+  "terms.title": "Términos de uso",
+  "terms.intro":
+    "Al iniciar sesión o participar en un sorteo en Rafflink, aceptas estos términos. Si no los aceptas, no uses el servicio.",
+  "terms.service.h": "El servicio",
+  "terms.service.p1":
+    "Rafflink permite a un streamer de Twitch o Kick crear un sorteo, recoger participaciones y sortear ganadores en vivo. Esta instancia la gestiona {operator}.",
+  "terms.service.none":
+    "Rafflink permite a un streamer de Twitch o Kick crear un sorteo, recoger participaciones y sortear ganadores en vivo. Esta instancia la gestiona su operador, que no ha publicado aquí sus datos de contacto. Contacta a la persona que compartió el enlace contigo.",
+  "terms.service.p2":
+    "El servicio se ofrece tal cual y según disponibilidad, sin ninguna garantía. Puede cambiar, limitarse o detenerse en cualquier momento, y no tiene garantía de disponibilidad.",
+  "terms.source.h": "Código abierto",
+  "terms.source.p1":
+    "El código fuente tiene licencia GNU AGPL-3.0 y está disponible en {repository}. La licencia se aplica al código. Estos términos se aplican al servicio en esta instancia.",
+  "terms.streamers.h": "Los streamers y el organizador",
+  "terms.streamers.p1":
+    "Eres el organizador de cada sorteo que creas. Rafflink solo proporciona la herramienta y el sorteo. Rafflink no es el organizador.",
+  "terms.streamers.i1":
+    "Solo tú eres responsable de que cada sorteo cumpla la ley del lugar donde están tú y tus espectadores: el premio, las reglas, los requisitos para participar, los límites de edad y de país, los impuestos, las normas sobre juegos de azar y loterías, y la entrega del premio.",
+  "terms.streamers.i2":
+    "No se permite la participación de pago. Un sorteo no debe exigir un pago para participar, así que las rifas y loterías de pago no están permitidas en Rafflink.",
+  "terms.streamers.i3":
+    "Los boletos extra para suscriptores o seguidores son decisión tuya. Una suscripción es una compra, así que un sorteo solo para suscriptores puede considerarse participación de pago donde vives tú o tus espectadores. Compruébalo antes de elegirlo.",
+  "terms.streamers.i4":
+    "Eres responsable de cómo usas los datos de los participantes que ves, según la ley de privacidad que se te aplique.",
+  "terms.viewers.h": "Espectadores",
+  "terms.viewers.i1":
+    "Participar siempre es gratis por parte de Rafflink y requiere una cuenta de Twitch o Kick. Rafflink nunca pide a los espectadores que paguen.",
+  "terms.viewers.i2":
+    "El premio lo da el streamer, no Rafflink. Rafflink no es parte del sorteo y no promete ningún premio ni su entrega.",
+  "terms.viewers.i3":
+    "Un premio debe reclamarse dentro del tiempo que fijó el streamer. Después de eso, el streamer puede sortear de nuevo.",
+  "terms.platforms.h": "Twitch y Kick",
+  "terms.platforms.p1":
+    "Los Términos de servicio, las Normas de la comunidad y el Acuerdo de servicios para desarrolladores de Twitch se aplican a tu uso de Twitch a través de Rafflink. Rafflink no está afiliado a Twitch ni cuenta con su respaldo. Los términos y políticas de Kick se aplican a tu uso de Kick a través de Rafflink, y Rafflink tampoco está afiliado a Kick ni cuenta con su respaldo.",
+  "terms.use.h": "Uso aceptable",
+  "terms.use.p1": "Te comprometes a no:",
+  "terms.use.i1": "usar bots, scripts u otra automatización para participar o reclamar,",
+  "terms.use.i2": "participar con más de una cuenta ni usar la cuenta de otra persona,",
+  "terms.use.i3":
+    "eludir las reglas de participación, los límites de solicitudes u otras protecciones, ni perturbar el servicio,",
+  "terms.use.i4":
+    "organizar sorteos ilegales ni poner contenido ilegal u ofensivo en un título o en el texto de un premio.",
+  "terms.liability.h": "Responsabilidad",
+  "terms.liability.p1":
+    "En la medida en que la ley lo permita, no somos responsables de pérdidas indirectas o consecuentes, de un sorteo, de un premio o de una disputa entre un streamer y un espectador, ni de una interrupción de Rafflink, Twitch o Kick. Nuestra responsabilidad total se limita al importe que nos pagaste por el servicio, que es nada en el caso de una cuenta gratuita.",
+  "terms.liability.p2":
+    "Nada de lo aquí dispuesto limita la responsabilidad que la ley no permite limitar, como la responsabilidad por dolo o por daños personales, ni tus derechos como consumidor.",
+  "terms.changes.h": "Cambios",
+  "terms.changes.p1":
+    "Podemos cambiar estos términos. La fecha de arriba muestra la versión actual, y usar el servicio después de un cambio significa que lo aceptas. Podemos eliminar un sorteo o bloquear una cuenta que incumpla estos términos.",
+  "terms.contact.h": "Contacto",
+  "terms.contact.p1": "Preguntas sobre estos términos: {contact}.",
+  "terms.contact.none":
+    "El operador de esta instancia no ha publicado aquí sus datos de contacto. La persona que compartió el enlace contigo puede no ser el operador.",
+  "drawResult.round-pending":
+    "El número aleatorio todavía no se ha publicado. El ganador se sortea solo en cuanto se publique.",
+  "drawResult.round-due":
+    "El número aleatorio está en camino. El ganador se sortea solo en un momento.",
+  "drawResult.beacon-unavailable":
+    "No se pudo contactar la fuente aleatoria (drand). No se sorteó nada. Inténtalo de nuevo.",
+  "giveaway.verify.link": "Verificar este sorteo",
+  "viewer.runYourOwn": "Organiza tu propio sorteo con Rafflink",
+  "verify.title": "Verificar este sorteo",
+  "verify.intro":
+    "Comprueba en tu navegador que los ganadores se derivan de la lista de participaciones y de un número aleatorio público que nadie aquí controla.",
+  "verifyLookup.title": "Verificar un sorteo",
+  "verifyLookup.label": "Código o enlace del sorteo",
+  "verifyLookup.help":
+    "Un código tiene 5 letras y dígitos, como YNX9N. También puedes pegar el enlace que usan los espectadores.",
+  "verifyLookup.invalid": "Eso no es un código ni un enlace de sorteo.",
+  "verifyLookup.submit": "Abrir la verificación",
+  "verify.back": "Volver al sorteo",
+  "verify.open":
+    "Las participaciones siguen abiertas. La lista de participaciones se fija cuando se cierran.",
+  "verify.closed.pending":
+    "Las participaciones están cerradas y la lista se está fijando. Recarga en un momento.",
+  "verify.unverifiable":
+    "Este sorteo se hizo antes de que los sorteos se pudieran verificar, así que no hay nada que comprobar.",
+  "verify.facts.entrants": "Participantes",
+  "verify.facts.tickets": "Boletos",
+  "verify.facts.root": "Raíz de Merkle",
+  "verify.facts.chain": "Cadena de drand",
+  "verify.facts.round": "Ronda de drand",
+  "verify.facts.leaves": "Lista de participaciones",
+  "verify.facts.leavesLink": "Abrir la lista de participaciones",
+  "verify.run": "Verificar",
+  "verify.running": "Comprobando…",
+  "verify.check.counts.match": "La lista tiene tantas participaciones y boletos como se anunció.",
+  "verify.check.counts.mismatch":
+    "La lista no tiene el número anunciado de participaciones y boletos.",
+  "verify.check.root.match": "La raíz de Merkle de la lista es la raíz publicada.",
+  "verify.check.root.mismatch": "La raíz de Merkle de la lista no es la raíz publicada.",
+  "verify.check.signature.valid": "La firma de la ronda {round} de drand es válida.",
+  "verify.check.signature.invalid":
+    "La firma de la ronda {round} de drand no es válida, así que no se puede confiar en nada de lo que sigue.",
+  "verify.check.signature.unavailable":
+    "No se pudo comprobar la firma de la ronda {round} de drand.",
+  "verify.check.signature.none":
+    "Todavía no se necesita ninguna ronda, así que no hay firma que comprobar.",
+  "verify.check.winners.match":
+    "Los ganadores se derivan de la lista y del número aleatorio de la ronda {round} de drand.",
+  "verify.check.winners.mismatch":
+    "Los ganadores no se derivan de la lista y del número aleatorio de la ronda {round} de drand.",
+  "verify.check.winners.unavailable":
+    "No se pudo leer la ronda {round} de drand. Inténtalo de nuevo más tarde.",
+  "verify.check.winners.none":
+    "Todavía no se sorteó ningún ganador, así que no hay nada que comparar.",
+  "verify.winners.title": "Ganadores",
+  "verify.winners.showAll": "Mostrar las {count} elecciones",
+  "verify.winner.entry": "La elección {n} es la participación {leaf} de la lista.",
+  "verify.winner.rerolled": "(sorteado de nuevo)",
+  "live.draw.fixed":
+    "Ganadores sorteados: {drawn} de {planned} previstos. Sortea todos los que necesites.",
+  "live.winners.save": "Guardar",
+  "winnersResult.set": "Número de ganadores guardado.",
+  "winnersResult.rejected":
+    "No se pudo guardar. Escribe un número entero de ganadores, al menos 1.",
+  "wizard.winners.label": "¿Cuántos ganadores?",
+  "wizard.winners.help": "Cuántos ganadores piensas sortear. Más tarde puedes sortear más o menos.",
+  "review.winners": "Ganadores",
+  "verify.check.timing.match": "La ronda de drand se publicó después de fijar la lista.",
+  "verify.check.timing.mismatch":
+    "La ronda de drand se publicó antes de fijar la lista, así que no se puede confiar en el sorteo.",
+  "verify.facts.winners": "Ganadores previstos",
+  "verify.facts.committed": "Lista fijada",
+  "verify.rerolls.note":
+    "El streamer puede volver a sortear a un ganador que no cumplió las condiciones del sorteo. El streamer también puede sortear más ganadores de los previstos, de uno en uno. Cada elección y cada nuevo sorteo quedan en esta lista.",
+  "verify.rerolls.count": "Elecciones sorteadas de nuevo: {count}.",
+  "verify.winner.before": "Antes hubo {count} elecciones sorteadas de nuevo.",
+  "verify.mine.title": "Tu participación",
+  "verify.mine.signedOut":
+    "Inicia sesión en la página del sorteo con la cuenta con la que participaste para comprobar tu propia participación.",
+  "verify.mine.hint":
+    "Tu participación se calcula como hash a partir de estos valores y tu salt privado. No compartas el salt.",
+  "verify.mine.platform": "Plataforma",
+  "verify.mine.user": "ID de usuario",
+  "verify.mine.salt": "Salt (privado)",
+  "verify.mine.noSalt":
+    "Tu participación todavía no tiene salt. Lo recibe cuando se cierran las participaciones. Recarga más tarde.",
+  "verify.mine.found":
+    "Tu participación es la participación {leaf} de la lista, con {tickets} boletos.",
+  "verify.mine.won": "Eres la elección {n}.",
+  "verify.mine.missing": "Tu participación no está en la lista.",
+  "nav.draw": "Sortear desde una lista",
+  "draw.title": "Sortear desde una lista",
+  "draw.intro":
+    "Pega nombres, fija la lista y una ronda pública de drand elige a los ganadores. Cualquiera con el enlace puede comprobar el sorteo en su propio navegador. Sin iniciar sesión.",
+  "draw.form.title": "Título (opcional)",
+  "draw.form.titleTooLong": "El título puede tener como máximo {max} caracteres.",
+  "draw.form.names": "Nombres",
+  "draw.form.namesHelp":
+    "Un nombre por línea, hasta {max}. Un nombre repetido cuenta una sola vez.",
+  "draw.form.count": "Nombres: {count}. Repetidos omitidos: {repeats}.",
+  "draw.form.empty": "Añade al menos un nombre.",
+  "draw.form.tooMany": "La lista es demasiado larga. El límite es de {max} nombres.",
+  "draw.form.winners": "Ganadores",
+  "draw.form.winnersInvalid": "Elige de 1 a {max} ganadores.",
+  "draw.commit": "Fijar la lista",
+  "draw.badLink": "Este enlace de sorteo está roto o incompleto.",
+  "draw.file.label": "Archivo de la lista",
+  "draw.file.help":
+    "La lista era demasiado larga para el enlace. Abre el archivo de la lista que venía con él.",
+  "draw.file.invalid": "Esto no es un archivo de lista.",
+  "draw.mismatch":
+    "Los nombres no coinciden con el hash de la lista. El enlace o el archivo se modificó, así que no se sortea nada.",
+  "draw.facts.names": "Nombres",
+  "draw.facts.winners": "Ganadores",
+  "draw.facts.hash": "Hash de la lista",
+  "draw.facts.roundAt": "Ronda publicada",
+  "draw.facts.committed": "Lista fijada (reloj del navegador que la fijó)",
+  "draw.early":
+    "Esta lista dice que se fijó después de publicarse la ronda {round} de drand, así que no se puede confiar en el sorteo.",
+  "draw.seenBefore":
+    "Abriste esta lista antes de que se publicara la ronda {round} de drand, así que se fijó antes de que nadie pudiera conocer a los ganadores.",
+  "draw.waiting": "Los ganadores se sortean cuando se publique la ronda {round} de drand.",
+  "draw.drawn":
+    "Los ganadores se derivan de la lista y del número aleatorio de la ronda {round} de drand.",
+  "draw.invalid":
+    "La firma de la ronda {round} de drand no es válida, así que no se muestran ganadores.",
+  "draw.unavailable": "No se pudo leer la ronda {round} de drand. Inténtalo de nuevo más tarde.",
+  "draw.retry": "Intentar de nuevo",
+  "draw.share.label": "Enlace para compartir",
+  "draw.share.copy": "Copiar el enlace para compartir",
+  "draw.share.withNames":
+    "El enlace contiene los nombres. Cualquiera que lo abra los ve y obtiene los mismos ganadores.",
+  "draw.share.noNames":
+    "La lista es demasiado larga para un enlace. Comparte el enlace junto con el archivo de la lista.",
+  "draw.download": "Descargar el archivo de la lista",
+  "draw.new": "Nuevo sorteo",
+  "draw.proof.title": "Qué demuestra esto",
+  "draw.proof.covers":
+    "Los ganadores se derivan exactamente de estos nombres y del número aleatorio de la ronda de drand. Cualquiera puede volver a calcularlos, y nadie conoce ese número antes de que se publique la ronda.",
+  "draw.proof.private":
+    "Los nombres se quedan en tu navegador. Solo salen de él en el enlace o en el archivo que compartes.",
+  "draw.proof.time":
+    "La hora en que se fijó la lista viene del navegador que la fijó, no de un servidor. Alguien podría fijar una lista después de la ronda y afirmar una hora anterior. Confía en el sorteo solo si viste el hash de la lista o el enlace antes de que se publicara la ronda.",
+  "draw.proof.list":
+    "El sorteo no muestra quién debe estar en la lista. Revisa los nombres tú mismo.",
+  "live.mod.link": "Enlaces de moderador",
+  "live.mod.text":
+    "Quien abra un enlace puede cerrar las participaciones, sortear, volver a sortear y marcar reclamos en este sorteo. No puede cambiar las reglas, eliminar el sorteo ni ver tu cuenta.",
+  "live.mod.who": "Quién puede usarlo",
+  "live.mod.who.mods": "Los moderadores de mi canal",
+  "live.mod.who.mods.help": "Inician sesión con Twitch y Rafflink comprueba que moderan tu canal.",
+  "live.mod.who.anyone": "Cualquiera con el enlace",
+  "live.mod.create": "Crear enlace",
+  "live.mod.new": "Enlace nuevo. Cópialo ahora, solo se muestra una vez.",
+  "live.mod.copy": "Copiar enlace de moderador",
+  "live.mod.none": "Ahora no funciona ningún enlace de moderador.",
+  "live.mod.item": "Enlace {id}, creado a las {time}",
+  "live.mod.itemMod": "solo moderadores",
+  "live.mod.revoke": "Revocar",
+  "live.mod.revokeLabel": "Revocar el enlace {id}",
+  "live.mod.loadFailed": "No se pudieron cargar los enlaces. Inténtalo de nuevo.",
+  "modResult.revoked": "Enlace revocado. Dejó de funcionar.",
+  "modResult.rejected": "El enlace no se cambió. Inténtalo de nuevo.",
+  "live.actors.title": "Quién hizo qué",
+  "live.actors.closed": "Participaciones cerradas por {who}",
+  "live.actors.drawn": "Ganador {n} sorteado por {who}",
+  "live.actors.rerolled": "Ganador {n} reemplazado por {who}",
+  "live.actors.marked": "Ganador {n} marcado como reclamado por {who}",
+  "live.actors.streamer": "el streamer",
+  "live.actors.moderator": "el enlace de moderador {id}",
+  "mod.invalid.title": "Este enlace de moderador no funciona",
+  "mod.invalid.text": "El streamer lo revocó o se copió mal. Pídele al streamer un enlace nuevo.",
+  "mod.notMod.title": "Solo para moderadores",
+  "mod.notMod.text":
+    "Este enlace es para los moderadores del canal del streamer, y la cuenta de Twitch con la que iniciaste sesión no es de un moderador.",
+  "mod.signInAgain":
+    "El inicio de sesión con Twitch no terminó. Abre de nuevo el enlace del streamer.",
+  "mod.rateLimited":
+    "Demasiados intentos desde tu red. Espera un minuto y abre el enlace de nuevo.",
+  "signIn.why.moderator":
+    "Este enlace de moderador es para los moderadores del canal. Inicia sesión con Twitch para que Rafflink pueda comprobar que eres uno de ellos.",
+}
