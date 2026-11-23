@@ -58,7 +58,7 @@ interface AnswersBody {
     readonly n: number
     readonly answers: string
     readonly deliveredAt: number | null
-    readonly values: Record<string, string> | null
+    readonly held: boolean
   }[]
 }
 
@@ -67,6 +67,11 @@ async function readAnswers(browser: Browser, id: string): Promise<AnswersBody> {
   expect(response.status).toBe(200)
   expect(response.headers.get("cache-control")).toBe("no-store")
   return response.json()
+}
+
+async function readPick(browser: Browser, id: string, n: number) {
+  const response = await browser.request(`/api/dash/giveaways/${id}/answers/${n}`)
+  return { status: response.status, body: await response.json() }
 }
 
 describe("the winner form", () => {
@@ -83,10 +88,24 @@ describe("the winner form", () => {
     expect(stored).not.toContain("Main Street")
     expect(await readAnswers(browser, id)).toEqual({
       form: ["name", "address"],
-      picks: [{ n: 0, answers: "sent", deliveredAt: null, values: answers }],
+      picks: [{ n: 0, answers: "sent", deliveredAt: null, held: true }],
     })
+    expect(await readPick(browser, id, 0)).toEqual({ status: 200, body: { values: answers } })
+    const unknown = await browser.request(`/api/dash/giveaways/${id}/answers/1`)
+    expect([unknown.status, unknown.headers.get("cache-control")]).toEqual([404, "no-store"])
     const page: { me: { answers: string } } = await (await winner.request(`/api/g/${code}`)).json()
     expect(page.me.answers).toBe("sent")
+  })
+
+  it.each(["-1", "1.5", "abc"])("refuses the answers of pick %p as invalid input", async (n) => {
+    const { browser, id } = await claimedWithForm()
+
+    const response = await browser.request(`/api/dash/giveaways/${id}/answers/${n}`)
+
+    expect([response.status, await response.json()]).toEqual([
+      400,
+      { error: "invalid-input", field: "n" },
+    ])
   })
 
   it("refuses answers before the claim, from someone who did not win, signed out or invalid", async () => {
@@ -180,6 +199,8 @@ describe("the winner form", () => {
       401,
     )
     expect((await moderator.request(`/api/dash/giveaways/${id}/answers`)).status).toBe(401)
+    expect((await moderator.request(`/api/dash/giveaways/${id}/answers/0`)).status).toBe(401)
+    expect((await other.request(`/api/dash/giveaways/${id}/answers/0`)).status).toBe(404)
     expect((await moderator.request(`/api/mod/${id}/answers`)).status).toBe(404)
     const live = await moderator.request(`/api/mod/${id}`)
     expect(live.status).toBe(200)
@@ -210,8 +231,9 @@ describe("the winner form", () => {
     const deliveredAt = harness.clock.now()
     expect(await readAnswers(browser, id)).toEqual({
       form: ["name", "address"],
-      picks: [{ n: 0, answers: "sent", deliveredAt, values: null }],
+      picks: [{ n: 0, answers: "sent", deliveredAt, held: false }],
     })
+    expect(await readPick(browser, id, 0)).toEqual({ status: 200, body: { values: null } })
     const csv = await (await browser.request(`/api/dash/giveaways/${id}/winners.csv`)).text()
     expect(csv.split("\r\n")[0]).toEndWith(',"delivered_at"')
     expect(csv.split("\r\n")[1]).toEndWith(`,"${new Date(deliveredAt).toISOString()}"`)
@@ -266,7 +288,7 @@ describe("the winner form", () => {
     expect(harness.config.winnerFormRetentionSeconds).toBe(30 * 24 * 60 * 60)
     expect(harness.rooms.roomFor(id).winnerAnswers()).toEqual([])
     expect((await readAnswers(browser, id)).picks).toEqual([
-      { n: 0, answers: "sent", deliveredAt: null, values: null },
+      { n: 0, answers: "sent", deliveredAt: null, held: false },
     ])
   })
 

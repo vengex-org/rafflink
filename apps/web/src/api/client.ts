@@ -42,6 +42,7 @@ import type {
   SessionJson,
   VerifyJson,
   ViewerState,
+  PickAnswersJson,
   WinnerAnswersJson,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
@@ -623,7 +624,7 @@ export function markClaimed(id: string, n: number): Promise<ClaimKind | Rejected
   return act(`${dashPath(id)}/claim`, { n }, claimKinds)
 }
 
-/** The winner form and the claimed picks' answers; the streamer's own route, which no moderator link reaches. */
+/** The winner form and the claimed picks' answer state, without answers; the streamer's own route, which no moderator link reaches. */
 export async function getWinnerAnswers(id: string): Promise<WinnerAnswersJson> {
   const { status, body } = await send(`${dashPath(id)}/answers`)
   if (status !== 200) throw new ApiError(status)
@@ -634,9 +635,17 @@ export async function getWinnerAnswers(id: string): Promise<WinnerAnswersJson> {
       n: num(pick, "n"),
       answers: oneOf(pick, "answers", pickAnswers),
       deliveredAt: nullableNum(pick, "deliveredAt"),
-      values: pick.values === null ? null : winnerAnswersOf(child(pick, "values")),
+      held: bool(pick, "held"),
     })),
   }
+}
+
+/** The answers of one claimed pick, which the streamer asked to see; same route family as {@link getWinnerAnswers}. */
+export async function getPickAnswers(id: string, n: number): Promise<PickAnswersJson> {
+  const { status, body } = await send(`${dashPath(id)}/answers/${n}`)
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "pickAnswers")
+  return { values: source.values === null ? null : winnerAnswersOf(child(source, "values")) }
 }
 
 export function markDelivered(id: string, n: number): Promise<DeliveredKind | Rejected> {

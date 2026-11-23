@@ -1,17 +1,23 @@
-import { useCallback, useId } from "react"
-import type { WinnerFieldKind } from "@rafflink/core/domain/winner-form"
+import { useCallback, useId, useState } from "react"
+import type { WinnerAnswers, WinnerFieldKind } from "@rafflink/core/domain/winner-form"
 import type { WinnerAnswersJson } from "@rafflink/core/http/json"
 import type { LiveWinner } from "@rafflink/core/room/giveaway-room"
-import { getWinnerAnswers, markDelivered } from "../api/client.ts"
+import { getPickAnswers, getWinnerAnswers, markDelivered } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useAction } from "../lib/use-action.ts"
 import { useLoad } from "../lib/use-load.ts"
+import { ConfirmAction } from "./confirm-action.tsx"
+import { EyeIcon, EyeOffIcon } from "./icons.tsx"
 import { Status } from "./notice.tsx"
 
 type AnsweredPick = WinnerAnswersJson["picks"][number]
 
-/** The winner form answers on the streamer's own live page; a moderator link's page never has it. */
+/**
+ * The winner form answers on the streamer's own live page; a moderator link's page never has it. Streamers share this
+ * page on stream, so it says only that answers came; one pick's answers load after the streamer confirms, and a reload
+ * or a new claim hides them again.
+ */
 export function WinnerAnswersPanel({
   id,
   winners,
@@ -78,21 +84,55 @@ function PickAnswers({
   const i18n = useI18n()
   const { t } = i18n
   const { message, busy, run } = useAction()
-  const values = pick.values
+  const [shown, setShown] = useState<WinnerAnswers | null>(null)
+  // Delivery deletes the answers, so what was shown goes with them, from memory too.
+  if (!pick.held && shown !== null) setShown(null)
+  const values = pick.held ? shown : null
+  const reveal = () =>
+    void run(
+      async () => {
+        const answers = await getPickAnswers(id, pick.n)
+        setShown(answers.values)
+        return answers.values === null ? "gone" : "shown"
+      },
+      (outcome) => (outcome === "gone" ? "answers.deleted" : null),
+    )
   return (
     <article className="winner-answer">
       <h3>{t("answers.pick", { n: pick.n + 1, name: name ?? t("answers.unnamed") })}</h3>
-      {values === null ? (
+      {!pick.held ? (
         <p className="help">{t(stateText(pick))}</p>
+      ) : values === null ? (
+        <>
+          <p>{t("answers.received")}</p>
+          <ConfirmAction
+            icon={<EyeIcon />}
+            label={t("answers.show")}
+            question={t("answers.confirm.title")}
+            detail={t("answers.confirm.text")}
+            confirmLabel={t("answers.confirm.show")}
+            busy={busy}
+            disabled={false}
+            className="live-btn secondary"
+            shortcut={null}
+            onConfirm={reveal}
+          />
+        </>
       ) : (
-        <dl className="winner-answer-list">
-          {form.map((kind) => (
-            <div key={kind}>
-              <dt>{t(`winnerField.${kind}`)}</dt>
-              <dd className="winner-answer-value">{values[kind] ?? ""}</dd>
-            </div>
-          ))}
-        </dl>
+        <>
+          <dl className="winner-answer-list">
+            {form.map((kind) => (
+              <div key={kind}>
+                <dt>{t(`winnerField.${kind}`)}</dt>
+                <dd className="winner-answer-value">{values[kind] ?? ""}</dd>
+              </div>
+            ))}
+          </dl>
+          <button type="button" className="live-btn ghost" onClick={() => setShown(null)}>
+            <EyeOffIcon />
+            {t("answers.hide")}
+          </button>
+        </>
       )}
       {pick.deliveredAt === null ? (
         <button

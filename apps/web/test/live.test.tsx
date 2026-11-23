@@ -2046,54 +2046,85 @@ describe("live page: the controls bar", () => {
   })
 })
 
+/** The live page with its winner answers panel, once it says the answers came. */
+async function answersPanel() {
+  const view = renderApp("/live/gid-1")
+  const panel = within(
+    (await view.findByRole("heading", { name: "Winner answers" })).closest("section")
+      ?? document.body,
+  )
+  await panel.findByText("Answers received.")
+  return { view, panel }
+}
+
 describe("live page: winner form answers", () => {
   const withForm = { ...giveaway, rules: { ...giveaway.rules, winnerForm: ["name", "address"] } }
-  const answers = {
-    form: ["name", "address"],
-    picks: [
-      {
-        n: 1,
-        answers: "sent",
-        deliveredAt: null,
-        values: { name: "Bob Smith", address: "Main Street 1\n12345 Town" },
-      },
-    ],
-  }
+  const sent = { n: 1, answers: "sent", deliveredAt: null, held: true }
+  const values = { name: "Bob Smith", address: "Main Street 1\n12345 Town" }
 
-  it("shows the claimed winners' answers to the streamer and deletes them when the prize is marked delivered", async () => {
-    let delivered = false
-    const requests = mockDrawn({
+  function mockAnswers(routes: Readonly<Record<string, () => Reply>> = {}) {
+    return mockDrawn({
       "GET /api/g/ABCDE": () => ok(withForm),
       "GET /api/live/gid-1": () => ok(drawn),
       "GET /api/dash/giveaways/gid-1/answers": () =>
-        ok(
-          delivered
-            ? {
-                form: answers.form,
-                picks: [{ ...answers.picks[0], values: null, deliveredAt: claimedAt }],
-              }
-            : answers,
-        ),
+        ok({ form: ["name", "address"], picks: [sent] }),
+      "GET /api/dash/giveaways/gid-1/answers/1": () => ok({ values }),
+      ...routes,
+    })
+  }
+
+  it("says the answers came without showing or loading them, and marks the prize delivered", async () => {
+    let delivered = false
+    const requests = mockAnswers({
+      "GET /api/dash/giveaways/gid-1/answers": () =>
+        ok({
+          form: ["name", "address"],
+          picks: [delivered ? { ...sent, held: false, deliveredAt: claimedAt } : sent],
+        }),
       "POST /api/dash/giveaways/gid-1/delivered": () => {
         delivered = true
         return ok({ kind: "delivered" })
       },
     })
 
-    const view = renderApp("/live/gid-1")
-    const panel = within(
-      (await view.findByRole("heading", { name: "Winner answers" })).closest("section")
-        ?? document.body,
-    )
+    const { panel } = await answersPanel()
 
-    expect(await panel.findByText("Bob Smith")).toBeTruthy()
     expect(panel.getByRole("heading", { name: "Winner 2: Bob" })).toBeTruthy()
+    expect(document.body.textContent).not.toContain("Bob Smith")
+    expect(requests.some((request) => request.route.endsWith("/answers/1"))).toBe(false)
     fireEvent.click(panel.getByRole("button", { name: "Mark delivered" }))
     expect(await panel.findByText(`Delivered on ${claimedAtText}.`)).toBeTruthy()
-    expect(panel.queryByText("Bob Smith")).toBeNull()
     expect(lastRequest(requests, "POST /api/dash/giveaways/gid-1/delivered")?.body).toEqual({
       n: 1,
     })
+  })
+
+  it("shows the answers once the streamer confirms, and hides them again", async () => {
+    mockAnswers()
+    const { view, panel } = await answersPanel()
+
+    fireEvent.click(panel.getByRole("button", { name: "Show answers" }))
+    const dialog = within(view.getByRole("dialog", { name: "Show private answers?" }))
+    expect(dialog.getByText("Make sure this page is not on your stream.")).toBeTruthy()
+    fireEvent.click(dialog.getByRole("button", { name: "Show" }))
+
+    expect(await panel.findByText("Bob Smith")).toBeTruthy()
+    fireEvent.click(panel.getByRole("button", { name: "Hide answers" }))
+    expect(panel.queryByText("Bob Smith")).toBeNull()
+    expect(panel.getByText("Answers received.")).toBeTruthy()
+  })
+
+  it("keeps the answers hidden and unloaded when the streamer cancels", async () => {
+    const requests = mockAnswers()
+    const { view, panel } = await answersPanel()
+
+    fireEvent.click(panel.getByRole("button", { name: "Show answers" }))
+    fireEvent.click(within(view.getByRole("dialog")).getByRole("button", { name: "Cancel" }))
+    await effectsRun()
+
+    expect(view.queryByRole("dialog")).toBeNull()
+    expect(document.body.textContent).not.toContain("Bob Smith")
+    expect(requests.some((request) => request.route.endsWith("/answers/1"))).toBe(false)
   })
 
   it("asks for no answers when the giveaway has no winner form", async () => {
