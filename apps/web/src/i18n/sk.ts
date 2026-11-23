@@ -801,42 +801,28 @@ export const sk: Translation = {
   "wizard.step.review": "Kontrola",
   "wizard.q.basics": "Začni základom",
   "wizard.q.rules": "Nastav pravidlá zapojenia",
-  "wizard.q.audience": "Kto sa môže zapojiť?",
   "wizard.q.review": "Skontroluj súťaž",
   "wizard.fix": "Oprav to a môžeš pokračovať.",
   "wizard.start": "Spustiť súťaž",
   "wizard.starting": "Spúšťam…",
-  "wizard.title.label": "Názov súťaže (nepovinné)",
-  "wizard.title.help":
-    "Diváci ho uvidia navrchu stránky. Príklad: Piatková súťaž o herné kreslo. Keď ho nevyplníš, uvidia namiesto neho kód súťaže.",
-  "wizard.prize.label": "Čo víťaz dostane? (nepovinné)",
-  "wizard.prize.help": "Príklad: herné kreslo alebo darčeková karta Steam za 25 eur",
   "wizard.audience.everyone": "Každý",
   "wizard.audience.everyone.help": "Zapojiť sa môže každý divák.",
   "wizard.audience.followers": "Len sledovatelia",
   "wizard.audience.followers.help": "Zapojiť sa môžu len ľudia, ktorí sledujú tvoj kanál.",
   "wizard.audience.subscribers": "Len predplatitelia",
   "wizard.audience.subscribers.help": "Zapojiť sa môžu len tvoji platiaci predplatitelia.",
-  "wizard.audience.subscribers.warning":
+  "wizard.audience.subscribers.info":
     "Predplatné je platený nákup. V mnohých krajinách je giveaway, do ktorého sa treba zapojiť nákupom, regulovaná lotéria. Zváž, či nepustiť do giveawaya aj sledovateľov alebo všetkých divákov.",
-  "wizard.minAge.label": "Minimálny vek účtu v dňoch (nepovinné)",
-  "wizard.minAge.help":
-    "Zabráni ľuďom vytvárať nové účty len kvôli súťaži. Keď pole nevyplníš, zapojiť sa môže akýkoľvek účet.",
   "wizard.minAge.fewer": "Menej dní",
   "wizard.minAge.more": "Viac dní",
   "wizard.official.legend": "Oficiálne pravidlá (nepovinné)",
-  "wizard.official.help":
-    "Stránka súťaže ukáže pravidlá zostavené z tvojich nastavení. Toto doplň, len ak to tvoja súťaž potrebuje.",
   "wizard.winnerAge.label": "Minimálny vek víťaza v rokoch",
-  "wizard.winnerAge.help": "Rafflink nevie overiť vek. Overíš ho ty pred odovzdaním výhry.",
+  "wizard.winnerAge.info": "Rafflink nevie overiť vek. Overíš ho ty pred odovzdaním výhry.",
   "wizard.winnerAge.fewer": "Menej rokov",
   "wizard.winnerAge.more": "Viac rokov",
   "wizard.excludedCountries.label": "Miesta, kde ľudia nemôžu vyhrať",
-  "wizard.excludedCountries.help":
-    "Príklad: Quebec, Taliansko. Rafflink nevie overiť, kde niekto žije.",
   "wizard.extraTerms.label": "Ďalšie podmienky",
   "wizard.extraTerms.help": "Zobrazia sa pod pravidlami presne tak, ako ich napíšeš.",
-  "wizard.recent.legend": "Nezapájať nedávnych víťazov",
   "wizard.recent.off": "Vypnuté",
   "wizard.recent.off.help": "Víťazi tvojich predchádzajúcich giveawayov sa môžu zapojiť znova.",
   "wizard.recent.giveaways": "Posledné giveawaye",
@@ -850,11 +836,6 @@ export const sk: Translation = {
   "wizard.recent.fewer": "Menej",
   "wizard.recent.more": "Viac",
   "wizard.winnerForm.legend": "Formulár pre víťaza",
-  "wizard.winnerForm.help":
-    "Po prevzatí ho víťaz vyplní na stránke giveawayu. Odpovede vidíš iba ty. Vymažú sa, keď označíš výhru ako doručenú, najneskôr 30 dní po prevzatí.",
-  "wizard.tickets.legend": "Lístky podľa skupiny",
-  "wizard.tickets.help":
-    "Každá skupina dostane 1 lístok. Viac lístkov znamená väčšiu šancu vyhrať, napríklad 3 pre predplatiteľov. Nechaj to tak, ak majú mať všetci rovnakú šancu.",
   "wizard.tickets.fewer": "Menej lístkov: {group}",
   "wizard.tickets.more": "Viac lístkov: {group}",
   "odds.same": "Všetci majú rovnakú šancu vyhrať.",
@@ -874,14 +855,10 @@ export const sk: Translation = {
   "wizard.ending.atTime.help": "Zápis sa sám uzavrie v čase, ktorý vyberieš.",
   "wizard.closesAt.label": "Zápis končí",
   "wizard.closesAt.help": "Použije sa časové pásmo tohto zariadenia.",
-  "wizard.claim.legend": "Koľko času má víťaz na prevzatie výhry?",
   "wizard.claim.custom": "Vlastný",
   "wizard.claim.minutes": "Počet minút",
   "wizard.claim.fewer": "Menej minút",
   "wizard.claim.more": "Viac minút",
-  "wizard.keyword.label": "Slovo do chatu (nepovinné)",
-  "wizard.keyword.help":
-    "Víťaz môže výhru prevziať aj napísaním tohto slova do tvojho chatu. Keď ho nevyplníš, platí akákoľvek správa víťaza v chate.",
   "review.name": "Názov",
   "review.prize": "Cena",
   "review.who": "Kto sa môže zapojiť",
@@ -908,29 +885,23 @@ export const sk: Translation = {
   "wizard.entry.chat": "Len chat",
   "wizard.entry.chat.help":
     "Diváci sa zapoja len napísaním kľúčového slova do tvojho chatu. Stránka ukáže kľúčové slovo a dovolí im overiť si, či sú v súťaži.",
-  "wizard.reconnect.chat.text":
+  "wizard.reconnect.chat.info":
     "Aby Rafflink overil, či ťa divák z chatu sleduje, potrebuje ešte jedno povolenie Twitchu (čítať tvojich sledujúcich). Pripoj Twitch znova, tvoje odpovede ostanú.",
-  "wizard.reconnect.sub.text":
+  "wizard.reconnect.sub.info":
     "Aby Rafflink zapojil nových odberateľov, potrebuje čítať tvojich odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
-  "wizard.reconnect.points.text":
+  "wizard.reconnect.points.info":
     "Aby Rafflink zapojil divákov, ktorí uplatnia odmenu za body kanála, potrebuje čítať tvoje odmeny, ich uplatnenia, odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
-  "wizard.reconnect.points.text.kick":
+  "wizard.reconnect.points.info.kick":
     "Aby Rafflink ukázal tvoje odmeny za body kanála, potrebuje ich čítať. Pripoj Kick znova, tvoje odpovede ostanú.",
   "wizard.reconnect.button": "Pripojiť {platform} znova",
   "wizard.chatKeyword.label": "Kľúčové slovo na zapojenie",
-  "wizard.chatKeyword.help":
-    "Správa v chate, ktorá začína týmto slovom, diváka zapojí s rovnakými pravidlami a lístkami ako stránka. Rafflink do tvojho chatu nikdy nepíše.",
-  "wizard.chatCost.kick":
-    "Kick posiela Rafflinku každú správu z chatu, kým sú zápisy otvorené, aj bez kľúčového slova, a každá spotrebuje jednu požiadavku z denného limitu {limit} tohto servera. Chat so 100 správami za minútu spotrebuje 6 000 požiadaviek za hodinu. Na dnes zostáva {remaining}.",
-  "wizard.chatCost.youtube":
-    "Rafflink číta chat na YouTube, kým sú zápisy otvorené, a spotrebuje pritom za minútu asi {perMinute} z {limit} denných jednotiek YouTube tohto servera, a po žrebovaní, kým si výhercovia výhru neprevezmú, asi {winnerPerMinute} za minútu. Na dnes zostáva {remaining}.",
   "wizard.chatCost.youtubeByHand":
     "Tento giveaway uzavrieš ručne, preto server nevie vopred overiť, či dnešné jednotky vystačia: pokryjú asi {minutes} minút zápisov. Nastav čas konca, aby sa to overilo.",
   "wizard.autoEntry.legend": "Automatické zapojenie",
   "wizard.subEntry.label": "Zapojiť nových odberateľov",
-  "wizard.subEntry.help":
+  "wizard.subEntry.info":
     "Každý, kto si počas otvoreného zapájania predplatí kanál, dostane darovaný sub alebo zdieľa predĺženie v chate, sa zapojí raz, s tiketmi svojho tieru. Tiché automatické predĺženie nezapojí nikoho: Twitch oznámi len predĺženie, ktoré divák zdieľa. Zapojenie cez stránku alebo chat ostáva zadarmo, takže nikto nemusí platiť.",
-  "wizard.subEntry.help.kick":
+  "wizard.subEntry.info.kick":
     "Každý, kto si počas otvoreného zapájania predplatí kanál, predĺži predplatné alebo dostane darovaný sub, sa zapojí raz, s tiketmi predplatiteľa. Kick má jednu úroveň predplatného a oznámi každé predĺženie. Zapojenie cez stránku alebo chat ostáva zadarmo, takže nikto nemusí platiť.",
   "wizard.points.legend": "Odmena za body kanála",
   "wizard.points.help":
@@ -1194,9 +1165,6 @@ export const sk: Translation = {
   "live.winners.save": "Uložiť",
   "winnersResult.set": "Počet víťazov je uložený.",
   "winnersResult.rejected": "Uloženie sa nepodarilo. Zadaj celé číslo víťazov, aspoň 1.",
-  "wizard.winners.label": "Koľko víťazov?",
-  "wizard.winners.help":
-    "Koľko víťazov plánuješ vyžrebovať. Neskôr môžeš vyžrebovať viac alebo menej.",
   "review.winners": "Víťazi",
   "verify.check.timing.match": "Kolo drand bolo zverejnené po uzamknutí zoznamu.",
   "verify.check.timing.mismatch":

@@ -9,6 +9,7 @@ import {
   AlertIcon,
   ArrowLeftIcon,
   CloseIcon,
+  InfoIcon,
   LockIcon,
   PlatformIcon,
   RefreshIcon,
@@ -147,5 +148,21 @@ function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
         ))}
       </StateCard>
     </StateColumn>
+  )
+}
+
+/** A note inside a form, between fields: a warning or a hint, with room for an (i) and an action. */
+export function Notice({
+  tone,
+  children,
+}: {
+  readonly tone: "info" | "warning"
+  readonly children: ReactNode
+}) {
+  return (
+    <div className="notice" data-tone={tone} role="note">
+      {tone === "warning" ? <AlertIcon /> : <InfoIcon />}
+      <div className="notice-body">{children}</div>
+    </div>
   )
 }

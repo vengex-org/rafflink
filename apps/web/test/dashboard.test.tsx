@@ -289,8 +289,8 @@ describe("dashboard", () => {
     fireEvent.click(await view.findByRole("link", { name: "Duplicate Summer giveaway" }))
 
     expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
-    expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Summer giveaway")
-    expect(inputOf(view.getByLabelText("What does the winner get? (optional)")).value).toBe(
+    expect(inputOf(view.getByLabelText("Giveaway name optional")).value).toBe("Summer giveaway")
+    expect(inputOf(view.getByLabelText("What does the winner get? optional")).value).toBe(
       "A gaming chair",
     )
     expect(inputOf(view.getByLabelText(/^When I close them/)).checked).toBe(true)
@@ -298,8 +298,45 @@ describe("dashboard", () => {
     fireEvent.click(view.getByRole("button", { name: "Next" }))
     expect(inputOf(view.getByLabelText("Subscribers, tier 3")).value).toBe("5")
     expect(inputOf(view.getByLabelText("Moderators")).value).toBe("7")
-    expect(inputOf(view.getByLabelText("Minimum account age in days (optional)")).value).toBe("7")
-    expect(inputOf(view.getByLabelText("Chat word (optional)")).value).toBe("mine")
+    expect(inputOf(view.getByLabelText("Minimum account age in days optional")).value).toBe("7")
+    expect(inputOf(view.getByLabelText("Claim word optional")).value).toBe("mine")
+  })
+
+  it("leaves Bonus tickets off for a copy whose only zeros are groups the platform cannot tell", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      followerCheck: false,
+      subTiers: false,
+      vip: false,
+      moderatorRole: false,
+      chatBadgeGroups: ["sub_t1", "moderator"],
+    }
+    const tickets = {
+      viewer: 1,
+      follower: 0,
+      sub_t1: 0,
+      sub_t2: 0,
+      sub_t3: 0,
+      member: 0,
+      vip: 0,
+      moderator: 0,
+    }
+    mockFetch({
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick", capabilities },
+        }),
+      "GET /api/dash/giveaways": () =>
+        ok({ giveaways: [{ ...dashboardGiveaway, rules: { ...rules, tickets } }] }),
+    })
+
+    const view = renderApp("/dashboard")
+    fireEvent.click(await view.findByRole("link", { name: "Duplicate Summer giveaway" }))
+    await view.findByText("Step 1 of 3: Basics")
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+
+    expect(inputOf(view.getByRole("checkbox", { name: "Bonus tickets" })).checked).toBe(false)
   })
 
   it("copies the recent-winners rule of a giveaway into the create form", async () => {
@@ -338,9 +375,7 @@ describe("dashboard", () => {
 
     const reloaded = renderApp("/dashboard/new?from=gid-1")
     await reloaded.findByText("Step 1 of 3: Basics")
-    expect(inputOf(reloaded.getByLabelText("Giveaway name (optional)")).value).toBe(
-      "Summer giveaway",
-    )
+    expect(inputOf(reloaded.getByLabelText("Giveaway name optional")).value).toBe("Summer giveaway")
   })
 
   it("starts the wizard blank when the giveaway to copy is not in the list", async () => {
@@ -349,7 +384,7 @@ describe("dashboard", () => {
     const view = renderApp("/dashboard/new?from=other")
     await view.findByText("Step 1 of 3: Basics")
 
-    expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("")
+    expect(inputOf(view.getByLabelText("Giveaway name optional")).value).toBe("")
   })
 
   it("offers sign-in on the wizard and brings the streamer back to it", async () => {

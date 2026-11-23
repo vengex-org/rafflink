@@ -74,7 +74,17 @@ function isStep(value: unknown): value is Step {
 function isValues(value: unknown): value is Values {
   if (typeof value !== "object" || value === null) return false
   const fields = Object.fromEntries(Object.entries(value))
-  const { title, prize, audience, tickets, minAccountAgeDays, ending, closesAt, claim } = fields
+  const {
+    title,
+    prize,
+    audience,
+    bonusTickets,
+    tickets,
+    minAccountAgeDays,
+    ending,
+    closesAt,
+    claim,
+  } = fields
   const { claimKeyword, entryWays, chatKeyword, winnerCount, winnerForm } = fields
   const { minAge, excludedCountries, extraTerms, subEntry, pointsReward } = fields
   return (
@@ -93,6 +103,7 @@ function isValues(value: unknown): value is Values {
     && (audience === "everyone" || audience === "followers" || audience === "subscribers")
     && (ending === "never" || ending === "at-time")
     && (entryWays === "page" || entryWays === "page-and-chat" || entryWays === "chat")
+    && typeof bonusTickets === "boolean"
     && isTickets(tickets)
     && isClaim(claim)
     && isWinnerForm(winnerForm)

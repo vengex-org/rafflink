@@ -1,6 +1,33 @@
 import { useId, useRef } from "react"
+import { useI18n } from "../i18n/i18n.tsx"
 import { MinusIcon, PlusIcon } from "./icons.tsx"
+import { InfoTip } from "./info-tip.tsx"
 import { SegmentRow, type SegmentRowOption } from "./segment-row.tsx"
+
+/** What a field may add around its label: an "optional" tag and an (i) with the explanation that does not fit the help line. */
+interface FieldExtras {
+  readonly optional?: boolean | undefined
+  readonly info?: string | undefined
+}
+
+/** The label row of a field: the label, an "optional" tag inside it, and the (i) beside it. */
+function FieldHead({
+  id,
+  label,
+  optional,
+  info,
+}: FieldExtras & { readonly id: string; readonly label: string }) {
+  const { t } = useI18n()
+  return (
+    <div className="field-head">
+      <label htmlFor={id}>
+        {label}
+        {optional === true ? <span className="optional-tag"> {t("common.optional")}</span> : null}
+      </label>
+      {info === undefined ? null : <InfoTip topic={label} text={info} />}
+    </div>
+  )
+}
 
 /** A labelled input, or a text area for `multiline`, with optional help under the label and the problem under the input. */
 export function TextField({
@@ -11,7 +38,10 @@ export function TextField({
   error,
   onChange,
   type,
-}: {
+  placeholder,
+  optional,
+  info,
+}: FieldExtras & {
   readonly name: string
   readonly label: string
   readonly help: string | null
@@ -19,6 +49,8 @@ export function TextField({
   readonly error: string | null
   readonly onChange: (value: string) => void
   readonly type: "text" | "datetime-local" | "multiline"
+  /** An example answer shown in the empty input. */
+  readonly placeholder?: string
 }) {
   const id = useId()
   const describedBy = [help === null ? null : `${id}-help`, error === null ? null : `${id}-error`]
@@ -26,7 +58,7 @@ export function TextField({
     .join(" ")
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <FieldHead id={id} label={label} optional={optional} info={info} />
       {help === null ? null : (
         <p id={`${id}-help`} className="help">
           {help}
@@ -38,6 +70,7 @@ export function TextField({
           name={name}
           rows={4}
           value={value}
+          placeholder={placeholder}
           aria-invalid={error !== null}
           aria-describedby={describedBy === "" ? undefined : describedBy}
           onChange={(event) => onChange(event.currentTarget.value)}
@@ -49,6 +82,7 @@ export function TextField({
           type={type}
           autoComplete="off"
           value={value}
+          placeholder={placeholder}
           aria-invalid={error !== null}
           aria-describedby={describedBy === "" ? undefined : describedBy}
           onChange={(event) => onChange(event.currentTarget.value)}
@@ -74,7 +108,9 @@ export function StepperField({
   onChange,
   decreaseLabel,
   increaseLabel,
-}: {
+  optional,
+  info,
+}: FieldExtras & {
   readonly name: string
   readonly label: string
   readonly help: string | null
@@ -91,7 +127,7 @@ export function StepperField({
     .join(" ")
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <FieldHead id={id} label={label} optional={optional} info={info} />
       {help === null ? null : (
         <p id={`${id}-help`} className="help">
           {help}

@@ -34,8 +34,8 @@ function next(view: RenderResult) {
 }
 
 function fillGiveaway(view: RenderResult) {
-  fireEvent.change(view.getByLabelText("Giveaway name (optional)"), { target: { value: "Cup" } })
-  fireEvent.change(view.getByLabelText("What does the winner get? (optional)"), {
+  fireEvent.change(view.getByLabelText("Giveaway name optional"), { target: { value: "Cup" } })
+  fireEvent.change(view.getByLabelText("What does the winner get? optional"), {
     target: { value: "A chair" },
   })
 }
@@ -65,6 +65,11 @@ const rewards = {
 async function toRules(view: RenderResult) {
   next(view)
   await view.findByText("Step 2 of 3: Entry rules")
+}
+
+// Bonus tickets start switched off; the ticket rows show once it is on.
+function openBonusTickets(view: RenderResult) {
+  fireEvent.click(view.getByRole("checkbox", { name: "Bonus tickets" }))
 }
 
 describe("create wizard", () => {
@@ -112,14 +117,14 @@ describe("create wizard", () => {
     expect(everyone.checked).toBe(true)
     expect(view.getByRole("radio", { name: /Followers only/ })).toBeTruthy()
     expect(view.getByRole("radio", { name: /Subscribers only/ })).toBeTruthy()
-    expect(view.getByRole("group", { name: "Tickets per group" })).toBeTruthy()
+    expect(inputOf(view.getByRole("checkbox", { name: "Bonus tickets" })).checked).toBe(false)
   })
 
   it("warns that a subscription is a purchase only while Subscribers only is chosen", async () => {
     mockFetch(listed)
     const view = await openWizard()
     await toRules(view)
-    const warning = /A subscription is a paid purchase/
+    const warning = /Sub-only entry may count as a paid lottery/
 
     expect(view.queryByText(warning)).toBeNull()
     fireEvent.click(view.getByRole("radio", { name: /Subscribers only/ }))
@@ -133,7 +138,8 @@ describe("create wizard", () => {
     const view = await openWizard()
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
-    expect(view.getByText("Everyone has the same chance of winning.")).toBeTruthy()
+    openBonusTickets(view)
+    expect(view.queryByText("Everyone has the same chance of winning.")).toBeNull()
 
     fireEvent.change(view.getByLabelText("Subscribers, tier 3"), { target: { value: "5" } })
     expect(view.getByText("A Tier 3 sub has 5x the chance of a viewer.")).toBeTruthy()
@@ -148,7 +154,7 @@ describe("create wizard", () => {
     expect(view.getByText("No group has better odds than a viewer.")).toBeTruthy()
 
     fireEvent.change(view.getByLabelText("Viewers"), { target: { value: "" } })
-    expect(view.queryByRole("status")).toBeNull()
+    expect(view.queryByText(/chance|cannot win|better odds/)).toBeNull()
   })
 
   it("steps a ticket count with the minus and plus buttons and stops at 0", async () => {
@@ -156,6 +162,7 @@ describe("create wizard", () => {
     const view = await openWizard()
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
+    openBonusTickets(view)
     const followers = inputOf(view.getByLabelText("Followers"))
     const fewer = view.getByRole("button", { name: "Fewer tickets for Followers" })
     const more = view.getByRole("button", { name: "More tickets for Followers" })
@@ -181,6 +188,7 @@ describe("create wizard", () => {
     const view = await openWizard()
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
+    openBonusTickets(view)
     const followers = inputOf(view.getByLabelText("Followers"))
     const fewer = view.getByRole("button", { name: "Fewer tickets for Followers" })
 
@@ -196,6 +204,7 @@ describe("create wizard", () => {
     const view = await openWizard()
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
+    openBonusTickets(view)
     const vips = inputOf(view.getByLabelText("VIPs"))
 
     fireEvent.keyDown(vips, { key: "ArrowUp" })
@@ -222,6 +231,7 @@ describe("create wizard", () => {
       const view = await openWizard()
       next(view)
       await view.findByText("Step 2 of 3: Entry rules")
+      openBonusTickets(view)
       const moderators = inputOf(view.getByLabelText("Moderators"))
 
       fireEvent.change(moderators, { target: { value: typed } })
@@ -237,7 +247,7 @@ describe("create wizard", () => {
     ["Extra tickets: empty", "Moderators", "", "Enter a whole number, 0 or more."],
     [
       "Account age: a fraction",
-      "Minimum account age in days (optional)",
+      "Minimum account age in days optional",
       "2.5",
       "Enter a whole number of days, or leave it empty.",
     ],
@@ -247,6 +257,7 @@ describe("create wizard", () => {
     fillGiveaway(view)
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
+    openBonusTickets(view)
 
     fireEvent.change(view.getByLabelText(label), { target: { value } })
     next(view)
@@ -289,7 +300,7 @@ describe("create wizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
     expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
-    expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Cup")
+    expect(inputOf(view.getByLabelText("Giveaway name optional")).value).toBe("Cup")
     expect(view.queryByRole("button", { name: "Back" })).toBeNull()
   })
 
@@ -309,13 +320,13 @@ describe("create wizard", () => {
   it("keeps the focus in a field while the streamer types into it", async () => {
     mockFetch(listed)
     const view = await openWizard()
-    const title = inputOf(view.getByLabelText("Giveaway name (optional)"))
+    const title = inputOf(view.getByLabelText("Giveaway name optional"))
     title.focus()
 
     for (const typed of ["C", "Cu", "Cup", "Cup "]) {
       fireEvent.change(title, { target: { value: typed } })
 
-      expect(inputOf(view.getByLabelText("Giveaway name (optional)")) === title).toBe(true)
+      expect(inputOf(view.getByLabelText("Giveaway name optional")) === title).toBe(true)
       expect(title.value).toBe(typed)
       expect(document.activeElement === title).toBe(true)
     }
@@ -327,13 +338,14 @@ describe("create wizard", () => {
     fillGiveaway(view)
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
+    openBonusTickets(view)
     fireEvent.click(view.getByRole("radio", { name: /Subscribers only/ }))
     fireEvent.change(view.getByLabelText("Subscribers, tier 1"), { target: { value: "3" } })
-    fireEvent.change(view.getByLabelText("Minimum account age in days (optional)"), {
+    fireEvent.change(view.getByLabelText("Minimum account age in days optional"), {
       target: { value: "7" },
     })
     fireEvent.click(view.getByRole("radio", { name: /10 minutes/ }))
-    fireEvent.change(view.getByLabelText("Chat word (optional)"), { target: { value: "mine" } })
+    fireEvent.change(view.getByLabelText("Claim word optional"), { target: { value: "mine" } })
     next(view)
     await view.findByText("Step 3 of 3: Review")
 
@@ -347,15 +359,75 @@ describe("create wizard", () => {
     expect(view.getByRole("button", { name: "Start giveaway" })).toBeTruthy()
   })
 
+  it("puts every group back to the default tickets when Bonus tickets is switched off", async () => {
+    const requests = mockFetch(withCreate(createdReply))
+    const view = await openWizard()
+    await toRules(view)
+    openBonusTickets(view)
+    fireEvent.change(view.getByLabelText("VIPs"), { target: { value: "5" } })
+
+    openBonusTickets(view)
+    expect(view.queryByLabelText("VIPs")).toBeNull()
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/giveaways")?.body,
+    ).toMatchObject({
+      rules: {
+        tickets: { viewer: 1, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 1, moderator: 1 },
+      },
+    })
+  })
+
+  it("keeps Bonus tickets on across the steps while a group the entry ways hid still holds a bonus", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      moderatorRole: false,
+      chatBadgeGroups: ["moderator"],
+    }
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": () =>
+        ok({ ...supportedSession, streamer: { ...supportedSession.streamer, capabilities } }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
+    openBonusTickets(view)
+    fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "5" } })
+
+    fireEvent.click(view.getByRole("radio", { name: /Giveaway page/ }))
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Back" }))
+    await view.findByText("Step 2 of 3: Entry rules")
+    fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
+    const shown = inputOf(view.getByRole("checkbox", { name: "Bonus tickets" })).checked
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect({ shown, body }).toMatchObject({
+      shown: true,
+      body: { rules: { tickets: { moderator: 5 } } },
+    })
+  })
+
   it("sends the answers as the API expects", async () => {
     const requests = mockFetch(withCreate(createdReply))
     const view = await openWizard()
     fillGiveaway(view)
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
+    openBonusTickets(view)
     fireEvent.click(view.getByRole("radio", { name: /Subscribers only/ }))
     fireEvent.change(view.getByLabelText("VIPs"), { target: { value: "5" } })
-    fireEvent.change(view.getByLabelText("Minimum account age in days (optional)"), {
+    fireEvent.change(view.getByLabelText("Minimum account age in days optional"), {
       target: { value: "7" },
     })
     next(view)
@@ -458,8 +530,9 @@ describe("create wizard", () => {
     })
     next(view)
     await view.findByText("Step 2 of 3: Entry rules")
+    openBonusTickets(view)
     fireEvent.click(view.getByRole("radio", { name: /Followers only/ }))
-    fireEvent.change(view.getByLabelText("Minimum account age in days (optional)"), {
+    fireEvent.change(view.getByLabelText("Minimum account age in days optional"), {
       target: { value: "30" },
     })
     const tickets = {
@@ -475,7 +548,7 @@ describe("create wizard", () => {
       fireEvent.change(view.getByLabelText(label), { target: { value } })
     }
     fireEvent.click(view.getByRole("radio", { name: /10 minutes/ }))
-    fireEvent.change(view.getByLabelText("Chat word (optional)"), { target: { value: "mine" } })
+    fireEvent.change(view.getByLabelText("Claim word optional"), { target: { value: "mine" } })
     expect(view.queryByLabelText("Entry keyword")).toBeNull()
     fireEvent.click(view.getByRole("radio", { name: /Page and chat/ }))
     expect(inputOf(view.getByLabelText("Entry keyword")).value).toBe("!enter")
@@ -697,6 +770,7 @@ describe("create wizard", () => {
     })
     const view = await openWizard()
     await toRules(view)
+    fireEvent.click(await view.findByRole("button", { name: "About Enter new subscribers" }))
     expect(view.getByText(/A silent auto renewal does not enter/)).toBeTruthy()
 
     fireEvent.click(await view.findByRole("checkbox", { name: "Enter new subscribers" }))
@@ -747,6 +821,7 @@ describe("create wizard", () => {
     expect(reconnect.getAttribute("href")).toBe(
       "/auth/kick/streamer/start?entry=points&return=%2Fdashboard%2Fnew%3Fstep%3D2",
     )
+    fireEvent.click(view.getByRole("button", { name: "About Reconnect Kick" }))
     expect(view.getByText(/To list your channel point rewards/)).toBeTruthy()
   })
 
@@ -764,6 +839,7 @@ describe("create wizard", () => {
     await toRules(view)
 
     expect(await view.findByText(/has no channel point rewards yet/)).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "About Enter new subscribers" }))
     expect(view.getByText(/Kick has one subscription level/)).toBeTruthy()
     expect(view.queryByRole("group", { name: "Channel point reward" })).toBeNull()
   })
@@ -885,15 +961,15 @@ describe("create wizard", () => {
     const view = await openWizard()
     fillGiveaway(view)
     await toRules(view)
+    openBonusTickets(view)
 
     expect(view.queryByRole("radio", { name: /Followers only/ })).toBeNull()
     expect(view.getByRole("radio", { name: /Subscribers only/ })).toBeTruthy()
-    expect(view.queryByLabelText("Minimum account age in days (optional)")).toBeNull()
+    expect(view.queryByLabelText("Minimum account age in days optional")).toBeNull()
     expect(view.queryByLabelText("Followers")).toBeNull()
     expect(view.queryByLabelText("VIPs")).toBeNull()
     expect(view.getByLabelText("Subscribers, tier 1")).toBeTruthy()
     expect(view.queryByRole("radio", { name: /Page and chat/ })).toBeNull()
-    expect(view.getByText("Everyone has the same chance of winning.")).toBeTruthy()
     fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "2" } })
     next(view)
     await view.findByText("Step 3 of 3: Review")
@@ -936,7 +1012,7 @@ describe("create wizard", () => {
     expect(view.queryByRole("radio", { name: /Subscribers only/ })).toBeNull()
     expect(view.getByRole("radio", { name: /Followers only/ })).toBeTruthy()
     expect(view.queryByLabelText("Subscribers, tier 1")).toBeNull()
-    expect(view.queryByText(/A subscription is a paid purchase/)).toBeNull()
+    expect(view.queryByText(/Sub-only entry may count as a paid lottery/)).toBeNull()
     next(view)
     await view.findByText("Step 3 of 3: Review")
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
@@ -974,7 +1050,9 @@ describe("create wizard", () => {
     const view = await openWizard()
     fillGiveaway(view)
     await toRules(view)
-    const note = await view.findByText(/4,000 are left today/)
+    const note = await view.findByText(/4,000 left today/)
+    fireEvent.click(view.getByRole("button", { name: "About the chat reading cost" }))
+    openBonusTickets(view)
     const memberTickets = view.getByLabelText("Channel members")
     next(view)
     await view.findByText("Step 3 of 3: Review")
@@ -982,7 +1060,8 @@ describe("create wizard", () => {
 
     expect(await view.findByText(/Today's YouTube units are not enough/)).toBeTruthy()
     expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
-    expect(note.textContent).toContain("about 60 of the 10,000 YouTube units")
+    expect(note.textContent).toContain("about 60 units a minute")
+    expect(note.textContent).toContain("10,000 units a day")
     expect(note.textContent).toContain("about 10 a minute")
     expect(note.textContent).toContain("about 66 minutes of entries")
     expect(memberTickets).toBeTruthy()
@@ -1013,6 +1092,7 @@ describe("create wizard", () => {
     const view = await openWizard()
     fillGiveaway(view)
     await toRules(view)
+    openBonusTickets(view)
     const pageOnly = {
       subscribers: view.queryByLabelText("Subscribers, tier 1"),
       cost: view.queryByText(/left today/),
@@ -1021,14 +1101,15 @@ describe("create wizard", () => {
     fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
     fireEvent.change(await view.findByLabelText("Subscribers, tier 1"), { target: { value: "3" } })
     fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "5" } })
-    const cost = await view.findByText(/42,000 are left today/)
+    const cost = await view.findByText(/42,000 left today/)
+    fireEvent.click(view.getByRole("button", { name: "About the chat reading cost" }))
     next(view)
     await view.findByText("Step 3 of 3: Review")
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
     await view.findByRole("heading", { name: "Your giveaway is live!" })
 
     expect(pageOnly).toEqual({ subscribers: null, cost: null })
-    expect(cost.textContent).toContain("daily limit of 100,000")
+    expect(cost.textContent).toContain("allows 100,000 requests a day")
     expect(view.queryByLabelText("Subscribers, tier 2")).toBeNull()
     const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
     expect(body).toMatchObject({
@@ -1180,10 +1261,10 @@ describe("create wizard", () => {
       "minAccountAgeDays",
       "unsupported",
       "Step 2 of 3: Entry rules",
-      "Minimum account age in days (optional)",
+      "Minimum account age in days optional",
     ],
-    ["claimKeyword", "too-long", "Step 2 of 3: Entry rules", "Chat word (optional)"],
-    ["title", "blank", "Step 1 of 3: Basics", "Giveaway name (optional)"],
+    ["claimKeyword", "too-long", "Step 2 of 3: Entry rules", "Claim word optional"],
+    ["title", "blank", "Step 1 of 3: Basics", "Giveaway name optional"],
     ["extraTerms", "too-long", "Step 1 of 3: Basics", "Extra terms"],
   ])(
     "sends the streamer back to the step of the field the server refused (%s)",
@@ -1267,7 +1348,7 @@ describe("create wizard", () => {
       view.back()
       expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
       expect(view.address()).toBe("/dashboard/new")
-      expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Cup")
+      expect(inputOf(view.getByLabelText("Giveaway name optional")).value).toBe("Cup")
     })
 
     it("pushes the earlier step when the streamer goes back with the Back button", async () => {
@@ -1442,20 +1523,20 @@ describe("create wizard", () => {
       fillGiveaway(view)
       next(view)
       await view.findByText("Step 2 of 3: Entry rules")
-      fireEvent.change(view.getByLabelText("Minimum account age in days (optional)"), {
+      fireEvent.change(view.getByLabelText("Minimum account age in days optional"), {
         target: { value: "7" },
       })
 
       fireEvent.click(view.getByRole("button", { name: "Step 1: Basics" }))
 
       expect(await view.findByText("Step 1 of 3: Basics")).toBeTruthy()
-      expect(inputOf(view.getByLabelText("Giveaway name (optional)")).value).toBe("Cup")
-      expect(inputOf(view.getByLabelText("What does the winner get? (optional)")).value).toBe(
+      expect(inputOf(view.getByLabelText("Giveaway name optional")).value).toBe("Cup")
+      expect(inputOf(view.getByLabelText("What does the winner get? optional")).value).toBe(
         "A chair",
       )
       next(view)
       await view.findByText("Step 2 of 3: Entry rules")
-      expect(inputOf(view.getByLabelText("Minimum account age in days (optional)")).value).toBe("7")
+      expect(inputOf(view.getByLabelText("Minimum account age in days optional")).value).toBe("7")
     })
 
     it("moves the keyboard focus to the step heading after going back with a step button", async () => {
@@ -1529,7 +1610,7 @@ describe("create wizard", () => {
       const view = await openWizard()
       next(view)
       await view.findByText("Step 2 of 3: Entry rules")
-      const winners = inputOf(view.getByLabelText("How many winners?"))
+      const winners = inputOf(view.getByLabelText("Number of winners"))
       const fewer = view.getByRole("button", { name: "Fewer winners" })
       expect(fewer.hasAttribute("disabled")).toBe(true)
 
@@ -1548,7 +1629,7 @@ describe("create wizard", () => {
       const view = await openWizard()
       next(view)
       await view.findByText("Step 2 of 3: Entry rules")
-      const age = inputOf(view.getByLabelText("Minimum account age in days (optional)"))
+      const age = inputOf(view.getByLabelText("Minimum account age in days optional"))
       expect(age.value).toBe("")
       expect(view.getByRole("button", { name: "Fewer days" }).hasAttribute("disabled")).toBe(true)
 

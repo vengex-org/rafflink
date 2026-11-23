@@ -43,6 +43,8 @@ export interface Values {
   title: string
   prize: string
   audience: Audience
+  /** Off sends every group the default tickets, whatever the rows held while it was on. */
+  bonusTickets: boolean
   tickets: Record<Group, string>
   minAccountAgeDays: string
   ending: Ending
@@ -75,6 +77,7 @@ export const initialValues: Values = {
   title: "",
   prize: "",
   audience: "everyone",
+  bonusTickets: false,
   tickets: {
     viewer: "1",
     follower: "1",
@@ -117,7 +120,7 @@ export function fitValues(values: Values, capabilities: PlatformCapabilities): V
     pointsReward: capabilities.pointsEntry ? values.pointsReward : null,
   }
   const supported = ticketGroups(fitted, capabilities)
-  const tickets = { ...values.tickets }
+  const tickets = { ...(values.bonusTickets ? values.tickets : initialValues.tickets) }
   for (const group of groups) if (!supported.includes(group)) tickets[group] = "0"
   return { ...fitted, tickets }
 }
@@ -152,10 +155,17 @@ export function entryWaysOffered(ways: EntryWays, capabilities: PlatformCapabili
   }
 }
 
-/** The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. */
-export function valuesFrom(giveaway: DashboardGiveaway): Values {
+/**
+ * The answers that start a new giveaway like `giveaway`; entries end when the streamer closes them. Bonus tickets
+ * starts on only when a group the platform can tell has other tickets than the default: the 0 a group it cannot
+ * tell was stored with is no bonus.
+ */
+export function valuesFrom(
+  giveaway: DashboardGiveaway,
+  capabilities: PlatformCapabilities,
+): Values {
   const { rules } = giveaway
-  return {
+  const values: Values = {
     ...initialValues,
     title: giveaway.title ?? "",
     prize: giveaway.prize ?? "",
@@ -187,6 +197,10 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
     extraTerms: rules.extraTerms ?? "",
     winnerForm: rules.winnerForm,
   }
+  const bonusTickets = ticketGroups(values, capabilities).some(
+    (group) => values.tickets[group] !== initialValues.tickets[group],
+  )
+  return { ...values, bonusTickets }
 }
 
 /**
