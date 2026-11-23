@@ -63,6 +63,14 @@ export function officialRules(
     t("rules.claimWhere"),
     t("rules.claimLate", { name }),
     t("rules.delivery", { name }),
+    ...(rules.winnerForm.length === 0
+      ? []
+      : [
+          t("rules.winnerForm", {
+            name,
+            fields: rules.winnerForm.map((kind) => t(`winnerField.${kind}`)).join(", "),
+          }),
+        ]),
   ]
   return {
     tickets: shown.map((group) =>

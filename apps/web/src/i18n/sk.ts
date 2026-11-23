@@ -520,6 +520,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rules.verify": "Žrebovanie si môže ktokoľvek overiť na {url}",
   "rules.claimLate": "Kým víťaz výhru neprevezme, {name} ho môže nahradiť novým žrebovaním.",
   "rules.delivery": "Výhru odovzdá {name}. Rafflink výhry nedrží ani neposiela.",
+  "rules.winnerForm":
+    "Po prevzatí víťaz vyplní na tejto stránke krátky formulár na doručenie ({fields}). Odpovede vidí iba {name}. Vymažú sa po doručení výhry, najneskôr 30 dní po prevzatí.",
   "rules.extraTerms": "Ďalšie podmienky od {name}:",
   "rules.notice":
     "Tieto pravidlá vznikli z nastavení súťaže. Sú to vzorové pravidlá, nie právna rada.",

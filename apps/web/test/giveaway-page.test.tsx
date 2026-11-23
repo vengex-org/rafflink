@@ -105,6 +105,19 @@ describe("official rules", () => {
     }
     expect(view.queryByText(/years old/)).toBeNull()
     expect(view.queryByText(/no free way to enter/)).toBeNull()
+    expect(view.queryByText(/fills a short form/)).toBeNull()
+  })
+
+  it("says the winner fills the delivery form and who reads it when the giveaway has one", async () => {
+    mockFetch(withRules({ winnerForm: ["name", "address"] }))
+
+    const view = renderApp("/ABCDE")
+
+    expect(
+      await view.findByText(
+        "After claiming, the winner fills a short form on this page for the delivery (Name, Shipping address). Only Streamy sees the answers. They are deleted when the prize is delivered, at the latest 30 days after the claim.",
+      ),
+    ).toBeTruthy()
   })
 
   it("names the chat keyword as a way to enter", async () => {

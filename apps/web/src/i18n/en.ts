@@ -516,6 +516,8 @@ export const en = {
   "rules.verify": "Anyone can check the draw at {url}",
   "rules.claimLate": "Until the winner claims the prize, {name} can replace them with a new draw.",
   "rules.delivery": "{name} hands over the prize. Rafflink does not hold or send prizes.",
+  "rules.winnerForm":
+    "After claiming, the winner fills a short form on this page for the delivery ({fields}). Only {name} sees the answers. They are deleted when the prize is delivered, at the latest 30 days after the claim.",
   "rules.extraTerms": "More terms from {name}:",
   "rules.notice":
     "These rules are made from the giveaway's settings. They are a template, not legal advice.",

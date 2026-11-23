@@ -521,6 +521,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "rules.verify": "Losování si může kdokoli ověřit na {url}",
   "rules.claimLate": "Dokud vítěz výhru nepřevezme, {name} ho může nahradit novým losováním.",
   "rules.delivery": "Výhru předá {name}. Rafflink výhry nedrží ani neposílá.",
+  "rules.winnerForm":
+    "Po převzetí vítěz vyplní na této stránce krátký formulář pro doručení ({fields}). Odpovědi vidí jen {name}. Smažou se po doručení výhry, nejpozději 30 dní po převzetí.",
   "rules.extraTerms": "Další podmínky od {name}:",
   "rules.notice":
     "Tato pravidla vznikla z nastavení soutěže. Jsou to vzorová pravidla, ne právní rada.",
