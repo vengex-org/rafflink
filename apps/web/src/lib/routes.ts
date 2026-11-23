@@ -71,10 +71,14 @@ export function streamerSignInPath(platform: Platform, returnTo: string): string
 
 /** A moderator's sign-in for the link that just asked for it; the server remembers which link in a cookie. */
 export const moderatorSignInPath = "/auth/twitch/moderator/start"
-/** Signs the streamer in again with the scopes the entry ways need, then back to `returnTo`. */
-export function entryReconnectPath(ways: readonly ChannelEntryVia[], returnTo: string): string {
+/** Signs the streamer in again on their platform with the scopes the entry ways need, then back to `returnTo`. */
+export function entryReconnectPath(
+  platform: Platform,
+  ways: readonly ChannelEntryVia[],
+  returnTo: string,
+): string {
   const query = new URLSearchParams({ entry: ways.join(","), return: returnTo })
-  return withQuery("/auth/twitch/streamer/start", query)
+  return withQuery(`/auth/${platform}/streamer/start`, query)
 }
 
 /** Signs a viewer in on the giveaway's platform; the server sends a link naming another platform on to the giveaway's. */

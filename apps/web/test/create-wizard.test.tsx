@@ -712,6 +712,26 @@ describe("create wizard", () => {
     ).toMatchObject({ rules: { subEntry: true, pageEntry: true, chatKeyword: null } })
   })
 
+  it("sends a Kick streamer to reconnect Kick for the reward list", async () => {
+    mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick" },
+        }),
+      "GET /api/dash/rewards": () => ok({ kind: "reconnect" }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+
+    const reconnect = await view.findByRole("link", { name: "Reconnect Kick" })
+    expect(reconnect.getAttribute("href")).toBe(
+      "/auth/kick/streamer/start?entry=points&return=%2Fdashboard%2Fnew%3Fstep%3D2",
+    )
+    expect(view.getByText(/To list your channel point rewards/)).toBeTruthy()
+  })
+
   it("tells a Kick streamer without rewards to create one, and describes Kick renewals", async () => {
     mockFetch({
       ...listed,

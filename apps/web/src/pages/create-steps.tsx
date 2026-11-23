@@ -14,6 +14,7 @@ import {
   HeartIcon,
   LinkIcon,
   LockIcon,
+  LogInIcon,
   StarIcon,
   TwitchIcon,
   UsersIcon,
@@ -32,6 +33,7 @@ import { dashboardNewPath, entryReconnectPath } from "../lib/routes.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
 import { useStreamerSession } from "../components/streamer-session.tsx"
+import { platformNames } from "../lib/platform-name.ts"
 import {
   audienceOffered,
   claimPresets,
@@ -430,13 +432,20 @@ function PointsRewardField({
   readonly rewards: PointsRewardsJson
 }) {
   const { t } = useI18n()
+  const { streamer } = useStreamerSession()
   switch (answer.kind) {
     case "no-channel-points":
       return null
     case "reconnect":
       return (
         <ReconnectNote
-          texts={[t("wizard.reconnect.points.text")]}
+          texts={[
+            t(
+              streamer?.platform === "kick"
+                ? "wizard.reconnect.points.text.kick"
+                : "wizard.reconnect.points.text",
+            ),
+          ]}
           ways={[...used, "points"]}
           values={values}
         />
@@ -506,6 +515,8 @@ function ReconnectNote({
   readonly values: Values
 }) {
   const { t } = useI18n()
+  const { streamer } = useStreamerSession()
+  const platform = streamer?.platform ?? "twitch"
   return (
     <div className="help" role="note">
       {texts.map((text) => (
@@ -513,11 +524,11 @@ function ReconnectNote({
       ))}
       <a
         className="button outlined"
-        href={entryReconnectPath(ways, dashboardNewPath({ step: 2 }))}
+        href={entryReconnectPath(platform, ways, dashboardNewPath({ step: 2 }))}
         onClick={() => keepDraftForReconnect(values)}
       >
-        <TwitchIcon />
-        {t("wizard.reconnect.button")}
+        <LogInIcon />
+        {t("wizard.reconnect.button", { platform: platformNames[platform] })}
       </a>
     </div>
   )

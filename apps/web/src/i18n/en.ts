@@ -893,7 +893,9 @@ export const en = {
     "To enter new subscribers, Rafflink needs to read your subscribers and followers. Reconnect Twitch; your answers stay.",
   "wizard.reconnect.points.text":
     "To enter viewers who redeem a channel point reward, Rafflink needs to read your rewards, redemptions, subscribers and followers. Reconnect Twitch; your answers stay.",
-  "wizard.reconnect.button": "Reconnect Twitch",
+  "wizard.reconnect.points.text.kick":
+    "To list your channel point rewards, Rafflink needs to read them. Reconnect Kick; your answers stay.",
+  "wizard.reconnect.button": "Reconnect {platform}",
   "wizard.chatKeyword.label": "Entry keyword",
   "wizard.chatKeyword.help":
     "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",

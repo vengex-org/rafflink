@@ -897,7 +897,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Aby Rafflink zapojil nových odberateľov, potrebuje čítať tvojich odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
   "wizard.reconnect.points.text":
     "Aby Rafflink zapojil divákov, ktorí uplatnia odmenu za body kanála, potrebuje čítať tvoje odmeny, ich uplatnenia, odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
-  "wizard.reconnect.button": "Pripojiť Twitch znova",
+  "wizard.reconnect.points.text.kick":
+    "Aby Rafflink ukázal tvoje odmeny za body kanála, potrebuje ich čítať. Pripoj Kick znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.button": "Pripojiť {platform} znova",
   "wizard.chatKeyword.label": "Kľúčové slovo na zapojenie",
   "wizard.chatKeyword.help":
     "Správa v chate, ktorá začína týmto slovom, diváka zapojí s rovnakými pravidlami a lístkami ako stránka. Rafflink do tvojho chatu nikdy nepíše.",
