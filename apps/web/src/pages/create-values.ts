@@ -1,13 +1,12 @@
 import { groups, supportedGroups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import {
   badgesSeen,
-  channelEntryVias,
   minAgeMax,
-  type ChannelEntryVia,
   type GiveawayRules,
   type PointsReward,
   type RecentWinnersRule,
 } from "@rafflink/core/domain/rules"
+import { featuresOfRules, type StreamerFeature } from "@rafflink/core/domain/streamer-features"
 import type { WinnerFieldKind } from "@rafflink/core/domain/winner-form"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
@@ -203,20 +202,17 @@ export function valuesFrom(
   return { ...values, bonusTickets }
 }
 
-/**
- * The sub and points entry the answers turn on whose scopes the token lacks; the server refuses such a giveaway.
- * Chat entry works without its scope (every chatter counts as not following), so it never blocks.
- */
-export function missingEntryScopes(
+/** The features the answers need, a follower rule or VIP tickets for example; the server checks the same. */
+export function neededFeatures(values: Values): readonly StreamerFeature[] {
+  return featuresOfRules({ ...toBody(values).rules, tickets: ticketCounts(values.tickets) })
+}
+
+/** The features the answers need whose scopes the token lacks; the server refuses such a giveaway. */
+export function missingFeatures(
   values: Values,
-  ready: readonly ChannelEntryVia[],
-): readonly ChannelEntryVia[] {
-  const used: Readonly<Record<ChannelEntryVia, boolean>> = {
-    chat: false,
-    sub: values.subEntry,
-    points: values.pointsReward !== null,
-  }
-  return channelEntryVias.filter((way) => used[way] && !ready.includes(way))
+  granted: readonly StreamerFeature[],
+): readonly StreamerFeature[] {
+  return neededFeatures(values).filter((feature) => !granted.includes(feature))
 }
 
 /** The first thing wrong with the answers of one step, or null; the server checks everything again. */

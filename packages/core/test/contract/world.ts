@@ -1,5 +1,6 @@
 import { expect, it } from "bun:test"
 import type { GiveawayRules } from "../../src/domain/rules.ts"
+import { streamerFeatures, type StreamerFeature } from "../../src/domain/streamer-features.ts"
 import { toBase64 } from "../../src/lib/encoding.ts"
 import type { QueueStats } from "../../src/queue/token-queue.ts"
 import type { LiveSnapshot } from "../../src/room/giveaway-room.ts"
@@ -151,12 +152,15 @@ export class World {
     return opened
   }
 
+  /** A Twitch streamer who granted the scopes of `features`, by default every one, as the wizard's "Reconnect Twitch" asks. */
   async signInStreamer(
     target: ContractTarget,
     userId: string = users.streamer.id,
+    features: readonly StreamerFeature[] = streamerFeatures,
   ): Promise<Browser> {
     const streamer = new Browser(target.url)
-    await streamer.signInAs(userId, "/auth/twitch/streamer/start", this.twitch.fake.control)
+    const query = features.length === 0 ? "" : `?features=${features.join(",")}`
+    await streamer.signInAs(userId, `/auth/twitch/streamer/start${query}`, this.twitch.fake.control)
     return streamer
   }
 

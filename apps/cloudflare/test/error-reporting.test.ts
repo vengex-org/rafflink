@@ -34,7 +34,8 @@ const rules: GiveawayRules = {
     sub_t2: 1,
     sub_t3: 1,
     member: 0,
-    vip: 1,
+    // VIP tickets make the room arm its role refresh at once, so the alarm runs right after init.
+    vip: 2,
     moderator: 1,
   },
   subsOnly: false,

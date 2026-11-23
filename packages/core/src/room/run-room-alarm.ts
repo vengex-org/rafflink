@@ -1,7 +1,8 @@
 import { errorClass } from "../lib/error-class.ts"
+import { PlatformInvalid } from "../platform/errors.ts"
 import type { StreamerTokenDeps } from "../accounts/streamer-token.ts"
 import { accountAgeDays } from "../domain/rules.ts"
-import { enabledProviderFor, readyEntryWays, type SubscriberTiers } from "../platform/provider.ts"
+import { enabledProviderFor, grantedFeatures, type SubscriberTiers } from "../platform/provider.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { AlarmDuties, ChatEntrantsDuty, GiveawayRoom } from "./giveaway-room.ts"
 import { mirrorStatus } from "./mirror-status.ts"
@@ -149,8 +150,9 @@ const missingScopeLogged = new Set<string>()
 
 /**
  * The follow of every chatter that needs one: true or false, null when the read failed and the chatter
- * waits for the next check. A token without the chat entry scopes reads no follow: every chatter counts
- * as not following, as the rules treat an unknown follow. Every entry way's scopes include the follow read.
+ * waits for the next check. A follow is asked only when the rules weigh it, and such a giveaway is made
+ * only with the followers scope; a token without it (a giveaway made before the rule) reads no follow, and
+ * every chatter counts as not following, as the rules treat an unknown follow.
  */
 async function readFollows(
   giveawayId: string,
@@ -160,7 +162,7 @@ async function readFollows(
   const asked = duty.chatters.filter((chatter) => chatter.followerCheck)
   if (asked.length === 0 || access === null) return new Map()
   const { provider, accessToken, broadcasterId, scopes } = await access
-  if (!readyEntryWays(provider, scopes).includes("chat")) {
+  if (!grantedFeatures(provider, scopes).includes("followers")) {
     logMissingScope(giveawayId, "chat entry follows not readable")
     return new Map(asked.map(({ platformUserId }) => [platformUserId, false]))
   }
@@ -186,8 +188,9 @@ async function readFollows(
 }
 
 /**
- * The tiers of the redeemers in the duty, in one call. A token without the points entry scopes reads no
- * tier: every redeemer counts as not subscribed, as the rules treat an unknown tier.
+ * The tiers of the redeemers in the duty, in one call; the room asks for them only when the tickets weigh
+ * tiers. A token without the subscribers scope reads no tier: every redeemer counts as not subscribed, as
+ * the rules treat an unknown tier.
  */
 async function readTiers(
   giveawayId: string,
@@ -197,7 +200,7 @@ async function readTiers(
   const asked = duty.chatters.filter((chatter) => chatter.tierCheck)
   if (asked.length === 0 || access === null) return new Map()
   const { provider, accessToken, broadcasterId, scopes } = await access
-  if (!readyEntryWays(provider, scopes).includes("points")) {
+  if (!grantedFeatures(provider, scopes).includes("subs")) {
     logMissingScope(giveawayId, "points entry tiers not readable")
     return new Map()
   }
@@ -231,13 +234,21 @@ async function refreshRoles(
   room: GiveawayRoom,
 ): Promise<void> {
   try {
-    const { provider, accessToken, broadcasterId } = await openGiveawayStreamerAccess(
+    const { provider, accessToken, broadcasterId, scopes } = await openGiveawayStreamerAccess(
       deps,
       giveawayId,
     )
+    if (!grantedFeatures(provider, scopes).includes("roles")) {
+      room.pauseRoles()
+      return
+    }
     const roles = await provider.channelRoles(accessToken, broadcasterId)
     room.replaceRoles(roles.vips, roles.moderators)
   } catch (error) {
+    // Twitch answers 401 or 403 to a token that lost a role scope.
+    if (error instanceof PlatformInvalid && (error.status === 401 || error.status === 403)) {
+      room.pauseRoles()
+    }
     room.recordFailure("role-refresh", error)
   }
 }

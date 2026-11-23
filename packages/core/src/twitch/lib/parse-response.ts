@@ -31,6 +31,7 @@ export function parseTokenResponse(body: unknown): Parsed<ExchangedCode, "malfor
     refresh_token: refreshToken,
     id_token: idToken,
     expires_in: expiresInSeconds,
+    scope,
   } = body
   if (typeof accessToken !== "string" || typeof refreshToken !== "string") return malformed
   if (idToken !== undefined && typeof idToken !== "string") return malformed
@@ -38,8 +39,21 @@ export function parseTokenResponse(body: unknown): Parsed<ExchangedCode, "malfor
   if (expiresInSeconds <= 0) return malformed
   return {
     ok: true,
-    value: { accessToken, refreshToken, expiresInSeconds, idToken: idToken ?? null },
+    value: {
+      accessToken,
+      refreshToken,
+      expiresInSeconds,
+      idToken: idToken ?? null,
+      scopes: grantedScopes(scope),
+    },
   }
+}
+
+// Twitch lists the granted scopes as an array, Kick as one space-separated string; anything else names none.
+function grantedScopes(scope: unknown): readonly string[] | null {
+  if (typeof scope === "string") return scope.split(" ").filter((item) => item !== "")
+  if (Array.isArray(scope) && scope.every((item) => typeof item === "string")) return scope
+  return null
 }
 
 /** The app access token of a client credentials grant. */

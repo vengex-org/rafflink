@@ -43,6 +43,7 @@ describe("YouTubeProvider", () => {
       ...tokens,
       expiresInSeconds: 1,
       idToken: null,
+      scopes: null,
     })
     const profile = await world.provider.userProfile(tokens.accessToken)
 
@@ -77,7 +78,12 @@ describe("YouTubeProvider", () => {
   it("refuses an account that owns no channel", async () => {
     const tokens = await streamerTokens(world, null)
 
-    const refused = world.provider.verifySignIn({ ...tokens, expiresInSeconds: 1, idToken: null })
+    const refused = world.provider.verifySignIn({
+      ...tokens,
+      expiresInSeconds: 1,
+      idToken: null,
+      scopes: null,
+    })
 
     expect(refused).rejects.toBeInstanceOf(PlatformNoChannel)
   })

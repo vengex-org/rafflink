@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   sqlRows,
@@ -52,7 +53,7 @@ describe("winners CSV", () => {
     harness.rooms.roomFor(id).onAlarm()
     // The first session has expired by now.
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const response = await browser.request(`/api/dash/giveaways/${id}/winners.csv`)
 
@@ -79,7 +80,7 @@ describe("winners CSV", () => {
   it("answers 404 for another streamer's giveaway", async () => {
     const { id } = await drawnGiveaway()
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     expect((await other.request(`/api/dash/giveaways/${id}/winners.csv`)).status).toBe(404)
   })
@@ -105,7 +106,7 @@ describe("deleting a giveaway", () => {
   it("refuses a delete from another origin and another streamer's delete, and keeps the giveaway", async () => {
     const { browser, id } = await drawnGiveaway()
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     const foreign = await sameOriginPost(
       browser,
@@ -182,9 +183,9 @@ describe("removing a winner's name", () => {
   it("answers 404 for a pick or a giveaway that does not exist, and 403 to a streamer who is no admin", async () => {
     const { code } = await drawnGiveaway()
     const streamer = new Browser(harness)
-    await streamer.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await streamer.signInAs(users.streamerB.id, fullStreamerStart)
     const admin = new Browser(harness)
-    await admin.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await admin.signInAs(users.streamerA.id, fullStreamerStart)
 
     expect((await removeName(admin, code, 3)).status).toBe(404)
     expect((await removeName(admin, "ZZZZZ", 0)).status).toBe(404)

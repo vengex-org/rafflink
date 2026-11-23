@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
-import { Browser, createHarness, users, validRules, type Harness } from "../../test/app-fixture.ts"
+import {
+  Browser,
+  fullStreamerStart,
+  createHarness,
+  users,
+  validRules,
+  type Harness,
+} from "../../test/app-fixture.ts"
 import { UsageUnavailable } from "../lib/usage-unavailable.ts"
 import type { AsyncSql, DayRequests } from "../ports.ts"
 import { YouTubeQuota } from "../youtube/quota.ts"
@@ -10,7 +17,7 @@ let browser: Browser
 beforeEach(async () => {
   harness = await createHarness()
   browser = new Browser(harness)
-  await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+  await browser.signInAs(users.streamerA.id, fullStreamerStart)
 })
 
 afterEach(async () => {
@@ -58,7 +65,7 @@ describe("usage warning at giveaway creation", () => {
     await harness.stop()
     harness = await createHarness({ env: { USAGE_WARNING_THRESHOLD: "10" } })
     browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
     harness.usage.usage = usageWithRemaining(10)
     expect(await createWarnings()).toEqual([])
 
@@ -84,7 +91,7 @@ describe("usage warning at giveaway creation", () => {
       env: { CLOUDFLARE_PLAN: "paid", WORKER_REQUEST_LIMIT: "100000" },
     })
     browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
     harness.usage.usage = usageWithRemaining(5)
     expect(await createWarnings()).toEqual([{ kind: "worker-requests-low", remaining: 5 }])
   })
@@ -154,7 +161,7 @@ describe("YouTube quota on the admin page", () => {
     }
     harness = await createHarness({ youtubeQuota: new YouTubeQuota(failing, resolvedQuotaConfig) })
     browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    await browser.signInAs(users.streamerA.id, fullStreamerStart)
 
     const body: { youtubeQuota: unknown } = await (await browser.request("/api/admin/usage")).json()
 

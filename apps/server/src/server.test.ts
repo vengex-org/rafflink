@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { AccountStore } from "@rafflink/core/accounts/account-store"
+import { streamerFeatures } from "@rafflink/core/domain/streamer-features"
 import type { ResolvedConfig } from "@rafflink/core/config"
 import { openKeyRing, type KeyRing } from "@rafflink/core/lib/seal"
 import { BunSqliteAsyncSql } from "@rafflink/core/sqlite-bun"
@@ -432,7 +433,11 @@ function distWithIndex(): string {
 
 async function createGiveaway(server: RunningServer, extra: Record<string, unknown> = {}) {
   const streamer = new Browser(server.url)
-  await streamer.signInAs(users.streamer.id, "/auth/twitch/streamer/start", twitch.fake.control)
+  await streamer.signInAs(
+    users.streamer.id,
+    `/auth/twitch/streamer/start?features=${streamerFeatures.join(",")}`,
+    twitch.fake.control,
+  )
   const response = await streamer.postJson("/api/dash/giveaways", {
     title: "Giveaway",
     prize: "Prize",

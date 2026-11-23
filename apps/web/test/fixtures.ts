@@ -92,6 +92,7 @@ export const liveSnapshot: LiveSnapshot = {
   chatEntryOff: false,
   subEntryOff: false,
   pointsEntryOff: false,
+  rolesPaused: false,
 }
 
 /** A claim time and how the English interface writes it with its date, in the zone the test runs in. */
@@ -118,7 +119,7 @@ export const twitchPlatform = {
     pointsEntry: true,
     chatBadgeGroups: [],
   },
-  readyEntryWays: ["chat", "sub", "points"],
+  grantedFeatures: ["followers", "subs", "redemptions", "roles", "modlinks"],
   publicHistory: false,
   historyIndexed: false,
   admin: false,

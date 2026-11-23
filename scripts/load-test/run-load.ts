@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises"
 import type { GiveawayRules } from "../../packages/core/src/domain/rules.ts"
+import { streamerFeatures } from "../../packages/core/src/domain/streamer-features.ts"
 import { LocalBrowser } from "./local-browser.ts"
 import type { LoadPlan } from "./options.ts"
 import { summarizeLatency, type LatencySummary } from "./stats.ts"
@@ -86,8 +87,9 @@ interface RoomView {
 /** Creates a giveaway as the streamer, signs `rate x duration` viewers in at `rate` per second and checks the room afterwards. */
 export async function runLoad(load: LoadTarget, plan: LoadPlan): Promise<LoadReport> {
   const streamer = new LocalBrowser(load.target)
+  // The rules weigh follows, tiers and roles, which need the scopes of those features.
   const streamerCallback = await streamer.signInUntilCallback(
-    "/auth/twitch/streamer/start",
+    `/auth/twitch/streamer/start?features=${streamerFeatures.join(",")}`,
     load.streamerUserId,
   )
   const signedIn = await streamer.get(streamerCallback)

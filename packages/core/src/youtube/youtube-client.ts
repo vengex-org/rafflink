@@ -90,7 +90,7 @@ export class YouTubeClient {
       code_verifier: codeVerifier,
     })
     if (tokens.refreshToken === null) throw new YouTubeUnavailable("token", 200)
-    return { ...tokens, refreshToken: tokens.refreshToken, idToken: null }
+    return { ...tokens, refreshToken: tokens.refreshToken, idToken: null, scopes: null }
   }
 
   /** Google keeps the refresh token on a refresh and answers none, so the one sent is returned. */
@@ -99,7 +99,12 @@ export class YouTubeClient {
       grant_type: "refresh_token",
       refresh_token: refreshToken,
     })
-    return { ...tokens, refreshToken: tokens.refreshToken ?? refreshToken, idToken: null }
+    return {
+      ...tokens,
+      refreshToken: tokens.refreshToken ?? refreshToken,
+      idToken: null,
+      scopes: null,
+    }
   }
 
   /** Whether Google still knows the access token and issued it to this client; costs no quota. */

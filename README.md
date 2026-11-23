@@ -165,13 +165,15 @@ register it once and copy two values into the config.
 
 You do not pick scopes in the console. Rafflink asks for them at sign-in:
 
-- streamers: `openid`, `channel:read:vips`, `moderation:read` (to know VIPs and moderators) and
-  `user:read:chat` (to watch the chat for chat entries and claims and show the winners' messages); a streamer
-  who turns chat entry on is asked to reconnect once for `moderator:read:followers` (to check whether a chat
-  entrant follows), one who turns sub or points entry on also for `channel:read:subscriptions` and
-  `channel:read:redemptions` (to enter subscribers and reward redemptions);
-- viewers: `openid`, `user:read:subscriptions` and `user:read:follows` (to check who may enter and how many
-  tickets they get).
+- streamers: `openid` and `user:read:chat` (to watch the chat for chat entries and claims and show the
+  winners' messages). A streamer is asked to reconnect once for each extra feature, when a giveaway first uses
+  it: `moderator:read:followers` for a follower rule with chat, sub or points entry, `channel:read:subscriptions`
+  for sub entry or tier tickets with points entry, `channel:read:redemptions` for points entry,
+  `channel:read:vips` and `moderation:read` for VIP or moderator tickets, and `moderation:read` for a moderator
+  link for moderators only;
+- viewers: `openid`, plus `user:read:follows` when the giveaway has a follower rule and
+  `user:read:subscriptions` when it has a subscribers-only rule or tier tickets (each viewer's own token
+  checks them).
 
 The rest of the required config:
 

@@ -56,6 +56,8 @@ export type RoomState = {
   /** The platform refused the channel point redemption subscription while the chat subscription held. */
   readonly pointsEntryUnavailable: boolean
   readonly rolesRefreshAt: Instant | null
+  /** The streamer's token lacks the VIP and moderator scopes; a role refresh that succeeds clears it. */
+  readonly rolesPaused: boolean
   readonly mirrorPending: boolean
   /** The retention alarm deleted the entrants' data. */
   readonly entriesDeleted: boolean
@@ -141,6 +143,7 @@ export function parseState(row: SqlRow, config: RulesConfig): RoomState {
     subEntryUnavailable: reader.int("sub_entry_unavailable") === 1,
     pointsEntryUnavailable: reader.int("points_entry_unavailable") === 1,
     rolesRefreshAt: reader.nullableInt("roles_refresh_at"),
+    rolesPaused: reader.int("roles_paused") === 1,
     mirrorPending: reader.int("mirror_pending") === 1,
     entriesDeleted: reader.int("entries_deleted") === 1,
     commitment: parseCommitment(reader),

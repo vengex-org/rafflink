@@ -151,6 +151,31 @@ describe("runRoomAlarm role refresh", () => {
     expect(room.liveSnapshot().roleRefreshFailures).toBe(0)
   })
 
+  it("pauses VIP and mod tickets while the token lacks the role scopes, keeps entries open, and resumes after a reconnect", async () => {
+    await seedStreamerAndGiveaway(["openid", "user:read:chat"])
+    twitch.fake.control.addUser({ ...users.viewer, id: "300", login: "vip_viewer" })
+    twitch.fake.control.setRole(users.streamer.id, "300", "vip", true)
+
+    await runRoomAlarm(deps, giveawayId, room)
+    const paused = room.liveSnapshot().rolesPaused
+    const entry = room.enter(viewer, { blockListVersion: 0 })
+    await seedStreamer(
+      twitch,
+      new TwitchClient(config, fetch),
+      accounts,
+      keyRing,
+      "streamer-1",
+      users.streamer.id,
+      ["openid", "user:read:chat", "channel:read:vips", "moderation:read"],
+    )
+    clock.advance(config.roleRefreshSeconds * 1000)
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(paused).toBe(true)
+    expect(entry).toMatchObject({ kind: "entered", entry: { group: "viewer", tickets: 1 } })
+    expect(room.liveSnapshot().rolesPaused).toBe(false)
+  })
+
   it("counts a failed role fetch on the room and logs the failure", async () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     await seedStreamerAndGiveaway()

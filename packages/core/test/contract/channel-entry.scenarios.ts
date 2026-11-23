@@ -1,6 +1,8 @@
 import { expect } from "bun:test"
+import type { GiveawayRules } from "../../src/domain/rules.ts"
+import type { StreamerFeature } from "../../src/domain/streamer-features.ts"
 import type { Entrant } from "../../src/room/rows.ts"
-import { Browser } from "./browser.ts"
+import type { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { defaultRules, scenario, type CreatedGiveaway, type World } from "./world.ts"
@@ -48,15 +50,19 @@ export function channelEntryScenarios(context: ContractContext): void {
 
   scenario(
     context,
-    "a sub or points giveaway on a token without those scopes is refused with a reconnect answer",
+    "a giveaway whose rules need a feature the token lacks is refused with a reconnect answer",
     async (world) => {
       const target = await world.start()
-      const streamer = await world.signInStreamer(target)
-
-      for (const rules of [
-        { subEntry: true },
-        { pointsReward: { id: reward.id, title: reward.title } },
-      ]) {
+      // The default rules weigh follows, tiers and roles; each row leaves out the one feature its rules need. A page
+      // entrant's follow is read with their own token, so the follower row needs chat entry.
+      const rows: readonly [readonly StreamerFeature[], Partial<GiveawayRules>][] = [
+        [["subs", "roles"], { chatKeyword: "!enter" }],
+        [["followers", "subs"], {}],
+        [["followers", "roles"], { subEntry: true }],
+        [["followers", "subs", "roles"], { pointsReward: { id: reward.id, title: reward.title } }],
+      ]
+      for (const [features, rules] of rows) {
+        const streamer = await world.signInStreamer(target, users.streamer.id, features)
         const response = await streamer.postJson("/api/dash/giveaways", {
           rules: { ...defaultRules, ...rules },
         })
@@ -67,18 +73,12 @@ export function channelEntryScenarios(context: ContractContext): void {
   )
 }
 
-// An Affiliate with two rewards who signed in with the sub and points scopes, as the wizard's "Reconnect Twitch" does.
+// An Affiliate with two rewards who signed in with every feature's scopes, as the wizard's "Reconnect Twitch" asks.
 async function channelEntryStreamer(world: World, target: ContractTarget): Promise<Browser> {
   const { control } = world.twitch.fake
   control.addUser({ ...users.streamer, broadcasterType: "affiliate" })
   control.setCustomRewards(users.streamer.id, [reward, otherReward])
-  const streamer = new Browser(target.url)
-  await streamer.signInAs(
-    users.streamer.id,
-    "/auth/twitch/streamer/start?entry=sub,points",
-    control,
-  )
-  return streamer
+  return world.signInStreamer(target)
 }
 
 async function entrants(giveaway: CreatedGiveaway): Promise<readonly Entrant[]> {

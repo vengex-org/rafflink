@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   users,
@@ -63,7 +64,7 @@ async function historyIndexed(): Promise<boolean> {
 // The streamer renames their Twitch account and signs in again.
 async function rename(login: string) {
   harness.fake.control.addUser({ ...users.streamerA, login })
-  await new Browser(harness).signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+  await new Browser(harness).signInAs(users.streamerA.id, fullStreamerStart)
 }
 
 function page(path: string) {
@@ -162,7 +163,7 @@ describe("public giveaway history", () => {
   it("lets only the owner hide a giveaway, from the app's own origin, with a boolean", async () => {
     const { id, browser } = await drawnGiveaway()
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     const foreign = await browser.request(`/api/dash/giveaways/${id}/history`, {
       method: "POST",

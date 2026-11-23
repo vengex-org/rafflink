@@ -55,7 +55,7 @@ export const fr: Translation = {
   "home.text": "Tes viewers participent en un clic et tu tires au sort devant ton chat.",
   "home.login": "Se connecter et commencer",
   "home.stage.toClaim": "pour réclamer",
-  "home.reads": "Nous lisons uniquement ton nom, tes VIP, tes modérateurs et ton chat.",
+  "home.reads": "Nous lisons uniquement ton nom et ton chat.",
   "home.worksWith": "Fonctionne avec",
   "home.trust.supportKoFi": "Soutenir sur Ko-fi",
   "home.trust.support": "Soutenir Rafflink",
@@ -1013,12 +1013,16 @@ export const fr: Translation = {
   "wizard.entry.chat": "Chat uniquement",
   "wizard.entry.chat.help":
     "Les viewers participent uniquement en tapant un mot-clé dans ton chat. La page affiche le mot-clé et leur permet de vérifier s'ils sont inscrits.",
-  "wizard.reconnect.chat.info":
-    "Pour vérifier si un participant du chat te suit, Rafflink a besoin d'une autorisation Twitch de plus (lire tes followers). Reconnecte Twitch ; tes réponses sont conservées.",
-  "wizard.reconnect.sub.info":
-    "Pour inscrire les nouveaux abonnés, Rafflink doit pouvoir lire tes abonnés et tes followers. Reconnecte Twitch ; tes réponses sont conservées.",
-  "wizard.reconnect.points.info":
-    "Pour inscrire les viewers qui échangent une récompense de points de chaîne, Rafflink doit pouvoir lire tes récompenses, les échanges, tes abonnés et tes followers. Reconnecte Twitch ; tes réponses sont conservées.",
+  "wizard.reconnect.followers.info":
+    "Pour vérifier qui te suit, Rafflink doit pouvoir lire tes followers. Reconnecte Twitch ; tes réponses sont conservées.",
+  "wizard.reconnect.subs.info":
+    "Pour inscrire les nouveaux abonnés ou donner aux abonnés leurs tickets, Rafflink doit pouvoir lire tes abonnés. Reconnecte Twitch ; tes réponses sont conservées.",
+  "wizard.reconnect.redemptions.info":
+    "Pour inscrire les viewers qui échangent une récompense de points de chaîne, Rafflink doit pouvoir lire tes récompenses et les échanges. Reconnecte Twitch ; tes réponses sont conservées.",
+  "wizard.reconnect.roles.info":
+    "Pour donner aux VIP et aux modérateurs leurs tickets, Rafflink doit pouvoir lire tes VIP et tes modérateurs. Reconnecte Twitch ; tes réponses sont conservées.",
+  "wizard.reconnect.modlinks.info":
+    "Pour vérifier qui modère ta chaîne, Rafflink doit pouvoir lire tes modérateurs. Reconnecte Twitch, puis crée le lien.",
   "wizard.reconnect.points.info.kick":
     "Pour lister tes récompenses de points de chaîne, Rafflink doit pouvoir les lire. Reconnecte Kick ; tes réponses sont conservées.",
   "wizard.reconnect.button": "Reconnecter {platform}",
@@ -1178,7 +1182,7 @@ export const fr: Translation = {
   "privacy.cookies.i5":
     "Le stockage local de ton navigateur conserve ton choix de langue et de thème ainsi que le mode épuré de la page live. Le stockage de session conserve une copie de la page du giveaway que tu as chargée, y compris ton propre état, pendant environ 30 secondes. Aucun des deux ne quitte ton appareil.",
   "privacy.cookies.i7":
-    "rl_entry_scopes : mémorise quelles autorisations supplémentaires (followers pour la participation par le chat, abonnés et récompenses pour la participation par sub et par points) la dernière connexion de streamer dans ce navigateur a accordées, pour que la connexion suivante les redemande ; 400 jours, conservé à la déconnexion.",
+    "rl_entry_scopes : mémorise quelles autorisations supplémentaires (followers, abonnés, récompenses, VIP et modérateurs) la dernière connexion de streamer dans ce navigateur a accordées, pour que la connexion suivante les redemande ; 400 jours, conservé à la déconnexion.",
   "privacy.cookies.i6":
     "rl_mod_* : permet à la personne qui a ouvert un lien de modérateur d'utiliser la page de modération de ce giveaway, 7 jours par défaut ou jusqu'à ce que le streamer révoque le lien. rl_mod_pending : mémorise quel lien attend la connexion Twitch du modérateur, 10 minutes par défaut.",
   "privacy.rights.h": "Tes droits",
@@ -1409,6 +1413,9 @@ export const fr: Translation = {
   "live.mod.who.mods": "Les modérateurs de ma chaîne",
   "live.mod.who.mods.help":
     "Ils se connectent avec Twitch et Rafflink vérifie qu'ils modèrent ta chaîne.",
+  "live.mod.reconnect":
+    "Les liens réservés aux modérateurs demandent encore une autorisation Twitch.",
+  "live.rolesPaused": "Tickets des VIP et des modérateurs en pause. Reconnecte Twitch.",
   "live.mod.who.anyone": "Toute personne qui a le lien",
   "live.mod.create": "Créer un lien",
   "live.mod.new": "Nouveau lien. Copie-le maintenant, il n'est affiché qu'une fois.",

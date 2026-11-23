@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   sqlRows,
@@ -80,7 +81,7 @@ describe("moderator links of the streamer", () => {
   it("answers 404 for another streamer's giveaway and 401 without a session", async () => {
     const { id } = await giveawayWithLink()
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     const foreign = await sameOriginPost(other, `/api/dash/giveaways/${id}/moderator-links`, {
       requireMod: false,
@@ -112,6 +113,24 @@ describe("moderator links of the streamer", () => {
       )
       expect(response.status).toBe(400)
     }
+  })
+
+  it("asks to reconnect before the first mods-only link when the token cannot read moderators", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    // VIP and moderator tickets equal to the viewer's need no roles scope, so the sign-in grants none.
+    const tickets = { ...validRules.tickets, vip: 1, moderator: 1 }
+    const created = await browser.postJson("/api/dash/giveaways", {
+      rules: { ...validRules, tickets },
+    })
+    const { giveaway } = await created.json()
+    const path = `/api/dash/giveaways/${giveaway.id}/moderator-links`
+
+    const modsOnly = await sameOriginPost(browser, path, { requireMod: true })
+    const anyone = await sameOriginPost(browser, path, { requireMod: false })
+
+    expect([modsOnly.status, await modsOnly.json()]).toEqual([422, { error: "reconnect" }])
+    expect(anyone.status).toBe(201)
   })
 
   it("refuses a mods-only link where the platform does not tell who moderates the channel", async () => {
@@ -338,7 +357,7 @@ describe("a revoked moderator link", () => {
   it("can be revoked by its own streamer only", async () => {
     const { id, link, token } = await giveawayWithLink()
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
 
     const revoke = await sameOriginPost(
       other,
@@ -426,7 +445,7 @@ describe("a moderator link that requires a moderator", () => {
   it("answers 503 when the channel's moderators cannot be read", async () => {
     const { token } = await giveawayWithLink(true)
     const other = new Browser(harness)
-    await other.signInAs(users.streamerB.id, "/auth/twitch/streamer/start")
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
     spyOn(console, "warn").mockImplementation(() => {})
     harness.fake.control.failNext("moderators", 503, 2)
 

@@ -78,7 +78,14 @@ export class YouTubeProvider implements PlatformProvider {
     viewer: [readonlyScope],
     moderator: [readonlyScope],
   } as const
-  readonly entryScopes = { chat: [], sub: [], points: [] } as const
+  readonly viewerRuleScopes = { follow: [], tier: [] } as const
+  readonly featureScopes = {
+    followers: [],
+    subs: [],
+    redemptions: [],
+    roles: [],
+    modlinks: [],
+  } as const
 
   constructor(
     private readonly client: YouTubeClient,

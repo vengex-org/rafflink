@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import {
   Browser,
+  fullStreamerStart,
   createGiveaway,
   createHarness,
   InProcessRooms,
@@ -32,7 +33,7 @@ const special: OverlayTheme = { ...defaultOverlayTheme, corners: "square", confe
 
 async function signedIn(userId: string = users.streamerA.id): Promise<Browser> {
   const browser = new Browser(harness)
-  await browser.signInAs(userId, "/auth/twitch/streamer/start")
+  await browser.signInAs(userId, fullStreamerStart)
   return browser
 }
 

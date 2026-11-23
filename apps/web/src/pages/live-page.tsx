@@ -4,17 +4,18 @@ import { groups, type Tickets } from "@rafflink/core/domain/groups"
 import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { liveSnapshotPath, parseLiveSnapshot } from "../api/client.ts"
 import { ActorLog } from "../components/actor-log.tsx"
-import { ActivityIcon, AlertIcon, EyeOffIcon } from "../components/icons.tsx"
+import { ActivityIcon, AlertIcon, EyeOffIcon, LogInIcon } from "../components/icons.tsx"
 import { EntrantsSection, Tiers } from "../components/entrants-table.tsx"
 import { ClaimStatus, isUnsettled, LiveActions, LiveSettings } from "../components/live-bar.tsx"
 import { LiveBrand, LiveFrame, LiveTopBar } from "../components/live-frame.tsx"
 import { LiveStage } from "../components/live-stage.tsx"
-import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
+import { Failed, Loading, Notice, NotFound, SignIn, Status } from "../components/notice.tsx"
 import { WinnerAnswersPanel } from "../components/winner-answers.tsx"
 import type { GiveawayView } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { findBySeq } from "../lib/entrant-list.ts"
+import { featureReconnectPath, livePath } from "../lib/routes.ts"
 import { readStored, writeStored } from "../lib/safe-storage.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useEntrants } from "../lib/use-entrants.ts"
@@ -174,6 +175,8 @@ export function LiveControls({
               <p>{t(entryWayOff)}</p>
             </section>
           ) : null}
+          {/* Only the streamer can reconnect, so a moderator link's page leaves it out. */}
+          {snapshot.rolesPaused && winnerAnswers ? <RolesPausedNotice id={id} /> : null}
           {rerollOver !== null && snapshot.winners.some(isUnsettled) ? (
             <section className="card banner" data-tone="warning">
               <span className="state-icon">
@@ -349,4 +352,26 @@ function currentWinner(winners: readonly LiveWinner[]): LiveWinner | null {
   const open = winners.filter((winner) => winner.claim.state === "waiting")
   const standing = standingWinners(winners)
   return open.at(-1) ?? standing.at(-1) ?? null
+}
+
+/**
+ * The streamer's token cannot read VIPs and moderators, so they enter with viewer tickets until the streamer
+ * reconnects; entries go on meanwhile and the notice goes once a role refresh succeeds.
+ */
+function RolesPausedNotice({ id }: { readonly id: string }) {
+  const { t } = useI18n()
+  return (
+    <Notice tone="warning">
+      <p>{t("live.rolesPaused")}</p>
+      <div className="notice-action">
+        <a
+          className="button outlined"
+          href={featureReconnectPath("twitch", ["roles"], livePath(id))}
+        >
+          <LogInIcon />
+          {t("wizard.reconnect.button", { platform: "Twitch" })}
+        </a>
+      </div>
+    </Notice>
+  )
 }

@@ -55,7 +55,7 @@ export const pl: Translation = {
   "home.text": "Widzowie zgłaszają się jednym kliknięciem, a ty losujesz na oczach czatu.",
   "home.login": "Zaloguj się i zacznij",
   "home.stage.toClaim": "na odebranie",
-  "home.reads": "Odczytujemy tylko twoją nazwę, VIP-ów, moderatorów i czat.",
+  "home.reads": "Odczytujemy tylko twoją nazwę i czat.",
   "home.worksWith": "Działa z",
   "home.trust.supportKoFi": "Wesprzyj na Ko-fi",
   "home.trust.support": "Wesprzyj Rafflink",
@@ -981,12 +981,16 @@ export const pl: Translation = {
   "wizard.entry.chat": "Tylko czat",
   "wizard.entry.chat.help":
     "Widzowie zgłaszają się tylko przez wpisanie słowa kluczowego na twoim czacie. Strona pokazuje słowo kluczowe i pozwala sprawdzić, czy są w rozdaniu.",
-  "wizard.reconnect.chat.info":
-    "Aby sprawdzić, czy osoba zgłoszona przez czat cię obserwuje, Rafflink potrzebuje jeszcze jednego uprawnienia Twitcha (odczyt obserwujących). Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
-  "wizard.reconnect.sub.info":
-    "Aby zgłaszać nowych subskrybentów, Rafflink musi czytać twoich subskrybentów i obserwujących. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
-  "wizard.reconnect.points.info":
-    "Aby zgłaszać widzów, którzy wymieniają punkty kanału na nagrodę, Rafflink musi czytać twoje nagrody, wymiany, subskrybentów i obserwujących. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
+  "wizard.reconnect.followers.info":
+    "Aby sprawdzić, kto cię obserwuje, Rafflink musi czytać twoich obserwujących. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
+  "wizard.reconnect.subs.info":
+    "Aby zgłaszać nowych subskrybentów lub dać subskrybentom ich losy, Rafflink musi czytać twoich subskrybentów. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
+  "wizard.reconnect.redemptions.info":
+    "Aby zgłaszać widzów, którzy wymieniają punkty kanału na nagrodę, Rafflink musi czytać twoje nagrody i wymiany. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
+  "wizard.reconnect.roles.info":
+    "Aby dać VIP-om i moderatorom ich losy, Rafflink musi czytać twoich VIP-ów i moderatorów. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
+  "wizard.reconnect.modlinks.info":
+    "Aby sprawdzić, kto moderuje twój kanał, Rafflink musi czytać twoich moderatorów. Połącz ponownie Twitch, a potem utwórz link.",
   "wizard.reconnect.points.info.kick":
     "Aby pokazać listę twoich nagród za punkty kanału, Rafflink musi je czytać. Połącz ponownie Kick; twoje odpowiedzi zostaną.",
   "wizard.reconnect.button": "Połącz ponownie {platform}",
@@ -1144,7 +1148,7 @@ export const pl: Translation = {
   "privacy.cookies.i5":
     "Pamięć lokalna twojej przeglądarki przechowuje wybór języka i motywu oraz tryb czysty strony na żywo. Pamięć sesji przechowuje przez około 30 sekund kopię wczytanej strony rozdania, w tym twój własny stan na niej. Żadna z nich nie opuszcza twojego urządzenia.",
   "privacy.cookies.i7":
-    "rl_entry_scopes: zapamiętuje, na jakie dodatkowe uprawnienia (obserwujący dla zgłoszeń przez czat, subskrybenci i nagrody dla zgłoszeń przez suby i punkty) zezwoliło ostatnie logowanie streamera w tej przeglądarce, aby następne logowanie znów o nie poprosiło; 400 dni, zostaje po wylogowaniu.",
+    "rl_entry_scopes: zapamiętuje, na jakie dodatkowe uprawnienia (obserwujący, subskrybenci, nagrody, VIP-y i moderatorzy) zezwoliło ostatnie logowanie streamera w tej przeglądarce, aby następne logowanie znów o nie poprosiło; 400 dni, zostaje po wylogowaniu.",
   "privacy.cookies.i6":
     "rl_mod_*: pozwala osobie, która otworzyła link moderatora, korzystać ze strony moderatora tego rozdania, domyślnie 7 dni albo do czasu, gdy streamer unieważni link. rl_mod_pending: zapamiętuje, który link czeka na logowanie moderatora przez Twitch, domyślnie 10 minut.",
   "privacy.rights.h": "Twoje prawa",
@@ -1366,6 +1370,9 @@ export const pl: Translation = {
   "live.mod.who.mods": "Moderatorzy mojego kanału",
   "live.mod.who.mods.help":
     "Logują się przez Twitch, a Rafflink sprawdza, czy moderują twój kanał.",
+  "live.mod.reconnect":
+    "Linki tylko dla moderatorów potrzebują jeszcze jednego uprawnienia Twitch.",
+  "live.rolesPaused": "Losy dla VIP-ów i moderatorów wstrzymane. Połącz ponownie Twitch.",
   "live.mod.who.anyone": "Każdy z linkiem",
   "live.mod.create": "Utwórz link",
   "live.mod.new": "Nowy link. Skopiuj go teraz, jest pokazywany tylko raz.",

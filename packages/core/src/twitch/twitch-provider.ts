@@ -30,15 +30,21 @@ export class TwitchProvider implements PlatformProvider {
   readonly platform = "twitch"
   readonly capabilities: PlatformCapabilities = everyCapability
   readonly scopes = {
-    streamer: ["openid", "channel:read:vips", "moderation:read", "user:read:chat"],
-    viewer: ["openid", "user:read:subscriptions", "user:read:follows"],
+    streamer: ["openid", "user:read:chat"],
+    viewer: ["openid"],
     moderator: ["openid"],
   } as const
-  // The check of a queued entrant reads the follow with the streamer's token, and a redeemer's tier too.
-  readonly entryScopes = {
-    chat: ["moderator:read:followers"],
-    sub: ["moderator:read:followers", "channel:read:subscriptions"],
-    points: ["moderator:read:followers", "channel:read:subscriptions", "channel:read:redemptions"],
+  readonly viewerRuleScopes = {
+    follow: ["user:read:follows"],
+    tier: ["user:read:subscriptions"],
+  } as const
+  // Chat, sub and points entrants never sign in, so their follow and a redeemer's tier are read with the streamer's token.
+  readonly featureScopes = {
+    followers: ["moderator:read:followers"],
+    subs: ["channel:read:subscriptions"],
+    redemptions: ["channel:read:redemptions"],
+    roles: ["channel:read:vips", "moderation:read"],
+    modlinks: ["moderation:read"],
   } as const
   private readonly badges: ChannelBadges
 

@@ -1,10 +1,6 @@
 import type { Group } from "../domain/groups.ts"
-import {
-  channelEntryVias,
-  type ChannelEntryVia,
-  type PointsReward,
-  type ViewerFacts,
-} from "../domain/rules.ts"
+import type { PointsReward, ViewerFacts } from "../domain/rules.ts"
+import { streamerFeatures, type StreamerFeature } from "../domain/streamer-features.ts"
 import type { Clock, Instant, SocketConnector } from "../ports.ts"
 import type { ChannelEntryEvent, ChatMessage, ChatSourceFactory } from "./chat-source.ts"
 
@@ -80,6 +76,8 @@ export interface ExchangedCode {
   readonly expiresInSeconds: number
   /** The OpenID Connect `id_token`; `null` when the platform or the scopes give none. */
   readonly idToken: string | null
+  /** The scopes the platform granted, as its answer lists them; `null` when the answer names none. */
+  readonly scopes: readonly string[] | null
 }
 
 /** What the sign-in callback proves the user with besides the code. */
@@ -146,10 +144,16 @@ export interface PlatformProvider {
   /** The scopes each sign-in asks for; the streamer's are stored with the streamer's token. */
   readonly scopes: Readonly<Record<SignInPurpose, readonly [string, ...string[]]>>
   /**
-   * The streamer scopes each channel entry way needs on top of `scopes.streamer`, asked only when the
-   * streamer turns that way on. Each includes what the check of a queued entrant reads (follow, tier).
+   * The viewer scopes a giveaway's rules add to `scopes.viewer`: the follow read when a follow changes who
+   * enters or their tickets, the tier read when a tier does. Each viewer's own token reads them, so every
+   * viewer has their own rate limit.
    */
-  readonly entryScopes: Readonly<Record<ChannelEntryVia, readonly string[]>>
+  readonly viewerRuleScopes: Readonly<Record<"follow" | "tier", readonly string[]>>
+  /**
+   * The streamer scopes each feature needs on top of `scopes.streamer`, asked only when the streamer first
+   * uses it; empty for a feature the platform serves without one.
+   */
+  readonly featureScopes: Readonly<Record<StreamerFeature, readonly string[]>>
   authorizeUrl(params: AuthorizeParams): string
   /**
    * Trades the sign-in's code, with its PKCE verifier, for tokens. Not retried: a code is single use,
@@ -165,12 +169,13 @@ export interface PlatformProvider {
   refreshTokens(refreshToken: string): Promise<ExchangedCode>
   userProfile(accessToken: string): Promise<UserProfile>
   validate(accessToken: string): Promise<TokenValidation>
+  /** Whether the viewer of `accessToken` follows the channel, asked with their own token. */
   follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
-  /** Whether `userId` follows the channel, asked with the streamer's token instead of the viewer's. */
+  /** Whether `userId` follows the channel, asked with the streamer's token, for an entrant who never signed in. */
   channelFollower(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
   /** The profiles of the accounts that exist among `userIds`; a missing account is absent from the answer. */
   userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]>
-  /** The tier group of the viewer's subscription, `null` when not subscribed. */
+  /** The tier group of the viewer's subscription, asked with their own token; `null` when not subscribed. */
   subscriptionTier(
     accessToken: string,
     broadcasterId: string,
@@ -255,13 +260,13 @@ export function configuredProviders(providers: PlatformProviders): readonly Plat
   return platforms.flatMap((platform) => providers[platform] ?? [])
 }
 
-/** The entry ways whose scopes all are among a token's `scopes`. */
-export function readyEntryWays(
+/** The features whose scopes all are among a token's `scopes`. */
+export function grantedFeatures(
   provider: PlatformProvider,
   scopes: readonly string[],
-): readonly ChannelEntryVia[] {
-  return channelEntryVias.filter((way) =>
-    provider.entryScopes[way].every((scope) => scopes.includes(scope)),
+): readonly StreamerFeature[] {
+  return streamerFeatures.filter((feature) =>
+    provider.featureScopes[feature].every((scope) => scopes.includes(scope)),
   )
 }
 

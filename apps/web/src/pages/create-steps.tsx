@@ -1,6 +1,6 @@
 import { useId, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import type { Group } from "@rafflink/core/domain/groups"
-import { channelEntryVias, type ChannelEntryVia } from "@rafflink/core/domain/rules"
+import type { StreamerFeature } from "@rafflink/core/domain/streamer-features"
 import { winnerFieldKinds } from "@rafflink/core/domain/winner-form"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import {
@@ -33,7 +33,7 @@ import {
   ticketText,
   whoCanEnterText,
 } from "../lib/rules-text.ts"
-import { dashboardNewPath, entryReconnectPath } from "../lib/routes.ts"
+import { dashboardNewPath, featureReconnectPath } from "../lib/routes.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
 import { useStreamerSession } from "../components/streamer-session.tsx"
@@ -44,6 +44,8 @@ import {
   claimSecondsOf,
   entryWaysOffered,
   initialValues,
+  missingFeatures,
+  neededFeatures,
   oddsOf,
   ticketGroups,
   type ClaimPreset,
@@ -269,6 +271,7 @@ export function RulesStep({
           issue={issue}
           shown={ticketGroups(values, capabilities)}
         />
+        <FeaturesReconnectNote values={values} issue={issue} />
         <RecentWinnersField values={values} setValues={setValues} issue={issue} />
         {capabilities.accountAge ? (
           <StepperField
@@ -398,17 +401,6 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
   ]
   const options = allOptions.filter((option) => entryWaysOffered(option.value, capabilities))
   const usesChat = values.entryWays !== "page"
-  const usesWay: Readonly<Record<ChannelEntryVia, boolean>> = {
-    chat: usesChat,
-    sub: values.subEntry,
-    points: values.pointsReward !== null,
-  }
-  const used = channelEntryVias.filter((way) => usesWay[way])
-  // The reward list asks for the points scopes itself.
-  const missing =
-    streamer === null
-      ? []
-      : used.filter((way) => way !== "points" && !streamer.readyEntryWays.includes(way))
   // Twitch gives subs and channel points to Affiliates and Partners only; the reward list says which a channel is.
   const { result } = useLoad(getPointsRewards)
   const rewards = result.state === "ready" && result.value !== "unauthorized" ? result.value : null
@@ -470,21 +462,9 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
             </>
           ) : null}
           {capabilities.pointsEntry && rewards !== null ? (
-            <PointsRewardField
-              values={values}
-              setValues={setValues}
-              used={used}
-              rewards={rewards}
-            />
+            <PointsRewardField values={values} setValues={setValues} rewards={rewards} />
           ) : null}
         </fieldset>
-      ) : null}
-      {missing.length > 0 ? (
-        <ReconnectNote
-          reasons={missing.map((way) => t(`wizard.reconnect.${way}.info`))}
-          ways={used}
-          values={values}
-        />
       ) : null}
       {errorOf(i18n, issue, "subEntry") === null ? null : (
         <p className="field-error">{errorOf(i18n, issue, "subEntry")}</p>
@@ -500,12 +480,8 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
 function PointsRewardField({
   values,
   setValues,
-  used,
   rewards: answer,
-}: Omit<StepProps, "issue"> & {
-  readonly used: readonly ChannelEntryVia[]
-  readonly rewards: PointsRewardsJson
-}) {
+}: Omit<StepProps, "issue"> & { readonly rewards: PointsRewardsJson }) {
   const { t } = useI18n()
   const { streamer } = useStreamerSession()
   switch (answer.kind) {
@@ -518,10 +494,10 @@ function PointsRewardField({
             t(
               streamer?.platform === "kick"
                 ? "wizard.reconnect.points.info.kick"
-                : "wizard.reconnect.points.info",
+                : "wizard.reconnect.redemptions.info",
             ),
           ]}
-          ways={[...used, "points"]}
+          features={[...neededFeatures(values), "redemptions"]}
           values={values}
         />
       )
@@ -618,16 +594,42 @@ function YouTubeQuotaNote({ closedByHand }: { readonly closedByHand: boolean }) 
 }
 
 /**
- * Asks the streamer to sign in again with the scopes of `ways`, with what each scope is for behind the (i);
+ * The rules that need a scope the token lacks, a follower rule or VIP tickets for example, ask to reconnect
+ * once for all of them. The reward list asks for its own scope, so channel points are left to it.
+ */
+function FeaturesReconnectNote({ values, issue }: Pick<StepProps, "values" | "issue">) {
+  const i18n = useI18n()
+  const { streamer } = useStreamerSession()
+  if (streamer === null) return null
+  const missing = missingFeatures(values, streamer.grantedFeatures).filter(
+    (feature) => feature !== "redemptions",
+  )
+  if (missing.length === 0) return null
+  return (
+    <>
+      <ReconnectNote
+        reasons={missing.map((feature) => i18n.t(`wizard.reconnect.${feature}.info`))}
+        features={neededFeatures(values)}
+        values={values}
+      />
+      {errorOf(i18n, issue, "reconnect") === null ? null : (
+        <p className="field-error">{errorOf(i18n, issue, "reconnect")}</p>
+      )}
+    </>
+  )
+}
+
+/**
+ * Asks the streamer to sign in again with the scopes of `features`, with what each scope is for behind the (i);
  * the answers wait in session storage meanwhile.
  */
 function ReconnectNote({
   reasons,
-  ways,
+  features,
   values,
 }: {
   readonly reasons: readonly string[]
-  readonly ways: readonly ChannelEntryVia[]
+  readonly features: readonly StreamerFeature[]
   readonly values: Values
 }) {
   const { t } = useI18n()
@@ -643,7 +645,7 @@ function ReconnectNote({
       <div className="notice-action">
         <a
           className="button outlined"
-          href={entryReconnectPath(platform, ways, dashboardNewPath({ step: 2 }))}
+          href={featureReconnectPath(platform, features, dashboardNewPath({ step: 2 }))}
           onClick={() => keepDraftForReconnect(values)}
         >
           <LogInIcon />

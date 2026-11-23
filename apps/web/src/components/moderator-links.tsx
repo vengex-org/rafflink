@@ -5,10 +5,15 @@ import { reportError } from "../lib/error-reporting.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { ModeratorLinksApi } from "../lib/live-api.ts"
 import { moderatorUrl } from "../lib/links.ts"
+import { platformNames } from "../lib/platform-name.ts"
+import { featureReconnectPath, livePath } from "../lib/routes.ts"
 import type { Doing } from "./live-bar.tsx"
 import { CopyLink } from "./copy-field.tsx"
 import { Segmented, type SegmentOption } from "./form-fields.tsx"
-import { LockIcon } from "./icons.tsx"
+import { LockIcon, LogInIcon } from "./icons.tsx"
+import { InfoTip } from "./info-tip.tsx"
+import { Notice } from "./notice.tsx"
+import { useStreamerSession } from "./streamer-session.tsx"
 
 /** The short name of a link on the live page, the same in the list and in "who did what". */
 export function linkName(linkId: string): string {
@@ -40,6 +45,7 @@ export function ModeratorLinks({
   const [modsChosen, setModsChosen] = useState(true)
   const requireMod = modsOffered && modsChosen
   const [made, setMade] = useState<string | null>(null)
+  const [reconnect, setReconnect] = useState(false)
   const whoOptions: readonly SegmentOption<"mods" | "anyone">[] = [
     {
       value: "mods",
@@ -65,7 +71,8 @@ export function ModeratorLinks({
     const outcome = await run(
       async () => {
         const created = await api.create(id, requireMod)
-        if (created === "rejected") return created
+        setReconnect(created === "reconnect")
+        if (created === "rejected" || created === "reconnect") return created
         setMade(moderatorUrl(created.token))
         return "created"
       },
@@ -114,6 +121,7 @@ export function ModeratorLinks({
         >
           {t("live.mod.create")}
         </button>
+        {reconnect && requireMod ? <ModLinksReconnect id={id} /> : null}
         {made === null ? null : (
           <CopyLink label={t("live.mod.new")} value={made} buttonLabel={t("live.mod.copy")} clipped>
             {made}
@@ -127,6 +135,31 @@ export function ModeratorLinks({
         />
       </div>
     </>
+  )
+}
+
+/** A link for moderators only needs the moderators scope, which the streamer grants by signing in again. */
+function ModLinksReconnect({ id }: { readonly id: string }) {
+  const { t } = useI18n()
+  const { streamer } = useStreamerSession()
+  const platform = streamer?.platform ?? "twitch"
+  const button = t("wizard.reconnect.button", { platform: platformNames[platform] })
+  return (
+    <Notice tone="warning">
+      <p>
+        {t("live.mod.reconnect")}{" "}
+        <InfoTip topic={button} text={t("wizard.reconnect.modlinks.info")} />
+      </p>
+      <div className="notice-action">
+        <a
+          className="button outlined"
+          href={featureReconnectPath(platform, ["modlinks"], livePath(id))}
+        >
+          <LogInIcon />
+          {button}
+        </a>
+      </div>
+    </Notice>
   )
 }
 

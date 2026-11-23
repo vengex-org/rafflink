@@ -77,7 +77,14 @@ export class KickProvider implements PlatformProvider {
     moderator: ["user:read"],
   } as const
   // Chat and sub events come through the app's own subscriptions; only the reward list needs the streamer's token.
-  readonly entryScopes = { chat: [], sub: [], points: ["channel:rewards:read"] } as const
+  readonly viewerRuleScopes = { follow: [], tier: [] } as const
+  readonly featureScopes = {
+    followers: [],
+    subs: [],
+    redemptions: ["channel:rewards:read"],
+    roles: [],
+    modlinks: [],
+  } as const
   private readonly key: KickWebhookKey
   private readonly orphans: KickOrphanSubscriptions
 

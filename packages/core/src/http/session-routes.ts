@@ -2,12 +2,12 @@ import { Hono, type Context, type MiddlewareHandler } from "hono"
 import type { StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import type { ResolvedConfig } from "../config.ts"
-import type { ChannelEntryVia } from "../domain/rules.ts"
+import type { StreamerFeature } from "../domain/streamer-features.ts"
 import {
   configuredProviders,
   enabledProviderFor,
+  grantedFeatures,
   providerFor,
-  readyEntryWays,
 } from "../platform/provider.ts"
 import type { AppDeps } from "./deps.ts"
 import type { OperatorJson, SessionJson } from "./json.ts"
@@ -34,7 +34,7 @@ export function sessionRoutes(deps: AppDeps): Hono {
               canCreate: await canCreateGiveaways(deps.config, deps.admins, current.streamer),
               platform: current.session.platform,
               capabilities: providerFor(deps.platforms, current.session.platform).capabilities,
-              readyEntryWays: await grantedEntryWays(deps, current.session),
+              grantedFeatures: await streamerFeaturesOf(deps, current.session),
               publicHistory: current.streamer.publicHistory,
               historyIndexed: current.streamer.historyIndexed,
               admin: await deps.admins.isAdmin(
@@ -57,13 +57,14 @@ export function sessionRoutes(deps: AppDeps): Hono {
   return app
 }
 
-async function grantedEntryWays(
+/** The features whose scopes the streamer's stored token holds; none without a token. */
+export async function streamerFeaturesOf(
   deps: AppDeps,
   session: StreamerSession,
-): Promise<readonly ChannelEntryVia[]> {
+): Promise<readonly StreamerFeature[]> {
   const token = await deps.accounts.findStreamerToken(session.streamerId)
   if (token === null) return []
-  return readyEntryWays(providerFor(deps.platforms, session.platform), token.scopes)
+  return grantedFeatures(providerFor(deps.platforms, session.platform), token.scopes)
 }
 
 function operatorOf(config: ResolvedConfig): OperatorJson | null {

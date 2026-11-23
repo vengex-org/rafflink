@@ -3,6 +3,7 @@ import type { AccountStore, Giveaway } from "../accounts/account-store.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { accountAgeDays as ageInDays } from "../domain/rules.ts"
+import { followMatters, tierMatters } from "../domain/streamer-features.ts"
 import { jitteredDelay } from "../lib/jittered-delay.ts"
 import type { Clock, RateLimiter, Random } from "../ports.ts"
 import type { QueuedCode } from "../queue/token-queue.ts"
@@ -46,7 +47,7 @@ export interface EntryDeps {
 }
 
 /** The giveaway fields the routine needs; the sign-in callback has already loaded the giveaway. */
-export type EntryTarget = Pick<Giveaway, "id" | "broadcasterId" | "blockListVersion">
+export type EntryTarget = Pick<Giveaway, "id" | "broadcasterId" | "blockListVersion" | "rules">
   & ExclusionTarget
 
 /**
@@ -138,9 +139,14 @@ async function readViewer(
   if (userId === target.broadcasterId) {
     return { ...identity, isFollower: false, subTier: null, accountAgeDays }
   }
+  // The viewer granted the follow and subscription reads only when the rules weigh them.
   const [isFollower, tier] = await Promise.all([
-    provider.follows(accessToken, target.broadcasterId, userId),
-    provider.subscriptionTier(accessToken, target.broadcasterId, userId),
+    followMatters(target.rules)
+      ? provider.follows(accessToken, target.broadcasterId, userId)
+      : Promise.resolve(false),
+    tierMatters(target.rules)
+      ? provider.subscriptionTier(accessToken, target.broadcasterId, userId)
+      : Promise.resolve(null),
   ])
   return {
     ...identity,

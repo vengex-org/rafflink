@@ -1,6 +1,6 @@
 import { expect } from "bun:test"
 import type { Entrant } from "../../src/room/rows.ts"
-import { Browser } from "./browser.ts"
+import type { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { scenario, type CreatedGiveaway, type World } from "./world.ts"
@@ -98,15 +98,9 @@ export function chatEntryScenarios(context: ContractContext): void {
   )
 }
 
-// A streamer who signed in with the scopes chat entry needs, as the wizard's "Reconnect Twitch" does.
-async function chatEntryStreamer(world: World, target: ContractTarget): Promise<Browser> {
-  const streamer = new Browser(target.url)
-  await streamer.signInAs(
-    users.streamer.id,
-    "/auth/twitch/streamer/start?entry=chat",
-    world.twitch.fake.control,
-  )
-  return streamer
+// A streamer who signed in with the followers scope the follower tickets need, as the wizard's "Reconnect Twitch" does.
+function chatEntryStreamer(world: World, target: ContractTarget): Promise<Browser> {
+  return world.signInStreamer(target, users.streamer.id, ["followers", "subs", "roles"])
 }
 
 async function entrants(giveaway: CreatedGiveaway): Promise<readonly Entrant[]> {

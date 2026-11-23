@@ -10,6 +10,7 @@ import type { Hono } from "hono"
 import { AdminDirectory } from "../src/admin/admin-directory.ts"
 import { AccountStore } from "../src/accounts/account-store.ts"
 import { resolveConfig, type ResolvedConfig } from "../src/config.ts"
+import { streamerFeatures } from "../src/domain/streamer-features.ts"
 import type { AppDeps } from "../src/http/deps.ts"
 import { createApp, type SpaTemplateLoader } from "../src/http/create-app.ts"
 import { codeAlphabet, codeLength } from "../src/lib/codes.ts"
@@ -322,6 +323,9 @@ export const validTickets = {
   moderator: 7,
 }
 
+/** A Twitch streamer's sign-in that grants every feature's scopes, as after the wizard's "Reconnect Twitch". */
+export const fullStreamerStart = `/auth/twitch/streamer/start?features=${streamerFeatures.join(",")}`
+
 export const validRules = {
   tickets: validTickets,
   subsOnly: false,
@@ -603,7 +607,7 @@ export async function createGiveaway(
   overrides: Record<string, unknown> = {},
 ) {
   const browser = new Browser(harness)
-  await browser.signInAs(streamerId, "/auth/twitch/streamer/start")
+  await browser.signInAs(streamerId, fullStreamerStart)
   const response = await browser.postJson("/api/dash/giveaways", {
     title: "Giveaway",
     prize: "Prize",

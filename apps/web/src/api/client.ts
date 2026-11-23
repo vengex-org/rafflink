@@ -1,8 +1,8 @@
 import { parseActor, type Actor } from "@rafflink/core/domain/actor"
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { parseOverlayTheme, type OverlayTheme } from "@rafflink/core/domain/overlay-theme"
+import { streamerFeatures } from "@rafflink/core/domain/streamer-features"
 import {
-  channelEntryVias,
   ineligibleReasons,
   recentWinnersKinds,
   type GiveawayRules,
@@ -195,7 +195,7 @@ export type CreateResult =
   | { readonly kind: "unauthorized" }
   /** 403 `streamer_not_approved`: signup is closed and no admin approved the account. */
   | { readonly kind: "not-approved" }
-  /** 422 `reconnect`: sub or points entry is on and the streamer's token lacks its scopes. */
+  /** 422 `reconnect`: the rules need a feature whose scopes the streamer's token lacks. */
   | { readonly kind: "reconnect" }
   /** 409 `youtube-quota`: reading the YouTube chat until entries close would pass today's units. */
   | { readonly kind: "youtube-quota" }
@@ -245,9 +245,9 @@ export async function getSession(): Promise<SessionJson> {
       canCreate: bool(streamer, "canCreate"),
       platform: platformOf(streamer, "platform"),
       capabilities: capabilitiesOf(child(streamer, "capabilities")),
-      readyEntryWays: textList(streamer, "readyEntryWays").map((way) => {
-        const known = channelEntryVias.find((item) => item === way)
-        if (known === undefined) throw new ApiShapeError("readyEntryWays")
+      grantedFeatures: textList(streamer, "grantedFeatures").map((name) => {
+        const known = streamerFeatures.find((feature) => feature === name)
+        if (known === undefined) throw new ApiShapeError("grantedFeatures")
         return known
       }),
       publicHistory: bool(streamer, "publicHistory"),
@@ -683,12 +683,16 @@ export async function listModeratorLinks(id: string): Promise<ModeratorLinkJson[
   return list(record(body, "moderatorLinks"), "links", parseModeratorLink)
 }
 
-/** A new link and the token its URL carries; the token is never shown again. */
+/**
+ * A new link and the token its URL carries; the token is never shown again. `reconnect` when a link for
+ * moderators only needs a scope the streamer's token lacks.
+ */
 export async function createModeratorLink(
   id: string,
   requireMod: boolean,
-): Promise<{ readonly link: ModeratorLinkJson; readonly token: string } | Rejected> {
+): Promise<{ readonly link: ModeratorLinkJson; readonly token: string } | Rejected | "reconnect"> {
   const { status, body } = await postJson(`${dashPath(id)}/moderator-links`, { requireMod })
+  if (status === 422 && record(body, "moderatorLink").error === "reconnect") return "reconnect"
   if (status !== 201) return "rejected"
   const source = record(body, "moderatorLink")
   return { link: parseModeratorLink(child(source, "link")), token: text(source, "token") }
@@ -1440,6 +1444,7 @@ function parseSharedSnapshotFields(source: Json) {
     chatEntryOff: bool(source, "chatEntryOff"),
     subEntryOff: bool(source, "subEntryOff"),
     pointsEntryOff: bool(source, "pointsEntryOff"),
+    rolesPaused: bool(source, "rolesPaused"),
   }
 }
 

@@ -55,7 +55,7 @@ export const sk: Translation = {
   "home.text": "Diváci sa zapoja jedným klikom a ty losuješ pred chatom.",
   "home.login": "Prihlásiť sa a začať",
   "home.stage.toClaim": "na prevzatie",
-  "home.reads": "Čítame len tvoje meno, VIP, moderátorov a chat.",
+  "home.reads": "Čítame len tvoje meno a chat.",
   "home.worksWith": "Funguje s",
   "home.trust.supportKoFi": "Podpor na Ko-fi",
   "home.trust.support": "Podpor Rafflink",
@@ -970,12 +970,16 @@ export const sk: Translation = {
   "wizard.entry.chat": "Len chat",
   "wizard.entry.chat.help":
     "Diváci sa zapoja len napísaním kľúčového slova do tvojho chatu. Stránka ukáže kľúčové slovo a dovolí im overiť si, či sú v súťaži.",
-  "wizard.reconnect.chat.info":
-    "Aby Rafflink overil, či ťa divák z chatu sleduje, potrebuje ešte jedno povolenie Twitchu (čítať tvojich sledujúcich). Pripoj Twitch znova, tvoje odpovede ostanú.",
-  "wizard.reconnect.sub.info":
-    "Aby Rafflink zapojil nových odberateľov, potrebuje čítať tvojich odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
-  "wizard.reconnect.points.info":
-    "Aby Rafflink zapojil divákov, ktorí uplatnia odmenu za body kanála, potrebuje čítať tvoje odmeny, ich uplatnenia, odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.followers.info":
+    "Aby Rafflink overil, kto ťa sleduje, potrebuje čítať tvojich sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.subs.info":
+    "Aby Rafflink zapojil nových predplatiteľov alebo im dal ich tikety, potrebuje čítať tvojich predplatiteľov. Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.redemptions.info":
+    "Aby Rafflink zapojil divákov, ktorí uplatnia odmenu za body kanála, potrebuje čítať tvoje odmeny a ich uplatnenia. Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.roles.info":
+    "Aby Rafflink dal VIP a moderátorom ich tikety, potrebuje čítať tvojich VIP a moderátorov. Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.modlinks.info":
+    "Aby Rafflink overil, kto moderuje tvoj kanál, potrebuje čítať tvojich moderátorov. Pripoj Twitch znova a potom vytvor odkaz.",
   "wizard.reconnect.points.info.kick":
     "Aby Rafflink ukázal tvoje odmeny za body kanála, potrebuje ich čítať. Pripoj Kick znova, tvoje odpovede ostanú.",
   "wizard.reconnect.button": "Pripojiť {platform} znova",
@@ -1134,7 +1138,7 @@ export const sk: Translation = {
   "privacy.cookies.i5":
     "Lokálne úložisko prehliadača si pamätá tvoj výber jazyka a témy a čistý režim živej stránky. Úložisko relácie drží približne 30 sekúnd kópiu načítanej stránky giveawayu vrátane tvojho stavu v nej. Zariadenie neopúšťa ani jedno.",
   "privacy.cookies.i7":
-    "rl_entry_scopes: pamätá si, ktoré povolenia navyše (sledujúci pre zapojenie cez chat, odberatelia a odmeny pre zapojenie cez sub a body kanála) povolilo posledné prihlásenie streamera v tomto prehliadači, aby ich ďalšie prihlásenie pýtalo znova; 400 dní, ostáva aj po odhlásení.",
+    "rl_entry_scopes: pamätá si, ktoré povolenia navyše (sledujúci, predplatitelia, odmeny, VIP a moderátori) povolilo posledné prihlásenie streamera v tomto prehliadači, aby ich ďalšie prihlásenie pýtalo znova; 400 dní, ostáva aj po odhlásení.",
   "privacy.cookies.i6":
     "rl_mod_*: umožní tomu, kto otvoril odkaz pre moderátora, používať stránku moderátora daného giveawayu, predvolene 7 dní alebo kým streamer odkaz nezruší. rl_mod_pending: pamätá si, ktorý odkaz čaká na prihlásenie moderátora cez Twitch, predvolene 10 minút.",
   "privacy.rights.h": "Tvoje práva",
@@ -1352,6 +1356,8 @@ export const sk: Translation = {
   "live.mod.who": "Kto ho môže použiť",
   "live.mod.who.mods": "Moderátori môjho kanála",
   "live.mod.who.mods.help": "Prihlásia sa cez Twitch a Rafflink overí, že moderujú tvoj kanál.",
+  "live.mod.reconnect": "Odkazy len pre moderátorov potrebujú ešte jedno povolenie pre Twitch.",
+  "live.rolesPaused": "Tikety pre VIP a moderátorov sú pozastavené. Pripoj Twitch znova.",
   "live.mod.who.anyone": "Ktokoľvek s odkazom",
   "live.mod.create": "Vytvoriť odkaz",
   "live.mod.new": "Nový odkaz. Skopíruj si ho teraz, zobrazí sa iba raz.",

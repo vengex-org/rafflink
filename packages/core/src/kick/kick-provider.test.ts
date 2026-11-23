@@ -43,7 +43,12 @@ describe("KickProvider", () => {
   it("proves the user of the exchanged token and reads the username as login and display name", async () => {
     const tokens = await userTokens(world, kickViewer, provider.scopes.viewer)
 
-    const userId = await provider.verifySignIn({ ...tokens, expiresInSeconds: 60, idToken: null })
+    const userId = await provider.verifySignIn({
+      ...tokens,
+      expiresInSeconds: 60,
+      idToken: null,
+      scopes: null,
+    })
     const profile = await provider.userProfile(tokens.accessToken)
 
     expect(userId).toBe(kickViewer.id)
@@ -104,7 +109,7 @@ describe("KickProvider", () => {
     ])
     const tokens = await userTokens(world, kickStreamer, [
       ...provider.scopes.streamer,
-      ...provider.entryScopes.points,
+      ...provider.featureScopes.redemptions,
     ])
 
     expect(await provider.pointsRewards(tokens.accessToken)).toEqual([

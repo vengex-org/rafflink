@@ -231,7 +231,7 @@ export function kickScenarios(context: ContractContext): void {
       const streamer = new Browser(target.url)
       await streamer.signInAs(
         kickUsers.streamer.id,
-        "/auth/kick/streamer/start?entry=sub,points",
+        "/auth/kick/streamer/start?features=redemptions",
         control,
       )
       const giveaway = await world.createGiveaway(target, {
