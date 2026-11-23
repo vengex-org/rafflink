@@ -140,3 +140,9 @@ export interface PublicCache {
 export interface RateLimiter {
   allow(key: string): Promise<boolean>
 }
+
+/**
+ * Sends an error that a caller caught and handled to the deployment's error reporter; without one it does nothing.
+ * `context` holds ids such as a request id or a giveaway id, never personal data.
+ */
+export type ReportError = (error: unknown, context: Readonly<Record<string, string>>) => void

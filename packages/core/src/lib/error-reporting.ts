@@ -18,6 +18,7 @@ export type SentryOptions = Pick<
   | "sampleRate"
   | "tracesSampleRate"
   | "dataCollection"
+  | "integrations"
   | "beforeSend"
 >
 
@@ -46,6 +47,8 @@ export function sentryOptions(config: ErrorReportingConfig): SentryOptions | nul
     sampleRate: config.sentrySamplePercent / 100,
     tracesSampleRate: 0,
     dataCollection: minimalDataCollection,
+    // The console integration turns every log call into a breadcrumb; see `scrubEvent`.
+    integrations: (defaults) => defaults.filter(({ name }) => name !== "Console"),
     beforeSend: (event: ErrorEvent, hint: EventHint) =>
       isExpectedServerError(hint) ? null : withoutMessages(scrubEvent(event)),
   }
@@ -78,7 +81,11 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
   for (const exception of event.exception?.values ?? []) {
     if (exception.value !== undefined) exception.value = scrubMessage(exception.value)
   }
-  for (const breadcrumb of event.breadcrumbs ?? []) scrubBreadcrumb(breadcrumb)
+  // A console breadcrumb holds the arguments of a log call, which can be an error with a login in its message.
+  if (event.breadcrumbs !== undefined) {
+    event.breadcrumbs = event.breadcrumbs.filter(({ category }) => category !== "console")
+    for (const breadcrumb of event.breadcrumbs) scrubBreadcrumb(breadcrumb)
+  }
   if (event.extra !== undefined) scrubRecord(event.extra)
   for (const context of Object.values(event.contexts ?? {})) {
     if (context !== undefined) scrubRecord(context)

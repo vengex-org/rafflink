@@ -1,4 +1,3 @@
-import { captureException } from "@sentry/core"
 import { errorClass } from "../lib/error-class.ts"
 import { Hono } from "hono"
 import { requestId } from "hono/request-id"
@@ -37,7 +36,7 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   // The report to Sentry carries both, after `scrubEvent` of lib/error-reporting.ts removed the secrets it knows.
   app.onError((error, c) => {
     const id = c.get("requestId")
-    captureException(error, { tags: { requestId: id } })
+    deps.reportError(error, { requestId: id })
     console.error("request failed", {
       requestId: id,
       errorClass: errorClass(error),

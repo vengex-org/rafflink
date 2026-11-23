@@ -1,3 +1,4 @@
+import { errorClass } from "@rafflink/core/lib/error-class"
 import { errorReportingMetaNames } from "@rafflink/core/lib/spa-html"
 
 /** What the web build wrote into the page for the browser's Sentry SDK. */
@@ -17,7 +18,14 @@ export function startErrorReporting(): void {
   const settings = errorReportingOf(document)
   if (settings === null) return
   // A separate chunk: a page without a DSN, and every page before its first paint, does not download the SDK.
-  capture = import("./sentry-browser.ts").then(({ startSentry }) => startSentry(settings))
+  capture = import("./sentry-browser.ts").then(
+    ({ startSentry }) => startSentry(settings),
+    // A blocked or failed download leaves the page working; its errors are then only logged.
+    (error: unknown) => {
+      console.warn("error reporting not loaded", { errorClass: errorClass(error) })
+      return () => {}
+    },
+  )
 }
 
 /** Sends an error a component or a hook caught to Sentry, once the SDK has loaded; without a DSN it does nothing. */

@@ -6,6 +6,7 @@ export async function startErrorReporting(config: ErrorReportingConfig): Promise
   const options = sentryOptions(config)
   if (options === null) return false
   const { init } = await import("@sentry/bun")
-  init(options)
+  // The SDK would send the host name, which names the machine of a self-hoster.
+  init({ ...options, serverName: "rafflink-server" })
   return true
 }

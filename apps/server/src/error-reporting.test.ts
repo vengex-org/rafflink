@@ -123,6 +123,17 @@ describe("error reporting of the Bun server", () => {
     expect(JSON.stringify(sentry.events)).not.toContain("oauth-code")
   })
 
+  it("keeps what was logged before a failure out of its report", async () => {
+    const running = await launch({ SENTRY_DSN: sentry.dsn, ...reported })
+    console.warn("lookup failed", { error: new Error("login foo_streamer") })
+    breakGiveawayLookups()
+
+    await fetch(new URL("/api/g/ABCDE", running.url))
+    await sentry.eventsArrived(1)
+
+    expect(JSON.stringify(sentry.events)).not.toContain("foo_streamer")
+  })
+
   it("sends nothing for an expired session, a forged Kick webhook or a Twitch 429 the caller retries", async () => {
     const running = await launch({
       SENTRY_DSN: sentry.dsn,
@@ -188,6 +199,7 @@ describe("error reporting of the Bun server", () => {
 
     expect(sentry.events[0]).toMatchObject({
       release: "test-release",
+      server_name: "rafflink-server",
       environment: "test",
       exception: { values: [{ type: "RangeError" }] },
     })

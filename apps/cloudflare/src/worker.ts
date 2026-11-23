@@ -23,6 +23,7 @@ import { GiveawayRoomObject as GiveawayRoom } from "./durable-objects/giveaway-r
 import { TokenQueueDO as TokenQueue } from "./durable-objects/token-queue-do.ts"
 import { isolateKeyOf, type WorkerEnv } from "./env.ts"
 import { configOf, runtimeOf } from "./runtime.ts"
+import { sentryReportError } from "./adapters/sentry-report-error.ts"
 import { createWorkerApp } from "./worker-app.ts"
 
 // Without a DSN the SDK is disabled and builds no transport.
@@ -71,6 +72,7 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     leavesIpLimiter: new RateLimitBindingLimiter(env.LEAVES_IP_LIMITER),
     moderatorIpLimiter: new RateLimitBindingLimiter(env.MODERATOR_IP_LIMITER),
     clientAddress: connectingAddress,
+    reportError: sentryReportError,
   }
   return createWorkerApp({
     api: createApp(deps, indexTemplateOf(env.ASSETS, runtime.config.publicUrl)),

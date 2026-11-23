@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { ErrorEvent, EventHint } from "@sentry/core"
+import type { ErrorEvent, EventHint, Integration } from "@sentry/core"
 import { TwitchRateLimited } from "../twitch/errors.ts"
 import { scrubEvent, sentryOptions } from "./error-reporting.ts"
 
@@ -8,6 +8,10 @@ const config = {
   sentryEnvironment: "staging",
   sentryRelease: "abc123",
   sentrySamplePercent: 25,
+}
+
+function named(name: string): Integration {
+  return { name, setupOnce: () => {} }
 }
 
 function errorEvent(fields: Omit<ErrorEvent, "type">): ErrorEvent {
@@ -145,6 +149,27 @@ describe("scrubEvent", () => {
       request: { url: "/api/live/gid-1/entrants?after=0" },
       message: "index.html has no #root",
     })
+  })
+
+  it("drops console breadcrumbs, whose arguments can quote a login, and keeps the others", () => {
+    const event = errorEvent({
+      breadcrumbs: [
+        { category: "console", message: "lookup failed", data: { arguments: ["login foo"] } },
+        { category: "navigation", data: { from: "/", to: "/dashboard" } },
+      ],
+    })
+
+    expect(scrubEvent(event).breadcrumbs).toEqual([
+      { category: "navigation", data: { from: "/", to: "/dashboard" } },
+    ])
+  })
+
+  it("leaves the console integration out of the server SDKs", () => {
+    const integrations = sentryOptions(config)?.integrations
+    const kept =
+      typeof integrations === "function" ? integrations([named("Console"), named("Http")]) : []
+
+    expect(kept.map(({ name }) => name)).toEqual(["Http"])
   })
 
   it("filters the same parameter names in a query string as in pairs", () => {

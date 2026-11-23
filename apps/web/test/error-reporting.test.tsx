@@ -11,6 +11,7 @@ import { reportError, startErrorReporting } from "../src/lib/error-reporting.ts"
 
 let sentry: FakeSentry
 let logged: ReturnType<typeof spyOn>
+let warned: ReturnType<typeof spyOn>
 
 // The SDK wraps timers, listeners, `fetch`, `history` and the console of the page; the other test files share this
 // window and their fake timers must not run through the wrappers, so the originals come back after this file.
@@ -46,6 +47,7 @@ beforeAll(async () => {
   }
   sentry = await startFakeSentry()
   logged = spyOn(console, "error").mockImplementation(() => {})
+  warned = spyOn(console, "warn").mockImplementation(() => {})
 })
 
 afterEach(() => {
@@ -57,6 +59,7 @@ afterAll(async () => {
   await getClient()?.close()
   await sentry.stop()
   logged.mockRestore()
+  warned.mockRestore()
   restoreWrapped()
 })
 
@@ -114,10 +117,11 @@ describe("error reporting in the browser", () => {
     })
   })
 
-  it("leaves the overlay token out of the page address it reports", async () => {
+  it("leaves the overlay token and what was logged before out of a report", async () => {
     const before = sentry.events.length
     window.history.pushState(null, "", "/overlay/gid-1/secret-token-1")
 
+    console.warn("lookup failed", { error: new Error("login foo_viewer") })
     reportError(new RangeError("overlay broke"))
     await sentry.eventsArrived(before + 1)
     window.history.pushState(null, "", "/")
@@ -126,6 +130,7 @@ describe("error reporting in the browser", () => {
       request: { url: "http://rafflink.test/overlay/gid-1/[Filtered]" },
     })
     expect(JSON.stringify(sentry.events.slice(before))).not.toContain("secret-token-1")
+    expect(JSON.stringify(sentry.events.slice(before))).not.toContain("foo_viewer")
   })
 
   it("sends no answer of the API, such as a 401 after the session expired", async () => {

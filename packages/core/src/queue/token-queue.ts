@@ -1,9 +1,17 @@
-import { captureException } from "@sentry/core"
 import { errorClass } from "../lib/error-class.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { randomId } from "../lib/random-id.ts"
 import type { PlanLimits } from "../plan/plan-limits.ts"
-import type { Alarm, Clock, Instant, Random, Remote, SqlRow, SyncSql } from "../ports.ts"
+import type {
+  Alarm,
+  Clock,
+  Instant,
+  Random,
+  Remote,
+  ReportError,
+  SqlRow,
+  SyncSql,
+} from "../ports.ts"
 import type { RoomStub } from "../room/room-directory.ts"
 import { queuedEntryTwitchSubrequests } from "../twitch/queued-entry-requests.ts"
 import { RowReader } from "../room/rows.ts"
@@ -67,6 +75,8 @@ export interface QueueDeps {
    * {@link TokenQueue.useEntriesPerInvocation} to change it while the queue runs.
    */
   readonly entriesPerInvocation: number
+  /** Where a code that failed is reported, beside the log. */
+  readonly reportError: ReportError
 }
 
 /** The codes whose Twitch requests fit the subrequests one invocation may send. */
@@ -136,6 +146,7 @@ export class TokenQueue {
   private readonly config: QueueConfig
   private readonly process: QueueDeps["process"]
   private readonly rooms: QueueDeps["rooms"]
+  private readonly reportError: ReportError
   private entriesPerInvocation: number
 
   constructor(deps: QueueDeps) {
@@ -146,6 +157,7 @@ export class TokenQueue {
     this.config = deps.config
     this.process = deps.process
     this.rooms = deps.rooms
+    this.reportError = deps.reportError
     this.entriesPerInvocation = deps.entriesPerInvocation
     this.sql.exec(
       "INSERT INTO queue_stats (id, rate_per_second) VALUES (1, ?) ON CONFLICT (id) DO NOTHING",
@@ -372,7 +384,7 @@ export class TokenQueue {
     try {
       attempt = await this.process(item)
     } catch (error) {
-      captureException(error, { extra: { giveawayId: item.giveawayId } })
+      this.reportError(error, { giveawayId: item.giveawayId })
       console.error("queue item failed", {
         giveawayId: item.giveawayId,
         errorClass: errorClass(error),

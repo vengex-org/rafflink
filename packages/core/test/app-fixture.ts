@@ -344,6 +344,12 @@ export function mirrored(status: RoomStatus): RoomMirror {
 /** The header a test sets to give a request a client address; the real targets read the one their edge sets. */
 export const testAddressHeader = "x-test-address"
 
+/** One call of the error reporter port. */
+export interface Reported {
+  readonly error: unknown
+  readonly context: Readonly<Record<string, string>>
+}
+
 export interface Harness {
   readonly app: Hono
   readonly deps: AppDeps
@@ -358,6 +364,8 @@ export interface Harness {
   readonly queue: TokenQueue
   readonly queueDb: Database
   readonly sealKey: string
+  /** What the app and the queue sent to the error reporter, in order. */
+  readonly reported: Reported[]
   stop(): Promise<void>
 }
 
@@ -435,6 +443,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   applyMigrations(queueSql, queueMigrations)
   const entryUserLimiter = new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, 60_000)
   const entryDeps = { config, clock, random, platforms, accounts, rooms, entryUserLimiter }
+  const reported: Reported[] = []
   const queue = new TokenQueue({
     sql: queueSql,
     alarm: new TestAlarm(),
@@ -444,6 +453,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     process: (item) => enterQueuedCode(entryDeps, item),
     rooms,
     entriesPerInvocation: config.queueMaxRatePerSecond,
+    reportError: (error, context) => void reported.push({ error, context }),
   })
   const deps: AppDeps = {
     ...entryDeps,
@@ -458,6 +468,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     leavesIpLimiter: new MemoryRateLimiter(clock, config.leavesIpLimitPerMinute, 60_000),
     moderatorIpLimiter: new MemoryRateLimiter(clock, config.moderatorIpLimitPerMinute, 60_000),
     clientAddress: (request) => request.headers.get(testAddressHeader),
+    reportError: (error, context) => void reported.push({ error, context }),
   }
   return {
     app: createApp(deps, spaTemplateLoader(options.spaTemplate)),
@@ -472,6 +483,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     queue,
     queueDb,
     sealKey,
+    reported,
     stop: async () => {
       await server.stop(true)
     },

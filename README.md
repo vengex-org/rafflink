@@ -570,8 +570,9 @@ first: the new code reads columns that only the migration adds. After the upgrad
 approval, streamers that signed in earlier wait for approval unless `OPEN_SIGNUP` is `true`.
 
 With error reporting, build with `SENTRY_RELEASE=$(git rev-parse HEAD)` (and `PUBLIC_SENTRY_DSN` for the
-browser) and deploy with `bunx wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)`, so the reports of
-the page and of the Worker name the commit whose source maps CI uploaded.
+browser), run `bunx @sentry/cli@3.8.2 sourcemaps inject apps/web/dist apps/cloudflare/dist` as CI does, and
+deploy with `bunx wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)`, so the reports of the page and of
+the Worker carry the debug ids and the commit of the source maps CI uploaded.
 
 ## Security headers, link previews and OBS
 
