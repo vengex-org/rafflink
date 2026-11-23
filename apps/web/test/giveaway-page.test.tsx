@@ -34,6 +34,7 @@ const wonRoute = (
         claimRemainingMs,
         claim,
         chatClaimAvailable,
+        answers: null,
       },
     }),
 })
@@ -104,6 +105,19 @@ describe("official rules", () => {
     }
     expect(view.queryByText(/years old/)).toBeNull()
     expect(view.queryByText(/no free way to enter/)).toBeNull()
+    expect(view.queryByText(/fills a short form/)).toBeNull()
+  })
+
+  it("says the winner fills the delivery form and who reads it when the giveaway has one", async () => {
+    mockFetch(withRules({ winnerForm: ["name", "address"] }))
+
+    const view = renderApp("/ABCDE")
+
+    expect(
+      await view.findByText(
+        "After claiming, the winner fills a short form on this page for the delivery (Name, Shipping address). Only Streamy sees the answers. They are deleted when the prize is delivered, at the latest 30 days after the claim.",
+      ),
+    ).toBeTruthy()
   })
 
   it("names the chat keyword as a way to enter", async () => {
@@ -763,6 +777,58 @@ describe("entry outcomes", () => {
   })
 })
 
+const claimedWithForm = (answers: string) => ({
+  "GET /api/g/ABCDE": () =>
+    ok({
+      ...giveaway,
+      status: "drawn",
+      streamerName: "Ada",
+      rules: { ...giveaway.rules, winnerForm: ["name", "email"] },
+      me: {
+        kind: "won",
+        userId: "u1",
+        n: 0,
+        entry: null,
+        claimRemainingMs: 0,
+        claim: { state: "claimed", at: claimedAt, via: "rafflink" },
+        chatClaimAvailable: true,
+        answers,
+      },
+    }),
+})
+
+describe("winner form", () => {
+  it("asks a claimed winner for the fields once, names the streamer as the recipient and sends the answers", async () => {
+    const requests = mockFetch({
+      ...claimedWithForm("open"),
+      "POST /api/g/ABCDE/answers": () => ok({ kind: "saved" }),
+    })
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByRole("heading", { name: "Where should the prize go?" })).toBeTruthy()
+    expect(view.getByText(/Only Ada, who runs this giveaway, sees your answers/)).toBeTruthy()
+    fireEvent.change(view.getByLabelText("Name"), { target: { value: "Ann" } })
+    fireEvent.change(view.getByLabelText("E-mail"), { target: { value: "ann@example.com" } })
+    fireEvent.click(view.getByRole("button", { name: "Send" }))
+
+    expect(await view.findByText("Your answers were sent to the streamer.")).toBeTruthy()
+    expect(view.queryByRole("button", { name: "Send" })).toBeNull()
+    expect(requests.find((request) => request.route === "POST /api/g/ABCDE/answers")?.body).toEqual(
+      { answers: { name: "Ann", email: "ann@example.com" } },
+    )
+  })
+
+  it("shows no form to a winner who already sent it", async () => {
+    mockFetch(claimedWithForm("sent"))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("Your answers were sent to the streamer.")).toBeTruthy()
+    expect(view.queryByRole("heading", { name: "Where should the prize go?" })).toBeNull()
+  })
+})
+
 describe("winner claim", () => {
   it("shows the You won card with the time left and claims with one button", async () => {
     const requests = mockFetch({
@@ -805,6 +871,7 @@ describe("winner claim", () => {
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,
+            answers: null,
           },
         }),
     })
@@ -841,6 +908,7 @@ describe("winner claim", () => {
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,
+            answers: null,
           },
         }),
     })

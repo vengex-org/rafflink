@@ -370,6 +370,7 @@ describe("create wizard", () => {
         minAge: null,
         excludedCountries: null,
         extraTerms: null,
+        winnerForm: [],
       },
       claimSeconds: 300,
       winnerCount: 1,
@@ -481,6 +482,7 @@ describe("create wizard", () => {
         minAge: null,
         excludedCountries: null,
         extraTerms: null,
+        winnerForm: [],
       },
       closesAt: new Date("2099-01-01T10:00").toISOString(),
       claimSeconds: 600,
@@ -582,6 +584,23 @@ describe("create wizard", () => {
     expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
     expect(await view.findByText("This number is too large. Enter a smaller one.")).toBeTruthy()
     expect(view.getByLabelText("How many giveaways back").getAttribute("aria-invalid")).toBe("true")
+  })
+
+  it("sends the winner form fields in the form's order and reviews them", async () => {
+    const requests = mockFetch(withCreate(createdReply))
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(view.getByRole("checkbox", { name: "Shipping address" }))
+    fireEvent.click(view.getByRole("checkbox", { name: "Name" }))
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    expect(view.getByText("Name, Shipping address")).toBeDefined()
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/giveaways")?.body,
+    ).toMatchObject({ rules: { winnerForm: ["name", "address"] } })
   })
 
   it("sends a chat-only giveaway with page entry off", async () => {

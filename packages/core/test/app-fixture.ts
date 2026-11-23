@@ -240,6 +240,15 @@ class InProcessRoomStub implements RoomStub {
   async mirrorState() {
     return this.room.mirrorState()
   }
+  async saveWinnerAnswers(...args: Parameters<GiveawayRoom["saveWinnerAnswers"]>) {
+    return this.room.saveWinnerAnswers(...args)
+  }
+  async winnerAnswers() {
+    return this.room.winnerAnswers()
+  }
+  async markDelivered(n: number) {
+    return this.room.markDelivered(n)
+  }
   async markMirrored(mirror: Parameters<GiveawayRoom["markMirrored"]>[0]) {
     this.room.markMirrored(mirror)
   }
@@ -316,6 +325,7 @@ export const validRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+  winnerForm: [],
 }
 
 /** What a room with `status` mirrors when it has no entrants and no picks. */

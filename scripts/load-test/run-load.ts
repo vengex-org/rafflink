@@ -55,6 +55,7 @@ const rules: GiveawayRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+  winnerForm: [],
 }
 
 const acceptedKinds: readonly string[] = ["entered", "already-in"]

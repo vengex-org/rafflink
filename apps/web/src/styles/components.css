@@ -579,6 +579,40 @@ label,
   font-weight: 600;
 }
 
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 400;
+}
+
+.field .check input {
+  width: auto;
+  min-height: 0;
+}
+
+textarea {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+textarea:focus-visible {
+  border-color: var(--focus);
+  outline: 2px solid var(--focus);
+}
+
+/* An address keeps the line breaks the winner typed. */
+.winner-answer-value {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 input:not([type="radio"]) {
   width: 100%;
   min-height: 3rem;

@@ -1,5 +1,6 @@
 import { groups, supportedGroups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { minAgeMax, type GiveawayRules, type RecentWinnersRule } from "@rafflink/core/domain/rules"
+import type { WinnerFieldKind } from "@rafflink/core/domain/winner-form"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import type { CreateGiveawayBody } from "../api/client.ts"
@@ -50,6 +51,7 @@ export interface Values {
   minAge: string
   excludedCountries: string
   extraTerms: string
+  winnerForm: readonly WinnerFieldKind[]
 }
 
 export interface Issue {
@@ -83,6 +85,7 @@ export const initialValues: Values = {
   minAge: "",
   excludedCountries: "",
   extraTerms: "",
+  winnerForm: [],
 }
 
 /**
@@ -154,6 +157,7 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
     minAge: rules.minAge === null ? "" : String(rules.minAge),
     excludedCountries: rules.excludedCountries ?? "",
     extraTerms: rules.extraTerms ?? "",
+    winnerForm: rules.winnerForm,
   }
 }
 
@@ -225,6 +229,7 @@ export function stepOfField(field: string): Step {
     || field === "claimKeyword"
     || field === "chatKeyword"
     || field === "winnerCount"
+    || field.startsWith("winnerForm")
     || field.startsWith("excludeRecentWinners")
   ) {
     return 2
@@ -258,6 +263,7 @@ export function toBody(values: Values): CreateGiveawayBody {
       minAge: values.minAge.trim() === "" ? null : Number(values.minAge),
       excludedCountries: textOrNull(values.excludedCountries),
       extraTerms: textOrNull(values.extraTerms),
+      winnerForm: values.winnerForm,
     },
     closesAt: values.ending === "at-time" ? instantOf(values.closesAt) : undefined,
     claimSeconds: claimSecondsOf(values.claim),

@@ -1,4 +1,5 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono"
+import type { ContentfulStatusCode } from "hono/utils/http-status"
 import { timingSafeEqual } from "hono/utils/buffer"
 import type {
   Giveaway,
@@ -22,7 +23,11 @@ import {
   type PlanLimits,
 } from "../plan/plan-limits.ts"
 import { usageAlerts, usageOf, type Usage } from "../plan/usage.ts"
-import { overlaySnapshot, type WinnerPick } from "../room/giveaway-room.ts"
+import {
+  overlaySnapshot,
+  type MarkDeliveredOutcome,
+  type WinnerPick,
+} from "../room/giveaway-room.ts"
 import { pushBlockList } from "../room/room-exclusions.ts"
 import { deleteGiveaway } from "../room/delete-giveaway.ts"
 import { denseDays, denseMinutes } from "../stats/series.ts"
@@ -53,6 +58,7 @@ import {
   drawWinner,
   entrantsPage,
   initRoom,
+  integerField,
   integerQuery,
   markClaimed,
   rerollPick,
@@ -64,6 +70,7 @@ import { deletePublicCache, readPublicCache, writePublicCache } from "./public-c
 import { endStreamerSession } from "./session.ts"
 import { requireStreamer, type StreamerEnv } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
+import { winnerAnswersJson } from "./winner-answers.ts"
 
 type Env = StreamerEnv
 
@@ -156,6 +163,23 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       return c.body(winnersCsv(giveaway, picks), 200, {
         "Content-Type": "text/csv; charset=utf-8",
       })
+    }),
+  )
+
+  // The winner form answers are for the giveaway's streamer alone: no moderator route reads them.
+  app.get("/api/dash/giveaways/:id/answers", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      c.header("Cache-Control", "no-store")
+      return c.json(await winnerAnswersJson(deps, giveaway))
+    }),
+  )
+
+  app.post("/api/dash/giveaways/:id/delivered", sameOriginJson(deps.config), (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const n = integerField(await readJson(c), "n", 0)
+      if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
+      const outcome = await deps.rooms.get(giveaway.id).markDelivered(n)
+      return c.json({ kind: outcome.kind }, deliveredStatus[outcome.kind])
     }),
   )
 
@@ -544,10 +568,17 @@ async function withoutAdmins(
   return { streamers: listed.slice(0, max), truncated: listed.length > max }
 }
 
+const deliveredStatus: Readonly<Record<MarkDeliveredOutcome["kind"], ContentfulStatusCode>> = {
+  delivered: 200,
+  "already-delivered": 409,
+  "not-claimed": 409,
+  "unknown-pick": 404,
+}
+
 // One row per pick, rerolled ones included; instants are ISO 8601 in UTC.
 function winnersCsv(giveaway: Giveaway, picks: readonly WinnerPick[]): string {
   return csvText([
-    ["pick", "login", "display_name", "prize", "drawn_at", "claim", "claimed_at"],
+    ["pick", "login", "display_name", "prize", "drawn_at", "claim", "claimed_at", "delivered_at"],
     ...picks.map((pick) => [
       String(pick.n + 1),
       pick.login ?? "",
@@ -556,6 +587,7 @@ function winnersCsv(giveaway: Giveaway, picks: readonly WinnerPick[]): string {
       new Date(pick.drawnAt).toISOString(),
       pick.claim.state,
       pick.claim.state === "claimed" ? new Date(pick.claim.at).toISOString() : "",
+      pick.deliveredAt === null ? "" : new Date(pick.deliveredAt).toISOString(),
     ]),
   ])
 }

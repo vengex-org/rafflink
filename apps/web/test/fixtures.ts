@@ -16,6 +16,7 @@ export const rules: GiveawayRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+  winnerForm: [],
 }
 
 /** The body of `GET /api/g/ABCDE` for a viewer who has not signed in. */

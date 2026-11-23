@@ -105,6 +105,7 @@ export type RoomConfig = RulesConfig
     | "drandPublishMarginSeconds"
     | "drawMaxWinners"
     | "metricsRetentionHours"
+    | "winnerFormRetentionSeconds"
   >
 
 export interface RoomDeps {
@@ -319,7 +320,38 @@ export interface WinnerPick extends LiveWinner, Identity {
   /** Same lifetime as {@link LiveWinner.displayName}. */
   readonly login: string | null
   readonly drawnAt: Instant
+  readonly answers: PickAnswers
+  /** When the streamer marked the prize delivered; null until then. */
+  readonly deliveredAt: Instant | null
 }
+
+/**
+ * Whether the winner of a pick can send the winner form: `open` while the claim can still come or came less than
+ * `WINNER_FORM_RETENTION_SECONDS` ago, `sent` once they did, `closed` when the time is over, the pick was rerolled
+ * or the prize was marked delivered first.
+ */
+export type PickAnswers = "open" | "sent" | "closed"
+
+/** A winner's form answers as the room holds them: sealed by the caller, which alone holds the key. */
+export interface SealedWinnerAnswers {
+  readonly n: number
+  readonly sealed: string
+}
+
+/** What {@link GiveawayRoom.saveWinnerAnswers} did; only the first sending of a claimed winner is kept. */
+export type SaveAnswersOutcome =
+  | { readonly kind: "saved" }
+  | { readonly kind: "already-answered" }
+  | { readonly kind: "not-claimed" }
+  | { readonly kind: "form-closed" }
+  | { readonly kind: "not-a-winner" }
+
+/** What {@link GiveawayRoom.markDelivered} did. */
+export type MarkDeliveredOutcome =
+  | { readonly kind: "delivered" }
+  | { readonly kind: "already-delivered" }
+  | { readonly kind: "not-claimed" }
+  | { readonly kind: "unknown-pick" }
 
 /** What {@link GiveawayRoom.removeWinnerName} did: replaced the names, or found no pick with that number. */
 export type RemoveWinnerNameOutcome =
@@ -765,6 +797,7 @@ export class GiveawayRoom {
       pushNow = true
       state = this.readState()
     }
+    this.deleteExpiredAnswers(state, now)
     // Both write when they give up, so they run before the push that shows it.
     const commitDue = this.commitDue(state, now)
     const drawDue = this.drawDue(state, now)
@@ -1222,8 +1255,63 @@ export class GiveawayRoom {
         platformUserId: draw.platformUserId,
         login: reader.nullableText("login"),
         drawnAt: reader.int("drawn_at"),
+        answers: pickAnswers(draw, now, this.answersRetentionMs()),
+        deliveredAt: draw.deliveredAt,
       }
     })
+  }
+
+  /**
+   * Keeps the winner form answers of pick `n`, sealed by the caller, once: only from the pick's own account, after
+   * the claim and while {@link PickAnswers} is `open`. The time of the sending stays when the answers are deleted.
+   */
+  saveWinnerAnswers(n: number, winner: Identity, sealed: string): SaveAnswersOutcome {
+    const now = this.clock.now()
+    const saved = this.sql.transaction(() => {
+      const answered = this.sql.exec(
+        `UPDATE draws SET answered_at = ?
+         WHERE n = ? AND platform = ? AND platform_user_id = ?
+           AND claimed_at > ? AND answered_at IS NULL AND delivered_at IS NULL
+         RETURNING n`,
+        [now, n, winner.platform, winner.platformUserId, now - this.answersRetentionMs()],
+      )
+      if (answered.length === 0) return false
+      this.sql.exec("INSERT INTO winner_answers (n, sealed) VALUES (?, ?)", [n, sealed])
+      return true
+    })
+    if (saved) {
+      this.guarded("alarm", () => this.rearm())
+      return { kind: "saved" }
+    }
+    return answersRefusal(this.readDraw(n), winner, now, this.answersRetentionMs())
+  }
+
+  /** The sealed answers the room still holds, by pick. */
+  winnerAnswers(): readonly SealedWinnerAnswers[] {
+    return this.sql.exec("SELECT n, sealed FROM winner_answers ORDER BY n", []).map((row) => {
+      const reader = new RowReader("winner_answers", row)
+      return { n: reader.int("n"), sealed: reader.text("sealed") }
+    })
+  }
+
+  /** Records that the prize of claimed pick `n` was delivered and deletes its answers: the streamer needs them no more. */
+  markDelivered(n: number): MarkDeliveredOutcome {
+    const now = this.clock.now()
+    const outcome = this.sql.transaction((): MarkDeliveredOutcome => {
+      const marked = this.sql.exec(
+        "UPDATE draws SET delivered_at = ? WHERE n = ? AND claimed_at IS NOT NULL AND delivered_at IS NULL RETURNING n",
+        [now, n],
+      )
+      if (marked.length === 1) {
+        this.sql.exec("DELETE FROM winner_answers WHERE n = ?", [n])
+        return { kind: "delivered" }
+      }
+      const draw = this.readDraw(n)
+      if (draw === null) return { kind: "unknown-pick" }
+      return draw.deliveredAt === null ? { kind: "not-claimed" } : { kind: "already-delivered" }
+    })
+    if (outcome.kind === "delivered") this.guarded("alarm", () => this.rearm())
+    return outcome
   }
 
   /** Replaces the names of pick `n`, and of its entry while that exists, with "removed" and drops the entry's picture, for a winner who asked the operator to be removed. The pick, its claim and the draw proof stay. */
@@ -1325,7 +1413,7 @@ export class GiveawayRoom {
 
   private readPickRows(): SqlRow[] {
     return this.sql.exec(
-      `SELECT d.n, d.platform, d.platform_user_id, d.drawn_at, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, d.login, d.display_name, d.drawn_by, d.rerolled_by, d.claim_marked_by, e.profile_image_url, e.seq
+      `SELECT d.n, d.platform, d.platform_user_id, d.drawn_at, d.claim_until, d.claimed_at, d.claimed_via, d.rerolled, d.leaf_index, d.login, d.display_name, d.drawn_by, d.rerolled_by, d.claim_marked_by, d.answered_at, d.delivered_at, e.profile_image_url, e.seq
        FROM draws d LEFT JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
        ORDER BY d.n`,
       [],
@@ -1570,6 +1658,34 @@ export class GiveawayRoom {
       entrantCount: state.entrantCount,
     })
     return true
+  }
+
+  // The winner form answers are personal data with their own clock, which starts at each claim.
+  private deleteExpiredAnswers(state: RoomState, now: Instant): void {
+    const deleted = this.sql.exec(
+      "DELETE FROM winner_answers WHERE n IN (SELECT n FROM draws WHERE claimed_at <= ?) RETURNING n",
+      [now - this.answersRetentionMs()],
+    )
+    if (deleted.length > 0) {
+      console.info("winner answers deleted", {
+        giveawayId: state.giveawayId,
+        count: deleted.length,
+      })
+    }
+  }
+
+  // Null once no answers are held.
+  private answersDeadline(): Instant | null {
+    const row = this.sql.exec(
+      "SELECT MIN(d.claimed_at) AS at FROM winner_answers a JOIN draws d ON d.n = a.n",
+      [],
+    )[0]
+    const first = row === undefined ? null : new RowReader("draws", row).nullableInt("at")
+    return first === null ? null : first + this.answersRetentionMs()
+  }
+
+  private answersRetentionMs(): number {
+    return this.config.winnerFormRetentionSeconds * 1000
   }
 
   // Null while entries are open and once nothing is left to delete.
@@ -1858,6 +1974,7 @@ export class GiveawayRoom {
       this.chatWatchWake(state),
       this.chatEntrantsWake(state),
       this.retentionDeadline(state),
+      this.answersDeadline(),
       this.chat?.wakeAt() ?? null,
       this.metricsWake(),
     ].filter((at): at is Instant => at !== null)
@@ -2121,6 +2238,37 @@ function claimRefusal(draw: DrawRow | null, winner: Identity): ClaimOutcome {
   if (draw.claim.state === "claimed") return { kind: "already-claimed" }
   if (draw.rerolled) return { kind: "rerolled" }
   return { kind: "expired" }
+}
+
+function answersRefusal(
+  draw: DrawRow | null,
+  winner: Identity,
+  now: Instant,
+  retentionMs: number,
+): SaveAnswersOutcome {
+  if (
+    draw === null
+    || draw.platform !== winner.platform
+    || draw.platformUserId !== winner.platformUserId
+  ) {
+    return { kind: "not-a-winner" }
+  }
+  switch (pickAnswers(draw, now, retentionMs)) {
+    case "sent":
+      return { kind: "already-answered" }
+    case "closed":
+      return { kind: "form-closed" }
+    // A claimed pick in this state would have been saved.
+    case "open":
+      return { kind: "not-claimed" }
+  }
+}
+
+function pickAnswers(draw: DrawRow, now: Instant, retentionMs: number): PickAnswers {
+  if (draw.answeredAt !== null) return "sent"
+  if (draw.deliveredAt !== null || draw.rerolled) return "closed"
+  if (draw.claim.state === "claimed") return now < draw.claim.at + retentionMs ? "open" : "closed"
+  return now > draw.claimUntil ? "closed" : "open"
 }
 
 function liveWinner(row: SqlRow, now: Instant): LiveWinner {

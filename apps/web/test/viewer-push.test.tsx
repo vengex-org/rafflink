@@ -144,6 +144,7 @@ describe("viewer page: push", () => {
         claimRemainingMs: 90_000,
         claim: { state: "waiting" },
         chatClaimAvailable: true,
+        answers: null,
       }),
     )
     const view = renderApp("/ABCDE")
@@ -614,6 +615,7 @@ describe("viewer page: reload window", () => {
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,
+            answers: null,
           },
         }),
       "POST /api/g/ABCDE/claim": () => ok({ kind: "claimed" }),
@@ -641,6 +643,7 @@ describe("viewer page: reload window", () => {
         claimRemainingMs: 90_000,
         claim: { state: "waiting" },
         chatClaimAvailable: true,
+        answers: null,
       },
     }
     window.sessionStorage.setItem(
@@ -698,6 +701,7 @@ describe("viewer page: reload window", () => {
             claimRemainingMs: 90_000,
             claim: { state: "waiting" },
             chatClaimAvailable: true,
+            answers: null,
           },
         }),
       "POST /api/g/ABCDE/claim": () => ok({ kind: "claimed" }),

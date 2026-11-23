@@ -7,6 +7,12 @@ import {
   type GiveawayRules,
   type RecentWinnersRule,
 } from "@rafflink/core/domain/rules"
+import {
+  winnerAnswersOf,
+  winnerFieldKindOf,
+  type WinnerAnswers,
+  type WinnerFieldKind,
+} from "@rafflink/core/domain/winner-form"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
 import { historyPath } from "@rafflink/core/lib/page-paths"
 import type {
@@ -31,6 +37,7 @@ import type {
   SessionJson,
   VerifyJson,
   ViewerState,
+  WinnerAnswersJson,
 } from "@rafflink/core/http/json"
 import type { QueueStats } from "@rafflink/core/queue/token-queue"
 import type { LiveCounts } from "@rafflink/core/room/room-directory"
@@ -48,11 +55,14 @@ import type {
   EntrantsDelta,
   LiveSnapshot,
   LiveWinner,
+  MarkDeliveredOutcome,
   OverlaySnapshot,
   PickActors,
+  PickAnswers,
   RequestDrawOutcome,
   RerollOutcome,
   RerollState,
+  SaveAnswersOutcome,
   SetWinnerCountOutcome,
   ViewerPush,
   ViewerWinner,
@@ -132,6 +142,8 @@ export type SetWinnerCountKind = SetWinnerCountOutcome["kind"]
 export type DrawKind = Exclude<DrawOutcome["kind"], "not-closed"> | RequestDrawOutcome["kind"]
 export type RerollKind = RerollOutcome["kind"]
 export type ClaimKind = ClaimOutcome["kind"]
+export type DeliveredKind = MarkDeliveredOutcome["kind"]
+export type SaveAnswersKind = SaveAnswersOutcome["kind"]
 
 /** The server refused the request without an outcome (bad input, no session, room down). */
 export type Rejected = "rejected"
@@ -156,6 +168,7 @@ export interface CreateGiveawayBody {
     readonly excludedCountries: string | null
     /** Null when the streamer adds none. */
     readonly extraTerms: string | null
+    readonly winnerForm: readonly WinnerFieldKind[]
   }
   readonly closesAt: string | undefined
   readonly claimSeconds: number | undefined
@@ -378,6 +391,7 @@ function parseViewerState(source: Json): ViewerState {
         claimRemainingMs: num(source, "claimRemainingMs"),
         claim: parseClaim(child(source, "claim")),
         chatClaimAvailable: bool(source, "chatClaimAvailable"),
+        answers: source.answers === null ? null : oneOf(source, "answers", pickAnswers),
       }
     case "not-entered":
     case "not-won":
@@ -569,6 +583,38 @@ export function rerollWinner(id: string, n: number): Promise<RerollKind | Reject
 
 export function markClaimed(id: string, n: number): Promise<ClaimKind | Rejected> {
   return act(`${dashPath(id)}/claim`, { n }, claimKinds)
+}
+
+/** The winner form and the claimed picks' answers; the streamer's own route, which no moderator link reaches. */
+export async function getWinnerAnswers(id: string): Promise<WinnerAnswersJson> {
+  const { status, body } = await send(`${dashPath(id)}/answers`)
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "winnerAnswers")
+  return {
+    form: winnerFormOf(source, "form"),
+    picks: list(source, "picks", (pick) => ({
+      n: num(pick, "n"),
+      answers: oneOf(pick, "answers", pickAnswers),
+      deliveredAt: nullableNum(pick, "deliveredAt"),
+      values: pick.values === null ? null : winnerAnswersOf(child(pick, "values")),
+    })),
+  }
+}
+
+export function markDelivered(id: string, n: number): Promise<DeliveredKind | Rejected> {
+  return act(`${dashPath(id)}/delivered`, { n }, deliveredKinds)
+}
+
+/** Sends the winner form once, after the claim; `invalid` when the server refused an answer. */
+export async function sendWinnerAnswers(
+  code: string,
+  answers: WinnerAnswers,
+): Promise<SaveAnswersKind | Rejected | "invalid"> {
+  const { status, body } = await postJson(`/api/g/${encodeURIComponent(code)}/answers`, {
+    answers,
+  })
+  if (status === 400) return "invalid"
+  return answerKind(record(body, "answers"), saveAnswersKinds)
 }
 
 /** The buttons a moderator link's page sends: the same answers as the streamer's, under the link's own routes. */
@@ -956,6 +1002,20 @@ const claimKinds = [
   "rerolled",
   "not-a-winner",
 ] as const satisfies readonly ClaimKind[]
+const pickAnswers = ["open", "sent", "closed"] as const satisfies readonly PickAnswers[]
+const deliveredKinds = [
+  "delivered",
+  "already-delivered",
+  "not-claimed",
+  "unknown-pick",
+] as const satisfies readonly DeliveredKind[]
+const saveAnswersKinds = [
+  "saved",
+  "already-answered",
+  "not-claimed",
+  "form-closed",
+  "not-a-winner",
+] as const satisfies readonly SaveAnswersKind[]
 const issueCodes = [
   "not-an-object",
   "missing",
@@ -1099,7 +1159,16 @@ function parseRules(source: Json): GiveawayRules {
     minAge: nullableNum(source, "minAge"),
     excludedCountries: nullableText(source, "excludedCountries"),
     extraTerms: nullableText(source, "extraTerms"),
+    winnerForm: winnerFormOf(source, "winnerForm"),
   }
+}
+
+function winnerFormOf(source: Json, key: string): WinnerFieldKind[] {
+  return textList(source, key).map((item) => {
+    const kind = winnerFieldKindOf(item)
+    if (kind === undefined) throw new ApiShapeError(key)
+    return kind
+  })
 }
 
 function parseRecentWinners(source: Json): RecentWinnersRule {

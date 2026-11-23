@@ -3,6 +3,7 @@ import type { Parsed } from "../lib/parsed.ts"
 import type { PlatformCapabilities } from "../platform/provider.ts"
 import type { Instant } from "../ports.ts"
 import { bestGroup, groups, supportedGroups, type Group, type Tickets } from "./groups.ts"
+import { winnerFieldKindOf, type WinnerFieldKind } from "./winner-form.ts"
 
 const msPerDay = 86_400_000
 /** The highest minimum age to win a streamer can state: a bound on typos, since no giveaway asks winners to be 100 or older. */
@@ -29,6 +30,8 @@ export interface GiveawayRules {
   readonly excludedCountries: string | null
   /** The streamer's own terms, shown as written under the generated rules; null when there are none. */
   readonly extraTerms: string | null
+  /** What the winner fills in on the giveaway page after the claim, in this order; empty means no form. */
+  readonly winnerForm: readonly WinnerFieldKind[]
 }
 
 /** Keeps out the winners of the streamer's last `count` drawn giveaways, or of those drawn in the last `count` days. */
@@ -97,6 +100,8 @@ export type RulesIssueCode =
   | "too-long"
   | "too-large"
   | "unknown-kind"
+  | "not-a-list"
+  | "duplicate"
   /** Page entry is off and no chat keyword is set, so nobody could enter. */
   | "no-entry-way"
   /** The giveaway's platform cannot check the rule, so it would hand out the wrong tickets. */
@@ -156,6 +161,8 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
   if (!excludedCountries.ok) return excludedCountries
   const extraTerms = parseText(input, "extraTerms", config.extraTermsMaxLength)
   if (!extraTerms.ok) return extraTerms
+  const winnerForm = parseWinnerForm(ownValue(input, "winnerForm"))
+  if (!winnerForm.ok) return winnerForm
   return ok({
     tickets: tickets.value,
     subsOnly: subsOnly.value,
@@ -168,6 +175,7 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
     minAge: minAge.value,
     excludedCountries: excludedCountries.value,
     extraTerms: extraTerms.value,
+    winnerForm: winnerForm.value,
   })
 }
 
@@ -302,6 +310,20 @@ function parseRecentWinners(
   }
   if (count > max[kind]) return fail("excludeRecentWinners.count", "too-large")
   return ok({ kind, count })
+}
+
+// Absent means no form: rules saved before the winner form existed have none.
+function parseWinnerForm(value: unknown): Parsed<readonly WinnerFieldKind[], RulesIssue> {
+  if (value === undefined) return ok([])
+  if (!Array.isArray(value)) return fail("winnerForm", "not-a-list")
+  const fields: WinnerFieldKind[] = []
+  for (const [index, item] of value.entries()) {
+    const kind = winnerFieldKindOf(item)
+    if (kind === undefined) return fail(`winnerForm.${index}`, "unknown-kind")
+    if (fields.includes(kind)) return fail(`winnerForm.${index}`, "duplicate")
+    fields.push(kind)
+  }
+  return ok(fields)
 }
 
 // Own properties only: a lookup by group or field name must not reach `constructor` or `__proto__`.

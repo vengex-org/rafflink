@@ -137,6 +137,15 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async mirrorState() {
     return (await this.opened).room.mirrorState()
   }
+  async saveWinnerAnswers(...args: Parameters<GiveawayRoom["saveWinnerAnswers"]>) {
+    return (await this.opened).room.saveWinnerAnswers(...args)
+  }
+  async winnerAnswers() {
+    return (await this.opened).room.winnerAnswers()
+  }
+  async markDelivered(...args: Parameters<GiveawayRoom["markDelivered"]>) {
+    return (await this.opened).room.markDelivered(...args)
+  }
   async markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return (await this.opened).room.markMirrored(...args)
   }

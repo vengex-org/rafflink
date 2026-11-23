@@ -2,13 +2,23 @@ import { Hono, type Context } from "hono"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import type { Giveaway } from "../accounts/account-store.ts"
 import { providerFor } from "../platform/provider.ts"
-import type { ClaimOutcome, PublicSummary, WinnerPick } from "../room/giveaway-room.ts"
+import { parseWinnerAnswers } from "../domain/winner-form.ts"
+import type {
+  ClaimOutcome,
+  PublicSummary,
+  SaveAnswersOutcome,
+  WinnerPick,
+} from "../room/giveaway-room.ts"
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
 import { readPublicCache, writePublicCache } from "./public-cache.ts"
 import { toHex } from "../lib/encoding.ts"
+import { sameOriginJson } from "./origin.ts"
+import { sealWinnerAnswers } from "./winner-answers.ts"
 import {
+  objectField,
+  readJson,
   verifyJson,
   type EnteredJson,
   type LeavesJson,
@@ -193,7 +203,40 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     return c.json({ kind: outcome.kind }, claimStatus[outcome.kind])
   })
 
+  // The answers are sealed here, before the room sees them, and never logged.
+  app.post("/api/g/:code/answers", sameOriginJson(deps.config), async (c) => {
+    const session = await readViewerSession(c, deps)
+    if (session === null) return c.json({ error: "unauthorized" }, 401)
+    const giveaway = await deps.accounts.findGiveawayByCode(c.req.param("code"))
+    if (giveaway === null) return c.json({ error: "not-found" }, 404)
+    if (giveaway.rules.winnerForm.length === 0) return c.json({ error: "no-form" }, 404)
+    const pick = await pickOf(deps, giveaway, session)
+    if (pick === undefined) return c.json({ kind: "not-a-winner" }, answersStatus["not-a-winner"])
+    const parsed = parseWinnerAnswers(
+      objectField(await readJson(c), "answers"),
+      giveaway.rules.winnerForm,
+      deps.config,
+    )
+    if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
+    const outcome = await deps.rooms
+      .get(giveaway.id)
+      .saveWinnerAnswers(
+        pick.n,
+        { platform: pick.platform, platformUserId: pick.platformUserId },
+        await sealWinnerAnswers(deps, giveaway.id, pick.n, parsed.value),
+      )
+    return c.json({ kind: outcome.kind }, answersStatus[outcome.kind])
+  })
+
   return app
+}
+
+const answersStatus: Readonly<Record<SaveAnswersOutcome["kind"], ContentfulStatusCode>> = {
+  saved: 200,
+  "already-answered": 409,
+  "not-claimed": 409,
+  "form-closed": 409,
+  "not-a-winner": 403,
 }
 
 const claimStatus: Readonly<Record<ClaimOutcome["kind"], ContentfulStatusCode>> = {
@@ -282,6 +325,7 @@ async function viewerState(
         claimRemainingMs: Math.max(0, pick.claimUntil - deps.clock.now()),
         claim: pick.claim,
         chatClaimAvailable: !summary.chatClaimUnavailable,
+        answers: giveaway.rules.winnerForm.length === 0 ? null : pick.answers,
       }
     }
   }

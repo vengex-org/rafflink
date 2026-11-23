@@ -317,6 +317,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.in-the-past": "Čas ukončenia musí byť v budúcnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
   "issue.unsupported": "Tvoja streamovacia platforma toto pravidlo nevie overiť. Vypni ho.",
+  "issue.not-a-list": "Neplatná hodnota.",
+  "issue.duplicate": "Každú možnosť môžeš vybrať iba raz.",
   "issue.wholeDays": "Zadaj celý počet dní, alebo nechaj pole prázdne.",
   "issue.wholeMinutes": "Zadaj celý počet minút, aspoň 1.",
   "issue.pickEnd": "Vyber dátum a čas, kedy zápis končí.",
@@ -458,6 +460,36 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "win.claim": "Prevziať výhru",
   "win.orAny": "Alebo napíš ľubovoľnú správu do chatu streamu.",
   "win.orType": "Alebo napíš {keyword} do chatu streamu.",
+
+  "winnerField.name": "Meno",
+  "winnerField.email": "E-mail",
+  "winnerField.address": "Doručovacia adresa",
+  "winnerField.platform-id": "Herný účet alebo ID na platforme",
+  "winnerField.text": "Správa pre streamera",
+  "winnerForm.title": "Kam má výhra prísť?",
+  "winnerForm.notice":
+    "Tvoje odpovede vidí iba {name}, ktorý tento giveaway vedie, aby ti mohol doručiť výhru. Vymažú sa, keď označí výhru ako doručenú, najneskôr 30 dní po prevzatí. Formulár môžeš poslať iba raz.",
+  "winnerForm.send": "Odoslať",
+  "winnerForm.saved": "Tvoje odpovede sme poslali streamerovi.",
+  "winnerForm.already-answered": "Odpovede si už poslal.",
+  "winnerForm.not-claimed": "Najprv si prevezmi výhru.",
+  "winnerForm.form-closed": "Formulár je uzavretý.",
+  "winnerForm.not-a-winner": "Nie si víťaz tohto giveawayu.",
+  "winnerForm.rejected": "Odoslanie nevyšlo. Skús to znova.",
+  "winnerForm.invalid": "Vyplň všetky polia. E-mail musí obsahovať @.",
+  "answers.title": "Odpovede víťazov",
+  "answers.none": "Výhru si zatiaľ neprevzal žiadny víťaz.",
+  "answers.pick": "Žreb {n}: {name}",
+  "answers.unnamed": "neznámy víťaz",
+  "answers.waiting": "Zatiaľ neposlal.",
+  "answers.deleted": "Odpovede sú vymazané.",
+  "answers.closed": "Neposlal. Formulár je uzavretý.",
+  "answers.delivered": "Doručené {at}.",
+  "answers.markDelivered": "Označiť ako doručené",
+  "answers.deliverFailed": "Výhru sa nepodarilo označiť ako doručenú. Obnov stránku.",
+  "answers.failed": "Odpovede sa nepodarilo načítať.",
+  "answers.privacy":
+    "Tieto odpovede vidíš iba ty, moderátori nie. Označenie výhry ako doručenej ich vymaže, inak sa vymažú 30 dní po prevzatí.",
   "rules.summary": "Pravidlá a lístky",
   "rules.help": "Čím viac lístkov skupina dostane, tým väčšiu má šancu vyhrať.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -488,6 +520,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rules.verify": "Žrebovanie si môže ktokoľvek overiť na {url}",
   "rules.claimLate": "Kým víťaz výhru neprevezme, {name} ho môže nahradiť novým žrebovaním.",
   "rules.delivery": "Výhru odovzdá {name}. Rafflink výhry nedrží ani neposiela.",
+  "rules.winnerForm":
+    "Po prevzatí víťaz vyplní na tejto stránke krátky formulár na doručenie ({fields}). Odpovede vidí iba {name}. Vymažú sa po doručení výhry, najneskôr 30 dní po prevzatí.",
   "rules.extraTerms": "Ďalšie podmienky od {name}:",
   "rules.notice":
     "Tieto pravidlá vznikli z nastavení súťaže. Sú to vzorové pravidlá, nie právna rada.",
@@ -786,6 +820,9 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.recent.count.days": "Koľko dní dozadu",
   "wizard.recent.fewer": "Menej",
   "wizard.recent.more": "Viac",
+  "wizard.winnerForm.legend": "Formulár pre víťaza",
+  "wizard.winnerForm.help":
+    "Po prevzatí ho víťaz vyplní na stránke giveawayu. Odpovede vidíš iba ty. Vymažú sa, keď označíš výhru ako doručenú, najneskôr 30 dní po prevzatí.",
   "wizard.tickets.legend": "Lístky podľa skupiny",
   "wizard.tickets.help":
     "Každá skupina dostane 1 lístok. Viac lístkov znamená väčšiu šancu vyhrať, napríklad 3 pre predplatiteľov. Nechaj to tak, ak majú mať všetci rovnakú šancu.",
@@ -902,6 +939,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Zablokované účty: streamer môže zablokovať účty vo svojich giveawayoch. Rafflink potom pri účte streamera uloží Twitch user ID a prihlasovacie meno zablokovanej osoby a čas bloku. Každá miestnosť giveawayu streamera si drží kópiu zablokovaných user ID, aby ich mohla odmietnuť. Ak sa osoba už zapojila do giveawayu, ktorý je ešte otvorený, jej záznam sa vymaže.",
   "privacy.data.i10":
     "Nedávni víťazi: keď streamer nezapája nedávnych víťazov, Twitch user ID víťazov jeho predchádzajúcich giveawayov sa skopírujú do miestnosti nového giveawayu, aby ich mohla odmietnuť.",
+  "privacy.data.i11":
+    "Víťazi, ktorí vyplnia formulár pre víťaza: odpovede, o ktoré streamer požiadal, napríklad meno, e-mail, doručovacia adresa, ID herného účtu alebo správa pre streamera. Ukladajú sa šifrované, čítať ich môže iba streamer daného giveawayu, aby doručil výhru, a nikdy sa nezapisujú do logov. Víťaz môže formulár poslať iba raz.",
   "privacy.purposes.h": "Prečo a na akom právnom základe",
   "privacy.purposes.i1":
     "Na prevádzku giveawayov, ktoré streameri vytvárajú, a na zapájanie divákov vrátane žrebovania a prevzatia výhry: plnenie zmluvy s tebou, teda služby, o ktorú si požiadal (čl. 6 ods. 1 písm. b) GDPR).",
@@ -922,6 +961,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Giveaway (názov, výhra, pravidlá, dátumy, počty zapojených a tiketov), všetci vyžrebovaní, aj tí nahradení novým žrebom, s Twitch ID, prihlasovacím a zobrazovaným menom a stavom prevzatia, Merkleho koreň zoznamu zapojení a zoznam jeho listov (hashe a počty tiketov, bez mien) zostávajú, kým streamer giveaway nevymaže, aby sa dala doručiť výhra a aby si žrebovanie mohol neskôr overiť ktokoľvek. Prevádzkovateľ môže nastaviť počet dní po uzavretí žrebovania, po ktorých sa giveawaye mažú.",
   "privacy.retention.i6":
     "Blok (Twitch user ID a prihlasovacie meno) sa uchováva, aby sa daná osoba nezapojila do giveawayov streamera, kým ho streamer neodoberie na prehľade alebo nevymaže svoj účet. Kópie zablokovaných user ID a user ID nedávnych víťazov v miestnosti giveawayu sa vymažú spolu so záznamami toho giveawayu, najneskôr 30 dní po jeho uzavretí.",
+  "privacy.retention.i7":
+    "Odpovede z formulára pre víťaza sa vymažú, keď streamer označí výhru ako doručenú, najneskôr 30 dní po prevzatí; prevádzkovateľ môže nastaviť kratšiu dobu. Pri žrebe zostáva iba čas odoslania formulára a čas doručenia. Vymazanie giveawayu alebo účtu streamera vymaže odpovede hneď.",
   "privacy.recipients.h": "Kto ďalší údaje vidí",
   "privacy.recipients.p1": "Rafflink údaje nepredáva. Údaje idú len týmto stranám.",
   "privacy.recipients.i1":
@@ -934,6 +975,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "Pri žrebovaní sa číta verejný maják náhodnosti drand. Neposielajú sa mu žiadne osobné údaje.",
   "privacy.recipients.i5":
     "Keď streamer zapne verejnú históriu, ktokoľvek na nej vidí meno streamera a jeho ukončené giveawaye: názov, cenu, dátum uzavretia a počet zapísaných a víťazov. Stránka neuvádza mená zapísaných ani víťazov a streamer môže jednotlivé giveawaye skryť alebo stránku vypnúť.",
+  "privacy.recipients.i6":
+    "Odpovede z formulára pre víťaza dostane iba streamer, ktorý giveaway vedie: moderátori, overlay ani verejné stránky ich nikdy nezobrazia.",
   "privacy.cookies.h": "Cookies a lokálne úložisko",
   "privacy.cookies.p1":
     "Rafflink nastavuje iba nevyhnutne potrebné cookies, preto sa nezobrazuje žiadny súhlasový banner. Všetky sú HTTP-only a nepoužívajú sa na nič iné.",

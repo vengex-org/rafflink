@@ -1,4 +1,5 @@
 import { groups } from "@rafflink/core/domain/groups"
+import { winnerFieldKindOf } from "@rafflink/core/domain/winner-form"
 import { claimPresets, type Step, type Values } from "../pages/create-values.ts"
 import { readSessionStored, removeSessionStored, writeSessionStored } from "./safe-storage.ts"
 
@@ -74,7 +75,7 @@ function isValues(value: unknown): value is Values {
   if (typeof value !== "object" || value === null) return false
   const fields = Object.fromEntries(Object.entries(value))
   const { title, prize, audience, tickets, minAccountAgeDays, ending, closesAt, claim } = fields
-  const { claimKeyword, entryWays, chatKeyword, winnerCount } = fields
+  const { claimKeyword, entryWays, chatKeyword, winnerCount, winnerForm } = fields
   const { minAge, excludedCountries, extraTerms } = fields
   return (
     [
@@ -94,7 +95,12 @@ function isValues(value: unknown): value is Values {
     && (entryWays === "page" || entryWays === "page-and-chat" || entryWays === "chat")
     && isTickets(tickets)
     && isClaim(claim)
+    && isWinnerForm(winnerForm)
   )
+}
+
+function isWinnerForm(value: unknown): boolean {
+  return Array.isArray(value) && value.every((item) => winnerFieldKindOf(item) !== undefined)
 }
 
 function isTickets(value: unknown): boolean {

@@ -303,6 +303,15 @@ class LocalRoomStub implements RoomStub {
   mirrorState() {
     return inRoom(() => this.room.mirrorState())
   }
+  saveWinnerAnswers(...args: Parameters<GiveawayRoom["saveWinnerAnswers"]>) {
+    return inRoom(() => this.room.saveWinnerAnswers(...args))
+  }
+  winnerAnswers() {
+    return inRoom(() => this.room.winnerAnswers())
+  }
+  markDelivered(...args: Parameters<GiveawayRoom["markDelivered"]>) {
+    return inRoom(() => this.room.markDelivered(...args))
+  }
   markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return inRoom(() => this.room.markMirrored(...args))
   }

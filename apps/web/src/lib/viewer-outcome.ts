@@ -36,6 +36,13 @@ export function applyViewerPush(load: GiveawayLoad, push: ViewerPush | null): Gi
       claimRemainingMs: Math.max(0, winner.claimUntil - push.now),
       claim: winner.claim,
       chatClaimAvailable: push.chatClaimAvailable,
+      // The push says nothing about the form; a viewer it makes the winner has not sent it yet.
+      answers:
+        me.kind === "won"
+          ? me.answers
+          : load.giveaway.rules.winnerForm.length === 0
+            ? null
+            : "open",
     },
   }
 }

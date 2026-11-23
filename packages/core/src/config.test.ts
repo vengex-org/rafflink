@@ -122,6 +122,14 @@ describe("resolveConfig", () => {
     ).toBe(limitSeconds + 1)
   })
 
+  it("keeps winner form answers 30 days by default and refuses more", () => {
+    expect(resolveConfig(required).winnerFormRetentionSeconds).toBe(2_592_000)
+    expect(failure({ ...required, WINNER_FORM_RETENTION_SECONDS: "2592001" })).toMatchObject({
+      env: "WINNER_FORM_RETENTION_SECONDS",
+      reason: "out-of-range",
+    })
+  })
+
   it("rejects a retention time below the claim and reroll windows or above 30 days", () => {
     const windows = { CLAIM_SECONDS_MAX: "100", REROLL_WINDOW_SECONDS: "50" }
     expect(failure({ ...required, ...windows, ENTRY_RETENTION_SECONDS: "149" })).toMatchObject({

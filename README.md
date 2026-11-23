@@ -173,9 +173,11 @@ The rest of the required config:
   accounts in `ADMIN_TWITCH_IDS` are always allowed. Set `true` to let every streamer create giveaways, as the
   hosted service does. An approval is kept when you switch to `true` and back.
 - `SESSION_SECRET`: a long random string, for example the output of `openssl rand -base64 32`.
-- `TOKEN_SEAL_KEYS`: the key that encrypts stored streamer tokens, written as `<key id>:<32 random bytes in
-  base64>`, for example `k1:` followed by the output of `openssl rand -base64 32`. To rotate, put the new key
-  first and keep the old one after a comma until every streamer has signed in again.
+- `TOKEN_SEAL_KEYS`: the key that encrypts stored streamer tokens and winner form answers, written as
+  `<key id>:<32 random bytes in base64>`, for example `k1:` followed by the output of
+  `openssl rand -base64 32`. To rotate, put the new key first and keep the old one after a comma until every
+  streamer has signed in again and `WINNER_FORM_RETENTION_SECONDS` have passed since the last winner form was
+  sent.
 
 Every other setting has a default; see [.env.example](.env.example).
 
@@ -250,7 +252,7 @@ docker compose start rafflink
 ```
 
 `TOKEN_SEAL_KEYS` is not in the volume. Keep a copy of it: without it the stored streamer tokens cannot be
-read and every streamer has to sign in again.
+read and every streamer has to sign in again, and the winner form answers still held cannot be read.
 
 To upgrade, pull the new code and rebuild. Back up first; the server applies new account migrations at start.
 

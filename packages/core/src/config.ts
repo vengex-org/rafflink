@@ -93,7 +93,7 @@ export const configSchema = {
   tokenSealKeys: required(
     "TOKEN_SEAL_KEYS",
     list(text),
-    "Key ring, comma separated, that seals stored streamer refresh tokens (spec AC-1)",
+    "Key ring, comma separated, that seals stored streamer refresh tokens (spec AC-1) and winners' form answers",
   ),
   sessionSecret: required("SESSION_SECRET", text, "Signs the session cookie (spec AC-1)"),
   admins: required(
@@ -522,6 +522,18 @@ export const configSchema = {
     "100",
     "Most expired giveaways one hourly sweep deletes while HISTORY_RETENTION_DAYS is set; each costs one room request and one account store write; starting guess, the same as ENTRY_RETENTION_SWEEP_BATCH",
   ),
+  winnerFormRetentionSeconds: withDefault(
+    "WINNER_FORM_RETENTION_SECONDS",
+    int(1, maxEntryRetentionSeconds),
+    "2592000",
+    "How long after the claim a winner's form answers (such as a shipping address) are kept before the room alarm deletes them, unless the streamer marks the prize delivered first; the winner can send the form only within this time; spec Privacy promises 30 days, so more than that is rejected",
+  ),
+  winnerAnswerMaxLength: withDefault(
+    "WINNER_ANSWER_MAX_LENGTH",
+    int(1),
+    "300",
+    "Longest answer in characters to one field of the winner form, an address included; starting guess, a postal address on four lines",
+  ),
   entryUserLimitPerMinute: withDefault(
     "ENTRY_USER_LIMIT_PER_MINUTE",
     int(1),
@@ -872,6 +884,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     entryRetentionSweepMaxAttempts: read(env, configSchema.entryRetentionSweepMaxAttempts),
     historyRetentionDays: read(env, configSchema.historyRetentionDays),
     historyRetentionSweepBatch: read(env, configSchema.historyRetentionSweepBatch),
+    winnerFormRetentionSeconds: read(env, configSchema.winnerFormRetentionSeconds),
+    winnerAnswerMaxLength: read(env, configSchema.winnerAnswerMaxLength),
     entryUserLimitPerMinute: read(env, configSchema.entryUserLimitPerMinute),
     entryIpLimitPerMinute: read(env, configSchema.entryIpLimitPerMinute),
     leavesIpLimitPerMinute: read(env, configSchema.leavesIpLimitPerMinute),

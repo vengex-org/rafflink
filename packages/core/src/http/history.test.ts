@@ -62,8 +62,8 @@ describe("winners CSV", () => {
       `attachment; filename="rafflink-${code}-winners.csv"`,
     )
     expect((await response.text()).split("\r\n")).toEqual([
-      '"pick","login","display_name","prize","drawn_at","claim","claimed_at"',
-      `"1","viewer_one","Display_viewer_one","Prize","${drawnAt}","claimed","${drawnAt}"`,
+      '"pick","login","display_name","prize","drawn_at","claim","claimed_at","delivered_at"',
+      `"1","viewer_one","Display_viewer_one","Prize","${drawnAt}","claimed","${drawnAt}",""`,
       "",
     ])
   })

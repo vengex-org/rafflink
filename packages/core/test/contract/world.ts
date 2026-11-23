@@ -31,6 +31,7 @@ export const defaultRules: GiveawayRules = {
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
+  winnerForm: [],
 }
 
 export interface GiveawayOptions {
