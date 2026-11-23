@@ -551,6 +551,12 @@ export const en = {
   "answers.unnamed": "unknown winner",
   "answers.waiting": "Not sent yet.",
   "answers.deleted": "The answers were deleted.",
+  "answers.received": "Answers received.",
+  "answers.show": "Show answers",
+  "answers.hide": "Hide answers",
+  "answers.confirm.title": "Show private answers?",
+  "answers.confirm.text": "Make sure this page is not on your stream.",
+  "answers.confirm.show": "Show",
   "answers.closed": "Not sent. The form is closed.",
   "answers.delivered": "Delivered on {at}.",
   "answers.markDelivered": "Mark delivered",
@@ -1394,6 +1400,12 @@ type EnglishOnlyKey =
   | "verify.checks.summary"
   | "answers.pick"
   | "answers.privacy"
+  | "answers.received"
+  | "answers.show"
+  | "answers.hide"
+  | "answers.confirm.title"
+  | "answers.confirm.text"
+  | "answers.confirm.show"
   | "dash.next"
   | "dash.obs.steps"
   | "live.draw.detail"

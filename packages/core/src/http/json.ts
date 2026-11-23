@@ -82,16 +82,25 @@ export type ViewerState =
     }
   | { readonly kind: "not-won"; readonly userId: string }
 
-/** The winner form of a giveaway with each claimed pick's answers, for its streamer only. */
+/**
+ * The winner form of a giveaway with each claimed pick's answer state, for its streamer only. It carries no answer:
+ * the live page may be on stream, so the answers of one pick come from {@link PickAnswersJson} on request.
+ */
 export interface WinnerAnswersJson {
   readonly form: readonly WinnerFieldKind[]
   readonly picks: readonly {
     readonly n: number
     readonly answers: PickAnswers
     readonly deliveredAt: Instant | null
-    /** Null once deleted (delivered or after `WINNER_FORM_RETENTION_SECONDS`), before they were sent, or when the key that sealed them is gone. */
-    readonly values: WinnerAnswers | null
+    /** False once deleted (delivered or after `WINNER_FORM_RETENTION_SECONDS`) and before they were sent. */
+    readonly held: boolean
   }[]
+}
+
+/** The answers of one claimed pick, for its streamer only. */
+export interface PickAnswersJson {
+  /** Null when the room holds none for the pick, or the key that sealed them is gone. */
+  readonly values: WinnerAnswers | null
 }
 
 /** The public facts a visitor checks a draw against; `commitment` is null before the commit and for a giveaway drawn before commitments existed. */

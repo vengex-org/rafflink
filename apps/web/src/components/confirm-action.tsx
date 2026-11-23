@@ -3,7 +3,7 @@ import { useI18n } from "../i18n/i18n.tsx"
 import { useShortcut } from "../lib/use-shortcut.ts"
 import { CloseIcon } from "./icons.tsx"
 
-/** A button for something that cannot be undone: it first asks in a dialog, in plain words, what will happen. */
+/** A button for something that cannot be undone or must not happen by accident: it first asks in a dialog, in plain words, what will happen. */
 export function ConfirmAction({
   icon,
   label,

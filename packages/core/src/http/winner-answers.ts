@@ -2,7 +2,7 @@ import type { Giveaway } from "../accounts/account-store.ts"
 import { winnerAnswersOf, type WinnerAnswers } from "../domain/winner-form.ts"
 import { openSecret, sealSecret, SealError } from "../lib/seal.ts"
 import type { AppDeps } from "./deps.ts"
-import type { WinnerAnswersJson } from "./json.ts"
+import type { PickAnswersJson, WinnerAnswersJson } from "./json.ts"
 
 type SealDeps = Pick<AppDeps, "keyRing" | "random">
 
@@ -16,29 +16,39 @@ export function sealWinnerAnswers(
   return sealSecret(deps.keyRing, JSON.stringify(answers), answersAad(giveawayId, n), deps.random)
 }
 
-/** The form and the claimed picks with their opened answers, as the streamer's live page shows them. */
+/** The form and the claimed picks with whether their answers are held, as the streamer's live page lists them. */
 export async function winnerAnswersJson(
-  deps: Pick<AppDeps, "keyRing" | "rooms">,
+  deps: Pick<AppDeps, "rooms">,
   giveaway: Giveaway,
 ): Promise<WinnerAnswersJson> {
   const room = deps.rooms.get(giveaway.id)
   const [picks, sealed] = await Promise.all([room.picks(), room.winnerAnswers()])
-  const sealedByPick = new Map(sealed.map((row) => [row.n, row.sealed]))
-  const claimed = picks.filter((pick) => pick.claim.state === "claimed")
+  const held = new Set(sealed.map((row) => row.n))
   return {
     form: giveaway.rules.winnerForm,
-    picks: await Promise.all(
-      claimed.map(async (pick) => {
-        const value = sealedByPick.get(pick.n)
-        return {
-          n: pick.n,
-          answers: pick.answers,
-          deliveredAt: pick.deliveredAt,
-          values:
-            value === undefined ? null : await openWinnerAnswers(deps, giveaway.id, pick.n, value),
-        }
-      }),
-    ),
+    picks: picks
+      .filter((pick) => pick.claim.state === "claimed")
+      .map((pick) => ({
+        n: pick.n,
+        answers: pick.answers,
+        deliveredAt: pick.deliveredAt,
+        held: held.has(pick.n),
+      })),
+  }
+}
+
+/** The opened answers of claimed pick `n`, which the streamer asked to see; null when `n` is no claimed pick. */
+export async function pickAnswersJson(
+  deps: Pick<AppDeps, "keyRing" | "rooms">,
+  giveaway: Giveaway,
+  n: number,
+): Promise<PickAnswersJson | null> {
+  const room = deps.rooms.get(giveaway.id)
+  const [picks, sealed] = await Promise.all([room.picks(), room.winnerAnswers()])
+  if (!picks.some((pick) => pick.n === n && pick.claim.state === "claimed")) return null
+  const value = sealed.find((row) => row.n === n)?.sealed
+  return {
+    values: value === undefined ? null : await openWinnerAnswers(deps, giveaway.id, n, value),
   }
 }
 

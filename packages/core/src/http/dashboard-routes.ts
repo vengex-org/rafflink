@@ -77,7 +77,7 @@ import { deletePublicCache, readPublicCache, writePublicCache } from "./public-c
 import { endStreamerSession, type StreamerSession } from "./session.ts"
 import { requireStreamer, type StreamerEnv } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
-import { winnerAnswersJson } from "./winner-answers.ts"
+import { pickAnswersJson, winnerAnswersJson } from "./winner-answers.ts"
 
 type Env = StreamerEnv
 
@@ -190,6 +190,18 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     withOwnedRoom(c, deps, async (giveaway) => {
       c.header("Cache-Control", "no-store")
       return c.json(await winnerAnswersJson(deps, giveaway))
+    }),
+  )
+
+  // The live page may be on stream, so it lists the picks without answers and asks for one pick's only on request.
+  app.get("/api/dash/giveaways/:id/answers/:n", (c) =>
+    withOwnedRoom(c, deps, async (giveaway) => {
+      const n = integerQuery(c.req.param("n"), 0, 0)
+      if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
+      const answers = await pickAnswersJson(deps, giveaway, n)
+      if (answers === null) return c.json({ error: "not-found" }, 404)
+      c.header("Cache-Control", "no-store")
+      return c.json(answers)
     }),
   )
 
