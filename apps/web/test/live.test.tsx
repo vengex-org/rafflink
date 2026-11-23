@@ -1515,11 +1515,34 @@ describe("live page: winners' chat", () => {
 
 describe("live page: access and connection", () => {
   it("asks for a sign-in without a session", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ({ status: 401, body: { error: "unauthorized" } }) })
+    mockLive({
+      "GET /api/live/gid-1": () => ({ status: 401, body: { error: "unauthorized" } }),
+      "GET /api/session": () =>
+        ok({ streamer: null, signInPlatforms: ["twitch"], donateUrl: null, operator: null }),
+    })
 
     const view = renderApp("/live/gid-1")
 
     expect(await view.findByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
+  })
+
+  it("offers a sign-in for every platform the install signs in with", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ({ status: 401, body: { error: "unauthorized" } }),
+      "GET /api/session": () =>
+        ok({
+          streamer: null,
+          signInPlatforms: ["twitch", "kick", "youtube"],
+          donateUrl: null,
+          operator: null,
+        }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByRole("link", { name: "Sign in with Kick" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "Sign in with YouTube" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "Sign in with Twitch" })).toBeTruthy()
   })
 
   it("answers not found for the giveaway of another streamer", async () => {

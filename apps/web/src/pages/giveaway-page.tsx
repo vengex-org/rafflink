@@ -74,13 +74,14 @@ function GiveawayDetails({
   const fromServer = me.kind === "entered" ? { kind: "entered" as const, entry: me.entry } : null
   const entry =
     fromSignIn?.kind === "dropped" && fromServer !== null ? fromServer : (fromSignIn ?? fromServer)
+  const hasEntered = entry?.kind === "entered" || entry?.kind === "already-in"
   // The viewer state was read before a queued sign-in finished, so the poll answer is the fresher entry.
-  const entered = entry?.kind === "entered" || entry?.kind === "already-in" ? entry.entry : null
-  const tickets = entered ?? (me.kind === "entered" ? me.entry : null)
+  const tickets = (hasEntered ? entry.entry : null) ?? (me.kind === "entered" ? me.entry : null)
   const signInHref = viewerSignInPath(giveaway.platform, code)
   const channelUrl = giveaway.platform === "twitch" ? twitchChannelUrl(giveaway.streamerName) : null
   const isWinner = me.kind === "won"
-  const isIn = entered !== null && !isWinner && giveaway.status !== "drawn"
+  // The sign-in redirect says the viewer entered without the entry itself, so being in does not wait for the tickets.
+  const isIn = hasEntered && !isWinner && giveaway.status !== "drawn"
   // A chat-only giveaway offers no sign-in while entries are open: the chat keyword and the lookup are the way in.
   // A paused platform shows its notice in the entry panel instead.
   const chatOnlyOpen =
@@ -99,7 +100,7 @@ function GiveawayDetails({
             tickets={tickets}
             notDrawn={me.kind === "not-won"}
             signedOut={me.kind === "signed-out"}
-            showSteps={entry !== null && entry !== fromServer}
+            showSteps={entry !== null && entry !== fromServer && !hasEntered}
             giveaway={giveaway}
             signInHref={signInHref}
           />

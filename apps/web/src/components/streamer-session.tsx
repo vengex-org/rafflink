@@ -7,6 +7,7 @@ import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLoad, type Load } from "../lib/use-load.ts"
+import { readStored, writeStored } from "../lib/safe-storage.ts"
 
 export type SignedInStreamer = NonNullable<SessionJson["streamer"]>
 
@@ -42,7 +43,17 @@ const unknownSession: StreamerSession = {
 
 const sessionContext = createContext<StreamerSession>(unknownSession)
 
+// Whether this browser's last session answer named a streamer; viewer pages ask for the session only then.
+const signedInKey = "rafflink-signed-in"
+
+export function rememberedSignIn(): boolean {
+  return readStored(signedInKey) === "yes"
+}
+
 export const useStreamerSession = () => useContext(sessionContext)
+
+/** Whether a {@link StreamerSessionProvider} is above; pages outside the layout, such as the live page, have none. */
+export const useHasStreamerSession = () => useContext(sessionContext) !== unknownSession
 
 /** Asks the server who the streamer is once for the whole page, so the header and the page body share one answer. */
 export function StreamerSessionProvider({ children }: { readonly children: ReactNode }) {
@@ -61,6 +72,10 @@ export function StreamerSessionProvider({ children }: { readonly children: React
 
   // A signed-out header has nothing to correct, and a call still in flight already asks the server.
   const signedIn = streamer !== null
+  const answered = result.state === "ready"
+  useEffect(() => {
+    if (answered) writeStored(signedInKey, signedIn ? "yes" : "no")
+  }, [answered, signedIn])
   useEffect(() => {
     if (!signedIn) return
     window.addEventListener(sessionLost, reload)

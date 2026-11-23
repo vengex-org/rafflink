@@ -114,7 +114,7 @@ describe("language", () => {
     expect(
       await view.findByRole("heading", { level: 1, name: sk["verifyLookup.title"] }),
     ).toBeTruthy()
-    expect(view.getByRole("link", { name: "Prihlásiť sa" })).toBeTruthy()
+    expect(view.getByRole("button", { name: sk["verifyLookup.submit"] })).toBeTruthy()
     await waitFor(() => expect(document.documentElement.lang).toBe("sk"))
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
     expect(view.address()).toBe("/verify")

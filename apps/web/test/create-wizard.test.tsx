@@ -525,13 +525,13 @@ describe("create wizard", () => {
       "Last giveaways",
       "How many giveaways back",
       "giveaways",
-      "Winners of the streamer's last 3 giveaways cannot enter.",
+      "Winners of your last 3 giveaways cannot enter.",
     ],
     [
       "Last days",
       "How many days back",
       "days",
-      "Winners of the streamer's giveaways from the last 3 days cannot enter.",
+      "Winners of your giveaways from the last 3 days cannot enter.",
     ],
   ] as const)(
     "keeps recent winners out by %s: reviews the rule and sends it",

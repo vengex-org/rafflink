@@ -362,6 +362,8 @@ describe("legal pages", () => {
     const view = renderApp("/de/privacy")
     fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
     await view.findByRole("heading", { level: 1, name: "Zásady ochrany osobních údajů" })
+    // The address follows the shown language a moment later; a link followed before that would be replaced by it.
+    await waitFor(() => expect(view.address()).toBe("/cs/privacy"))
 
     view.go("/de/terms")
 

@@ -8,10 +8,7 @@ export const de: Translation = {
   "nav.verify": "Ziehung prüfen",
   "nav.github": "GitHub",
   "link.newTab": "Öffnet in einem neuen Tab",
-  "nav.login": "Anmelden",
-  "nav.logout": "Abmelden",
   "nav.support": "Rafflink unterstützen",
-  "nav.loggedOut": "Abgemeldet.",
   "theme.legend": "Design",
   "theme.system": "System",
   "theme.light": "Hell",
@@ -44,7 +41,6 @@ export const de: Translation = {
   "signIn.buttonYouTube": "Mit YouTube anmelden",
   "signIn.why.admin": "Melde dich mit Twitch an, um die Admin-Seite zu öffnen.",
   "signIn.why.expired": "Deine Sitzung ist abgelaufen. Melde dich an, um weiterzumachen.",
-  "signIn.why.dashboard": "Melde dich an, um Gewinnspiele zu erstellen und zu leiten.",
   "signIn.why.live": "Melde dich an, um die Live-Seite deines Gewinnspiels zu öffnen.",
 
   "home.title": "Faire Gewinnspiele, live im Stream gezogen.",
@@ -383,21 +379,6 @@ export const de: Translation = {
   "year.few": "{count} Jahre",
   "year.other": "{count} Jahre",
   "year.many": "{count} Jahre",
-  "recentGiveaways.one": "Gewinner des letzten Gewinnspiels des Streamers können nicht mitmachen.",
-  "recentGiveaways.few":
-    "Gewinner der letzten {count} Gewinnspiele des Streamers können nicht mitmachen.",
-  "recentGiveaways.other":
-    "Gewinner der letzten {count} Gewinnspiele des Streamers können nicht mitmachen.",
-  "recentGiveaways.many":
-    "Gewinner der letzten {count} Gewinnspiele des Streamers können nicht mitmachen.",
-  "recentDays.one":
-    "Gewinner von Gewinnspielen des Streamers vom letzten Tag können nicht mitmachen.",
-  "recentDays.few":
-    "Gewinner von Gewinnspielen des Streamers aus den letzten {count} Tagen können nicht mitmachen.",
-  "recentDays.other":
-    "Gewinner von Gewinnspielen des Streamers aus den letzten {count} Tagen können nicht mitmachen.",
-  "recentDays.many":
-    "Gewinner von Gewinnspielen des Streamers aus den letzten {count} Tagen können nicht mitmachen.",
   "entered.one": "{count} Person macht mit",
   "entered.few": "{count} Personen machen mit",
   "entered.other": "{count} Personen machen mit",
@@ -432,8 +413,6 @@ export const de: Translation = {
   "who.followers": "Nur Follower können mitmachen.",
   "who.everyone": "Alle können mitmachen.",
   "who.ticketGroups": "Nur Gruppen, die Tickets bekommen, können mitmachen.",
-  "extraTickets.subs": "Abonnenten bekommen {tickets}.",
-  "extraTickets.some": "Manche Zuschauer bekommen Extra-Tickets. Die Liste unten zeigt, wie viele.",
   "ticket.cannotEnter": "kann nicht mitmachen",
   "claimTime.clock": "{clock} Minuten",
 
@@ -514,7 +493,6 @@ export const de: Translation = {
   "win.another.title": "Ein anderer Gewinner wurde gezogen",
   "win.title": "Du hast gewonnen",
   "win.claimed.title": "Preis abgeholt",
-  "win.claimedAt": "Abgeholt am {at}.",
   "win.up.title": "Zeit abgelaufen",
   "win.up.text": "Der Streamer kann einen anderen Gewinner ziehen.",
   "win.press":
@@ -529,8 +507,6 @@ export const de: Translation = {
   "winnerField.platform-id": "Spielkonto oder Plattform-ID",
   "winnerField.text": "Nachricht an den Streamer",
   "winnerForm.title": "Wohin soll der Preis gehen?",
-  "winnerForm.notice":
-    "Nur {name}, der dieses Gewinnspiel leitet, sieht deine Antworten, um den Preis zu liefern. Sie werden gelöscht, wenn der Preis als geliefert markiert wird, spätestens 30 Tage nach deiner Abholung. Du kannst das Formular einmal senden.",
   "winnerForm.send": "Senden",
   "winnerForm.saved": "Deine Antworten wurden an den Streamer gesendet.",
   "winnerForm.already-answered": "Du hast deine Antworten schon gesendet.",
@@ -1277,8 +1253,6 @@ export const de: Translation = {
     "Die drand-Runde wurde veröffentlicht, bevor die Liste festgeschrieben war, daher ist der Ziehung nicht zu trauen.",
   "verify.facts.winners": "Geplante Gewinner",
   "verify.facts.committed": "Liste festgeschrieben am",
-  "verify.rerolls.note":
-    "Der Streamer kann einen Gewinner neu ziehen, der die Bedingungen des Gewinnspiels nicht erfüllt hat. Der Streamer kann auch mehr Gewinner als geplant ziehen, einen nach dem anderen. Jede Ziehung und jede Neuziehung bleibt in dieser Liste.",
   "verify.rerolls.count": "Neu gezogene Plätze: {count}.",
   "verify.winner.before": "{count} neu gezogene Plätze kamen davor.",
   "verify.mine.title": "Deine Teilnahme",

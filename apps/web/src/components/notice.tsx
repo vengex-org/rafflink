@@ -5,10 +5,21 @@ import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import { streamerSignInPath } from "../lib/routes.ts"
-import { AlertIcon, ArrowLeftIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
+import {
+  AlertIcon,
+  ArrowLeftIcon,
+  CloseIcon,
+  LockIcon,
+  PlatformIcon,
+  RefreshIcon,
+} from "./icons.tsx"
 import { StateColumn } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
-import { useStreamerSession } from "./streamer-session.tsx"
+import {
+  StreamerSessionProvider,
+  useHasStreamerSession,
+  useStreamerSession,
+} from "./streamer-session.tsx"
 
 export function Loading() {
   const { t } = useI18n()
@@ -101,22 +112,36 @@ const signInLabels: Readonly<Record<Platform, MessageKey>> = {
   youtube: "signIn.buttonYouTube",
 }
 
-/** Signing in brings the streamer back to the page they are on; one button per platform the install signs in with. */
-export function SignIn({ why }: { readonly why: MessageKey }) {
+/**
+ * Signing in brings the streamer back to the page they are on; one button per platform the install signs in with.
+ * `why` says what the sign-in is for when the page around it does not. A page outside the layout asks the session
+ * here, so its buttons follow the install's platforms too.
+ */
+export function SignIn({ why }: { readonly why?: MessageKey | undefined }) {
+  return useHasStreamerSession() ? (
+    <SignInCard why={why} />
+  ) : (
+    <StreamerSessionProvider>
+      <SignInCard why={why} />
+    </StreamerSessionProvider>
+  )
+}
+
+function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
   const { signInPlatforms } = useStreamerSession()
   return (
     <StateColumn>
       <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
-        <p>{t(why)}</p>
+        {why === undefined ? null : <p>{t(why)}</p>}
         {signInPlatforms.map((platform) => (
           <a
             key={platform}
-            className="button block"
+            className="button outlined block"
             href={streamerSignInPath(platform, `${pathname}${search}`)}
           >
-            <LogInIcon />
+            <PlatformIcon platform={platform} />
             {t(signInLabels[platform])}
           </a>
         ))}

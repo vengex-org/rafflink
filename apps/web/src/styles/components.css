@@ -159,7 +159,7 @@ main.container {
 
 /* A signed-in phone bar holds the name and Log out next to the settings, so the brand keeps only its mark. */
 @media (max-width: 29.99rem) {
-  .app-bar-inner:has(.app-bar-end > .button.text ~ .button.text) .brand {
+  .app-bar-inner:has(.app-bar-end > .button.text ~ .button.text:not(.app-streamer-login)) .brand {
     gap: 0;
     font-size: 0;
   }
@@ -176,12 +176,13 @@ main.container {
 }
 
 /* On a phone the link sits in the settings popover, where the bar has no room for it. */
-.app-bar .app-verify {
+/* A viewer's phone bar also leaves the streamer sign-in out; the home page and the dashboard keep the way in. */
+.app-bar :is(.app-verify, .app-streamer-login) {
   display: none;
 }
 
 @media (min-width: 40rem) {
-  .app-bar .app-verify {
+  .app-bar :is(.app-verify, .app-streamer-login) {
     display: inline-flex;
   }
 

@@ -363,6 +363,35 @@ main.container:has(> .viewer) {
   color: var(--danger);
 }
 
+/* The winner form inside the claimed block: a plain card with a small heading, so the block's title stays the one headline. */
+
+.winner-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--ink);
+}
+
+.winner-form h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.winner-form .help {
+  margin-top: calc(-1 * var(--space-1));
+  color: var(--ink-2);
+}
+
+.winner-form .field {
+  margin: 0;
+}
+
+.winner-form .button.block {
+  margin-top: 0;
+}
+
 /* Chat entry: the keyword to type and the "Am I in?" lookup by login. */
 
 .chat-entry {
@@ -379,6 +408,21 @@ main.container:has(> .viewer) {
 
 .chat-lookup .field {
   flex: 1 1 12rem;
+  margin: 0;
+}
+
+/* As tall as the input beside it, so the two read as one control. */
+.chat-lookup .button {
+  min-height: 3rem;
+}
+
+.chat-entry code {
+  padding: 0.0625rem 0.375rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 600;
 }
 
 /* Detail rows */

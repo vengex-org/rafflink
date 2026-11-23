@@ -8,10 +8,7 @@ export const it: Translation = {
   "nav.verify": "Verifica un'estrazione",
   "nav.github": "GitHub",
   "link.newTab": "Si apre in una nuova scheda",
-  "nav.login": "Accedi",
-  "nav.logout": "Esci",
   "nav.support": "Sostieni Rafflink",
-  "nav.loggedOut": "Sei uscito.",
   "theme.legend": "Tema",
   "theme.system": "Sistema",
   "theme.light": "Chiaro",
@@ -44,7 +41,6 @@ export const it: Translation = {
   "signIn.buttonYouTube": "Accedi con YouTube",
   "signIn.why.admin": "Accedi con Twitch per aprire la pagina di amministrazione.",
   "signIn.why.expired": "La tua sessione è scaduta. Accedi per continuare.",
-  "signIn.why.dashboard": "Accedi per creare e gestire i giveaway.",
   "signIn.why.live": "Accedi per aprire la pagina live del tuo giveaway.",
 
   "home.title": "Giveaway equi, estratti in diretta.",
@@ -382,21 +378,6 @@ export const it: Translation = {
   "year.few": "{count} anni",
   "year.other": "{count} anni",
   "year.many": "{count} anni",
-  "recentGiveaways.one": "I vincitori dell'ultimo giveaway dello streamer non possono partecipare.",
-  "recentGiveaways.few":
-    "I vincitori degli ultimi {count} giveaway dello streamer non possono partecipare.",
-  "recentGiveaways.other":
-    "I vincitori degli ultimi {count} giveaway dello streamer non possono partecipare.",
-  "recentGiveaways.many":
-    "I vincitori degli ultimi {count} giveaway dello streamer non possono partecipare.",
-  "recentDays.one":
-    "I vincitori dei giveaway dello streamer dell'ultimo giorno non possono partecipare.",
-  "recentDays.few":
-    "I vincitori dei giveaway dello streamer degli ultimi {count} giorni non possono partecipare.",
-  "recentDays.other":
-    "I vincitori dei giveaway dello streamer degli ultimi {count} giorni non possono partecipare.",
-  "recentDays.many":
-    "I vincitori dei giveaway dello streamer degli ultimi {count} giorni non possono partecipare.",
   "entered.one": "{count} persona iscritta",
   "entered.few": "{count} persone iscritte",
   "entered.other": "{count} persone iscritte",
@@ -431,9 +412,6 @@ export const it: Translation = {
   "who.followers": "Possono partecipare solo i follower.",
   "who.everyone": "Possono partecipare tutti.",
   "who.ticketGroups": "Possono partecipare solo i gruppi che ricevono biglietti.",
-  "extraTickets.subs": "Gli abbonati ricevono {tickets}.",
-  "extraTickets.some":
-    "Alcuni spettatori ricevono biglietti extra. L'elenco qui sotto mostra quanti.",
   "ticket.cannotEnter": "non può partecipare",
   "claimTime.clock": "{clock} minuti",
 
@@ -512,7 +490,6 @@ export const it: Translation = {
   "win.another.title": "È stato scelto un altro vincitore",
   "win.title": "Hai vinto",
   "win.claimed.title": "Premio riscattato",
-  "win.claimedAt": "Riscattato il {at}.",
   "win.up.title": "Tempo scaduto",
   "win.up.text": "Lo streamer potrebbe scegliere un altro vincitore.",
   "win.press":
@@ -527,8 +504,6 @@ export const it: Translation = {
   "winnerField.platform-id": "Account di gioco o ID della piattaforma",
   "winnerField.text": "Messaggio per lo streamer",
   "winnerForm.title": "Dove dobbiamo mandare il premio?",
-  "winnerForm.notice":
-    "Solo {name}, che gestisce questo giveaway, vede le tue risposte, per consegnare il premio. Vengono eliminate quando il premio è segnato come consegnato, al più tardi 30 giorni dopo il tuo riscatto. Puoi inviare il modulo una sola volta.",
   "winnerForm.send": "Invia",
   "winnerForm.saved": "Le tue risposte sono state inviate allo streamer.",
   "winnerForm.already-answered": "Hai già inviato le tue risposte.",
@@ -1271,8 +1246,6 @@ export const it: Translation = {
     "Il round drand è stato pubblicato prima che l'elenco fosse fissato, quindi non ci si può fidare dell'estrazione.",
   "verify.facts.winners": "Vincitori previsti",
   "verify.facts.committed": "Elenco fissato il",
-  "verify.rerolls.note":
-    "Lo streamer può riestrarre un vincitore che non ha soddisfatto le condizioni del giveaway. Lo streamer può anche estrarre più vincitori del previsto, uno alla volta. Ogni estrazione e ogni riestrazione resta in questo elenco.",
   "verify.rerolls.count": "Estrazioni sostituite: {count}.",
   "verify.winner.before": "La precedono {count} estrazioni sostituite.",
   "verify.mine.title": "La tua iscrizione",

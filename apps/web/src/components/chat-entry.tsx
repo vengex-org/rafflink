@@ -23,7 +23,7 @@ export function ChatEntry({
   /** Entries are open, so typing the keyword still enters. */
   readonly open: boolean
 }) {
-  const { t } = useI18n()
+  const { t, rich } = useI18n()
   const [login, setLogin] = useState("")
   const [answer, setAnswer] = useState<LookupAnswer | null>(null)
   const [busy, setBusy] = useState(false)
@@ -47,7 +47,9 @@ export function ChatEntry({
   return (
     <section className="chat-entry" aria-label={t("giveaway.lookup.legend")}>
       {open ? (
-        <p className="viewer-note">{t("giveaway.chatEntry", { keyword, name: streamerName })}</p>
+        <p className="viewer-note">
+          {rich("giveaway.chatEntry", { keyword: <code>{keyword}</code>, name: streamerName })}
+        </p>
       ) : null}
       <form className="chat-lookup" onSubmit={check}>
         <TextField

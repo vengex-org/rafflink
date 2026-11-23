@@ -87,6 +87,40 @@
   padding-left: var(--space-3);
 }
 
+/* The verdict of a run: one heading in the outcome's color, the single checks folded under it. */
+.verify-result {
+  align-self: stretch;
+}
+
+.verify-result .extra {
+  margin-top: var(--space-1);
+}
+
+.verify .verify-verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-title);
+}
+
+.verify-verdict .icon {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.verify-verdict[data-outcome="verified"] {
+  color: var(--success);
+}
+
+.verify-verdict[data-outcome="failed"] {
+  color: var(--danger);
+}
+
+.verify-verdict[data-outcome="incomplete"] {
+  color: var(--ink-2);
+}
+
 .verify-checks {
   display: flex;
   flex-direction: column;

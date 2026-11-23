@@ -183,7 +183,9 @@ describe("viewer page: push", () => {
     }
     act(() => socket.push(push({ status: "drawn", winners: [claimed] })))
 
-    expect(await view.findByText(`Claimed on ${claimedAtText}.`)).toBeTruthy()
+    expect(
+      await view.findByText(`Claimed on ${claimedAtText}. Streamy will contact you.`),
+    ).toBeTruthy()
     expect(view.queryByText(/Your entry:/)).toBeNull()
   })
 
@@ -216,7 +218,7 @@ describe("viewer page: push", () => {
       ),
     )
 
-    expect(await view.findByText("Claimed! The streamer will contact you.")).toBeTruthy()
+    expect(await view.findByText(/Streamy will contact you./)).toBeTruthy()
     expect(view.queryByRole("button", { name: "Claim my prize" })).toBeNull()
   })
 
@@ -305,7 +307,7 @@ describe("viewer page: push", () => {
       winners: [{ ...waitingWinner("u1"), claim: { state: "claimed", at: 1, via: "chat" } }],
     })
     act(() => socket.push(claimed))
-    await view.findByText("Claimed! The streamer will contact you.")
+    await view.findByText(/Streamy will contact you./)
     const shown = view.container.innerHTML
 
     act(() => socket.push(claimed))
@@ -622,7 +624,7 @@ describe("viewer page: reload window", () => {
     })
     const first = renderApp("/ABCDE")
     fireEvent.click(await first.findByRole("button", { name: "Claim my prize" }))
-    await first.findByText("Claimed! The streamer will contact you.")
+    await first.findByText(/Streamy will contact you./)
     cleanup()
 
     const second = renderApp("/ABCDE")
@@ -710,6 +712,6 @@ describe("viewer page: reload window", () => {
 
     fireEvent.click(await view.findByRole("button", { name: "Claim my prize" }))
 
-    expect(await view.findByText("Claimed! The streamer will contact you.")).toBeTruthy()
+    expect(await view.findByText(/Streamy will contact you./)).toBeTruthy()
   })
 })
