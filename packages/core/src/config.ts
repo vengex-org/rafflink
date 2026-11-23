@@ -705,6 +705,12 @@ export const configSchema = {
     "20",
     'Leaf list downloads one client address may make per minute when the list is not in the cache, and apart from those as many "Am I in?" lookups by login; each wakes the giveaway\'s room and a leaf list carries up to a megabyte; a verify page loads it once and a viewer looks up a login a few times, so this is a loose backstop (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal',
   ),
+  presenceIpLimitPerMinute: withDefault(
+    "PRESENCE_IP_LIMIT_PER_MINUTE",
+    int(1),
+    "30",
+    "Presence sockets one client address may open per minute; a tab opens one per page kind it shows and one per reconnect, so this only caps a client that reconnects in a loop (starting guess); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
+  ),
   moderatorIpLimitPerMinute: withDefault(
     "MODERATOR_IP_LIMIT_PER_MINUTE",
     int(1),
@@ -877,7 +883,7 @@ export const configSchema = {
     "ADMIN_STATS_LIVE_ROOMS_MAX",
     int(0, 30),
     "20",
-    "Most open giveaways one admin statistics request asks for live counts, newest first; each costs one Durable Object subrequest on Cloudflare; a request makes 13 other subrequests (session, 2 open giveaways, queue, plan, usage, minutes, 3 daily counts, referrals, 2 access lists), so the Free plan's 50 holds up to 30 and 20 leaves headroom; the rest show as a number",
+    "Most open giveaways one admin statistics request asks for live counts, newest first; each costs one Durable Object subrequest on Cloudflare; a request makes 14 other subrequests (session, 2 open giveaways, queue, presence, plan, usage, minutes, 3 daily counts, referrals, 2 access lists), so the Free plan's 50 holds up to 30 and 20 leaves headroom; the rest show as a number",
   ),
   adminStatsSeriesMinutes: withDefault(
     "ADMIN_STATS_SERIES_MINUTES",
@@ -1117,6 +1123,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     entryUserLimitPerMinute: read(env, configSchema.entryUserLimitPerMinute),
     entryIpLimitPerMinute: read(env, configSchema.entryIpLimitPerMinute),
     leavesIpLimitPerMinute: read(env, configSchema.leavesIpLimitPerMinute),
+    presenceIpLimitPerMinute: read(env, configSchema.presenceIpLimitPerMinute),
     moderatorIpLimitPerMinute: read(env, configSchema.moderatorIpLimitPerMinute),
     moderatorRecheckSeconds: read(env, configSchema.moderatorRecheckSeconds),
     leavesCacheSeconds: read(env, configSchema.leavesCacheSeconds),

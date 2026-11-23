@@ -1,23 +1,29 @@
 import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
+import { presenceKindHeader, presenceSocketPath } from "@rafflink/core/presence/site-presence"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type MiddlewareHandler } from "hono"
+import { sitePresenceStub } from "./adapters/durable-object-site-presence.ts"
 import type { GiveawayRoomObject } from "./durable-objects/giveaway-room-do.ts"
+import type { SitePresenceObject } from "./durable-objects/site-presence-do.ts"
 
 export interface WorkerAppOptions {
   /** The HTTP app of core. */
   readonly api: Hono
   readonly rooms: DurableObjectNamespace<GiveawayRoomObject>
+  /** Null without the binding: the presence upgrade then reaches the route of core, which answers 404. */
+  readonly presence: DurableObjectNamespace<SitePresenceObject> | null
 }
 
-/** Everything the Worker answers: WebSocket upgrades of the live, overlay and viewer routes, and the API and the pages of core that `run_worker_first` sends to it. */
+/** Everything the Worker answers: WebSocket upgrades of the live, overlay, viewer and presence routes, and the API and the pages of core that `run_worker_first` sends to it. */
 export function createWorkerApp(options: WorkerAppOptions): Hono {
-  const { api, rooms } = options
+  const { api, rooms, presence } = options
   const app = new Hono()
 
   app.get("/api/live/:id", liveSocket(api, rooms))
   app.get("/api/mod/:id", moderatorSocket(api, rooms))
   app.get("/api/overlay/:id/:token", liveSocket(api, rooms))
   app.get("/api/g/:code/live", viewerSocket(api, rooms))
+  if (presence !== null) app.get(presenceSocketPath, presenceSocket(api, presence))
   app.all("*", (c) => api.fetch(c.req.raw))
 
   return app
@@ -63,5 +69,25 @@ function viewerSocket(api: Hono, rooms: WorkerAppOptions["rooms"]): MiddlewareHa
     const roomId = checked.headers.get(viewerRoomHeader)
     if (roomId === null) throw new TypeError("the viewer socket route named no room")
     return rooms.get(rooms.idFromName(roomId)).fetch(c.req.raw)
+  }
+}
+
+/**
+ * Like {@link moderatorSocket} for the presence socket of a page, which goes to the one presence object with
+ * the page kind the route of core named. A header the browser sent is replaced.
+ */
+function presenceSocket(
+  api: Hono,
+  presence: DurableObjectNamespace<SitePresenceObject>,
+): MiddlewareHandler {
+  return async (c, next) => {
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return next()
+    const checked = await api.fetch(c.req.raw)
+    if (!checked.ok) return checked
+    const kind = checked.headers.get(presenceKindHeader)
+    if (kind === null) throw new TypeError("the presence route named no page kind")
+    const headers = new Headers(c.req.raw.headers)
+    headers.set(presenceKindHeader, kind)
+    return sitePresenceStub(presence).fetch(new Request(c.req.raw, { headers }))
   }
 }

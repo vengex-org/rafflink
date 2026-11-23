@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest, spyOn } from "bun:test"
-import { act, cleanup } from "@testing-library/react"
+import { act, cleanup, within } from "@testing-library/react"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -51,6 +51,7 @@ function statsBody(overrides: Record<string, unknown> = {}) {
       },
     ],
     viewers: 40,
+    presence: { total: 9, byKind: { home: 3, legal: 1, dashboard: 2, giveaway: 2, other: 1 } },
     entriesLastMinute: 15,
     claimsLastMinute: 1,
     queue,
@@ -123,6 +124,33 @@ describe("admin page live numbers", () => {
       view.getByText("Viewers, entries and claims cover the 2 newest of 3 open giveaways."),
     ).toBeTruthy()
     expect(view.getByText(/^Updated /)).toBeTruthy()
+  })
+
+  it("shows the people on the site in total and per page kind", async () => {
+    mockAdmin()
+
+    const view = renderApp("/admin")
+
+    const card = await view.findByRole("region", { name: "On the site now" })
+    const value = (label: string) => within(card).getByText(label).nextSibling?.textContent
+    expect(value("people on the site")).toBe("9")
+    expect(value("home page")).toBe("3")
+    expect(value("terms and privacy")).toBe("1")
+    expect(value("dashboard and admin")).toBe("2")
+    expect(value("giveaway pages")).toBe("2")
+    expect(value("other pages")).toBe("1")
+  })
+
+  it("says the people on the site are unavailable when their count did not answer, and keeps the other numbers", async () => {
+    mockAdmin(() => ok(statsBody({ presence: "unavailable" })))
+
+    const view = renderApp("/admin")
+
+    expect(
+      await view.findByText("The count of people on the site is unavailable right now."),
+    ).toBeTruthy()
+    expect(view.queryByText("people on the site")).toBeNull()
+    expect((await view.findByText("open giveaways")).nextSibling?.textContent).toBe("3")
   })
 
   it("lists the open giveaways with streamer, viewers, entries and end, a dash for a room that did not answer", async () => {

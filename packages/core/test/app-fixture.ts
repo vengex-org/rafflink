@@ -15,6 +15,7 @@ import { createApp, type SpaTemplateLoader } from "../src/http/create-app.ts"
 import { codeAlphabet, codeLength } from "../src/lib/codes.ts"
 import { toBase64 } from "../src/lib/encoding.ts"
 import { MemoryPublicCache } from "../src/lib/memory-public-cache.ts"
+import { MemorySitePresence } from "../src/lib/memory-site-presence.ts"
 import { MemoryRateLimiter } from "../src/lib/memory-rate-limiter.ts"
 import { openKeyRing } from "../src/lib/seal.ts"
 import type { PlanQueue } from "../src/plan/current-plan.ts"
@@ -360,6 +361,7 @@ export interface Harness {
   readonly clock: TestClock
   readonly rooms: InProcessRooms
   readonly usage: StubUsageMeter
+  readonly presence: MemorySitePresence
   /** Null for a harness like the Bun server, without a Cloudflare plan. */
   readonly planQueue: RecordingPlanQueue | null
   readonly accountsDb: Database
@@ -380,6 +382,8 @@ export interface HarnessOptions {
   readonly capabilities?: Partial<PlatformCapabilities>
   /** The built `index.html` the pages are answered with; without it the app answers the API only. */
   readonly spaTemplate?: string
+  /** True leaves the app without a presence count, like a Worker deployed without its binding. */
+  readonly withoutPresence?: boolean
   /** The YouTube quota the admin page reads; none, as without a Google client, when absent. */
   readonly youtubeQuota?: YouTubeQuota
 }
@@ -441,6 +445,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
           }),
   }
   const usage = new StubUsageMeter()
+  const presence = new MemorySitePresence()
   const planQueue = options.target === "bun" ? null : new RecordingPlanQueue()
   const queueDb = new Database(":memory:")
   const queueSql = new BunSqliteSyncSql(queueDb)
@@ -474,6 +479,8 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     moderatorIpLimiter: new MemoryRateLimiter(clock, config.moderatorIpLimitPerMinute, 60_000),
     clientAddress: (request) => request.headers.get(testAddressHeader),
     reportError: (error, context) => void reported.push({ error, context }),
+    presence: options.withoutPresence === true ? null : presence,
+    presenceIpLimiter: new MemoryRateLimiter(clock, config.presenceIpLimitPerMinute, 60_000),
   }
   return {
     app: createApp(deps, spaTemplateLoader(options.spaTemplate)),
@@ -483,6 +490,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     clock,
     rooms,
     usage,
+    presence,
     planQueue,
     accountsDb,
     queue,

@@ -9,6 +9,7 @@ import { kickScenarios } from "./kick.scenarios.ts"
 import { liveScenarios } from "./live.scenarios.ts"
 import { operationsScenarios } from "./operations.scenarios.ts"
 import { pageScenarios } from "./page.scenarios.ts"
+import { presenceScenarios } from "./presence.scenarios.ts"
 import { queueScenarios } from "./queue.scenarios.ts"
 import { retentionScenarios } from "./retention.scenarios.ts"
 import { sessionScenarios } from "./session.scenarios.ts"
@@ -40,6 +41,7 @@ export function defineContract(
     kickScenarios(context)
     youtubeScenarios(context)
     operationsScenarios(context)
+    presenceScenarios(context)
     retentionScenarios(context)
     pageScenarios(context)
     sessionScenarios(context)

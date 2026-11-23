@@ -17,6 +17,7 @@ import { captureException } from "@sentry/core"
 import type { ReportError } from "@rafflink/core/ports"
 import { MemoryPublicCache } from "@rafflink/core/lib/memory-public-cache"
 import { MemoryRateLimiter } from "@rafflink/core/lib/memory-rate-limiter"
+import { MemorySitePresence } from "@rafflink/core/lib/memory-site-presence"
 import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { deleteExpiredGiveaways } from "@rafflink/core/room/delete-giveaway"
@@ -149,6 +150,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     entriesPerInvocation: config.queueMaxRatePerSecond,
     reportError,
   })
+  const presence = new MemorySitePresence()
   const deps: AppDeps = {
     ...entryDeps,
     queue: remoteQueue(queue),
@@ -168,6 +170,8 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     ),
     clientAddress: (request) => clientAddress(request, server, config.clientIpHeader),
     reportError,
+    presence,
+    presenceIpLimiter: new MemoryRateLimiter(clock, config.presenceIpLimitPerMinute, rateWindowMs),
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null
@@ -182,6 +186,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const app = createServerApp({
     api: createApp(deps, staticDir === null ? null : indexTemplateOf(staticDir)),
     rooms,
+    presence,
     fakeTwitch,
     fakeKick,
     fakeYouTube,

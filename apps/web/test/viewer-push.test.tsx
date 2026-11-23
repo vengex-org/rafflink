@@ -100,7 +100,7 @@ describe("viewer page: push", () => {
     expect(FakeSocket.opened.map((socket) => socket.url)).toEqual([
       "ws://rafflink.test/api/g/ABCDE/live",
     ])
-    expect(Reflect.has(FakeSocket.opened[0] ?? {}, "send")).toBe(false)
+    expect(FakeSocket.opened[0]?.sent).toEqual([])
   })
 
   it("shows You won when a push names the viewer, without another request", async () => {

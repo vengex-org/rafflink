@@ -4,6 +4,7 @@ import type { ResolvedConfig } from "../config.ts"
 import type { KeyRing } from "../lib/seal.ts"
 import type { PlanQueue } from "../plan/current-plan.ts"
 import type { PlatformProviders } from "../platform/provider.ts"
+import type { SitePresence } from "../presence/site-presence.ts"
 import type { Clock, PublicCache, RateLimiter, Random, ReportError, UsageMeter } from "../ports.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { TokenQueueStub } from "../queue/token-queue.ts"
@@ -38,4 +39,8 @@ export interface AppDeps {
   readonly clientAddress: (request: Request) => string | null
   /** Where a request that failed is reported, beside the log. */
   readonly reportError: ReportError
+  /** The pages open on the site now, for the admin page; null where the target has no presence count, such as a Worker deployed without its binding. */
+  readonly presence: SitePresence | null
+  /** Presence sockets one client address may open; a Worker deployed without its binding has no limit. */
+  readonly presenceIpLimiter: RateLimiter
 }

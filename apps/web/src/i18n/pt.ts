@@ -157,6 +157,16 @@ export const pt: Readonly<Record<MessageKey, string>> = {
   "admin.live.rateLimitedHour": "respostas 429 da Twitch na última hora",
   "admin.live.partial":
     "Espectadores, inscrições e resgates cobrem os {shown} sorteios abertos mais novos de {total}.",
+  "admin.presence.title": "No site agora",
+  "admin.presence.hint":
+    "Abas abertas pela página que mostram. Overlays do OBS e páginas ao vivo não contam.",
+  "admin.presence.total": "pessoas no site",
+  "admin.presence.home": "página inicial",
+  "admin.presence.legal": "termos e privacidade",
+  "admin.presence.dashboard": "painel e admin",
+  "admin.presence.giveaway": "páginas de sorteios",
+  "admin.presence.other": "outras páginas",
+  "admin.presence.unavailable": "O número de pessoas no site não está disponível agora.",
   "admin.giveaways.title": "Sorteios abertos",
   "admin.giveaways.none": "Nenhum sorteio está aberto.",
   "admin.giveaways.streamer": "Streamer",

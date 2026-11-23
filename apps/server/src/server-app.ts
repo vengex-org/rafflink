@@ -9,6 +9,8 @@ import { staticCacheControl } from "@rafflink/core/http/static-headers"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { captureException } from "@sentry/core"
 import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
+import type { MemorySitePresence } from "@rafflink/core/lib/memory-site-presence"
+import { presenceKindHeader, presenceSocketPath } from "@rafflink/core/presence/site-presence"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import {
@@ -26,6 +28,8 @@ export interface ServerAppOptions {
     LocalRoomDirectory,
     "viewerPushText" | "liveSnapshotText" | "overlaySnapshotText" | "attachSocket"
   >
+  /** Counts the presence sockets of the pages. */
+  readonly presence: Pick<MemorySitePresence, "join">
   /** Mounted under {@link fakeTwitchPrefixes} in dev only. */
   readonly fakeTwitch: Hono | null
   /** Mounted under {@link fakeKickPrefixes} in dev only. */
@@ -38,11 +42,11 @@ export interface ServerAppOptions {
 
 /**
  * Everything the Bun server answers except the dev SPA bundle: the API, WebSocket upgrades of the
- * live, overlay and viewer routes, the fake Twitch, Kick and YouTube in dev, the SPA files, and the pages of core for every
+ * live, overlay, viewer and presence routes, the fake Twitch, Kick and YouTube in dev, the SPA files, and the pages of core for every
  * other path.
  */
 export function createServerApp(options: ServerAppOptions): Hono {
-  const { api, rooms, fakeTwitch, fakeKick, fakeYouTube, staticDir } = options
+  const { api, rooms, presence, fakeTwitch, fakeKick, fakeYouTube, staticDir } = options
   const app = new Hono()
 
   app.get(
@@ -91,6 +95,7 @@ export function createServerApp(options: ServerAppOptions): Hono {
       }
     }),
   )
+  app.get(presenceSocketPath, presenceSocket(api, presence))
   for (const prefix of apiPrefixes) app.all(`${prefix}*`, (c) => api.fetch(c.req.raw))
   for (const prefix of fakeTwitchPrefixes) {
     app.all(`${prefix}*`, (c) =>
@@ -174,6 +179,24 @@ function socketRoute(
         }
       },
       onClose: () => detach(),
+    }))(c, next)
+  }
+}
+
+/** Counts a page's presence socket while it is open. The JSON route of core on the same path decides who may connect. */
+function presenceSocket(api: Hono, presence: ServerAppOptions["presence"]): MiddlewareHandler {
+  return async (c, next) => {
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return next()
+    const checked = await api.fetch(c.req.raw)
+    if (!checked.ok) return checked
+    const kind = checked.headers.get(presenceKindHeader)
+    if (kind === null) throw new TypeError("the presence route named no page kind")
+    let leave = keepNothing
+    return upgradeWebSocket(() => ({
+      onOpen: () => {
+        leave = presence.join(kind)
+      },
+      onClose: () => leave(),
     }))(c, next)
   }
 }

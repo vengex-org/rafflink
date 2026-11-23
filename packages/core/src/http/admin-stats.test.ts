@@ -7,10 +7,21 @@ import {
   validRules,
   type Harness,
 } from "../../test/app-fixture.ts"
+import { resolveConfig } from "../config.ts"
+import { BunSqliteAsyncSql } from "../sqlite-bun.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
 import type { AdminStatsJson } from "./json.ts"
 
 let harness: Harness | null = null
+
+const requiredEnv = {
+  TWITCH_CLIENT_ID: "client",
+  TWITCH_CLIENT_SECRET: "secret",
+  TOKEN_SEAL_KEYS: "k",
+  SESSION_SECRET: "session",
+  ADMIN_TWITCH_IDS: "1",
+  PUBLIC_URL: "https://rafflink.app",
+}
 
 afterEach(async () => {
   await harness?.stop()
@@ -137,6 +148,71 @@ describe("GET /api/admin/stats", () => {
     running.usage.usage = { workerRequests: 70_000, doRequests: 5 }
 
     expect((await stats(admin)).usage).toMatchObject({ workerRequests: { used: 70_000 } })
+  })
+
+  it("counts the pages open on the site per kind, without the ones that closed", async () => {
+    const running = await start()
+    const admin = await adminBrowser(running)
+    running.presence.join("home")
+    running.presence.join("giveaway")
+    const leave = running.presence.join("legal")
+    leave()
+
+    expect((await stats(admin)).presence).toEqual({
+      total: 2,
+      byKind: { home: 1, legal: 0, dashboard: 0, giveaway: 1, other: 0 },
+    })
+  })
+
+  it("shows the presence as unavailable when its count does not answer, and the rest of the numbers", async () => {
+    const running = await start()
+    const admin = await adminBrowser(running)
+    const counts = spyOn(running.presence, "counts").mockRejectedValue(new Error("down"))
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+
+    const answer = await stats(admin)
+
+    expect(answer.presence).toBe("unavailable")
+    expect(answer.openGiveaways).toBe(0)
+    expect(warn).toHaveBeenCalledWith("presence unavailable", { errorClass: "Error" })
+    counts.mockRestore()
+    warn.mockRestore()
+  })
+
+  it("shows the presence as unavailable without a warning where the target has no presence count", async () => {
+    harness = await createHarness({ withoutPresence: true })
+    const admin = await adminBrowser(harness)
+    const warn = spyOn(console, "warn")
+
+    expect((await stats(admin)).presence).toBe("unavailable")
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  // A Worker invocation on the Free plan may make 50 subrequests: every D1 query, Durable Object call, cache
+  // call and fetch counts. The most a request makes is its own subrequests plus one per room it asks.
+  it("stays within 50 subrequests with signup closed and the most rooms ADMIN_STATS_LIVE_ROOMS_MAX allows", async () => {
+    const mostRooms = 30
+    expect(() => resolveConfig({ ...requiredEnv, ADMIN_STATS_LIVE_ROOMS_MAX: "31" })).toThrow()
+    const running = await start({ OPEN_SIGNUP: "false", ADMIN_STATS_CACHE_SECONDS: "0" })
+    const admin = await adminBrowser(running)
+    const calls = [
+      spyOn(BunSqliteAsyncSql.prototype, "all"),
+      spyOn(BunSqliteAsyncSql.prototype, "run"),
+      spyOn(BunSqliteAsyncSql.prototype, "batch"),
+      spyOn(running.deps.queue, "stats"),
+      spyOn(running.presence, "counts"),
+      spyOn(running.usage, "today"),
+      spyOn(running.deps.publicCache, "read"),
+      spyOn(running.deps.publicCache, "write"),
+    ]
+
+    await stats(admin)
+    const own = calls.reduce((sum, spy) => sum + spy.mock.calls.length, 0)
+
+    expect(own).toBeGreaterThan(0)
+    expect(own + mostRooms).toBeLessThanOrEqual(50)
+    for (const spy of calls) spy.mockRestore()
   })
 
   it("asks the rooms of the newest giveaways only, up to ADMIN_STATS_LIVE_ROOMS_MAX", async () => {

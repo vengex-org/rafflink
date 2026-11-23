@@ -3,6 +3,8 @@ export class FakeSocket {
   static readonly opened: FakeSocket[] = []
   private readonly listeners = new Map<string, ((event: Event) => void)[]>()
   closed = false
+  /** What the page sent through the socket. */
+  readonly sent: unknown[] = []
 
   constructor(readonly url: string) {
     FakeSocket.opened.push(this)
@@ -10,6 +12,10 @@ export class FakeSocket {
 
   addEventListener(type: string, listener: (event: Event) => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener])
+  }
+
+  send(data: unknown): void {
+    this.sent.push(data)
   }
 
   close(): void {

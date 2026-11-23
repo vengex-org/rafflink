@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client"
 import { BrowserRouter } from "react-router"
 import { AppRoutes } from "./app.tsx"
+import { SitePresence } from "./components/site-presence.tsx"
 import { loadDictionary } from "./i18n/dictionaries.ts"
 import { initialLanguage } from "./i18n/language.ts"
 import { startErrorReporting } from "./lib/error-reporting.ts"
@@ -14,6 +15,7 @@ await loadDictionary(initialLanguage()).catch((error: unknown) => {
 })
 createRoot(root).render(
   <BrowserRouter>
+    <SitePresence />
     <AppRoutes />
   </BrowserRouter>,
 )

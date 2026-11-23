@@ -154,6 +154,16 @@ export const en = {
   "admin.live.rateLimitedHour": "Twitch 429 responses in the last hour",
   "admin.live.partial":
     "Viewers, entries and claims cover the {shown} newest of {total} open giveaways.",
+  "admin.presence.title": "On the site now",
+  "admin.presence.hint":
+    "Open tabs by the page they show. OBS overlays and live pages are not counted.",
+  "admin.presence.total": "people on the site",
+  "admin.presence.home": "home page",
+  "admin.presence.legal": "terms and privacy",
+  "admin.presence.dashboard": "dashboard and admin",
+  "admin.presence.giveaway": "giveaway pages",
+  "admin.presence.other": "other pages",
+  "admin.presence.unavailable": "The count of people on the site is unavailable right now.",
   "admin.giveaways.title": "Open giveaways",
   "admin.giveaways.none": "No giveaway is open.",
   "admin.giveaways.streamer": "Streamer",

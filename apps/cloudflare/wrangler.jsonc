@@ -33,10 +33,11 @@
     "bindings": [
       { "name": "ROOMS", "class_name": "GiveawayRoomObject" },
       { "name": "QUEUE", "class_name": "TokenQueueDO" },
+      { "name": "PRESENCE", "class_name": "SitePresenceObject" },
     ],
   },
   // Workers Rate Limiting counts per key in 60 second periods. The limits equal the defaults of
-  // ENTRY_USER_LIMIT_PER_MINUTE, ENTRY_IP_LIMIT_PER_MINUTE, LEAVES_IP_LIMIT_PER_MINUTE and MODERATOR_IP_LIMIT_PER_MINUTE; a test keeps them equal.
+  // ENTRY_USER_LIMIT_PER_MINUTE, ENTRY_IP_LIMIT_PER_MINUTE, LEAVES_IP_LIMIT_PER_MINUTE, MODERATOR_IP_LIMIT_PER_MINUTE and PRESENCE_IP_LIMIT_PER_MINUTE; a test keeps them equal.
   "ratelimits": [
     {
       "name": "ENTRY_USER_LIMITER",
@@ -54,6 +55,11 @@
       "namespace_id": "1004",
       "simple": { "limit": 10, "period": 60 },
     },
+    {
+      "name": "PRESENCE_IP_LIMITER",
+      "namespace_id": "1005",
+      "simple": { "limit": 30, "period": 60 },
+    },
   ],
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["GiveawayRoomDO", "TokenQueueDO"] },
@@ -61,6 +67,8 @@
     // to delete a class in the deploy that moves its binding away, so v2 adds the new class and v3 deletes the old.
     { "tag": "v2", "new_sqlite_classes": ["GiveawayRoomObject"] },
     { "tag": "v3", "deleted_classes": ["GiveawayRoomDO"] },
+    // The presence object stores nothing; SQLite-backed because the Free plan has no other Durable Objects.
+    { "tag": "v4", "new_sqlite_classes": ["SitePresenceObject"] },
   ],
   "triggers": { "crons": ["0 * * * *"] },
   "observability": { "enabled": true },

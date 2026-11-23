@@ -66,6 +66,7 @@ const emptyStats = {
   openGiveaways: 0,
   giveaways: [],
   viewers: 0,
+  presence: { total: 0, byKind: { home: 0, legal: 0, dashboard: 0, giveaway: 0, other: 0 } },
   entriesLastMinute: 0,
   claimsLastMinute: 0,
   series: [],
