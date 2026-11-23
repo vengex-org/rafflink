@@ -10,6 +10,13 @@ const baseStreamerScopes = ["openid", "channel:read:vips", "moderation:read"] as
 /** The scopes of a streamer who reconnected for chat entry. */
 export const chatEntryStreamerScopes = [...baseStreamerScopes, "moderator:read:followers"] as const
 
+/** The scopes of a streamer who reconnected for points entry. */
+export const pointsEntryStreamerScopes = [
+  ...chatEntryStreamerScopes,
+  "channel:read:subscriptions",
+  "channel:read:redemptions",
+] as const
+
 /**
  * Signs `userId` in at the fake and stores their sealed refresh token as streamer `streamerId`, as the
  * streamer sign-in does, with `streamerScopes` granted. Returns the refresh token that was sealed.

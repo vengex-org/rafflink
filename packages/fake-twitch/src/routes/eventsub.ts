@@ -3,29 +3,46 @@ import { upgradeWebSocket } from "@hono/bun"
 import type { WSContext } from "hono/ws"
 import type { HelixEnv } from "../lib/auth.ts"
 import { helixError, scriptedHelixFailure } from "../lib/responses.ts"
-import { pairKey, requireUser, type FakeState } from "../state.ts"
+import { pairKey, requireUser, type FakeState, type FakeUser, type Tier } from "../state.ts"
 import { tierVersionIds } from "./helix.ts"
 
 export interface EventSub {
   socketRoutes: Hono
   subscriptionRoutes: Hono<HelixEnv>
   sendChatMessage(broadcasterId: string, chatterUserId: string, text: string): void
+  sendSubscription(broadcasterId: string, userId: string, kind: SubscriptionKind, tier: Tier): void
+  sendRedemption(broadcasterId: string, userId: string, rewardId: string): void
   reconnect(): void
   revokeSubscriptions(): void
   /** EventSub sockets that are open now. */
   connectionCount(): number
-  /** Chat subscriptions on the open sockets. */
+  /** Subscriptions of every type on the open sockets. */
   subscriptionCount(): number
 }
 
+/** A new sub, a resub (its chat message), or a gift sub received: Twitch sends `channel.subscribe` for the recipient of a gift. */
+export type SubscriptionKind = "new" | "resub" | "gift"
+
 const chatMessageType = "channel.chat.message"
+const subscribeType = "channel.subscribe"
+const resubscribeType = "channel.subscription.message"
+const redemptionType = "channel.channel_points_custom_reward_redemption.add"
+
+/** The scope each subscription type needs, as Twitch documents it. */
+const typeScopes: Readonly<Record<string, string>> = {
+  [chatMessageType]: "user:read:chat",
+  [subscribeType]: "channel:read:subscriptions",
+  [resubscribeType]: "channel:read:subscriptions",
+  [redemptionType]: "channel:read:redemptions",
+}
 /** Twitch close code for a socket that sent no subscription in time. */
 const closeConnectionUnused = 4003
 
 interface Subscription {
   id: string
+  type: string
+  condition: Record<string, string>
   broadcasterId: string
-  userId: string
   createdAt: string
 }
 
@@ -40,8 +57,9 @@ interface Session {
 }
 
 interface SubscribeRequest {
+  type: string
+  condition: Record<string, string>
   broadcasterId: string
-  userId: string
   sessionId: string
 }
 
@@ -75,7 +93,8 @@ export function createEventSub(state: FakeState): EventSub {
     const request = parseSubscribeRequest(await c.req.json().catch((): unknown => undefined))
     if (request === undefined) return helixError(c, 400, "Invalid subscription request")
     const token = c.get("token")
-    if (token.userId !== request.userId || !token.scopes.includes("user:read:chat")) {
+    const userId = request.condition.user_id ?? request.broadcasterId
+    if (token.userId !== userId || !token.scopes.includes(typeScopes[request.type] ?? "")) {
       return helixError(c, 403, "subscription missing proper authorization")
     }
     const session = sessions.get(request.sessionId)
@@ -89,8 +108,9 @@ export function createEventSub(state: FakeState): EventSub {
 
     const subscription: Subscription = {
       id: crypto.randomUUID(),
+      type: request.type,
+      condition: request.condition,
       broadcasterId: request.broadcasterId,
-      userId: request.userId,
       createdAt: new Date().toISOString(),
     }
     session.subscriptions.push(subscription)
@@ -111,40 +131,67 @@ export function createEventSub(state: FakeState): EventSub {
     sendChatMessage(broadcasterId, chatterUserId, text) {
       const broadcaster = requireUser(state, broadcasterId)
       const chatter = requireUser(state, chatterUserId)
-      for (const session of sessions.values()) {
-        for (const subscription of session.subscriptions) {
-          if (subscription.broadcasterId !== broadcasterId) continue
-          send(session.ws, {
-            metadata: {
-              ...metadata("notification"),
-              subscription_type: chatMessageType,
-              subscription_version: "1",
-            },
-            payload: {
-              subscription: subscriptionJson(subscription, session.id),
-              event: {
-                broadcaster_user_id: broadcaster.id,
-                broadcaster_user_login: broadcaster.login,
-                broadcaster_user_name: broadcaster.displayName,
-                chatter_user_id: chatter.id,
-                chatter_user_login: chatter.login,
-                chatter_user_name: chatter.displayName,
-                message_id: crypto.randomUUID(),
-                message: {
-                  text,
-                  fragments: [{ type: "text", text, cheermote: null, emote: null, mention: null }],
-                },
-                message_type: "text",
-                badges: chatBadges(state, broadcaster.id, chatter.id),
-                color: "",
-                cheer: null,
-                reply: null,
-                channel_points_custom_reward_id: null,
-              },
-            },
-          })
-        }
+      notify(broadcasterId, chatMessageType, () => true, {
+        broadcaster_user_id: broadcaster.id,
+        broadcaster_user_login: broadcaster.login,
+        broadcaster_user_name: broadcaster.displayName,
+        chatter_user_id: chatter.id,
+        chatter_user_login: chatter.login,
+        chatter_user_name: chatter.displayName,
+        message_id: crypto.randomUUID(),
+        message: {
+          text,
+          fragments: [{ type: "text", text, cheermote: null, emote: null, mention: null }],
+        },
+        message_type: "text",
+        badges: chatBadges(state, broadcaster.id, chatter.id),
+        color: "",
+        cheer: null,
+        reply: null,
+        channel_points_custom_reward_id: null,
+      })
+    },
+    sendSubscription(broadcasterId, userId, kind, tier) {
+      const user = requireUser(state, userId)
+      const event = {
+        ...broadcasterFields(requireUser(state, broadcasterId)),
+        user_id: user.id,
+        user_login: user.login,
+        user_name: user.displayName,
+        tier,
       }
+      if (kind === "resub") {
+        notify(broadcasterId, resubscribeType, () => true, {
+          ...event,
+          message: { text: "", emotes: null },
+          cumulative_months: 2,
+          streak_months: null,
+          duration_months: 1,
+        })
+      } else {
+        notify(broadcasterId, subscribeType, () => true, { ...event, is_gift: kind === "gift" })
+      }
+    },
+    sendRedemption(broadcasterId, userId, rewardId) {
+      const user = requireUser(state, userId)
+      const reward = state.customRewards.get(broadcasterId)?.find((item) => item.id === rewardId)
+      if (reward === undefined) throw new Error(`fake Twitch has no reward ${rewardId}`)
+      notify(
+        broadcasterId,
+        redemptionType,
+        (subscription) => (subscription.condition.reward_id ?? rewardId) === rewardId,
+        {
+          ...broadcasterFields(requireUser(state, broadcasterId)),
+          id: crypto.randomUUID(),
+          user_id: user.id,
+          user_login: user.login,
+          user_name: user.displayName,
+          user_input: "",
+          status: "unfulfilled",
+          reward: { id: reward.id, title: reward.title, cost: reward.cost, prompt: "" },
+          redeemed_at: new Date().toISOString(),
+        },
+      )
     },
     revokeSubscriptions() {
       for (const session of open) {
@@ -152,7 +199,7 @@ export function createEventSub(state: FakeState): EventSub {
           send(session.ws, {
             metadata: {
               ...metadata("revocation"),
-              subscription_type: chatMessageType,
+              subscription_type: subscription.type,
               subscription_version: "1",
             },
             payload: {
@@ -184,6 +231,29 @@ export function createEventSub(state: FakeState): EventSub {
         })
       }
     },
+  }
+
+  // Sends the event to every session subscribed to its type on the channel whose subscription `matches`.
+  function notify(
+    broadcasterId: string,
+    type: string,
+    matches: (subscription: Subscription) => boolean,
+    event: object,
+  ): void {
+    for (const session of sessions.values()) {
+      for (const subscription of session.subscriptions) {
+        if (subscription.broadcasterId !== broadcasterId || subscription.type !== type) continue
+        if (!matches(subscription)) continue
+        send(session.ws, {
+          metadata: {
+            ...metadata("notification"),
+            subscription_type: type,
+            subscription_version: "1",
+          },
+          payload: { subscription: subscriptionJson(subscription, session.id), event },
+        })
+      }
+    }
   }
 
   function openSession(ws: WSContext, url: URL): Session {
@@ -261,13 +331,21 @@ function chatBadges(state: FakeState, broadcasterId: string, chatterId: string) 
   return badges
 }
 
+function broadcasterFields(broadcaster: FakeUser) {
+  return {
+    broadcaster_user_id: broadcaster.id,
+    broadcaster_user_login: broadcaster.login,
+    broadcaster_user_name: broadcaster.displayName,
+  }
+}
+
 function subscriptionJson(subscription: Subscription, sessionId: string) {
   return {
     id: subscription.id,
     status: "enabled",
-    type: chatMessageType,
+    type: subscription.type,
     version: "1",
-    condition: { broadcaster_user_id: subscription.broadcasterId, user_id: subscription.userId },
+    condition: subscription.condition,
     transport: { method: "websocket", session_id: sessionId },
     created_at: subscription.createdAt,
     cost: 0,
@@ -278,19 +356,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
 
+// The chat type needs `user_id` in its condition, the others only the channel.
 function parseSubscribeRequest(body: unknown): SubscribeRequest | undefined {
-  if (!isRecord(body) || body.type !== chatMessageType || body.version !== "1") return undefined
-  const { condition, transport } = body
+  if (!isRecord(body) || typeof body.type !== "string" || body.version !== "1") return undefined
+  const { type, condition, transport } = body
+  if (!(type in typeScopes)) return undefined
   if (!isRecord(condition) || !isRecord(transport) || transport.method !== "websocket")
     return undefined
-  const { broadcaster_user_id: broadcasterId, user_id: userId } = condition
-  const sessionId = transport.session_id
-  if (
-    typeof broadcasterId !== "string"
-    || typeof userId !== "string"
-    || typeof sessionId !== "string"
-  ) {
+  const fields = Object.entries(condition)
+  if (!fields.every((field): field is [string, string] => typeof field[1] === "string")) {
     return undefined
   }
-  return { broadcasterId, userId, sessionId }
+  const strings = Object.fromEntries(fields)
+  const broadcasterId = strings.broadcaster_user_id
+  const sessionId = transport.session_id
+  if (broadcasterId === undefined || typeof sessionId !== "string") return undefined
+  if (type === chatMessageType && strings.user_id === undefined) return undefined
+  return { type, condition: strings, broadcasterId, sessionId }
 }

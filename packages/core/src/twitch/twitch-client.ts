@@ -11,6 +11,9 @@ import {
 import {
   parseFollowed,
   parseAppToken,
+  parseBroadcasterType,
+  parseCustomRewards,
+  parseSubscribers,
   parseRolePage,
   parseSubscriberBadgeImages,
   parseSubscriptionCreated,
@@ -22,6 +25,8 @@ import {
   parseValidated,
   type Tier,
 } from "./lib/parse-response.ts"
+import type { WatchTopics } from "../platform/chat-source.ts"
+import { eventSubTypes } from "./lib/parse-eventsub.ts"
 import type {
   AuthorizeParams,
   ChannelRoles,
@@ -251,30 +256,98 @@ export class TwitchClient {
   }
 
   /**
-   * Subscribes the WebSocket session to the channel's chat messages. Needs the streamer's token with
-   * `user:read:chat`; the streamer is both the channel and the reading user.
+   * Subscribes the WebSocket session to the channel's topics, with the streamer's token: chat messages
+   * need `user:read:chat` (the streamer is both the channel and the reading user), subscriptions
+   * `channel:read:subscriptions`, redemptions `channel:read:redemptions`. Rejects when any one is
+   * refused.
    */
-  async subscribeChatMessages(
+  async subscribeEvents(
     accessToken: string,
     broadcasterId: string,
     sessionId: string,
+    topics: WatchTopics,
   ): Promise<void> {
-    await this.helix(
-      "eventsub",
-      "/helix/eventsub/subscriptions",
-      {},
+    const channel = { broadcaster_user_id: broadcasterId }
+    const subscriptions: { type: string; condition: Record<string, string> }[] = []
+    if (topics.chat) {
+      subscriptions.push({
+        type: eventSubTypes.chat,
+        condition: { ...channel, user_id: broadcasterId },
+      })
+    }
+    if (topics.subscriptions) {
+      subscriptions.push(
+        { type: eventSubTypes.subscribe, condition: channel },
+        { type: eventSubTypes.resubscribe, condition: channel },
+      )
+    }
+    if (topics.pointsRewardId !== null) {
+      subscriptions.push({
+        type: eventSubTypes.redemption,
+        condition: { ...channel, reward_id: topics.pointsRewardId },
+      })
+    }
+    await Promise.all(
+      subscriptions.map(({ type, condition }) =>
+        this.helix(
+          "eventsub",
+          "/helix/eventsub/subscriptions",
+          {},
+          accessToken,
+          parseSubscriptionCreated,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type,
+              version: "1",
+              condition,
+              transport: { method: "websocket", session_id: sessionId },
+            }),
+          },
+        ),
+      ),
+    )
+  }
+
+  /** The tier of each of `userIds` (at most 100) who subscribes. Needs the streamer's token with `channel:read:subscriptions`. */
+  async subscriberTiers(
+    accessToken: string,
+    broadcasterId: string,
+    userIds: readonly string[],
+  ): Promise<ReadonlyMap<string, 1 | 2 | 3>> {
+    const subscribers = await this.helix(
+      "channel-subscriptions",
+      "/helix/subscriptions",
+      { broadcaster_id: broadcasterId, user_id: userIds },
       accessToken,
-      parseSubscriptionCreated,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "channel.chat.message",
-          version: "1",
-          condition: { broadcaster_user_id: broadcasterId, user_id: broadcasterId },
-          transport: { method: "websocket", session_id: sessionId },
-        }),
-      },
+      parseSubscribers,
+    )
+    return new Map(subscribers.map(({ userId, tier }) => [userId, tierNumbers[tier]]))
+  }
+
+  /** The `broadcaster_type` of a channel: `partner`, `affiliate`, or empty for neither. An app token is enough. */
+  async broadcasterType(appToken: string, broadcasterId: string): Promise<string> {
+    return this.helix(
+      "users",
+      "/helix/users",
+      { id: broadcasterId },
+      appToken,
+      parseBroadcasterType,
+    )
+  }
+
+  /** The channel's custom point rewards. Needs the streamer's token with `channel:read:redemptions`. */
+  async customRewards(
+    accessToken: string,
+    broadcasterId: string,
+  ): Promise<readonly { readonly id: string; readonly title: string }[]> {
+    return this.helix(
+      "rewards",
+      "/helix/channel_points/custom_rewards",
+      { broadcaster_id: broadcasterId },
+      accessToken,
+      parseCustomRewards,
     )
   }
 
@@ -463,6 +536,8 @@ const globalBadgeVersion = "0"
 
 /** The part of an app token's lifetime it is used for, so a call that is slow to start does not meet it expired. */
 const appTokenUsableShare = 0.9
+
+const tierNumbers: Readonly<Record<Tier, 1 | 2 | 3>> = { "1000": 1, "2000": 2, "3000": 3 }
 
 const tierGroups: Readonly<Record<Tier, SubscriptionGroup>> = {
   "1000": "sub_t1",

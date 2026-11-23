@@ -1,3 +1,4 @@
+import type { ChannelEntryVia } from "@rafflink/core/domain/rules"
 import type { OverlayOptions } from "./overlay-options.ts"
 
 export {
@@ -69,9 +70,9 @@ export function streamerSignInPath(returnTo: string): string {
 
 /** A moderator's sign-in for the link that just asked for it; the server remembers which link in a cookie. */
 export const moderatorSignInPath = "/auth/twitch/moderator/start"
-/** Signs the streamer in again with the scopes chat entry needs, then back to `returnTo`. */
-export function chatEntryReconnectPath(returnTo: string): string {
-  const query = new URLSearchParams({ scopes: "chat-entry", return: returnTo })
+/** Signs the streamer in again with the scopes the entry ways need, then back to `returnTo`. */
+export function entryReconnectPath(ways: readonly ChannelEntryVia[], returnTo: string): string {
+  const query = new URLSearchParams({ entry: ways.join(","), return: returnTo })
   return withQuery("/auth/twitch/streamer/start", query)
 }
 

@@ -1,7 +1,7 @@
 import { errorClass } from "../lib/error-class.ts"
 import type { StreamerTokenDeps } from "../accounts/streamer-token.ts"
 import { accountAgeDays } from "../domain/rules.ts"
-import { providerFor } from "../platform/provider.ts"
+import { providerFor, readyEntryWays, type SubscriberTiers } from "../platform/provider.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { AlarmDuties, ChatEntrantsDuty, GiveawayRoom } from "./giveaway-room.ts"
 import { mirrorStatus } from "./mirror-status.ts"
@@ -70,8 +70,8 @@ async function drawRoom(
   }
 }
 
-// A failed profile or giveaway read leaves the whole batch waiting, a failed follow read only that chatter;
-// the room's next check a period later asks again, so nothing is thrown here. The block list version the
+// A failed profile or giveaway read leaves the whole batch waiting, a failed follow read only that chatter,
+// a failed tier read every redeemer; the room's next check a period later asks again, so nothing is thrown here. The block list version the
 // account store holds is what the room checks the exclusions against, as for a page entry.
 async function checkChatEntrants(
   deps: StreamerTokenDeps,
@@ -80,10 +80,11 @@ async function checkChatEntrants(
   duty: ChatEntrantsDuty,
 ): Promise<void> {
   const provider = providerFor(deps.platforms, duty.platform)
-  const [giveaway, profiles, follows] = await Promise.allSettled([
+  const [giveaway, profiles, follows, tiers] = await Promise.allSettled([
     deps.accounts.findGiveawayById(giveawayId),
     provider.userProfiles(duty.chatters.map((chatter) => chatter.platformUserId)),
     readFollows(deps, giveawayId, duty),
+    readTiers(deps, giveawayId, duty),
   ])
   if (giveaway.status === "rejected") {
     console.warn("chat entry check failed", { giveawayId, errorClass: errorClass(giveaway.reason) })
@@ -107,12 +108,21 @@ async function checkChatEntrants(
       errorClass: errorClass(follows.reason),
     })
   }
+  // A redeemer whose tier could not be read waits for the next check.
+  const tierOf = tiers.status === "fulfilled" ? tiers.value : null
+  if (tiers.status === "rejected") {
+    console.warn("chat entry tier check failed", {
+      giveawayId,
+      errorClass: errorClass(tiers.reason),
+    })
+  }
   const now = deps.clock.now()
   const profileOf = new Map(profiles.value.map((profile) => [profile.id, profile]))
   room.enterFromChat(
-    duty.chatters.flatMap(({ platformUserId, followerCheck }) => {
+    duty.chatters.flatMap(({ platformUserId, followerCheck, tierCheck }) => {
       const isFollower = followerCheck ? followOf.get(platformUserId) : false
       if (isFollower === undefined || isFollower === null) return []
+      if (tierCheck && tierOf === null) return []
       const profile = profileOf.get(platformUserId)
       return [
         {
@@ -120,6 +130,7 @@ async function checkChatEntrants(
           isFollower,
           accountAgeDays: profile === undefined ? null : accountAgeDays(now, profile.createdAt),
           profileImageUrl: profile?.profileImageUrl ?? null,
+          subTier: tierCheck ? (tierOf?.get(platformUserId) ?? null) : null,
         },
       ]
     }),
@@ -127,13 +138,13 @@ async function checkChatEntrants(
   )
 }
 
-// Giveaways whose streamer token lacks the chat entry scopes, logged once per process.
+// Giveaways whose streamer token lacks the scopes of an entry way, logged once per process and check.
 const missingScopeLogged = new Set<string>()
 
 /**
  * The follow of every chatter that needs one: true or false, null when the read failed and the chatter
  * waits for the next check. A token without the chat entry scopes reads no follow: every chatter counts
- * as not following, as the rules treat an unknown follow.
+ * as not following, as the rules treat an unknown follow. Every entry way's scopes include the follow read.
  */
 async function readFollows(
   deps: StreamerTokenDeps,
@@ -146,11 +157,8 @@ async function readFollows(
     deps,
     giveawayId,
   )
-  if (!provider.chatEntryScopes.every((scope) => scopes.includes(scope))) {
-    if (!missingScopeLogged.has(giveawayId)) {
-      missingScopeLogged.add(giveawayId)
-      console.warn("chat entry follows not readable", { giveawayId })
-    }
+  if (!readyEntryWays(provider, scopes).includes("chat")) {
+    logMissingScope(giveawayId, "chat entry follows not readable")
     return new Map(asked.map(({ platformUserId }) => [platformUserId, false]))
   }
   const reads = await Promise.allSettled(
@@ -172,6 +180,42 @@ async function readFollows(
       return [platformUserId, read?.status === "fulfilled" ? read.value : null]
     }),
   )
+}
+
+/**
+ * The tiers of the redeemers in the duty, in one call. A token without the points entry scopes reads no
+ * tier: every redeemer counts as not subscribed, as the rules treat an unknown tier.
+ */
+async function readTiers(
+  deps: StreamerTokenDeps,
+  giveawayId: string,
+  duty: ChatEntrantsDuty,
+): Promise<SubscriberTiers> {
+  const asked = duty.chatters.filter((chatter) => chatter.tierCheck)
+  if (asked.length === 0) return new Map()
+  const { provider, accessToken, broadcasterId, scopes } = await openGiveawayStreamerAccess(
+    deps,
+    giveawayId,
+  )
+  if (!readyEntryWays(provider, scopes).includes("points")) {
+    logMissingScope(giveawayId, "points entry tiers not readable")
+    return new Map()
+  }
+  return provider.subscriberTiers(
+    accessToken,
+    broadcasterId,
+    asked.map((chatter) => chatter.platformUserId),
+  )
+}
+
+function logMissingScope(
+  giveawayId: string,
+  message: "chat entry follows not readable" | "points entry tiers not readable",
+): void {
+  const key = `${giveawayId}:${message}`
+  if (missingScopeLogged.has(key)) return
+  missingScopeLogged.add(key)
+  console.warn(message, { giveawayId })
 }
 
 // Every failure is counted on the room, whose live page shows it; the room logs it with the giveaway id.

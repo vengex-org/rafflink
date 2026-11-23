@@ -7,7 +7,7 @@ import type {
   StreamerBlock,
 } from "../accounts/account-store.ts"
 import type { OverlayTheme } from "../domain/overlay-theme.ts"
-import type { GiveawayRules } from "../domain/rules.ts"
+import type { ChannelEntryVia, GiveawayRules, PointsReward } from "../domain/rules.ts"
 import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/plan-limits.ts"
 import type { Usage, UsageAlert } from "../plan/usage.ts"
 import type { QueueStats } from "../queue/token-queue.ts"
@@ -149,8 +149,8 @@ export interface SessionJson {
     readonly platform: Platform
     /** What the streamer's platform supports, so the create form offers only those rules and entry paths. */
     readonly capabilities: PlatformCapabilities
-    /** The stored token holds the scopes chat entry needs; false asks the streamer to reconnect before turning it on. */
-    readonly chatEntryReady: boolean
+    /** The entry ways whose scopes the stored token holds; turning on a way missing here asks the streamer to reconnect first. */
+    readonly readyEntryWays: readonly ChannelEntryVia[]
     /** The streamer turned on their public history page. */
     readonly publicHistory: boolean
   } | null
@@ -206,6 +206,12 @@ export interface OverlayThemeJson {
 
 /** What the streamer edits for one giveaway's overlay. */
 export type GiveawayOverlayThemesJson = OwnedOverlayThemes
+
+/** The wizard's channel point reward list; `reconnect` when the token lacks the points entry scopes, `no-channel-points` when the channel has none (not an Affiliate or Partner on Twitch). */
+export type PointsRewardsJson =
+  | { readonly kind: "rewards"; readonly rewards: readonly PointsReward[] }
+  | { readonly kind: "reconnect" }
+  | { readonly kind: "no-channel-points" }
 
 /** The streamer's block list on the dashboard, newest first; `blockListMax` is how many it may hold. */
 export interface BlockListJson {

@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react"
 import { supportedGroups, type Group } from "@rafflink/core/domain/groups"
+import { channelEntryVias, type ChannelEntryVia } from "@rafflink/core/domain/rules"
 import { winnerFieldKinds } from "@rafflink/core/domain/winner-form"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
 import {
@@ -17,6 +18,7 @@ import {
   TwitchIcon,
   UsersIcon,
 } from "../components/icons.tsx"
+import { getPointsRewards } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import {
   claimTimeText,
@@ -25,7 +27,8 @@ import {
   ticketText,
   whoCanEnterText,
 } from "../lib/rules-text.ts"
-import { chatEntryReconnectPath, dashboardNewPath } from "../lib/routes.ts"
+import { dashboardNewPath, entryReconnectPath } from "../lib/routes.ts"
+import { useLoad } from "../lib/use-load.ts"
 import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import {
@@ -294,8 +297,9 @@ function WinnerFormField({ values, setValues }: Omit<StepProps, "issue">) {
 }
 
 /**
- * Page entry, the chat keyword, or both, with the keyword field under the choice. A streamer whose token
- * lacks the scopes chat entry needs is asked to reconnect Twitch, so the follow of a chat entrant can be read.
+ * Page entry, the chat keyword, or both, with the keyword field under the choice, then the entries that come
+ * by themselves: subs and a channel point reward. Page or chat is always one of the choices, so sub and points
+ * entry never stand alone. A streamer whose token lacks the scopes of a way they use is asked to reconnect Twitch.
  */
 function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & CapabilitiesProps) {
   const i18n = useI18n()
@@ -323,6 +327,17 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
   ]
   const options = allOptions.filter((option) => entryWaysOffered(option.value, capabilities))
   const usesChat = values.entryWays !== "page"
+  const usesWay: Readonly<Record<ChannelEntryVia, boolean>> = {
+    chat: usesChat,
+    sub: values.subEntry,
+    points: values.pointsReward !== null,
+  }
+  const used = channelEntryVias.filter((way) => usesWay[way])
+  // The reward list asks for the points scopes itself.
+  const missing =
+    streamer === null
+      ? []
+      : used.filter((way) => way !== "points" && !streamer.readyEntryWays.includes(way))
   return (
     <>
       <Segmented
@@ -344,20 +359,118 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
           onChange={(chatKeyword) => setValues((current) => ({ ...current, chatKeyword }))}
         />
       ) : null}
-      {usesChat && streamer !== null && !streamer.chatEntryReady ? (
-        <div className="help" role="note">
-          <p>{t("wizard.reconnect.text")}</p>
-          <a
-            className="button outlined"
-            href={chatEntryReconnectPath(dashboardNewPath({ step: 2 }))}
-            onClick={() => keepDraftForReconnect(values)}
-          >
-            <TwitchIcon />
-            {t("wizard.reconnect.button")}
-          </a>
-        </div>
+      {capabilities.subEntry || capabilities.pointsEntry ? (
+        <fieldset className="field">
+          <legend>{t("wizard.autoEntry.legend")}</legend>
+          {capabilities.subEntry ? (
+            <>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  name="subEntry"
+                  checked={values.subEntry}
+                  onChange={(event) => {
+                    const subEntry = event.currentTarget.checked
+                    setValues((current) => ({ ...current, subEntry }))
+                  }}
+                />
+                {t("wizard.subEntry.label")}
+              </label>
+              <p className="help">{t("wizard.subEntry.help")}</p>
+            </>
+          ) : null}
+          {capabilities.pointsEntry ? (
+            <PointsRewardField values={values} setValues={setValues} used={used} />
+          ) : null}
+        </fieldset>
+      ) : null}
+      {missing.length > 0 ? (
+        <ReconnectNote
+          texts={missing.map((way) => t(`wizard.reconnect.${way}.text`))}
+          ways={used}
+          values={values}
+        />
       ) : null}
     </>
+  )
+}
+
+/**
+ * The reward whose redemption enters, picked from the streamer's rewards. Hidden for a channel without
+ * channel points; a token without the points scopes is asked to reconnect before the list can be read.
+ */
+function PointsRewardField({
+  values,
+  setValues,
+  used,
+}: Omit<StepProps, "issue"> & { readonly used: readonly ChannelEntryVia[] }) {
+  const { t } = useI18n()
+  const { result } = useLoad(getPointsRewards)
+  if (result.state !== "ready" || result.value === "unauthorized") return null
+  const answer = result.value
+  switch (answer.kind) {
+    case "no-channel-points":
+      return null
+    case "reconnect":
+      return (
+        <ReconnectNote
+          texts={[t("wizard.reconnect.points.text")]}
+          ways={[...used, "points"]}
+          values={values}
+        />
+      )
+    case "rewards": {
+      const options: readonly SegmentOption<string>[] = [
+        { value: "", label: t("wizard.points.off"), icon: null, description: "" },
+        ...answer.rewards.map((reward) => ({
+          value: reward.id,
+          label: reward.title,
+          icon: null,
+          description: t("wizard.points.selected"),
+        })),
+      ]
+      return (
+        <Segmented
+          name="pointsReward"
+          legend={t("wizard.points.legend")}
+          help={t("wizard.points.help")}
+          options={options}
+          value={values.pointsReward?.id ?? ""}
+          onSelect={(id) => {
+            const pointsReward = answer.rewards.find((reward) => reward.id === id) ?? null
+            setValues((current) => ({ ...current, pointsReward }))
+          }}
+        />
+      )
+    }
+  }
+}
+
+/** Asks the streamer to sign in again with the scopes of `ways`; the answers wait in session storage meanwhile. */
+function ReconnectNote({
+  texts,
+  ways,
+  values,
+}: {
+  readonly texts: readonly string[]
+  readonly ways: readonly ChannelEntryVia[]
+  readonly values: Values
+}) {
+  const { t } = useI18n()
+  return (
+    <div className="help" role="note">
+      {texts.map((text) => (
+        <p key={text}>{text}</p>
+      ))}
+      <a
+        className="button outlined"
+        href={entryReconnectPath(ways, dashboardNewPath({ step: 2 }))}
+        onClick={() => keepDraftForReconnect(values)}
+      >
+        <TwitchIcon />
+        {t("wizard.reconnect.button")}
+      </a>
+    </div>
   )
 }
 
@@ -571,6 +684,17 @@ export function ReviewStep({
         }
       />
       <ReviewRow label={t("review.entry")} value={entryWaysText(i18n, values)} />
+      {values.subEntry || values.pointsReward !== null ? (
+        <ReviewRow
+          label={t("wizard.autoEntry.legend")}
+          value={[
+            ...(values.subEntry ? [t("review.subEntry")] : []),
+            ...(values.pointsReward === null
+              ? []
+              : [t("review.pointsEntry", { reward: values.pointsReward.title })]),
+          ].join(" ")}
+        />
+      ) : null}
       <ReviewRow label={t("review.winners")} value={i18n.number(Number(values.winnerCount))} />
       {values.minAge.trim() === "" ? null : (
         <ReviewRow

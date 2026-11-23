@@ -8,6 +8,7 @@ import {
   parseRules,
   unsupportedRule,
   type GiveawayRules,
+  type RulesIssueCode,
   type ViewerFacts,
 } from "./rules.ts"
 
@@ -20,6 +21,8 @@ const rules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  subEntry: false,
+  pointsReward: null,
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
@@ -217,6 +220,8 @@ describe("parseRules", () => {
         excludeRecentWinners: null,
         chatKeyword: null,
         pageEntry: true,
+        subEntry: false,
+        pointsReward: null,
         minAge: null,
         excludedCountries: null,
         extraTerms: null,
@@ -308,6 +313,59 @@ describe("parseRules", () => {
         issue: { field, code },
       })
     }
+  })
+
+  it("parses sub entry and the points reward, trimming the reward's text", () => {
+    expect(
+      parseRules(
+        { ...validInput, subEntry: true, pointsReward: { id: " r-1 ", title: " Enter " } },
+        config,
+      ),
+    ).toMatchObject({
+      ok: true,
+      value: { subEntry: true, pointsReward: { id: "r-1", title: "Enter" } },
+    })
+    expect(parseRules({ ...validInput, pointsReward: null }, config)).toMatchObject({
+      ok: true,
+      value: { pointsReward: null },
+    })
+  })
+
+  it("refuses a sub entry flag or a points reward of the wrong shape", () => {
+    const cases: readonly [Record<string, unknown>, string, RulesIssueCode][] = [
+      [{ subEntry: "yes" }, "subEntry", "not-a-boolean"],
+      [{ pointsReward: "r-1" }, "pointsReward", "not-an-object"],
+      [{ pointsReward: ["r-1"] }, "pointsReward", "not-an-object"],
+      [{ pointsReward: { title: "Enter" } }, "pointsReward.id", "missing"],
+      [{ pointsReward: { id: 7, title: "Enter" } }, "pointsReward.id", "not-a-string"],
+      [{ pointsReward: { id: " ", title: "Enter" } }, "pointsReward.id", "blank"],
+      [{ pointsReward: { id: "r-1", title: "x".repeat(101) } }, "pointsReward.title", "too-long"],
+      [{ pointsReward: { id: "r-1" } }, "pointsReward.title", "missing"],
+    ]
+    for (const [input, field, code] of cases) {
+      expect(parseRules({ ...validInput, ...input }, config)).toEqual({
+        ok: false,
+        issue: { field, code },
+      })
+    }
+    expect(
+      parseRules({ ...validInput, pointsReward: { id: "r-1", title: "x".repeat(100) } }, config).ok,
+    ).toBe(true)
+  })
+
+  it("refuses sub or points entry without a free way in: the page or the chat keyword", () => {
+    const paidOnly = {
+      ...validInput,
+      pageEntry: false,
+      chatKeyword: null,
+      subEntry: true,
+      pointsReward: { id: "r-1", title: "Enter" },
+    }
+    expect(parseRules(paidOnly, config)).toEqual({
+      ok: false,
+      issue: { field: "pageEntry", code: "no-entry-way" },
+    })
+    expect(parseRules({ ...paidOnly, chatKeyword: "!enter" }, config).ok).toBe(true)
   })
 
   it("keeps page entry on unless it is turned off, and only next to a chat keyword", () => {
@@ -557,6 +615,8 @@ describe("unsupportedRule", () => {
     accountAge: true,
     pageEntry: true,
     chatEntry: true,
+    subEntry: true,
+    pointsEntry: true,
   }
   // Kick: no follower lookup, no VIP and no account age.
   const kick: PlatformCapabilities = {
@@ -623,6 +683,16 @@ describe("unsupportedRule", () => {
     expect(
       unsupportedRule({ ...rules, chatKeyword: "!enter" }, { ...twitch, chatEntry: false }),
     ).toEqual({ field: "chatKeyword", code: "unsupported" })
+    expect(unsupportedRule({ ...rules, subEntry: true }, { ...twitch, subEntry: false })).toEqual({
+      field: "subEntry",
+      code: "unsupported",
+    })
+    expect(
+      unsupportedRule(
+        { ...rules, pointsReward: { id: "r-1", title: "Enter" } },
+        { ...twitch, pointsEntry: false },
+      ),
+    ).toEqual({ field: "pointsReward", code: "unsupported" })
   })
 })
 

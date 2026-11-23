@@ -1,5 +1,10 @@
 import type { Parsed } from "../../lib/parsed.ts"
-import type { ChatMessage, ChatterRoles } from "../../platform/chat-source.ts"
+import type {
+  ChannelEntryEvent,
+  ChannelViewer,
+  ChatMessage,
+  ChatterRoles,
+} from "../../platform/chat-source.ts"
 
 /** The EventSub WebSocket messages the watcher acts on; any other message type is `ignored`. */
 export type EventSubMessage =
@@ -7,12 +12,21 @@ export type EventSubMessage =
   | { readonly kind: "keepalive" }
   | { readonly kind: "reconnect"; readonly url: string }
   | { readonly kind: "notification"; readonly chat: ChatMessage }
-  /** Twitch removed the chat subscription, for example after the streamer revoked the app. */
+  | { readonly kind: "channel-entry"; readonly event: ChannelEntryEvent }
+  /** Twitch removed one of the watch's subscriptions, for example after the streamer revoked the app. */
   | { readonly kind: "revoked" }
   | { readonly kind: "ignored" }
 
 const malformed: Parsed<never, "malformed"> = { ok: false, issue: "malformed" }
-const chatMessageType = "channel.chat.message"
+/** The EventSub subscription types the watcher creates. */
+export const eventSubTypes = {
+  chat: "channel.chat.message",
+  subscribe: "channel.subscribe",
+  resubscribe: "channel.subscription.message",
+  redemption: "channel.channel_points_custom_reward_redemption.add",
+} as const
+
+const watchedTypes: readonly unknown[] = Object.values(eventSubTypes)
 
 export function parseEventSubMessage(text: string): Parsed<EventSubMessage, "malformed"> {
   let body: unknown
@@ -31,13 +45,11 @@ export function parseEventSubMessage(text: string): Parsed<EventSubMessage, "mal
     case "session_reconnect":
       return parseReconnect(payload)
     case "notification":
-      return metadata.subscription_type === chatMessageType
-        ? parseChatNotification(payload)
-        : { ok: true, value: { kind: "ignored" } }
+      return parseNotification(metadata.subscription_type, payload)
     case "revocation":
       return {
         ok: true,
-        value: { kind: metadata.subscription_type === chatMessageType ? "revoked" : "ignored" },
+        value: { kind: watchedTypes.includes(metadata.subscription_type) ? "revoked" : "ignored" },
       }
     default:
       return { ok: true, value: { kind: "ignored" } }
@@ -62,6 +74,60 @@ function parseReconnect(payload: Record<string, unknown>): Parsed<EventSubMessag
   if (protocol !== "ws:" && protocol !== "wss:") return malformed
   return { ok: true, value: { kind: "reconnect", url } }
 }
+
+function parseNotification(
+  type: unknown,
+  payload: Record<string, unknown>,
+): Parsed<EventSubMessage, "malformed"> {
+  switch (type) {
+    case eventSubTypes.chat:
+      return parseChatNotification(payload)
+    // A gift sub fires `channel.subscribe` for its recipient, who is the user of the event.
+    case eventSubTypes.subscribe:
+    case eventSubTypes.resubscribe:
+      return parseSubscription(payload)
+    case eventSubTypes.redemption:
+      return parseRedemption(payload)
+    default:
+      return { ok: true, value: { kind: "ignored" } }
+  }
+}
+
+function parseSubscription(payload: Record<string, unknown>): Parsed<EventSubMessage, "malformed"> {
+  const { event } = payload
+  if (!isRecord(event)) return malformed
+  const viewer = eventViewer(event)
+  const subTier = eventTiers.get(event.tier)
+  if (viewer === null || subTier === undefined) return malformed
+  return { ok: true, value: { kind: "channel-entry", event: { via: "sub", viewer, subTier } } }
+}
+
+function parseRedemption(payload: Record<string, unknown>): Parsed<EventSubMessage, "malformed"> {
+  const { event } = payload
+  if (!isRecord(event) || !isRecord(event.reward)) return malformed
+  const viewer = eventViewer(event)
+  const rewardId = event.reward.id
+  if (viewer === null || typeof rewardId !== "string") return malformed
+  return { ok: true, value: { kind: "channel-entry", event: { via: "points", viewer, rewardId } } }
+}
+
+function eventViewer(event: Record<string, unknown>): ChannelViewer | null {
+  const { user_id: platformUserId, user_login: login, user_name: displayName } = event
+  if (
+    typeof platformUserId !== "string"
+    || typeof login !== "string"
+    || typeof displayName !== "string"
+  ) {
+    return null
+  }
+  return { platformUserId, login, displayName }
+}
+
+const eventTiers: ReadonlyMap<unknown, 1 | 2 | 3> = new Map([
+  ["1000", 1],
+  ["2000", 2],
+  ["3000", 3],
+])
 
 function parseChatNotification(
   payload: Record<string, unknown>,

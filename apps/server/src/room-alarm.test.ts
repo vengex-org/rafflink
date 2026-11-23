@@ -21,7 +21,11 @@ import {
   users,
   type RunningFakeTwitch,
 } from "@rafflink/core/test/contract"
-import { chatEntryStreamerScopes, seedStreamer } from "../test/fake-twitch.ts"
+import {
+  chatEntryStreamerScopes,
+  pointsEntryStreamerScopes,
+  seedStreamer,
+} from "../test/fake-twitch.ts"
 import { giveawayInit, sealKey, testConfig, validRules } from "../test/fixtures.ts"
 import { applyAccountsMigrations, coreAccountsSchemaDir } from "./migrate.ts"
 
@@ -299,9 +303,79 @@ function queueChatter(platformUserId: string): void {
   )
 }
 
+// A redemption of the chosen reward, queued the way the room queues one: no tier, no badges.
+function queueRedeemer(platformUserId: string): void {
+  roomSql.exec(
+    "INSERT INTO chat_entry_requests (platform_user_id, login, display_name, sub_tier, vip, moderator, requested_at, via) VALUES (?, ?, ?, NULL, 0, 0, ?, 'points')",
+    [platformUserId, `login_${platformUserId}`, `Name_${platformUserId}`, clock.now()],
+  )
+}
+
 function callsTo(path: string): number {
   return twitch.fake.control.calls.filter((call) => call.path === path).length
 }
+
+describe("runRoomAlarm points entry", () => {
+  it("reads the tiers of the redeemers in one call and enters them with their tier", async () => {
+    await seedStreamerAndGiveaway(pointsEntryStreamerScopes)
+    twitch.fake.control.setSubscription(users.viewer.id, users.streamer.id, "3000")
+    queueRedeemer(users.viewer.id)
+    queueRedeemer(users.viewer2.id)
+
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((entrant) => entrant.group)).toEqual([
+      "sub_t3",
+      "viewer",
+    ])
+    expect(callsTo("/helix/subscriptions")).toBe(1)
+  })
+
+  it("leaves the redeemers waiting when the tier read fails, and enters them at the next check", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    await seedStreamerAndGiveaway(pointsEntryStreamerScopes)
+    twitch.fake.control.setSubscription(users.viewer.id, users.streamer.id, "2000")
+    queueRedeemer(users.viewer.id)
+    twitch.fake.control.failNext("channel-subscriptions", 500, 1)
+
+    await runRoomAlarm(deps, giveawayId, room)
+    const afterFirst = room.summary().entrantCount
+    clock.advance(config.chatEntryCheckSeconds * 1000)
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(afterFirst).toBe(0)
+    expect(warn).toHaveBeenCalledWith("chat entry tier check failed", {
+      giveawayId,
+      errorClass: "TwitchUnavailable",
+    })
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((entrant) => entrant.group)).toEqual([
+      "sub_t2",
+    ])
+    warn.mockRestore()
+  })
+
+  it("counts a redeemer as not subscribed when the token lacks the points entry scopes, and logs it once", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    await seedStreamerAndGiveaway()
+    twitch.fake.control.setSubscription(users.viewer.id, users.streamer.id, "2000")
+    queueRedeemer(users.viewer.id)
+
+    await runRoomAlarm(deps, giveawayId, room)
+    queueRedeemer(users.viewer2.id)
+    clock.advance(config.chatEntryCheckSeconds * 1000)
+    await runRoomAlarm(deps, giveawayId, room)
+
+    expect(room.entrants({ afterSeq: 0, limit: 10 }).map((entrant) => entrant.group)).toEqual([
+      "viewer",
+      "viewer",
+    ])
+    expect(
+      warn.mock.calls.filter(([message]) => message === "points entry tiers not readable"),
+    ).toEqual([["points entry tiers not readable", { giveawayId }]])
+    expect(callsTo("/helix/subscriptions")).toBe(0)
+    warn.mockRestore()
+  })
+})
 
 describe("runRoomAlarm chat entry", () => {
   it("reads the profile and the follow with the streamer token and enters the chatter", async () => {

@@ -1,3 +1,4 @@
+import type { PointsReward } from "../domain/rules.ts"
 import type { ChatSourceFactory } from "../platform/chat-source.ts"
 import { PlatformIdentityRejected } from "../platform/errors.ts"
 import {
@@ -11,6 +12,7 @@ import {
   type PlatformProvider,
   type SignInProof,
   type SubscriberBadges,
+  type SubscriberTiers,
   type SubscriptionGroup,
   type TokenValidation,
   type UserProfile,
@@ -32,8 +34,12 @@ export class TwitchProvider implements PlatformProvider {
     viewer: ["openid", "user:read:subscriptions", "user:read:follows"],
     moderator: ["openid"],
   } as const
-  // The follow of a chat entrant is read with the streamer's token.
-  readonly chatEntryScopes = ["moderator:read:followers"] as const
+  // The check of a queued entrant reads the follow with the streamer's token, and a redeemer's tier too.
+  readonly entryScopes = {
+    chat: ["moderator:read:followers"],
+    sub: ["moderator:read:followers", "channel:read:subscriptions"],
+    points: ["moderator:read:followers", "channel:read:subscriptions", "channel:read:redemptions"],
+  } as const
   private readonly badges: ChannelBadges
 
   constructor(
@@ -119,6 +125,27 @@ export class TwitchProvider implements PlatformProvider {
     return this.client.isModerator(accessToken, broadcasterId, userId)
   }
 
+  subscriberTiers(
+    accessToken: string,
+    broadcasterId: string,
+    userIds: readonly string[],
+  ): Promise<SubscriberTiers> {
+    return this.client.subscriberTiers(accessToken, broadcasterId, userIds)
+  }
+
+  /** Twitch gives channel points to Affiliates and Partners only. */
+  async hasChannelPoints(broadcasterId: string): Promise<boolean> {
+    const type = await this.client.broadcasterType(
+      await this.client.appAccessToken(),
+      broadcasterId,
+    )
+    return type === "affiliate" || type === "partner"
+  }
+
+  pointsRewards(accessToken: string, broadcasterId: string): Promise<readonly PointsReward[]> {
+    return this.client.customRewards(accessToken, broadcasterId)
+  }
+
   /** Lower case, as Twitch stores logins; a leading `@`, as chat writes names, is dropped. */
   parseLogin(text: string): string | null {
     const login = text.trim().replace(/^@/, "")
@@ -131,15 +158,15 @@ export class TwitchProvider implements PlatformProvider {
     return id === undefined ? null : { id, login }
   }
 
-  /** An EventSub WebSocket whose sessions are subscribed to the channel's chat with the streamer's token. */
+  /** An EventSub WebSocket whose sessions are subscribed to the channel's topics with the streamer's token. */
   chatSource(context: ChatContext): ChatSourceFactory {
     return eventSubChat({
       connector: context.connector,
       clock: context.clock,
       config: this.config,
-      subscribe: async (sessionId) => {
+      subscribe: async (sessionId, topics) => {
         const { accessToken, broadcasterId } = await context.streamerAccess()
-        await this.client.subscribeChatMessages(accessToken, broadcasterId, sessionId)
+        await this.client.subscribeEvents(accessToken, broadcasterId, sessionId, topics)
       },
     })
   }

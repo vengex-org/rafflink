@@ -5,6 +5,8 @@ export type TwitchEndpoint =
   | "id-token"
   | "validate"
   | "subscriptions"
+  | "channel-subscriptions"
+  | "rewards"
   | "followed"
   | "followers"
   | "users"

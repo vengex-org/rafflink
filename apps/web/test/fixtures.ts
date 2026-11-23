@@ -13,6 +13,8 @@ export const rules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  subEntry: false,
+  pointsReward: null,
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
@@ -77,6 +79,7 @@ export const liveSnapshot: LiveSnapshot = {
   now: 1_700_000_000_000,
   chatClaimUnavailable: false,
   chatEntryOff: false,
+  channelEntryOff: false,
 }
 
 /** A claim time and how the English interface writes it with its date, in the zone the test runs in. */
@@ -98,8 +101,10 @@ export const twitchPlatform = {
     accountAge: true,
     pageEntry: true,
     chatEntry: true,
+    subEntry: true,
+    pointsEntry: true,
   },
-  chatEntryReady: true,
+  readyEntryWays: ["chat", "sub", "points"],
   publicHistory: false,
 }
 

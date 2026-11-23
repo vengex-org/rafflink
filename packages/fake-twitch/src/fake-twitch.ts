@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { createEventSub } from "./routes/eventsub.ts"
+import { createEventSub, type SubscriptionKind } from "./routes/eventsub.ts"
 import { helixRoutes } from "./routes/helix.ts"
 import { idRoutes } from "./routes/id.ts"
 import {
@@ -9,6 +9,7 @@ import {
   type Call,
   type FailableEndpoint,
   type FailureStatus,
+  type FakeReward,
   type FakeTwitchOptions,
   type FakeUser,
   type IdTokenFault,
@@ -49,13 +50,19 @@ export interface FakeTwitchControl {
   /** Access and refresh tokens of the user stop working; `/oauth2/validate` answers 401. */
   revokeUserTokens(userId: string): void
   sendChatMessage(broadcasterId: string, chatterUserId: string, text: string): void
+  /** Sends a `channel.subscribe` (new or gift received) or `channel.subscription.message` (resub) event of the channel. */
+  sendSubscription(broadcasterId: string, userId: string, kind: SubscriptionKind, tier: Tier): void
+  /** Sends a redemption of one of the channel's rewards (see {@link setCustomRewards}). */
+  sendRedemption(broadcasterId: string, userId: string, rewardId: string): void
+  /** The channel's point rewards; they are listed only while the user is an affiliate or partner. */
+  setCustomRewards(broadcasterId: string, rewards: readonly FakeReward[]): void
   /** Sends `session_reconnect` on every open EventSub socket. */
   reconnect(): void
-  /** Sends `revocation` for every chat subscription and drops the subscriptions; the sockets stay open. */
+  /** Sends `revocation` for every subscription and drops the subscriptions; the sockets stay open. */
   revokeChatSubscriptions(): void
   /** EventSub sockets that are open now. */
   eventSubConnections(): number
-  /** Chat subscriptions on the open EventSub sockets. */
+  /** Subscriptions of every type on the open EventSub sockets. */
   eventSubSubscriptions(): number
   readonly calls: readonly Call[]
 }
@@ -144,6 +151,12 @@ export function createFakeTwitch(options: FakeTwitchOptions): FakeTwitch {
       }
     },
     sendChatMessage: eventSub.sendChatMessage,
+    sendSubscription: eventSub.sendSubscription,
+    sendRedemption: eventSub.sendRedemption,
+    setCustomRewards(broadcasterId, rewards) {
+      requireUser(state, broadcasterId)
+      state.customRewards.set(broadcasterId, [...rewards])
+    },
     reconnect: eventSub.reconnect,
     revokeChatSubscriptions: eventSub.revokeSubscriptions,
     eventSubConnections: eventSub.connectionCount,

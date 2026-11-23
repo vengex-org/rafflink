@@ -1,4 +1,10 @@
 import type { Group } from "../domain/groups.ts"
+import {
+  channelEntryVias,
+  type ChannelEntryVia,
+  type PointsReward,
+  type ViewerFacts,
+} from "../domain/rules.ts"
 import type { Clock, Instant, SocketConnector } from "../ports.ts"
 import type { ChatSourceFactory } from "./chat-source.ts"
 
@@ -28,6 +34,10 @@ export interface PlatformCapabilities {
   readonly pageEntry: boolean
   /** Viewers enter by writing in the streamer's chat. */
   readonly chatEntry: boolean
+  /** New subscribers, resubscribers and gift recipients enter by themselves. */
+  readonly subEntry: boolean
+  /** Viewers enter by redeeming a channel point reward. */
+  readonly pointsEntry: boolean
 }
 
 /** A platform that can check every rule and offers both entry ways. */
@@ -38,6 +48,8 @@ export const everyCapability: PlatformCapabilities = {
   accountAge: true,
   pageEntry: true,
   chatEntry: true,
+  subEntry: true,
+  pointsEntry: true,
 }
 
 export interface AuthorizeParams {
@@ -98,6 +110,9 @@ export type TokenValidation =
   | { readonly status: "invalid" }
   | { readonly status: "unavailable" }
 
+/** The tier of each subscriber among the asked users; a user who does not subscribe is absent. */
+export type SubscriberTiers = ReadonlyMap<string, NonNullable<ViewerFacts["subTier"]>>
+
 /** An access token of a giveaway's streamer, with the channel it is for. */
 export interface StreamerAccess {
   readonly accessToken: string
@@ -118,8 +133,11 @@ export interface PlatformProvider {
   readonly capabilities: PlatformCapabilities
   /** The scopes each sign-in asks for; the streamer's are stored with the streamer's token. */
   readonly scopes: Readonly<Record<SignInPurpose, readonly [string, ...string[]]>>
-  /** The streamer scopes chat entry needs on top of `scopes.streamer`; asked only when the streamer turns chat entry on. */
-  readonly chatEntryScopes: readonly string[]
+  /**
+   * The streamer scopes each channel entry way needs on top of `scopes.streamer`, asked only when the
+   * streamer turns that way on. Each includes what the check of a queued entrant reads (follow, tier).
+   */
+  readonly entryScopes: Readonly<Record<ChannelEntryVia, readonly string[]>>
   authorizeUrl(params: AuthorizeParams): string
   /**
    * Trades the sign-in's code, with its PKCE verifier, for tokens. Not retried: a code is single use,
@@ -151,6 +169,16 @@ export interface PlatformProvider {
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles>
   /** Whether the user moderates the channel now, asked with the streamer's token. */
   isModerator(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
+  /** The tier of each of `userIds` who subscribes to the channel, asked with the streamer's token; at most 100 ids. */
+  subscriberTiers(
+    accessToken: string,
+    broadcasterId: string,
+    userIds: readonly string[],
+  ): Promise<SubscriberTiers>
+  /** Whether the channel has channel points at all; uses the app's own credentials, so it needs no streamer scope. */
+  hasChannelPoints(broadcasterId: string): Promise<boolean>
+  /** The point rewards of a channel that has channel points, asked with the streamer's token. */
+  pointsRewards(accessToken: string, broadcasterId: string): Promise<readonly PointsReward[]>
   /** Typed text as a login of this platform in its normal form; `null` when the text cannot be a login. */
   parseLogin(text: string): string | null
   /** The account a login from {@link parseLogin} names; `null` when no account has it. Uses the app's own credentials. */
@@ -173,6 +201,16 @@ export class UnknownPlatform extends Error {
 export function providerFor(providers: PlatformProviders, platform: string): PlatformProvider {
   if (!isPlatform(platform)) throw new UnknownPlatform(platform)
   return providers[platform]
+}
+
+/** The entry ways whose scopes all are among a token's `scopes`. */
+export function readyEntryWays(
+  provider: PlatformProvider,
+  scopes: readonly string[],
+): readonly ChannelEntryVia[] {
+  return channelEntryVias.filter((way) =>
+    provider.entryScopes[way].every((scope) => scopes.includes(scope)),
+  )
 }
 
 export function isPlatform(value: string): value is Platform {

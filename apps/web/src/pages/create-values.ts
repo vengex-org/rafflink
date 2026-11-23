@@ -1,5 +1,10 @@
 import { groups, supportedGroups, type Group, type Tickets } from "@rafflink/core/domain/groups"
-import { minAgeMax, type GiveawayRules, type RecentWinnersRule } from "@rafflink/core/domain/rules"
+import {
+  minAgeMax,
+  type GiveawayRules,
+  type PointsReward,
+  type RecentWinnersRule,
+} from "@rafflink/core/domain/rules"
 import type { WinnerFieldKind } from "@rafflink/core/domain/winner-form"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
@@ -46,6 +51,10 @@ export interface Values {
   recentWinnersCount: string
   entryWays: EntryWays
   chatKeyword: string
+  /** Subs, resubs and gift subs received enter by themselves; page or chat entry stays on beside it. */
+  subEntry: boolean
+  /** The channel point reward whose redemption enters; null for none. */
+  pointsReward: PointsReward | null
   winnerCount: string
   /** The official rules fields; empty when not stated. */
   minAge: string
@@ -81,6 +90,8 @@ export const initialValues: Values = {
   recentWinnersCount: "3",
   entryWays: "page",
   chatKeyword: defaultChatKeyword,
+  subEntry: false,
+  pointsReward: null,
   winnerCount: "1",
   minAge: "",
   excludedCountries: "",
@@ -102,6 +113,8 @@ export function fitValues(values: Values, capabilities: PlatformCapabilities): V
     audience: audienceOffered(values.audience, capabilities) ? values.audience : "everyone",
     minAccountAgeDays: capabilities.accountAge ? values.minAccountAgeDays : "",
     entryWays: fitEntryWays(values.entryWays, capabilities),
+    subEntry: capabilities.subEntry && values.subEntry,
+    pointsReward: capabilities.pointsEntry ? values.pointsReward : null,
   }
 }
 
@@ -154,6 +167,8 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
         : String(rules.excludeRecentWinners.count),
     entryWays: entryWaysOf(rules),
     chatKeyword: rules.chatKeyword ?? defaultChatKeyword,
+    subEntry: rules.subEntry,
+    pointsReward: rules.pointsReward,
     minAge: rules.minAge === null ? "" : String(rules.minAge),
     excludedCountries: rules.excludedCountries ?? "",
     extraTerms: rules.extraTerms ?? "",
@@ -260,6 +275,8 @@ export function toBody(values: Values): CreateGiveawayBody {
           : { kind: values.recentWinners, count: Number(values.recentWinnersCount) },
       chatKeyword: values.entryWays === "page" ? null : values.chatKeyword,
       pageEntry: values.entryWays !== "chat",
+      subEntry: values.subEntry,
+      pointsReward: values.pointsReward,
       minAge: values.minAge.trim() === "" ? null : Number(values.minAge),
       excludedCountries: textOrNull(values.excludedCountries),
       extraTerms: textOrNull(values.extraTerms),

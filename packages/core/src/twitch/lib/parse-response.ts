@@ -138,6 +138,42 @@ export function parseRolePage(body: unknown): Parsed<RolePage, "malformed"> {
   return { ok: true, value: { userIds, cursor: cursor ?? null } }
 }
 
+/** Subscribers of a lookup by user id; a user who does not subscribe is absent. */
+export function parseSubscribers(
+  body: unknown,
+): Parsed<readonly { readonly userId: string; readonly tier: Tier }[], "malformed"> {
+  const data = dataOf(body)
+  if (!data.ok) return data
+  const subscribers: { userId: string; tier: Tier }[] = []
+  for (const item of data.value) {
+    if (!isRecord(item) || typeof item.user_id !== "string" || !isTier(item.tier)) return malformed
+    subscribers.push({ userId: item.user_id, tier: item.tier })
+  }
+  return { ok: true, value: subscribers }
+}
+
+export function parseBroadcasterType(body: unknown): Parsed<string, "malformed"> {
+  const entry = firstEntry(body)
+  if (!entry.ok) return entry
+  const type = entry.value.broadcaster_type
+  return typeof type === "string" ? { ok: true, value: type } : malformed
+}
+
+export function parseCustomRewards(
+  body: unknown,
+): Parsed<readonly { readonly id: string; readonly title: string }[], "malformed"> {
+  const data = dataOf(body)
+  if (!data.ok) return data
+  const rewards: { id: string; title: string }[] = []
+  for (const item of data.value) {
+    if (!isRecord(item) || typeof item.id !== "string" || typeof item.title !== "string") {
+      return malformed
+    }
+    rewards.push({ id: item.id, title: item.title })
+  }
+  return { ok: true, value: rewards }
+}
+
 export function parseValidated(body: unknown): Parsed<{ userId: string }, "malformed"> {
   if (!isRecord(body) || typeof body.user_id !== "string") return malformed
   return { ok: true, value: { userId: body.user_id } }

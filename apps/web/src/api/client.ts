@@ -2,9 +2,11 @@ import { parseActor, type Actor } from "@rafflink/core/domain/actor"
 import { groups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import { parseOverlayTheme, type OverlayTheme } from "@rafflink/core/domain/overlay-theme"
 import {
+  channelEntryVias,
   ineligibleReasons,
   recentWinnersKinds,
   type GiveawayRules,
+  type PointsReward,
   type RecentWinnersRule,
 } from "@rafflink/core/domain/rules"
 import {
@@ -32,6 +34,7 @@ import type {
   ModeratorLinkJson,
   MyLeafJson,
   OperatorJson,
+  PointsRewardsJson,
   PublicGiveaway,
   PublicHistoryJson,
   SessionJson,
@@ -162,6 +165,9 @@ export interface CreateGiveawayBody {
     readonly chatKeyword: string | null
     /** False for a chat-only giveaway. */
     readonly pageEntry: boolean
+    readonly subEntry: boolean
+    /** Null when no channel point reward enters. */
+    readonly pointsReward: PointsReward | null
     /** Null when the streamer states none. */
     readonly minAge: number | null
     /** Null when the streamer states none. */
@@ -228,7 +234,11 @@ export async function getSession(): Promise<SessionJson> {
       canCreate: bool(streamer, "canCreate"),
       platform: platformOf(streamer, "platform"),
       capabilities: capabilitiesOf(child(streamer, "capabilities")),
-      chatEntryReady: bool(streamer, "chatEntryReady"),
+      readyEntryWays: textList(streamer, "readyEntryWays").map((way) => {
+        const known = channelEntryVias.find((item) => item === way)
+        if (known === undefined) throw new ApiShapeError("readyEntryWays")
+        return known
+      }),
       publicHistory: bool(streamer, "publicHistory"),
     },
     donateUrl,
@@ -250,6 +260,8 @@ function capabilitiesOf(source: Json): PlatformCapabilities {
     accountAge: bool(source, "accountAge"),
     pageEntry: bool(source, "pageEntry"),
     chatEntry: bool(source, "chatEntry"),
+    subEntry: bool(source, "subEntry"),
+    pointsEntry: bool(source, "pointsEntry"),
   }
 }
 
@@ -909,6 +921,26 @@ export type AddBlockResult = "added" | "exists" | AddBlockRefusal | "unauthorize
 export type RemoveBlockResult = "removed" | "room-unavailable" | "unauthorized"
 
 /** The signed-in streamer's block list, newest first, and how many it may hold. */
+/** The streamer's channel point rewards for the wizard, or why there are none to pick. */
+export async function getPointsRewards(): Promise<PointsRewardsJson | "unauthorized"> {
+  const { status, body } = await send("/api/dash/rewards")
+  if (status === 401) return "unauthorized"
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "rewards")
+  const kind = oneOf(source, "kind", ["rewards", "reconnect", "no-channel-points"])
+  switch (kind) {
+    case "rewards":
+      return { kind, rewards: list(source, "rewards", parsePointsReward) }
+    case "reconnect":
+    case "no-channel-points":
+      return { kind }
+  }
+}
+
+function parsePointsReward(source: Json): PointsReward {
+  return { id: text(source, "id"), title: text(source, "title") }
+}
+
 export async function getBlocks(): Promise<BlockListJson | "unauthorized"> {
   const { status, body } = await send("/api/dash/blocks")
   if (status === 401) return "unauthorized"
@@ -1156,6 +1188,9 @@ function parseRules(source: Json): GiveawayRules {
         : parseRecentWinners(child(source, "excludeRecentWinners")),
     chatKeyword: nullableText(source, "chatKeyword"),
     pageEntry: bool(source, "pageEntry"),
+    subEntry: bool(source, "subEntry"),
+    pointsReward:
+      source.pointsReward === null ? null : parsePointsReward(child(source, "pointsReward")),
     minAge: nullableNum(source, "minAge"),
     excludedCountries: nullableText(source, "excludedCountries"),
     extraTerms: nullableText(source, "extraTerms"),
@@ -1304,6 +1339,7 @@ function parseSharedSnapshotFields(source: Json) {
     now: num(source, "now"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
     chatEntryOff: bool(source, "chatEntryOff"),
+    channelEntryOff: bool(source, "channelEntryOff"),
   }
 }
 

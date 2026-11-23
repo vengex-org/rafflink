@@ -171,6 +171,7 @@ const previewSnapshot: OverlaySnapshot = {
   winnerCount: 1,
   chatClaimUnavailable: false,
   chatEntryOff: false,
+  channelEntryOff: false,
   rerollOpen: false,
   rerollBlocked: null,
   title: null,

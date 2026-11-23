@@ -8,6 +8,15 @@ export interface FakeUser {
   createdAt: string
   /** Returned by `GET /helix/users` as `profile_image_url`. */
   profileImageUrl: string
+  /** Returned by `GET /helix/users` as `broadcaster_type`; Affiliates and Partners have channel points. Empty when absent. */
+  broadcasterType?: "affiliate" | "partner" | ""
+}
+
+/** A channel point reward as `GET /helix/channel_points/custom_rewards` lists it. */
+export interface FakeReward {
+  id: string
+  title: string
+  cost: number
 }
 
 export interface FakeTwitchOptions {
@@ -30,6 +39,8 @@ export type Role = "vip" | "moderator"
 export type FailableEndpoint =
   | "token"
   | "subscriptions"
+  | "channel-subscriptions"
+  | "rewards"
   | "followed"
   | "followers"
   | "users"
@@ -81,6 +92,8 @@ export interface FakeState {
   readonly follows: Set<string>
   /** Role holders per broadcaster, in the order they were added. */
   readonly roles: Record<Role, Map<string, Set<string>>>
+  /** The channel point rewards of each broadcaster. */
+  readonly customRewards: Map<string, FakeReward[]>
   /** Subscriber badge image per tier a channel set, keyed by broadcaster id; a channel without an entry has no badges of its own. */
   readonly channelSubscriberBadges: Map<string, Partial<Record<Tier, string>>>
   readonly codes: Map<string, AuthorizationCode>
@@ -103,6 +116,7 @@ export function createState(options: FakeTwitchOptions): FakeState {
     follows: new Set(),
     roles: { vip: new Map(), moderator: new Map() },
     channelSubscriberBadges: new Map(),
+    customRewards: new Map(),
     codes: new Map(),
     accessTokens: new Map(),
     refreshTokens: new Map(),

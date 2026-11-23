@@ -59,6 +59,72 @@ export function helixRoutes(state: FakeState, eventSubRoutes: Hono<HelixEnv>): H
     })
   })
 
+  // The broadcaster's list filtered by `user_id`, at most 100 ids: the room asks about a batch of redeemers.
+  app.get("/subscriptions", (c) => {
+    const failure = scriptedHelixFailure(c, state, "channel-subscriptions")
+    if (failure) return failure
+    const missingScope = requireScope(c, "channel:read:subscriptions")
+    if (missingScope) return missingScope
+
+    const broadcasterId = c.req.query("broadcaster_id")
+    if (broadcasterId === undefined) {
+      return helixError(c, 400, "Missing required parameter broadcaster_id")
+    }
+    if (broadcasterId !== c.get("token").userId) {
+      return helixError(c, 403, "broadcaster_id must match the user ID in the access token")
+    }
+    const userIds = c.req.queries("user_id") ?? []
+    if (userIds.length > maxPageSize) {
+      return helixError(c, 400, `The number of user_id parameters may not exceed ${maxPageSize}`)
+    }
+    const data = userIds.flatMap((userId) => {
+      const tier = state.subscriptions.get(pairKey(broadcasterId, userId))
+      const user = state.users.get(userId)
+      if (tier === undefined || user === undefined) return []
+      return [
+        {
+          broadcaster_id: broadcasterId,
+          gifter_id: "",
+          is_gift: false,
+          tier,
+          user_id: user.id,
+          user_login: user.login,
+          user_name: user.displayName,
+        },
+      ]
+    })
+    return c.json({ data, pagination: {}, total: data.length, points: 0 })
+  })
+
+  app.get("/channel_points/custom_rewards", (c) => {
+    const failure = scriptedHelixFailure(c, state, "rewards")
+    if (failure) return failure
+    const missingScope = requireScope(c, "channel:read:redemptions")
+    if (missingScope) return missingScope
+
+    const broadcasterId = c.req.query("broadcaster_id")
+    if (broadcasterId === undefined || broadcasterId !== c.get("token").userId) {
+      return helixError(c, 400, "broadcaster_id must match the user ID in the access token")
+    }
+    if (!hasChannelPoints(requireUser(state, broadcasterId))) {
+      return helixError(c, 403, "The broadcaster must have partner or affiliate status.")
+    }
+    const rewards = state.customRewards.get(broadcasterId) ?? []
+    return c.json({
+      data: rewards.map((reward) => ({
+        broadcaster_id: broadcasterId,
+        id: reward.id,
+        title: reward.title,
+        cost: reward.cost,
+        prompt: "",
+        is_enabled: true,
+        is_paused: false,
+        is_in_stock: true,
+        is_user_input_required: false,
+      })),
+    })
+  })
+
   app.get("/channels/followed", (c) => {
     const failure = scriptedHelixFailure(c, state, "followed")
     if (failure) return failure
@@ -254,13 +320,17 @@ function badgeVersion(id: string, image: string) {
   }
 }
 
+function hasChannelPoints(user: FakeUser): boolean {
+  return user.broadcasterType === "affiliate" || user.broadcasterType === "partner"
+}
+
 function userJson(user: FakeUser) {
   return {
     id: user.id,
     login: user.login,
     display_name: user.displayName,
     type: "",
-    broadcaster_type: "",
+    broadcaster_type: user.broadcasterType ?? "",
     description: "",
     profile_image_url: user.profileImageUrl,
     offline_image_url: "",

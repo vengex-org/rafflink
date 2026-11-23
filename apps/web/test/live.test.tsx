@@ -1060,6 +1060,19 @@ describe("live page: winners", () => {
     expect(view.queryByText(/Chat claim unavailable/)).toBeNull()
   })
 
+  it("says sub and points entry is off while entries are open to them", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () =>
+        ok({ ...liveSnapshot, chatClaimUnavailable: true, channelEntryOff: true }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByRole("heading", { name: "Chat watch is off" })).toBeTruthy()
+    expect(view.getByText(/Sub and channel point entry is off/)).toBeTruthy()
+    expect(view.queryByText(/Chat claim unavailable/)).toBeNull()
+  })
+
   it("explains that chat watch is off and marks a claim by hand", async () => {
     const requests = mockDrawn({
       "GET /api/live/gid-1": () => ok({ ...drawn, chatClaimUnavailable: true }),

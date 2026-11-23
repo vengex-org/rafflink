@@ -507,6 +507,10 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "rules.enterPage": "Zapojíš sa tak, že sa na tejto stránke prihlásiš cez Twitch.",
   "rules.enterChat":
     'Zapojíš sa tak, že kým je zápis otvorený, napíšeš "{keyword}" do Twitch chatu kanála {name}.',
+  "rules.enterSub":
+    "Ak si počas otvoreného zapájania predplatíš kanál {name}, predĺžiš predplatné alebo dostaneš darovaný sub, tiež sa zapojíš. Predplatné na zapojenie nikdy nepotrebuješ.",
+  "rules.enterPoints":
+    "Uplatnenie odmeny za body kanála „{reward}“ počas otvoreného zapájania ťa tiež zapojí, raz a bez tiketov navyše.",
   "rules.free": "Zapojenie je zadarmo. Nemusíš nič kúpiť, aby si sa zapojil alebo vyhral.",
   "rules.paidOnly":
     "Zapojiť sa môžu len predplatitelia, takže do tejto súťaže sa nedá zapojiť zadarmo.",
@@ -633,6 +637,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.chatOff.title": "Sledovanie chatu je vypnuté",
   "live.chatEntryOff.text":
     "Zapojenie cez chat je vypnuté: Rafflink teraz nevie čítať tvoj chat, takže napísanie kľúčového slova nikoho nezapojí. Ak súťaž berie zapojenie cez stránku, diváci sa môžu zapojiť tam.",
+  "live.channelEntryOff.text":
+    "Zapojenie cez sub a body kanála je vypnuté: Rafflink teraz nevie čítať tieto udalosti Twitchu, často preto, že bolo odobraté povolenie. Diváci sa stále môžu zapojiť cez stránku alebo chat. Pred ďalšou súťažou pripoj Twitch znova.",
   "live.chatOff.text":
     "Prevzatie cez chat nie je dostupné: Rafflink teraz nevie čítať tvoj chat, takže víťazi výhru nemôžu prevziať napísaním doň. Keď ti víťaz povie, že je tu, stlač pri jeho mene Označiť ako prevzaté.",
   "live.open.title": "Zápis je otvorený",
@@ -879,16 +885,32 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.entry.chat": "Len chat",
   "wizard.entry.chat.help":
     "Diváci sa zapoja len napísaním kľúčového slova do tvojho chatu. Stránka ukáže kľúčové slovo a dovolí im overiť si, či sú v súťaži.",
-  "wizard.reconnect.text":
+  "wizard.reconnect.chat.text":
     "Aby Rafflink overil, či ťa divák z chatu sleduje, potrebuje ešte jedno povolenie Twitchu (čítať tvojich sledujúcich). Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.sub.text":
+    "Aby Rafflink zapojil nových odberateľov, potrebuje čítať tvojich odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
+  "wizard.reconnect.points.text":
+    "Aby Rafflink zapojil divákov, ktorí uplatnia odmenu za body kanála, potrebuje čítať tvoje odmeny, ich uplatnenia, odberateľov a sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
   "wizard.reconnect.button": "Pripojiť Twitch znova",
   "wizard.chatKeyword.label": "Kľúčové slovo na zapojenie",
   "wizard.chatKeyword.help":
     "Správa v chate, ktorá začína týmto slovom, diváka zapojí s rovnakými pravidlami a lístkami ako stránka. Rafflink do tvojho chatu nikdy nepíše.",
+  "wizard.autoEntry.legend": "Automatické zapojenie",
+  "wizard.subEntry.label": "Zapojiť nových odberateľov",
+  "wizard.subEntry.help":
+    "Každý, kto si počas otvoreného zapájania predplatí kanál, predĺži predplatné alebo dostane darovaný sub, sa zapojí raz, s tiketmi svojho tieru. Zapojenie cez stránku alebo chat ostáva zadarmo, takže nikto nemusí platiť.",
+  "wizard.points.legend": "Odmena za body kanála",
+  "wizard.points.help":
+    "Diváci, ktorí túto odmenu uplatnia počas otvoreného zapájania, sa zapoja raz, ako pri každom inom zapojení. Uplatnenie nedáva tikety navyše ani lepšiu šancu na výhru.",
+  "wizard.points.off": "Žiadna odmena",
+  "wizard.points.selected":
+    "Rafflink uplatnenie neoznačí ako splnené, vybav ho vo fronte odmien ako zvyčajne.",
   "review.entry": "Zapojenie",
   "review.entryPage": "Na stránke súťaže.",
   "review.entryBoth": "Na stránke súťaže alebo napísaním „{keyword}“ do tvojho chatu.",
   "review.entryChat": "Len napísaním „{keyword}“ do tvojho chatu.",
+  "review.subEntry": "Noví odberatelia sa zapoja sami.",
+  "review.pointsEntry": "Uplatnenie „{reward}“ zapojí diváka.",
   "giveaway.chatEntry": "Alebo napíš {keyword} do chatu kanála {name} a zapojíš sa.",
   "giveaway.lookup.legend": "Zapojenie cez chat",
   "giveaway.lookup.label": "Tvoje meno na Twitchi",
@@ -991,7 +1013,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "privacy.cookies.i5":
     "Lokálne úložisko prehliadača si pamätá tvoj výber jazyka a témy a čistý režim živej stránky. Úložisko relácie drží približne 30 sekúnd kópiu načítanej stránky giveawayu vrátane tvojho stavu v nej. Zariadenie neopúšťa ani jedno.",
   "privacy.cookies.i7":
-    "rl_chat_entry: pamätá si, že posledné prihlásenie streamera v tomto prehliadači povolilo čítať sledujúcich kanála pre zapojenie cez chat, aby ho ďalšie prihlásenie pýtalo znova; 400 dní, ostáva aj po odhlásení.",
+    "rl_entry_scopes: pamätá si, ktoré povolenia navyše (sledujúci pre zapojenie cez chat, odberatelia a odmeny pre zapojenie cez sub a body kanála) povolilo posledné prihlásenie streamera v tomto prehliadači, aby ich ďalšie prihlásenie pýtalo znova; 400 dní, ostáva aj po odhlásení.",
   "privacy.cookies.i6":
     "rl_mod_*: umožní tomu, kto otvoril odkaz pre moderátora, používať stránku moderátora daného giveawayu, predvolene 7 dní alebo kým streamer odkaz nezruší. rl_mod_pending: pamätá si, ktorý odkaz čaká na prihlásenie moderátora cez Twitch, predvolene 10 minút.",
   "privacy.rights.h": "Tvoje práva",

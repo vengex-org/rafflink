@@ -37,6 +37,12 @@ type Scopes = readonly [string, ...string[]]
 const VIEWER_SCOPES: Scopes = ["openid", "user:read:subscriptions", "user:read:follows"]
 const STREAMER_SCOPES: Scopes = ["openid", "channel:read:vips", "moderation:read"]
 const CHAT_SCOPES: Scopes = ["openid", "user:read:chat"]
+const ENTRY_SCOPES: Scopes = [
+  "openid",
+  "user:read:chat",
+  "channel:read:subscriptions",
+  "channel:read:redemptions",
+]
 
 let fake: FakeTwitch
 let server: ReturnType<typeof serveFake>
@@ -623,12 +629,14 @@ describe("isModerator", () => {
   })
 })
 
-describe("subscribeChatMessages", () => {
+const chatOnly = { chat: true, subscriptions: false, pointsRewardId: null } as const
+
+describe("subscribeEvents", () => {
   it("delivers the channel's chat messages to the session", async () => {
     const { accessToken } = await signIn("200", CHAT_SCOPES)
     const session = await openSession()
 
-    await client.subscribeChatMessages(accessToken, "200", session.id)
+    await client.subscribeEvents(accessToken, "200", session.id, chatOnly)
     fake.control.sendChatMessage("200", "100", "!claim")
 
     expect(await session.nextNotification()).toMatchObject({
@@ -644,7 +652,7 @@ describe("subscribeChatMessages", () => {
     const session = await openSession()
     fake.control.failNext("eventsub", 503, 1)
 
-    await client.subscribeChatMessages(accessToken, "200", session.id)
+    await client.subscribeEvents(accessToken, "200", session.id, chatOnly)
 
     expect(callsTo("/helix/eventsub/subscriptions")).toBe(2)
   })
@@ -653,7 +661,7 @@ describe("subscribeChatMessages", () => {
     const { accessToken } = await signIn("200", STREAMER_SCOPES)
     const session = await openSession()
 
-    const error = await rejection(client.subscribeChatMessages(accessToken, "200", session.id))
+    const error = await rejection(client.subscribeEvents(accessToken, "200", session.id, chatOnly))
 
     expect(error).toBeInstanceOf(TwitchInvalid)
     expect(error).toMatchObject({ endpoint: "eventsub", status: 403 })
@@ -662,9 +670,105 @@ describe("subscribeChatMessages", () => {
   it("rejects a session that does not exist as invalid", async () => {
     const { accessToken } = await signIn("200", CHAT_SCOPES)
 
-    const error = await rejection(client.subscribeChatMessages(accessToken, "200", "gone"))
+    const error = await rejection(client.subscribeEvents(accessToken, "200", "gone", chatOnly))
 
     expect(error).toMatchObject({ endpoint: "eventsub", status: 400 })
+  })
+
+  it("delivers subs, resubs, gift subs received and redemptions of the chosen reward only", async () => {
+    const { accessToken } = await signIn("200", ENTRY_SCOPES)
+    fake.control.addUser({ ...streamer, broadcasterType: "affiliate" })
+    fake.control.setCustomRewards("200", [
+      { id: "reward-1", title: "Enter", cost: 100 },
+      { id: "reward-2", title: "Hydrate", cost: 50 },
+    ])
+    const session = await openSession()
+
+    await client.subscribeEvents(accessToken, "200", session.id, {
+      chat: false,
+      subscriptions: true,
+      pointsRewardId: "reward-1",
+    })
+    fake.control.sendSubscription("200", "100", "gift", "2000")
+    fake.control.sendSubscription("200", "100", "resub", "1000")
+    fake.control.sendRedemption("200", "100", "reward-2")
+    fake.control.sendRedemption("200", "100", "reward-1")
+
+    expect(await session.nextNotification()).toMatchObject({
+      metadata: { subscription_type: "channel.subscribe" },
+      payload: { event: { user_id: "100", tier: "2000", is_gift: true } },
+    })
+    expect(await session.nextNotification()).toMatchObject({
+      metadata: { subscription_type: "channel.subscription.message" },
+      payload: { event: { user_id: "100", tier: "1000" } },
+    })
+    expect(await session.nextNotification()).toMatchObject({
+      metadata: { subscription_type: "channel.channel_points_custom_reward_redemption.add" },
+      payload: {
+        subscription: { condition: { broadcaster_user_id: "200", reward_id: "reward-1" } },
+        event: { user_id: "100", reward: { id: "reward-1" } },
+      },
+    })
+    expect(fake.control.eventSubSubscriptions()).toBe(3)
+  })
+
+  it("rejects subscription topics on a token without the sub scope as invalid", async () => {
+    const { accessToken } = await signIn("200", CHAT_SCOPES)
+    const session = await openSession()
+
+    const error = await rejection(
+      client.subscribeEvents(accessToken, "200", session.id, {
+        chat: true,
+        subscriptions: true,
+        pointsRewardId: null,
+      }),
+    )
+
+    expect(error).toMatchObject({ endpoint: "eventsub", status: 403 })
+  })
+})
+
+describe("subscriberTiers", () => {
+  it("answers the tier of each asked user who subscribes, in one call", async () => {
+    const { accessToken } = await signIn("200", ENTRY_SCOPES)
+    fake.control.seedUsers(2, 300)
+    fake.control.setSubscription("100", "200", "3000")
+    fake.control.setSubscription("300", "200", "1000")
+
+    const tiers = await client.subscriberTiers(accessToken, "200", ["100", "300", "301"])
+
+    expect([...tiers]).toEqual([
+      ["100", 3],
+      ["300", 1],
+    ])
+    expect(callsTo("/helix/subscriptions")).toBe(1)
+  })
+
+  it("rejects a token without the sub scope as invalid", async () => {
+    const { accessToken } = await signIn("200", CHAT_SCOPES)
+
+    const error = await rejection(client.subscriberTiers(accessToken, "200", ["100"]))
+
+    expect(error).toMatchObject({ endpoint: "channel-subscriptions", status: 401 })
+  })
+})
+
+describe("channel points", () => {
+  it("reads the broadcaster type with the app token", async () => {
+    fake.control.addUser({ ...streamer, broadcasterType: "partner" })
+
+    expect(await client.broadcasterType(await client.appAccessToken(), "200")).toBe("partner")
+    expect(await client.broadcasterType(await client.appAccessToken(), "100")).toBe("")
+  })
+
+  it("lists the custom rewards of an affiliate", async () => {
+    const { accessToken } = await signIn("200", ENTRY_SCOPES)
+    fake.control.addUser({ ...streamer, broadcasterType: "affiliate" })
+    fake.control.setCustomRewards("200", [{ id: "reward-1", title: "Enter", cost: 100 }])
+
+    expect(await client.customRewards(accessToken, "200")).toEqual([
+      { id: "reward-1", title: "Enter" },
+    ])
   })
 })
 

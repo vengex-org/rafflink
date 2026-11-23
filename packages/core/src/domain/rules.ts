@@ -8,6 +8,18 @@ import { winnerFieldKindOf, type WinnerFieldKind } from "./winner-form.ts"
 const msPerDay = 86_400_000
 /** The highest minimum age to win a streamer can state: a bound on typos, since no giveaway asks winners to be 100 or older. */
 export const minAgeMax = 99
+/** The longest reward id or title accepted: Twitch reward ids are 36-character UUIDs and titles at most 45 characters. */
+export const pointsRewardTextMax = 100
+
+/** How an entrant entered: on the giveaway page, by the chat keyword, by subscribing, or by redeeming the channel point reward. The `entries.via` CHECK. */
+export const entryVias = ["page", "chat", "sub", "points"] as const
+
+export type EntryVia = (typeof entryVias)[number]
+
+/** The entry ways that listen to the streamer's channel, each needing streamer scopes beyond the sign-in's. */
+export type ChannelEntryVia = Exclude<EntryVia, "page">
+
+export const channelEntryVias: readonly ChannelEntryVia[] = ["chat", "sub", "points"]
 
 /** What a streamer sets for who may enter and with how many tickets. */
 export interface GiveawayRules {
@@ -24,6 +36,10 @@ export interface GiveawayRules {
   readonly chatKeyword: string | null
   /** Viewers enter by signing in on the giveaway page; false only with a chat keyword (chat only). */
   readonly pageEntry: boolean
+  /** Everyone who subscribes, resubscribes or receives a gift sub while entries are open enters; the page or the chat keyword stays the free way in. */
+  readonly subEntry: boolean
+  /** Redeeming this channel point reward while entries are open enters the viewer; null means no points entry. */
+  readonly pointsReward: PointsReward | null
   /** The age in years a winner must have reached, shown in the giveaway's rules; Rafflink cannot check it. Null means none stated. */
   readonly minAge: number | null
   /** Places whose residents cannot win, as the streamer wrote them; Rafflink cannot check it. Null means none. */
@@ -41,6 +57,12 @@ export interface RecentWinnersRule {
 }
 
 export const recentWinnersKinds = ["giveaways", "days"] as const
+
+/** A channel point reward of the streamer; `title` is its name when the giveaway was made. */
+export interface PointsReward {
+  readonly id: string
+  readonly title: string
+}
 
 /** The rule settings {@link parseRules} bounds untrusted rules with. */
 export type RulesConfig = Pick<
@@ -102,7 +124,7 @@ export type RulesIssueCode =
   | "unknown-kind"
   | "not-a-list"
   | "duplicate"
-  /** Page entry is off and no chat keyword is set, so nobody could enter. */
+  /** Page entry is off and no chat keyword is set, so no free way in is left; sub and points entry do not count as one. */
   | "no-entry-way"
   /** The giveaway's platform cannot check the rule, so it would hand out the wrong tickets. */
   | "unsupported"
@@ -154,7 +176,12 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
   if (!chatKeyword.ok) return chatKeyword
   const pageEntry = parseFlag(input, "pageEntry", true)
   if (!pageEntry.ok) return pageEntry
+  // A sub is a purchase: page or chat entry stays on beside sub and points entry, so the giveaway is never a paid lottery.
   if (!pageEntry.value && chatKeyword.value === null) return fail("pageEntry", "no-entry-way")
+  const subEntry = parseFlag(input, "subEntry")
+  if (!subEntry.ok) return subEntry
+  const pointsReward = parsePointsReward(input)
+  if (!pointsReward.ok) return pointsReward
   const minAge = parseMinAge(input)
   if (!minAge.ok) return minAge
   const excludedCountries = parseText(input, "excludedCountries", config.excludedCountriesMaxLength)
@@ -172,6 +199,8 @@ export function parseRules(input: unknown, config: RulesConfig): Parsed<Giveaway
     excludeRecentWinners: excludeRecentWinners.value,
     chatKeyword: chatKeyword.value,
     pageEntry: pageEntry.value,
+    subEntry: subEntry.value,
+    pointsReward: pointsReward.value,
     minAge: minAge.value,
     excludedCountries: excludedCountries.value,
     extraTerms: extraTerms.value,
@@ -194,6 +223,8 @@ export function unsupportedRule(
   if (untold !== undefined) return unsupported(`tickets.${untold}`)
   if (rules.pageEntry && !capabilities.pageEntry) return unsupported("pageEntry")
   if (rules.chatKeyword !== null && !capabilities.chatEntry) return unsupported("chatKeyword")
+  if (rules.subEntry && !capabilities.subEntry) return unsupported("subEntry")
+  if (rules.pointsReward !== null && !capabilities.pointsEntry) return unsupported("pointsReward")
   return null
 }
 
@@ -289,6 +320,33 @@ function parseText(
   const text = value.trim()
   if (text === "") return fail(field, "blank")
   if (text.length > maxLength) return fail(field, "too-long")
+  return ok(text)
+}
+
+// Absent means no points entry: rules saved before points entry existed have none.
+function parsePointsReward(
+  input: Record<string, unknown>,
+): Parsed<PointsReward | null, RulesIssue> {
+  const value = ownValue(input, "pointsReward")
+  if (value === undefined || value === null) return ok(null)
+  if (!isRecord(value)) return fail("pointsReward", "not-an-object")
+  const id = parseRewardText(value, "id")
+  if (!id.ok) return id
+  const title = parseRewardText(value, "title")
+  if (!title.ok) return title
+  return ok({ id: id.value, title: title.value })
+}
+
+function parseRewardText(
+  reward: Record<string, unknown>,
+  field: keyof PointsReward,
+): Parsed<string, RulesIssue> {
+  const value = ownValue(reward, field)
+  if (value === undefined) return fail(`pointsReward.${field}`, "missing")
+  if (typeof value !== "string") return fail(`pointsReward.${field}`, "not-a-string")
+  const text = value.trim()
+  if (text === "") return fail(`pointsReward.${field}`, "blank")
+  if (text.length > pointsRewardTextMax) return fail(`pointsReward.${field}`, "too-long")
   return ok(text)
 }
 
