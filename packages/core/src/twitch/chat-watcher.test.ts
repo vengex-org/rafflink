@@ -1986,10 +1986,21 @@ describe("sub and points entry", () => {
     })
     spyOn(console, "warn").mockImplementation(() => {})
     context.subscriptions.channelRefusals = [{ via: "points", cause: new Error("missing scope") }]
-    context.connector.sockets[0]?.receive(welcome("session-1"))
+    const socket = context.connector.sockets[0]
+    socket?.receive(welcome("session-1"))
     await flush()
 
     expect(context.room.summary()).toMatchObject({ subEntryOff: false, pointsEntryOff: true })
+    socket?.fail(new Error("dropped"))
+    context.clock.advance(2_000)
+    context.room.onAlarm()
+    context.connector.sockets[1]?.receive(welcome("session-2"))
+    await flush()
+    expect(context.subscriptions.topics.at(-1)).toEqual({
+      chat: true,
+      subscriptions: true,
+      pointsRewardId: null,
+    })
   })
 
   it("reads the tiers of the oldest redeemers in the last read after the close", async () => {

@@ -320,10 +320,11 @@ export class TwitchClient {
         ),
       ),
     )
-    const refusals = outcomes.filter((outcome) => outcome !== null)
-    return refusals.filter(
-      (refusal, index) => refusals.findIndex((other) => other.via === refusal.via) === index,
-    )
+    const refusals = new Map<ChannelEntryRefusal["via"], ChannelEntryRefusal>()
+    for (const outcome of outcomes) {
+      if (outcome !== null && !refusals.has(outcome.via)) refusals.set(outcome.via, outcome)
+    }
+    return [...refusals.values()]
   }
 
   /** The tier of each of `userIds` (at most 100) who subscribes. Needs the streamer's token with `channel:read:subscriptions`. */

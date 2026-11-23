@@ -366,6 +366,7 @@ describe("kickChat", () => {
     await settle()
 
     expect(entryUnavailable.map((refusal) => refusal.via)).toEqual(["sub"])
+    expect(subscribedEvents()).toEqual(["channel.reward.redemption.updated", "chat.message.sent"])
     expect(interestRows()[0]).toMatchObject({
       keyword: "!enter",
       sub_entry: 0,
