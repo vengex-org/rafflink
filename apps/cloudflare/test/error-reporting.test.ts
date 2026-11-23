@@ -80,7 +80,7 @@ describe("error reporting of the Worker", () => {
   it("sends nothing without a DSN", async () => {
     const { url } = await start({})
 
-    const response = await fetch(new URL("/privacy", url))
+    const response = await fetch(new URL("/", url))
     await Bun.sleep(500)
 
     expect(response.status).toBe(500)
@@ -90,7 +90,7 @@ describe("error reporting of the Worker", () => {
   it("reports a route that failed with the release, the environment and the request id", async () => {
     const { url } = await start({ SENTRY_DSN: sentry.dsn })
 
-    const response = await fetch(new URL("/privacy?code=oauth-code&state=oauth-state", url), {
+    const response = await fetch(new URL("/?code=oauth-code&state=oauth-state", url), {
       headers: { cookie: "rafflink_session=secret-cookie" },
     })
     const { requestId }: { requestId: string } = await response.json()

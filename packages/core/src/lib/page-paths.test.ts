@@ -7,7 +7,10 @@ import {
   localizedPages,
   localizedPath,
   pageOfPath,
+  parsePrerenderManifest,
   prerenderFile,
+  prerenderManifest,
+  servedPath,
   verifyPath,
 } from "./page-paths.ts"
 
@@ -88,6 +91,30 @@ describe("localized pages", () => {
       })),
       { hreflang: "x-default", path: "/privacy" },
     ])
+  })
+
+  it.each([
+    ["home.html", "/home"],
+    ["de/index.html", "/de/"],
+    ["de/privacy.html", "/de/privacy"],
+    ["index.html", "/"],
+    ["prerendered.json", "/prerendered.json"],
+  ])("names the address a static host serves %s at", (file, path) => {
+    expect(servedPath(file)).toBe(path)
+  })
+
+  it("reads back the prerender manifest it writes and lists nothing for a text that is no manifest", () => {
+    const pages = [
+      { path: "/", file: "home.html" },
+      { path: "/de/privacy", file: "de/privacy.html" },
+    ]
+
+    expect([...parsePrerenderManifest(prerenderManifest(pages))]).toEqual([
+      ["/", "home.html"],
+      ["/de/privacy", "de/privacy.html"],
+    ])
+    expect(parsePrerenderManifest("<!doctype html><html></html>").size).toBe(0)
+    expect(parsePrerenderManifest(`{"/": 1, "/de/": "de/index.html"}`).size).toBe(1)
   })
 
   it("never reads a language code as a giveaway code", () => {

@@ -7,7 +7,8 @@ import {
   type CloudflareOptions,
 } from "@sentry/cloudflare"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
-import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
+import { createApp, type AppDeps, type WebFileLoader } from "@rafflink/core/http/create-app"
+import { servedPath } from "@rafflink/core/lib/page-paths"
 import { armRetentionAlarms } from "@rafflink/core/room/arm-retention"
 import { deleteExpiredGiveaways } from "@rafflink/core/room/delete-giveaway"
 import type { RateLimiter } from "@rafflink/core/ports"
@@ -87,18 +88,22 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
         : new RateLimitBindingLimiter(env.PRESENCE_IP_LIMITER),
   }
   return createWorkerApp({
-    api: createApp(deps, indexTemplateOf(env.ASSETS, runtime.config.publicUrl)),
+    api: createApp(deps, webFilesOf(env.ASSETS, runtime.config.publicUrl)),
     rooms: env.ROOMS,
     presence: env.PRESENCE ?? null,
   })
 }
 
-/** The built `index.html` of the assets, for the pages `run_worker_first` sends to the Worker. */
-function indexTemplateOf(assets: Fetcher, publicUrl: string): SpaTemplateLoader {
-  return async () => {
-    const response = await assets.fetch(new URL("/", publicUrl))
-    if (!response.ok)
-      throw new Error("the assets answered no index.html", { cause: response.status })
+/**
+ * The files of the web build in the assets, for the pages `run_worker_first` sends to the Worker. An HTML file is
+ * asked for at the address the assets serve it under, since its own name redirects there.
+ */
+function webFilesOf(assets: Fetcher, publicUrl: string): WebFileLoader {
+  return async (file) => {
+    const response = await assets.fetch(new URL(servedPath(file), publicUrl))
+    // A build without prerendered pages has no manifest; every deployment has its app shell.
+    if (response.status === 404 && file !== "index.html") return null
+    if (!response.ok) throw new Error("the assets answered no file", { cause: response.status })
     return response.text()
   }
 }

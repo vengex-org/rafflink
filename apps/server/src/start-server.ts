@@ -11,7 +11,7 @@ import {
   fakeYouTubePrefixes,
 } from "@rafflink/core/http/api-paths"
 import { DrandBeacon } from "@rafflink/core/beacon/drand-beacon"
-import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
+import { createApp, type AppDeps, type WebFileLoader } from "@rafflink/core/http/create-app"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { captureException } from "@sentry/core"
 import type { ReportError } from "@rafflink/core/ports"
@@ -184,7 +184,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const fakeYouTube =
     config.devFakeYouTube && youtubeApp !== null ? await createFakeYouTubeApp(youtubeApp) : null
   const app = createServerApp({
-    api: createApp(deps, staticDir === null ? null : indexTemplateOf(staticDir)),
+    api: createApp(deps, staticDir === null ? null : webFilesOf(staticDir)),
     rooms,
     presence,
     fakeTwitch,
@@ -255,9 +255,12 @@ function remoteQueue(queue: TokenQueue): TokenQueueStub {
   }
 }
 
-function indexTemplateOf(staticDir: string): SpaTemplateLoader {
-  const index = Bun.file(join(staticDir, "index.html"))
-  return async () => ((await index.exists()) ? index.text() : null)
+// The names come from core and the build's own manifest, never from a request.
+function webFilesOf(staticDir: string): WebFileLoader {
+  return async (file) => {
+    const found = Bun.file(join(staticDir, file))
+    return (await found.exists()) ? found.text() : null
+  }
 }
 
 // Loaded here, not at the top of the module, so a production server never reads the fake.

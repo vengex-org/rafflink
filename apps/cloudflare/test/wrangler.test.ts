@@ -4,7 +4,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { resolveConfig } from "@rafflink/core/config"
 import { apiPrefixes } from "@rafflink/core/http/api-paths"
-import { historyPagePattern, indexablePaths } from "@rafflink/core/http/static-headers"
+import { historyPagePattern } from "@rafflink/core/http/static-headers"
+import { localizedPath, prerenderFile, servedPath } from "@rafflink/core/lib/page-paths"
 import { readWranglerConfig } from "./wrangler-config.ts"
 
 const required = {
@@ -17,13 +18,15 @@ const required = {
 }
 
 describe("wrangler.jsonc", () => {
-  // A page or file that reaches the Worker first is a billed request; only the indexable pages need their absolute URLs.
-  it("runs the Worker first only for the API, sign-in, indexable and history paths and serves the rest from the assets with the SPA fallback", async () => {
+  // A page or file that reaches the Worker first is a billed request; the home page needs it for the referral count,
+  // and the address of the English home page file for the noindex shell.
+  it("runs the Worker first only for the API, sign-in, home and history paths and serves the rest from the assets with the SPA fallback", async () => {
     const { runWorkerFirst, notFoundHandling, assetsBinding } = await readWranglerConfig()
 
     expect(runWorkerFirst).toEqual([
       ...apiPrefixes.map((prefix) => `${prefix}*`),
-      ...indexablePaths,
+      localizedPath("en", "home"),
+      servedPath(prerenderFile("en", "home")),
       historyPagePattern,
     ])
     expect(notFoundHandling).toBe("single-page-application")

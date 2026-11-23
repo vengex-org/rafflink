@@ -16,7 +16,11 @@ import {
   type WinnerFieldKind,
 } from "@rafflink/core/domain/winner-form"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
-import { historyDataElementId, historyPath } from "@rafflink/core/lib/page-paths"
+import {
+  historyDataElementId,
+  historyPath,
+  legalDataElementId,
+} from "@rafflink/core/lib/page-paths"
 import type {
   AdminAccessCountsJson,
   AdminPlanJson,
@@ -282,6 +286,23 @@ function capabilitiesOf(source: Json): PlatformCapabilities {
       if (group === undefined) throw new ApiShapeError("chatBadgeGroups")
       return group
     }),
+  }
+}
+
+/** What the web build writes into a prerendered legal page: the operator it was built with and the page's "updated" date in its language. */
+export interface BuiltLegalData {
+  readonly operator: OperatorJson | null
+  readonly updated: string
+}
+
+/** The legal data the build embedded in the page at `path`; null on a page it did not prerender. */
+export function embeddedLegalData(path: string): BuiltLegalData | null {
+  const element = document.getElementById(legalDataElementId)
+  if (element === null || element.dataset.path !== path) return null
+  const source = record(JSON.parse(element.textContent ?? ""), "legal")
+  return {
+    operator: source.operator === null ? null : operatorOf(child(source, "operator")),
+    updated: text(source, "updated"),
   }
 }
 

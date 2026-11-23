@@ -5,7 +5,7 @@ import {
   fakeTwitchPrefixes,
   fakeYouTubePrefixes,
 } from "@rafflink/core/http/api-paths"
-import { staticCacheControl } from "@rafflink/core/http/static-headers"
+import { staticCacheControl, staticRobotsTag } from "@rafflink/core/http/static-headers"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { captureException } from "@sentry/core"
 import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
@@ -36,7 +36,7 @@ export interface ServerAppOptions {
   readonly fakeKick: Hono | null
   /** Mounted under {@link fakeYouTubePrefixes} in dev only. */
   readonly fakeYouTube: Hono | null
-  /** The built SPA files except `index.html`, which the HTTP app of core answers as a page; null serves no files. */
+  /** The built SPA files except its HTML pages, which the HTTP app of core answers; null serves no files. */
   readonly staticDir: string | null
 }
 
@@ -115,7 +115,11 @@ export function createServerApp(options: ServerAppOptions): Hono {
   if (staticDir !== null) {
     const files = serveStatic({
       root: staticDir,
-      onFound: (_path, c) => c.header("Cache-Control", staticCacheControl(c.req.path)),
+      onFound: (_path, c) => {
+        c.header("Cache-Control", staticCacheControl(c.req.path))
+        const robots = staticRobotsTag(c.req.path)
+        if (robots !== null) c.header("X-Robots-Tag", robots)
+      },
     })
     app.use("*", (c, next) => (isPagePath(c.req.path) ? next() : files(c, next)))
   }
@@ -124,9 +128,12 @@ export function createServerApp(options: ServerAppOptions): Hono {
   return app
 }
 
-/** The paths `serveStatic` would answer with `index.html` itself, bypassing the page of core. */
+/**
+ * The paths core answers as pages: every path without a file extension and every HTML file. `serveStatic` would
+ * answer `/de` with `de/index.html` itself, bypassing the page of core and its CSP.
+ */
 function isPagePath(pathname: string): boolean {
-  return pathname.endsWith("/") || pathname === "/index.html"
+  return !/\.[^/]+$/.test(pathname) || pathname.endsWith(".html")
 }
 
 // What a socket that never opened has to forget when it closes.

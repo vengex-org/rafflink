@@ -1036,6 +1036,24 @@ export function resolveWebErrorReporting(env: Env): ErrorReportingConfig {
   }
 }
 
+/** Who runs the instance, as the legal texts name them: the server's from {@link resolveConfig}, the web build's from {@link resolveWebPrerender}. */
+export type OperatorConfig = Pick<
+  ResolvedConfig,
+  "operatorName" | "operatorAddress" | "operatorId" | "operatorEmail" | "legalUpdated"
+>
+
+/** What the web build prerenders the indexable pages with: their absolute address and the operator the legal texts name. */
+export type WebPrerenderConfig = Pick<ResolvedConfig, "publicUrl"> & OperatorConfig
+
+/**
+ * The prerender settings of the web build, with the operator rules of the server; null without PUBLIC_URL, since
+ * a page's canonical and hreflang addresses must be absolute. The build then writes the app's shell alone.
+ */
+export function resolveWebPrerender(env: Env): WebPrerenderConfig | null {
+  if ((env[configSchema.publicUrl.env] ?? "").trim() === "") return null
+  return { publicUrl: read(env, configSchema.publicUrl), ...resolveOperator(env) }
+}
+
 export function resolveConfig(env: Env): ResolvedConfig {
   const config = {
     twitchClientId: read(env, configSchema.twitchClientId),
@@ -1183,29 +1201,11 @@ export function resolveConfig(env: Env): ResolvedConfig {
     referralVisitsPerDayMax: read(env, configSchema.referralVisitsPerDayMax),
     referralSourcesPerDayMax: read(env, configSchema.referralSourcesPerDayMax),
     donateUrl: read(env, configSchema.donateUrl),
-    operatorName: read(env, configSchema.operatorName),
-    operatorAddress: read(env, configSchema.operatorAddress),
-    operatorId: read(env, configSchema.operatorId),
-    operatorEmail: read(env, configSchema.operatorEmail),
-    legalUpdated: read(env, configSchema.legalUpdated),
+    ...resolveOperator(env),
     sentryDsn: read(env, configSchema.sentryDsn),
     sentryEnvironment: read(env, configSchema.sentryEnvironment),
     sentryRelease: read(env, configSchema.sentryRelease),
     sentrySamplePercent: read(env, configSchema.sentrySamplePercent),
-  }
-  // The texts name the controller with a contact, and the other keys describe the named operator.
-  if (config.operatorName === null) {
-    const orphans: [string, string | null][] = [
-      [configSchema.operatorAddress.env, config.operatorAddress],
-      [configSchema.operatorId.env, config.operatorId],
-      [configSchema.operatorEmail.env, config.operatorEmail],
-      [configSchema.legalUpdated.env, config.legalUpdated],
-    ]
-    for (const [key, value] of orphans) {
-      if (value !== null) throw new ConfigError(key, "requires-operator-name")
-    }
-  } else if (config.operatorEmail === null) {
-    throw new ConfigError(configSchema.operatorEmail.env, "missing")
   }
   // A Kick app is its id and its secret; one without the other cannot sign anyone in.
   if ((config.kickClientId === null) !== (config.kickClientSecret === null)) {
@@ -1293,6 +1293,31 @@ export function resolveConfig(env: Env): ResolvedConfig {
     ...(off.has("kick") ? { kickClientId: null, kickClientSecret: null } : {}),
     ...(off.has("youtube") ? { youtubeClientId: null, youtubeClientSecret: null } : {}),
   }
+}
+
+function resolveOperator(env: Env): OperatorConfig {
+  const operator = {
+    operatorName: read(env, configSchema.operatorName),
+    operatorAddress: read(env, configSchema.operatorAddress),
+    operatorId: read(env, configSchema.operatorId),
+    operatorEmail: read(env, configSchema.operatorEmail),
+    legalUpdated: read(env, configSchema.legalUpdated),
+  }
+  // The texts name the controller with a contact, and the other keys describe the named operator.
+  if (operator.operatorName === null) {
+    const orphans: [string, string | null][] = [
+      [configSchema.operatorAddress.env, operator.operatorAddress],
+      [configSchema.operatorId.env, operator.operatorId],
+      [configSchema.operatorEmail.env, operator.operatorEmail],
+      [configSchema.legalUpdated.env, operator.legalUpdated],
+    ]
+    for (const [key, value] of orphans) {
+      if (value !== null) throw new ConfigError(key, "requires-operator-name")
+    }
+  } else if (operator.operatorEmail === null) {
+    throw new ConfigError(configSchema.operatorEmail.env, "missing")
+  }
+  return operator
 }
 
 function isLocalOrigin(origin: string): boolean {

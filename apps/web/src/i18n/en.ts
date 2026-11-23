@@ -1034,6 +1034,17 @@ export const en = {
   "legal.englishPrevails":
     "This is a translation. Where it differs from the English version, the English version prevails.",
 
+  // The title and description search engines and link previews show for a prerendered page.
+  "meta.home.title": "Rafflink: fair giveaways your chat can check",
+  "meta.home.description":
+    "Free giveaway tool for streamers. Viewers enter from a link in chat, you draw live on stream, and anyone can check the draw.",
+  "meta.privacy.title": "Privacy policy | Rafflink",
+  "meta.privacy.description":
+    "What Rafflink stores about streamers and viewers, why, for how long, and how to have it deleted.",
+  "meta.terms.title": "Terms of use | Rafflink",
+  "meta.terms.description":
+    "The rules for streamers who run giveaways with Rafflink and for viewers who enter them.",
+
   "privacy.title": "Privacy policy",
   "privacy.intro":
     "Rafflink draws winners of giveaways on Twitch, Kick and YouTube. This policy says what personal data it processes, why, for how long and what your rights are.",
@@ -1384,7 +1395,15 @@ export const en = {
 export type MessageKey = keyof typeof en
 
 /** Keys whose English copy is not translated yet; the other languages show the English text for them. */
-type EnglishOnlyKey = "wizard.entry.chatDelay" | "privacy.intro"
+type EnglishOnlyKey =
+  | "wizard.entry.chatDelay"
+  | "privacy.intro"
+  | "meta.home.title"
+  | "meta.home.description"
+  | "meta.privacy.title"
+  | "meta.privacy.description"
+  | "meta.terms.title"
+  | "meta.terms.description"
 
 /** What a language other than English provides: every key but the {@link EnglishOnlyKey}s. */
 export type Translation = Readonly<Omit<Record<MessageKey, string>, EnglishOnlyKey>>

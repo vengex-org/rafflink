@@ -58,8 +58,20 @@ export interface LocalizedAddress {
 
 /** The address of `page` in `language`: `/` and `/privacy` in the source language, `/de/` and `/de/privacy` in the others. */
 export function localizedPath(language: Language, page: LocalizedPage): string {
-  const prefix = language === sourceLanguage ? "" : `/${language}`
-  return page === "home" ? `${prefix}/` : `${prefix}/${page}`
+  return page === "home" ? `${languagePrefix(language)}/` : segmentPath(language, page)
+}
+
+/**
+ * The address of the page named `segment` in `language`, as a localized page below the home page has it: `/privacy`
+ * and `/de/privacy`. A deployment's own prerendered pages, which this module does not list, take it too.
+ */
+export function segmentPath(language: Language, segment: string): string {
+  return `${languagePrefix(language)}/${segment}`
+}
+
+/** The build file of {@link segmentPath}: `privacy.html` and `de/privacy.html`. */
+export function segmentFile(language: Language, segment: string): string {
+  return `${language === sourceLanguage ? "" : `${language}/`}${segment}.html`
 }
 
 /** The localized page at `pathname`, with or without a trailing slash; null for every other address, `/DE/` and `/en/` included. */
@@ -69,18 +81,70 @@ export function pageOfPath(pathname: string): LocalizedAddress | null {
 
 /** The build file that holds the rendered page, relative to the build's root; `index.html` stays the app's empty shell. */
 export function prerenderFile(language: Language, page: LocalizedPage): string {
-  const folder = language === sourceLanguage ? "" : `${language}/`
-  if (page !== "home") return `${folder}${page}.html`
-  return language === sourceLanguage ? "home.html" : `${folder}index.html`
+  if (page !== "home") return segmentFile(language, page)
+  return language === sourceLanguage ? "home.html" : `${language}/index.html`
 }
 
+/** The address a static host serves a build file at: `de/index.html` at `/de/`, `de/privacy.html` at `/de/privacy`. */
+export function servedPath(file: string): string {
+  if (file === "index.html" || file.endsWith("/index.html")) {
+    return `/${file.slice(0, -"index.html".length)}`
+  }
+  return `/${file.replace(/\.html$/, "")}`
+}
+
+/** The build file in which the web build lists the pages it prerendered, so a server answers each address with its file. */
+export const prerenderManifestFile = "prerendered.json"
+
+/** A page the web build prerendered: its address and its file relative to the build's root. */
+export interface PrerenderedPage {
+  readonly path: string
+  readonly file: string
+}
+
+/** The text of {@link prerenderManifestFile} for `pages`. */
+export function prerenderManifest(pages: readonly PrerenderedPage[]): string {
+  return JSON.stringify(Object.fromEntries(pages.map(({ path, file }) => [path, file])))
+}
+
+/**
+ * The file of each prerendered address in a {@link prerenderManifestFile} text. A text that is no manifest lists
+ * none: a build without PUBLIC_URL writes no manifest, and a host may answer the missing file with the app shell.
+ */
+export function parsePrerenderManifest(text: string): ReadonlyMap<string, string> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return new Map()
+  }
+  if (typeof parsed !== "object" || parsed === null) return new Map()
+  return new Map(
+    Object.entries(parsed).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  )
+}
+
+/** The id of the JSON element in which a prerendered legal page carries the operator it was built with. */
+export const legalDataElementId = "legal-data"
+
 /** The hreflang alternates of `page`: one per language, and `x-default` for the source language. */
-export function alternates(
-  page: LocalizedPage,
-): readonly { readonly hreflang: Language | "x-default"; readonly path: string }[] {
+export function alternates(page: LocalizedPage): readonly Alternate[] {
+  return alternatesOf((language) => localizedPath(language, page))
+}
+
+/** One language's address of a page, or `x-default`, the address for a language the page lacks. */
+export interface Alternate {
+  readonly hreflang: Language | "x-default"
+  readonly path: string
+}
+
+/** The hreflang alternates of the page whose address in a language is `pathOf(language)`. */
+export function alternatesOf(pathOf: (language: Language) => string): readonly Alternate[] {
   return [
-    ...languages.map((language) => ({ hreflang: language, path: localizedPath(language, page) })),
-    { hreflang: "x-default", path: localizedPath(sourceLanguage, page) },
+    ...languages.map((language) => ({ hreflang: language, path: pathOf(language) })),
+    { hreflang: "x-default", path: pathOf(sourceLanguage) },
   ]
 }
 
@@ -95,4 +159,8 @@ const addresses = new Map<string, LocalizedAddress>(
 
 function withoutTrailingSlash(pathname: string): string {
   return pathname.replace(/\/+$/, "")
+}
+
+function languagePrefix(language: Language): string {
+  return language === sourceLanguage ? "" : `/${language}`
 }

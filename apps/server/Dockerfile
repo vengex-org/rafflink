@@ -16,6 +16,13 @@ ARG PUBLIC_SENTRY_DSN=""
 ARG SENTRY_ENVIRONMENT="production"
 ARG SENTRY_RELEASE=""
 ARG SENTRY_SAMPLE_PERCENT="100"
+# With PUBLIC_URL the build prerenders the home and legal pages, naming the operator; blank builds the app shell alone.
+ARG PUBLIC_URL=""
+ARG OPERATOR_NAME=""
+ARG OPERATOR_ADDRESS=""
+ARG OPERATOR_ID=""
+ARG OPERATOR_EMAIL=""
+ARG LEGAL_UPDATED=""
 COPY packages/core packages/core
 COPY apps/web apps/web
 # The source maps stay out of the image: only CI uploads them, to Sentry.
