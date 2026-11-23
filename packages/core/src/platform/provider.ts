@@ -226,10 +226,27 @@ export class UnknownPlatform extends Error {
   }
 }
 
-/** The provider of a stored `platform` value. */
+/** A known platform this install runs without: its app is blank or `SIGN_IN_DISABLED_PLATFORMS` lists it. */
+export class PlatformOff extends UnknownPlatform {}
+
+/** The provider of a stored `platform` value, `null` while the install runs without that platform. */
+export function enabledProviderFor(
+  providers: PlatformProviders,
+  platform: string,
+): PlatformProvider | null {
+  return providers[knownPlatform(platform)] ?? null
+}
+
+/** A stored `platform` value this code knows, whether or not this install runs it. */
+export function knownPlatform(platform: string): Platform {
+  if (!isPlatform(platform)) throw new UnknownPlatform(platform)
+  return platform
+}
+
+/** The provider of a stored `platform` value, for callers that cannot go on without it. */
 export function providerFor(providers: PlatformProviders, platform: string): PlatformProvider {
-  const provider = isPlatform(platform) ? providers[platform] : undefined
-  if (provider === undefined) throw new UnknownPlatform(platform)
+  const provider = enabledProviderFor(providers, platform)
+  if (provider === null) throw new PlatformOff(platform)
   return provider
 }
 

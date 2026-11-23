@@ -1,7 +1,7 @@
 import { errorClass } from "../lib/error-class.ts"
 import type { StreamerTokenDeps } from "../accounts/streamer-token.ts"
 import { accountAgeDays } from "../domain/rules.ts"
-import { providerFor, readyEntryWays, type SubscriberTiers } from "../platform/provider.ts"
+import { enabledProviderFor, readyEntryWays, type SubscriberTiers } from "../platform/provider.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { AlarmDuties, ChatEntrantsDuty, GiveawayRoom } from "./giveaway-room.ts"
 import { mirrorStatus } from "./mirror-status.ts"
@@ -79,7 +79,9 @@ async function checkChatEntrants(
   room: GiveawayRoom,
   duty: ChatEntrantsDuty,
 ): Promise<void> {
-  const provider = providerFor(deps.platforms, duty.platform)
+  const provider = enabledProviderFor(deps.platforms, duty.platform)
+  // Chatters heard before the platform was switched off wait for it to come back.
+  if (provider === null) return
   // One token read and refresh serves the follow and the tier reads.
   const access = duty.chatters.some((chatter) => chatter.followerCheck || chatter.tierCheck)
     ? openGiveawayStreamerAccess(deps, giveawayId)

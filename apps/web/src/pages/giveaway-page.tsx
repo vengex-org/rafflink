@@ -82,7 +82,9 @@ function GiveawayDetails({
   const isWinner = me.kind === "won"
   const isIn = entered !== null && !isWinner && giveaway.status !== "drawn"
   // A chat-only giveaway offers no sign-in while entries are open: the chat keyword and the lookup are the way in.
-  const chatOnlyOpen = !giveaway.rules.pageEntry && giveaway.status === "open" && !isIn
+  // A paused platform shows its notice in the entry panel instead.
+  const chatOnlyOpen =
+    !giveaway.paused && !giveaway.rules.pageEntry && giveaway.status === "open" && !isIn
 
   return (
     <Page width="compact" as="article" className="viewer">
@@ -108,7 +110,7 @@ function GiveawayDetails({
           code={code}
           keyword={giveaway.rules.chatKeyword}
           streamerName={giveaway.streamerName}
-          open={giveaway.status === "open" && !giveaway.chatEntryOff}
+          open={giveaway.status === "open" && !giveaway.chatEntryOff && !giveaway.paused}
         />
       )}
       <div className="viewer-details">

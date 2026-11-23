@@ -32,7 +32,7 @@ export type KickProviderConfig = KickChatConfig & KickWebhookConfig
 
 // Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages. Only the badges of a
 // chat message tell a subscriber (Kick has one level) or a moderator, and a sub event tells a subscriber.
-const kickCapabilities: PlatformCapabilities = {
+export const kickCapabilities: PlatformCapabilities = {
   followerCheck: false,
   subTiers: false,
   vip: false,

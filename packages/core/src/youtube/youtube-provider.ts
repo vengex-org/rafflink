@@ -34,7 +34,7 @@ export type YouTubeProviderConfig = YouTubeClientConfig & YouTubeQuotaConfig & Y
  * Viewers enter only by chat keyword: a viewer sign-in would ask them for a sensitive Google scope. The
  * chat tells a member (`isChatSponsor`) and a moderator; YouTube has no followers and no VIPs.
  */
-const youtubeCapabilities: PlatformCapabilities = {
+export const youtubeCapabilities: PlatformCapabilities = {
   followerCheck: false,
   subTiers: false,
   vip: false,

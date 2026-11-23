@@ -1,5 +1,5 @@
 import type { Language } from "@rafflink/core/lib/languages"
-import { en, type MessageKey } from "./en.ts"
+import { en, type MessageKey, type Translation } from "./en.ts"
 
 export type { MessageKey }
 
@@ -21,7 +21,7 @@ export const dictionaryLoaders = {
   it: async () => (await import("./it.ts")).it,
   fr: async () => (await import("./fr.ts")).fr,
   pl: async () => (await import("./pl.ts")).pl,
-} satisfies { readonly [Code in Language]: () => Promise<Dictionary> }
+} satisfies { readonly [Code in Language]: () => Promise<Translation> }
 
 const loaded = new Map<Language, Dictionary>([["en", en]])
 
@@ -32,7 +32,8 @@ export function loadedDictionary(language: Language): Dictionary | undefined {
 
 /** The dictionary of a language, kept for {@link loadedDictionary}; the browser fetches each chunk once. */
 export async function loadDictionary(language: Language): Promise<Dictionary> {
-  const dictionary = await dictionaryLoaders[language]()
+  // A key not translated yet shows its English text.
+  const dictionary: Dictionary = { ...en, ...(await dictionaryLoaders[language]()) }
   loaded.set(language, dictionary)
   return dictionary
 }

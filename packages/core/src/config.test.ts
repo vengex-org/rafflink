@@ -261,6 +261,31 @@ describe("resolveConfig", () => {
     ).toMatchObject({ env: "YOUTUBE_CLIENT_ID", reason: "missing" })
   })
 
+  it("switches listed platforms off as if their apps were blank and refuses Twitch or an unknown one", () => {
+    const apps = {
+      ...required,
+      KICK_CLIENT_ID: "kid",
+      KICK_CLIENT_SECRET: "ks",
+      YOUTUBE_CLIENT_ID: "yid",
+      YOUTUBE_CLIENT_SECRET: "ys",
+    }
+    const off = resolveConfig({ ...apps, SIGN_IN_DISABLED_PLATFORMS: " Kick , youtube" })
+
+    expect(resolveConfig(apps).signInDisabledPlatforms).toEqual([])
+    expect([off.kickClientId, off.kickClientSecret, off.youtubeClientId]).toEqual([
+      null,
+      null,
+      null,
+    ])
+    for (const entry of ["twitch", "tiktok"]) {
+      expect(failure({ ...apps, SIGN_IN_DISABLED_PLATFORMS: `kick,${entry}` })).toMatchObject({
+        env: "SIGN_IN_DISABLED_PLATFORMS",
+        reason: "not-an-optional-platform",
+        entry,
+      })
+    }
+  })
+
   it("rejects a blank required key", () => {
     expect(failure({ ...required, SESSION_SECRET: "  " })).toMatchObject({
       env: "SESSION_SECRET",

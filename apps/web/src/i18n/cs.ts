@@ -1,6 +1,6 @@
-import type { MessageKey } from "./en.ts"
+import type { Translation } from "./en.ts"
 
-export const cs: Readonly<Record<MessageKey, string>> = {
+export const cs: Translation = {
   "nav.main": "Hlavní navigace",
   "nav.skip": "Přeskočit na obsah",
   "nav.myGiveaways": "Moje soutěže",

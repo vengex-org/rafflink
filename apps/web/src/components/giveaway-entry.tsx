@@ -65,6 +65,14 @@ export function EntryPanel({
       </GiveawayState>
     )
   }
+  // A paused platform takes no sign-in, so the panel says so where it would offer one.
+  if (giveaway.paused && (canEnter || (card === null && status === "drawn"))) {
+    return (
+      <GiveawayState tone="warning" icon={<AlertIcon />} title={t("giveaway.paused.title")}>
+        <p className="viewer-note">{t("giveaway.paused.text", onPlatform)}</p>
+      </GiveawayState>
+    )
+  }
   if (card === null && status === "closed") {
     return (
       <GiveawayState tone="warning" icon={<LockIcon />} title={t("giveaway.closed.title")}>

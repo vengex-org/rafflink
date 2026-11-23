@@ -1,5 +1,6 @@
 import { publicDrandUrls, quicknet } from "./lib/drand.ts"
 import type { Parsed } from "./lib/parsed.ts"
+import type { Platform } from "./platform/provider.ts"
 import { cloudflarePlans, type CloudflarePlan } from "./plan/plan-limits.ts"
 import { twitchLoginPattern } from "./twitch/lib/login.ts"
 import {
@@ -22,6 +23,8 @@ export type ConfigReason =
   | "not-a-chain-hash"
   | "not-at-least-drand-period"
   | "not-an-admin-entry"
+  | "not-an-optional-platform"
+  | "faked-platform-disabled"
   | "not-below-queue-code-max-age"
   | "above-queue-max-rate"
   | "not-below-eventsub-connection-max"
@@ -37,7 +40,10 @@ export type ConfigReason =
 /** Why a setting failed; a list entry that is not a secret also names itself. */
 export type ConfigIssue =
   | ConfigReason
-  | { readonly reason: "not-an-admin-entry"; readonly entry: string }
+  | {
+      readonly reason: "not-an-admin-entry" | "not-an-optional-platform" | "faked-platform-disabled"
+      readonly entry: string
+    }
 
 /** An invalid or missing setting. Carries the env key and a reason, never the value (it may be a secret); only a named list entry is quoted. */
 export class ConfigError extends Error {
@@ -63,6 +69,11 @@ export class ConfigError extends Error {
 export type AdminEntry =
   | { readonly kind: "id"; readonly id: string }
   | { readonly kind: "login"; readonly login: string }
+
+/** The platforms an install can run without; Twitch is required, see `TWITCH_CLIENT_ID`. */
+const optionalPlatforms = ["kick", "youtube"] as const satisfies readonly Platform[]
+
+type OptionalPlatform = (typeof optionalPlatforms)[number]
 
 /**
  * One setting: its env key, how to parse the raw string, its default as the raw string a deployment
@@ -116,6 +127,12 @@ export const configSchema = {
     optional(text),
     "",
     "Google OAuth web client of the YouTube Data API, see the README; set together with YOUTUBE_CLIENT_ID",
+  ),
+  signInDisabledPlatforms: withDefault(
+    "SIGN_IN_DISABLED_PLATFORMS",
+    optionalPlatformList,
+    "",
+    "Platforms switched off for now, comma separated: kick, youtube; a listed platform behaves as if its client id were blank, for streamer sign-in and viewer entry, while its id and secret stay set; twitch cannot be listed; blank switches none off",
   ),
   tokenSealKeys: required(
     "TOKEN_SEAL_KEYS",
@@ -1023,6 +1040,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     kickClientSecret: read(env, configSchema.kickClientSecret),
     youtubeClientId: read(env, configSchema.youtubeClientId),
     youtubeClientSecret: read(env, configSchema.youtubeClientSecret),
+    signInDisabledPlatforms: read(env, configSchema.signInDisabledPlatforms),
     tokenSealKeys: read(env, configSchema.tokenSealKeys),
     sessionSecret: read(env, configSchema.sessionSecret),
     admins: read(env, configSchema.admins),
@@ -1251,7 +1269,26 @@ export function resolveConfig(env: Env): ResolvedConfig {
   if (config.devFakeYouTube && config.youtubeClientId === null) {
     throw new ConfigError(configSchema.youtubeClientId.env, "missing")
   }
-  return config
+  const off = new Set(config.signInDisabledPlatforms)
+  // A fake stands in for its platform's app, so a fake of a switched off platform would serve nothing.
+  const fakes = [
+    [config.devFakeKick, "kick"],
+    [config.devFakeYouTube, "youtube"],
+  ] as const
+  for (const [mounted, platform] of fakes) {
+    if (mounted && off.has(platform)) {
+      throw new ConfigError(configSchema.signInDisabledPlatforms.env, {
+        reason: "faked-platform-disabled",
+        entry: platform,
+      })
+    }
+  }
+  // A switched off platform takes the path of a blank app, so every caller of kickAppOf and youtubeAppOf drops it.
+  return {
+    ...config,
+    ...(off.has("kick") ? { kickClientId: null, kickClientSecret: null } : {}),
+    ...(off.has("youtube") ? { youtubeClientId: null, youtubeClientSecret: null } : {}),
+  }
 }
 
 function isLocalOrigin(origin: string): boolean {
@@ -1426,6 +1463,21 @@ function loginList(raw: string): Parsed<readonly string[], ConfigReason> {
     const value = part.trim()
     return twitchLoginPattern.test(value) ? ok(value.toLowerCase()) : fail("not-a-login")
   })(raw)
+}
+
+/** Comma separated platforms of {@link optionalPlatforms}, case-insensitive; blank is none. */
+function optionalPlatformList(raw: string): Parsed<readonly OptionalPlatform[], ConfigIssue> {
+  if (raw.trim() === "") return ok([])
+  const platforms: OptionalPlatform[] = []
+  for (const part of raw.split(",")) {
+    const value = part.trim().toLowerCase()
+    const platform = optionalPlatforms.find((candidate) => candidate === value)
+    if (platform === undefined) {
+      return { ok: false, issue: { reason: "not-an-optional-platform", entry: value } }
+    }
+    platforms.push(platform)
+  }
+  return ok(platforms)
 }
 
 function list<T>(item: (raw: string) => Parsed<T, ConfigReason>) {

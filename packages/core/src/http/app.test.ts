@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
+import { Hono } from "hono"
 import {
   Browser,
   codeRandom,
@@ -15,7 +16,7 @@ import { codeAlphabet, codeLength } from "../lib/codes.ts"
 import { drandChain, roundTime } from "../lib/drand.ts"
 import { openSecret } from "../lib/seal.ts"
 import { RoomTransientError } from "../room/room-directory.ts"
-import { oauthStatesPerFlow } from "./session.ts"
+import { oauthStatesPerFlow, startStreamerSession } from "./session.ts"
 import { everyCapability } from "../platform/provider.ts"
 
 let harness: Harness
@@ -72,7 +73,32 @@ async function deletedStreamerBrowser(): Promise<Browser> {
   return browser
 }
 
+/** The streamer cookie of a session that began on `platform`, as the harness's own app would have written it. */
+async function streamerCookieOn(platform: "kick", streamerId: string): Promise<string> {
+  const minter = new Hono().get("/", async (c) => {
+    await startStreamerSession(c, harness.deps, { streamerId, platform, platformUserId: "1" })
+    return c.body(null, 204)
+  })
+  const [setCookie = ""] = (await minter.request("/")).headers.getSetCookie()
+  return setCookie.split(";")[0] ?? ""
+}
+
 describe("session", () => {
+  it("signs out a Kick session once the install runs without Kick, with no fault", async () => {
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start")
+    harness.accountsDb.run("UPDATE streamers SET platform = 'kick'")
+    const [row] = sqlRows(harness.accountsDb, "SELECT id FROM streamers")
+    const cookie = await streamerCookieOn("kick", String(row?.id))
+
+    const response = await harness.app.request("/api/session", { headers: { cookie } })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ streamer: null, signInPlatforms: ["twitch"] })
+    expect(response.headers.getSetCookie().some((c) => c.startsWith("rl_streamer=;"))).toBe(true)
+    expect(harness.reported).toEqual([])
+  })
+
   it("answers a null streamer without a cookie", async () => {
     const response = await new Browser(harness).request("/api/session")
 
@@ -708,6 +734,7 @@ describe("creating a giveaway", () => {
       prize: "Prize",
       streamerName: users.streamerA.displayName,
       platform: "twitch",
+      paused: false,
       rules: validRules,
       capabilities: everyCapability,
       status: "open",
@@ -856,6 +883,19 @@ describe("creating a giveaway", () => {
 })
 
 describe("viewer entry", () => {
+  it("pauses a running Kick giveaway once the install runs without Kick, with no fault", async () => {
+    const { code } = await createGiveaway(harness)
+    harness.accountsDb.run("UPDATE streamers SET platform = 'kick'")
+
+    const page = await new Browser(harness).request(`/api/g/${code}`)
+    const start = await new Browser(harness).request(`/auth/twitch/viewer/start?giveaway=${code}`)
+
+    expect(page.status).toBe(200)
+    expect(await page.json()).toMatchObject({ platform: "kick", paused: true, status: "open" })
+    expect([start.status, await start.json()]).toEqual([409, { error: "platform-off" }])
+    expect(harness.reported).toEqual([])
+  })
+
   it("enters an eligible viewer with the tickets of the best group", async () => {
     const { code, id } = await createGiveaway(harness)
     harness.fake.control.setFollowing(users.viewer.id, users.streamerA.id, true)

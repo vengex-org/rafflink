@@ -89,6 +89,22 @@ function tokenRows(db: Database): string[] {
     .map((row) => row.streamer_id)
 }
 
+/** The platforms the session offers, and the status of each Kick and YouTube sign-in start. */
+async function signInOf(server: RunningServer) {
+  const session = await fetch(new URL("/api/session", server.url))
+  const paths = [
+    "/auth/kick/streamer/start",
+    "/auth/kick/viewer/start",
+    "/auth/youtube/streamer/start",
+  ]
+  const starts = await Promise.all(
+    paths.map(
+      async (path) => (await fetch(new URL(path, server.url), { redirect: "manual" })).status,
+    ),
+  )
+  return { platforms: (await session.json()).signInPlatforms, starts }
+}
+
 describe("hourly validate job", () => {
   it("hourly job deletes a token that validate rejects", async () => {
     await launch()
@@ -184,6 +200,25 @@ describe("routes", () => {
     expect(missing.status).toBe(404)
     expect(await missing.json()).toEqual({ error: "not-found" })
     expect([mounted.status, await mounted.json()]).toEqual([400, { error: "invalid_token" }])
+  })
+
+  it("drops the sign-in of platforms listed in SIGN_IN_DISABLED_PLATFORMS though their apps are set", async () => {
+    // The Kick and Google URLs point at a closed local port, so nothing reaches the real platforms.
+    const apps = {
+      KICK_CLIENT_ID: "kick-id",
+      KICK_CLIENT_SECRET: "kick-secret",
+      KICK_ID_BASE_URL: "http://127.0.0.1:9",
+      KICK_API_BASE_URL: "http://127.0.0.1:9",
+      YOUTUBE_CLIENT_ID: "youtube-id",
+      YOUTUBE_CLIENT_SECRET: "youtube-secret",
+      YOUTUBE_AUTH_BASE_URL: "http://127.0.0.1:9",
+      YOUTUBE_TOKEN_BASE_URL: "http://127.0.0.1:9",
+      YOUTUBE_API_BASE_URL: "http://127.0.0.1:9",
+    }
+    const on = await launch(apps)
+    const off = await launch({ ...apps, SIGN_IN_DISABLED_PLATFORMS: "kick,youtube" })
+    expect((await signInOf(on)).platforms).toEqual(["twitch", "kick", "youtube"])
+    expect(await signInOf(off)).toEqual({ platforms: ["twitch"], starts: [404, 404, 404] })
   })
 
   it("lets a dev sign-in pick the second fake user with login_hint", async () => {
