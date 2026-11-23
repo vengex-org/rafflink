@@ -2,7 +2,13 @@ import { useEffect, useId, useRef, useState, ViewTransition, type ReactNode } fr
 import { Link, Outlet, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useLocalizedPath } from "../i18n/localized-pages.ts"
-import { dashboardPath, pageOfPath, verifyLookupPath } from "../lib/routes.ts"
+import {
+  adminPath,
+  dashboardPath,
+  pageOfPath,
+  settingsPath,
+  verifyLookupPath,
+} from "../lib/routes.ts"
 import { SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
@@ -94,7 +100,7 @@ export function Layout({
   return asks ? <StreamerSessionProvider>{page}</StreamerSessionProvider> : page
 }
 
-/** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. The way out and the dashboard link sit in one account button. */
+/** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. The way out and the streamer's pages sit in one account button. */
 function Account({ viewerPage }: { readonly viewerPage: boolean }) {
   const { t } = useI18n()
   const { streamer, donateUrl, busy, message, signOut } = useStreamerSession()
@@ -124,8 +130,8 @@ function StreamerAvatar({ streamer }: { readonly streamer: SignedInStreamer }) {
 }
 
 /**
- * The account button (picture and name) that shows a short list: the dashboard, the support page when the deployment
- * names one, and Log out. Escape and a click or
+ * The account button (picture and name) that shows a short list: the dashboard, the settings, the admin page for an
+ * admin, the support page when the deployment names one, and Log out. Escape and a click or
  * focus outside close it, Escape returning focus to the button.
  */
 function AccountMenu({
@@ -185,6 +191,18 @@ function AccountMenu({
               {t("nav.myGiveaways")}
             </Link>
           </li>
+          <li>
+            <Link to={settingsPath} onClick={() => setOpen(false)}>
+              {t("nav.settings")}
+            </Link>
+          </li>
+          {streamer.admin ? (
+            <li>
+              <Link to={adminPath} onClick={() => setOpen(false)}>
+                {t("nav.admin")}
+              </Link>
+            </li>
+          ) : null}
           {donateUrl === null ? null : (
             <li>
               <DonateLink url={donateUrl} onClick={() => setOpen(false)}>

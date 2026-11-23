@@ -376,7 +376,7 @@ describe("header account menu", () => {
     expect(view.queryByRole("button", { name: "Sign out" })).toBeNull()
   })
 
-  it("opens on click with My giveaways and Sign out", async () => {
+  it("opens on click with My giveaways, Settings and Sign out", async () => {
     const { view, button } = await openMenu()
 
     fireEvent.click(button)
@@ -384,8 +384,26 @@ describe("header account menu", () => {
     expect(button.getAttribute("aria-expanded")).toBe("true")
     const panel = document.getElementById(button.getAttribute("aria-controls") ?? "")
     expect(panel).not.toBeNull()
-    expect(within(panel ?? view.container).getAllByRole("listitem")).toHaveLength(2)
+    expect(within(panel ?? view.container).getAllByRole("listitem")).toHaveLength(4)
     expect(view.getByRole("link", { name: "My giveaways" }).getAttribute("href")).toBe("/dashboard")
+    expect(view.getByRole("link", { name: "Settings" }).getAttribute("href")).toBe(
+      "/dashboard/settings",
+    )
+    expect(view.queryByRole("link", { name: "Admin" })).toBeNull()
+    expect(view.getByRole("button", { name: "Sign out" })).toBeTruthy()
+  })
+
+  it("links the admin page for an admin", async () => {
+    mockFetch({
+      "GET /api/session": () =>
+        ok({ ...supportedSession, streamer: { ...supportedSession.streamer, admin: true } }),
+      "GET /api/dash/giveaways": () => ok({ giveaways: [] }),
+    })
+    const view = renderApp("/dashboard")
+
+    fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
+
+    expect(view.getByRole("link", { name: "Admin" }).getAttribute("href")).toBe("/admin")
     expect(view.getByRole("button", { name: "Sign out" })).toBeTruthy()
   })
 

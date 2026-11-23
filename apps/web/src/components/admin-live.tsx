@@ -4,8 +4,27 @@ import { useI18n } from "../i18n/i18n.tsx"
 import type { AdminStatsLoad } from "../lib/use-admin-stats.ts"
 import { GrowthChart, MinuteChart } from "./admin-charts.tsx"
 import { ActivityIcon, AlertIcon, EyeIcon, GiftIcon, UsersIcon } from "./icons.tsx"
+import { InfoTip } from "./info-tip.tsx"
 import { Stat } from "./live-parts.tsx"
 import { Status } from "./notice.tsx"
+
+/** A card's heading, with the longer explanation of what it counts behind an (i) beside it. */
+export function CardTitle({
+  id,
+  title,
+  info,
+}: {
+  readonly id: string
+  readonly title: string
+  readonly info: string
+}) {
+  return (
+    <div className="card-title">
+      <h2 id={id}>{title}</h2>
+      <InfoTip topic={title} text={info} />
+    </div>
+  )
+}
 
 /** When the numbers were read, or that they could not be refreshed. */
 export function LiveStatus({ load }: { readonly load: AdminStatsLoad }) {
@@ -80,8 +99,7 @@ function OnSite({ presence }: { readonly presence: AdminStats["presence"] }) {
   const { t, number } = useI18n()
   return (
     <section className="card" aria-labelledby="on-site">
-      <h2 id="on-site">{t("admin.presence.title")}</h2>
-      <p className="muted">{t("admin.presence.hint")}</p>
+      <CardTitle id="on-site" title={t("admin.presence.title")} info={t("admin.presence.hint")} />
       {presence === "unavailable" ? (
         <p>{t("admin.presence.unavailable")}</p>
       ) : (
@@ -148,8 +166,7 @@ function LastHour({ stats }: { readonly stats: AdminStats }) {
   const { t } = useI18n()
   return (
     <section className="card" aria-labelledby="last-hour">
-      <h2 id="last-hour">{t("admin.hour.title")}</h2>
-      <p className="muted">{t("admin.hour.hint")}</p>
+      <CardTitle id="last-hour" title={t("admin.hour.title")} info={t("admin.hour.hint")} />
       <MinuteChart series={stats.series} />
     </section>
   )
@@ -194,8 +211,11 @@ function Referrals({ stats }: { readonly stats: AdminStats }) {
   const { t, number } = useI18n()
   return (
     <section className="card" aria-labelledby="referrals">
-      <h2 id="referrals">{t("admin.refs.title")}</h2>
-      <p className="muted">{t("admin.refs.hint", { days: number(stats.growth.length) })}</p>
+      <CardTitle
+        id="referrals"
+        title={t("admin.refs.title")}
+        info={t("admin.refs.hint", { days: number(stats.growth.length) })}
+      />
       {stats.referrals.length === 0 ? (
         <p className="muted">{t("admin.refs.none")}</p>
       ) : (

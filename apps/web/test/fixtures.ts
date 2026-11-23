@@ -121,6 +121,7 @@ export const twitchPlatform = {
   readyEntryWays: ["chat", "sub", "points"],
   publicHistory: false,
   historyIndexed: false,
+  admin: false,
 }
 
 /** A signed-in streamer on a deployment that names a support page. */

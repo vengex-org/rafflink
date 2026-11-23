@@ -617,8 +617,6 @@ export const pt: Translation = {
     "Todos os sorteios, com seus participantes, vencedores e provas do sorteio, sua conta e seu token de login armazenado são apagados para sempre, e você sai da conta.",
   "dash.deleteData.confirm": "Sim, apagar tudo",
   "dash.blocks.title": "Contas bloqueadas",
-  "dash.blocks.text":
-    "Contas bloqueadas não podem participar de nenhum dos seus sorteios. As inscrições delas em sorteios ainda abertos são removidas; as inscrições em sorteios encerrados ficam. A lista é apagada junto com sua conta.",
   "dash.blocks.count": "{count} de {max} contas bloqueadas",
   "dash.blocks.none": "Nenhuma conta bloqueada.",
   "dash.blocks.label": "Nome de usuário para bloquear",
@@ -637,8 +635,6 @@ export const pt: Translation = {
   "dash.blocks.room-unavailable":
     "Salvo, mas um sorteio em andamento ainda não recebeu a alteração. Repita a mesma ação.",
   "dash.history.title": "Histórico público",
-  "dash.history.text":
-    "Uma página pública pode listar seus sorteios finalizados com o prêmio, a data, quantas pessoas participaram e quantas ganharam, e um link para verificar cada sorteio. Ela não mostra o nome de nenhum participante nem de nenhum vencedor, e os buscadores só a indexam se você permitir. O botão em um sorteio finalizado o esconde da página.",
   "dash.history.link": "Abrir sua página de histórico público",
   "dash.history.turnOn": "Ativar o histórico público",
   "dash.history.turnOff": "Desativar o histórico público",
@@ -704,8 +700,6 @@ export const pt: Translation = {
   "live.overlay.qr.on": "Mostrar",
   "live.overlay.qr.off": "Esconder",
   "overlayStyle.dash.summary": "Estilo do overlay",
-  "overlayStyle.dash.help":
-    "Como o seu overlay do OBS aparece em todos os sorteios. Um sorteio pode ter um estilo próprio nas configurações de overlay da página ao vivo dele.",
   "overlayStyle.giveaway.summary": "Estilo deste overlay",
   "overlayStyle.giveaway.source": "Estilo",
   "overlayStyle.giveaway.streamer": "Meu estilo",

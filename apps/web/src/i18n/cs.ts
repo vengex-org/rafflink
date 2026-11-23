@@ -608,8 +608,6 @@ export const cs: Translation = {
     "Všechny giveawaye se zapojenými, výherci a důkazem losování, tvůj účet i uložený přihlašovací token se natrvalo smažou a budeš odhlášen.",
   "dash.deleteData.confirm": "Ano, smazat vše",
   "dash.blocks.title": "Zablokované účty",
-  "dash.blocks.text":
-    "Zablokované účty se nemohou zapojit do žádného tvého giveawaye. Jejich zapojení v ještě otevřených giveawayích se odstraní, v uzavřených zůstanou. Seznam se smaže spolu s tvým účtem.",
   "dash.blocks.count": "Zablokovaných účtů: {count} z {max}",
   "dash.blocks.none": "Žádné zablokované účty.",
   "dash.blocks.label": "Jméno k zablokování",
@@ -628,8 +626,6 @@ export const cs: Translation = {
   "dash.blocks.room-unavailable":
     "Uloženo, ale běžící giveaway změnu ještě nedostal. Zkus stejnou akci znovu.",
   "dash.history.title": "Veřejná historie",
-  "dash.history.text":
-    "Veřejná stránka může ukázat tvoje ukončené giveawaye s cenou, datem, počtem přihlášených a počtem vítězů a s odkazem na ověření každého losování. Neuvádí jména přihlášených ani vítězů a vyhledávače ji indexují, jen pokud to povolíš. Tlačítkem u ukončeného giveawaye ho ze stránky skryješ.",
   "dash.history.link": "Otevřít tvoji veřejnou historii",
   "dash.history.turnOn": "Zapnout veřejnou historii",
   "dash.history.turnOff": "Vypnout veřejnou historii",
@@ -694,8 +690,6 @@ export const cs: Translation = {
   "live.overlay.qr.on": "Zobrazit",
   "live.overlay.qr.off": "Skrýt",
   "overlayStyle.dash.summary": "Vzhled overlaye",
-  "overlayStyle.dash.help":
-    "Jak vypadá tvůj OBS overlay ve všech soutěžích. Jedna soutěž může mít vlastní vzhled v nastavení overlaye na své živé stránce.",
   "overlayStyle.giveaway.summary": "Vzhled tohoto overlaye",
   "overlayStyle.giveaway.source": "Vzhled",
   "overlayStyle.giveaway.streamer": "Můj vzhled",

@@ -622,8 +622,6 @@ export const de: Translation = {
     "Alle Gewinnspiele mit Teilnehmern, Gewinnern und Ziehungsnachweis, dein Konto und dein gespeichertes Anmeldetoken werden endgültig gelöscht, und du wirst abgemeldet.",
   "dash.deleteData.confirm": "Ja, alles löschen",
   "dash.blocks.title": "Blockierte Konten",
-  "dash.blocks.text":
-    "Blockierte Konten können an keinem deiner Gewinnspiele teilnehmen. Ihre Teilnahmen an noch offenen Gewinnspielen werden entfernt; Teilnahmen an beendeten Gewinnspielen bleiben. Die Liste wird mit deinem Konto gelöscht.",
   "dash.blocks.count": "{count} von {max} Konten blockiert",
   "dash.blocks.none": "Keine Konten blockiert.",
   "dash.blocks.label": "Benutzername zum Blockieren",
@@ -642,8 +640,6 @@ export const de: Translation = {
   "dash.blocks.room-unavailable":
     "Gespeichert, aber ein laufendes Gewinnspiel hat die Änderung noch nicht übernommen. Führ dieselbe Aktion noch mal aus.",
   "dash.history.title": "Öffentlicher Verlauf",
-  "dash.history.text":
-    "Eine öffentliche Seite kann deine beendeten Gewinnspiele auflisten, mit Preis, Datum, Zahl der Teilnehmer und Gewinner und einem Link, um jede Ziehung zu prüfen. Sie nennt keine Teilnehmer und keine Gewinner, und Suchmaschinen indexieren sie nur, wenn du es erlaubst. Der Button bei einem beendeten Gewinnspiel blendet es auf der Seite aus.",
   "dash.history.link": "Deine öffentliche Verlaufsseite öffnen",
   "dash.history.turnOn": "Öffentlichen Verlauf einschalten",
   "dash.history.turnOff": "Öffentlichen Verlauf ausschalten",
@@ -712,8 +708,6 @@ export const de: Translation = {
   "live.overlay.qr.on": "Zeigen",
   "live.overlay.qr.off": "Ausblenden",
   "overlayStyle.dash.summary": "Overlay-Stil",
-  "overlayStyle.dash.help":
-    "So sieht dein OBS-Overlay in jedem Gewinnspiel aus. Ein einzelnes Gewinnspiel kann in den Overlay-Einstellungen seiner Live-Seite einen eigenen Stil bekommen.",
   "overlayStyle.giveaway.summary": "Stil dieses Overlays",
   "overlayStyle.giveaway.source": "Stil",
   "overlayStyle.giveaway.streamer": "Mein Stil",

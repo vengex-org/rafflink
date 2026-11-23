@@ -1,20 +1,12 @@
-import { useDeferredValue, useEffect, useState, type FormEvent, type ReactNode } from "react"
+import { useDeferredValue, useEffect, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { RoomStatus } from "@rafflink/core/room/rows"
 import {
-  addBlock,
   deleteGiveaway,
-  deleteStreamerData,
-  getBlocks,
   listGiveaways,
-  removeBlock,
   setHiddenFromHistory,
-  setHistoryIndexed,
-  setPublicHistory,
   winnersCsvPath,
-  type AddBlockResult,
-  type RemoveBlockResult,
 } from "../api/client.ts"
 import { ConfirmAction } from "../components/confirm-action.tsx"
 import { Disclosure } from "../components/disclosure.tsx"
@@ -32,16 +24,14 @@ import {
   TrashIcon,
 } from "../components/icons.tsx"
 import { Failed, Loading, SignIn, Status } from "../components/notice.tsx"
-import { StreamerOverlayStyle } from "../components/overlay-style.tsx"
 import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
 import { StateCard, type Tone } from "../components/state-card.tsx"
 import { StatusChip } from "../components/status-chip.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
-import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { readNotice } from "../lib/dashboard-notice.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
-import { dashboardNewPath, historyPath, livePath } from "../lib/routes.ts"
+import { dashboardNewPath, livePath } from "../lib/routes.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { useSearchQuery } from "../lib/use-search-query.ts"
@@ -84,7 +74,7 @@ function GiveawayList({
   readonly giveaways: readonly DashboardGiveaway[]
   /** False once the server refused a create with `streamer_not_approved`; the session, once loaded, has the last word. */
   readonly approved: boolean
-  /** Runs after a giveaway or the whole account was deleted. */
+  /** Runs after a giveaway was deleted, hidden from the public history or shown there again. */
   readonly onChanged: () => void
 }) {
   const i18n = useI18n()
@@ -107,7 +97,6 @@ function GiveawayList({
             <h1>{t("dash.title")}</h1>
           </div>
           <AwaitingApproval />
-          <DeleteStreamerData onDeleted={onChanged} />
         </>
       )
     }
@@ -137,8 +126,6 @@ function GiveawayList({
             </li>
           </ol>
         </section>
-        <BlockedAccounts />
-        <DeleteStreamerData onDeleted={onChanged} />
       </>
     )
   }
@@ -156,9 +143,6 @@ function GiveawayList({
         ) : null}
       </div>
       {canCreate ? null : <AwaitingApproval />}
-      <section className="dash-style">
-        <StreamerOverlayStyle />
-      </section>
       {pinned.length === 0 ? null : (
         <section className="dash-section" aria-labelledby="dash-running">
           <h2 id="dash-running">{t("dash.section.running")}</h2>
@@ -179,9 +163,6 @@ function GiveawayList({
       {rest.length === 0 ? null : (
         <FinishedGiveaways giveaways={rest} canDuplicate={canCreate} onChanged={onChanged} />
       )}
-      <PublicHistorySetting />
-      <BlockedAccounts />
-      <DeleteStreamerData onDeleted={onChanged} />
     </>
   )
 }
@@ -235,211 +216,6 @@ function FinishedGiveaways({
         </ul>
       )}
     </section>
-  )
-}
-
-/** Turns the streamer's public history page on or off, and links to it while it is on. */
-function PublicHistorySetting() {
-  const { t } = useI18n()
-  const { streamer, reload: reloadSession } = useStreamerSession()
-  const { message, busy, run } = useAction()
-  if (streamer === null) return null
-  const on = streamer.publicHistory
-  return (
-    <section className="dash-section dash-history" aria-labelledby="dash-history">
-      <h2 id="dash-history">{t("dash.history.title")}</h2>
-      <p>{t("dash.history.text")}</p>
-      {on ? (
-        <p>
-          <Link to={historyPath(streamer.platform, streamer.login)}>{t("dash.history.link")}</Link>
-        </p>
-      ) : null}
-      <button
-        type="button"
-        className="button outlined"
-        disabled={busy}
-        onClick={() =>
-          void run(
-            () => setPublicHistory(!on),
-            (outcome) => (outcome === "saved" ? "dash.history.saved" : "action.failed"),
-          ).then((outcome) => {
-            if (outcome === "saved") reloadSession()
-          })
-        }
-      >
-        {t(on ? "dash.history.turnOff" : "dash.history.turnOn")}
-      </button>
-      {message === null ? null : <Status>{t(message)}</Status>}
-      {on ? <HistoryIndexingSetting indexed={streamer.historyIndexed} /> : null}
-    </section>
-  )
-}
-
-/** Lets search engines index the public history page, or stops them; only while the page is on. */
-function HistoryIndexingSetting({ indexed }: { readonly indexed: boolean }) {
-  const { t } = useI18n()
-  const { reload: reloadSession } = useStreamerSession()
-  const { message, busy, run } = useAction()
-  return (
-    <>
-      <p>{t(indexed ? "dash.history.indexed" : "dash.history.notIndexed")}</p>
-      <button
-        type="button"
-        className="button outlined"
-        disabled={busy}
-        onClick={() =>
-          void run(
-            () => setHistoryIndexed(!indexed),
-            (outcome) => (outcome === "saved" ? "dash.history.saved" : "action.failed"),
-          ).then((outcome) => {
-            if (outcome === "saved") reloadSession()
-          })
-        }
-      >
-        {t(indexed ? "dash.history.stopIndexing" : "dash.history.allowIndexing")}
-      </button>
-      {message === null ? null : <Status>{t(message)}</Status>}
-    </>
-  )
-}
-
-/** The accounts the streamer keeps out of every giveaway: the list, a login to add and a Remove button per row. */
-function BlockedAccounts() {
-  const i18n = useI18n()
-  const { t } = i18n
-  const { result, reload } = useLoad(getBlocks)
-  const [login, setLogin] = useState("")
-  const { message, busy, run } = useAction()
-  const listed = result.state === "ready" && result.value !== "unauthorized" ? result.value : null
-
-  const add = (event: FormEvent) => {
-    event.preventDefault()
-    void run(() => addBlock(login), addBlockMessage).then((outcome) => {
-      if (outcome === "added" || outcome === "exists" || outcome === "room-unavailable") {
-        setLogin("")
-        reload()
-      }
-    })
-  }
-
-  return (
-    <section className="dash-section dash-blocks" aria-labelledby="dash-blocks">
-      <h2 id="dash-blocks">{t("dash.blocks.title")}</h2>
-      <p>{t("dash.blocks.text")}</p>
-      {result.state === "loading" ? <Loading /> : null}
-      {result.state === "failed"
-      || (result.state === "ready" && result.value === "unauthorized") ? (
-        <>
-          <p role="alert">{t("failed.text")}</p>
-          <button type="button" className="button text" onClick={reload}>
-            {t("common.reloadPage")}
-          </button>
-        </>
-      ) : null}
-      {listed === null ? null : (
-        <>
-          <form className="block-add" onSubmit={add} noValidate>
-            <div className="field">
-              <label htmlFor="block-login">{t("dash.blocks.label")}</label>
-              <input
-                id="block-login"
-                name="login"
-                type="text"
-                autoComplete="off"
-                value={login}
-                onChange={(event) => setLogin(event.currentTarget.value)}
-              />
-            </div>
-            <button type="submit" className="button" disabled={busy}>
-              <PlusIcon />
-              {t("dash.blocks.add")}
-            </button>
-          </form>
-          <p className="muted">
-            {t("dash.blocks.count", {
-              count: i18n.number(listed.blocks.length),
-              max: i18n.number(listed.blockListMax),
-            })}
-          </p>
-          {listed.blocks.length === 0 ? (
-            <p className="muted">{t("dash.blocks.none")}</p>
-          ) : (
-            <ul className="block-list">
-              {listed.blocks.map((block) => (
-                <li key={block.platformUserId}>
-                  <span>
-                    {block.login}
-                    <span className="muted">
-                      {" "}
-                      {t("dash.blocks.since", { date: i18n.date(block.createdAt) })}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    className="button text"
-                    disabled={busy}
-                    aria-label={t("dash.blocks.remove.label", { login: block.login })}
-                    onClick={() =>
-                      void run(() => removeBlock(block.platformUserId), removeBlockMessage).then(
-                        (outcome) => {
-                          if (outcome === "removed") reload()
-                        },
-                      )
-                    }
-                  >
-                    <TrashIcon />
-                    {t("dash.blocks.remove")}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-      {message === null ? null : <Status>{t(message)}</Status>}
-    </section>
-  )
-}
-
-function addBlockMessage(outcome: AddBlockResult): MessageKey {
-  return outcome === "unauthorized" ? "action.failed" : `dash.blocks.${outcome}`
-}
-
-function removeBlockMessage(outcome: RemoveBlockResult): MessageKey {
-  return outcome === "unauthorized" ? "action.failed" : `dash.blocks.${outcome}`
-}
-
-/** Deletes every giveaway of the streamer and the account; the list then asks to sign in again. */
-function DeleteStreamerData({ onDeleted }: { readonly onDeleted: () => void }) {
-  const { t } = useI18n()
-  const { reload: reloadSession } = useStreamerSession()
-  const { message, busy, run } = useAction()
-  return (
-    <div className="dash-delete-data">
-      <h2>{t("dash.deleteData.title")}</h2>
-      <p>{t("dash.deleteData.text")}</p>
-      <ConfirmAction
-        icon={<TrashIcon />}
-        label={t("dash.deleteData.button")}
-        question={t("dash.deleteData.question")}
-        detail={t("dash.deleteData.detail")}
-        confirmLabel={t("dash.deleteData.confirm")}
-        busy={busy}
-        disabled={false}
-        className="button outlined"
-        shortcut={null}
-        onConfirm={() =>
-          void run(deleteStreamerData, (outcome) =>
-            outcome === "deleted" ? null : "action.failed",
-          ).then((outcome) => {
-            if (outcome !== "deleted") return
-            reloadSession()
-            onDeleted()
-          })
-        }
-      />
-      {message === null ? null : <Status>{t(message)}</Status>}
-    </div>
   )
 }
 

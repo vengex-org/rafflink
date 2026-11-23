@@ -78,6 +78,7 @@ export function sessionScenarios(context: ContractContext): void {
         readyEntryWays: [],
         publicHistory: false,
         historyIndexed: false,
+        admin: false,
       },
       signInPlatforms: ["twitch", "kick", "youtube"],
       donateUrl: null,

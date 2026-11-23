@@ -3,6 +3,8 @@ export const en = {
   "nav.main": "Main",
   "nav.skip": "Skip to content",
   "nav.myGiveaways": "My giveaways",
+  "nav.settings": "Settings",
+  "nav.admin": "Admin",
   "nav.selfHost": "Self-host",
   "nav.verify": "Verify a draw",
   "nav.github": "GitHub",
@@ -597,6 +599,7 @@ export const en = {
   "rules.copyHeading": "Giveaway rules: {url}",
 
   "dash.title": "My giveaways",
+  "dash.settings.title": "Settings",
   "dash.new.title": "New giveaway",
   "dash.new.button": "New giveaway",
   "dash.created.title": "Your giveaway is live!",
@@ -649,8 +652,9 @@ export const en = {
     "Every giveaway with its entrants, winners and draw proof, your account and your stored sign-in token are deleted for good, and you are signed out.",
   "dash.deleteData.confirm": "Yes, delete everything",
   "dash.blocks.title": "Blocked accounts",
-  "dash.blocks.text":
-    "Blocked accounts cannot enter any of your giveaways. Their entries in giveaways that are still open are removed; entries in closed giveaways stay. The list is deleted with your account.",
+  "dash.blocks.text": "Blocked accounts cannot enter your giveaways.",
+  "dash.blocks.info":
+    "Their entries in open giveaways are removed; entries in closed giveaways stay. The list is deleted with your account.",
   "dash.blocks.count": "{count} of {max} accounts blocked",
   "dash.blocks.none": "No accounts blocked.",
   "dash.blocks.label": "Username to block",
@@ -669,8 +673,7 @@ export const en = {
   "dash.blocks.room-unavailable":
     "Saved, but a running giveaway did not get the change yet. Try the same action again.",
   "dash.history.title": "Public history",
-  "dash.history.text":
-    "A public page can list your finished giveaways with the prize, the date, how many people entered and how many won, and a link to check each draw. It names no entrant and no winner, and search engines index it only if you allow it. The button on a finished giveaway hides it from the page.",
+  "dash.history.text": "Show your finished giveaways on a public page. No entrant names.",
   "dash.history.link": "Open your public history page",
   "dash.history.turnOn": "Turn on public history",
   "dash.history.turnOff": "Turn off public history",
@@ -736,7 +739,7 @@ export const en = {
   "live.overlay.qr.off": "Hide",
   "overlayStyle.dash.summary": "Overlay style",
   "overlayStyle.dash.help":
-    "How your OBS overlay looks in every giveaway. One giveaway can get its own style in the overlay settings of its live page.",
+    "How your OBS overlay looks. A giveaway can get its own style on its live page.",
   "overlayStyle.giveaway.summary": "Style of this overlay",
   "overlayStyle.giveaway.source": "Style",
   "overlayStyle.giveaway.streamer": "My style",
@@ -1431,6 +1434,13 @@ type EnglishOnlyKey =
   | "wizard.winnerForm.info"
   | "wizard.winners.help"
   | "wizard.winners.label"
+  | "nav.settings"
+  | "nav.admin"
+  | "dash.settings.title"
+  | "dash.blocks.text"
+  | "dash.blocks.info"
+  | "dash.history.text"
+  | "overlayStyle.dash.help"
 
 type PluralSuffix = "one" | "few" | "other" | "many"
 

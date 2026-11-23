@@ -200,8 +200,9 @@ describe("admin page live numbers", () => {
   it("lists the referral sources busiest first and says so when there is none", async () => {
     mockAdmin()
     const view = renderApp("/admin")
-    const sources = (await view.findByRole("heading", { name: "Where visitors come from" }))
-      .parentElement
+    const sources = (
+      await view.findByRole("heading", { name: "Where visitors come from" })
+    ).closest("section")
     expect(
       Array.from(sources?.querySelectorAll("tbody tr") ?? []).map((row) => row.textContent),
     ).toEqual(["reddit8", "blog3"])

@@ -17,6 +17,7 @@ import { PrivacyPage, TermsPage } from "./pages/legal-page.tsx"
 import { LivePage } from "./pages/live-page.tsx"
 import { ModeratorLivePage, ModeratorOpenPage } from "./pages/moderator-page.tsx"
 import { OverlayPage } from "./pages/overlay-page.tsx"
+import { SettingsPage } from "./pages/settings-page.tsx"
 import { VerifyLookupPage } from "./pages/verify-lookup-page.tsx"
 import { VerifyPage } from "./pages/verify-page.tsx"
 import { parseGiveawayCode } from "./lib/giveaway-code.ts"
@@ -57,6 +58,7 @@ export function AppRoutes() {
               <Route path="dashboard" caseSensitive element={<DashboardPage />} />
               <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
               <Route path="dashboard/created/:id" caseSensitive element={<CreatedGiveawayPage />} />
+              <Route path="dashboard/settings" caseSensitive element={<SettingsPage />} />
               <Route path="admin" caseSensitive element={<AdminPage />} />
               {localizedRoutes}
               <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
