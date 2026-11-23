@@ -1,29 +1,24 @@
 import { Hono } from "hono"
-import type { AccountStore } from "../accounts/account-store.ts"
-import type { ResolvedConfig } from "../config.ts"
 import { codeAlphabet, codeLength } from "../lib/codes.ts"
 import { errorClass } from "../lib/error-class.ts"
-import type { Clock, RateLimiter } from "../ports.ts"
+import { isPlatform, providerFor } from "../platform/provider.ts"
 import { parseReferral } from "../stats/referral.ts"
-import type { StatsStore } from "../stats/stats-store.ts"
-import { drawPath, giveawayPath, verifyPath } from "../lib/page-paths.ts"
-import { inlineScriptHashes, renderSpaHtml, type PageMeta } from "../lib/spa-html.ts"
+import {
+  drawPath,
+  giveawayPath,
+  historyDataElementId,
+  historyPath,
+  verifyPath,
+} from "../lib/page-paths.ts"
+import { embedJson, inlineScriptHashes, renderSpaHtml, type PageMeta } from "../lib/spa-html.ts"
 import { isApiPath } from "./api-paths.ts"
+import type { AppDeps } from "./deps.ts"
+import { publicHistoryAnswer, type PublicHistoryAnswer } from "./history-routes.ts"
 import { contentSecurityPolicy } from "./security-headers.ts"
 import { indexablePaths, noindex } from "./static-headers.ts"
 
 /** The built `index.html`, or null when no web app is deployed next to this server. */
 export type SpaTemplateLoader = () => Promise<string | null>
-
-export interface SpaDeps {
-  readonly config: Pick<ResolvedConfig, "publicUrl">
-  readonly accounts: Pick<AccountStore, "findGiveawayByCode">
-  readonly clock: Clock
-  /** The limiter of viewer sign-ins per address, used under its own key so a count never uses up an entry. */
-  readonly entryIpLimiter: RateLimiter
-  readonly clientAddress: (request: Request) => string | null
-  readonly stats: Pick<StatsStore, "countReferral">
-}
 
 // The preview of a shared list draw; the list itself is in the fragment, which never reaches the server.
 // Only the Bun server applies it: Cloudflare serves `/draw` from the static assets without the Worker.
@@ -37,11 +32,63 @@ const giveawayRoute = new RegExp(`^/(?:g/)?([${codeAlphabet}]{${codeLength}})(/v
 
 /**
  * The page of every path that is not an API path: the built `index.html` with the link preview of its
- * giveaway, and a CSP that allows its inline scripts by hash. Everything but the {@link indexablePaths} is `noindex`.
+ * giveaway or public history, and a CSP that allows its inline scripts by hash. Everything but the
+ * {@link indexablePaths} and the history pages whose streamer allows it is `noindex`.
  */
-export function spaRoutes(deps: SpaDeps, loadTemplate: SpaTemplateLoader): Hono {
+export function spaRoutes(deps: AppDeps, loadTemplate: SpaTemplateLoader): Hono {
   const { publicUrl } = deps.config
   const app = new Hono()
+
+  // The page carries the answer of `/api/s/...`, so a view costs one Worker request. A login a renamed streamer
+  // gave up redirects to their page, so links in channel panels keep working.
+  app.get("/s/:platform/:login", async (c, next) => {
+    const template = await loadTemplate()
+    if (template === null) return next()
+    const platform = c.req.param("platform")
+    const login = isPlatform(platform)
+      ? providerFor(deps.platforms, platform).parseLogin(c.req.param("login"))
+      : null
+    const answer: PublicHistoryAnswer =
+      login === null || !isPlatform(platform)
+        ? { kind: "missing" }
+        : await publicHistoryAnswer(deps, platform, login)
+    const scriptHashes = await inlineScriptHashes(template)
+    const headers = {
+      "Content-Security-Policy": contentSecurityPolicy(scriptHashes),
+      "Cache-Control": "no-cache",
+    }
+    const image = `${publicUrl}/og.png`
+    switch (answer.kind) {
+      case "moved": {
+        // Browsers keep a 301 without a cache rule for good, and the old login can pass to another streamer.
+        c.header("Cache-Control", "no-cache")
+        const location = `${historyPath(platform, answer.login)}${new URL(c.req.url).search}`
+        return c.redirect(location, 301)
+      }
+      case "missing": {
+        const meta: PageMeta = { url: `${publicUrl}${c.req.path}`, image, text: null }
+        const html = embedJson(renderSpaHtml(template, meta), historyDataElementId, "null")
+        return c.html(html, 404, { ...headers, "X-Robots-Tag": noindex })
+      }
+      case "found": {
+        const { streamer } = answer
+        const meta: PageMeta = {
+          url: `${publicUrl}${historyPath(streamer.platform, streamer.login)}`,
+          image,
+          text: {
+            title: `Giveaways of ${streamer.displayName}`,
+            description: `The finished giveaways of ${streamer.displayName} on Rafflink, each with a check of its draw.`,
+          },
+        }
+        const html = embedJson(renderSpaHtml(template, meta), historyDataElementId, answer.text)
+        return c.html(
+          html,
+          200,
+          streamer.indexed ? headers : { ...headers, "X-Robots-Tag": noindex },
+        )
+      }
+    }
+  })
 
   app.get("*", async (c, next) => {
     const { pathname } = new URL(c.req.url)
@@ -84,7 +131,7 @@ export function spaRoutes(deps: SpaDeps, loadTemplate: SpaTemplateLoader): Hono 
 
 // The visit is counted by its label only: no cookie, no redirect, and the address goes to the limiter, not to our storage.
 // Over the limit, or without an address, or when the count fails, the page loads and nothing is counted.
-async function countReferral(deps: SpaDeps, request: Request): Promise<void> {
+async function countReferral(deps: AppDeps, request: Request): Promise<void> {
   const ref = parseReferral(new URL(request.url).searchParams.get("ref"))
   if (ref === null) return
   try {

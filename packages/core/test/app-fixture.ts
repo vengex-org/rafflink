@@ -11,7 +11,7 @@ import { AdminDirectory } from "../src/admin/admin-directory.ts"
 import { AccountStore } from "../src/accounts/account-store.ts"
 import { resolveConfig, type ResolvedConfig } from "../src/config.ts"
 import type { AppDeps } from "../src/http/deps.ts"
-import { createApp } from "../src/http/create-app.ts"
+import { createApp, type SpaTemplateLoader } from "../src/http/create-app.ts"
 import { codeAlphabet, codeLength } from "../src/lib/codes.ts"
 import { toBase64 } from "../src/lib/encoding.ts"
 import { MemoryPublicCache } from "../src/lib/memory-public-cache.ts"
@@ -362,6 +362,8 @@ export interface HarnessOptions {
   readonly target?: "cloudflare" | "bun"
   /** Turns off what Twitch can check, to stand in for a platform that cannot; Twitch's own when absent. */
   readonly capabilities?: Partial<PlatformCapabilities>
+  /** The built `index.html` the pages are answered with; without it the app answers the API only. */
+  readonly spaTemplate?: string
 }
 
 // Twitch with fewer capabilities, the stand-in for another platform's rules.
@@ -452,7 +454,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     clientAddress: (request) => request.headers.get(testAddressHeader),
   }
   return {
-    app: createApp(deps, null),
+    app: createApp(deps, spaTemplateLoader(options.spaTemplate)),
     deps,
     config,
     fake,
@@ -468,6 +470,10 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
       await server.stop(true)
     },
   }
+}
+
+function spaTemplateLoader(template: string | undefined): SpaTemplateLoader | null {
+  return template === undefined ? null : async () => template
 }
 
 function asRemote(queue: TokenQueue): TokenQueueStub {

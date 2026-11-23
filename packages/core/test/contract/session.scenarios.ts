@@ -69,6 +69,7 @@ export function sessionScenarios(context: ContractContext): void {
         },
         readyEntryWays: [],
         publicHistory: false,
+        historyIndexed: false,
       },
       donateUrl: null,
       operator: null,

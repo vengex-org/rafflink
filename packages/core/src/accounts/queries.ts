@@ -27,8 +27,12 @@ export const recentDrawnGiveawaysSql = `SELECT id FROM giveaways WHERE streamer_
  * Parameters: platform, login. The streamer whose sign-in saw that login last; an older row holds a login its
  * account gave up and has not signed in since, so it never answers for the login, whatever its switch says.
  */
-export const publicHistoryStreamerSql = `SELECT id, login, display_name, public_history, approved_at FROM streamers
+export const publicHistoryStreamerSql = `SELECT id, login, display_name, public_history, history_indexed, approved_at FROM streamers
   WHERE platform = ? AND login = ? ORDER BY login_seen_at DESC LIMIT 1`
+
+/** Parameters: platform, login. The streamer whose latest sign-in replaced that login, latest sign-in first. */
+export const renamedStreamerSql = `SELECT id, login FROM streamers
+  WHERE platform = ? AND previous_login = ? ORDER BY login_seen_at DESC LIMIT 1`
 
 /** A streamer's (parameter 1) drawn giveaways they did not hide from their public history, with the counts the room mirrored, latest close first; parameter 2 is how many. */
 export const publicHistoryGiveawaysSql = `SELECT id, code, title, prize, closed_at, entrant_count, winners FROM giveaways
@@ -37,6 +41,9 @@ export const publicHistoryGiveawaysSql = `SELECT id, code, title, prize, closed_
 
 /** Parameters: 1 or 0, streamer id. */
 export const setPublicHistorySql = "UPDATE streamers SET public_history = ? WHERE id = ?"
+
+/** Parameters: 1 or 0, streamer id. */
+export const setHistoryIndexedSql = "UPDATE streamers SET history_indexed = ? WHERE id = ?"
 
 /** Parameters: 1 or 0, giveaway id, streamer id. Returns the id when the giveaway is the streamer's. */
 export const setHiddenFromHistorySql =
@@ -137,10 +144,14 @@ export const revokeModeratorLinkSql = `UPDATE moderator_links SET revoked_at = C
 /** A streamer by id (parameter 1), once their giveaways and token are gone. */
 export const deleteStreamerSql = "DELETE FROM streamers WHERE id = ?"
 
-/** Parameters: id, platform, platform user id, login, display name, profile image URL, created at, login seen at (the sign-in time). */
+/**
+ * Parameters: id, platform, platform user id, login, display name, profile image URL, created at, login seen at (the sign-in time).
+ * A changed login keeps the one it replaces as `previous_login`; SQLite reads every `streamers.` column before the update.
+ */
 export const upsertStreamerSql = `INSERT INTO streamers (id, platform, platform_user_id, login, display_name, profile_image_url, created_at, login_seen_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT (platform, platform_user_id) DO UPDATE SET
+    previous_login = CASE WHEN streamers.login = excluded.login THEN streamers.previous_login ELSE streamers.login END,
     login = excluded.login,
     display_name = excluded.display_name,
     profile_image_url = excluded.profile_image_url,
@@ -155,7 +166,7 @@ export const upsertStreamerTokenSql = `INSERT INTO streamer_tokens (streamer_id,
     validated_at = excluded.validated_at`
 
 const streamerColumns =
-  "id, platform, platform_user_id, login, display_name, profile_image_url, created_at, approved_at, public_history"
+  "id, platform, platform_user_id, login, display_name, profile_image_url, created_at, approved_at, public_history, history_indexed, previous_login"
 
 /** Parameters: platform, platform user id. */
 export const streamerByPlatformUserSql = `SELECT ${streamerColumns} FROM streamers WHERE platform = ? AND platform_user_id = ?`

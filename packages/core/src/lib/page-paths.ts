@@ -39,3 +39,6 @@ export function moderatorOutcomePath(outcome: ModeratorSignInOutcome): string {
 export function historyPath(platform: string, login: string): string {
   return `/s/${encodeURIComponent(platform)}/${encodeURIComponent(login)}`
 }
+
+/** The id of the JSON element in which the server hands a history page the answer of its `/api` request, so the page makes none. */
+export const historyDataElementId = "history-data"

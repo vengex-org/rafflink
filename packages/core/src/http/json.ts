@@ -153,6 +153,8 @@ export interface SessionJson {
     readonly readyEntryWays: readonly ChannelEntryVia[]
     /** The streamer turned on their public history page. */
     readonly publicHistory: boolean
+    /** The streamer lets search engines index their public history page. */
+    readonly historyIndexed: boolean
   } | null
   readonly donateUrl: string | null
   readonly operator: OperatorJson | null
@@ -185,6 +187,8 @@ export interface PublicHistoryJson {
     readonly platform: Platform
     readonly login: string
     readonly displayName: string
+    /** The streamer lets search engines index the page. */
+    readonly indexed: boolean
   }
   readonly giveaways: readonly PublicHistoryGiveawayJson[]
 }

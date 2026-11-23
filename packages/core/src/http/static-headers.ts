@@ -4,6 +4,12 @@ export const noindex = "noindex, nofollow"
 /** The pages search engines may index: the home page and the two legal pages. */
 export const indexablePaths: readonly string[] = ["/", "/privacy", "/terms"]
 
+/**
+ * The public history pages, which the Worker answers too: the streamer decides whether one is indexed, and the
+ * login a renamed streamer gave up redirects. No static asset answers these paths on Cloudflare.
+ */
+export const historyPagePattern = "/s/*"
+
 const immutable = "public, max-age=31536000, immutable"
 const revalidate = "no-cache"
 
@@ -37,7 +43,6 @@ export function headersFile(security: Readonly<Record<string, string>>): string 
       "/mod/*",
       "/overlay/*",
       "/dashboard/*",
-      "/s/*",
     ].map((pattern) => `${pattern}\n  X-Robots-Tag: ${noindex}`),
     // `/:segment` also matches the legal pages, so they detach it. Unlike the home page this has not been
     // checked on Cloudflare; a deployed legal page that still answers noindex points here.

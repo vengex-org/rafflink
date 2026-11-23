@@ -4,7 +4,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { resolveConfig } from "@rafflink/core/config"
 import { apiPrefixes } from "@rafflink/core/http/api-paths"
-import { indexablePaths } from "@rafflink/core/http/static-headers"
+import { historyPagePattern, indexablePaths } from "@rafflink/core/http/static-headers"
 import { readWranglerConfig } from "./wrangler-config.ts"
 
 const required = {
@@ -18,12 +18,13 @@ const required = {
 
 describe("wrangler.jsonc", () => {
   // A page or file that reaches the Worker first is a billed request; only the indexable pages need their absolute URLs.
-  it("runs the Worker first only for the API, sign-in and indexable paths and serves the rest from the assets with the SPA fallback", async () => {
+  it("runs the Worker first only for the API, sign-in, indexable and history paths and serves the rest from the assets with the SPA fallback", async () => {
     const { runWorkerFirst, notFoundHandling, assetsBinding } = await readWranglerConfig()
 
     expect(runWorkerFirst).toEqual([
       ...apiPrefixes.map((prefix) => `${prefix}*`),
       ...indexablePaths,
+      historyPagePattern,
     ])
     expect(notFoundHandling).toBe("single-page-application")
     expect(assetsBinding).toBe("ASSETS")
@@ -64,13 +65,25 @@ describe("wrangler.jsonc", () => {
 
   // Wrangler appends its own INSERT to the file text, so a last statement without `;` runs into it.
   it("ends every accounts migration with a semicolon", () => {
-    const corePackage = fileURLToPath(import.meta.resolve("@rafflink/core/package.json"))
-    const dir = join(dirname(corePackage), "schema", "accounts")
-    const names = readdirSync(dir).filter((name) => name.endsWith(".sql"))
+    for (const text of accountsMigrations()) {
+      expect(text.trimEnd().endsWith(";")).toBe(true)
+    }
+  })
 
-    expect(names.length).toBeGreaterThan(0)
-    for (const name of names) {
-      expect(readFileSync(join(dir, name), "utf8").trimEnd().endsWith(";")).toBe(true)
+  // D1 splits a migration at every `;`, also one inside a comment, and runs the rest of the comment as SQL.
+  it("has no semicolon in a comment of an accounts migration", () => {
+    for (const text of accountsMigrations()) {
+      const comments = text.split("\n").filter((line) => line.trimStart().startsWith("--"))
+      expect(comments.filter((line) => line.includes(";"))).toEqual([])
     }
   })
 })
+
+/** The text of each accounts migration of core, the files `wrangler d1 migrations` applies. */
+function accountsMigrations(): string[] {
+  const corePackage = fileURLToPath(import.meta.resolve("@rafflink/core/package.json"))
+  const dir = join(dirname(corePackage), "schema", "accounts")
+  const names = readdirSync(dir).filter((name) => name.endsWith(".sql"))
+  expect(names.length).toBeGreaterThan(0)
+  return names.map((name) => readFileSync(join(dir, name), "utf8"))
+}

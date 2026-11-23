@@ -603,11 +603,15 @@ export const en = {
     "Saved, but a running giveaway did not get the change yet. Try the same action again.",
   "dash.history.title": "Public history",
   "dash.history.text":
-    "A public page can list your finished giveaways with the prize, the date, how many people entered and how many won, and a link to check each draw. It names no entrant and no winner, and search engines do not index it. The button on a finished giveaway hides it from the page.",
+    "A public page can list your finished giveaways with the prize, the date, how many people entered and how many won, and a link to check each draw. It names no entrant and no winner, and search engines index it only if you allow it. The button on a finished giveaway hides it from the page.",
   "dash.history.link": "Open your public history page",
   "dash.history.turnOn": "Turn on public history",
   "dash.history.turnOff": "Turn off public history",
   "dash.history.saved": "Saved. The public page can take a few minutes to show the change.",
+  "dash.history.notIndexed": "Search engines do not index the page.",
+  "dash.history.indexed": "Search engines may index the page and show it in their results.",
+  "dash.history.allowIndexing": "Let search engines index it",
+  "dash.history.stopIndexing": "Stop search engine indexing",
   "dash.history.hide": "Hide from history",
   "dash.history.show": "Show in history",
   "dash.history.hide.label": "Hide {name} from your public history",
@@ -992,7 +996,7 @@ export const en = {
   "privacy.recipients.i4":
     "The public drand randomness beacon is read for the draw. No personal data is sent to it.",
   "privacy.recipients.i5":
-    "When a streamer turns on their public history, anyone can see the streamer's name and their finished giveaways there: title, prize, close date and the numbers of entrants and winners. The page names no entrant and no winner, and the streamer can hide single giveaways or turn the page off.",
+    "When a streamer turns on their public history, anyone can see the streamer's name and their finished giveaways there: title, prize, close date and the numbers of entrants and winners. The page names no entrant and no winner, and the streamer can hide single giveaways or turn the page off. Search engines index the page only when the streamer allows it.",
   "privacy.recipients.i6":
     "Winner form answers go to the streamer who runs the giveaway and nobody else: moderators, the overlay and the public pages never show them.",
   "privacy.cookies.h": "Cookies and local storage",

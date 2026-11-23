@@ -41,12 +41,14 @@ import {
   publicHistoryGiveawaysSql,
   publicHistoryStreamerSql,
   recentDrawnGiveawaysSql,
+  renamedStreamerSql,
   recordRetentionFailureSql,
   replaceStreamerTokenSql,
   revokeModeratorLinkSql,
   revokeStreamerSql,
   setGiveawayOverlaySql,
   setHiddenFromHistorySql,
+  setHistoryIndexedSql,
   setPublicHistorySql,
   setRetentionArmedSql,
   setStatusSql,
@@ -77,6 +79,10 @@ export interface StreamerRecord {
   readonly approvedAt: Instant | null
   /** The streamer turned on their public history page. */
   readonly publicHistory: boolean
+  /** The streamer lets search engines index their public history page. */
+  readonly historyIndexed: boolean
+  /** The login a sign-in replaced with the current one; null until a sign-in sees the account renamed. */
+  readonly previousLogin: string | null
 }
 
 /** What a streamer sign-in stores: the streamer and their sealed refresh token, written together. */
@@ -180,8 +186,20 @@ export interface StreamerBlock {
 
 /** A streamer's public history page as the account store holds it: the streamer and their newest drawn giveaways they did not hide. */
 export interface PublicHistory {
-  readonly streamer: Pick<StreamerRecord, "login" | "displayName">
+  readonly streamer: Pick<StreamerRecord, "login" | "displayName" | "historyIndexed">
   readonly giveaways: readonly HistoryGiveaway[]
+}
+
+/** What a login finds: its streamer's public history, the login a renamed streamer with the page has now, or nothing. */
+export type PublicHistoryLookup =
+  | { readonly kind: "found"; readonly history: PublicHistory }
+  | { readonly kind: "moved"; readonly login: string }
+  | { readonly kind: "missing" }
+
+export interface PublicHistoryOptions {
+  readonly limit: number
+  /** Only a streamer an admin approved has the page, as while OPEN_SIGNUP is off. */
+  readonly approvedOnly: boolean
 }
 
 /** A drawn giveaway on a public history page, with the counts its room mirrored. */
@@ -310,24 +328,49 @@ export class AccountStore {
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
   }
 
-  /** The public history of the streamer with this login, or null when nobody with it has turned it on. Lists up to `limit` giveaways, newest first. */
+  /**
+   * The public history of the streamer with this login, listing up to `limit` giveaways, newest first. A login
+   * no account holds any more is `moved` to the login its renamed streamer has now, when that login finds their page.
+   * A login an account still holds never moves, even with that account's page off.
+   */
   async findPublicHistory(
     platform: string,
     login: string,
-    options: {
-      readonly limit: number
-      /** Only a streamer an admin approved has the page, as while OPEN_SIGNUP is off. */
-      readonly approvedOnly: boolean
-    },
-  ): Promise<PublicHistory | null> {
+    options: PublicHistoryOptions,
+  ): Promise<PublicHistoryLookup> {
     const [row] = await this.sql.all(publicHistoryStreamerSql, [platform, login])
-    if (row === undefined) return null
-    const streamer = new RowReader("streamers", row)
-    if (streamer.int("public_history") !== 1) return null
-    if (options.approvedOnly && streamer.nullableInt("approved_at") === null) return null
+    if (row !== undefined) {
+      const history = await this.readPublicHistory(new RowReader("streamers", row), options)
+      return history === null ? { kind: "missing" } : { kind: "found", history }
+    }
+    const [renamedRow] = await this.sql.all(renamedStreamerSql, [platform, login])
+    if (renamedRow === undefined) return { kind: "missing" }
+    const renamed = new RowReader("streamers", renamedRow)
+    // The new login may have passed on again, to an account that signed in with it later.
+    const [holderRow] = await this.sql.all(publicHistoryStreamerSql, [
+      platform,
+      renamed.text("login"),
+    ])
+    if (holderRow === undefined) return { kind: "missing" }
+    const holder = new RowReader("streamers", holderRow)
+    if (holder.text("id") !== renamed.text("id") || !isPublic(holder, options)) {
+      return { kind: "missing" }
+    }
+    return { kind: "moved", login: holder.text("login") }
+  }
+
+  private async readPublicHistory(
+    streamer: RowReader,
+    options: PublicHistoryOptions,
+  ): Promise<PublicHistory | null> {
+    if (!isPublic(streamer, options)) return null
     const rows = await this.sql.all(publicHistoryGiveawaysSql, [streamer.text("id"), options.limit])
     return {
-      streamer: { login: streamer.text("login"), displayName: streamer.text("display_name") },
+      streamer: {
+        login: streamer.text("login"),
+        displayName: streamer.text("display_name"),
+        historyIndexed: streamer.int("history_indexed") === 1,
+      },
       giveaways: rows.map((giveaway) => {
         const reader = new RowReader("giveaways", giveaway)
         return {
@@ -345,6 +388,11 @@ export class AccountStore {
   /** Idempotent. */
   async setPublicHistory(streamerId: string, on: boolean): Promise<void> {
     await this.sql.run(setPublicHistorySql, [on ? 1 : 0, streamerId])
+  }
+
+  /** Idempotent. */
+  async setHistoryIndexed(streamerId: string, on: boolean): Promise<void> {
+    await this.sql.run(setHistoryIndexedSql, [on ? 1 : 0, streamerId])
   }
 
   /** Idempotent. False when the giveaway is not this streamer's. */
@@ -664,7 +712,15 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     createdAt: reader.int("created_at"),
     approvedAt: reader.nullableInt("approved_at"),
     publicHistory: reader.int("public_history") === 1,
+    historyIndexed: reader.int("history_indexed") === 1,
+    previousLogin: reader.nullableText("previous_login"),
   }
+}
+
+// A row of `publicHistoryStreamerSql`.
+function isPublic(streamer: RowReader, options: PublicHistoryOptions): boolean {
+  if (streamer.int("public_history") !== 1) return false
+  return !options.approvedOnly || streamer.nullableInt("approved_at") !== null
 }
 
 function parseModeratorLink(row: SqlRow): ModeratorLink {

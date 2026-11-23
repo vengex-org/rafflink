@@ -607,11 +607,15 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Uloženo, ale běžící giveaway změnu ještě nedostal. Zkus stejnou akci znovu.",
   "dash.history.title": "Veřejná historie",
   "dash.history.text":
-    "Veřejná stránka může ukázat tvoje ukončené giveawaye s cenou, datem, počtem přihlášených a počtem vítězů a s odkazem na ověření každého losování. Neuvádí jména přihlášených ani vítězů a vyhledávače ji neindexují. Tlačítkem u ukončeného giveawaye ho ze stránky skryješ.",
+    "Veřejná stránka může ukázat tvoje ukončené giveawaye s cenou, datem, počtem přihlášených a počtem vítězů a s odkazem na ověření každého losování. Neuvádí jména přihlášených ani vítězů a vyhledávače ji indexují, jen pokud to povolíš. Tlačítkem u ukončeného giveawaye ho ze stránky skryješ.",
   "dash.history.link": "Otevřít tvoji veřejnou historii",
   "dash.history.turnOn": "Zapnout veřejnou historii",
   "dash.history.turnOff": "Vypnout veřejnou historii",
   "dash.history.saved": "Uloženo. Veřejná stránka může změnu ukázat až za pár minut.",
+  "dash.history.notIndexed": "Vyhledávače stránku neindexují.",
+  "dash.history.indexed": "Vyhledávače mohou stránku indexovat a ukázat ji ve výsledcích.",
+  "dash.history.allowIndexing": "Povolit indexování vyhledávači",
+  "dash.history.stopIndexing": "Zakázat indexování vyhledávači",
   "dash.history.hide": "Skrýt z historie",
   "dash.history.show": "Ukázat v historii",
   "dash.history.hide.label": "Skrýt {name} z tvé veřejné historie",
@@ -1000,7 +1004,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.recipients.i4":
     "Při losování se čte veřejný maják náhodnosti drand. Neposílají se mu žádné osobní údaje.",
   "privacy.recipients.i5":
-    "Když streamer zapne veřejnou historii, kdokoli na ní vidí jméno streamera a jeho ukončené giveawaye: název, cenu, datum uzavření a počet přihlášených a vítězů. Stránka neuvádí jména přihlášených ani vítězů a streamer může jednotlivé giveawaye skrýt nebo stránku vypnout.",
+    "Když streamer zapne veřejnou historii, kdokoli na ní vidí jméno streamera a jeho ukončené giveawaye: název, cenu, datum uzavření a počet přihlášených a vítězů. Stránka neuvádí jména přihlášených ani vítězů a streamer může jednotlivé giveawaye skrýt nebo stránku vypnout. Vyhledávače stránku indexují, jen pokud to streamer povolí.",
   "privacy.recipients.i6":
     "Odpovědi z formuláře pro vítěze dostane jen streamer, který giveaway vede: moderátoři, overlay ani veřejné stránky je nikdy nezobrazí.",
   "privacy.cookies.h": "Cookies a lokální úložiště",

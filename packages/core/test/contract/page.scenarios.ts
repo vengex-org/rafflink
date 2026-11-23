@@ -89,6 +89,22 @@ export function pageScenarios(context: ContractContext): void {
     },
   )
 
+  scenario(
+    context,
+    "a history page is answered by the app, which says 404 for a streamer without one",
+    async (world) => {
+      const target = await world.start()
+
+      const response = await page(target, "/s/twitch/nobody")
+
+      expect(response.status).toBe(404)
+      expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+      expect(await response.text()).toContain(
+        `<script type="application/json" id="history-data">null</script>`,
+      )
+    },
+  )
+
   scenario(context, "an API path answers JSON with the security headers", async (world) => {
     const target = await world.start()
 

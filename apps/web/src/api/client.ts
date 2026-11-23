@@ -16,7 +16,7 @@ import {
   type WinnerFieldKind,
 } from "@rafflink/core/domain/winner-form"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
-import { historyPath } from "@rafflink/core/lib/page-paths"
+import { historyDataElementId, historyPath } from "@rafflink/core/lib/page-paths"
 import type {
   AdminAccessCountsJson,
   AdminPlanJson,
@@ -242,6 +242,7 @@ export async function getSession(): Promise<SessionJson> {
         return known
       }),
       publicHistory: bool(streamer, "publicHistory"),
+      historyIndexed: bool(streamer, "historyIndexed"),
     },
     donateUrl,
     operator,
@@ -871,7 +872,8 @@ export async function getPublicHistory(
   platform: string,
   login: string,
 ): Promise<PublicHistoryJson | null> {
-  const { status, body } = await send(`/api${historyPath(platform, login)}`)
+  const { status, body } =
+    takeEmbeddedHistory() ?? (await send(`/api${historyPath(platform, login)}`))
   if (status === 404) return null
   if (status !== 200) throw new ApiError(status)
   const source = record(body, "history")
@@ -881,6 +883,7 @@ export async function getPublicHistory(
       platform: platformOf(streamer, "platform"),
       login: text(streamer, "login"),
       displayName: text(streamer, "displayName"),
+      indexed: bool(streamer, "indexed"),
     },
     giveaways: list(source, "giveaways", (giveaway) => ({
       code: text(giveaway, "code"),
@@ -896,6 +899,11 @@ export async function getPublicHistory(
 /** Turns the signed-in streamer's public history page on or off. */
 export function setPublicHistory(on: boolean): Promise<"saved" | Rejected> {
   return act("/api/dash/history", { on }, savedKinds)
+}
+
+/** Lets search engines index the signed-in streamer's public history page, or stops them. */
+export function setHistoryIndexed(on: boolean): Promise<"saved" | Rejected> {
+  return act("/api/dash/history/indexing", { on }, savedKinds)
 }
 
 /** Keeps one of the streamer's giveaways off their public history page, or lists it again. */
@@ -1089,6 +1097,16 @@ const entryKinds = [
 interface Answer {
   readonly status: number
   readonly body: unknown
+}
+
+// The server put the answer of the history page it served into the page; it is taken once, by the page's first
+// load, so a later visit in the same tab asks the API.
+function takeEmbeddedHistory(): Answer | null {
+  const element = document.getElementById(historyDataElementId)
+  if (element === null) return null
+  element.remove()
+  const body: unknown = JSON.parse(element.textContent ?? "")
+  return { status: body === null ? 404 : 200, body }
 }
 
 async function send(path: string, init?: RequestInit): Promise<Answer> {

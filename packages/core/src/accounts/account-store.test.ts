@@ -16,6 +16,7 @@ import { BunSqliteAsyncSql } from "../sqlite-bun.ts"
 import {
   AccountStore,
   type NewGiveaway,
+  type PublicHistoryLookup,
   type StreamerRecord,
   type StreamerSignIn,
 } from "./account-store.ts"
@@ -108,6 +109,8 @@ describe("AccountStore streamers", () => {
       createdAt: 1000,
       approvedAt: null,
       publicHistory: false,
+      historyIndexed: false,
+      previousLogin: null,
     })
     expect(
       sqlRows(db, "SELECT streamer_id, refresh_token_enc, scopes FROM streamer_tokens"),
@@ -127,6 +130,8 @@ describe("AccountStore streamers", () => {
       createdAt: 1000,
       approvedAt: null,
       publicHistory: false,
+      historyIndexed: false,
+      previousLogin: null,
     })
     expect(await store.findStreamer("missing")).toBeNull()
   })
@@ -149,6 +154,32 @@ describe("AccountStore streamers", () => {
     expect(sqlRows(db, "SELECT refresh_token_enc, validated_at FROM streamer_tokens")).toEqual([
       { refresh_token_enc: "sealed-2", validated_at: 2000 },
     ])
+  })
+
+  it("keeps the login a sign-in replaced, across later sign-ins with the same login, until the next rename", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn())
+
+    const renamed = await store.signInStreamer(signIn({ login: "renamed", now: 2000 }))
+    const same = await store.signInStreamer(signIn({ login: "renamed", now: 3000 }))
+    const again = await store.signInStreamer(signIn({ login: "third", now: 4000 }))
+
+    expect([renamed.previousLogin, same.previousLogin, again.previousLogin]).toEqual([
+      "streamer",
+      "streamer",
+      "renamed",
+    ])
+  })
+
+  it("stores whether search engines may index the public history page", async () => {
+    const { store } = await withStreamers()
+
+    await store.setHistoryIndexed("s1", true)
+    const on = await store.findStreamer("s1")
+    await store.setHistoryIndexed("s1", false)
+
+    expect(on?.historyIndexed).toBe(true)
+    expect((await store.findStreamer("s1"))?.historyIndexed).toBe(false)
   })
 
   it("replaces the profile picture on a second sign-in, also with none", async () => {
@@ -193,10 +224,13 @@ describe("AccountStore public history", () => {
       signIn({ id: "b", platformUserId: "300", login: "taken", displayName: "B", now: 3000 }),
     )
 
-    expect(beforeB?.streamer.login).toBe("taken")
-    expect(await store.findPublicHistory("twitch", "taken", open)).toEqual({
-      streamer: { login: "taken", displayName: "B" },
-      giveaways: [],
+    expect(beforeB).toMatchObject({ kind: "found", history: { streamer: { login: "taken" } } })
+    expect(await store.findPublicHistory("twitch", "taken", open)).toEqual<PublicHistoryLookup>({
+      kind: "found",
+      history: {
+        streamer: { login: "taken", displayName: "B", historyIndexed: false },
+        giveaways: [],
+      },
     })
   })
 
@@ -210,7 +244,71 @@ describe("AccountStore public history", () => {
       signIn({ id: "b", platformUserId: "300", login: "taken", now: 2000 }),
     )
 
-    expect(await store.findPublicHistory("twitch", "taken", open)).toBeNull()
+    expect(await store.findPublicHistory("twitch", "taken", open)).toEqual({ kind: "missing" })
+  })
+
+  it("moves a login a streamer gave up to the login they have now, while their page is on", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn({ login: "old" }))
+    await store.setPublicHistory("s1", true)
+    await store.signInStreamer(signIn({ login: "new", now: 2000 }))
+
+    const on = await store.findPublicHistory("twitch", "old", open)
+    await store.setPublicHistory("s1", false)
+
+    expect(on).toEqual({ kind: "moved", login: "new" })
+    expect(await store.findPublicHistory("twitch", "old", open)).toEqual({ kind: "missing" })
+  })
+
+  it("never moves a login another account holds now, even with that account's page off", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn({ login: "old" }))
+    await store.setPublicHistory("s1", true)
+    await store.signInStreamer(signIn({ login: "new", now: 2000 }))
+    await store.signInStreamer(signIn({ id: "s2", platformUserId: "201", login: "old", now: 3000 }))
+
+    expect(await store.findPublicHistory("twitch", "old", open)).toEqual({ kind: "missing" })
+  })
+
+  it("does not move to a new login that a later sign-in of another account took over", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn({ login: "old" }))
+    await store.setPublicHistory("s1", true)
+    await store.signInStreamer(signIn({ login: "new", now: 2000 }))
+    await store.signInStreamer(signIn({ id: "s2", platformUserId: "201", login: "new", now: 3000 }))
+    await store.setPublicHistory("s2", true)
+
+    expect(await store.findPublicHistory("twitch", "old", open)).toEqual({ kind: "missing" })
+  })
+
+  it("moves to the streamer who gave the login up last when two accounts held it in turn", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn({ login: "shared" }))
+    await store.signInStreamer(signIn({ login: "first", now: 2000 }))
+    await store.signInStreamer(
+      signIn({ id: "s2", platformUserId: "201", login: "shared", now: 3000 }),
+    )
+    await store.signInStreamer(
+      signIn({ id: "s2", platformUserId: "201", login: "second", now: 4000 }),
+    )
+    await store.setPublicHistory("s1", true)
+    await store.setPublicHistory("s2", true)
+
+    expect(await store.findPublicHistory("twitch", "shared", open)).toEqual({
+      kind: "moved",
+      login: "second",
+    })
+  })
+
+  it("does not move to an unapproved streamer when only approved ones have a page", async () => {
+    const { store } = setup()
+    await store.signInStreamer(signIn({ login: "old" }))
+    await store.setPublicHistory("s1", true)
+    await store.signInStreamer(signIn({ login: "new", now: 2000 }))
+
+    expect(
+      await store.findPublicHistory("twitch", "old", { limit: 20, approvedOnly: true }),
+    ).toEqual({ kind: "missing" })
   })
 
   it("lists only what a mirror wrote counts for, and keeps the counts of the latest mirror", async () => {
@@ -223,9 +321,9 @@ describe("AccountStore public history", () => {
     // A drawn row whose counts no mirror has written yet.
     db.run("UPDATE giveaways SET status = 'drawn', closed_at = 9000 WHERE id = 'g2'")
 
-    const history = await store.findPublicHistory("twitch", "streamer", open)
+    const lookup = await store.findPublicHistory("twitch", "streamer", open)
 
-    expect(history?.giveaways).toEqual([
+    expect(lookup.kind === "found" ? lookup.history.giveaways : null).toEqual([
       {
         code: "ABCDE",
         title: "Title",
@@ -282,10 +380,10 @@ describe("AccountStore public history", () => {
     })
     await store.approveStreamer("s1", "1", 9000)
 
-    expect(waiting).toBeNull()
+    expect(waiting).toEqual({ kind: "missing" })
     expect(
       await store.findPublicHistory("twitch", "streamer", { limit: 20, approvedOnly: true }),
-    ).not.toBeNull()
+    ).toMatchObject({ kind: "found" })
   })
 })
 
