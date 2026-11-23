@@ -25,10 +25,27 @@ describe("repository", () => {
     expect(license).toContain("Version 3, 19 November 2007")
   })
 
-  it("documents Twitch app registration and self-hosting in the README", async () => {
+  it("documents Twitch app registration and self-hosting, linked from the README", async () => {
     const readme = await Bun.file(new URL("README.md", root)).text()
-    expect(readme).toMatch(/^## Twitch app registration$/m)
-    expect(readme).toMatch(/^## Self-hosting$/m)
+    const guide = await Bun.file(new URL("docs/self-hosting.md", root)).text()
+    expect(readme).toContain("](docs/self-hosting.md)")
+    expect(guide).toMatch(/^## Twitch app registration$/m)
+    expect(guide).toMatch(/^### Docker \(any server\)$/m)
+    expect(guide).toMatch(/^### Cloudflare$/m)
+
+    // The app links to sections of the guide; GitHub builds each anchor from the heading text.
+    const slugs = [...guide.matchAll(/^#+ (.+)$/gm)].map(([, heading = ""]) =>
+      heading
+        .toLowerCase()
+        .replace(/[^\w\- ]/g, "")
+        .replaceAll(" ", "-"),
+    )
+    const links = await Bun.file(new URL("apps/web/src/lib/links.ts", root)).text()
+    const anchors = [...links.matchAll(/setupGuideBaseUrl\}#([\w-]+)/g)].map(
+      ([, anchor = ""]) => anchor,
+    )
+    expect(anchors.length).toBeGreaterThan(0)
+    for (const anchor of anchors) expect(slugs).toContain(anchor)
   })
 
   // A part without its test file would drop its scenarios from that target without a failing test.

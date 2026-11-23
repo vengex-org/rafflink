@@ -1076,8 +1076,6 @@ export const it: Translation = {
     "Questa è una traduzione. In caso di differenze rispetto alla versione inglese, prevale la versione inglese.",
 
   "privacy.title": "Informativa sulla privacy",
-  "privacy.intro":
-    "Rafflink estrae i vincitori dei giveaway su Twitch, Kick e YouTube. Questa informativa spiega quali dati personali tratta, perché, per quanto tempo e quali diritti hai. È breve di proposito.",
   "privacy.controller.h": "Chi è il responsabile",
   "privacy.controller.p1":
     "Il titolare del trattamento dei tuoi dati personali su questa istanza è {operator}. Contatto: {contact}.",

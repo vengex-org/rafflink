@@ -3,7 +3,7 @@ import type { OAuthFlow, Platform } from "./provider.ts"
 
 /** Where a platform sends the browser back after its sign-in page; `/auth/twitch/streamer` for Twitch's streamer flow. */
 export function callbackPath(platform: Platform, flow: OAuthFlow): string {
-  // The Google client's redirect URI as the README registers it; YouTube signs in streamers only.
+  // The Google client's redirect URI as docs/self-hosting.md registers it; YouTube signs in streamers only.
   if (platform === "youtube") return "/auth/youtube/callback"
   return `/auth/${platform}/${flow}`
 }

@@ -1042,8 +1042,6 @@ export const sk: Translation = {
     "Toto je preklad. Ak sa líši od anglickej verzie, platí anglická verzia.",
 
   "privacy.title": "Zásady ochrany osobných údajov",
-  "privacy.intro":
-    "Rafflink žrebuje výhercov giveawayov na Twitchi, Kicku a YouTube. Tieto zásady vysvetľujú, aké osobné údaje spracúva, prečo, ako dlho a aké práva máš. Sú zámerne stručné.",
   "privacy.controller.h": "Kto je zodpovedný",
   "privacy.controller.p1":
     "Prevádzkovateľom tvojich osobných údajov na tejto inštancii je {operator}. Kontakt: {contact}.",

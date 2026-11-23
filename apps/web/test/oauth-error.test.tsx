@@ -53,7 +53,7 @@ describe("sign-in error card", () => {
     ).toBeTruthy()
     expect(
       view.getByRole("link", { name: "See the Twitch app setup steps" }).getAttribute("href"),
-    ).toContain("#twitch-app-registration")
+    ).toContain("docs/self-hosting.md#twitch-app-registration")
     const guide = view.getByRole("link", { name: "See the Twitch app setup steps" })
     expect(guide.getAttribute("target")).toBe("_blank")
     expect(guide.getAttribute("rel")).toBe("noopener")
@@ -105,7 +105,7 @@ describe("sign-in error card", () => {
     ).toBeTruthy()
     expect(
       viewer.getByRole("link", { name: "See the Kick app setup steps" }).getAttribute("href"),
-    ).toContain("#kick-app-registration-optional")
+    ).toContain("docs/self-hosting.md#kick-app-registration-optional")
     expect(viewer.getByRole("link", { name: "Try again" }).getAttribute("href")).toBe(
       "/auth/kick/viewer/start?giveaway=ABCDE",
     )
