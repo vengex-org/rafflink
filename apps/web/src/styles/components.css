@@ -166,7 +166,7 @@ main.container {
     background-color: var(--surface-2);
   }
 
-  input:not([type="radio"]):hover {
+  input:not([type="radio"], [type="checkbox"]):hover {
     border-color: var(--ink);
   }
 }
@@ -742,16 +742,101 @@ label,
   margin-top: 0.25rem;
 }
 
+/* A checkbox and its label: the whole label toggles the box. */
 .check {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   font-weight: 400;
+  cursor: pointer;
 }
 
-.field .check input {
-  width: auto;
-  min-height: 0;
+/*
+ * The app's checkbox: the native input keeps its role, keyboard and form value; only the drawing is ours. Unchecked
+ * it is an outlined square like a text field, checked it fills with the lime accent and shows an ink check. The
+ * check is a mask, so it takes its color from the theme; the SVG in it only gives the shape.
+ */
+input[type="checkbox"] {
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  cursor: pointer;
+  appearance: none;
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+input[type="checkbox"]::before {
+  width: 0.875rem;
+  height: 0.875rem;
+  background: var(--accent-ink);
+  content: "";
+  transform: scale(0);
+  transition: transform var(--dur) var(--ease);
+  -webkit-mask: var(--check-mark) center / contain no-repeat;
+  mask: var(--check-mark) center / contain no-repeat;
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--accent-line);
+  background: var(--accent);
+}
+
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (hover: hover) {
+  input[type="checkbox"]:hover:not(:disabled, :checked) {
+    border-color: var(--ink);
+  }
+}
+
+/* High contrast themes would repaint the masked check to the box color, so checked must use system colors. */
+@media (forced-colors: active) {
+  input[type="checkbox"] {
+    border-color: CanvasText;
+    background: Canvas;
+    forced-color-adjust: none;
+  }
+
+  input[type="checkbox"]::before {
+    background: HighlightText;
+  }
+
+  input[type="checkbox"]:checked {
+    border-color: Highlight;
+    background: Highlight;
+  }
+
+  input[type="checkbox"]:hover:not(:disabled, :checked) {
+    border-color: Highlight;
+  }
+
+  input[type="checkbox"]:focus-visible {
+    outline-color: CanvasText;
+  }
+
+  input[type="checkbox"]:disabled {
+    border-color: GrayText;
+  }
 }
 
 textarea {
@@ -776,7 +861,7 @@ textarea:focus-visible {
   overflow-wrap: anywhere;
 }
 
-input:not([type="radio"]) {
+input:not([type="radio"], [type="checkbox"]) {
   width: 100%;
   min-height: 3rem;
   padding: 0 var(--space-2);
@@ -792,7 +877,7 @@ input::placeholder {
   color: var(--muted);
 }
 
-input:not([type="radio"]):focus-visible {
+input:not([type="radio"], [type="checkbox"]):focus-visible {
   border-color: var(--focus);
   outline: 2px solid var(--focus);
   outline-offset: -2px;
