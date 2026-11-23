@@ -1728,7 +1728,7 @@ describe("live page: its own frame", () => {
     const view = renderApp("/live/gid-1")
     await view.findByText("LIVE")
     const bar = within(view.getByRole("banner"))
-    fireEvent.click(bar.getByRole("button", { name: "Settings" }))
+    fireEvent.click(bar.getByRole("button", { name: "Display settings" }))
     fireEvent.click(bar.getByRole("radio", { name: "Dark" }))
     fireEvent.click(bar.getByRole("radio", { name: "Čeština" }))
 
@@ -1744,7 +1744,7 @@ describe("live page: its own frame", () => {
 
     const bar = within(view.getByRole("banner"))
     expect(bar.queryByRole("button", { name: "Copy link" })).toBeNull()
-    expect(bar.queryByRole("button", { name: "Settings" })).toBeNull()
+    expect(bar.queryByRole("button", { name: "Display settings" })).toBeNull()
     expect(bar.getByText("ABCDE")).toBeTruthy()
   })
 })

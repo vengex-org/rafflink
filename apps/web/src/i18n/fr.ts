@@ -15,7 +15,6 @@ export const fr: Translation = {
   "theme.dark": "Sombre",
   "language.legend": "Langue",
   "language.loadFailed": "Impossible de charger cette langue. Réessaie.",
-  "settings.label": "Paramètres",
 
   "common.loading": "Chargement…",
   "common.cancel": "Annuler",

@@ -15,7 +15,6 @@ export const es: Translation = {
   "theme.dark": "Oscuro",
   "language.legend": "Idioma",
   "language.loadFailed": "No se pudo cargar este idioma. Inténtalo de nuevo.",
-  "settings.label": "Ajustes",
 
   "common.loading": "Cargando…",
   "common.cancel": "Cancelar",

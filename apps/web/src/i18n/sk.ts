@@ -15,7 +15,6 @@ export const sk: Translation = {
   "theme.dark": "Tmavý",
   "language.legend": "Jazyk",
   "language.loadFailed": "Tento jazyk sa nepodarilo načítať. Skús to znova.",
-  "settings.label": "Nastavenia",
 
   "common.loading": "Načítavam…",
   "common.cancel": "Zrušiť",

@@ -20,7 +20,7 @@ export const en = {
   "theme.dark": "Dark",
   "language.legend": "Language",
   "language.loadFailed": "This language could not be loaded. Try again.",
-  "settings.label": "Settings",
+  "settings.label": "Display settings",
 
   "common.loading": "Loading…",
   "common.cancel": "Cancel",
@@ -1435,6 +1435,7 @@ type EnglishOnlyKey =
   | "wizard.winners.help"
   | "wizard.winners.label"
   | "nav.settings"
+  | "settings.label"
   | "nav.admin"
   | "dash.settings.title"
   | "dash.blocks.text"
