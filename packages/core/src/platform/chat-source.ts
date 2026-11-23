@@ -29,6 +29,12 @@ export type ChannelEntryEvent =
   | { readonly via: "sub"; readonly viewer: ChannelViewer; readonly subTier: 1 | 2 | 3 }
   | { readonly via: "points"; readonly viewer: ChannelViewer; readonly rewardId: string }
 
+/** A sub or points subscription the platform refused while the chat subscription held. */
+export interface ChannelEntryRefusal {
+  readonly via: ChannelEntryEvent["via"]
+  readonly cause: unknown
+}
+
 /** What the room's channel watch listens to; read for each new connection, so a status change reaches the next one. */
 export interface WatchTopics {
   /** Chat messages: the entry keyword while entries are open, winners' claims after the draw. */
@@ -43,8 +49,8 @@ export interface WatchTopics {
 export interface ChatListener {
   readonly onMessage: (message: ChatMessage) => void
   readonly onChannelEntry: (event: ChannelEntryEvent) => void
-  /** The sub or points subscriptions were refused while the chat subscription held, so the watch goes on for chat only. */
-  readonly onChannelEntryUnavailable: (cause: unknown) => void
+  /** Called once for each entry way whose subscriptions were refused while chat held; the watch goes on without it. */
+  readonly onChannelEntryUnavailable: (refusal: ChannelEntryRefusal) => void
   readonly topics: () => WatchTopics
   /** Called once when the source gives up; the source is closed by then. */
   readonly onUnavailable: (cause: unknown) => void

@@ -80,7 +80,8 @@ export const liveSnapshot: LiveSnapshot = {
   now: 1_700_000_000_000,
   chatClaimUnavailable: false,
   chatEntryOff: false,
-  channelEntryOff: false,
+  subEntryOff: false,
+  pointsEntryOff: false,
 }
 
 /** A claim time and how the English interface writes it with its date, in the zone the test runs in. */

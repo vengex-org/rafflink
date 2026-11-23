@@ -37,6 +37,7 @@ import type {
 import { maxBoundParameters } from "../ports.ts"
 import type {
   ChannelEntryEvent,
+  ChannelEntryRefusal,
   ChannelViewer,
   ChatAudience,
   ChatMessage,
@@ -71,6 +72,7 @@ import {
   waitingPickOfChatterSql,
   watchedChattersSql,
   chatWatchedSql,
+  entryWayUnavailableSql,
   winnerChatNameSql,
 } from "./queries.ts"
 import {
@@ -310,8 +312,10 @@ export interface RoomSummary {
   readonly chatClaimUnavailable: boolean
   /** Entries are open to a chat keyword but the chat watch gave up, so typing the keyword enters nobody. */
   readonly chatEntryOff: boolean
-  /** Entries are open to subs or a channel point reward but the watch gave up, so those enter nobody. */
-  readonly channelEntryOff: boolean
+  /** Entries are open to subs but the watch gave up or the platform refused the sub events, so a sub enters nobody. */
+  readonly subEntryOff: boolean
+  /** Entries are open to a channel point reward but the watch gave up or the platform refused its redemptions, so a redemption enters nobody. */
+  readonly pointsEntryOff: boolean
 }
 
 /** The room as a viewer's page loads it. */
@@ -1767,8 +1771,8 @@ export class GiveawayRoom {
       state.status === "open" && takesChannelEntries(rules)
         ? {
             keyword: rules.chatKeyword,
-            subEntry: rules.subEntry && !state.channelEntryUnavailable,
-            pointsRewardId: state.channelEntryUnavailable ? null : (rules.pointsReward?.id ?? null),
+            subEntry: rules.subEntry && !state.subEntryUnavailable,
+            pointsRewardId: state.pointsEntryUnavailable ? null : (rules.pointsReward?.id ?? null),
             platform: state.platform,
             broadcasterId: state.broadcasterId,
             closesAt: state.closesAt,
@@ -1794,8 +1798,8 @@ export class GiveawayRoom {
       onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
       onChannelEntry: (event) =>
         this.guarded("channel-entry", () => this.requestChannelEntry(event)),
-      onChannelEntryUnavailable: (cause) =>
-        this.guarded("channel-entry-unavailable", () => this.channelEntryUnavailable(cause)),
+      onChannelEntryUnavailable: (refusal) =>
+        this.guarded("channel-entry-unavailable", () => this.channelEntryUnavailable(refusal)),
       topics: () => this.watchTopics(),
       onUnavailable: (cause) => this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
       onSchedule: () => this.guarded("alarm", () => this.rearm()),
@@ -1987,11 +1991,11 @@ export class GiveawayRoom {
     return outcome.kind === "claimed"
   }
 
-  // The watcher has already closed; the flag keeps the room from opening it again until a reroll.
-  // A later connection asks for chat only (see `syncChat`), so the refusal is not repeated at every reconnect.
-  private channelEntryUnavailable(cause: unknown): void {
-    this.sql.exec("UPDATE room_state SET channel_entry_unavailable = 1 WHERE id = 1", [])
-    this.recordFailure("eventsub", cause)
+  // A later connection no longer asks for the refused way (see `syncChat`), so the refusal is not repeated at
+  // every reconnect; the other way and chat go on.
+  private channelEntryUnavailable(refusal: ChannelEntryRefusal): void {
+    this.sql.exec(entryWayUnavailableSql[refusal.via], [])
+    this.recordFailure("eventsub", refusal.cause)
   }
 
   private chatUnavailable(cause: unknown): void {
@@ -2306,10 +2310,14 @@ function summarize(state: RoomState): RoomSummary {
     chatClaimUnavailable: state.chatUnavailable,
     chatEntryOff:
       state.status === "open" && state.rules.chatKeyword !== null && state.chatUnavailable,
-    channelEntryOff:
+    subEntryOff:
       state.status === "open"
-      && (state.rules.subEntry || state.rules.pointsReward !== null)
-      && (state.chatUnavailable || state.channelEntryUnavailable),
+      && state.rules.subEntry
+      && (state.chatUnavailable || state.subEntryUnavailable),
+    pointsEntryOff:
+      state.status === "open"
+      && state.rules.pointsReward !== null
+      && (state.chatUnavailable || state.pointsEntryUnavailable),
   }
 }
 

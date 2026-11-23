@@ -138,9 +138,9 @@ token). Events after the end time or the close enter nobody, and the watch close
   with `moderator:read:followers` for the follow read (`?entry=sub`, `?entry=points`, combinable as
   `?entry=chat,sub,points`). Creating a sub or points giveaway on a token without them answers 422 `reconnect`,
   and the wizard does not submit while they are missing. When Twitch still refuses the sub or points
-  subscriptions (a permission removed later), a watch that also reads chat keeps chat entry and claims, stops sub
-  and points entry for the giveaway (`room_state.channel_entry_unavailable`) and the live page says so; a watch
-  without chat gives up.
+  subscriptions (a permission removed later), a watch that also reads chat keeps chat entry and claims, stops only
+  the refused way for the giveaway (`room_state.sub_entry_unavailable`, `room_state.points_entry_unavailable`)
+  and the live page says which way is off; a watch without chat gives up.
 - Rewards: the wizard lists the streamer's rewards with `GET /api/dash/rewards` (Helix
   `GET /channel_points/custom_rewards`). Channel points exist only for Affiliates and Partners, so the route first
   reads `broadcaster_type` with the app token and hides both options otherwise (subs need the same status),

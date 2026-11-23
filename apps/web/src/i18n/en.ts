@@ -642,7 +642,12 @@ export const en = {
   "live.chatEntryOff.text":
     "Chat entry is off: Rafflink cannot read your chat right now, so typing the keyword enters nobody. Viewers can still enter on the giveaway page if it takes page entries.",
   "live.channelEntryOff.text":
-    "Sub and channel point entry is off: Rafflink cannot read these Twitch events right now, often because a permission was removed. The free way to enter is not affected. Reconnect Twitch before your next giveaway.",
+    "Sub and channel point entry is off: Rafflink cannot read these events right now, often because a permission was removed. The free way to enter is not affected. Reconnect your account before your next giveaway.",
+  "live.subEntryOff.text":
+    "Sub entry is off: Rafflink cannot read new subs right now, often because a permission was removed, so a sub enters nobody. Other ways to enter are not affected. Reconnect your account before your next giveaway.",
+  "live.pointsEntryOff.text":
+    "Channel point entry is off: Rafflink cannot read redemptions of the reward right now, often because a permission was removed, so redeeming enters nobody. Other ways to enter are not affected. Reconnect your account before your next giveaway.",
+  "live.entryWayOff.title": "Entry is partly off",
   "live.chatOff.text":
     "Chat claim unavailable: Rafflink cannot read your chat right now, so winners cannot claim by typing there. When a winner tells you they are in, press Mark as claimed next to their name.",
   "live.open.title": "Entries are open",

@@ -13,6 +13,7 @@ import chatEntry from "../../schema/room/0012_chat_entry.sql" with { type: "text
 import winnerForm from "../../schema/room/0013_winner_form.sql" with { type: "text" }
 import channelEntry from "../../schema/room/0014_channel_entry.sql" with { type: "text" }
 import chatWatched from "../../schema/room/0015_chat_watched.sql" with { type: "text" }
+import entryWayRefusal from "../../schema/room/0016_entry_way_refusal.sql" with { type: "text" }
 
 /**
  * The room schema files in application order; file `NNNN_*.sql` is entry NNNN - 1. An entry never leaves
@@ -34,4 +35,5 @@ export const roomMigrations: readonly string[] = [
   winnerForm,
   channelEntry,
   chatWatched,
+  entryWayRefusal,
 ]

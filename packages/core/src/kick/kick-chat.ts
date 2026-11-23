@@ -1,6 +1,7 @@
 import type { ResolvedConfig } from "../config.ts"
 import { errorClass } from "../lib/error-class.ts"
 import type {
+  ChannelEntryRefusal,
   ChatAudience,
   ChatListener,
   ChatSource,
@@ -48,8 +49,8 @@ export class KickChat implements ChatSource {
   private audience: ChatAudience = { kind: "chatters", userIds: [] }
   // The broadcaster id of the giveaway's channel, read once from the streamer's access.
   private channel: string | null = null
-  // Set once Kick refused a sub or redemption subscription: the watch reads chat only from then on.
-  private channelEntryRefused = false
+  // The entry ways whose subscriptions Kick refused: the watch reads the others only from then on.
+  private readonly refusedWays = new Set<ChannelEntryRefusal["via"]>()
   // The interest last written to the watch table, as JSON; null until a write succeeded.
   private written: string | null = null
   private chain: Promise<void> = Promise.resolve()
@@ -109,12 +110,11 @@ export class KickChat implements ChatSource {
 
   private interest(): WatchInterest {
     const topics = this.listener.topics()
-    const entryOn = !this.channelEntryRefused
     return {
       chatterIds: this.audience.kind === "chatters" ? this.audience.userIds : [],
       keyword: this.audience.kind === "keyword" ? this.audience.keyword : null,
-      subEntry: entryOn && topics.subscriptions,
-      rewardId: entryOn ? topics.pointsRewardId : null,
+      subEntry: !this.refusedWays.has("sub") && topics.subscriptions,
+      rewardId: this.refusedWays.has("points") ? null : topics.pointsRewardId,
     }
   }
 
@@ -146,12 +146,12 @@ export class KickChat implements ChatSource {
   private async sync(channel: string, verify: boolean): Promise<void> {
     const interest = await this.writeWatch(channel)
     if (interest === null) return
-    const refusal = await this.ensureSubscriptions(channel, topicsOf(interest), verify)
-    if (refusal !== null) {
-      this.channelEntryRefused = true
+    const refusals = await this.ensureSubscriptions(channel, topicsOf(interest), verify)
+    for (const refusal of refusals) {
+      this.refusedWays.add(refusal.via)
       this.listener.onChannelEntryUnavailable(refusal)
-      await this.writeWatch(channel)
     }
+    if (refusals.length > 0) await this.writeWatch(channel)
     await this.releaseUnneeded(channel)
   }
 
@@ -168,13 +168,13 @@ export class KickChat implements ChatSource {
    * Makes the subscriptions the topics need and the channel lacks, in one call. A stored
    * subscription Kick no longer lists (it drops one whose webhook failed for a day) is forgotten and made
    * again. Throws when Kick refuses the chat subscription; a refused sub or redemption subscription is
-   * returned instead, since chat goes on without it.
+   * returned instead, once per entry way, since chat goes on without it.
    */
   private async ensureSubscriptions(
     channel: string,
     topics: readonly KickTopic[],
     verify: boolean,
-  ): Promise<KickInvalid | null> {
+  ): Promise<readonly ChannelEntryRefusal[]> {
     const stored = new Map(
       (await this.deps.watches.subscriptionsOf(channel)).map((row) => [
         row.event,
@@ -194,10 +194,10 @@ export class KickChat implements ChatSource {
     const missing = kickEvents.filter(
       (event) => topics.includes(event.topic) && !stored.has(event.name),
     )
-    if (missing.length === 0) return null
+    if (missing.length === 0) return []
     const outcomes = await this.deps.client.subscribe(channel, missing)
     let chatRefusal: KickInvalid | null = null
-    let entryRefusal: KickInvalid | null = null
+    const entryRefusals = new Map<ChannelEntryRefusal["via"], KickInvalid>()
     for (const event of missing) {
       const outcome = outcomes.get(event.name)
       if (outcome?.ok === true) {
@@ -208,10 +208,10 @@ export class KickChat implements ChatSource {
         reason: outcome === undefined ? null : outcome.error,
       })
       if (event.topic === "chat") chatRefusal = refusal
-      else entryRefusal ??= refusal
+      else if (!entryRefusals.has(event.topic)) entryRefusals.set(event.topic, refusal)
     }
     if (chatRefusal !== null) throw chatRefusal
-    return entryRefusal
+    return [...entryRefusals].map(([via, cause]) => ({ via, cause }))
   }
 
   // A second room of the channel may subscribe at the same time: the one that stores second cancels its

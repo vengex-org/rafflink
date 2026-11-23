@@ -26,7 +26,7 @@ import {
   tierLevels,
   type Tier,
 } from "./lib/parse-response.ts"
-import type { WatchTopics } from "../platform/chat-source.ts"
+import type { ChannelEntryRefusal, WatchTopics } from "../platform/chat-source.ts"
 import { eventSubTypes } from "./lib/parse-eventsub.ts"
 import type {
   AuthorizeParams,
@@ -261,24 +261,30 @@ export class TwitchClient {
    * need `user:read:chat` (the streamer is both the channel and the reading user), subscriptions
    * `channel:read:subscriptions`, redemptions `channel:read:redemptions`. With chat among the topics only a
    * refused chat subscription rejects: chat entry, the free way in, must not end with a refused sub or points
-   * subscription, whose error the answer carries instead (null when all held). Without chat any refusal rejects.
+   * subscription, whose error the answer carries instead, once per entry way (empty when all held). Without
+   * chat any refusal rejects.
    */
   async subscribeEvents(
     accessToken: string,
     broadcasterId: string,
     sessionId: string,
     topics: WatchTopics,
-  ): Promise<unknown> {
+  ): Promise<readonly ChannelEntryRefusal[]> {
     const channel = { broadcaster_user_id: broadcasterId }
-    const subscriptions: { type: string; condition: Record<string, string> }[] = []
+    const subscriptions: {
+      via: ChannelEntryRefusal["via"]
+      type: string
+      condition: Record<string, string>
+    }[] = []
     if (topics.subscriptions) {
       subscriptions.push(
-        { type: eventSubTypes.subscribe, condition: channel },
-        { type: eventSubTypes.resubscribe, condition: channel },
+        { via: "sub", type: eventSubTypes.subscribe, condition: channel },
+        { via: "sub", type: eventSubTypes.resubscribe, condition: channel },
       )
     }
     if (topics.pointsRewardId !== null) {
       subscriptions.push({
+        via: "points",
         type: eventSubTypes.redemption,
         condition: { ...channel, reward_id: topics.pointsRewardId },
       })
@@ -303,14 +309,22 @@ export class TwitchClient {
       )
     if (!topics.chat) {
       await Promise.all(subscriptions.map(({ type, condition }) => subscribe(type, condition)))
-      return null
+      return []
     }
     await subscribe(eventSubTypes.chat, { ...channel, user_id: broadcasterId })
-    const settled = await Promise.allSettled(
-      subscriptions.map(({ type, condition }) => subscribe(type, condition)),
+    const outcomes = await Promise.all(
+      subscriptions.map(({ via, type, condition }) =>
+        subscribe(type, condition).then(
+          () => null,
+          (cause: unknown): ChannelEntryRefusal => ({ via, cause }),
+        ),
+      ),
     )
-    const refused = settled.find((result) => result.status === "rejected")
-    return refused === undefined ? null : refused.reason
+    const refusals = new Map<ChannelEntryRefusal["via"], ChannelEntryRefusal>()
+    for (const outcome of outcomes) {
+      if (outcome !== null && !refusals.has(outcome.via)) refusals.set(outcome.via, outcome)
+    }
+    return [...refusals.values()]
   }
 
   /** The tier of each of `userIds` (at most 100) who subscribes. Needs the streamer's token with `channel:read:subscriptions`. */

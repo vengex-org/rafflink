@@ -2451,6 +2451,22 @@ describe("GiveawayRoom retention", () => {
     expect(alarm.at).toBeNull()
   })
 
+  it("keeps sub and points entry off in a room whose one channel entry flag was set before they split", () => {
+    const sql = new BunSqliteSyncSql(new Database(":memory:"))
+    applyMigrations(sql, roomMigrations.slice(0, 15))
+    sql.exec(
+      `INSERT INTO room_state (id, platform, giveaway_id, broadcaster_id, title, code, rules_json, claim_seconds, status, channel_entry_unavailable)
+       VALUES (1, 'twitch', 'g1', 'b', 't', 'ABCDE', ?, 300, 'open', 1)`,
+      [JSON.stringify(rules)],
+    )
+
+    applyMigrations(sql, roomMigrations)
+
+    expect(
+      sql.exec("SELECT sub_entry_unavailable, points_entry_unavailable FROM room_state", []),
+    ).toEqual([{ sub_entry_unavailable: 1, points_entry_unavailable: 1 }])
+  })
+
   it("arms the retention alarm of a room that was closed before the schema change and gets no further write", async () => {
     const sql = new BunSqliteSyncSql(new Database(":memory:"))
     applyMigrations(sql, roomMigrations.slice(0, 1))

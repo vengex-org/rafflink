@@ -20,7 +20,12 @@ import {
   eventSubChat,
   type ChatWatcherConfig,
 } from "./chat-watcher.ts"
-import type { ChannelEntryEvent, ChatMessage, WatchTopics } from "../platform/chat-source.ts"
+import type {
+  ChannelEntryEvent,
+  ChannelEntryRefusal,
+  ChatMessage,
+  WatchTopics,
+} from "../platform/chat-source.ts"
 import {
   GiveawayRoom,
   type CheckedChatter,
@@ -177,13 +182,16 @@ class Subscriptions {
   readonly sessions: string[] = []
   readonly topics: WatchTopics[] = []
   refusal: Error | null = null
-  /** What a session's sub and points subscriptions answer while chat holds; null when they hold too. */
-  channelRefusal: Error | null = null
-  subscribe = async (sessionId: string, topics: WatchTopics): Promise<Error | null> => {
+  /** What a session's sub and points subscriptions answer while chat holds; empty when they hold too. */
+  channelRefusals: readonly ChannelEntryRefusal[] = []
+  subscribe = async (
+    sessionId: string,
+    topics: WatchTopics,
+  ): Promise<readonly ChannelEntryRefusal[]> => {
     this.sessions.push(sessionId)
     this.topics.push(topics)
     if (this.refusal !== null) throw this.refusal
-    return this.channelRefusal
+    return this.channelRefusals
   }
 }
 
@@ -194,7 +202,7 @@ function watcherUnderTest(overrides: Readonly<Record<string, string>> = {}) {
   const subscriptions = new Subscriptions()
   const messages: ChatMessage[] = []
   const channelEntries: ChannelEntryEvent[] = []
-  const channelEntryRefusals: unknown[] = []
+  const channelEntryRefusals: ChannelEntryRefusal[] = []
   const unavailable: unknown[] = []
   const schedules = { count: 0 }
   const topics: { current: WatchTopics } = {
@@ -207,7 +215,7 @@ function watcherUnderTest(overrides: Readonly<Record<string, string>> = {}) {
     config,
     onMessage: (message) => messages.push(message),
     onChannelEntry: (event) => channelEntries.push(event),
-    onChannelEntryUnavailable: (cause) => channelEntryRefusals.push(cause),
+    onChannelEntryUnavailable: (refusal) => channelEntryRefusals.push(refusal),
     topics: () => topics.current,
     onUnavailable: (cause) => unavailable.push(cause),
     onSchedule: () => void (schedules.count += 1),
@@ -563,8 +571,8 @@ describe("ChatWatcher channel events", () => {
   it("keeps the watch live for chat and reports a refused sub or points subscription", async () => {
     const { watcher, connector, subscriptions, channelEntryRefusals, unavailable, messages } =
       watcherUnderTest()
-    const refusal = new Error("missing scope")
-    subscriptions.channelRefusal = refusal
+    const refusal: ChannelEntryRefusal = { via: "points", cause: new Error("missing scope") }
+    subscriptions.channelRefusals = [refusal]
     watcher.open()
     connector.sockets[0]?.receive(welcome("session-1"))
     await flush()
@@ -1935,13 +1943,13 @@ describe("sub and points entry", () => {
     })
   })
 
-  it("keeps chat entry when Twitch refuses the sub and points subscriptions, and asks only for chat from then on", async () => {
+  it("keeps chat and points entry when Twitch refuses only the sub subscriptions, and stops asking for subs", async () => {
     const context = roomUnderTest({
       rules: { chatKeyword: "!enter", subEntry: true, pointsReward: reward },
       env: { LIVE_INTERVAL_MS: "1" },
     })
     spyOn(console, "warn").mockImplementation(() => {})
-    context.subscriptions.channelRefusal = new Error("missing scope")
+    context.subscriptions.channelRefusals = [{ via: "sub", cause: new Error("missing scope") }]
     const socket = context.connector.sockets[0]
     socket?.receive(welcome("session-1"))
     await flush()
@@ -1949,11 +1957,17 @@ describe("sub and points entry", () => {
     socket?.receive(chat("42", "!enter"))
     context.clock.advance(1)
     socket?.receive(subscription("43", "1000"))
+    context.clock.advance(1)
+    socket?.receive(redemption("44", "reward-1"))
 
-    expect(context.room.summary()).toMatchObject({ channelEntryOff: true, chatEntryOff: false })
+    expect(context.room.summary()).toMatchObject({
+      subEntryOff: true,
+      pointsEntryOff: false,
+      chatEntryOff: false,
+    })
     expect(
       context.room.onAlarm().chatEntrants?.chatters.map((chatter) => chatter.platformUserId),
-    ).toEqual(["42"])
+    ).toEqual(["42", "44"])
     socket?.fail(new Error("dropped"))
     context.clock.advance(2_000)
     context.room.onAlarm()
@@ -1962,6 +1976,29 @@ describe("sub and points entry", () => {
     expect(context.subscriptions.topics.at(-1)).toEqual({
       chat: true,
       subscriptions: false,
+      pointsRewardId: "reward-1",
+    })
+  })
+
+  it("turns off only points entry when Twitch refuses the redemption subscription", async () => {
+    const context = roomUnderTest({
+      rules: { chatKeyword: "!enter", subEntry: true, pointsReward: reward },
+    })
+    spyOn(console, "warn").mockImplementation(() => {})
+    context.subscriptions.channelRefusals = [{ via: "points", cause: new Error("missing scope") }]
+    const socket = context.connector.sockets[0]
+    socket?.receive(welcome("session-1"))
+    await flush()
+
+    expect(context.room.summary()).toMatchObject({ subEntryOff: false, pointsEntryOff: true })
+    socket?.fail(new Error("dropped"))
+    context.clock.advance(2_000)
+    context.room.onAlarm()
+    context.connector.sockets[1]?.receive(welcome("session-2"))
+    await flush()
+    expect(context.subscriptions.topics.at(-1)).toEqual({
+      chat: true,
+      subscriptions: true,
       pointsRewardId: null,
     })
   })
@@ -1985,6 +2022,10 @@ describe("sub and points entry", () => {
 
     socket?.receive(revocation)
 
-    expect(room.summary()).toMatchObject({ channelEntryOff: true, chatEntryOff: false })
+    expect(room.summary()).toMatchObject({
+      subEntryOff: true,
+      pointsEntryOff: true,
+      chatEntryOff: false,
+    })
   })
 })

@@ -321,7 +321,7 @@ describe("LocalRoomDirectory", () => {
     }
     const chat = eventSubChat({
       connector,
-      subscribe: async () => {},
+      subscribe: async () => [],
       clock: systemClock,
       config: testConfig(),
     })
