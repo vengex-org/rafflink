@@ -1,6 +1,12 @@
 import { Hono, type Context } from "hono"
 import { streamerTokenAad } from "../accounts/streamer-token.ts"
-import { parseFeatures, type StreamerFeature } from "../domain/streamer-features.ts"
+import type { GiveawayRules } from "../domain/rules.ts"
+import {
+  followMatters,
+  parseFeatures,
+  tierMatters,
+  type StreamerFeature,
+} from "../domain/streamer-features.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import { giveawayPath } from "../lib/page-paths.ts"
 import { randomId } from "../lib/random-id.ts"
@@ -167,7 +173,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
         state,
         nonce,
         codeChallenge: await codeChallenge(verifier),
-        scopes: provider.scopes.viewer,
+        scopes: viewerScopes(provider, giveaway.rules),
         redirectUri: redirectUri(deps.config, viewerCallbackPath),
         forceVerify: c.req.query("force_verify") === "true",
       }),
@@ -251,6 +257,20 @@ async function knownFeatures(
   const token = await deps.accounts.findStreamerToken(session.streamerId)
   const stored = token === null ? [] : grantedFeatures(provider, token.scopes)
   return [...new Set([...hinted, ...stored])]
+}
+
+// Only the reads the giveaway's rules need: an ordinary giveaway asks for no follow or subscription.
+function viewerScopes(
+  provider: PlatformProvider,
+  rules: GiveawayRules,
+): readonly [string, ...string[]] {
+  const [first, ...rest] = provider.scopes.viewer
+  return [
+    first,
+    ...rest,
+    ...(followMatters(rules) ? provider.viewerRuleScopes.follow : []),
+    ...(tierMatters(rules) ? provider.viewerRuleScopes.tier : []),
+  ]
 }
 
 function streamerScopes(

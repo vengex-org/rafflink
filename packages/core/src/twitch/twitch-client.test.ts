@@ -6,6 +6,7 @@ import {
   websocket,
   type FakeTwitch,
   type FakeUser,
+  type Tier,
 } from "@rafflink/fake-twitch"
 import { resolveConfig, type ResolvedConfig } from "../config.ts"
 import {
@@ -15,6 +16,7 @@ import {
   TwitchClient,
   type TwitchFetch,
 } from "./twitch-client.ts"
+import type { SubscriptionGroup } from "../platform/provider.ts"
 
 const redirectUri = "http://localhost/callback"
 const viewer: FakeUser = {
@@ -32,9 +34,7 @@ const streamer: FakeUser = {
   profileImageUrl: profileImageUrlOf("streamer"),
 }
 type Scopes = readonly [string, ...string[]]
-const VIEWER_SCOPES: Scopes = ["openid"]
-const FOLLOWERS_SCOPES: Scopes = ["openid", "moderator:read:followers"]
-const SUBS_SCOPES: Scopes = ["openid", "channel:read:subscriptions"]
+const VIEWER_SCOPES: Scopes = ["openid", "user:read:subscriptions", "user:read:follows"]
 const STREAMER_SCOPES: Scopes = ["openid", "channel:read:vips", "moderation:read"]
 const CHAT_SCOPES: Scopes = ["openid", "user:read:chat"]
 const ENTRY_SCOPES: Scopes = [
@@ -378,33 +378,33 @@ describe("appAccessToken and userIdsByLogin", () => {
 
 describe("Helix", () => {
   it("retries a Helix 503 once and then fails", async () => {
-    const { accessToken } = await signIn("200", SUBS_SCOPES)
-    fake.control.failNext("channel-subscriptions", 503, 3)
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+    fake.control.failNext("subscriptions", 503, 3)
 
-    const error = await rejection(client.subscriberTiers(accessToken, "200", ["100"]))
+    const error = await rejection(client.subscriptionTier(accessToken, "200", "100"))
 
     expect(error).toBeInstanceOf(TwitchUnavailable)
-    expect(error).toMatchObject({ endpoint: "channel-subscriptions", status: 503 })
-    expect(callsTo("/helix/subscriptions")).toBe(2)
+    expect(error).toMatchObject({ endpoint: "subscriptions", status: 503 })
+    expect(callsTo("/helix/subscriptions/user")).toBe(2)
   })
 
   it("returns the answer when the single retry after a Helix 503 succeeds", async () => {
-    const { accessToken } = await signIn("200", SUBS_SCOPES)
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
     fake.control.setSubscription("100", "200", "2000")
-    fake.control.failNext("channel-subscriptions", 503, 1)
+    fake.control.failNext("subscriptions", 503, 1)
 
-    expect(await client.subscriberTiers(accessToken, "200", ["100"])).toEqual(new Map([["100", 2]]))
-    expect(callsTo("/helix/subscriptions")).toBe(2)
+    expect(await client.subscriptionTier(accessToken, "200", "100")).toBe("sub_t2")
+    expect(callsTo("/helix/subscriptions/user")).toBe(2)
   })
 
   it("does not retry a Helix 429 and classifies it as rate limited", async () => {
-    const { accessToken } = await signIn("200", FOLLOWERS_SCOPES)
-    fake.control.failNext("followers", 429, 1)
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+    fake.control.failNext("followed", 429, 1)
 
-    expect(await rejection(client.channelFollower(accessToken, "200", "100"))).toBeInstanceOf(
+    expect(await rejection(client.follows(accessToken, "200", "100"))).toBeInstanceOf(
       TwitchRateLimited,
     )
-    expect(callsTo("/helix/channels/followers")).toBe(1)
+    expect(callsTo("/helix/channels/followed")).toBe(1)
   })
 
   it("does not retry a Helix 500", async () => {
@@ -416,17 +416,50 @@ describe("Helix", () => {
   })
 
   it("classifies a Helix 401 as invalid", async () => {
-    const { accessToken } = await signIn("200", FOLLOWERS_SCOPES)
-    fake.control.revokeUserTokens("200")
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+    fake.control.revokeUserTokens("100")
 
-    const error = await rejection(client.channelFollower(accessToken, "200", "100"))
+    const error = await rejection(client.follows(accessToken, "200", "100"))
 
     expect(error).toBeInstanceOf(TwitchInvalid)
-    expect(error).toMatchObject({ endpoint: "followers", status: 401 })
+    expect(error).toMatchObject({ endpoint: "followed", status: 401 })
+  })
+
+  it("maps a 404 on the subscription to not subscribed", async () => {
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+
+    expect(await client.subscriptionTier(accessToken, "200", "100")).toBeNull()
+  })
+
+  it("maps each Twitch tier to its group", async () => {
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+    const cases: readonly [Tier, SubscriptionGroup][] = [
+      ["1000", "sub_t1"],
+      ["2000", "sub_t2"],
+      ["3000", "sub_t3"],
+    ]
+
+    for (const [tier, group] of cases) {
+      fake.control.setSubscription("100", "200", tier)
+      expect(await client.subscriptionTier(accessToken, "200", "100")).toBe(group)
+    }
+  })
+
+  it("reports not following when the followed list is empty", async () => {
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+
+    expect(await client.follows(accessToken, "200", "100")).toBe(false)
+  })
+
+  it("reports following when the broadcaster is on the followed list", async () => {
+    const { accessToken } = await signIn("100", VIEWER_SCOPES)
+    fake.control.setFollowing("100", "200", true)
+
+    expect(await client.follows(accessToken, "200", "100")).toBe(true)
   })
 
   it("reads whether a user follows the channel with the streamer's token", async () => {
-    const { accessToken } = await signIn("200", FOLLOWERS_SCOPES)
+    const { accessToken } = await signIn("200", ["openid", "moderator:read:followers"])
 
     expect(await client.channelFollower(accessToken, "200", "100")).toBe(false)
     fake.control.setFollowing("100", "200", true)

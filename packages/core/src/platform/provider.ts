@@ -142,6 +142,12 @@ export interface PlatformProvider {
   /** The scopes each sign-in asks for; the streamer's are stored with the streamer's token. */
   readonly scopes: Readonly<Record<SignInPurpose, readonly [string, ...string[]]>>
   /**
+   * The viewer scopes a giveaway's rules add to `scopes.viewer`: the follow read when a follow changes who
+   * enters or their tickets, the tier read when a tier does. Each viewer's own token reads them, so every
+   * viewer has their own rate limit.
+   */
+  readonly viewerRuleScopes: Readonly<Record<"follow" | "tier", readonly string[]>>
+  /**
    * The streamer scopes each feature needs on top of `scopes.streamer`, asked only when the streamer first
    * uses it; empty for a feature the platform serves without one.
    */
@@ -161,10 +167,18 @@ export interface PlatformProvider {
   refreshTokens(refreshToken: string): Promise<ExchangedCode>
   userProfile(accessToken: string): Promise<UserProfile>
   validate(accessToken: string): Promise<TokenValidation>
-  /** Whether `userId` follows the channel, asked with the streamer's token. */
+  /** Whether the viewer of `accessToken` follows the channel, asked with their own token. */
+  follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
+  /** Whether `userId` follows the channel, asked with the streamer's token, for an entrant who never signed in. */
   channelFollower(accessToken: string, broadcasterId: string, userId: string): Promise<boolean>
   /** The profiles of the accounts that exist among `userIds`; a missing account is absent from the answer. */
   userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]>
+  /** The tier group of the viewer's subscription, asked with their own token; `null` when not subscribed. */
+  subscriptionTier(
+    accessToken: string,
+    broadcasterId: string,
+    userId: string,
+  ): Promise<SubscriptionGroup | null>
   /** The channel's subscriber badges; every tier `null` when the platform could not answer. */
   subscriberBadges(broadcasterId: string): Promise<SubscriberBadges>
   channelRoles(accessToken: string, broadcasterId: string): Promise<ChannelRoles>

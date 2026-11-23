@@ -71,7 +71,14 @@ export function parseUserLogins(body: unknown): Parsed<readonly UserLogin[], "ma
   return { ok: true, value: users }
 }
 
-/** Whether the user the request filtered by follows the broadcaster. */
+export function parseTier(body: unknown): Parsed<Tier, "malformed"> {
+  const entry = firstEntry(body)
+  if (!entry.ok) return entry
+  const tier = entry.value.tier
+  return isTier(tier) ? { ok: true, value: tier } : malformed
+}
+
+/** Whether the viewer follows the broadcaster the request filtered by. */
 export function parseFollowed(body: unknown): Parsed<boolean, "malformed"> {
   const data = dataOf(body)
   return data.ok ? { ok: true, value: data.value.length > 0 } : data

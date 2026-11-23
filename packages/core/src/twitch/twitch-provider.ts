@@ -13,6 +13,7 @@ import {
   type SignInProof,
   type SubscriberBadges,
   type SubscriberTiers,
+  type SubscriptionGroup,
   type TokenValidation,
   type UserProfile,
 } from "../platform/provider.ts"
@@ -33,7 +34,11 @@ export class TwitchProvider implements PlatformProvider {
     viewer: ["openid"],
     moderator: ["openid"],
   } as const
-  // Every entrant's follow and tier, a page entrant's too, are read with the streamer's token, so a viewer grants only `openid`.
+  readonly viewerRuleScopes = {
+    follow: ["user:read:follows"],
+    tier: ["user:read:subscriptions"],
+  } as const
+  // Chat, sub and points entrants never sign in, so their follow and a redeemer's tier are read with the streamer's token.
   readonly featureScopes = {
     followers: ["moderator:read:followers"],
     subs: ["channel:read:subscriptions"],
@@ -94,12 +99,24 @@ export class TwitchProvider implements PlatformProvider {
     return this.client.validate(accessToken)
   }
 
+  follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
+    return this.client.follows(accessToken, broadcasterId, userId)
+  }
+
   channelFollower(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
     return this.client.channelFollower(accessToken, broadcasterId, userId)
   }
 
   async userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]> {
     return this.client.userProfilesById(await this.client.appAccessToken(), userIds)
+  }
+
+  subscriptionTier(
+    accessToken: string,
+    broadcasterId: string,
+    userId: string,
+  ): Promise<SubscriptionGroup | null> {
+    return this.client.subscriptionTier(accessToken, broadcasterId, userId)
   }
 
   subscriberBadges(broadcasterId: string): Promise<SubscriberBadges> {

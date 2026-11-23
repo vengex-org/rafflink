@@ -455,8 +455,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const queueSql = new BunSqliteSyncSql(queueDb)
   applyMigrations(queueSql, queueMigrations)
   const entryUserLimiter = new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, 60_000)
-  const keyRing = await openKeyRing([sealKey])
-  const entryDeps = { config, clock, random, platforms, accounts, keyRing, rooms, entryUserLimiter }
+  const entryDeps = { config, clock, random, platforms, accounts, rooms, entryUserLimiter }
   const reported: Reported[] = []
   const queue = new TokenQueue({
     sql: queueSql,
@@ -477,6 +476,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     planQueue,
     youtubeQuota: options.youtubeQuota ?? null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
+    keyRing: await openKeyRing([sealKey]),
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, 60_000),
     leavesIpLimiter: new MemoryRateLimiter(clock, config.leavesIpLimitPerMinute, 60_000),

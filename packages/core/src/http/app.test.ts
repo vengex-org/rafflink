@@ -511,12 +511,22 @@ describe("channel point rewards", () => {
 })
 
 describe("viewer sign-in start", () => {
-  it("asks a Twitch viewer for openid only", async () => {
-    const { code } = await createGiveaway(harness)
+  it("asks a Twitch viewer for openid, plus the follow or subscription read only when the rules weigh it", async () => {
+    const even = { ...validTickets, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1 }
+    const cases: readonly [Record<string, unknown>, readonly string[]][] = [
+      [{ tickets: even }, ["openid"]],
+      [{ tickets: even, followersOnly: true }, ["openid", "user:read:follows"]],
+      [{ tickets: { ...even, sub_t2: 3 } }, ["openid", "user:read:subscriptions"]],
+    ]
+    for (const [rules, scopes] of cases) {
+      const { code } = await createGiveaway(harness, users.streamerA.id, {
+        rules: { ...validRules, ...rules },
+      })
 
-    const start = await new Browser(harness).request(`/auth/twitch/viewer/start?giveaway=${code}`)
+      const start = await new Browser(harness).request(`/auth/twitch/viewer/start?giveaway=${code}`)
 
-    expect(scopesOf(start)).toEqual(["openid"])
+      expect(scopesOf(start)).toEqual([...scopes])
+    }
   })
 
   it("asks Twitch for the account picker only when force_verify is true", async () => {
@@ -920,19 +930,21 @@ describe("viewer entry", () => {
     expect(harness.rooms.roomFor(id).summary()).toMatchObject({ entrantCount: 1, ticketTotal: 2 })
   })
 
-  it("reads the follow of a follower-rule giveaway with the streamer's token, not the viewer's", async () => {
-    const { code, id } = await createGiveaway(harness, users.streamerA.id, {
+  it("checks the follow of a follower-rule page giveaway with the viewer's token, so the streamer needs no followers scope", async () => {
+    const browser = new Browser(harness)
+    // The valid rules weigh VIPs and moderators, so the streamer grants the roles scopes and nothing else.
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?features=roles")
+    const created = await browser.postJson("/api/dash/giveaways", {
       rules: { ...validRules, followersOnly: true },
     })
+    const { giveaway } = await created.json()
     harness.fake.control.setFollowing(users.viewer.id, users.streamerA.id, true)
-    harness.fake.control.setFollowing(users.viewer2.id, users.streamerA.id, true)
-    await viewerSignIn(users.viewer.id, code)
 
-    harness.fake.control.revokeUserTokens(users.streamerA.id)
-    const { query } = await viewerSignIn(users.viewer2.id, code)
+    const { query } = await viewerSignIn(users.viewer.id, giveaway.code)
 
-    expect(harness.rooms.roomFor(id).summary()).toMatchObject({ entrantCount: 1, ticketTotal: 2 })
-    expect(query.get("entry")).toBe("try-again")
+    expect(created.status).toBe(201)
+    expect(query.get("entry")).toBe("entered")
+    expect(harness.rooms.roomFor(giveaway.id).summary().ticketTotal).toBe(2)
   })
 
   it("weights a subscriber by the subscription tier", async () => {
@@ -1039,7 +1051,7 @@ describe("viewer entry", () => {
 
   it("answers try-again when Helix rate limits after the code was spent", async () => {
     const { code, id } = await createGiveaway(harness)
-    harness.fake.control.failNext("followers", 429, 1)
+    harness.fake.control.failNext("followed", 429, 1)
 
     const { query } = await viewerSignIn(users.viewer.id, code)
 
@@ -1251,13 +1263,7 @@ describe("token endpoint limits", () => {
   })
 
   it("calls the token endpoint again once the cooldown is over and the next pass takes the whole queue", async () => {
-    // Rules that weigh no follow or tier, so no refresh of the streamer's token is counted among the token calls.
-    const { code } = await createGiveaway(harness, users.streamerA.id, {
-      rules: {
-        ...validRules,
-        tickets: { ...validTickets, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1 },
-      },
-    })
+    const { code } = await createGiveaway(harness)
     harness.fake.control.failNext("token", 429, 1)
     await viewerSignIn(users.viewer.id, code)
     const afterFirst = tokenCalls()

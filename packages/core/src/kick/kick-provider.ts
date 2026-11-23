@@ -10,6 +10,7 @@ import type {
   PlatformProvider,
   SubscriberBadges,
   SubscriberTiers,
+  SubscriptionGroup,
   TokenValidation,
   UserProfile,
   WebhookDelivery,
@@ -76,6 +77,7 @@ export class KickProvider implements PlatformProvider {
     moderator: ["user:read"],
   } as const
   // Chat and sub events come through the app's own subscriptions; only the reward list needs the streamer's token.
+  readonly viewerRuleScopes = { follow: [], tier: [] } as const
   readonly featureScopes = {
     followers: [],
     subs: [],
@@ -131,12 +133,20 @@ export class KickProvider implements PlatformProvider {
     }
   }
 
+  async follows(): Promise<boolean> {
+    return false
+  }
+
   async channelFollower(): Promise<boolean> {
     return false
   }
 
   async userProfiles(userIds: readonly string[]): Promise<readonly UserProfile[]> {
     return (await this.client.users(userIds)).map(profileOf)
+  }
+
+  async subscriptionTier(): Promise<SubscriptionGroup | null> {
+    return null
   }
 
   async subscriberBadges(): Promise<SubscriberBadges> {

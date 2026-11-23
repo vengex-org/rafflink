@@ -125,7 +125,6 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     random,
     platforms,
     accounts,
-    keyRing,
     rooms,
     entryUserLimiter: new MemoryRateLimiter(clock, config.entryUserLimitPerMinute, rateWindowMs),
   }
@@ -160,6 +159,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     planQueue: null,
     youtubeQuota: youtube.youtube?.quota ?? null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
+    keyRing,
     admins: new AdminDirectory(config, twitch),
     entryIpLimiter: new MemoryRateLimiter(clock, config.entryIpLimitPerMinute, rateWindowMs),
     leavesIpLimiter: new MemoryRateLimiter(clock, config.leavesIpLimitPerMinute, rateWindowMs),

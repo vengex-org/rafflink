@@ -94,12 +94,12 @@ export function entryScenarios(context: ContractContext): void {
   scenario(context, "a Helix 503 is retried once and the viewer enters", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)
-    world.twitch.fake.control.failNext("channel-subscriptions", 503, 1)
+    world.twitch.fake.control.failNext("subscriptions", 503, 1)
 
     const result = await world.enter(target, giveaway.code, users.viewer.id)
 
     expect(result.entry).toBe("entered")
-    expect(world.twitchCalls("/helix/subscriptions")).toBe(2)
+    expect(world.twitchCalls("/helix/subscriptions/user")).toBe(2)
   })
 
   scenario(
@@ -108,12 +108,12 @@ export function entryScenarios(context: ContractContext): void {
     async (world) => {
       const target = await world.start()
       const giveaway = await world.createGiveaway(target)
-      world.twitch.fake.control.failNext("channel-subscriptions", 503, 2)
+      world.twitch.fake.control.failNext("subscriptions", 503, 2)
 
       const result = await world.enter(target, giveaway.code, users.viewer.id)
 
       expect(result.entry).toBe("try-again")
-      expect(world.twitchCalls("/helix/subscriptions")).toBe(2)
+      expect(world.twitchCalls("/helix/subscriptions/user")).toBe(2)
       expect(await world.live(giveaway)).toMatchObject({ entrantCount: 0 })
     },
   )
@@ -140,7 +140,7 @@ export function entryScenarios(context: ContractContext): void {
     async (world) => {
       const target = await world.start()
       const giveaway = await world.createGiveaway(target)
-      world.twitch.fake.control.failNext("followers", 500, 1)
+      world.twitch.fake.control.failNext("followed", 500, 1)
 
       const result = await world.enter(target, giveaway.code, users.viewer.id)
 

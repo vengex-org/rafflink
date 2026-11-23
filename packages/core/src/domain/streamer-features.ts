@@ -12,7 +12,7 @@ export type StreamerFeature = (typeof streamerFeatures)[number]
 /** The rules a feature depends on. */
 type FeatureRules = Pick<
   GiveawayRules,
-  "tickets" | "subsOnly" | "followersOnly" | "subEntry" | "pointsReward"
+  "tickets" | "subsOnly" | "followersOnly" | "chatKeyword" | "subEntry" | "pointsReward"
 >
 
 /** Whether a follow changes who enters or with how many tickets. */
@@ -35,11 +35,16 @@ export function rolesMatter(rules: FeatureRules): boolean {
   return tickets.vip !== tickets.viewer || tickets.moderator !== tickets.viewer
 }
 
-/** The features a giveaway with these rules needs; moderator links are asked for when one is made. */
+/**
+ * The features a giveaway with these rules needs; moderator links are asked for when one is made. A page
+ * entrant's follow and tier are read with their own token, so only entrants who never sign in need the
+ * streamer's: chat, sub and points entrants' follows, and redeemers' tiers (chat badges and sub events carry theirs).
+ */
 export function featuresOfRules(rules: FeatureRules): readonly StreamerFeature[] {
+  const channelEntry = rules.chatKeyword !== null || rules.subEntry || rules.pointsReward !== null
   const used: Readonly<Record<StreamerFeature, boolean>> = {
-    followers: followMatters(rules),
-    subs: rules.subEntry || tierMatters(rules),
+    followers: followMatters(rules) && channelEntry,
+    subs: rules.subEntry || (tierMatters(rules) && rules.pointsReward !== null),
     redemptions: rules.pointsReward !== null,
     roles: rolesMatter(rules),
     modlinks: false,

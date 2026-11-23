@@ -17,12 +17,14 @@ import {
   parseRolePage,
   parseSubscriberBadgeImages,
   parseSubscriptionCreated,
+  parseTier,
   parseTokenResponse,
   parseUserLogins,
   parseUserProfile,
   parseUserProfiles,
   parseValidated,
   tierLevels,
+  type Tier,
 } from "./lib/parse-response.ts"
 import type { ChannelEntryRefusal, WatchTopics } from "../platform/chat-source.ts"
 import { eventSubTypes } from "./lib/parse-eventsub.ts"
@@ -110,6 +112,38 @@ export class TwitchClient {
       throw new TwitchInvalid("id-token", null)
     }
     return { userId: payload.sub }
+  }
+
+  /** The tier group of the viewer's subscription, `null` when not subscribed. */
+  async subscriptionTier(
+    accessToken: string,
+    broadcasterId: string,
+    userId: string,
+  ): Promise<SubscriptionGroup | null> {
+    let tier: Tier
+    try {
+      tier = await this.helix(
+        "subscriptions",
+        "/helix/subscriptions/user",
+        { broadcaster_id: broadcasterId, user_id: userId },
+        accessToken,
+        parseTier,
+      )
+    } catch (error) {
+      if (error instanceof TwitchInvalid && error.status === 404) return null
+      throw error
+    }
+    return tierGroups[tier]
+  }
+
+  async follows(accessToken: string, broadcasterId: string, userId: string): Promise<boolean> {
+    return this.helix(
+      "followed",
+      "/helix/channels/followed",
+      { broadcaster_id: broadcasterId, user_id: userId },
+      accessToken,
+      parseFollowed,
+    )
   }
 
   /** Needs the streamer's token with `moderator:read:followers`; the streamer moderates their own channel. */
@@ -517,6 +551,12 @@ const globalBadgeVersion = "0"
 
 /** The part of an app token's lifetime it is used for, so a call that is slow to start does not meet it expired. */
 const appTokenUsableShare = 0.9
+
+const tierGroups: Readonly<Record<Tier, SubscriptionGroup>> = {
+  "1000": "sub_t1",
+  "2000": "sub_t2",
+  "3000": "sub_t3",
+}
 
 /**
  * A bare `JOSEError` is a JWKS fetch that failed or answered badly, so Twitch is at fault; every other

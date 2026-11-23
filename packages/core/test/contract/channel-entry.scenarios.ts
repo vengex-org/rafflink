@@ -53,9 +53,10 @@ export function channelEntryScenarios(context: ContractContext): void {
     "a giveaway whose rules need a feature the token lacks is refused with a reconnect answer",
     async (world) => {
       const target = await world.start()
-      // The default rules weigh follows, tiers and roles; each row leaves out the one feature its rules need.
+      // The default rules weigh follows, tiers and roles; each row leaves out the one feature its rules need. A page
+      // entrant's follow is read with their own token, so the follower row needs chat entry.
       const rows: readonly [readonly StreamerFeature[], Partial<GiveawayRules>][] = [
-        [["subs", "roles"], {}],
+        [["subs", "roles"], { chatKeyword: "!enter" }],
         [["followers", "subs"], {}],
         [["followers", "roles"], { subEntry: true }],
         [["followers", "subs", "roles"], { pointsReward: { id: reward.id, title: reward.title } }],
