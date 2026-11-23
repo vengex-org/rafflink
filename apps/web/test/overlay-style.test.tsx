@@ -4,7 +4,7 @@ import { defaultOverlayTheme, type OverlayTheme } from "@rafflink/core/domain/ov
 import type { LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { revealSoundPath } from "../src/lib/use-reveal-cue.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
-import { dashboardGiveaway, giveaway, liveSnapshot } from "./fixtures.ts"
+import { giveaway, liveSnapshot } from "./fixtures.ts"
 import { mockFetch, ok, type Reply } from "./mock-fetch.ts"
 import { renderApp } from "./render-app.tsx"
 
@@ -243,14 +243,13 @@ function expand(view: View, summary: string) {
 
 const previewFrame = (view: View) => view.container.querySelector(".overlay-preview .overlay")
 
-describe("overlay style on the dashboard", () => {
+describe("overlay style in the settings", () => {
   it("loads the style when opened, previews each change and saves it", async () => {
     const requests = mockFetch({
-      "GET /api/dash/giveaways": () => ok({ giveaways: [dashboardGiveaway] }),
       "GET /api/dash/overlay-theme": () => ok({ theme: defaultOverlayTheme }),
       "POST /api/dash/overlay-theme": () => ok({ kind: "saved", theme: branded }),
     })
-    const view = renderApp("/dashboard")
+    const view = renderApp("/dashboard/settings")
     await view.findByText("Overlay style")
     expect(requests.some((request) => request.route === "GET /api/dash/overlay-theme")).toBe(false)
 
@@ -282,14 +281,13 @@ describe("overlay style on the dashboard", () => {
 
   it("says so when the server refuses the style", async () => {
     mockFetch({
-      "GET /api/dash/giveaways": () => ok({ giveaways: [dashboardGiveaway] }),
       "GET /api/dash/overlay-theme": () => ok({ theme: defaultOverlayTheme }),
       "POST /api/dash/overlay-theme": () => ({
         status: 400,
         body: { error: "invalid-input", field: "accent", code: "not-a-color" },
       }),
     })
-    const view = renderApp("/dashboard")
+    const view = renderApp("/dashboard/settings")
     await view.findByText("Overlay style")
 
     expand(view, "Overlay style")
@@ -302,10 +300,9 @@ describe("overlay style on the dashboard", () => {
 
   it("puts the default back in the form", async () => {
     mockFetch({
-      "GET /api/dash/giveaways": () => ok({ giveaways: [dashboardGiveaway] }),
       "GET /api/dash/overlay-theme": () => ok({ theme: branded }),
     })
-    const view = renderApp("/dashboard")
+    const view = renderApp("/dashboard/settings")
     await view.findByText("Overlay style")
     expand(view, "Overlay style")
     await view.findByLabelText("Accent")
@@ -319,10 +316,9 @@ describe("overlay style on the dashboard", () => {
 
   it("warns under the preview while the text is hard to read on the plates", async () => {
     mockFetch({
-      "GET /api/dash/giveaways": () => ok({ giveaways: [dashboardGiveaway] }),
       "GET /api/dash/overlay-theme": () => ok({ theme: defaultOverlayTheme }),
     })
-    const view = renderApp("/dashboard")
+    const view = renderApp("/dashboard/settings")
     await view.findByText("Overlay style")
     expand(view, "Overlay style")
     const warning = "The text is hard to read on these plates. Pick a lighter or darker text color."

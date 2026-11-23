@@ -78,12 +78,28 @@ export function sessionScenarios(context: ContractContext): void {
         readyEntryWays: [],
         publicHistory: false,
         historyIndexed: false,
+        admin: true,
       },
       signInPlatforms: ["twitch", "kick", "youtube"],
       donateUrl: null,
       operator: null,
     })
   })
+
+  scenario(
+    context,
+    "the session marks a streamer outside the admin list as no admin",
+    async (world) => {
+      const target = await world.start()
+      const streamer = await world.signInStreamer(target, users.otherStreamer.id)
+
+      const body: { streamer: { login: string; admin: boolean } } = await (
+        await streamer.request("/api/session")
+      ).json()
+
+      expect(body.streamer).toMatchObject({ login: users.otherStreamer.login, admin: false })
+    },
+  )
 
   scenario(context, "logout deletes the streamer cookie", async (world) => {
     const target = await world.start()

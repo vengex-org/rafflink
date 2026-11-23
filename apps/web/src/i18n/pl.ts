@@ -15,7 +15,6 @@ export const pl: Translation = {
   "theme.dark": "Ciemny",
   "language.legend": "Język",
   "language.loadFailed": "Nie udało się wczytać tego języka. Spróbuj ponownie.",
-  "settings.label": "Ustawienia",
 
   "common.loading": "Wczytywanie…",
   "common.cancel": "Anuluj",
@@ -607,8 +606,6 @@ export const pl: Translation = {
     "Każde rozdanie wraz z uczestnikami, zwycięzcami i dowodem losowania, twoje konto i zapisany token logowania zostaną trwale usunięte, a ty zostaniesz wylogowany.",
   "dash.deleteData.confirm": "Tak, usuń wszystko",
   "dash.blocks.title": "Zablokowane konta",
-  "dash.blocks.text":
-    "Zablokowane konta nie mogą wziąć udziału w żadnym z twoich rozdań. Ich zgłoszenia w rozdaniach, które są jeszcze otwarte, zostaną usunięte; zgłoszenia w zamkniętych rozdaniach zostają. Lista zostanie usunięta razem z twoim kontem.",
   "dash.blocks.count": "Zablokowane konta: {count} z {max}",
   "dash.blocks.none": "Brak zablokowanych kont.",
   "dash.blocks.label": "Nazwa użytkownika do zablokowania",
@@ -627,8 +624,6 @@ export const pl: Translation = {
   "dash.blocks.room-unavailable":
     "Zapisano, ale trwające rozdanie jeszcze nie dostało zmiany. Spróbuj tej samej akcji ponownie.",
   "dash.history.title": "Publiczna historia",
-  "dash.history.text":
-    "Publiczna strona może pokazywać twoje zakończone rozdania z nagrodą, datą, liczbą zgłoszonych i zwycięzców oraz linkiem do sprawdzenia każdego losowania. Nie wymienia żadnego uczestnika ani zwycięzcy, a wyszukiwarki indeksują ją tylko wtedy, gdy na to pozwolisz. Przycisk przy zakończonym rozdaniu ukrywa je na tej stronie.",
   "dash.history.link": "Otwórz swoją publiczną historię",
   "dash.history.turnOn": "Włącz publiczną historię",
   "dash.history.turnOff": "Wyłącz publiczną historię",
@@ -694,8 +689,6 @@ export const pl: Translation = {
   "live.overlay.qr.on": "Pokaż",
   "live.overlay.qr.off": "Ukryj",
   "overlayStyle.dash.summary": "Styl nakładki",
-  "overlayStyle.dash.help":
-    "Jak wygląda twoja nakładka OBS w każdym rozdaniu. Pojedyncze rozdanie może dostać własny styl w ustawieniach nakładki na swojej stronie na żywo.",
   "overlayStyle.giveaway.summary": "Styl tej nakładki",
   "overlayStyle.giveaway.source": "Styl",
   "overlayStyle.giveaway.streamer": "Mój styl",

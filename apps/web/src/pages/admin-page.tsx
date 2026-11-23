@@ -22,7 +22,7 @@ import {
   ServerIcon,
   UsersIcon,
 } from "../components/icons.tsx"
-import { LiveCards, LiveStatus } from "../components/admin-live.tsx"
+import { CardTitle, LiveCards, LiveStatus } from "../components/admin-live.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
 import { Stat } from "../components/live-parts.tsx"
 import { Failed, Loading, SignIn, Status } from "../components/notice.tsx"
@@ -304,8 +304,7 @@ function AccessCard() {
   }
   return (
     <section className="card access-card" aria-labelledby="access">
-      <h2 id="access">{t("admin.access.title")}</h2>
-      <p className="muted">{t("admin.access.hint")}</p>
+      <CardTitle id="access" title={t("admin.access.title")} info={t("admin.access.hint")} />
       {result.state === "ready" ? (
         <>
           <AccessList
@@ -439,8 +438,11 @@ function YouTubeQuotaCard({ quota }: { readonly quota: NonNullable<AdminUsage["y
   const { t, number } = useI18n()
   return (
     <section className="card" aria-labelledby="youtube-quota">
-      <h2 id="youtube-quota">{t("admin.youtube.title")}</h2>
-      <p className="muted">{t("admin.youtube.hint")}</p>
+      <CardTitle
+        id="youtube-quota"
+        title={t("admin.youtube.title")}
+        info={t("admin.youtube.hint")}
+      />
       {quota === "unavailable" ? (
         <p>{t("admin.unavailable")}</p>
       ) : (

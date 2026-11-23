@@ -37,6 +37,10 @@ export function sessionRoutes(deps: AppDeps): Hono {
               readyEntryWays: await grantedEntryWays(deps, current.session),
               publicHistory: current.streamer.publicHistory,
               historyIndexed: current.streamer.historyIndexed,
+              admin: await deps.admins.isAdmin(
+                current.streamer.platform,
+                current.streamer.platformUserId,
+              ),
             },
       signInPlatforms: configuredProviders(deps.platforms).map((provider) => provider.platform),
       donateUrl: deps.config.donateUrl,

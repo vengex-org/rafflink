@@ -15,7 +15,6 @@ export const it: Translation = {
   "theme.dark": "Scuro",
   "language.legend": "Lingua",
   "language.loadFailed": "Non è stato possibile caricare questa lingua. Riprova.",
-  "settings.label": "Impostazioni",
 
   "common.loading": "Caricamento…",
   "common.cancel": "Annulla",
@@ -619,8 +618,6 @@ export const it: Translation = {
     "Tutti i giveaway con i loro partecipanti, vincitori e prove dell'estrazione, il tuo account e il token di accesso memorizzato vengono eliminati definitivamente, e viene effettuata la disconnessione.",
   "dash.deleteData.confirm": "Sì, elimina tutto",
   "dash.blocks.title": "Account bloccati",
-  "dash.blocks.text":
-    "Gli account bloccati non possono partecipare a nessuno dei tuoi giveaway. Le loro iscrizioni ai giveaway ancora aperti vengono rimosse; quelle ai giveaway chiusi restano. L'elenco viene eliminato insieme al tuo account.",
   "dash.blocks.count": "{count} di {max} account bloccati",
   "dash.blocks.none": "Nessun account bloccato.",
   "dash.blocks.label": "Nome utente da bloccare",
@@ -639,8 +636,6 @@ export const it: Translation = {
   "dash.blocks.room-unavailable":
     "Salvato, ma un giveaway in corso non ha ancora ricevuto la modifica. Ripeti la stessa azione.",
   "dash.history.title": "Storico pubblico",
-  "dash.history.text":
-    "Una pagina pubblica può elencare i tuoi giveaway conclusi con il premio, la data, quante persone hanno partecipato e quante hanno vinto, e un link per verificare ogni estrazione. Non nomina nessun partecipante né vincitore, e i motori di ricerca la indicizzano solo se lo permetti. Il pulsante su un giveaway concluso lo nasconde dalla pagina.",
   "dash.history.link": "Apri la tua pagina dello storico pubblico",
   "dash.history.turnOn": "Attiva lo storico pubblico",
   "dash.history.turnOff": "Disattiva lo storico pubblico",
@@ -707,8 +702,6 @@ export const it: Translation = {
   "live.overlay.qr.on": "Mostra",
   "live.overlay.qr.off": "Nascondi",
   "overlayStyle.dash.summary": "Stile dell'overlay",
-  "overlayStyle.dash.help":
-    "L'aspetto del tuo overlay OBS in ogni giveaway. Un singolo giveaway può avere un suo stile nelle impostazioni dell'overlay della sua pagina live.",
   "overlayStyle.giveaway.summary": "Stile di questo overlay",
   "overlayStyle.giveaway.source": "Stile",
   "overlayStyle.giveaway.streamer": "Il mio stile",

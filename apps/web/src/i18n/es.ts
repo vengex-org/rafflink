@@ -15,7 +15,6 @@ export const es: Translation = {
   "theme.dark": "Oscuro",
   "language.legend": "Idioma",
   "language.loadFailed": "No se pudo cargar este idioma. Inténtalo de nuevo.",
-  "settings.label": "Ajustes",
 
   "common.loading": "Cargando…",
   "common.cancel": "Cancelar",
@@ -617,8 +616,6 @@ export const es: Translation = {
     "Todos los sorteos, con sus participantes, ganadores y pruebas del sorteo, tu cuenta y tu token de inicio de sesión guardado se eliminan para siempre, y se cierra tu sesión.",
   "dash.deleteData.confirm": "Sí, eliminar todo",
   "dash.blocks.title": "Cuentas bloqueadas",
-  "dash.blocks.text":
-    "Las cuentas bloqueadas no pueden participar en ninguno de tus sorteos. Sus participaciones en sorteos que siguen abiertos se eliminan; las de sorteos cerrados se conservan. La lista se elimina junto con tu cuenta.",
   "dash.blocks.count": "{count} de {max} cuentas bloqueadas",
   "dash.blocks.none": "No hay cuentas bloqueadas.",
   "dash.blocks.label": "Nombre de usuario a bloquear",
@@ -637,8 +634,6 @@ export const es: Translation = {
   "dash.blocks.room-unavailable":
     "Guardado, pero un sorteo en curso todavía no recibió el cambio. Repite la misma acción.",
   "dash.history.title": "Historial público",
-  "dash.history.text":
-    "Una página pública puede mostrar tus sorteos terminados con el premio, la fecha, cuántas personas participaron y cuántas ganaron, y un enlace para verificar cada sorteo. No nombra a ningún participante ni ganador, y los buscadores la indexan solo si lo permites. El botón de un sorteo terminado lo oculta de la página.",
   "dash.history.link": "Abrir tu página de historial público",
   "dash.history.turnOn": "Activar el historial público",
   "dash.history.turnOff": "Desactivar el historial público",
@@ -704,8 +699,6 @@ export const es: Translation = {
   "live.overlay.qr.on": "Mostrar",
   "live.overlay.qr.off": "Ocultar",
   "overlayStyle.dash.summary": "Estilo del overlay",
-  "overlayStyle.dash.help":
-    "Cómo se ve tu overlay de OBS en todos los sorteos. Un sorteo puede tener su propio estilo en los ajustes del overlay de su página en vivo.",
   "overlayStyle.giveaway.summary": "Estilo de este overlay",
   "overlayStyle.giveaway.source": "Estilo",
   "overlayStyle.giveaway.streamer": "Mi estilo",

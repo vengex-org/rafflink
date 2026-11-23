@@ -163,6 +163,8 @@ export interface SessionJson {
     readonly publicHistory: boolean
     /** The streamer lets search engines index their public history page. */
     readonly historyIndexed: boolean
+    /** The account is in ADMIN_TWITCH_IDS, so the header links the admin page. */
+    readonly admin: boolean
   } | null
   /** The platforms a streamer can sign in with on this install, Twitch first. */
   readonly signInPlatforms: readonly Platform[]

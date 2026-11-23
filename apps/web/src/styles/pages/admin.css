@@ -4,12 +4,12 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
   gap: var(--space-2);
-  align-items: start;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* The two cards of a row share its height, so their edges line up. */
 .card-grid .card {
   margin: 0;
   padding: var(--space-3);
@@ -20,6 +20,19 @@
   font-size: 1.375rem;
   font-weight: 800;
   letter-spacing: -0.025em;
+}
+
+/* A heading and the (i) of its explanation on one line; the opened explanation wraps to its own row. */
+.card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.card-title h2 {
+  margin: 0;
 }
 
 .usage {
@@ -88,6 +101,11 @@
   padding: 0.875rem var(--space-2);
   border-radius: 0;
   background: var(--surface);
+}
+
+/* An odd last figure fills its row, so no empty cell shows the grid's line color. */
+.card-grid .stat:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 .card-grid .stat dt {

@@ -1,10 +1,5 @@
 /* Dashboard: running giveaways, then drawn ones, each under a section label and each giveaway its own card. */
 
-/* The overlay style sits above the lists, closed until the streamer opens it. */
-.dash-style {
-  margin-bottom: var(--space-5);
-}
-
 /* The section label of the live page cards: small caps in the second ink. */
 .dash-section > h2 {
   margin: 0 0 var(--space-2);
@@ -44,26 +39,23 @@
   transform: translateY(-50%);
 }
 
-/* The block list: the add form is one row, each blocked account one line with its Remove button. */
-.dash-blocks {
-  margin-top: var(--space-5);
-}
-
+/* The block list: the label over one row of input and Block, each blocked account one line with its Remove button. */
 .block-add {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: var(--space-1) var(--space-2);
-  align-items: end;
   max-width: 26rem;
+  margin-bottom: var(--space-2);
 }
 
-.block-add .field {
-  flex: 1 1 12rem;
-  margin: 0;
+.block-add label {
+  grid-column: 1 / -1;
 }
 
 .block-list {
-  margin: 0;
+  max-width: 40rem;
+  margin: 0 0 var(--space-1);
   padding: 0;
   list-style: none;
 }
@@ -77,16 +69,34 @@
   border-top: 1px solid var(--line);
 }
 
-/* Deleting the account is rare and final, so it sits last, apart from the lists. */
-.dash-delete-data {
-  margin-top: var(--space-5);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--line);
+/* A setting's line with its (i); the opened explanation wraps to its own row. */
+.with-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.25rem;
+  max-width: 40rem;
+  margin-bottom: var(--space-2);
 }
 
-.dash-delete-data > h2 {
-  margin: 0 0 var(--space-1);
-  font-size: var(--fs-body);
+.with-info p {
+  margin: 0;
+}
+
+/* Without a cap of its own the explanation takes the whole row, under the line rather than beside it. */
+.with-info .info-tip-text {
+  max-width: none;
+}
+
+/* A setting's next line keeps clear of the button above it. */
+.dash-section > .button ~ p {
+  margin-top: var(--space-3);
+}
+
+/* Deleting the account is rare and final, so it sits last, apart from the other settings. */
+.dash-delete-data {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
 }
 
 .dash-delete-data > .button {

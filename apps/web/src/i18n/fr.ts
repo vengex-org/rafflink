@@ -15,7 +15,6 @@ export const fr: Translation = {
   "theme.dark": "Sombre",
   "language.legend": "Langue",
   "language.loadFailed": "Impossible de charger cette langue. Réessaie.",
-  "settings.label": "Paramètres",
 
   "common.loading": "Chargement…",
   "common.cancel": "Annuler",
@@ -625,8 +624,6 @@ export const fr: Translation = {
     "Tous les giveaways avec leurs participants, gagnants et preuves de tirage, ton compte et ton jeton de connexion enregistré sont supprimés définitivement, et tu es déconnecté.",
   "dash.deleteData.confirm": "Oui, tout supprimer",
   "dash.blocks.title": "Comptes bloqués",
-  "dash.blocks.text":
-    "Les comptes bloqués ne peuvent participer à aucun de tes giveaways. Leurs participations aux giveaways encore ouverts sont supprimées ; celles des giveaways fermés restent. La liste est supprimée avec ton compte.",
   "dash.blocks.count": "{count} comptes bloqués sur {max}",
   "dash.blocks.none": "Aucun compte bloqué.",
   "dash.blocks.label": "Nom d'utilisateur à bloquer",
@@ -645,8 +642,6 @@ export const fr: Translation = {
   "dash.blocks.room-unavailable":
     "Enregistré, mais un giveaway en cours n'a pas encore reçu la modification. Refais la même action.",
   "dash.history.title": "Historique public",
-  "dash.history.text":
-    "Une page publique peut lister tes giveaways terminés avec le lot, la date, le nombre de participants et de gagnants, et un lien pour vérifier chaque tirage. Elle ne nomme aucun participant ni aucun gagnant, et les moteurs de recherche ne l'indexent que si tu l'autorises. Le bouton sur un giveaway terminé le masque de la page.",
   "dash.history.link": "Ouvrir ta page d'historique public",
   "dash.history.turnOn": "Activer l'historique public",
   "dash.history.turnOff": "Désactiver l'historique public",
@@ -714,8 +709,6 @@ export const fr: Translation = {
   "live.overlay.qr.on": "Afficher",
   "live.overlay.qr.off": "Masquer",
   "overlayStyle.dash.summary": "Style de l'overlay",
-  "overlayStyle.dash.help":
-    "L'apparence de ton overlay OBS dans tous tes giveaways. Un giveaway peut avoir son propre style dans les paramètres d'overlay de sa page live.",
   "overlayStyle.giveaway.summary": "Style de cet overlay",
   "overlayStyle.giveaway.source": "Style",
   "overlayStyle.giveaway.streamer": "Mon style",

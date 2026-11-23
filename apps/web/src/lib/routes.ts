@@ -34,9 +34,11 @@ export const staticSegments = [
 ]
 
 /** The fixed words after a first segment or a giveaway code; the segments between them are ids and tokens, whose case is theirs. */
-export const staticSubSegments = ["new", "created", "verify"]
+export const staticSubSegments = ["new", "created", "settings", "verify"]
 
 export const dashboardPath = "/dashboard"
+export const settingsPath = "/dashboard/settings"
+export const adminPath = "/admin"
 export const verifyLookupPath = "/verify"
 
 export function livePath(id: string): string {

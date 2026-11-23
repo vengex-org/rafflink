@@ -166,7 +166,7 @@ describe("home page", () => {
   it("keeps the theme and language switches inside one settings button", () => {
     const view = renderApp("/")
 
-    const button = view.getByRole("button", { name: "Settings" })
+    const button = view.getByRole("button", { name: "Display settings" })
     const panel = view.container.querySelector("[popover]")
 
     expect(panel).not.toBeNull()

@@ -251,6 +251,7 @@ export async function getSession(): Promise<SessionJson> {
       }),
       publicHistory: bool(streamer, "publicHistory"),
       historyIndexed: bool(streamer, "historyIndexed"),
+      admin: bool(streamer, "admin"),
     },
     signInPlatforms,
     donateUrl,
