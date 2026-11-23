@@ -1,0 +1,563 @@
+# Self-hosting Rafflink
+
+Rafflink runs on Cloudflare (Workers, Durable Objects, D1) or on any server with Docker. Either way you need your own
+Twitch app first. Kick and YouTube are optional.
+
+## Twitch app registration
+
+Rafflink signs streamers and viewers in with Twitch, so every installation needs its own Twitch app. You
+register it once and copy two values into the config.
+
+1. Turn on two-factor authentication on the Twitch account that will own the app (Twitch settings, Security
+   and Privacy). The developer console refuses to register apps without it.
+2. Open the [Twitch developer console](https://dev.twitch.tv/console/apps) and choose **Register Your
+   Application**.
+3. Fill in the form:
+   - **Name:** any unique name, for example `Rafflink` plus your channel name. Viewers see it on the Twitch
+     consent screen.
+   - **OAuth Redirect URLs:** add both callback URLs of your installation. Replace the origin with your
+     `PUBLIC_URL`:
+     - `https://rafflink.example.com/auth/twitch/streamer`
+     - `https://rafflink.example.com/auth/twitch/viewer`
+
+     For local development against real Twitch add the local origins too, for example
+     `http://localhost:3000/auth/twitch/streamer` and `http://localhost:3000/auth/twitch/viewer` (Docker or the
+     Bun server) or the same paths on `http://localhost:8787` (`wrangler dev`). Twitch accepts `http` only for
+     `localhost`.
+
+   - **Category:** Giveaway/Loyalty Tool.
+   - **Client Type:** Confidential. Rafflink keeps the secret on the server.
+4. Choose **Create**, then **Manage** next to the new app.
+5. Copy the **Client ID** into `TWITCH_CLIENT_ID`.
+6. Choose **New Secret**, confirm, and copy the secret into `TWITCH_CLIENT_SECRET`. Twitch shows it once. If you
+   lose it, create a new one and update the config; the old one stops working.
+
+You do not pick scopes in the console. Rafflink asks for them at sign-in:
+
+- streamers: `openid` and `user:read:chat` (to watch the chat for chat entries and claims and show the
+  winners' messages). A streamer is asked to reconnect once for each extra feature, when a giveaway first uses
+  it: `moderator:read:followers` for a follower rule with chat, sub or points entry, `channel:read:subscriptions`
+  for sub entry or tier tickets with points entry, `channel:read:redemptions` for points entry,
+  `channel:read:vips` and `moderation:read` for VIP or moderator tickets, and `moderation:read` for a moderator
+  link for moderators only;
+- viewers: `openid`, plus `user:read:follows` when the giveaway has a follower rule and
+  `user:read:subscriptions` when it has a subscribers-only rule or tier tickets (each viewer's own token
+  checks them).
+
+The rest of the required config:
+
+- `PUBLIC_URL`: the origin people open, for example `https://rafflink.example.com`, with no trailing slash.
+  It must match the redirect URLs above.
+- `ADMIN_TWITCH_IDS`: who may open the admin page, comma separated. Each entry is a numeric Twitch user
+  id, a Twitch login, or a channel link such as `https://twitch.tv/<login>`. Logins and links are looked up
+  at Twitch on the first admin check, using the app's own credentials; while Twitch does not answer, the
+  admin page stays closed. The first lookup logs the resolved ids: copy them into this setting, because an
+  id never changes and needs no lookup.
+- `OPEN_SIGNUP` (default `false`): who may create giveaways. With `false`, any Twitch account can sign in, but
+  it can create giveaways only after an admin approves it on the admin page, under "Streamer access"; the
+  accounts in `ADMIN_TWITCH_IDS` are always allowed. Set `true` to let every streamer create giveaways, as the
+  hosted service does. An approval is kept when you switch to `true` and back.
+- `SESSION_SECRET`: a long random string, for example the output of `openssl rand -base64 32`.
+- `TOKEN_SEAL_KEYS`: the key that encrypts stored streamer tokens and winner form answers, written as
+  `<key id>:<32 random bytes in base64>`, for example `k1:` followed by the output of
+  `openssl rand -base64 32`. To rotate, put the new key first and keep the old one after a comma until every
+  streamer has signed in again and `WINNER_FORM_RETENTION_SECONDS` have passed since the last winner form was
+  sent.
+
+Every other setting has a default; see [.env.example](../.env.example).
+
+## Kick app registration (optional)
+
+Kick is optional. Without `KICK_CLIENT_ID` and `KICK_CLIENT_SECRET` the install signs in with Twitch only. With
+them, streamers and viewers can also sign in with Kick, and a Kick winner can claim by writing in the Kick chat.
+
+1. Turn on two-factor authentication on the Kick account that will own the app. The developer tools need it.
+2. On kick.com open **Account Settings**, then the **Developer** tab, and create an app.
+3. Fill in the form:
+   - **Redirect URLs:** both callback URLs of your installation, with your `PUBLIC_URL` as the origin:
+     - `https://rafflink.example.com/auth/kick/streamer`
+     - `https://rafflink.example.com/auth/kick/viewer`
+   - **Scopes:** `user:read` (who signed in), `events:subscribe` (the streamer's chat, subscriptions and
+     reward redemptions) and `channel:rewards:read` (the reward list for channel point entry).
+   - **Enable Webhooks:** on, with the URL `https://rafflink.example.com/api/kick/webhook`. Kick posts chat
+     messages there, so the URL must be reachable over the public internet with HTTPS. A Bun server on a
+     laptop needs a tunnel for Kick chat claims; sign-in works without one.
+4. Copy the **Client ID** into `KICK_CLIENT_ID` and the **Client Secret** into `KICK_CLIENT_SECRET`.
+
+To switch Kick off for a while without removing its app, set `SIGN_IN_DISABLED_PLATFORMS=kick`. The install
+then behaves as if `KICK_CLIENT_ID` were blank: no Kick buttons and no Kick sign-in routes, for streamers and
+viewers. List both platforms as `kick,youtube`. Twitch cannot be listed.
+
+What a Kick giveaway can do:
+
+- Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages, so the create form offers
+  only the rules Kick can check. A giveaway with page entry puts every Kick entrant in the viewer group. A chat
+  only giveaway can also give subscriber and moderator tickets: the badges of the entry message tell them, and
+  a sub event counts as a subscriber. Kick has one subscriber level.
+- Viewers can enter with a chat keyword, and new subs, renewals, gift recipients and redemptions of a chosen
+  channel point reward can enter by themselves. A redemption enters while pending or accepted; one the
+  streamer rejects enters nobody. Page or chat entry stays on beside sub and reward entry.
+- Rafflink subscribes to the streamer's chat while chat entries are open and from the draw until the claim
+  and reroll time ends, and to the subscription and redemption events while entries are open to them. Each
+  subscription is removed once no giveaway reads it. A subscription Kick did not delete is cancelled when its
+  next webhook finds no giveaway watching the channel. While subscribed, every message in that chat is one
+  request to your server or Worker and one database read; only keyword messages while entries are open and
+  messages from winners reach the giveaway's room. On the Workers Free plan this counts toward the 100,000
+  requests a day, and the create form shows what is left today before a Kick chat entry giveaway.
+
+- Kick signs each webhook. Rafflink checks the signature with Kick's public key, refuses a webhook whose
+  timestamp is more than `KICK_WEBHOOK_MAX_AGE_SECONDS` away from now, and drops a repeated message id.
+
+## YouTube app registration (optional)
+
+YouTube is optional. Without `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` the install has no YouTube sign-in;
+set both or neither. With them, a streamer signs in with Google and picks their YouTube channel, and viewers
+enter that channel's giveaways by writing the keyword in the live chat. Viewers never sign in with Google.
+
+Rafflink asks for one scope, `https://www.googleapis.com/auth/youtube.readonly`. Google calls it sensitive, so an
+app that is not verified stops at 100 users and shows them a warning. Start the verification early: it needs a
+verified domain, a privacy page and a demo video, and takes days to weeks.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/) create a project, then under **APIs &
+   Services** enable the **YouTube Data API v3**.
+2. Open **Google Auth Platform**:
+   - **Branding:** the app name, a support e-mail, your home page `https://rafflink.example.com/`, the privacy
+     policy `https://rafflink.example.com/privacy` and the terms `https://rafflink.example.com/terms`. Add your
+     domain under **Authorized domains**.
+   - **Audience:** user type **External**. While the app is in **Testing**, only the test users you list (up to 100) can sign in. Publish it to production once the verification is through.
+   - **Data access:** add the scope `.../auth/youtube.readonly`.
+   - **Clients:** create an OAuth client of type **Web application** with these **Authorized redirect URIs**:
+     - `https://rafflink.example.com/auth/youtube/callback`
+     - `http://localhost:8787/auth/youtube/callback` (Wrangler dev)
+     - `http://localhost:3000/auth/youtube/callback` (Bun server)
+3. Verify the domain in [Google Search Console](https://search.google.com/search-console) with the Google account
+   that owns the project. Google checks it during the app verification.
+4. Copy the **Client ID** into `YOUTUBE_CLIENT_ID` and the **Client secret** into `YOUTUBE_CLIENT_SECRET`.
+5. Submit the app for verification under **Google Auth Platform**, **Verification center**. Google asks for a
+   video that shows the sign-in, the consent screen with the scope, and what the app does with the data.
+
+`SIGN_IN_DISABLED_PLATFORMS=youtube` switches YouTube off the same way while `YOUTUBE_CLIENT_ID` and
+`YOUTUBE_CLIENT_SECRET` stay set.
+
+What a YouTube giveaway can do:
+
+- Viewers enter only with the chat keyword. A channel member gets the tickets of the channel members group and a
+  moderator the moderator tickets, as the chat message tells them. YouTube has no followers and no VIPs, so the create form
+  does not offer those rules. A winner claims by writing in the chat, or the streamer marks the claim by hand.
+- The giveaway reads the chat of the channel's active live stream. A giveaway made before the stream starts
+  looks for the stream every `YOUTUBE_BROADCAST_RETRY_SECONDS` and reads its chat once it is live.
+- Rafflink reads the chat while chat entries are open, as often as YouTube asks and at most every
+  `YOUTUBE_CHAT_POLL_MIN_MS`. Reading stops when entries close. From the draw it reads again, at most every
+  `YOUTUBE_WINNER_POLL_MIN_MS`, until every winner claimed or their claim time ended; unlike Twitch and Kick it
+  does not keep watching through the reroll time.
+- Every YouTube API call costs quota units: 1 for a channel or a broadcast lookup, 5 for a page of chat. A
+  Google project has 10,000 units a day by default, shared by every giveaway of the install, and the day starts
+  at midnight Pacific time. Rafflink counts the units in its database and never spends more than
+  `YOUTUBE_DAILY_QUOTA_UNITS` a day: a giveaway whose chat reads until its close and through one claim time would
+  pass the cap is refused, and a running chat watch pauses at the cap until the next quota day. A giveaway closed
+  by hand has no end to check, so only its first minute counts and the create form says how many minutes
+  today's units cover. Reading every 5 seconds costs 60 units a minute, so
+  the default quota covers about two and a half hours of chat a day. The create form shows the cost and what
+  is left today, and the admin page shows today's units and warns from `YOUTUBE_QUOTA_ALERT_PERCENT` on. Ask
+  Google for more quota in the Cloud console before you need it, then raise `YOUTUBE_DAILY_QUOTA_UNITS`.
+- YouTube's Developer Policies allow stored API data for 30 days at most. A YouTube giveaway's entries are
+  deleted at most 30 days after it closes, like every giveaway's, and its winners' names with them; the
+  winners' channel ids stay with the picks. The streamer's channel name and handle are refreshed only when they
+  sign in again ([#106](https://github.com/vengex-org/rafflink/issues/106)). A YouTube block list finds no
+  account, because Google offers no lookup without a user's token.
+
+## Settings and deployment
+
+Both targets need your own Twitch app (see above) and the required settings listed there. Every setting is in
+[.env.example](../.env.example), which `bun run env:example` generates from the config schema.
+
+The home page is intentionally plain: a sign-in button and the footer links. A deployment that wants a richer page replaces the one module `apps/web/src/site/site.tsx` at build time.
+
+Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Sponsors and the like) and a quiet
+"Support" link appears in the home page footer, above the drawn giveaways on the dashboard, in the account menu
+and in the settings panel of the streamer's live page. Viewer pages and the OBS overlay never show it. Left blank,
+no link appears anywhere.
+
+Legal pages: `/privacy` and `/terms` are a generic template that is accurate for any install. Whoever runs an
+instance is the controller of its data and must name themselves. Set `OPERATOR_NAME` (a person or a company) and
+the pages name you. `OPERATOR_EMAIL` (where visitors send data requests) is then required, because a privacy
+policy has to name a contact. `OPERATOR_ADDRESS` and `OPERATOR_ID` (business or company registration number) add
+the rest, and `LEGAL_UPDATED` (`YYYY-MM-DD`) sets the date shown as the last update. They fail at start without
+`OPERATOR_NAME`. Without any of them the pages say the operator has published no contact details. The retention
+and cookie lifetimes in the texts are the defaults of the matching settings (see `.env.example`); if you change
+them, change the texts too. Rafflink sends no data to the Rafflink project from any install.
+
+### Error reporting with Sentry (optional)
+
+Each target can send its errors to your own Sentry project. Without a DSN nothing is loaded and nothing is sent,
+which is the default for local development, the tests and self-hosting.
+
+- `SENTRY_DSN`: the DSN of the Worker or the Bun server, read at runtime. On Cloudflare set it with
+  `bunx wrangler secret put SENTRY_DSN`.
+- `PUBLIC_SENTRY_DSN`: the browser's DSN, read by the web build (`bun run build`), which writes it into the page.
+  The page then loads the Sentry SDK as a separate file, and the Content-Security-Policy allows the Sentry ingest
+  of that DSN in `connect-src`. After a change, build again.
+- `SENTRY_ENVIRONMENT` (default `production`), `SENTRY_RELEASE` (the commit the deployment was built from) and
+  `SENTRY_SAMPLE_PERCENT` (default 100; lower it when one noisy error would use up the 5,000 errors a month of the
+  Sentry free plan) apply to all three. The web build reads them too.
+
+Only errors are sent: no tracing, no session replay, no logs. The reports leave out cookies, headers, request
+bodies, query parameters and the user, and a filter removes the `Authorization` header, OAuth `code` and `state`,
+Twitch, Kick and Google tokens, token-shaped strings, secrets in a path and winner form answers before a report leaves. A
+report of the Worker or the Bun server carries the error class and the stack but not the message, which can quote
+a login or a platform id. Expected outcomes are not reported: a 401
+after a session expired, a Twitch, Kick or YouTube 429 that is retried, and a Kick webhook with a wrong signature.
+
+Source maps: `bun run build` writes them next to the bundles in `apps/web/dist` and `apps/cloudflare/dist`. A
+push to master uploads them from CI to the Sentry projects `rafflink-web` and `rafflink-worker` of the
+organization `vengex-ww`, with the commit as the release, when the repository has the GitHub Actions secret
+`SENTRY_AUTH_TOKEN` (an organization token that may upload source maps). Build and deploy the same commit with
+`SENTRY_RELEASE` set to it, and the stack traces resolve against those maps. The maps never reach visitors:
+`apps/web/public/.assetsignore` keeps them out of the Cloudflare assets, and the Dockerfile deletes them from the
+image.
+
+### Server size (VPS)
+
+One Bun process serves everything and writes entries to SQLite, so a small VPS is enough. The entry path runs on
+one CPU core and waits on disk writes, which makes disk speed matter more than core count.
+
+| Use                                                                  | CPU    | RAM  | Disk           |
+| -------------------------------------------------------------------- | ------ | ---- | -------------- |
+| Minimum: small streams, a few thousand entrants per giveaway         | 1 vCPU | 1 GB | 10 GB SSD      |
+| Recommended: big streams, entry bursts of several hundred per second | 2 vCPU | 2 GB | 20 GB NVMe SSD |
+
+The second core keeps Caddy, Docker and the OS off the core that handles entries. A spinning disk or a cheap
+network volume with slow fsync lowers the entry ceiling the most.
+
+Measured with `bun run load-test` on an 8 core desktop with an NVMe disk: 500 entries per second for 30 s with no
+errors, and up to 1,500 per second in short runs, using about 0.75 of one core at 700 per second. A VPS core is
+slower, so expect a lower ceiling and run the load test on your own server before a big giveaway. Twitch limits
+sign-ins per app too; above that limit viewers wait in the sign-in queue, whatever the server size.
+
+### Docker (any server)
+
+[apps/server/compose.yaml](../apps/server/compose.yaml) runs the Bun server and a Caddy proxy that gets a
+certificate for your domain. Ports 80 and 443 must be reachable, and the DNS of the domain must point at the
+server.
+
+1. Copy the example settings next to the compose file: `cp .env.example apps/server/.env`.
+2. In `apps/server/.env` fill the required values from the Twitch section above. Add `DOMAIN`, the host name
+   without `https://` (for example `rafflink.example.com`), and set `PUBLIC_URL` to `https://` plus the same
+   host name. Leave `DEV_FAKE_TWITCH` at `false`.
+3. Start it from `apps/server`:
+
+   ```sh
+   cd apps/server
+   docker compose up -d --build
+   ```
+
+   For error reporting (see above), the build also takes `PUBLIC_SENTRY_DSN`, `SENTRY_RELEASE`,
+   `SENTRY_ENVIRONMENT` and `SENTRY_SAMPLE_PERCENT` from `apps/server/.env`.
+
+Data lives in the Docker volume `rafflink-data`, mounted at `/data` (`DATA_DIR`): `accounts.sqlite` with
+streamers and giveaways, `queue.sqlite` with the token queue and one `rooms/<id>.sqlite` file per giveaway.
+Caddy keeps its certificates in the volume `caddy-data`.
+
+Back up `DATA_DIR`. SQLite files change while the server runs, so stop the server for a plain copy. The
+volume name starts with the compose project name (the folder name, `server`); `docker volume ls` shows it.
+
+```sh
+cd apps/server
+docker compose stop rafflink
+docker run --rm -v server_rafflink-data:/data -v "$PWD":/backup alpine tar czf /backup/rafflink-data.tgz -C /data .
+docker compose start rafflink
+```
+
+`TOKEN_SEAL_KEYS` is not in the volume. Keep a copy of it: without it the stored streamer tokens cannot be
+read and every streamer has to sign in again, and the winner form answers still held cannot be read.
+
+To upgrade, pull the new code and rebuild. Back up first; the server applies new account migrations at start.
+
+```sh
+git pull
+cd apps/server
+docker compose up -d --build
+```
+
+Streamers that signed in before the approval feature existed wait for approval after this upgrade, so they
+cannot create giveaways until an admin approves them on the admin page. Set `OPEN_SIGNUP=true` to keep
+today's behavior.
+
+The Bun server limits viewer sign-in callbacks per client address (`ENTRY_IP_LIMIT_PER_MINUTE`, 60 by
+default) and its logs carry a request id only. Which address it counts depends on `CLIENT_IP_HEADER`:
+
+- Unset (the default): the address of the connection. That is right when nothing sits in front of the
+  server. Behind a proxy it is the proxy's address, so every viewer shares one limit; it also means a
+  client cannot dodge the limit by writing its own `X-Forwarded-For`.
+- Set to a header name: the server reads the client address from that header, and when the value lists
+  several addresses, from the last one, which the nearest proxy appended. Set it only when your proxy
+  overwrites or appends that header on every request, or a client can choose its own address. Behind
+  Cloudflare use `CF-Connecting-IP`; behind Caddy or Traefik alone use `X-Forwarded-For`. Behind
+  Cloudflare and then Caddy, `X-Forwarded-For` ends in Cloudflare's address, so use `CF-Connecting-IP`.
+
+A request without the configured header has no known address and is not limited by address. The limit is
+a loose backstop because many viewers can share one mobile address. Viewer sockets check the `Origin`
+header against `PUBLIC_URL`, not an address.
+
+### Coolify (Traefik)
+
+Coolify puts Traefik in front of the container, so the Caddy service of the compose file is not needed:
+Traefik gets the certificate and proxies to the Bun container. Create an application from this repository
+with the Dockerfile build pack and the file `apps/server/Dockerfile` (build context: the repository root),
+set the exposed port to `3000`, add a persistent storage mounted at `/data`, and enter the settings from
+`.env.example` as environment variables with `PUBLIC_URL` set to your `https://` domain, `DATA_DIR=/data` and
+`PORT=3000`. WebSockets pass through Traefik without extra settings.
+
+Caddy also compressed responses (`encode zstd gzip`). Turn on compression in Coolify, or use the `compress`
+middleware below, because a full entrants list is large.
+
+To limit `/api`, add a Traefik `rateLimit` middleware to a router that matches only `PathPrefix(`/api`)`, in
+the application's custom labels. Traefik takes the longer rule first, so `/api` goes through this router and
+every other path through the one Coolify made. Replace the domain:
+
+```yaml
+traefik.enable=true
+traefik.http.middlewares.rafflink-api-limit.ratelimit.average=3
+traefik.http.middlewares.rafflink-api-limit.ratelimit.period=1s
+traefik.http.middlewares.rafflink-api-limit.ratelimit.burst=30
+traefik.http.middlewares.rafflink-compress.compress=true
+traefik.http.routers.rafflink-api.rule=Host(`rafflink.example.com`) && PathPrefix(`/api`)
+traefik.http.routers.rafflink-api.entrypoints=https
+traefik.http.routers.rafflink-api.tls=true
+traefik.http.routers.rafflink-api.tls.certresolver=letsencrypt
+traefik.http.routers.rafflink-api.middlewares=rafflink-api-limit,rafflink-compress
+traefik.http.routers.rafflink-api.service=rafflink-api
+traefik.http.services.rafflink-api.loadbalancer.server.port=3000
+```
+
+`average=3` per `1s` with `burst=30` allows 30 requests at once and three a second after that, the same
+budget as the Cloudflare rule below (a viewer needs under 10 in 10 seconds). Traefik counts per client IP,
+the address of the connection. When another proxy such as Cloudflare sits in front of Traefik, every viewer
+shares that proxy's address; then add
+`traefik.http.middlewares.rafflink-api-limit.ratelimit.sourcecriterion.ipstrategy.depth=1` and make the
+Traefik entrypoint trust that proxy's forwarded headers. The entrypoint and certificate resolver names above
+are Coolify's defaults; check them in your Coolify proxy settings.
+
+### Cloudflare
+
+You need a Cloudflare account with Workers and D1. Run the `wrangler` commands in `apps/cloudflare`.
+
+1. Build the web app and the Worker bundle from the repository root: `bun run build`.
+2. Sign in and create the database:
+
+   ```sh
+   cd apps/cloudflare
+   bunx wrangler login
+   bunx wrangler d1 create rafflink
+   ```
+
+3. Copy the `database_id` the command prints into `d1_databases` in
+   [apps/cloudflare/wrangler.jsonc](../apps/cloudflare/wrangler.jsonc). Change `name` there if you want another
+   Worker name.
+4. Add the plain settings as a `vars` block in `wrangler.jsonc`:
+
+   ```jsonc
+   "vars": {
+     "PUBLIC_URL": "https://rafflink.example.com",
+     "TWITCH_CLIENT_ID": "<client id>",
+     "ADMIN_TWITCH_IDS": "<your Twitch user id, login or channel link>",
+   },
+   ```
+
+   `PUBLIC_URL` is the address of the Worker: a custom domain you add in the Cloudflare dashboard, or the
+   `workers.dev` address that `wrangler deploy` prints. It must match the redirect URLs in the Twitch app.
+
+5. Create the tables in the remote database (the files are in `packages/core/schema/accounts`):
+
+   ```sh
+   bunx wrangler d1 migrations apply rafflink --remote
+   ```
+
+6. Deploy:
+
+   ```sh
+   bunx wrangler deploy
+   ```
+
+7. Set the secrets. Each command asks for the value:
+
+   ```sh
+   bunx wrangler secret put TWITCH_CLIENT_SECRET
+   bunx wrangler secret put SESSION_SECRET
+   bunx wrangler secret put TOKEN_SEAL_KEYS
+   ```
+
+A cron trigger (`0 * * * *`, in `wrangler.jsonc`) validates every stored streamer token once an hour, as
+Twitch requires. If you change `VALIDATE_PERIOD_SECONDS`, change the cron to match; a test checks that they
+agree. The same cron wakes the rooms of closed giveaways once, up to `ENTRY_RETENTION_SWEEP_BATCH` per
+run, so each arms the alarm that deletes the entrants' data `ENTRY_RETENTION_SECONDS` after the close. A room
+that fails sorts behind the others and is given up, with an error log, after `ENTRY_RETENTION_SWEEP_MAX_ATTEMPTS`
+failed runs. Winners keep their login and display name after that, for as long as the giveaway exists. If you set
+`HISTORY_RETENTION_DAYS`, the same cron (an hourly timer on the Bun server) also deletes up to
+`HISTORY_RETENTION_SWEEP_BATCH` drawn giveaways per run that closed more than that many days ago; unset, no
+sweep runs and giveaways stay until the streamer deletes them on the dashboard.
+
+An admin can replace one winner's name with "removed" when the winner asks, by a same-origin JSON `POST` to
+`/api/admin/giveaways/<code>/winners/<pick number from 0>/remove-name` while signed in as that admin.
+
+Optional usage meter: the Cloudflare free plan allows 100,000 Worker requests a day. To show the day's use on
+the admin page and warn streamers when fewer than 25,000 are left, add `CLOUDFLARE_ACCOUNT_ID` as a var and
+set `CLOUDFLARE_API_TOKEN` (a token with the Account Analytics read permission) as a secret. Without them the
+meter reports no limit. The admin page warns once a day's Worker or Durable Object requests reach
+`USAGE_ALERT_PERCENT` (70) of the daily limit.
+
+Cloudflare plan: the app assumes Workers Free (`CLOUDFLARE_PLAN=free`) until an admin switches the plan on the
+admin page. Cloudflare cannot upgrade on its own, so moving to Paid takes two steps: pay for Workers Paid in
+the Cloudflare dashboard, then switch to Paid on the admin page. The switch is stored in D1 and reaches the
+token queue at once, without a deploy. On Paid the meter shows the day's requests without a daily cap (Paid
+includes 10 million Worker and 1 million Durable Object requests a month and bills the rest), and the queue
+sends up to 9,000 subrequests per alarm invocation instead of 45. `WORKER_REQUEST_LIMIT`,
+`DURABLE_OBJECT_REQUEST_LIMIT` and `QUEUE_SUBREQUESTS_PER_INVOCATION` override the plan's values when set,
+for example a self-imposed daily cap on Paid. The Bun server has no Cloudflare plan and shows no switch.
+
+Live statistics: the admin page polls `GET /api/admin/stats` every 10 seconds while its tab is visible and
+stops while it is hidden. The answer is reused for `ADMIN_STATS_CACHE_SECONDS` (5), so two admins cost one set
+of reads, and it asks the rooms of at most `ADMIN_STATS_LIVE_ROOMS_MAX` (20) open giveaways for their viewers
+and entries, one Durable Object request each on Cloudflare. The page shows the open giveaways, connected
+viewers, entries and claims of the last minute, the entry line with its Twitch 429 responses, a chart of the
+last `ADMIN_STATS_SERIES_MINUTES` (60) minutes, giveaways and new streamers per day over `ADMIN_STATS_DAYS` (14)
+days, streamers who came back for a second giveaway within `ADMIN_STATS_RETURN_DAYS` (30), and, with
+`OPEN_SIGNUP=false`, how many streamers wait for approval.
+
+People on the site: every tab of the site opens one WebSocket to `/api/presence?kind=<kind>`, where the kind is
+home, legal, dashboard (with the admin page), giveaway or other, and sends nothing. The OBS overlay, the
+streamer's live page and a moderator's live page open none: they are not visitors, they hold sockets of their
+own, and an overlay left open in OBS would count for hours. On Cloudflare every socket hibernates in one
+`SitePresenceObject` Durable Object (binding `PRESENCE`), so a tab costs one Worker request and one Durable
+Object request when it opens, and again when it moves to a page of another kind; the Bun server counts the
+sockets in memory. The admin page shows the counts per kind. Nothing about a visitor is stored or logged; the
+client address is only the key of `PRESENCE_IP_LIMIT_PER_MINUTE` (30, the `PRESENCE_IP_LIMITER` binding on
+Cloudflare). A dropped socket reconnects with the backoff of the viewer push and gives up after 4 failures in a
+row over at least a minute, so a tab whose socket keeps failing stops being counted until it moves to a page of
+another kind or is reloaded; every try is a billed request. The tab closes the socket on `pagehide`. A
+Cloudflare deployment whose wrangler config lacks the `PRESENCE` binding answers the socket with 404 and the
+admin page shows the count as unavailable; without `PRESENCE_IP_LIMITER` the sockets have no address limit.
+
+The statistics are aggregate counts and nothing else. The chart reads per-minute counters that each giveaway
+room adds to the account database once a minute while it is active (`metrics_minute`, deleted after
+`METRICS_RETENTION_HOURS`, 24). The token queue keeps its 429 counts in its own database the same way. The daily
+figures are counted from the giveaway and streamer tables. A home page visit with `?ref=<label>` (lower-case
+letters, digits and hyphens, up to 32 characters; anything else is ignored) adds one to that label's count for
+the day, and the page lists the busiest labels. The count has no cookie, address or other visitor data, and a
+new label beyond `REFERRAL_SOURCES_PER_DAY_MAX` (100) a day, and every visit beyond `REFERRAL_VISITS_PER_DAY_MAX` (2000) a day, is ignored (each count is a D1 write). Cloudflare's own request analytics
+(the usage meter above) are the only other source; no analytics service or script is added.
+Scripts, styles, icons and the app pages are static assets that Cloudflare serves without the Worker. Only
+`/api/*`, `/auth/*`, the pages search engines index (`/`, `/privacy` and `/terms`) and the public history pages
+(`/s/*`) count as Worker requests; the Worker writes `PUBLIC_URL` into the canonical and Open Graph tags of those pages. A giveaway page load makes one such request, and the
+public part of its answer is kept for `PUBLIC_GIVEAWAY_CACHE_SECONDS` (5 by default) in the Cache API, so a
+refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache API stores nothing on a
+`workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
+seconds old.
+A streamer's public history page makes one Worker request too: the Worker answers `/s/<platform>/<login>` with the
+page and the history in it, so the page asks `/api/s/<platform>/<login>` only after navigating inside the app, and makes
+no session request. A static page that fetched the history would also cost one request, so running the Worker first
+for `/s/*` adds none. The history answer is kept for `PUBLIC_HISTORY_CACHE_SECONDS` (300) in the Cache API; a miss reads D1 twice and no Durable
+Object, because each room copies its entrant and winner counts into D1 with its status. The page lists the latest
+`PUBLIC_HISTORY_MAX` (20) giveaways by close time. Turning the page off, hiding or deleting a giveaway drops the
+cached answer of the data centre that saved the change; elsewhere it shows once the cached answer expires. While
+`OPEN_SIGNUP` is off only an approved streamer has the page. The page is `noindex` until the streamer allows search
+engines in the dashboard; then it drops `X-Robots-Tag` and keeps its canonical and Open Graph tags. When a sign-in sees
+a renamed Twitch account, the login it replaced is kept, and `/s/<platform>/<old login>` answers 301 to the new login
+(308 for the API path) while no account holds the old login and the page is on. Only the latest rename is kept.
+The home page is one Worker request itself. The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
+`/api/g/<code>` request when it shows winners, to read the prize; the giveaway pages make no session request. An
+overlay reads its style (`/api/overlay/<id>/<token>/theme`, one D1 read) when it loads and when its socket reconnects;
+a saved style reaches open overlays as a push on the overlay socket, one room call per giveaway that shows it.
+
+The leaf list of a committed giveaway (`/api/g/CODE/leaves/ROOT`, up to a megabyte, where `ROOT` is the published
+Merkle root, so a code reused after a deletion never serves an old list) is kept in the same cache for
+`LEAVES_CACHE_SECONDS`. A download that misses the cache wakes the giveaway's room, so each client address may make
+`LEAVES_IP_LIMIT_PER_MINUTE` of them (the `LEAVES_IP_LIMITER` binding on Cloudflare, whose limit comes from
+`wrangler.jsonc`). On a `workers.dev` address the cache stores nothing, so the limit is the only guard there.
+
+### What a viewer costs
+
+A viewer's giveaway page opens one WebSocket to `/api/g/<code>/live` (one Worker request and one Durable
+Object request, sent with the site's own `Origin`). The room pushes the outcome through it: closing, the
+draw, rerolls, claims and a chat claim that stops working. The push carries the winners' Twitch user ids and
+claim deadlines, so the page compares them with its own viewer and shows "You won" or "Not this time"
+without asking the server again, and a draw never makes every viewer fetch `/api/g/<code>` at once. Messages
+the room sends are not billed and viewers send none. The page reconnects with backoff and jitter and gives up only after a few connections in a row closed before
+the first message and at least a minute passed; it tries again when the browser comes back online or the tab
+becomes visible. It stops once the giveaway is finished: the draw is done and every pick is claimed, or no entrant
+is left to reroll to, or `REROLL_WINDOW_SECONDS` (default 3600) passed since the last claim deadline, after which a
+reroll is refused. A push holds public data
+only: no cookie, no sign-in state and no names.
+
+The page also keeps its last `/api/g/<code>` answer in `sessionStorage`. A reload within 30 seconds
+(`storedGiveawayWindowMs` in `apps/web/src/lib/stored-giveaway.ts`, a starting guess) renders from it and
+opens only the socket, whose first message brings the page up to date. After a sign-in, a queued entry or a
+claim the page asks the server again, because what it knows about the viewer changed.
+
+### Rate limit for `/api/*` (Cloudflare)
+
+Viewers who keep refreshing, or a script, can use up the free 100,000 requests a day, because Cloudflare
+counts every Worker request, also one served from the cache. A rate limiting rule runs in front of the Worker,
+so a blocked request is not a Worker request. It needs the domain to be on Cloudflare (a custom domain, not
+`workers.dev`). The free plan allows one rule, counted per IP address over a period of 10 seconds, with a
+block of 10 seconds.
+
+1. In the Cloudflare dashboard open your domain, then **Security**, **WAF**, **Rate limiting rules**, and
+   choose **Create rule**.
+2. Name it, for example `rafflink api`.
+3. Under **If incoming requests match**, choose the field **URI Path**, the operator **starts with** and the
+   value `/api/`. The expression is `starts_with(http.request.uri.path, "/api/")`.
+4. Leave the characteristic at **IP**. Set **Requests** to `30` and **Period** to `10 seconds`.
+5. Under **Then take action** choose **Block** with the duration `10 seconds`, then **Deploy**.
+
+Why 30 does not hurt a normal viewer: one viewer makes two requests when the page opens (the giveaway and
+the socket), then a poll every 3 seconds while a queued entry is processed, and a few more when the socket
+reconnects after a network drop. That stays under 10 requests in 10 seconds. 30 leaves room for a few people
+behind one shared address (a household, a school or a mobile carrier) and still cuts off a script or a
+refresh loop at three requests a second. 30 is a starting guess; raise it if many viewers share addresses.
+`/auth/*` is not covered, because the free plan has one rule.
+
+To upgrade, pull the new code, run `bun run build`, apply new migrations with
+`bunx wrangler d1 migrations apply rafflink --remote`, then run `bunx wrangler deploy`. Apply the migrations
+first: the new code reads columns that only the migration adds. After the upgrade that introduced streamer
+approval, streamers that signed in earlier wait for approval unless `OPEN_SIGNUP` is `true`.
+
+With error reporting, build with `SENTRY_RELEASE=$(git rev-parse HEAD)` (and `PUBLIC_SENTRY_DSN` for the
+browser), run `bunx @sentry/cli@3.8.2 sourcemaps inject apps/web/dist apps/cloudflare/dist` as CI does, and
+deploy with `bunx wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)`, so the reports of the page and of
+the Worker carry the debug ids and the commit of the source maps CI uploaded.
+
+## Security headers, link previews and OBS
+
+Every API response and every page carries a Content-Security-Policy (`default-src 'self'`, no inline styles,
+`frame-ancestors 'none'`), `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and
+`Cross-Origin-Opener-Policy`; `Strict-Transport-Security` is added when `PUBLIC_URL` is https. The one
+inline script of `index.html` (the theme) is allowed by its hash. The hash is computed from the page that is
+served and from the built `apps/web/dist/index.html` when it writes `_headers`, so editing the script needs
+no manual step; a test fails if the built page has a second inline script. A page built with
+`PUBLIC_SENTRY_DSN` adds the Sentry ingest of that DSN to `connect-src`, read from the same built page.
+
+On Cloudflare the app pages are static: the headers above come from `apps/web/dist/_headers`, which the web build
+writes (with the hash of the inline script), and `X-Robots-Tag: noindex, nofollow` covers every path except
+the home and legal pages. Those three and the public history pages run the Worker, which answers them like the Bun server does, with `PUBLIC_URL`
+in the canonical, `og:url`, `og:image` and `twitter:image` tags; link previews and search engines ignore relative
+URLs there. A pasted giveaway link shows the generic preview of the home page with its relative URLs, so most
+previews show no image. The Bun server
+answers each page itself and gives the page of a giveaway link (`/<code>`, `/<code>/verify` and the old `/g/<code>`, which the page then replaces with `/<code>`) its title, prize
+and streamer name in the title, Open Graph and Twitter tags, so a pasted link previews well; it sends the same
+noindex rule. `/robots.txt` is a static file in `apps/web/public` for both targets; there is no sitemap.
+
+The OBS overlay is a browser source that opens `/overlay/...` as a top-level page, so
+`frame-ancestors 'none'` does not affect it. Once the entry link leaves the stream (while a draw runs and after
+it), a small plate under the winners names the host the overlay is served from, so a self-hosted overlay shows its
+own domain. Do not embed the overlay in an iframe on another site.
+
+A streamer styles the overlay on the dashboard (the fields of `OverlayTheme` in
+`packages/core/src/domain/overlay-theme.ts`), and one giveaway can have its own style on its live page. The CSP allows no inline style
+attribute and no font CDN, so the overlay sets the colors as CSS custom properties from script and the rest as data
+attributes, and the fonts are files in `apps/web/public/fonts` (Quicksand, Space Grotesk and Oswald from the Google
+Fonts repository, Latin subsets, SIL Open Font License in `apps/web/public/licenses`). The reveal chime
+`apps/web/public/sounds/reveal.wav` is synthesized by `bun run reveal-sound` in `apps/web`, so it has no outside source.
+
+After changing the brand mark or the colors, run `bun run icons` in `apps/web` and commit the files in
+`apps/web/public`: the favicons (`favicon.ico` holds 16, 32 and 48 px), the app icons and the `og.png` link preview.

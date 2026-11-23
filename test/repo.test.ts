@@ -25,10 +25,13 @@ describe("repository", () => {
     expect(license).toContain("Version 3, 19 November 2007")
   })
 
-  it("documents Twitch app registration and self-hosting in the README", async () => {
+  it("documents Twitch app registration and self-hosting, linked from the README", async () => {
     const readme = await Bun.file(new URL("README.md", root)).text()
-    expect(readme).toMatch(/^## Twitch app registration$/m)
-    expect(readme).toMatch(/^## Self-hosting$/m)
+    const guide = await Bun.file(new URL("docs/self-hosting.md", root)).text()
+    expect(readme).toContain("](docs/self-hosting.md)")
+    expect(guide).toMatch(/^## Twitch app registration$/m)
+    expect(guide).toMatch(/^### Docker \(any server\)$/m)
+    expect(guide).toMatch(/^### Cloudflare$/m)
   })
 
   // A part without its test file would drop its scenarios from that target without a failing test.
