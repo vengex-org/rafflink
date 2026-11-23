@@ -505,7 +505,6 @@ export const pl: Translation = {
   "winnerForm.invalid": "Wypełnij każde pole. E-mail musi zawierać @.",
   "answers.title": "Odpowiedzi zwycięzców",
   "answers.none": "Żaden zwycięzca jeszcze nie odebrał nagrody.",
-  "answers.pick": "Losowanie {n}: {name}",
   "answers.unnamed": "nieznany zwycięzca",
   "answers.waiting": "Jeszcze nie wysłano.",
   "answers.deleted": "Odpowiedzi zostały usunięte.",
@@ -514,8 +513,6 @@ export const pl: Translation = {
   "answers.markDelivered": "Oznacz jako dostarczone",
   "answers.deliverFailed": "Nie udało się oznaczyć nagrody jako dostarczonej. Odśwież stronę.",
   "answers.failed": "Nie udało się wczytać odpowiedzi.",
-  "answers.privacy":
-    "Te odpowiedzi widzisz tylko ty, moderatorzy nie. Oznaczenie nagrody jako dostarczonej je usuwa, w przeciwnym razie zostaną usunięte 30 dni po odbiorze.",
   "rules.summary": "Zasady i bilety",
   "rules.help": "Im więcej biletów dostaje grupa, tym większa jest jej szansa na wygraną.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -564,8 +561,6 @@ export const pl: Translation = {
   "dash.created.title": "Twoje rozdanie działa!",
   "dash.roomNotReady":
     "Rozdanie nie jest jeszcze w pełni gotowe. Otwórz stronę na żywo, aby dokończyć konfigurację.",
-  "dash.next":
-    "Teraz powiedz o nim czatowi. Wklej poniższą wiadomość na czat streamu. Kod rozdania to {code}.",
   "dash.openLive": "Otwórz stronę na żywo",
   "dash.obs.title": "Dodaj do OBS (opcjonalnie)",
   "dash.obs.text": "Pokazuj zgłoszenia na streamie, gdy ludzie dołączają.",
@@ -661,7 +656,6 @@ export const pl: Translation = {
   "share.copyOverlay": "Kopiuj link do nakładki",
   "share.obs.1": "W OBS znajdź okno Źródła i naciśnij przycisk +.",
   "share.obs.2": "Wybierz Przeglądarka i naciśnij OK.",
-  "share.obs.3": "Wklej poniższy link do nakładki w pole URL.",
   "share.obs.4": "Ustaw Szerokość na 800 i Wysokość na 600, a potem naciśnij OK.",
   "copy.copied": "Skopiowano!",
   "copy.failed": "Nie udało się skopiować. Tekst jest zaznaczony: naciśnij Ctrl+C.",
@@ -679,7 +673,6 @@ export const pl: Translation = {
   "live.entryWayOff.title": "Zgłoszenia działają częściowo",
   "live.chatOff.text":
     "Odbiór przez czat jest niedostępny: Rafflink nie może teraz czytać twojego czatu, więc zwycięzcy nie odbiorą nagrody, pisząc tam. Gdy zwycięzca da ci znać, że jest, naciśnij Oznacz jako odebrane obok jego nazwy.",
-  "live.open.title": "Zgłoszenia są otwarte",
   "live.closesAt": "Zgłoszenia zamkną się same o {time}.",
   "live.close.label": "Zamknij zgłoszenia",
   "live.close.question": "Zamknąć zgłoszenia teraz?",
@@ -759,12 +752,7 @@ export const pl: Translation = {
     "W tej samej chwili odbyło się inne losowanie. Naciśnij ponownie Wylosuj zwycięzcę.",
   "live.draw.next": "Wylosuj następnego zwycięzcę",
   "live.draw.question": "Zamknąć zgłoszenia i wylosować zwycięzcę?",
-  "live.draw.open":
-    "Wylosuj zwycięzcę zamyka zgłoszenia, a potem losuje pierwszego zwycięzcę, gdy publiczna liczba losowa (drand) będzie gotowa.",
   "live.draw.due": "Losowanie zwycięzcy…",
-  "live.draw.nobodyLeft": "Wszyscy zgłoszeni zostali już wylosowani.",
-  "live.draw.detail":
-    "Zgłoszenia zostaną zamknięte i nie da się ich ponownie otworzyć. Pierwszy zwycięzca zostanie wylosowany, gdy tylko publiczna liczba losowa (drand) będzie gotowa, także jeśli zamkniesz tę stronę.",
   "live.draw.confirm": "Tak, zamknij zgłoszenia i losuj",
   "live.draw.waiting":
     "Czekamy na publiczną liczbę losową (drand). Zwycięzca zostanie wylosowany sam za {clock}.",
@@ -776,8 +764,6 @@ export const pl: Translation = {
   "live.mark.aria": "Oznacz jako odebrane dla {name}",
   "live.reroll.over":
     "Czas na wybranie innego zwycięzcy minął. Skontaktuj się ze zwycięzcami, którzy nie odebrali nagrody, albo zacznij nowe rozdanie.",
-  "live.reroll.nobodyLeft":
-    "Wszyscy zgłoszeni zostali już wylosowani. Skontaktuj się ze zwycięzcami, którzy nie odebrali nagrody, albo zacznij nowe rozdanie.",
   "live.reroll.question": "Wybrać innego zwycięzcę zamiast {name}?",
   "live.reroll.detail": "{name} traci nagrodę. Nie da się tego cofnąć.",
   "live.reroll.confirm": "Tak, wybierz innego zwycięzcę",

@@ -507,7 +507,6 @@ export const cs: Translation = {
   "winnerForm.invalid": "Vyplň všechna pole. E-mail musí obsahovat @.",
   "answers.title": "Odpovědi vítězů",
   "answers.none": "Výhru si zatím nepřevzal žádný vítěz.",
-  "answers.pick": "Los {n}: {name}",
   "answers.unnamed": "neznámý vítěz",
   "answers.waiting": "Zatím neposlal.",
   "answers.deleted": "Odpovědi jsou smazané.",
@@ -516,8 +515,6 @@ export const cs: Translation = {
   "answers.markDelivered": "Označit jako doručené",
   "answers.deliverFailed": "Výhru se nepodařilo označit jako doručenou. Obnov stránku.",
   "answers.failed": "Odpovědi se nepodařilo načíst.",
-  "answers.privacy":
-    "Tyto odpovědi vidíš jen ty, moderátoři ne. Označení výhry jako doručené je smaže, jinak se smažou 30 dní po převzetí.",
   "rules.summary": "Pravidla a losy",
   "rules.help": "Čím víc losů skupina dostane, tím větší má šanci vyhrát.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -566,7 +563,6 @@ export const cs: Translation = {
   "dash.created.title": "Tvoje soutěž běží!",
   "dash.roomNotReady":
     "Soutěž ještě není úplně připravená. Otevři živou stránku a dokonči nastavení.",
-  "dash.next": "Teď dej vědět chatu. Vlož zprávu níže do chatu streamu. Kód soutěže je {code}.",
   "dash.openLive": "Otevřít živou stránku",
   "dash.obs.title": "Přidat do OBS (nepovinné)",
   "dash.obs.text": "Zobraz přihlášky ve svém streamu, zatímco se lidé zapojují.",
@@ -660,7 +656,6 @@ export const cs: Translation = {
   "share.copyOverlay": "Kopírovat odkaz na překryv",
   "share.obs.1": "V OBS najdi okno Zdroje a stiskni tlačítko +.",
   "share.obs.2": "Vyber Browser a stiskni OK.",
-  "share.obs.3": "Odkaz na překryv níže vlož do pole URL.",
   "share.obs.4": "Nastav šířku (Width) na 800 a výšku (Height) na 600, pak stiskni OK.",
   "copy.copied": "Zkopírováno!",
   "copy.failed": "Kopírování se nepovedlo. Text je označený, stiskni Ctrl+C.",
@@ -678,7 +673,6 @@ export const cs: Translation = {
   "live.entryWayOff.title": "Zapojení je částečně vypnuté",
   "live.chatOff.text":
     "Převzetí přes chat není dostupné: Rafflink teď neumí číst tvůj chat, takže vítězové nemohou výhru převzít napsáním do něj. Až ti vítěz řekne, že je tady, stiskni u jeho jména Označit jako převzaté.",
-  "live.open.title": "Přihlašování je otevřené",
   "live.closesAt": "Přihlašování se samo uzavře {time}.",
   "live.close.label": "Uzavřít přihlašování",
   "live.close.question": "Uzavřít přihlašování teď?",
@@ -758,12 +752,7 @@ export const cs: Translation = {
     "Ve stejnou chvíli proběhlo jiné losování. Stiskni Vylosovat vítěze znovu.",
   "live.draw.next": "Vylosovat dalšího vítěze",
   "live.draw.question": "Uzavřít přihlašování a vylosovat vítěze?",
-  "live.draw.open":
-    "Vylosovat vítěze uzavře přihlašování a potom vylosuje prvního vítěze, až bude připravené veřejné náhodné číslo (drand).",
   "live.draw.due": "Losuje se vítěz…",
-  "live.draw.nobodyLeft": "Vylosovaní jsou všichni, kdo se přihlásili.",
-  "live.draw.detail":
-    "Přihlašování se uzavře a nejde znovu otevřít. První vítěz se vylosuje hned, jak bude připravené veřejné náhodné číslo (drand), i když tuto stránku zavřeš.",
   "live.draw.confirm": "Ano, uzavřít přihlašování a vylosovat",
   "live.draw.waiting":
     "Čeká se na veřejné náhodné číslo (drand). Vítěz se vylosuje sám za {clock}.",
@@ -775,8 +764,6 @@ export const cs: Translation = {
   "live.mark.aria": "Označit jako převzaté: {name}",
   "live.reroll.over":
     "Čas na výběr jiného vítěze vypršel. Kontaktuj vítěze, kteří výhru nepřevzali, nebo spusť nový giveaway.",
-  "live.reroll.nobodyLeft":
-    "Všichni, kdo se zapojili, už byli vylosováni. Kontaktuj vítěze, kteří výhru nepřevzali, nebo spusť nový giveaway.",
   "live.reroll.question": "Vybrat jiného vítěze místo {name}?",
   "live.reroll.detail": "{name} o výhru přijde. Nejde to vrátit zpět.",
   "live.reroll.confirm": "Ano, vybrat jiného vítěze",

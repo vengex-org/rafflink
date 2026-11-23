@@ -517,7 +517,6 @@ export const de: Translation = {
   "winnerForm.invalid": "Füll jedes Feld aus. Die E-Mail braucht ein @.",
   "answers.title": "Antworten der Gewinner",
   "answers.none": "Noch kein Gewinner hat abgeholt.",
-  "answers.pick": "Ziehung {n}: {name}",
   "answers.unnamed": "unbekannter Gewinner",
   "answers.waiting": "Noch nicht gesendet.",
   "answers.deleted": "Die Antworten wurden gelöscht.",
@@ -527,8 +526,6 @@ export const de: Translation = {
   "answers.deliverFailed":
     "Der Preis konnte nicht als geliefert markiert werden. Lade die Seite neu.",
   "answers.failed": "Die Antworten konnten nicht geladen werden.",
-  "answers.privacy":
-    "Nur du siehst diese Antworten, Moderatoren nicht. Wenn du den Preis als geliefert markierst, werden sie gelöscht, sonst 30 Tage nach der Abholung.",
   "rules.summary": "Regeln und Tickets",
   "rules.help": "Je mehr Tickets eine Gruppe bekommt, desto besser ihre Gewinnchance.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -579,8 +576,6 @@ export const de: Translation = {
   "dash.created.title": "Dein Gewinnspiel ist live!",
   "dash.roomNotReady":
     "Das Gewinnspiel ist noch nicht ganz bereit. Öffne die Live-Seite, um die Einrichtung abzuschließen.",
-  "dash.next":
-    "Sag jetzt deinem Chat Bescheid. Füg die Nachricht unten in deinen Stream-Chat ein. Der Code des Gewinnspiels ist {code}.",
   "dash.openLive": "Live-Seite öffnen",
   "dash.obs.title": "Zu OBS hinzufügen (optional)",
   "dash.obs.text": "Zeig die Teilnahmen im Stream, während Leute mitmachen.",
@@ -677,7 +672,6 @@ export const de: Translation = {
   "share.copyOverlay": "Overlay-Link kopieren",
   "share.obs.1": "Such in OBS das Feld Quellen und drück den Button +.",
   "share.obs.2": "Wähl Browser und drück OK.",
-  "share.obs.3": "Füg den Overlay-Link unten in das Feld URL ein.",
   "share.obs.4": "Stell Breite auf 800 und Höhe auf 600 und drück dann OK.",
   "copy.copied": "Kopiert!",
   "copy.failed": "Kopieren fehlgeschlagen. Der Text ist markiert: drück Strg+C.",
@@ -695,7 +689,6 @@ export const de: Translation = {
   "live.entryWayOff.title": "Teilnahme ist teilweise aus",
   "live.chatOff.text":
     "Abholung per Chat nicht verfügbar: Rafflink kann deinen Chat gerade nicht lesen, Gewinner können also nicht durch Schreiben im Chat abholen. Wenn dir ein Gewinner sagt, dass er da ist, drück neben seinem Namen auf Als abgeholt markieren.",
-  "live.open.title": "Teilnahme ist offen",
   "live.closesAt": "Die Teilnahme endet von selbst um {time}.",
   "live.close.label": "Teilnahme beenden",
   "live.close.question": "Teilnahme jetzt beenden?",
@@ -778,12 +771,7 @@ export const de: Translation = {
     "Gleichzeitig lief eine andere Ziehung. Drück noch mal auf Gewinner ziehen.",
   "live.draw.next": "Nächsten Gewinner ziehen",
   "live.draw.question": "Teilnahme beenden und Gewinner ziehen?",
-  "live.draw.open":
-    "Gewinner ziehen beendet die Teilnahme und zieht den ersten Gewinner, sobald die öffentliche Zufallszahl (drand) bereit ist.",
   "live.draw.due": "Gewinner wird gezogen…",
-  "live.draw.nobodyLeft": "Alle Teilnehmer wurden schon gezogen.",
-  "live.draw.detail":
-    "Die Teilnahme endet und kann nicht wieder geöffnet werden. Der erste Gewinner wird gezogen, sobald die öffentliche Zufallszahl (drand) bereit ist, auch wenn du diese Seite schließt.",
   "live.draw.confirm": "Ja, beenden und ziehen",
   "live.draw.waiting":
     "Warten auf die öffentliche Zufallszahl (drand). Der Gewinner wird in {clock} von selbst gezogen.",
@@ -795,8 +783,6 @@ export const de: Translation = {
   "live.mark.aria": "Für {name} als abgeholt markieren",
   "live.reroll.over":
     "Die Zeit zum Neuziehen ist vorbei. Kontaktier die Gewinner, die nicht abgeholt haben, oder starte ein neues Gewinnspiel.",
-  "live.reroll.nobodyLeft":
-    "Alle Teilnehmer wurden schon gezogen. Kontaktier die Gewinner, die nicht abgeholt haben, oder starte ein neues Gewinnspiel.",
   "live.reroll.question": "Anderen Gewinner statt {name} ziehen?",
   "live.reroll.detail": "{name} verliert den Preis. Das lässt sich nicht rückgängig machen.",
   "live.reroll.confirm": "Ja, neu ziehen",

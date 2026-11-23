@@ -543,7 +543,7 @@ export const en = {
   "winnerForm.invalid": "Fill in every field. The e-mail needs an @.",
   "answers.title": "Winner answers",
   "answers.none": "No winner has claimed yet.",
-  "answers.pick": "Pick {n}: {name}",
+  "answers.pick": "Winner {n}: {name}",
   "answers.unnamed": "unknown winner",
   "answers.waiting": "Not sent yet.",
   "answers.deleted": "The answers were deleted.",
@@ -552,8 +552,7 @@ export const en = {
   "answers.markDelivered": "Mark delivered",
   "answers.deliverFailed": "The prize could not be marked delivered. Reload the page.",
   "answers.failed": "The answers could not be loaded.",
-  "answers.privacy":
-    "Only you see these answers, moderators do not. Marking the prize delivered deletes them, otherwise they are deleted 30 days after the claim.",
+  "answers.privacy": "Only you see these. Deleted on delivery or after 30 days.",
   "rules.summary": "Rules and tickets",
   "rules.help": "The more tickets a group gets, the better its chance of winning.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -601,11 +600,11 @@ export const en = {
   "dash.created.title": "Your giveaway is live!",
   "dash.roomNotReady":
     "The giveaway is not fully ready yet. Open the live page to finish setting it up.",
-  "dash.next":
-    "Next, tell your chat. Paste the message below into your stream chat. The giveaway code is {code}.",
+  "dash.next": "Share this link in your chat.",
   "dash.openLive": "Open live page",
   "dash.obs.title": "Add to OBS (optional)",
   "dash.obs.text": "Show the entries on your stream while people join.",
+  "dash.obs.steps": "How to add it in OBS",
   "dash.back": "Back to my giveaways",
   "dash.access.title": "Waiting for approval",
   "dash.access.text":
@@ -696,7 +695,7 @@ export const en = {
   "share.copyOverlay": "Copy overlay link",
   "share.obs.1": "In OBS, find the Sources box and press the + button.",
   "share.obs.2": "Choose Browser and press OK.",
-  "share.obs.3": "Paste the overlay link below into the URL box.",
+  "share.obs.3": "Paste the overlay link into the URL box.",
   "share.obs.4": "Set Width to 800 and Height to 600, then press OK.",
   "copy.copied": "Copied!",
   "copy.failed": "Could not copy. The text is selected: press Ctrl+C.",
@@ -714,7 +713,6 @@ export const en = {
   "live.entryWayOff.title": "Entry is partly off",
   "live.chatOff.text":
     "Chat claim unavailable: Rafflink cannot read your chat right now, so winners cannot claim by typing there. When a winner tells you they are in, press Mark as claimed next to their name.",
-  "live.open.title": "Entries are open",
   "live.closesAt": "Entries close by themselves at {time}.",
   "live.close.label": "Close entries",
   "live.close.question": "Close entries now?",
@@ -791,12 +789,9 @@ export const en = {
   "drawResult.try-again": "Another draw happened at the same moment. Press Draw winner again.",
   "live.draw.next": "Draw next winner",
   "live.draw.question": "Close entries and draw a winner?",
-  "live.draw.open":
-    "Draw winner closes entries, then draws the first winner when the public random number (drand) is ready.",
   "live.draw.due": "Drawing the winner…",
-  "live.draw.nobodyLeft": "Everyone who entered has been drawn.",
-  "live.draw.detail":
-    "Entries close and cannot open again. The first winner is drawn as soon as the public random number (drand) is ready, also if you close this page.",
+  "live.draw.nobodyLeft": "All entrants drawn.",
+  "live.draw.detail": "Entries close for good. The winner is drawn in a few seconds.",
   "live.draw.confirm": "Yes, close entries and draw",
   "live.draw.waiting":
     "Waiting for the public random number (drand). The winner is drawn by itself in {clock}.",
@@ -808,8 +803,6 @@ export const en = {
   "live.mark.aria": "Mark as claimed for {name}",
   "live.reroll.over":
     "The time to pick another winner is over. Contact the winners who have not claimed, or start a new giveaway.",
-  "live.reroll.nobodyLeft":
-    "Everyone who entered has been drawn. Contact the winners who have not claimed, or start a new giveaway.",
   "live.reroll.question": "Pick another winner instead of {name}?",
   "live.reroll.detail": "{name} loses the prize. This cannot be undone.",
   "live.reroll.confirm": "Yes, pick another winner",
@@ -1386,6 +1379,13 @@ type EnglishOnlyKey =
   | "verify.rerolls.note"
   | `verify.verdict.${"verified" | "failed" | "incomplete"}`
   | "verify.checks.summary"
+  | "answers.pick"
+  | "answers.privacy"
+  | "dash.next"
+  | "dash.obs.steps"
+  | "live.draw.detail"
+  | "live.draw.nobodyLeft"
+  | "share.obs.3"
 
 type PluralSuffix = "one" | "few" | "other" | "many"
 

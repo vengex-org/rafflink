@@ -1,5 +1,6 @@
 import { useCallback, useId, useState, type ReactNode } from "react"
 import { useParams, useSearchParams } from "react-router"
+import { groups, type Tickets } from "@rafflink/core/domain/groups"
 import type { EntrantsDelta, LiveSnapshot, LiveWinner } from "@rafflink/core/room/giveaway-room"
 import { liveSnapshotPath, parseLiveSnapshot } from "../api/client.ts"
 import { ActorLog } from "../components/actor-log.tsx"
@@ -7,7 +8,6 @@ import { ActivityIcon, AlertIcon, EyeOffIcon } from "../components/icons.tsx"
 import { EntrantsSection, Tiers } from "../components/entrants-table.tsx"
 import { ClaimStatus, isUnsettled, LiveActions, LiveSettings } from "../components/live-bar.tsx"
 import { LiveBrand, LiveFrame, LiveTopBar } from "../components/live-frame.tsx"
-import { Stat } from "../components/live-parts.tsx"
 import { LiveStage } from "../components/live-stage.tsx"
 import { Failed, Loading, NotFound, SignIn, Status } from "../components/notice.tsx"
 import { WinnerAnswersPanel } from "../components/winner-answers.tsx"
@@ -237,7 +237,7 @@ export function LiveControls({
   )
 }
 
-/** The numbers beside the list: how fast people enter while entries are open, and how many entered per tier. */
+/** The numbers beside the list: how fast people enter while entries are open, and how many entered per tier when some tiers get bonus tickets. */
 function LiveStats({
   snapshot,
   facts,
@@ -250,21 +250,27 @@ function LiveStats({
   const i18n = useI18n()
   const { t } = i18n
   const headId = useId()
+  const open = snapshot.status === "open"
+  const tickets = facts === null ? null : facts.rules.tickets
+  const bonus = tickets !== null && hasBonusTickets(tickets)
+  if (!open && !bonus) return null
   return (
     <section className="live-card live-stats" aria-labelledby={headId}>
       <h2 id={headId}>{t("live.stats.title")}</h2>
-      {snapshot.status === "open" ? (
-        <dl className="stats live-rate">
-          <Stat
-            icon={<ActivityIcon />}
-            value={i18n.decimal(snapshot.entriesPerSecond)}
-            label={t("stat.perSecond")}
-          />
-        </dl>
+      {open ? (
+        <p className="live-rate">
+          <ActivityIcon />
+          <strong>{i18n.decimal(snapshot.entriesPerSecond)}</strong> {t("stat.perSecond")}
+        </p>
       ) : null}
-      <Tiers rows={rows} ticketsPerGroup={facts === null ? null : facts.rules.tickets} />
+      {bonus ? <Tiers rows={rows} ticketsPerGroup={tickets} /> : null}
     </section>
   )
+}
+
+/** Whether the groups that may enter get different numbers of tickets. */
+function hasBonusTickets(tickets: Tickets): boolean {
+  return new Set(groups.map((group) => tickets[group]).filter((count) => count > 0)).size > 1
 }
 
 function Problems({ snapshot }: { readonly snapshot: LiveSnapshot }) {
@@ -333,7 +339,6 @@ function rerollOverText(snapshot: LiveSnapshot): MessageKey | null {
     case "window-over":
       return "live.reroll.over"
     case "nobody-left":
-      return "live.reroll.nobodyLeft"
     case null:
       return null
   }

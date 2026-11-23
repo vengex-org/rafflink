@@ -47,7 +47,7 @@ export function LiveBrand() {
   )
 }
 
-/** The brand, what is given away, how to enter, whether entries are open, and the theme and language. `controls` false (clean mode) leaves the buttons out. */
+/** The brand, what is given away, how to enter, whether entries are open and when they close, and the theme and language. `controls` false (clean mode) leaves the buttons out. */
 export function LiveTopBar({
   snapshot,
   facts,
@@ -74,6 +74,9 @@ export function LiveTopBar({
         {facts === null || facts.prize === null ? null : (
           <p>{t("live.gives", { streamer: facts.streamerName, prize: facts.prize })}</p>
         )}
+        {snapshot.status !== "open" || snapshot.closesAt === null ? null : (
+          <p>{t("live.closesAt", { time: i18n.dateTime(snapshot.closesAt) })}</p>
+        )}
       </div>
       <div className="live-link-chip">
         <span className="live-link">
@@ -88,7 +91,10 @@ export function LiveTopBar({
         ) : null}
       </div>
       {snapshot.status === "open" ? (
-        <span className="live-chip">{t("live.chip")}</span>
+        <span className="live-chip">
+          <span aria-hidden="true">{t("live.chip")}</span>
+          <span className="sr-only">{t("status.open")}</span>
+        </span>
       ) : (
         <StatusPill status={snapshot.status} />
       )}

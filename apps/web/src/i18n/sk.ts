@@ -505,7 +505,6 @@ export const sk: Translation = {
   "winnerForm.invalid": "Vyplň všetky polia. E-mail musí obsahovať @.",
   "answers.title": "Odpovede víťazov",
   "answers.none": "Výhru si zatiaľ neprevzal žiadny víťaz.",
-  "answers.pick": "Žreb {n}: {name}",
   "answers.unnamed": "neznámy víťaz",
   "answers.waiting": "Zatiaľ neposlal.",
   "answers.deleted": "Odpovede sú vymazané.",
@@ -514,8 +513,6 @@ export const sk: Translation = {
   "answers.markDelivered": "Označiť ako doručené",
   "answers.deliverFailed": "Výhru sa nepodarilo označiť ako doručenú. Obnov stránku.",
   "answers.failed": "Odpovede sa nepodarilo načítať.",
-  "answers.privacy":
-    "Tieto odpovede vidíš iba ty, moderátori nie. Označenie výhry ako doručenej ich vymaže, inak sa vymažú 30 dní po prevzatí.",
   "rules.summary": "Pravidlá a lístky",
   "rules.help": "Čím viac lístkov skupina dostane, tým väčšiu má šancu vyhrať.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -564,7 +561,6 @@ export const sk: Translation = {
   "dash.created.title": "Tvoja súťaž beží!",
   "dash.roomNotReady":
     "Súťaž ešte nie je celkom pripravená. Otvor živú stránku a dokonči nastavenie.",
-  "dash.next": "Teraz daj vedieť chatu. Vlož správu nižšie do chatu streamu. Kód súťaže je {code}.",
   "dash.openLive": "Otvoriť živú stránku",
   "dash.obs.title": "Pridať do OBS (nepovinné)",
   "dash.obs.text": "Zobraz zápisy vo svojom streame, kým sa ľudia zapájajú.",
@@ -658,7 +654,6 @@ export const sk: Translation = {
   "share.copyOverlay": "Kopírovať odkaz na prekrytie",
   "share.obs.1": "V OBS nájdi okno Zdroje a stlač tlačidlo +.",
   "share.obs.2": "Vyber Browser a stlač OK.",
-  "share.obs.3": "Odkaz na prekrytie nižšie vlož do poľa URL.",
   "share.obs.4": "Nastav šírku (Width) na 800 a výšku (Height) na 600, potom stlač OK.",
   "copy.copied": "Skopírované!",
   "copy.failed": "Kopírovanie sa nepodarilo. Text je označený, stlač Ctrl+C.",
@@ -676,7 +671,6 @@ export const sk: Translation = {
   "live.entryWayOff.title": "Zapojenie je čiastočne vypnuté",
   "live.chatOff.text":
     "Prevzatie cez chat nie je dostupné: Rafflink teraz nevie čítať tvoj chat, takže víťazi výhru nemôžu prevziať napísaním doň. Keď ti víťaz povie, že je tu, stlač pri jeho mene Označiť ako prevzaté.",
-  "live.open.title": "Zápis je otvorený",
   "live.closesAt": "Zápis sa sám uzavrie {time}.",
   "live.close.label": "Uzavrieť zápis",
   "live.close.question": "Uzavrieť zápis teraz?",
@@ -755,12 +749,7 @@ export const sk: Translation = {
     "V tej istej chvíli prebehlo iné žrebovanie. Stlač Vyžrebovať víťaza znova.",
   "live.draw.next": "Vyžrebovať ďalšieho víťaza",
   "live.draw.question": "Uzavrieť zápis a vyžrebovať víťaza?",
-  "live.draw.open":
-    "Vyžrebovať víťaza uzavrie zápis a potom vyžrebuje prvého víťaza, keď bude pripravené verejné náhodné číslo (drand).",
   "live.draw.due": "Žrebuje sa víťaz…",
-  "live.draw.nobodyLeft": "Vyžrebovaní sú všetci, ktorí sa zapísali.",
-  "live.draw.detail":
-    "Zápis sa uzavrie a nedá sa znova otvoriť. Prvý víťaz sa vyžrebuje hneď, ako bude pripravené verejné náhodné číslo (drand), aj keď túto stránku zavrieš.",
   "live.draw.confirm": "Áno, uzavrieť zápis a vyžrebovať",
   "live.draw.waiting":
     "Čaká sa na verejné náhodné číslo (drand). Víťaz sa vyžrebuje sám o {clock}.",
@@ -772,8 +761,6 @@ export const sk: Translation = {
   "live.mark.aria": "Označiť ako prevzaté: {name}",
   "live.reroll.over":
     "Čas na výber iného víťaza uplynul. Kontaktuj víťazov, ktorí výhru neprevzali, alebo spusti nový giveaway.",
-  "live.reroll.nobodyLeft":
-    "Všetci, ktorí sa zapojili, už boli vyžrebovaní. Kontaktuj víťazov, ktorí výhru neprevzali, alebo spusti nový giveaway.",
   "live.reroll.question": "Vybrať iného víťaza namiesto {name}?",
   "live.reroll.detail": "{name} o výhru príde. Nedá sa to vrátiť späť.",
   "live.reroll.confirm": "Áno, vybrať iného víťaza",

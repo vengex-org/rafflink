@@ -889,7 +889,9 @@ legend {
   overflow-wrap: break-word;
 }
 
+/* A clipped address takes the room the button leaves, so the two stay on one row. */
 .share-link-url[data-clipped="true"] {
+  flex: 1 1 0;
   overflow: hidden;
   overflow-wrap: normal;
   text-overflow: ellipsis;
@@ -1061,7 +1063,7 @@ legend {
 /* Dialog: native modal; the page behind it is inert and does not scroll */
 
 .dialog {
-  width: min(28rem, calc(100vw - 2 * var(--space-2)));
+  width: min(32rem, calc(100vw - 2 * var(--space-2)));
   padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);

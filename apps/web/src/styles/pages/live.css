@@ -410,10 +410,12 @@
   box-shadow: var(--shadow-plate);
 }
 
+/* One line: the size follows the name's length (--chars, set by the plate) so the longest name still fits a phone. */
 .live-stage .winner-plate-name {
-  font-size: clamp(2.5rem, 12vw, 4.5rem);
+  font-size: clamp(1.25rem, calc((100vw - 8rem) / (var(--chars) * 0.62)), 4.5rem);
   letter-spacing: -0.045em;
   line-height: 0.95;
+  white-space: nowrap;
 }
 
 .live-claim-hint {
@@ -577,8 +579,55 @@
 .live-draw-help {
   line-height: 1.5;
 }
+/* The entry rate is a side note, not a headline. */
 .live-rate {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
   margin: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.live-rate strong {
+  color: var(--ink);
+}
+
+/* The winner's answers: label beside value, one pick after the other. */
+.winner-answer {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.winner-answer h3 {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+
+.winner-answer p {
+  margin: 0;
+}
+
+.winner-answer-list {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 0.25rem var(--space-2);
+  width: 100%;
+  margin: 0;
+}
+
+.winner-answer-list > div {
+  display: contents;
+}
+
+.winner-answer-list dt {
+  color: var(--ink-2);
+}
+
+.winner-answer-list dd {
+  margin: 0;
+  font-weight: 600;
 }
 
 .live-closed {
@@ -1048,6 +1097,17 @@ td:nth-child(3) > .entrants-cell {
   gap: 0.375rem;
 }
 
+/* A phone puts the stepper and its button under the label, so the row never runs off the card. */
+@media (max-width: 40rem) {
+  .live-draw-count {
+    flex-wrap: wrap;
+  }
+
+  .live-draw-count label {
+    flex: 1 1 100%;
+  }
+}
+
 /* The buttons take room from the name, so a phone gets smaller columns and buttons while the table has them. */
 @media (max-width: 40rem) {
   .entrants-table[data-actions] .entrants-col-status {
@@ -1362,6 +1422,7 @@ td:nth-child(2) > .entrants-cell {
 
   .live-stage .winner-plate-name {
     font-size: max(2.5rem, calc(var(--u) * 96));
+    white-space: normal;
   }
 
   .live-claim-hint {
