@@ -1070,8 +1070,6 @@ export const pt: Translation = {
     "Esta é uma tradução. Onde ela divergir da versão em inglês, prevalece a versão em inglês.",
 
   "privacy.title": "Política de privacidade",
-  "privacy.intro":
-    "O Rafflink sorteia vencedores de sorteios na Twitch, na Kick e no YouTube. Esta política diz quais dados pessoais ele trata, por quê, por quanto tempo e quais direitos você tem. Ela é curta de propósito.",
   "privacy.controller.h": "Quem é o responsável",
   "privacy.controller.p1":
     "O controlador dos seus dados pessoais nesta instância é {operator}. Contato: {contact}.",

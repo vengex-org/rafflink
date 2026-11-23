@@ -1036,7 +1036,7 @@ export const en = {
 
   "privacy.title": "Privacy policy",
   "privacy.intro":
-    "Rafflink draws winners of giveaways on Twitch, Kick and YouTube. This policy says what personal data it processes, why, for how long and what rights you have. It is short on purpose.",
+    "Rafflink draws winners of giveaways on Twitch, Kick and YouTube. This policy says what personal data it processes, why, for how long and what your rights are.",
   "privacy.controller.h": "Who is responsible",
   "privacy.controller.p1":
     "The controller of your personal data on this instance is {operator}. Contact: {contact}.",
@@ -1384,7 +1384,7 @@ export const en = {
 export type MessageKey = keyof typeof en
 
 /** Keys whose English copy is not translated yet; the other languages show the English text for them. */
-type EnglishOnlyKey = "wizard.entry.chatDelay"
+type EnglishOnlyKey = "wizard.entry.chatDelay" | "privacy.intro"
 
 /** What a language other than English provides: every key but the {@link EnglishOnlyKey}s. */
 export type Translation = Readonly<Omit<Record<MessageKey, string>, EnglishOnlyKey>>

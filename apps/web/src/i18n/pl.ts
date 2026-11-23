@@ -1053,8 +1053,6 @@ export const pl: Translation = {
     "To jest tłumaczenie. W razie rozbieżności z wersją angielską rozstrzyga wersja angielska.",
 
   "privacy.title": "Polityka prywatności",
-  "privacy.intro":
-    "Rafflink losuje zwycięzców rozdań na Twitchu, Kicku i YouTube. Ta polityka mówi, jakie dane osobowe przetwarza, w jakim celu, jak długo i jakie masz prawa. Jest celowo krótka.",
   "privacy.controller.h": "Kto odpowiada za dane",
   "privacy.controller.p1":
     "Administratorem twoich danych osobowych w tej instancji jest {operator}. Kontakt: {contact}.",
