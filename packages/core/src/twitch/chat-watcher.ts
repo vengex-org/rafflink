@@ -281,7 +281,8 @@ export class ChatWatcher implements ChatSource {
     if (!this.running) return
     this.attempts += 1
     if (this.attempts > this.deps.config.eventSubReconnectMaxAttempts) {
-      if (this.live === null) {
+      // A pending connection can still take over; giving up waits for it to fail too.
+      if (this.live === null && this.handshake === null) {
         this.giveUp(cause)
         return
       }

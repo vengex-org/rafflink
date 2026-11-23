@@ -36,6 +36,8 @@ const typeScopes: Readonly<Record<string, string>> = {
   [resubscribeType]: "channel:read:subscriptions",
   [redemptionType]: "channel:read:redemptions",
 }
+/** How long a subscription answer waits behind its `session_reconnect`, so the client reads the reconnect first. */
+const reconnectLeadMs = 200
 /** Twitch close code for a socket that sent no subscription in time. */
 const closeConnectionUnused = 4003
 
@@ -119,6 +121,7 @@ export function createEventSub(state: FakeState): EventSub {
     if (reconnectOnSubscription) {
       reconnectOnSubscription = false
       sendReconnect(session)
+      await Bun.sleep(reconnectLeadMs)
     }
     return c.json(
       {

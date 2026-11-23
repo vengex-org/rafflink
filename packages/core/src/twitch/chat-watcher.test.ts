@@ -455,6 +455,30 @@ describe("ChatWatcher session_reconnect", () => {
     expect(messages).toEqual([chatMessage("42", "before the switch")])
   })
 
+  it("keeps the reconnect connection when the old socket drops after the attempts ran out", async () => {
+    const { watcher, connector, clock, subscriptions, messages, unavailable } =
+      await dueForReplacement({ EVENTSUB_RECONNECT_MAX_ATTEMPTS: "1" })
+    subscriptions.refusal = new Error("helix 500")
+    for (let failure = 0; failure < 2; failure++) {
+      connector.sockets.at(-1)?.receive(welcome(`session-${failure + 2}`))
+      await flush()
+      clock.advance(2000)
+      connector.sockets[0]?.receive(keepalive)
+      watcher.onAlarm()
+    }
+    const [old] = connector.sockets
+
+    old?.receive(reconnect("wss://twitch.test/ws?reconnect=1"))
+    old?.fail(new Error("reset"))
+    const resumed = connector.sockets.at(-1)
+    resumed?.receive(welcome("session-1"))
+    resumed?.receive(chat("42", "!claim"))
+
+    expect(unavailable).toEqual([])
+    expect(resumed?.closed).toBe(false)
+    expect(messages).toEqual([chatMessage("42", "!claim")])
+  })
+
   it("ignores a reconnect URL that is not a WebSocket URL", async () => {
     const { connector } = await liveWatcher()
 
