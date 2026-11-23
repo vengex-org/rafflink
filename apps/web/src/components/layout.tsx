@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, ViewTransition, type ReactNode } from "react"
 import { Link, Outlet, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
-import { dashboardPath, homePath, privacyPath, termsPath, verifyLookupPath } from "../lib/routes.ts"
+import { useLocalizedPath } from "../i18n/localized-pages.ts"
+import { dashboardPath, pageOfPath, verifyLookupPath } from "../lib/routes.ts"
 import { SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
@@ -31,8 +32,11 @@ export function Layout({
   const { t } = useI18n()
   // The home page ends with its own footer and renders SiteNav in its bar.
   const { pathname } = useLocation()
-  const isHome = pathname === homePath
+  const isHome = pageOfPath(pathname)?.page === "home"
   const showFooter = !isHome
+  const homePath = useLocalizedPath("home")
+  const privacyPath = useLocalizedPath("privacy")
+  const termsPath = useLocalizedPath("terms")
   const page = (
     <div className="layout">
       <a href="#main" className="skip-link">

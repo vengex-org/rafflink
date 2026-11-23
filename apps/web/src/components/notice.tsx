@@ -3,7 +3,8 @@ import { useEffect, useState, type ReactNode } from "react"
 import { Link, useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { homePath, streamerSignInPath } from "../lib/routes.ts"
+import { useLocalizedPath } from "../i18n/localized-pages.ts"
+import { streamerSignInPath } from "../lib/routes.ts"
 import { AlertIcon, ArrowLeftIcon, CloseIcon, LockIcon, LogInIcon, RefreshIcon } from "./icons.tsx"
 import { StateColumn } from "./page.tsx"
 import { StateCard } from "./state-card.tsx"
@@ -47,6 +48,7 @@ export function Failed({ onReload }: { readonly onReload?: (() => void) | undefi
 
 export function NotFound({ title }: { readonly title: MessageKey }) {
   const { t } = useI18n()
+  const homePath = useLocalizedPath("home")
   return (
     <StateColumn as="section" className="not-found">
       <p className="not-found-code" aria-hidden="true">

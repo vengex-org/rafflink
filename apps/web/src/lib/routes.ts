@@ -1,4 +1,5 @@
 import type { ChannelEntryVia } from "@rafflink/core/domain/rules"
+import { languages, sourceLanguage } from "@rafflink/core/lib/languages"
 import type { Platform } from "@rafflink/core/platform/provider"
 import type { OverlayOptions } from "./overlay-options.ts"
 
@@ -6,14 +7,19 @@ export {
   drawPath,
   giveawayPath,
   historyPath,
+  localizedPages,
+  localizedPath,
   moderatorLivePath,
   moderatorOpenPath,
   moderatorSignInOutcomes,
+  pageOfPath,
   verifyPath,
+  type LocalizedPage,
 } from "@rafflink/core/lib/page-paths"
 
-/** The first segments of the pages that are not giveaways; their canonical spelling is lowercase. `g` is the old giveaway link, `s` a streamer's history. */
+/** The first segments of the pages that are not giveaways; their canonical spelling is lowercase. `g` is the old giveaway link, `s` a streamer's history, a language code the localized pages. */
 export const staticSegments = [
+  ...languages.filter((language) => language !== sourceLanguage),
   "dashboard",
   "admin",
   "privacy",
@@ -30,11 +36,8 @@ export const staticSegments = [
 /** The fixed words after a first segment or a giveaway code; the segments between them are ids and tokens, whose case is theirs. */
 export const staticSubSegments = ["new", "created", "verify"]
 
-export const homePath = "/"
 export const dashboardPath = "/dashboard"
 export const verifyLookupPath = "/verify"
-export const privacyPath = "/privacy"
-export const termsPath = "/terms"
 
 export function livePath(id: string): string {
   return `/live/${encodeURIComponent(id)}`

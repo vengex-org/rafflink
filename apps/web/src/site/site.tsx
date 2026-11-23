@@ -12,16 +12,21 @@ import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl, setupGuideUrl } from "../lib/links.ts"
-import { dashboardPath, drawPath, privacyPath, termsPath, verifyLookupPath } from "../lib/routes.ts"
+import { useLocalizedPath } from "../i18n/localized-pages.ts"
+import { dashboardPath, drawPath, verifyLookupPath } from "../lib/routes.ts"
 import { useConsumedParam } from "../lib/use-consumed-param.ts"
+import { useHydrated } from "../lib/use-hydrated.ts"
 
 /** Extra top-level routes of the deployment, rendered before the catch-all routes. */
 export const siteRoutes: ReactElement | null = null
 
 export function HomePage() {
   const { t } = useI18n()
-  const problem = signInProblem(useConsumedParam("signin")?.value ?? null)
+  const signin = useConsumedParam("signin")
+  const problem = useHydrated() ? signInProblem(signin?.value ?? null) : null
   const { streamer, donateUrl } = useStreamerSession()
+  const privacyPath = useLocalizedPath("privacy")
+  const termsPath = useLocalizedPath("terms")
   return (
     <div className="home">
       <section className="home-hero">

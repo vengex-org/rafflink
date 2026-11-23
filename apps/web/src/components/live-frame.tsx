@@ -4,7 +4,7 @@ import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import type { GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { shareUrl } from "../lib/links.ts"
-import { homePath } from "../lib/routes.ts"
+import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
 import { CopyButton } from "./copy-field.tsx"
 import { SettingsMenu } from "./header-controls.tsx"
@@ -36,6 +36,7 @@ export function LiveFrame({
 }
 
 export function LiveBrand() {
+  const homePath = useLocalizedPath("home")
   return (
     <Link to={homePath} className="live-brand">
       <span className="live-mark" aria-hidden="true">

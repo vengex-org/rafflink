@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
 import { languageNames, languages } from "../i18n/language.ts"
+import { useChooseLanguage } from "../i18n/localized-pages.ts"
 import {
   applyTheme,
   darkQuery,
@@ -85,7 +86,8 @@ export function ThemeSwitch() {
 }
 
 export function LanguageSwitch() {
-  const { t, language, setLanguage, languageLoadFailed } = useI18n()
+  const { t, language, languageLoadFailed } = useI18n()
+  const choose = useChooseLanguage()
   const options = languages.map((value) => ({
     value,
     label: languageNames[value],
@@ -99,7 +101,7 @@ export function LanguageSwitch() {
         options={options}
         value={language}
         labels="hidden"
-        onSelect={setLanguage}
+        onSelect={choose}
       />
       {languageLoadFailed ? (
         <p className="field-error" role="alert">

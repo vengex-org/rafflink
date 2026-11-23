@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react"
 import { dictionaryLoaders, loadDictionary } from "../src/i18n/dictionaries.ts"
+import { cs } from "../src/i18n/cs.ts"
+import { de } from "../src/i18n/de.ts"
 import { en } from "../src/i18n/en.ts"
 import { sk } from "../src/i18n/sk.ts"
 import { I18nProvider, pluralForm, useI18n } from "../src/i18n/i18n.tsx"
@@ -53,11 +55,9 @@ describe("language", () => {
   it("detects German from de-DE on the first visit and sets the page language", () => {
     browserLanguage("de-DE")
 
-    const view = renderApp("/")
+    const view = renderApp("/verify")
 
-    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(
-      "Faire Gewinnspiele, live im Stream gezogen.",
-    )
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(de["verifyLookup.title"])
     expect(document.documentElement.lang).toBe("de")
   })
 
@@ -88,54 +88,71 @@ describe("language", () => {
   it("detects Slovak from sk-SK on the first visit and sets the page language", () => {
     browserLanguage("sk-SK")
 
-    const view = renderApp("/")
+    const view = renderApp("/verify")
 
-    expect(
-      view.getByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
-    ).toBeTruthy()
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(sk["verifyLookup.title"])
     expect(document.documentElement.lang).toBe("sk")
   })
 
-  it("detects Czech from cs-CZ on the first visit and sets the page language", () => {
+  it("keeps the English home page at / for a browser asking for another language", async () => {
     browserLanguage("cs-CZ")
 
     const view = renderApp("/")
 
-    expect(
-      view.getByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
-    ).toBeTruthy()
-    expect(document.documentElement.lang).toBe("cs")
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
+    expect(document.documentElement.lang).toBe("en")
+    await act(async () => {})
+    expect(view.address()).toBe("/")
   })
 
   it("changes every visible text and the page language when the switch is used, and remembers it", async () => {
     browserLanguage("en-US")
-    const view = renderApp("/")
+    const view = renderApp("/verify")
 
     fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
 
     expect(
-      await view.findByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
+      await view.findByRole("heading", { level: 1, name: sk["verifyLookup.title"] }),
     ).toBeTruthy()
     expect(view.getByRole("link", { name: "Prihlásiť sa" })).toBeTruthy()
     await waitFor(() => expect(document.documentElement.lang).toBe("sk"))
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
+    expect(view.address()).toBe("/verify")
 
     view.unmount()
-    const again = renderApp("/")
-    expect(
-      again.getByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
-    ).toBeTruthy()
+    const again = renderApp("/verify")
+    expect(again.getByRole("heading", { level: 1 }).textContent).toBe(sk["verifyLookup.title"])
   })
 
   it("prefers the remembered choice over the browser language", () => {
     window.localStorage.setItem("rafflink-language", "cs")
     browserLanguage("sk-SK")
 
-    const view = renderApp("/")
+    const view = renderApp("/verify")
+
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(cs["verifyLookup.title"])
+  })
+
+  it("opens / in the remembered language once the page has loaded", async () => {
+    window.localStorage.setItem("rafflink-language", "cs")
+
+    const view = renderApp("/?ref=giveaway#top")
 
     expect(
-      view.getByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
+      await view.findByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
     ).toBeTruthy()
+    expect(view.address()).toBe("/cs/?ref=giveaway")
+  })
+
+  it("leaves / in English when English is the remembered choice", async () => {
+    window.localStorage.setItem("rafflink-language", "en")
+    browserLanguage("de-DE")
+
+    const view = renderApp("/")
+
+    await act(async () => {})
+    expect(view.address()).toBe("/")
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
   })
 
   it("ignores a remembered value that is not a language", () => {
@@ -190,6 +207,46 @@ describe("language", () => {
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
     expect(view.getByRole("radio", { name: "English" })).toHaveProperty("checked", true)
     expect(window.localStorage.getItem("rafflink-language")).toBeNull()
+    expect(view.address()).toBe("/")
+  })
+
+  it("opens a localized page in the picked language only once its dictionary has loaded", async () => {
+    const german = Promise.withResolvers<typeof de>()
+    spyOn(dictionaryLoaders, "de").mockImplementation(() => german.promise)
+    const view = renderApp("/privacy")
+
+    fireEvent.click(view.getByRole("radio", { name: "Deutsch" }))
+    await act(async () => {})
+    expect(view.address()).toBe("/privacy")
+    await act(async () => german.resolve(de))
+
+    expect(view.address()).toBe("/de/privacy")
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(de["privacy.title"])
+  })
+
+  it.each([
+    ["cs", "sk"],
+    ["de", "en"],
+  ])("goes from / to the language of a ?lang= link with %s stored", async (stored, linked) => {
+    window.localStorage.setItem("rafflink-language", stored)
+
+    const view = renderApp(`/?lang=${linked}`)
+
+    await waitFor(() => expect(window.localStorage.getItem("rafflink-language")).toBe(linked))
+    await act(async () => {})
+    expect(view.address()).toBe(linked === "en" ? "/" : `/${linked}/`)
+  })
+
+  it("keeps a one-time parameter when / opens in the remembered language", async () => {
+    window.localStorage.setItem("rafflink-language", "de")
+
+    const view = renderApp("/?signin=try-again")
+
+    expect(await view.findByRole("alert")).toHaveProperty(
+      "textContent",
+      de["home.problem.tryAgain"],
+    )
+    await waitFor(() => expect(view.address()).toBe("/de/"))
   })
 
   it("shows the language picked last when an earlier pick loads later", async () => {

@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useNavigate } from "react-router"
 import { getSession, logout, sessionLost } from "../api/client.ts"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { homePath } from "../lib/routes.ts"
+import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLoad, type Load } from "../lib/use-load.ts"
 
@@ -49,6 +49,7 @@ export function StreamerSessionProvider({ children }: { readonly children: React
   const { result, reload } = useLoad(getSession)
   const { message, busy, run } = useAction()
   const navigate = useNavigate()
+  const homePath = useLocalizedPath("home")
   const [loggedOut, setLoggedOut] = useState(false)
   const session = result.state === "ready" && !loggedOut ? result.value : null
   const streamer = session?.streamer ?? null
