@@ -9,9 +9,9 @@ export const entriesBetweenCountSql =
 export const entryOfSql =
   "SELECT group_name, tickets, entered_at FROM entries WHERE platform = ? AND platform_user_id = ?"
 
-/** One row when a chat entrant of a platform (parameter 1) has a login (parameter 2); page entrants are never found. */
+/** One row when a chat, sub or points entrant of a platform (parameter 1) has a login (parameter 2); page entrants are never found. */
 export const chatEntrantByLoginSql =
-  "SELECT 1 FROM entries WHERE platform = ? AND login = ? AND via = 'chat' LIMIT 1"
+  "SELECT 1 FROM entries WHERE platform = ? AND login = ? AND via <> 'page' LIMIT 1"
 
 /** The oldest chatters waiting for the check of their chat entry (parameter 1 is how many; -1 is all), oldest first. */
 export const chatEntryRequestsSql =
@@ -20,9 +20,9 @@ export const chatEntryRequestsSql =
 /** One row while a chatter waits for the check of their chat entry. */
 export const chatEntryWaitingSql = "SELECT 1 FROM chat_entry_requests LIMIT 1"
 
-/** Queues a chatter (parameters: platform user id, login, display name, sub tier, vip, moderator, requested at); a repeat keeps the first request and returns no row. */
-export const insertChatEntryRequestSql = `INSERT INTO chat_entry_requests (platform_user_id, login, display_name, sub_tier, vip, moderator, requested_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (platform_user_id) DO NOTHING RETURNING platform_user_id`
+/** Queues a viewer (parameters: platform user id, login, display name, sub tier, vip, moderator, requested at, via); a repeat keeps the first request and returns no row. */
+export const insertChatEntryRequestSql = `INSERT INTO chat_entry_requests (platform_user_id, login, display_name, sub_tier, vip, moderator, requested_at, via)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (platform_user_id) DO NOTHING RETURNING platform_user_id`
 
 /** Takes the request of a chatter (parameter 1) out of the queue and returns it; no row when none waits. */
 export const takeChatEntryRequestSql =

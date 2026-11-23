@@ -101,8 +101,10 @@ describe("session", () => {
           accountAge: true,
           pageEntry: true,
           chatEntry: true,
+          subEntry: true,
+          pointsEntry: true,
         },
-        chatEntryReady: false,
+        readyEntryWays: [],
         publicHistory: false,
       },
       donateUrl: null,
@@ -216,8 +218,8 @@ describe("streamer sign-in", () => {
     expect(await openSecret(harness.deps.keyRing, sealed, "twitch:200")).toMatch(/^[0-9a-f-]{36}$/)
     expect(token?.scopes).toBe("openid channel:read:vips moderation:read user:read:chat")
     expect((await browser.request("/api/dash/giveaways")).status).toBe(200)
-    expect((await (await browser.request("/api/session")).json()).streamer.chatEntryReady).toBe(
-      false,
+    expect((await (await browser.request("/api/session")).json()).streamer.readyEntryWays).toEqual(
+      [],
     )
   })
 
@@ -226,7 +228,7 @@ describe("streamer sign-in", () => {
 
     const signIn = await browser.signInAs(
       users.streamerA.id,
-      "/auth/twitch/streamer/start?scopes=chat-entry&return=/dashboard/new",
+      "/auth/twitch/streamer/start?entry=chat&return=/dashboard/new",
     )
 
     expect(signIn.response.headers.get("location")).toBe("/dashboard/new")
@@ -234,14 +236,43 @@ describe("streamer sign-in", () => {
     expect(token?.scopes).toBe(
       "openid channel:read:vips moderation:read user:read:chat moderator:read:followers",
     )
-    expect((await (await browser.request("/api/session")).json()).streamer.chatEntryReady).toBe(
-      true,
+    expect((await (await browser.request("/api/session")).json()).streamer.readyEntryWays).toEqual([
+      "chat",
+    ])
+  })
+
+  it("asks for the sub and points entry scopes once each on a reconnect for both", async () => {
+    const browser = new Browser(harness)
+
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?entry=sub,points")
+
+    const [token] = sqlRows(harness.accountsDb, "SELECT scopes FROM streamer_tokens")
+    expect(token?.scopes).toBe(
+      "openid channel:read:vips moderation:read user:read:chat moderator:read:followers channel:read:subscriptions channel:read:redemptions",
     )
+    expect((await (await browser.request("/api/session")).json()).streamer.readyEntryWays).toEqual([
+      "chat",
+      "sub",
+      "points",
+    ])
+  })
+
+  it("ignores an entry way it does not know and asks only for the base scopes", async () => {
+    const browser = new Browser(harness)
+
+    const start = await browser.request("/auth/twitch/streamer/start?entry=chat,bits")
+
+    expect(scopesOf(start)).toEqual([
+      "openid",
+      "channel:read:vips",
+      "moderation:read",
+      "user:read:chat",
+    ])
   })
 
   it("asks a streamer who granted the chat entry scopes for them again on a normal sign-in", async () => {
     const browser = new Browser(harness)
-    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?scopes=chat-entry")
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?entry=chat")
 
     const sameBrowser = await browser.request("/auth/twitch/streamer/start")
     const sessionOnly = await harness.app.request("/auth/twitch/streamer/start", {
@@ -389,6 +420,45 @@ describe("streamer sign-in", () => {
     expect(response.headers.get("location")).toBe("/?signin=invalid-state")
     expect(sqlRows(harness.accountsDb, "SELECT id FROM streamers")).toHaveLength(0)
     expect(tokenCalls()).toBe(0)
+  })
+})
+
+describe("channel point rewards", () => {
+  const reward = { id: "reward-1", title: "Enter", cost: 100 }
+
+  it("answers no channel points for a streamer who is neither Affiliate nor Partner, without asking to reconnect", async () => {
+    harness.fake.control.setCustomRewards(users.streamerA.id, [reward])
+
+    expect(await rewardsOf("")).toEqual({ kind: "no-channel-points" })
+  })
+
+  it("asks an Affiliate whose token lacks the points scopes to reconnect", async () => {
+    harness.fake.control.addUser({ ...users.streamerA, broadcasterType: "affiliate" })
+
+    expect(await rewardsOf("?entry=chat")).toEqual({ kind: "reconnect" })
+  })
+
+  it("lists the rewards of a Partner who granted the points scopes", async () => {
+    harness.fake.control.addUser({ ...users.streamerA, broadcasterType: "partner" })
+    harness.fake.control.setCustomRewards(users.streamerA.id, [reward])
+
+    expect(await rewardsOf("?entry=points")).toEqual({
+      kind: "rewards",
+      rewards: [{ id: "reward-1", title: "Enter" }],
+    })
+  })
+
+  it("answers 503 when Twitch cannot list the rewards", async () => {
+    spyOn(console, "warn").mockImplementation(() => {})
+    harness.fake.control.addUser({ ...users.streamerA, broadcasterType: "partner" })
+    const browser = new Browser(harness)
+    await browser.signInAs(users.streamerA.id, "/auth/twitch/streamer/start?entry=points")
+    harness.fake.control.failNext("rewards", 500, 2)
+
+    const response = await browser.request("/api/dash/rewards")
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({ error: "platform-unavailable" })
   })
 })
 
@@ -942,6 +1012,13 @@ describe("viewer entry", () => {
 })
 
 // The scopes a sign-in start asks Twitch for, read from its redirect.
+// The reward list as the wizard reads it, for streamer A signed in with the start query `entry`.
+async function rewardsOf(entry: string): Promise<unknown> {
+  const browser = new Browser(harness)
+  await browser.signInAs(users.streamerA.id, `/auth/twitch/streamer/start${entry}`)
+  return (await browser.request("/api/dash/rewards")).json()
+}
+
 function scopesOf(response: Response): string[] | undefined {
   return new URL(response.headers.get("location") ?? "").searchParams.get("scope")?.split(" ")
 }

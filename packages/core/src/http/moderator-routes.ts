@@ -109,7 +109,7 @@ export function moderatorRoutes(deps: AppDeps): Hono {
         giveawayCode: null,
         returnPath: null,
         moderatorLinkId: linkId,
-        chatEntry: false,
+        entryWays: [],
       })
       return c.redirect(
         provider.authorizeUrl({

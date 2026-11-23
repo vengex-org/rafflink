@@ -133,6 +133,24 @@ describe("official rules", () => {
     expect(view.queryByText("To enter, sign in with Twitch on this page.")).toBeNull()
   })
 
+  it("names sub and points entry beside the free way, with no extra tickets for points", async () => {
+    mockFetch(withRules({ subEntry: true, pointsReward: { id: "r-1", title: "Join" } }))
+
+    const view = renderApp("/ABCDE")
+
+    expect(await view.findByText("To enter, sign in with Twitch on this page.")).toBeTruthy()
+    expect(
+      view.getByText(
+        "Subscribing to Streamy, resubscribing or receiving a gift sub while entries are open also enters you. You never have to subscribe to enter.",
+      ),
+    ).toBeTruthy()
+    expect(
+      view.getByText(
+        'Redeeming the "Join" channel point reward while entries are open also enters you once, with no extra tickets.',
+      ),
+    ).toBeTruthy()
+  })
+
   it("warns that a subscribers-only giveaway has no free way to enter, and keeps the platform line", async () => {
     mockFetch(withRules({ subsOnly: true }))
 

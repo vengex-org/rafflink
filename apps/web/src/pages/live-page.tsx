@@ -160,7 +160,7 @@ export function LiveControls({
                 <AlertIcon />
               </span>
               <h2>{t("live.chatOff.title")}</h2>
-              <p>{t(snapshot.chatEntryOff ? "live.chatEntryOff.text" : "live.chatOff.text")}</p>
+              <p>{t(chatOffText(snapshot))}</p>
             </section>
           ) : null}
           {rerollOver !== null && snapshot.winners.some(isUnsettled) ? (
@@ -299,6 +299,12 @@ function useCleanMode(storageKey: string): readonly [boolean, () => void] {
   }, [clean, storageKey, setParams])
   useShortcut("c", toggle)
   return [clean, toggle]
+}
+
+/** What the stopped watch costs: chat entry while it is on, else sub and points entry, else the chat claim. */
+function chatOffText(snapshot: LiveSnapshot): MessageKey {
+  if (snapshot.chatEntryOff) return "live.chatEntryOff.text"
+  return snapshot.channelEntryOff ? "live.channelEntryOff.text" : "live.chatOff.text"
 }
 
 /** Why the streamer cannot pick another winner, or null while they can (or nothing is left to pick). */

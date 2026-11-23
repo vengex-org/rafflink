@@ -11,14 +11,16 @@ const noBadges: Reply = { status: 200, body: { sub_t1: null, sub_t2: null, sub_t
 const defaultTheme: Reply = { status: 200, body: { theme: defaultOverlayTheme } }
 
 const noBlocks: Reply = { status: 200, body: { blocks: [], blockListMax: 100 } }
+const noChannelPoints: Reply = { status: 200, body: { kind: "no-channel-points" } }
 
-/** Answers `fetch(path, init)` by "METHOD /path", after the route's promise when it returns one; a request nobody listed fails the test that made it. The header's session call is answered signed-out, the live page's badges call with no badges, the overlay's theme call with the default theme and the dashboard's block list call with an empty list unless a route says otherwise. */
+/** Answers `fetch(path, init)` by "METHOD /path", after the route's promise when it returns one; a request nobody listed fails the test that made it. The header's session call is answered signed-out, the live page's badges call with no badges, the overlay's theme call with the default theme, the dashboard's block list call with an empty list and the wizard's reward list with no channel points unless a route says otherwise. */
 export function mockFetch(routes: Readonly<Record<string, () => Reply | Promise<Reply>>>) {
   const answers: Readonly<Record<string, () => Reply | Promise<Reply>>> = {
     "GET /api/session": () => signedOut,
     "GET /api/live/gid-1/badges": () => noBadges,
     "GET /api/overlay/gid-1/tok-1/theme": () => defaultTheme,
     "GET /api/dash/blocks": () => noBlocks,
+    "GET /api/dash/rewards": () => noChannelPoints,
     ...routes,
   }
   const requests: { readonly route: string; readonly body: unknown }[] = []

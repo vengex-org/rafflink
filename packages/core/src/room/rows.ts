@@ -1,6 +1,12 @@
 import { parseActor, type Actor } from "../domain/actor.ts"
 import { groups, type Group } from "../domain/groups.ts"
-import { parseRules, type GiveawayRules, type RulesConfig } from "../domain/rules.ts"
+import {
+  parseRules,
+  channelEntryVias,
+  type ChannelEntryVia,
+  type GiveawayRules,
+  type RulesConfig,
+} from "../domain/rules.ts"
 import type { DrandChain } from "../lib/drand.ts"
 import type { ChatterRoles } from "../platform/chat-source.ts"
 import type { Instant, SqlRow } from "../ports.ts"
@@ -45,6 +51,8 @@ export type RoomState = {
   readonly eventSubFailures: number
   /** The chat watch gave up; the draw and a reroll clear it. */
   readonly chatUnavailable: boolean
+  /** Twitch refused the sub or points subscriptions while the chat subscription held. */
+  readonly channelEntryUnavailable: boolean
   readonly rolesRefreshAt: Instant | null
   readonly mirrorPending: boolean
   /** The retention alarm deleted the entrants' data. */
@@ -128,6 +136,7 @@ export function parseState(row: SqlRow, config: RulesConfig): RoomState {
     roleRefreshFailures: reader.int("role_refresh_failures"),
     eventSubFailures: reader.int("eventsub_failures"),
     chatUnavailable: reader.int("chat_unavailable") === 1,
+    channelEntryUnavailable: reader.int("channel_entry_unavailable") === 1,
     rolesRefreshAt: reader.nullableInt("roles_refresh_at"),
     mirrorPending: reader.int("mirror_pending") === 1,
     entriesDeleted: reader.int("entries_deleted") === 1,
@@ -212,11 +221,12 @@ export function parseEntrant(row: SqlRow): Entrant {
   }
 }
 
-/** A chatter waiting for the check of their chat entry: who they are and what their chat badges said. */
+/** A viewer waiting for the check of their chat, sub or points entry: who they are, how they asked and what their chat badges or the sub event said. */
 export interface ChatRequest {
   readonly platformUserId: string
   readonly login: string
   readonly displayName: string
+  readonly via: ChannelEntryVia
   readonly roles: ChatterRoles
 }
 
@@ -230,6 +240,7 @@ export function parseChatRequest(row: SqlRow): ChatRequest {
     platformUserId: reader.text("platform_user_id"),
     login: reader.text("login"),
     displayName: reader.text("display_name"),
+    via: reader.oneOf("via", channelEntryVias),
     roles: {
       subTier,
       isVip: reader.int("vip") === 1,

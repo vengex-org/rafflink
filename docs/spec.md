@@ -112,14 +112,41 @@ a page entry (`entries.via = chat`) and is one entrant with a page entry of the 
 room asks one last profile read (no follows) for whoever still waits and holds the commit for two check periods;
 the commit enters the rest as not following and with an unknown account age, so a followers-only or minimum-age
 rule refuses them. The giveaway page has an "Am I in?" lookup by login (`GET /api/g/:code/entered`, rate limited
-per address like the leaf list) that answers yes or no for chat entrants only; page entrants are never found.
+per address like the leaf list) that answers yes or no for chat, sub and points entrants; page entrants are never found.
 
 - Scope: `moderator:read:followers` is not part of the base streamer scopes. When a streamer turns chat entry on
-  and the stored token lacks it, the wizard offers "Reconnect Twitch" (`/auth/twitch/streamer/start?scopes=chat-entry`,
+  and the stored token lacks it, the wizard offers "Reconnect Twitch" (`/auth/twitch/streamer/start?entry=chat`,
   base scopes plus this one); the wizard keeps its answers across the round trip. Twitch grants only the
   scopes a sign-in asks for, so a later normal sign-in asks for it again when the browser's last sign-in
   granted it (a signed cookie) or the signed-in streamer's stored token holds it. A chat-entry giveaway whose
   token still lacks it counts every chatter as not following and logs it once.
+
+**Sub and points entry (#62).** Optional per giveaway, on top of page or chat entry, which stays on: a sub is a
+purchase, so a free way in keeps the giveaway from being a paid lottery, and the rules refuse sub or points entry
+without one. While entries are open the same EventSub socket also subscribes to `channel.subscribe` (new subs and
+gift subs, whose event names the recipient) and `channel.subscription.message` (resubs) when sub entry is on, and to
+`channel.channel_points_custom_reward_redemption.add` filtered by the chosen reward's id when points entry is on.
+`channel.subscription.gift` names the gifter, not the recipients, so it is not subscribed. Twitch sends
+`channel.subscription.message` only when a viewer shares the resub in chat, so a silent auto renewal does not enter;
+the wizard's help says so. Each event queues the
+viewer like a keyword message (`chat_entry_requests.via` = `sub` or `points`) for the same check, and the entry is
+written with `entries.via` = `sub` or `points`. A sub enters with the tier of its event; a redemption carries no
+tier, so the check reads the redeemers' tiers with one `GET /helix/subscriptions?user_id=` per check (streamer
+token). Events after the end time or the close enter nobody, and the watch closes at the close.
+
+- Scopes: sub entry asks for `channel:read:subscriptions`, points entry also for `channel:read:redemptions`, both
+  with `moderator:read:followers` for the follow read (`?entry=sub`, `?entry=points`, combinable as
+  `?entry=chat,sub,points`). Creating a sub or points giveaway on a token without them answers 422 `reconnect`,
+  and the wizard does not submit while they are missing. When Twitch still refuses the sub or points
+  subscriptions (a permission removed later), a watch that also reads chat keeps chat entry and claims, stops sub
+  and points entry for the giveaway (`room_state.channel_entry_unavailable`) and the live page says so; a watch
+  without chat gives up.
+- Rewards: the wizard lists the streamer's rewards with `GET /api/dash/rewards` (Helix
+  `GET /channel_points/custom_rewards`). Channel points exist only for Affiliates and Partners, so the route first
+  reads `broadcaster_type` with the app token and hides both options otherwise (subs need the same status),
+  before asking for any scope. Rafflink
+  never marks a redemption as fulfilled. The help text promises no odds: a redemption is one entry with the tickets
+  of the viewer's group, as the Twitch Channel Points policy requires.
 - Helix budget: the follow reads use the streamer's token, whose bucket is 800 points a minute; 15 every 3 s
   is 300. The profile reads use the app token, whose 800 points a minute are shared by every giveaway of the
   installation (and the badge reads); one call per check per giveaway with waiting chatters is 20 a minute, so
@@ -300,7 +327,8 @@ While the queue is empty, no extra request is made: the normal path is one callb
 ### Streamer flow
 
 Code flow with `openid channel:read:vips moderation:read user:read:chat` (`user:read:chat` for the chat
-claim and chat entry); the reconnect for chat entry adds `moderator:read:followers` (see Chat entry). The
+claim and chat entry); the reconnect for chat entry adds `moderator:read:followers` (see Chat entry), the one
+for sub and points entry `channel:read:subscriptions` and `channel:read:redemptions` (see Sub and points entry). The
 granted scopes are stored with the token. Rafflink keeps the streamer's refresh token
 (confidential clients get refresh tokens that do not expire). Twitch requires apps that keep an OAuth session
 to call `GET id.twitch.tv/oauth2/validate` at start and every hour. A Cron Trigger validates every stored

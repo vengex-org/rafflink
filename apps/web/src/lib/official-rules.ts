@@ -100,12 +100,14 @@ export function officialRulesText(i18n: I18n, rules: OfficialRules, giveawayUrl:
 }
 
 function entryLines(i18n: I18n, giveaway: GiveawayView): string[] {
-  const { chatKeyword, pageEntry } = giveaway.rules
+  const { chatKeyword, pageEntry, subEntry, pointsReward } = giveaway.rules
   return [
     ...(pageEntry ? [i18n.t("rules.enterPage")] : []),
     ...(chatKeyword === null
       ? []
       : [i18n.t("rules.enterChat", { keyword: chatKeyword, name: giveaway.streamerName })]),
+    ...(subEntry ? [i18n.t("rules.enterSub", { name: giveaway.streamerName })] : []),
+    ...(pointsReward === null ? [] : [i18n.t("rules.enterPoints", { reward: pointsReward.title })]),
   ]
 }
 

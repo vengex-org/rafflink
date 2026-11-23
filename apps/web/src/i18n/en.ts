@@ -310,6 +310,8 @@ export const en = {
   "issue.too-long": "This is too long. Make it shorter.",
   "issue.too-large": "This number is too large. Enter a smaller one.",
   "issue.no-entry-way": "Viewers need a way to enter: the page, the chat or both.",
+  "issue.reconnect":
+    "Reconnect Twitch first: sub and channel point entry need a permission Rafflink does not have yet.",
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.unknown-kind": "Pick one of the options.",
@@ -504,6 +506,10 @@ export const en = {
   "rules.prizeNone": "The prize is not described here. Ask {name}.",
   "rules.enterPage": "To enter, sign in with Twitch on this page.",
   "rules.enterChat": 'To enter, type "{keyword}" in {name}\'s Twitch chat while entries are open.',
+  "rules.enterSub":
+    "Subscribing to {name}, resubscribing or receiving a gift sub while entries are open also enters you. You never have to subscribe to enter.",
+  "rules.enterPoints":
+    'Redeeming the "{reward}" channel point reward while entries are open also enters you once, with no extra tickets.',
   "rules.free": "Entering is free. You do not have to buy anything to enter or to win.",
   "rules.paidOnly": "Only subscribers can enter, so there is no free way to enter this giveaway.",
   "rules.minAge": "Winners must be at least {age} old.",
@@ -629,6 +635,8 @@ export const en = {
   "live.chatOff.title": "Chat watch is off",
   "live.chatEntryOff.text":
     "Chat entry is off: Rafflink cannot read your chat right now, so typing the keyword enters nobody. Viewers can still enter on the giveaway page if it takes page entries.",
+  "live.channelEntryOff.text":
+    "Sub and channel point entry is off: Rafflink cannot read these Twitch events right now, often because a permission was removed. The free way to enter is not affected. Reconnect Twitch before your next giveaway.",
   "live.chatOff.text":
     "Chat claim unavailable: Rafflink cannot read your chat right now, so winners cannot claim by typing there. When a winner tells you they are in, press Mark as claimed next to their name.",
   "live.open.title": "Entries are open",
@@ -873,16 +881,32 @@ export const en = {
   "wizard.entry.chat": "Chat only",
   "wizard.entry.chat.help":
     "Viewers enter only by typing a keyword in your chat. The page shows the keyword and lets them check whether they are in.",
-  "wizard.reconnect.text":
+  "wizard.reconnect.chat.text":
     "To check whether a chat entrant follows you, Rafflink needs one more Twitch permission (read your followers). Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.sub.text":
+    "To enter new subscribers, Rafflink needs to read your subscribers and followers. Reconnect Twitch; your answers stay.",
+  "wizard.reconnect.points.text":
+    "To enter viewers who redeem a channel point reward, Rafflink needs to read your rewards, redemptions, subscribers and followers. Reconnect Twitch; your answers stay.",
   "wizard.reconnect.button": "Reconnect Twitch",
   "wizard.chatKeyword.label": "Entry keyword",
   "wizard.chatKeyword.help":
     "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
+  "wizard.autoEntry.legend": "Automatic entries",
+  "wizard.subEntry.label": "Enter new subscribers",
+  "wizard.subEntry.help":
+    "Everyone who subscribes, gets a gift sub, or shares a resub in chat while entries are open enters once, with the tickets of their tier. A silent auto renewal does not enter: Twitch only reports a renewal the viewer shares. Entering on the page or in chat stays free, so nobody has to pay to take part.",
+  "wizard.points.legend": "Channel point reward",
+  "wizard.points.help":
+    "Viewers who redeem this reward while entries are open enter once, like any other entry. Redeeming gives no extra tickets and no better chance to win.",
+  "wizard.points.off": "No reward",
+  "wizard.points.selected":
+    "Rafflink does not mark the redemption as fulfilled; handle it in your reward queue as usual.",
   "review.entry": "Entry",
   "review.entryPage": "On the giveaway page.",
   "review.entryBoth": 'On the giveaway page or by typing "{keyword}" in your chat.',
   "review.entryChat": 'Only by typing "{keyword}" in your chat.',
+  "review.subEntry": "New subscribers enter by themselves.",
+  "review.pointsEntry": 'Redeeming "{reward}" enters a viewer.',
   "giveaway.chatEntry": "Or type {keyword} in the chat of {name} to enter.",
   "giveaway.lookup.legend": "Entered by chat?",
   "giveaway.lookup.label": "Your Twitch login",
@@ -984,7 +1008,7 @@ export const en = {
   "privacy.cookies.i5":
     "Your browser's local storage keeps your language and theme choice and the clean mode of the live page. Session storage keeps a copy of the giveaway page you loaded, including your own state in it, for about 30 seconds. Neither leaves your device.",
   "privacy.cookies.i7":
-    "rl_chat_entry: remembers that the last streamer sign-in in this browser allowed reading the channel's followers for chat entry, so the next sign-in asks for it again; 400 days, kept when signing out.",
+    "rl_entry_scopes: remembers which extra permissions (followers for chat entry, subscribers and rewards for sub and points entry) the last streamer sign-in in this browser allowed, so the next sign-in asks for them again; 400 days, kept when signing out.",
   "privacy.cookies.i6":
     "rl_mod_*: lets whoever opened a moderator link use that giveaway's moderator page, 7 days by default or until the streamer revokes the link. rl_mod_pending: remembers which link waits for the moderator's Twitch sign-in, 10 minutes by default.",
   "privacy.rights.h": "Your rights",

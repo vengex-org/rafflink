@@ -1,5 +1,10 @@
 import type { ResolvedConfig } from "../config.ts"
-import type { ChatListener, ChatSource, ChatSourceFactory } from "../platform/chat-source.ts"
+import type {
+  ChatListener,
+  ChatSource,
+  ChatSourceFactory,
+  WatchTopics,
+} from "../platform/chat-source.ts"
 import type { Clock, Instant, SocketConnector, TextSocket } from "../ports.ts"
 import { parseEventSubMessage } from "./lib/parse-eventsub.ts"
 
@@ -17,8 +22,11 @@ export type ChatWatcherConfig = Pick<
 /** What a target supplies to watch chat: its sockets, and the call that subscribes a session to the channel. */
 export interface ChatLink {
   readonly connector: SocketConnector
-  /** Creates the chat subscription for an EventSub session. A rejection ends the watch as unavailable. */
-  readonly subscribe: (sessionId: string) => Promise<void>
+  /**
+   * Creates the subscriptions of the topics for an EventSub session. A rejection ends the watch as unavailable;
+   * a refused sub or points subscription next to a held chat one resolves with its cause instead, null when all held.
+   */
+  readonly subscribe: (sessionId: string, topics: WatchTopics) => Promise<unknown>
 }
 
 /** What the Twitch chat source is built from: the target's link, with the room's clock and config. */
@@ -66,7 +74,7 @@ interface Live {
 }
 
 /**
- * Keeps one EventSub WebSocket subscribed to a channel's chat messages. It has no timers: the owner calls
+ * Keeps one EventSub WebSocket subscribed to a channel's chat messages and the other topics the owner asks for. It has no timers: the owner calls
  * {@link ChatWatcher.onAlarm} at {@link ChatWatcher.wakeAt}, which drives the keepalive check, the retry
  * after a failure and the replacement of a connection before it reaches its maximum age.
  */
@@ -175,6 +183,11 @@ export class ChatWatcher implements ChatSource {
         live.lastSeenAt = this.deps.clock.now()
         this.deps.onMessage(message.chat)
         return
+      case "channel-entry":
+        if (live === null) return
+        live.lastSeenAt = this.deps.clock.now()
+        this.deps.onChannelEntry(message.event)
+        return
       case "reconnect":
         if (live !== null) this.connect(message.url, true)
         return
@@ -206,9 +219,11 @@ export class ChatWatcher implements ChatSource {
       return
     }
     handshake.deadline = this.handshakeDeadline()
-    void this.deps.subscribe(sessionId).then(
-      () => {
-        if (this.handshake === handshake) this.promote(handshake, keepaliveMs)
+    void this.deps.subscribe(sessionId, this.deps.topics()).then(
+      (refused) => {
+        if (this.handshake !== handshake) return
+        this.promote(handshake, keepaliveMs)
+        if (refused !== null && refused !== undefined) this.deps.onChannelEntryUnavailable(refused)
       },
       (cause: unknown) => {
         if (this.handshake !== handshake) return

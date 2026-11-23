@@ -17,9 +17,35 @@ export interface ChatMessage {
   readonly roles: ChatterRoles
 }
 
-/** What a chat source tells the room that owns it. */
+/** Who subscribed or redeemed, as the platform names them. */
+export interface ChannelViewer {
+  readonly platformUserId: string
+  readonly login: string
+  readonly displayName: string
+}
+
+/** A subscription (new, renewed or received as a gift) or a channel point redemption in the room's channel. */
+export type ChannelEntryEvent =
+  | { readonly via: "sub"; readonly viewer: ChannelViewer; readonly subTier: 1 | 2 | 3 }
+  | { readonly via: "points"; readonly viewer: ChannelViewer; readonly rewardId: string }
+
+/** What the room's channel watch listens to; read for each new connection, so a status change reaches the next one. */
+export interface WatchTopics {
+  /** Chat messages: the entry keyword while entries are open, winners' claims after the draw. */
+  readonly chat: boolean
+  /** New subscriptions, resubscriptions and gift subs received. */
+  readonly subscriptions: boolean
+  /** Redemptions of this channel point reward; null for none. */
+  readonly pointsRewardId: string | null
+}
+
+/** What a chat source tells the room that owns it, and asks it. */
 export interface ChatListener {
   readonly onMessage: (message: ChatMessage) => void
+  readonly onChannelEntry: (event: ChannelEntryEvent) => void
+  /** The sub or points subscriptions were refused while the chat subscription held, so the watch goes on for chat only. */
+  readonly onChannelEntryUnavailable: (cause: unknown) => void
+  readonly topics: () => WatchTopics
   /** Called once when the source gives up; the source is closed by then. */
   readonly onUnavailable: (cause: unknown) => void
   /** Called when a connection event moved {@link ChatSource.wakeAt}, so the owner can re-arm its alarm. */
@@ -27,7 +53,7 @@ export interface ChatListener {
 }
 
 /**
- * The chat of the room's channel. It has no timers: the owner calls {@link ChatSource.onAlarm} at
+ * The chat and the other events of the room's channel. It has no timers: the owner calls {@link ChatSource.onAlarm} at
  * {@link ChatSource.wakeAt}.
  */
 export interface ChatSource {

@@ -1,5 +1,12 @@
 import { groups, supportedGroups, type Group, type Tickets } from "@rafflink/core/domain/groups"
-import { minAgeMax, type GiveawayRules, type RecentWinnersRule } from "@rafflink/core/domain/rules"
+import {
+  channelEntryVias,
+  minAgeMax,
+  type ChannelEntryVia,
+  type GiveawayRules,
+  type PointsReward,
+  type RecentWinnersRule,
+} from "@rafflink/core/domain/rules"
 import type { WinnerFieldKind } from "@rafflink/core/domain/winner-form"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
@@ -46,6 +53,10 @@ export interface Values {
   recentWinnersCount: string
   entryWays: EntryWays
   chatKeyword: string
+  /** Subs, resubs and gift subs received enter by themselves; page or chat entry stays on beside it. */
+  subEntry: boolean
+  /** The channel point reward whose redemption enters; null for none. */
+  pointsReward: PointsReward | null
   winnerCount: string
   /** The official rules fields; empty when not stated. */
   minAge: string
@@ -81,6 +92,8 @@ export const initialValues: Values = {
   recentWinnersCount: "3",
   entryWays: "page",
   chatKeyword: defaultChatKeyword,
+  subEntry: false,
+  pointsReward: null,
   winnerCount: "1",
   minAge: "",
   excludedCountries: "",
@@ -102,6 +115,8 @@ export function fitValues(values: Values, capabilities: PlatformCapabilities): V
     audience: audienceOffered(values.audience, capabilities) ? values.audience : "everyone",
     minAccountAgeDays: capabilities.accountAge ? values.minAccountAgeDays : "",
     entryWays: fitEntryWays(values.entryWays, capabilities),
+    subEntry: capabilities.subEntry && values.subEntry,
+    pointsReward: capabilities.pointsEntry ? values.pointsReward : null,
   }
 }
 
@@ -154,11 +169,29 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
         : String(rules.excludeRecentWinners.count),
     entryWays: entryWaysOf(rules),
     chatKeyword: rules.chatKeyword ?? defaultChatKeyword,
+    subEntry: rules.subEntry,
+    pointsReward: rules.pointsReward,
     minAge: rules.minAge === null ? "" : String(rules.minAge),
     excludedCountries: rules.excludedCountries ?? "",
     extraTerms: rules.extraTerms ?? "",
     winnerForm: rules.winnerForm,
   }
+}
+
+/**
+ * The sub and points entry the answers turn on whose scopes the token lacks; the server refuses such a giveaway.
+ * Chat entry works without its scope (every chatter counts as not following), so it never blocks.
+ */
+export function missingEntryScopes(
+  values: Values,
+  ready: readonly ChannelEntryVia[],
+): readonly ChannelEntryVia[] {
+  const used: Readonly<Record<ChannelEntryVia, boolean>> = {
+    chat: false,
+    sub: values.subEntry,
+    points: values.pointsReward !== null,
+  }
+  return channelEntryVias.filter((way) => used[way] && !ready.includes(way))
 }
 
 /** The first thing wrong with the answers of one step, or null; the server checks everything again. */
@@ -228,6 +261,7 @@ export function stepOfField(field: string): Step {
     || field === "claimSeconds"
     || field === "claimKeyword"
     || field === "chatKeyword"
+    || field === "subEntry"
     || field === "winnerCount"
     || field.startsWith("winnerForm")
     || field.startsWith("excludeRecentWinners")
@@ -260,6 +294,8 @@ export function toBody(values: Values): CreateGiveawayBody {
           : { kind: values.recentWinners, count: Number(values.recentWinnersCount) },
       chatKeyword: values.entryWays === "page" ? null : values.chatKeyword,
       pageEntry: values.entryWays !== "chat",
+      subEntry: values.subEntry,
+      pointsReward: values.pointsReward,
       minAge: values.minAge.trim() === "" ? null : Number(values.minAge),
       excludedCountries: textOrNull(values.excludedCountries),
       extraTerms: textOrNull(values.extraTerms),

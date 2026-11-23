@@ -9,6 +9,7 @@ import type {
 } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import { parseOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
+import type { ChannelEntryVia, GiveawayRules } from "../domain/rules.ts"
 import { generateCode } from "../lib/codes.ts"
 import { csvText } from "../lib/csv.ts"
 import { errorClass } from "../lib/error-class.ts"
@@ -35,7 +36,8 @@ import { denseDays, denseMinutes } from "../stats/series.ts"
 import { liveGiveaways } from "../stats/live-giveaways.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
 import { PlatformError } from "../platform/errors.ts"
-import { providerFor, type PlatformAccount } from "../platform/provider.ts"
+import { providerFor, readyEntryWays, type PlatformAccount } from "../platform/provider.ts"
+import { openStreamerAccess } from "../accounts/streamer-token.ts"
 import { parseCreateGiveaway, parseWinnerCount } from "./create-input.ts"
 import type { AppDeps } from "./deps.ts"
 import {
@@ -53,6 +55,7 @@ import {
   type GiveawayOverlayThemesJson,
   type OverlayThemeJson,
   type OwnerLiveSnapshot,
+  type PointsRewardsJson,
 } from "./json.ts"
 import {
   closeEntries,
@@ -68,7 +71,7 @@ import {
 import { sameOriginJson } from "./origin.ts"
 import { historyCacheKey } from "./history-routes.ts"
 import { deletePublicCache, readPublicCache, writePublicCache } from "./public-cache.ts"
-import { endStreamerSession } from "./session.ts"
+import { endStreamerSession, type StreamerSession } from "./session.ts"
 import { requireStreamer, type StreamerEnv } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 import { winnerAnswersJson } from "./winner-answers.ts"
@@ -96,6 +99,9 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       providerFor(deps.platforms, streamer.platform).capabilities,
     )
     if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
+    if (!(await channelEntryReady(deps, streamer, parsed.value.rules))) {
+      return c.json({ error: "reconnect" }, 422)
+    }
     const created = await insertWithFreshCode(deps, {
       id: randomId(deps.random),
       streamerId: streamer.streamerId,
@@ -221,6 +227,36 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     if (!set) return c.json({ error: "not-found" }, 404)
     await forgetHistory(c, deps)
     return c.json({ kind: "saved", hidden })
+  })
+
+  // Whether the channel has points is asked first, with the app's own token, so a streamer without them
+  // is never sent to reconnect Twitch for an option they cannot use.
+  app.get("/api/dash/rewards", async (c) => {
+    const { streamerId, platform, platformUserId } = c.get("streamer")
+    const provider = providerFor(deps.platforms, platform)
+    c.header("Cache-Control", "no-store")
+    try {
+      if (
+        !provider.capabilities.pointsEntry
+        || !(await provider.hasChannelPoints(platformUserId))
+      ) {
+        return c.json<PointsRewardsJson>({ kind: "no-channel-points" })
+      }
+      const token = await deps.accounts.findStreamerToken(streamerId)
+      if (token === null || !readyEntryWays(provider, token.scopes).includes("points")) {
+        return c.json<PointsRewardsJson>({ kind: "reconnect" })
+      }
+      const accessToken = await openStreamerAccess(deps, token)
+      const rewards = await provider.pointsRewards(accessToken, platformUserId)
+      return c.json<PointsRewardsJson>({ kind: "rewards", rewards })
+    } catch (error) {
+      if (!(error instanceof PlatformError)) throw error
+      console.warn("points rewards read failed", {
+        errorClass: errorClass(error),
+        status: error.status,
+      })
+      return c.json({ error: "platform-unavailable" }, 503)
+    }
   })
 
   app.get("/api/dash/blocks", async (c) => {
@@ -595,6 +631,22 @@ function winnersCsv(giveaway: Giveaway, picks: readonly WinnerPick[]): string {
       pick.deliveredAt === null ? "" : new Date(pick.deliveredAt).toISOString(),
     ]),
   ])
+}
+
+// A sub or points giveaway on a token without those scopes would watch nothing, so it is refused before it exists.
+async function channelEntryReady(
+  deps: AppDeps,
+  streamer: StreamerSession,
+  rules: GiveawayRules,
+): Promise<boolean> {
+  const needed: ChannelEntryVia[] = []
+  if (rules.subEntry) needed.push("sub")
+  if (rules.pointsReward !== null) needed.push("points")
+  if (needed.length === 0) return true
+  const token = await deps.accounts.findStreamerToken(streamer.streamerId)
+  if (token === null) return false
+  const ready = readyEntryWays(providerFor(deps.platforms, streamer.platform), token.scopes)
+  return needed.every((way) => ready.includes(way))
 }
 
 async function insertWithFreshCode(

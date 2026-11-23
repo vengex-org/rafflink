@@ -1,6 +1,7 @@
 import type { Context } from "hono"
 import { deleteCookie, getCookie, getSignedCookie, setSignedCookie } from "hono/cookie"
 import type { ResolvedConfig } from "../config.ts"
+import { channelEntryVias, type ChannelEntryVia } from "../domain/rules.ts"
 import { isPlatform, type OAuthFlow, type Platform } from "../platform/provider.ts"
 import type { Clock, Instant } from "../ports.ts"
 
@@ -56,8 +57,8 @@ export interface OAuthState {
   readonly giveawayCode: string | null
   readonly returnPath: string | null
   readonly moderatorLinkId: string | null
-  /** The streamer sign-in asked for the chat entry scopes too; false for every other sign-in. */
-  readonly chatEntry: boolean
+  /** The entry ways whose scopes the streamer sign-in asked for too; empty for every other sign-in. */
+  readonly entryWays: readonly ChannelEntryVia[]
 }
 
 const cookieNames = {
@@ -110,28 +111,44 @@ export function endStreamerSession(c: Context): void {
   deleteCookie(c, cookieNames.streamer, { path: "/" })
 }
 
-/** Whether the last streamer sign-in in this browser granted the chat entry scopes, so the next one asks for them again. */
-export async function readChatEntryHint(c: Context, deps: SessionDeps): Promise<boolean> {
-  const hint = await readCookie(c, deps, chatEntryHintCookie, (value) =>
-    value.chatEntry === true ? true : null,
-  )
-  return hint === true
-}
-
-/** Remembers after a streamer sign-in whether it granted the chat entry scopes; a logout keeps it. */
-export async function writeChatEntryHint(
+/** The entry ways whose scopes the last streamer sign-in in this browser granted, so the next one asks for them again. */
+export async function readEntryScopesHint(
   c: Context,
   deps: SessionDeps,
-  granted: boolean,
-): Promise<void> {
-  if (granted)
-    await writeCookie(c, deps, chatEntryHintCookie, { chatEntry: true }, chatEntryHintSeconds)
-  else deleteCookie(c, chatEntryHintCookie, { path: "/" })
+): Promise<readonly ChannelEntryVia[]> {
+  const hint = await readCookie(c, deps, entryScopesHintCookie, (value) =>
+    parseEntryWays(value.entryWays),
+  )
+  return hint ?? []
 }
 
-const chatEntryHintCookie = "rl_chat_entry"
+/** Remembers after a streamer sign-in which entry ways' scopes it granted; a logout keeps it. */
+export async function writeEntryScopesHint(
+  c: Context,
+  deps: SessionDeps,
+  granted: readonly ChannelEntryVia[],
+): Promise<void> {
+  if (granted.length > 0) {
+    await writeCookie(
+      c,
+      deps,
+      entryScopesHintCookie,
+      { entryWays: granted },
+      entryScopesHintSeconds,
+    )
+  } else deleteCookie(c, entryScopesHintCookie, { path: "/" })
+}
+
+/** The entry ways of a stored list; null when it is not a list of them. */
+export function parseEntryWays(value: unknown): readonly ChannelEntryVia[] | null {
+  if (!Array.isArray(value)) return null
+  const ways = value.flatMap((item) => channelEntryVias.filter((way) => way === item))
+  return ways.length === value.length ? ways : null
+}
+
+const entryScopesHintCookie = "rl_entry_scopes"
 // Browsers keep a cookie at most 400 days.
-const chatEntryHintSeconds = 400 * 86_400
+const entryScopesHintSeconds = 400 * 86_400
 
 export async function readViewerSession(
   c: Context,
@@ -285,15 +302,15 @@ export async function takeOAuthState(
   if (returnedState === undefined || !hexId.test(returnedState)) return null
   const name = `${oauthCookiePrefix[flow]}${returnedState}`
   const saved = await readCookie(c, deps, name, (value) => {
-    const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, chatEntry } =
-      value
+    const { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId } = value
+    const entryWays = parseEntryWays(value.entryWays)
     if (typeof state !== "string" || typeof nonce !== "string") return null
     if (typeof codeVerifier !== "string") return null
     if (giveawayCode !== null && typeof giveawayCode !== "string") return null
     if (returnPath !== null && typeof returnPath !== "string") return null
     if (moderatorLinkId !== null && typeof moderatorLinkId !== "string") return null
-    if (typeof chatEntry !== "boolean") return null
-    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, chatEntry }
+    if (entryWays === null) return null
+    return { state, nonce, codeVerifier, giveawayCode, returnPath, moderatorLinkId, entryWays }
   })
   deleteCookie(c, name, { path: "/" })
   return saved

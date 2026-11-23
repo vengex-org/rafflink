@@ -1,5 +1,6 @@
 import { Hono, type Context } from "hono"
 import { streamerTokenAad } from "../accounts/streamer-token.ts"
+import type { ChannelEntryVia } from "../domain/rules.ts"
 import { timingSafeEqual } from "hono/utils/buffer"
 import { giveawayPath } from "../lib/page-paths.ts"
 import { randomId } from "../lib/random-id.ts"
@@ -7,7 +8,7 @@ import { sealSecret } from "../lib/seal.ts"
 import type { Instant } from "../ports.ts"
 import { PlatformError, PlatformIdentityRejected } from "../platform/errors.ts"
 import { codeChallenge, codeVerifier } from "../platform/pkce.ts"
-import { providerFor, type PlatformProvider } from "../platform/provider.ts"
+import { providerFor, readyEntryWays, type PlatformProvider } from "../platform/provider.ts"
 import { callbackPath, redirectUri } from "../platform/redirect.ts"
 import { enterGiveaway } from "../viewer/enter-giveaway.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
@@ -23,9 +24,10 @@ import {
   startViewerSession,
   takeOAuthState,
   startPendingEntry,
-  readChatEntryHint,
+  parseEntryWays,
+  readEntryScopesHint,
   readStreamerSession,
-  writeChatEntryHint,
+  writeEntryScopesHint,
 } from "./session.ts"
 
 /**
@@ -56,10 +58,11 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
     const nonce = randomId(deps.random)
     const verifier = codeVerifier(deps.random)
     const returnPath = safeReturnPath(c.req.query("return")) ?? defaultReturnPath
-    // `?scopes=chat-entry` is the wizard's "Reconnect Twitch": the base scopes plus the ones chat entry needs.
-    // Twitch grants only the scopes a sign-in asks for, so a streamer who granted them before is asked again.
-    const chatEntry =
-      c.req.query("scopes") === "chat-entry" || (await grantedChatEntry(c, deps, provider))
+    // `?entry=chat,sub` is the wizard's "Reconnect Twitch": the base scopes plus the ones those entry ways
+    // need. Twitch grants only the scopes a sign-in asks for, so the ways granted before are asked again.
+    const asked = parseEntryWays(c.req.query("entry")?.split(",") ?? []) ?? []
+    const granted = await grantedEntryWays(c, deps, provider)
+    const entryWays = [...new Set([...granted, ...asked])]
     await startOAuthState(c, deps, "streamer", {
       state,
       nonce,
@@ -67,14 +70,14 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: null,
       returnPath,
       moderatorLinkId: null,
-      chatEntry,
+      entryWays,
     })
     return c.redirect(
       provider.authorizeUrl({
         state,
         nonce,
         codeChallenge: await codeChallenge(verifier),
-        scopes: streamerScopes(provider, chatEntry),
+        scopes: streamerScopes(provider, entryWays),
         redirectUri: redirectUri(deps.config, streamerCallbackPath),
       }),
     )
@@ -111,7 +114,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
         streamerTokenAad(platform, signIn.userId),
         deps.random,
       ),
-      scopes: streamerScopes(provider, saved.chatEntry).join(" "),
+      scopes: streamerScopes(provider, saved.entryWays).join(" "),
       now: deps.clock.now(),
     })
     await startStreamerSession(c, deps, {
@@ -119,7 +122,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       platform,
       platformUserId: streamer.platformUserId,
     })
-    await writeChatEntryHint(c, deps, saved.chatEntry)
+    await writeEntryScopesHint(c, deps, saved.entryWays)
     return c.redirect(saved.returnPath ?? defaultReturnPath)
   })
 
@@ -137,7 +140,7 @@ function platformAuthRoutes(deps: AppDeps, backlog: Backlog, provider: PlatformP
       giveawayCode: giveaway.code,
       returnPath: null,
       moderatorLinkId: null,
-      chatEntry: false,
+      entryWays: [],
     })
     return c.redirect(
       provider.authorizeUrl({
@@ -215,24 +218,26 @@ interface StreamerGrant {
 }
 
 // The browser's last sign-in granted them, or the signed-in streamer's stored token holds them.
-async function grantedChatEntry(
+async function grantedEntryWays(
   c: Context,
   deps: AppDeps,
   provider: PlatformProvider,
-): Promise<boolean> {
-  if (await readChatEntryHint(c, deps)) return true
+): Promise<readonly ChannelEntryVia[]> {
+  const hinted = await readEntryScopesHint(c, deps)
   const session = await readStreamerSession(c, deps)
-  if (session === null || session.platform !== provider.platform) return false
+  if (session === null || session.platform !== provider.platform) return hinted
   const token = await deps.accounts.findStreamerToken(session.streamerId)
-  return token !== null && provider.chatEntryScopes.every((scope) => token.scopes.includes(scope))
+  const stored = token === null ? [] : readyEntryWays(provider, token.scopes)
+  return [...new Set([...hinted, ...stored])]
 }
 
 function streamerScopes(
   provider: PlatformProvider,
-  chatEntry: boolean,
+  entryWays: readonly ChannelEntryVia[],
 ): readonly [string, ...string[]] {
-  const base = provider.scopes.streamer
-  return chatEntry ? [...base, ...provider.chatEntryScopes] : base
+  const [first, ...rest] = provider.scopes.streamer
+  const extra = entryWays.flatMap((way) => provider.entryScopes[way])
+  return [first, ...new Set([...rest, ...extra])]
 }
 
 async function exchangeStreamer(

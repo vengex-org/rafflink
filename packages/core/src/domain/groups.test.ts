@@ -39,6 +39,8 @@ describe("supportedGroups", () => {
     accountAge: true,
     pageEntry: true,
     chatEntry: true,
+    subEntry: true,
+    pointsEntry: true,
   }
 
   it("keeps every group on a platform that can tell them all", () => {

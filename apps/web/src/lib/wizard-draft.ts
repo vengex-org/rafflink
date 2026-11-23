@@ -76,7 +76,7 @@ function isValues(value: unknown): value is Values {
   const fields = Object.fromEntries(Object.entries(value))
   const { title, prize, audience, tickets, minAccountAgeDays, ending, closesAt, claim } = fields
   const { claimKeyword, entryWays, chatKeyword, winnerCount, winnerForm } = fields
-  const { minAge, excludedCountries, extraTerms } = fields
+  const { minAge, excludedCountries, extraTerms, subEntry, pointsReward } = fields
   return (
     [
       title,
@@ -96,7 +96,16 @@ function isValues(value: unknown): value is Values {
     && isTickets(tickets)
     && isClaim(claim)
     && isWinnerForm(winnerForm)
+    && typeof subEntry === "boolean"
+    && isPointsReward(pointsReward)
   )
+}
+
+function isPointsReward(value: unknown): boolean {
+  if (value === null) return true
+  if (typeof value !== "object") return false
+  const { id, title } = Object.fromEntries(Object.entries(value))
+  return typeof id === "string" && typeof title === "string"
 }
 
 function isWinnerForm(value: unknown): boolean {

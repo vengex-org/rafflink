@@ -103,7 +103,7 @@ async function chatEntryStreamer(world: World, target: ContractTarget): Promise<
   const streamer = new Browser(target.url)
   await streamer.signInAs(
     users.streamer.id,
-    "/auth/twitch/streamer/start?scopes=chat-entry",
+    "/auth/twitch/streamer/start?entry=chat",
     world.twitch.fake.control,
   )
   return streamer

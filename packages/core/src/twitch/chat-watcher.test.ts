@@ -20,7 +20,7 @@ import {
   eventSubChat,
   type ChatWatcherConfig,
 } from "./chat-watcher.ts"
-import type { ChatMessage } from "../platform/chat-source.ts"
+import type { ChannelEntryEvent, ChatMessage, WatchTopics } from "../platform/chat-source.ts"
 import {
   GiveawayRoom,
   type CheckedChatter,
@@ -175,10 +175,15 @@ function flush(): Promise<void> {
 /** Stands in for the Helix call: succeeds unless a test makes it refuse. */
 class Subscriptions {
   readonly sessions: string[] = []
+  readonly topics: WatchTopics[] = []
   refusal: Error | null = null
-  subscribe = async (sessionId: string): Promise<void> => {
+  /** What a session's sub and points subscriptions answer while chat holds; null when they hold too. */
+  channelRefusal: Error | null = null
+  subscribe = async (sessionId: string, topics: WatchTopics): Promise<Error | null> => {
     this.sessions.push(sessionId)
+    this.topics.push(topics)
     if (this.refusal !== null) throw this.refusal
+    return this.channelRefusal
   }
 }
 
@@ -188,18 +193,37 @@ function watcherUnderTest(overrides: Readonly<Record<string, string>> = {}) {
   const clock = new TestClock(0)
   const subscriptions = new Subscriptions()
   const messages: ChatMessage[] = []
+  const channelEntries: ChannelEntryEvent[] = []
+  const channelEntryRefusals: unknown[] = []
   const unavailable: unknown[] = []
   const schedules = { count: 0 }
+  const topics: { current: WatchTopics } = {
+    current: { chat: true, subscriptions: false, pointsRewardId: null },
+  }
   const watcher = new ChatWatcher({
     connector,
     subscribe: subscriptions.subscribe,
     clock,
     config,
     onMessage: (message) => messages.push(message),
+    onChannelEntry: (event) => channelEntries.push(event),
+    onChannelEntryUnavailable: (cause) => channelEntryRefusals.push(cause),
+    topics: () => topics.current,
     onUnavailable: (cause) => unavailable.push(cause),
     onSchedule: () => void (schedules.count += 1),
   })
-  return { watcher, connector, clock, subscriptions, messages, unavailable, schedules }
+  return {
+    watcher,
+    connector,
+    clock,
+    subscriptions,
+    messages,
+    channelEntries,
+    channelEntryRefusals,
+    topics,
+    unavailable,
+    schedules,
+  }
 }
 
 async function liveWatcher(overrides: Readonly<Record<string, string>> = {}) {
@@ -464,6 +488,105 @@ const revocation = {
   payload: {},
 }
 
+function subscription(
+  userId: string,
+  tier: string,
+  type: "channel.subscribe" | "channel.subscription.message" = "channel.subscribe",
+) {
+  return {
+    metadata: { message_type: "notification", subscription_type: type },
+    payload: {
+      event: {
+        user_id: userId,
+        user_login: `user_${userId}`,
+        user_name: `User_${userId}`,
+        tier,
+        is_gift: false,
+      },
+    },
+  }
+}
+
+function redemption(userId: string, rewardId: string) {
+  return {
+    metadata: {
+      message_type: "notification",
+      subscription_type: "channel.channel_points_custom_reward_redemption.add",
+    },
+    payload: {
+      event: {
+        user_id: userId,
+        user_login: `user_${userId}`,
+        user_name: `User_${userId}`,
+        reward: { id: rewardId, title: "Enter" },
+      },
+    },
+  }
+}
+
+const channelViewer = (id: string) => ({
+  platformUserId: id,
+  login: `user_${id}`,
+  displayName: `User_${id}`,
+})
+
+describe("ChatWatcher channel events", () => {
+  it("subscribes each new session to the topics the owner asks for at that moment", async () => {
+    const { watcher, connector, subscriptions, topics } = watcherUnderTest()
+    topics.current = { chat: false, subscriptions: true, pointsRewardId: "r1" }
+    watcher.open()
+    connector.sockets[0]?.receive(welcome("session-1"))
+    await flush()
+
+    expect(subscriptions.topics).toEqual([
+      { chat: false, subscriptions: true, pointsRewardId: "r1" },
+    ])
+  })
+
+  it("hands on subs, resubs and redemptions, and drops a sub event without a known tier as malformed", async () => {
+    const { connector, channelEntries } = await liveWatcher()
+    const socket = connector.sockets[0]
+
+    socket?.receive(subscription("7", "2000"))
+    socket?.receive(subscription("8", "1000", "channel.subscription.message"))
+    socket?.receive(redemption("9", "r1"))
+
+    expect(channelEntries).toEqual([
+      { via: "sub", viewer: channelViewer("7"), subTier: 2 },
+      { via: "sub", viewer: channelViewer("8"), subTier: 1 },
+      { via: "points", viewer: channelViewer("9"), rewardId: "r1" },
+    ])
+    socket?.receive(subscription("10", "Prime"))
+    expect(socket?.closed).toBe(true)
+  })
+
+  it("keeps the watch live for chat and reports a refused sub or points subscription", async () => {
+    const { watcher, connector, subscriptions, channelEntryRefusals, unavailable, messages } =
+      watcherUnderTest()
+    const refusal = new Error("missing scope")
+    subscriptions.channelRefusal = refusal
+    watcher.open()
+    connector.sockets[0]?.receive(welcome("session-1"))
+    await flush()
+    connector.sockets[0]?.receive(chat("42", "!enter"))
+
+    expect(channelEntryRefusals).toEqual([refusal])
+    expect(unavailable).toEqual([])
+    expect(messages).toEqual([chatMessage("42", "!enter")])
+  })
+
+  it("gives up when Twitch revokes a sub subscription", async () => {
+    const { connector, unavailable } = await liveWatcher()
+
+    connector.sockets[0]?.receive({
+      metadata: { message_type: "revocation", subscription_type: "channel.subscribe" },
+      payload: {},
+    })
+
+    expect(unavailable).toHaveLength(1)
+  })
+})
+
 /** Moves a live watcher to the moment its replacement is due, with the old socket still alive. */
 async function dueForReplacement(overrides: Readonly<Record<string, string>> = {}) {
   const context = await liveWatcher(overrides)
@@ -627,6 +750,8 @@ const rules: GiveawayRules = {
   excludeRecentWinners: null,
   chatKeyword: null,
   pageEntry: true,
+  subEntry: false,
+  pointsReward: null,
   minAge: null,
   excludedCountries: null,
   extraTerms: null,
@@ -1357,6 +1482,7 @@ function checked(platformUserId: string, overrides: Partial<CheckedChatter> = {}
     isFollower: false,
     accountAgeDays: 100,
     profileImageUrl: null,
+    subTier: null,
     ...overrides,
   }
 }
@@ -1405,7 +1531,7 @@ describe("chat entry", () => {
     expect(alarm.at).toBe(clock.now())
     expect(room.onAlarm().chatEntrants).toEqual({
       platform: "twitch",
-      chatters: [{ platformUserId: "42", followerCheck: false }],
+      chatters: [{ platformUserId: "42", followerCheck: false, tierCheck: false }],
     })
     room.enterFromChat(
       [checked("42", { profileImageUrl: "https://static-cdn.jtvnw.net/42.png" })],
@@ -1434,7 +1560,7 @@ describe("chat entry", () => {
     say("7", "!enter")
 
     expect(room.onAlarm().chatEntrants?.chatters).toEqual([
-      { platformUserId: "42", followerCheck: true },
+      { platformUserId: "42", followerCheck: true, tierCheck: false },
     ])
   })
 
@@ -1446,8 +1572,8 @@ describe("chat entry", () => {
     say("c", "!enter", [vipBadge])
 
     expect(room.onAlarm().chatEntrants?.chatters).toEqual([
-      { platformUserId: "a", followerCheck: true },
-      { platformUserId: "c", followerCheck: false },
+      { platformUserId: "a", followerCheck: true, tierCheck: false },
+      { platformUserId: "c", followerCheck: false, tierCheck: false },
     ])
   })
 
@@ -1457,7 +1583,7 @@ describe("chat entry", () => {
     say("c", "!enter", [vipBadge])
 
     expect(room.onAlarm().chatEntrants?.chatters).toEqual([
-      { platformUserId: "c", followerCheck: true },
+      { platformUserId: "c", followerCheck: true, tierCheck: false },
     ])
   })
 
@@ -1473,8 +1599,8 @@ describe("chat entry", () => {
 
     clock.advance(checkedAt + 3000 - clock.now())
     expect(room.onAlarm().chatEntrants?.chatters).toEqual([
-      { platformUserId: "a", followerCheck: true },
-      { platformUserId: "b", followerCheck: true },
+      { platformUserId: "a", followerCheck: true, tierCheck: false },
+      { platformUserId: "b", followerCheck: true, tierCheck: false },
     ])
   })
 
@@ -1525,8 +1651,8 @@ describe("chat entry", () => {
       commit: false,
       chatEntrants: {
         chatters: [
-          { platformUserId: "v", followerCheck: false },
-          { platformUserId: "plain", followerCheck: false },
+          { platformUserId: "v", followerCheck: false, tierCheck: false },
+          { platformUserId: "plain", followerCheck: false, tierCheck: false },
         ],
       },
     })
@@ -1691,7 +1817,7 @@ describe("chat entry", () => {
     expect(room.hasChatEntrant("nobody")).toBe(false)
     expect(
       plan(db, chatEntrantByLoginSql, ["twitch", "user_42"]).some((detail) =>
-        detail.includes("INDEX chat_entries_by_login"),
+        detail.includes("INDEX channel_entries_by_login"),
       ),
     ).toBe(true)
   })
@@ -1702,5 +1828,163 @@ describe("chat entry", () => {
     const details = plan(db, chatEntryRequestsSql, [10])
 
     expect(details.some((detail) => detail.includes("chat_entry_requests_by_time"))).toBe(true)
+  })
+})
+
+describe("sub and points entry", () => {
+  const reward = { id: "reward-1", title: "Enter" }
+
+  /** Entries open to subs and the reward, the channel subscribed; the clock moves a millisecond per event so requests keep their order. */
+  async function channelEntryRoom(options: Parameters<typeof roomUnderTest>[0] = {}) {
+    const context = roomUnderTest({
+      ...options,
+      rules: { subEntry: true, pointsReward: reward, ...options.rules },
+      env: { LIVE_INTERVAL_MS: "1", ...options.env },
+    })
+    const socket = context.connector.sockets[0]
+    socket?.receive(welcome("session-1"))
+    await flush()
+    const send = (event: object) => {
+      context.clock.advance(1)
+      socket?.receive(event)
+    }
+    const via = () => context.db.query("SELECT login, via FROM entries ORDER BY seq").all()
+    return { ...context, socket, send, via }
+  }
+
+  it("watches a giveaway that takes only subs and a reward, for those topics and no chat", async () => {
+    const { subscriptions } = await channelEntryRoom()
+
+    expect(subscriptions.topics).toEqual([
+      { chat: false, subscriptions: true, pointsRewardId: "reward-1" },
+    ])
+  })
+
+  it("enters a subscriber with the tier of the sub event, as a sub entry", async () => {
+    const { room, send, via } = await channelEntryRoom()
+    spyOn(console, "info").mockImplementation(() => {})
+
+    send(subscription("42", "3000"))
+    send(subscription("42", "1000", "channel.subscription.message"))
+
+    expect(room.onAlarm().chatEntrants?.chatters).toEqual([
+      { platformUserId: "42", followerCheck: false, tierCheck: false },
+    ])
+    room.enterFromChat([checked("42")], current)
+    expect(room.entrants({ afterSeq: 0, limit: 10 })).toMatchObject([
+      { login: "user_42", group: "sub_t3", tickets: 5 },
+    ])
+    expect(via()).toEqual([{ login: "user_42", via: "sub" }])
+  })
+
+  it("enters a redeemer of the chosen reward with the tier the check read, and ignores other rewards", async () => {
+    const { room, send, via } = await channelEntryRoom()
+    spyOn(console, "info").mockImplementation(() => {})
+
+    send(redemption("42", "reward-1"))
+    send(redemption("43", "reward-2"))
+
+    expect(room.onAlarm().chatEntrants?.chatters).toEqual([
+      { platformUserId: "42", followerCheck: true, tierCheck: true },
+    ])
+    room.enterFromChat([checked("42", { subTier: 2 })], current)
+    expect(room.entrants({ afterSeq: 0, limit: 10 })).toMatchObject([
+      { login: "user_42", group: "sub_t2", tickets: 4 },
+    ])
+    expect(via()).toEqual([{ login: "user_42", via: "points" }])
+  })
+
+  it("ignores sub events when only points entry is on, and redemptions when only sub entry is on", async () => {
+    const pointsOnly = await channelEntryRoom({ rules: { subEntry: false } })
+    const subOnly = await channelEntryRoom({ rules: { pointsReward: null } })
+
+    pointsOnly.send(subscription("42", "1000"))
+    subOnly.send(redemption("42", "reward-1"))
+
+    expect(pointsOnly.room.onAlarm().chatEntrants).toBeNull()
+    expect(subOnly.room.onAlarm().chatEntrants).toBeNull()
+  })
+
+  it("ignores events once the end time has passed, before the alarm closes the room", async () => {
+    const { room, clock, send } = await channelEntryRoom({ closesAt: 1_000 })
+    clock.advance(1_000 - clock.now())
+
+    send(subscription("42", "1000"))
+    send(redemption("43", "reward-1"))
+
+    expect(room.onAlarm().chatEntrants).toBeNull()
+  })
+
+  it("closes the watch at the close and watches only the winners' chat after the draw", async () => {
+    const { room, clock, connector, subscriptions } = await channelEntryRoom()
+    room.enter(viewer("1"), current)
+    clock.advance(1)
+    room.close(null)
+    expect(connector.sockets[0]?.closed).toBe(true)
+    clock.advance(1)
+    await room.commit()
+    clock.advance(1)
+    await room.draw(1, null)
+    connector.sockets[1]?.receive(welcome("session-2"))
+    await flush()
+
+    expect(subscriptions.topics.at(-1)).toEqual({
+      chat: true,
+      subscriptions: false,
+      pointsRewardId: null,
+    })
+  })
+
+  it("keeps chat entry when Twitch refuses the sub and points subscriptions, and asks only for chat from then on", async () => {
+    const context = roomUnderTest({
+      rules: { chatKeyword: "!enter", subEntry: true, pointsReward: reward },
+      env: { LIVE_INTERVAL_MS: "1" },
+    })
+    spyOn(console, "warn").mockImplementation(() => {})
+    context.subscriptions.channelRefusal = new Error("missing scope")
+    const socket = context.connector.sockets[0]
+    socket?.receive(welcome("session-1"))
+    await flush()
+    context.clock.advance(1)
+    socket?.receive(chat("42", "!enter"))
+    context.clock.advance(1)
+    socket?.receive(subscription("43", "1000"))
+
+    expect(context.room.summary()).toMatchObject({ channelEntryOff: true, chatEntryOff: false })
+    expect(
+      context.room.onAlarm().chatEntrants?.chatters.map((chatter) => chatter.platformUserId),
+    ).toEqual(["42"])
+    socket?.fail(new Error("dropped"))
+    context.clock.advance(2_000)
+    context.room.onAlarm()
+    context.connector.sockets[1]?.receive(welcome("session-2"))
+    await flush()
+    expect(context.subscriptions.topics.at(-1)).toEqual({
+      chat: true,
+      subscriptions: false,
+      pointsRewardId: null,
+    })
+  })
+
+  it("reads the tiers of the oldest redeemers in the last read after the close", async () => {
+    const { room, clock, send } = await channelEntryRoom()
+    send(redemption("42", "reward-1"))
+    send(subscription("43", "1000"))
+    clock.advance(1)
+    room.close(null)
+
+    expect(room.onAlarm().chatEntrants?.chatters).toEqual([
+      { platformUserId: "42", followerCheck: false, tierCheck: true },
+      { platformUserId: "43", followerCheck: false, tierCheck: false },
+    ])
+  })
+
+  it("reports sub and points entry off when the watch gives up while entries are open", async () => {
+    const { room, socket } = await channelEntryRoom()
+    spyOn(console, "warn").mockImplementation(() => {})
+
+    socket?.receive(revocation)
+
+    expect(room.summary()).toMatchObject({ channelEntryOff: true, chatEntryOff: false })
   })
 })
