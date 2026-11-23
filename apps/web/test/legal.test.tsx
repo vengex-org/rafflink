@@ -254,7 +254,7 @@ describe("legal pages", () => {
       browserLanguage("en-US")
       const view = renderApp("/privacy")
 
-      await view.findByText("Last updated: Nov 23, 2026")
+      await view.findByText("Last updated: Nov 24, 2026")
     } finally {
       process.env.TZ = zone
     }

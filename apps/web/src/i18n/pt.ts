@@ -1143,14 +1143,10 @@ export const pt: Translation = {
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "O Rafflink usa os Serviços de API do YouTube. Ao entrar com o YouTube, você aceita os Termos de Serviço do YouTube ({youtubeTerms}). A Política de Privacidade do Google ({googlePrivacy}) se aplica ao que o Google faz com os seus dados.",
-  "privacy.youtube.i1":
-    "Um streamer do YouTube entra com o Google e dá ao Rafflink acesso somente leitura à conta do YouTube. O Rafflink guarda o ID do canal, o identificador, o nome do canal e um token de atualização selado, e lê a transmissão ao vivo ativa e o chat dela.",
   "privacy.youtube.i2":
     "Os espectadores nunca entram com o Google. Eles participam escrevendo a palavra-chave no chat, e o Rafflink lê o ID do canal deles, o nome exibido no chat, a mensagem e se são membros do canal ou moderadores.",
   "privacy.youtube.i3":
     "Os dados do YouTube dos espectadores que o Rafflink guarda são apagados em até 30 dias: as inscrições no máximo 30 dias depois do fim do sorteio e, junto com elas, os nomes dos vencedores, de modo que só o ID do canal deles fica com o sorteado.",
-  "privacy.youtube.i4":
-    "Você pode retirar o acesso do Rafflink à sua conta do YouTube a qualquer momento nas permissões da sua Conta do Google ({googlePermissions}). O token guardado é então apagado na próxima verificação de hora em hora.",
   "privacy.cookies.h": "Cookies e armazenamento local",
   "privacy.cookies.p1":
     "O Rafflink define só cookies estritamente necessários, por isso nenhum banner de consentimento é exibido. Todos são HTTP-only e não são usados para mais nada.",

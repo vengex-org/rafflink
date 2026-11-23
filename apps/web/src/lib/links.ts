@@ -38,9 +38,11 @@ export const appSetupUrls: Readonly<Record<Platform, string>> = {
   youtube: `${setupGuideBaseUrl}#youtube-app-registration-optional`,
 }
 
-/** The pages the YouTube API Services terms require a YouTube app to link: YouTube's terms, Google's privacy policy and where a user removes the app's access. */
+/** The pages the YouTube API Services terms and Google's OAuth verification require a YouTube app to link: YouTube's terms, Google's privacy policy, its user data policy and where a user removes the app's access. */
 export const youtubeTermsUrl = "https://www.youtube.com/t/terms"
 export const googlePrivacyUrl = "https://policies.google.com/privacy"
+export const googleUserDataPolicyUrl =
+  "https://developers.google.com/terms/api-services-user-data-policy"
 export const googlePermissionsUrl = "https://myaccount.google.com/permissions"
 
 /** Cloudflare's page of the Workers plans, where the owner compares Free and Paid before paying in the dashboard. */

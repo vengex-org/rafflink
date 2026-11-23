@@ -11,6 +11,7 @@ import type { Language } from "../i18n/language.ts"
 import {
   googlePermissionsUrl,
   googlePrivacyUrl,
+  googleUserDataPolicyUrl,
   repositoryUrl,
   youtubeTermsUrl,
 } from "../lib/links.ts"
@@ -72,6 +73,11 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
         {googlePrivacyUrl}
       </ExternalLink>
     ),
+    googleUserData: (
+      <ExternalLink kind="reference" href={googleUserDataPolicyUrl}>
+        {googleUserDataPolicyUrl}
+      </ExternalLink>
+    ),
     googlePermissions: (
       <ExternalLink kind="reference" href={googlePermissionsUrl}>
         {googlePermissionsUrl}
@@ -117,7 +123,7 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
 }
 
 /** The day the template texts last changed, as an ISO date. Update it with every edit of the texts. */
-export const templateUpdated = "2026-11-23"
+export const templateUpdated = "2026-11-24"
 
 /** What the build embedded in the page, read once, so hydration renders what the prerender did. */
 function useBuiltLegalData(): BuiltLegalData | null {
@@ -248,11 +254,12 @@ const privacy: LegalDocument = {
     },
     {
       heading: "privacy.youtube.h",
-      paragraphs: ["privacy.youtube.p1"],
+      paragraphs: ["privacy.youtube.p1", "privacy.youtube.p2"],
       items: [
         "privacy.youtube.i1",
         "privacy.youtube.i2",
         "privacy.youtube.i3",
+        "privacy.youtube.i5",
         "privacy.youtube.i4",
       ],
     },
