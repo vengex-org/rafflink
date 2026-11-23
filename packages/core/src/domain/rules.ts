@@ -245,7 +245,6 @@ export function badgesSeen(rules: Pick<GiveawayRules, "pageEntry" | "pointsRewar
 }
 
 /** Whether a chat message asks to enter: its text starts with the keyword as a whole word, in any letter case. */
-
 export function isEntryMessage(text: string, keyword: string): boolean {
   const message = text.trim().toLowerCase()
   const wanted = keyword.toLowerCase()

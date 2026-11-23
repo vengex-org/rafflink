@@ -32,8 +32,8 @@ export function kickChat(deps: KickChatDeps): ChatSourceFactory {
 }
 
 /**
- * Keeps a room's row in the watch table and the channel's subscriptions at Kick: chat always, the
- * subscription and redemption events while the room's topics ask for them. Every change to the table or
+ * Keeps a room's row in the watch table and the channel's subscriptions at Kick: chat while the room
+ * reads a keyword or winners, the subscription and redemption events while its topics ask for them. Every change to the table or
  * to Kick runs in order on one chain, so a close never overtakes the open before it, and a step that
  * fails is logged and does not stop the steps after it. A failed attach is retried at
  * {@link KickChat.wakeAt}; after the last attempt, or at once when Kick refuses the chat subscription for

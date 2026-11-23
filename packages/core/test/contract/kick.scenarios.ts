@@ -229,7 +229,8 @@ export function kickScenarios(context: ContractContext): void {
         streamer,
         rules: { ...kickRules, subEntry: true, pointsReward: reward },
       })
-      await world.waitFor(() => control.subscriptions().length === 5, "the Kick subscriptions")
+      // Three sub events and the redemption event; a giveaway without a keyword or winners reads no chat.
+      await world.waitFor(() => control.subscriptions().length === 4, "the Kick subscriptions")
       const broadcaster = kickUsers.streamer.id
 
       await control.sendSubscription(broadcaster, "new", [kickUsers.viewer.id])

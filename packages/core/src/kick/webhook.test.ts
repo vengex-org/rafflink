@@ -267,11 +267,11 @@ describe("receiveKickWebhook", () => {
     expect(delivered).toHaveLength(1)
   })
 
-  it("hands nothing on for a sender no room reads", async () => {
+  it("hands nothing on for a sender no room reads, and keeps the chat subscription a winner watch needs", async () => {
     await world.watches.watch(
       giveawayId,
       kickStreamer.id,
-      { ...readsWinner, chatterIds: [] },
+      { ...readsWinner, chatterIds: ["999"] },
       world.clock.now(),
     )
 
@@ -279,6 +279,22 @@ describe("receiveKickWebhook", () => {
 
     expect(response.status).toBe(204)
     expect(delivered).toEqual([])
+    expect(unsubscribeCalls()).toBe(0)
+  })
+
+  it("cancels the chat subscription when the channel's only watch reads subs and no chat", async () => {
+    await world.watches.watch(
+      giveawayId,
+      kickStreamer.id,
+      { ...readsWinner, chatterIds: [], subEntry: true },
+      world.clock.now(),
+    )
+
+    const response = await receive(await webhook())
+
+    expect(response.status).toBe(204)
+    expect(world.fake.control.subscriptions()).toEqual([])
+    expect(await world.watches.subscriptionsOf(kickStreamer.id)).toEqual([])
   })
 
   it("answers 503 while Kick does not serve its key, so Kick sends the webhook again", async () => {

@@ -298,6 +298,20 @@ describe("kickChat", () => {
     ])
   })
 
+  it("subscribes no chat for a watch that reads only subs", async () => {
+    topics = { chat: false, subscriptions: true, pointsRewardId: null }
+    const chat = source("g1")
+
+    chat.open({ kind: "chatters", userIds: [] })
+    await settle()
+
+    expect(subscribedEvents()).toEqual([
+      "channel.subscription.gifts",
+      "channel.subscription.new",
+      "channel.subscription.renewal",
+    ])
+  })
+
   it("keeps the sub subscriptions while another room of the channel still reads them", async () => {
     topics = { chat: true, subscriptions: true, pointsRewardId: null }
     const first = source("g1")

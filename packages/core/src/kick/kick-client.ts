@@ -43,7 +43,7 @@ export function kickAppOf(
 
 /**
  * The events a watch of a Kick channel subscribes to, as Kick names them (docs.kick.com, event types), each
- * with the topic a room must read for it: chat messages always, the subscription events with sub entry,
+ * with the topic a room must read for it: chat messages for a keyword or winners, the subscription events with sub entry,
  * redemptions with points entry.
  */
 export const kickEvents = [

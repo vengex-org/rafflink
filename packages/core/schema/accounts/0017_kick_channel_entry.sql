@@ -5,7 +5,7 @@ ALTER TABLE kick_chat_watches ADD COLUMN sub_entry INTEGER NOT NULL DEFAULT 0 CH
 
 ALTER TABLE kick_chat_watches ADD COLUMN reward_id TEXT;
 
--- Kick subscribes each event on its own, so a channel holds one subscription per event: chat messages for every watch, the three subscription events and the redemption event while a watch reads them. `topic` names what a watch must read for the subscription to stay. It is deleted, here and at Kick, once no watch of the channel does.
+-- Kick subscribes each event on its own, so a channel holds one subscription per event: chat messages while a watch reads a keyword or winners, the three subscription events and the redemption event while a watch reads them. `topic` names what a watch must read for the subscription to stay. It is deleted, here and at Kick, once no watch of the channel does.
 CREATE TABLE kick_event_subscriptions (
   broadcaster_id TEXT NOT NULL,
   event TEXT NOT NULL,

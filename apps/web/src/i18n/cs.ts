@@ -911,9 +911,13 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "wizard.subEntry.label": "Zapojit nové předplatitele",
   "wizard.subEntry.help":
     "Každý, kdo si během otevřeného zapojování předplatí kanál, dostane darovaný sub nebo sdílí prodloužení v chatu, se zapojí jednou, s tikety svého tieru. Tiché automatické prodloužení nikoho nezapojí: Twitch oznámí jen prodloužení, které divák sdílí. Zapojení přes stránku nebo chat zůstává zdarma, takže nikdo nemusí platit.",
+  "wizard.subEntry.help.kick":
+    "Každý, kdo si během otevřeného zapojování předplatí kanál, prodlouží předplatné nebo dostane darovaný sub, se zapojí jednou, s tikety předplatitele. Kick má jednu úroveň předplatného a oznámí každé prodloužení. Zapojení přes stránku nebo chat zůstává zdarma, takže nikdo nemusí platit.",
   "wizard.points.legend": "Odměna za body kanálu",
   "wizard.points.help":
     "Diváci, kteří tuto odměnu uplatní během otevřeného zapojování, se zapojí jednou, jako při každém jiném zapojení. Uplatnění nedává tikety navíc ani lepší šanci na výhru.",
+  "wizard.points.none":
+    "Tvůj kanál zatím nemá žádné odměny za body. Vytvoř si odměnu v nastavení kanálu a pak otevři tento krok znovu.",
   "wizard.points.off": "Žádná odměna",
   "wizard.points.selected":
     "Rafflink uplatnění neoznačí jako splněné, vyřiď ho ve frontě odměn jako obvykle.",

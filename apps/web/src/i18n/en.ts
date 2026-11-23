@@ -903,9 +903,13 @@ export const en = {
   "wizard.subEntry.label": "Enter new subscribers",
   "wizard.subEntry.help":
     "Everyone who subscribes, gets a gift sub, or shares a resub in chat while entries are open enters once, with the tickets of their tier. A silent auto renewal does not enter: Twitch only reports a renewal the viewer shares. Entering on the page or in chat stays free, so nobody has to pay to take part.",
+  "wizard.subEntry.help.kick":
+    "Everyone who subscribes, renews or gets a gift sub while entries are open enters once, with the tickets of a subscriber. Kick has one subscription level and reports every renewal. Entering on the page or in chat stays free, so nobody has to pay to take part.",
   "wizard.points.legend": "Channel point reward",
   "wizard.points.help":
     "Viewers who redeem this reward while entries are open enter once, like any other entry. Redeeming gives no extra tickets and no better chance to win.",
+  "wizard.points.none":
+    "Your channel has no channel point rewards yet. Create one in your channel settings, then open this step again.",
   "wizard.points.off": "No reward",
   "wizard.points.selected":
     "Rafflink does not mark the redemption as fulfilled; handle it in your reward queue as usual.",

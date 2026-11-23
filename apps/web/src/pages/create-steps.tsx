@@ -383,7 +383,13 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
                 />
                 {t("wizard.subEntry.label")}
               </label>
-              <p className="help">{t("wizard.subEntry.help")}</p>
+              <p className="help">
+                {t(
+                  streamer?.platform === "kick"
+                    ? "wizard.subEntry.help.kick"
+                    : "wizard.subEntry.help",
+                )}
+              </p>
             </>
           ) : null}
           {capabilities.pointsEntry && rewards !== null ? (
@@ -436,6 +442,13 @@ function PointsRewardField({
         />
       )
     case "rewards": {
+      if (answer.rewards.length === 0) {
+        return (
+          <p className="help" role="note">
+            {t("wizard.points.none")}
+          </p>
+        )
+      }
       const options: readonly SegmentOption<string>[] = [
         { value: "", label: t("wizard.points.off"), icon: null, description: "" },
         ...answer.rewards.map((reward) => ({

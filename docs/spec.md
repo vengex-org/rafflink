@@ -156,7 +156,7 @@ token). Events after the end time or the close enter nobody, and the watch close
 
 **Kick chat, sub and points entry (#61, #62).** Kick sends its events only as signed webhooks to
 `/api/kick/webhook`, with one subscription per event and channel, made and deleted with the app token:
-`chat.message.sent` for every watch, `channel.subscription.new`, `.renewal` and `.gifts` while a watch has sub
+`chat.message.sent` while a watch reads a keyword or winners, `channel.subscription.new`, `.renewal` and `.gifts` while a watch has sub
 entry, and `channel.reward.redemption.updated` while it has a reward. A watch row (`kick_chat_watches`) holds
 what each room reads: its winners' ids, its keyword while chat entries are open, sub entry and the reward id. The
 route reads the rows of the channel once per webhook, matches the keyword itself and calls a room only for a

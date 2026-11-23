@@ -32,7 +32,7 @@ export interface KickWebhookDeps {
  * subscriptions or a redemption to the rooms that read them, unless the same message id was handed on
  * before. A check that fails is a 4xx, so only a forged or broken request fails, except a 503 while
  * Kick's key cannot be read or may have just rotated, which Kick sends again. Kick drops a subscription
- * whose webhook fails for a day. An event of a channel no room watches cancels the subscription it came by.
+ * whose webhook fails for a day. An event whose topic no watch of its channel reads cancels the subscription it came by.
  */
 export async function receiveKickWebhook(
   deps: KickWebhookDeps,

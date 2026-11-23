@@ -907,9 +907,13 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.subEntry.label": "Zapojiť nových odberateľov",
   "wizard.subEntry.help":
     "Každý, kto si počas otvoreného zapájania predplatí kanál, dostane darovaný sub alebo zdieľa predĺženie v chate, sa zapojí raz, s tiketmi svojho tieru. Tiché automatické predĺženie nezapojí nikoho: Twitch oznámi len predĺženie, ktoré divák zdieľa. Zapojenie cez stránku alebo chat ostáva zadarmo, takže nikto nemusí platiť.",
+  "wizard.subEntry.help.kick":
+    "Každý, kto si počas otvoreného zapájania predplatí kanál, predĺži predplatné alebo dostane darovaný sub, sa zapojí raz, s tiketmi predplatiteľa. Kick má jednu úroveň predplatného a oznámi každé predĺženie. Zapojenie cez stránku alebo chat ostáva zadarmo, takže nikto nemusí platiť.",
   "wizard.points.legend": "Odmena za body kanála",
   "wizard.points.help":
     "Diváci, ktorí túto odmenu uplatnia počas otvoreného zapájania, sa zapoja raz, ako pri každom inom zapojení. Uplatnenie nedáva tikety navyše ani lepšiu šancu na výhru.",
+  "wizard.points.none":
+    "Tvoj kanál zatiaľ nemá žiadne odmeny za body. Vytvor si odmenu v nastaveniach kanála a potom otvor tento krok znova.",
   "wizard.points.off": "Žiadna odmena",
   "wizard.points.selected":
     "Rafflink uplatnenie neoznačí ako splnené, vybav ho vo fronte odmien ako zvyčajne.",

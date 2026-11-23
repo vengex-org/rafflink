@@ -10,8 +10,9 @@ export class KickChatRowError extends Error {
   }
 }
 
-/** The rooms that read one event of a channel, and whether any room watches the channel. */
+/** The rooms that read one event of a channel, and whether any room of the channel reads the event's topic at all. */
 export interface ChannelReaders {
+  /** False when no watch of the channel reads the topic, so the subscription the event came by is left over. */
   readonly watched: boolean
   readonly readers: readonly string[]
 }
@@ -75,9 +76,8 @@ export class KickChatWatches {
 
   /**
    * The giveaways watching the channel that read this chat message: from a chatter they read, or one that
-   * asks to enter with their keyword. `watched` is false when no room watches the channel at all, so its
-   * subscription is left over. One read per message, matched here, so only the messages a room reads cost
-   * a room call.
+   * asks to enter with their keyword. One read per message, matched here, so only the messages a room
+   * reads cost a room call.
    */
   async chatReaders(
     broadcasterId: string,
@@ -86,12 +86,13 @@ export class KickChatWatches {
   ): Promise<ChannelReaders> {
     const rows = await this.sql.all(
       `SELECT giveaway_id, keyword,
-          EXISTS (SELECT 1 FROM json_each(chatter_ids) WHERE value = ?) AS reads
-        FROM kick_chat_watches WHERE broadcaster_id = ?`,
+          EXISTS (SELECT 1 FROM json_each(chatter_ids) WHERE value = ?) AS reads,
+          ${readsChatSql} AS reads_chat
+        FROM kick_chat_watches w WHERE broadcaster_id = ?`,
       [senderId, broadcasterId],
     )
     return {
-      watched: rows.length > 0,
+      watched: rows.some((row) => row.reads_chat === 1),
       readers: rows
         .filter((row) => {
           const keyword = nullableText(row, "keyword")
@@ -111,7 +112,9 @@ export class KickChatWatches {
       [broadcasterId],
     )
     return {
-      watched: rows.length > 0,
+      watched: rows.some((row) =>
+        event.via === "sub" ? row.sub_entry === 1 : nullableText(row, "reward_id") !== null,
+      ),
       readers: rows
         .filter((row) =>
           event.via === "sub"
@@ -155,7 +158,7 @@ export class KickChatWatches {
     const rows = await this.sql.all(
       `SELECT subscription_id FROM kick_event_subscriptions s WHERE broadcaster_id = ?
         AND NOT EXISTS (SELECT 1 FROM kick_chat_watches w WHERE w.broadcaster_id = s.broadcaster_id
-          AND (s.topic = 'chat' OR (s.topic = 'sub' AND w.sub_entry = 1)
+          AND ((s.topic = 'chat' AND ${readsChatSql}) OR (s.topic = 'sub' AND w.sub_entry = 1)
             OR (s.topic = 'points' AND w.reward_id IS NOT NULL)))`,
       [broadcasterId],
     )
@@ -184,13 +187,18 @@ export class KickChatWatches {
   }
 }
 
-/** The topics a watch with this interest reads; chat always, for its winners or its keyword. */
+/** The topics a watch with this interest reads; chat only for its winners or its keyword. */
 export function topicsOf(interest: WatchInterest): readonly KickTopic[] {
-  const topics: KickTopic[] = ["chat"]
+  const topics: KickTopic[] = []
+  if (interest.keyword !== null || interest.chatterIds.length > 0) topics.push("chat")
   if (interest.subEntry) topics.push("sub")
   if (interest.rewardId !== null) topics.push("points")
   return topics
 }
+
+// A watch reads chat for its keyword or its winners; a sub or points only watch does not, so a chat message
+// of its channel would cost a Worker request and a D1 read for nothing. The {@link topicsOf} rule in SQL, on alias `w`.
+const readsChatSql = "(w.keyword IS NOT NULL OR json_array_length(w.chatter_ids) > 0)"
 
 function textOf(row: SqlRow, column: string): string {
   const value = row[column]

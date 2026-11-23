@@ -944,8 +944,7 @@ export type AddBlockResult = "added" | "exists" | AddBlockRefusal | "unauthorize
 
 export type RemoveBlockResult = "removed" | "room-unavailable" | "unauthorized"
 
-/** The signed-in streamer's block list, newest first, and how many it may hold. */
-/** The streamer's channel point rewards for the wizard, or why there are none to pick. */
+/** Today's Worker requests under the plan's daily cap, for the wizard's Kick chat cost note; `budget` is null without a cap. */
 export async function getRequestBudget(): Promise<RequestBudgetJson | "unauthorized"> {
   const { status, body } = await send("/api/dash/request-budget")
   if (status === 401) return "unauthorized"
@@ -956,6 +955,7 @@ export async function getRequestBudget(): Promise<RequestBudgetJson | "unauthori
   return { budget: { limit: num(budget, "limit"), remaining: num(budget, "remaining") } }
 }
 
+/** The streamer's channel point rewards for the wizard, or why there are none to pick. */
 export async function getPointsRewards(): Promise<PointsRewardsJson | "unauthorized"> {
   const { status, body } = await send("/api/dash/rewards")
   if (status === 401) return "unauthorized"
@@ -975,6 +975,7 @@ function parsePointsReward(source: Json): PointsReward {
   return { id: text(source, "id"), title: text(source, "title") }
 }
 
+/** The signed-in streamer's block list, newest first, and how many it may hold. */
 export async function getBlocks(): Promise<BlockListJson | "unauthorized"> {
   const { status, body } = await send("/api/dash/blocks")
   if (status === 401) return "unauthorized"

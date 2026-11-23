@@ -712,6 +712,24 @@ describe("create wizard", () => {
     ).toMatchObject({ rules: { subEntry: true, pageEntry: true, chatKeyword: null } })
   })
 
+  it("tells a Kick streamer without rewards to create one, and describes Kick renewals", async () => {
+    mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick" },
+        }),
+      "GET /api/dash/rewards": () => ok({ kind: "rewards", rewards: [] }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+
+    expect(await view.findByText(/has no channel point rewards yet/)).toBeTruthy()
+    expect(view.getByText(/Kick has one subscription level/)).toBeTruthy()
+    expect(view.queryByRole("group", { name: "Channel point reward" })).toBeNull()
+  })
+
   it("goes back to the rules step when the server answers that the token needs a reconnect", async () => {
     mockFetch({
       ...withCreate({ status: 422, body: { error: "reconnect" } }),
