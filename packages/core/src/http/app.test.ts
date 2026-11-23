@@ -140,7 +140,7 @@ describe("session", () => {
         readyEntryWays: [],
         publicHistory: false,
         historyIndexed: false,
-        admin: false,
+        admin: true,
       },
       signInPlatforms: ["twitch"],
       donateUrl: null,
