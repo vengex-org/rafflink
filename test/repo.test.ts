@@ -134,13 +134,14 @@ describe("repository", () => {
     expect(robots).not.toContain("Sitemap")
   }, 60_000)
 
-  it("writes headers for every static path, HSTS and no-cache, and keeps the app shell out of search engines by its robots meta", async () => {
+  it("writes headers for every static path, HSTS and no-cache, and keeps the app shell and the prerender manifest out of search engines", async () => {
     buildWeb()
     const headers = await Bun.file(new URL("_headers", dist)).text()
     const shell = await Bun.file(new URL("index.html", dist)).text()
 
     expect(headers).toStartWith("/*\n")
-    expect(headers).not.toContain("X-Robots-Tag")
+    expect(headers.match(/X-Robots-Tag/g)).toHaveLength(1)
+    expect(headers).toContain("\n/prerendered.json\n  X-Robots-Tag: noindex, nofollow\n")
     expect(shell).toContain(`<meta name="robots" content="noindex, nofollow"`)
     expect(headers).toContain("  Strict-Transport-Security: max-age=31536000; includeSubDomains\n")
     expect(headers).toContain("  Cache-Control: no-cache\n")
