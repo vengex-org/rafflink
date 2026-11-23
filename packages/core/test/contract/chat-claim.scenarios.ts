@@ -47,10 +47,11 @@ export function chatClaimScenarios(context: ContractContext): void {
   })
 
   scenario(context, "the chat watch survives a reconnect request from Twitch", async (world) => {
-    const { giveaway } = await drawnWithOneWinner(world, await world.start())
-    await waitForSubscription(world)
+    const target = await world.start()
+    // Twitch can ask to reconnect before the subscription it is creating has answered.
+    world.twitch.fake.control.reconnectOnNextSubscription()
+    const { giveaway } = await drawnWithOneWinner(world, target)
 
-    world.twitch.fake.control.reconnect()
     await world.waitFor(() => world.twitchCalls(eventSubPath) >= 2, "the second connection")
     await world.waitFor(
       () => world.twitch.fake.control.eventSubConnections() === 1,
