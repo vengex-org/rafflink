@@ -416,6 +416,11 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
         onSelect={(entryWays) => setValues((current) => ({ ...current, entryWays }))}
       />
       {usesChat ? (
+        <Notice tone="info">
+          <p>{t("wizard.entry.chatDelay")}</p>
+        </Notice>
+      ) : null}
+      {usesChat ? (
         <TextField
           name="chatKeyword"
           label={t("wizard.chatKeyword.label")}
