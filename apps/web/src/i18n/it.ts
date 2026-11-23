@@ -4,23 +4,32 @@ export const it: Translation = {
   "nav.main": "Navigazione principale",
   "nav.skip": "Vai al contenuto",
   "nav.myGiveaways": "I miei giveaway",
+  "nav.settings": "Impostazioni",
+  "nav.admin": "Amministrazione",
   "nav.selfHost": "Self-hosting",
   "nav.verify": "Verifica un'estrazione",
   "nav.github": "GitHub",
   "link.newTab": "Si apre in una nuova scheda",
+  "nav.login": "Accedi",
+  "nav.logout": "Esci",
+  "nav.streamerLogin": "Accesso streamer",
   "nav.support": "Sostieni Rafflink",
+  "nav.loggedOut": "Sei uscito.",
   "theme.legend": "Tema",
   "theme.system": "Sistema",
   "theme.light": "Chiaro",
   "theme.dark": "Scuro",
   "language.legend": "Lingua",
   "language.loadFailed": "Non è stato possibile caricare questa lingua. Riprova.",
+  "settings.label": "Impostazioni di visualizzazione",
 
   "common.loading": "Caricamento…",
   "common.cancel": "Annulla",
   "common.dismiss": "Chiudi",
   "common.back": "Indietro",
   "common.next": "Avanti",
+  "common.optional": "facoltativo",
+  "info.about": "Informazioni: {topic}",
   "common.reloadPage": "Ricarica la pagina",
   "action.failed": "Qualcosa è andato storto. Riprova.",
 
@@ -47,6 +56,7 @@ export const it: Translation = {
   "home.login": "Accedi e inizia",
   "home.stage.toClaim": "per riscattare",
   "home.reads": "Leggiamo solo il tuo nome, i VIP, i moderatori e la chat.",
+  "home.worksWith": "Funziona con",
   "home.trust.supportKoFi": "Sostienici su Ko-fi",
   "home.trust.support": "Sostieni Rafflink",
   "home.footer.guide": "Guida al self-hosting",
@@ -377,6 +387,42 @@ export const it: Translation = {
   "year.few": "{count} anni",
   "year.other": "{count} anni",
   "year.many": "{count} anni",
+  "recentGiveaways.one": "I vincitori dell'ultimo giveaway di {name} non possono partecipare.",
+  "recentGiveaways.few":
+    "I vincitori degli ultimi {count} giveaway di {name} non possono partecipare.",
+  "recentGiveaways.other":
+    "I vincitori degli ultimi {count} giveaway di {name} non possono partecipare.",
+  "recentGiveaways.many":
+    "I vincitori degli ultimi {count} giveaway di {name} non possono partecipare.",
+  "recentDays.one":
+    "I vincitori dei giveaway di {name} dell'ultimo giorno non possono partecipare.",
+  "recentDays.few":
+    "I vincitori dei giveaway di {name} degli ultimi {count} giorni non possono partecipare.",
+  "recentDays.other":
+    "I vincitori dei giveaway di {name} degli ultimi {count} giorni non possono partecipare.",
+  "recentDays.many":
+    "I vincitori dei giveaway di {name} degli ultimi {count} giorni non possono partecipare.",
+  "recentGiveawaysOwn.one": "I vincitori del tuo ultimo giveaway non possono partecipare.",
+  "recentGiveawaysOwn.few": "I vincitori dei tuoi ultimi {count} giveaway non possono partecipare.",
+  "recentGiveawaysOwn.other":
+    "I vincitori dei tuoi ultimi {count} giveaway non possono partecipare.",
+  "recentGiveawaysOwn.many":
+    "I vincitori dei tuoi ultimi {count} giveaway non possono partecipare.",
+  "recentDaysOwn.one": "I vincitori dei tuoi giveaway dell'ultimo giorno non possono partecipare.",
+  "recentDaysOwn.few":
+    "I vincitori dei tuoi giveaway degli ultimi {count} giorni non possono partecipare.",
+  "recentDaysOwn.other":
+    "I vincitori dei tuoi giveaway degli ultimi {count} giorni non possono partecipare.",
+  "recentDaysOwn.many":
+    "I vincitori dei tuoi giveaway degli ultimi {count} giorni non possono partecipare.",
+  "recentGiveawaysShort.one": "esclusi i vincitori dell'ultimo giveaway",
+  "recentGiveawaysShort.few": "esclusi i vincitori degli ultimi {count} giveaway",
+  "recentGiveawaysShort.other": "esclusi i vincitori degli ultimi {count} giveaway",
+  "recentGiveawaysShort.many": "esclusi i vincitori degli ultimi {count} giveaway",
+  "recentDaysShort.one": "esclusi i vincitori dell'ultimo giorno",
+  "recentDaysShort.few": "esclusi i vincitori degli ultimi {count} giorni",
+  "recentDaysShort.other": "esclusi i vincitori degli ultimi {count} giorni",
+  "recentDaysShort.many": "esclusi i vincitori degli ultimi {count} giorni",
   "entered.one": "{count} persona iscritta",
   "entered.few": "{count} persone iscritte",
   "entered.other": "{count} persone iscritte",
@@ -411,6 +457,13 @@ export const it: Translation = {
   "who.followers": "Possono partecipare solo i follower.",
   "who.everyone": "Possono partecipare tutti.",
   "who.ticketGroups": "Possono partecipare solo i gruppi che ricevono biglietti.",
+  "whoShort.both": "Abbonati che seguono",
+  "whoShort.subs": "Solo abbonati",
+  "whoShort.followers": "Solo follower",
+  "whoShort.everyone": "Tutti",
+  "whoShort.ticketGroups": "Solo gruppi con biglietti",
+  "extraTicketsShort.subs": "gli abbonati ricevono {tickets}",
+  "extraTicketsShort.some": "biglietti extra per alcuni",
   "ticket.cannotEnter": "non può partecipare",
   "claimTime.clock": "{clock} minuti",
 
@@ -447,6 +500,9 @@ export const it: Translation = {
   "giveaway.waiting.title": "In attesa dell'estrazione",
   "giveaway.waiting.text":
     "Le iscrizioni sono chiuse. Lo streamer estrae il vincitore in diretta. Tieni aperta questa pagina: se vinci, passa da sola alla schermata di riscatto.",
+  "giveaway.paused.title": "Iscrizioni in pausa",
+  "giveaway.paused.text":
+    "I giveaway su {platform} sono in pausa su questo sito per ora. Riprova più tardi.",
   "giveaway.closed.title": "Spiacenti, giveaway chiuso.",
   "giveaway.closed.text":
     "Lo streamer ha smesso di accettare iscrizioni. Segui il canale per non perderti il prossimo.",
@@ -489,6 +545,8 @@ export const it: Translation = {
   "win.another.title": "È stato scelto un altro vincitore",
   "win.title": "Hai vinto",
   "win.claimed.title": "Premio riscattato",
+  "win.claimedAt": "Riscattato il {at}. {name} ti contatterà.",
+  "win.contact": "{name} ti contatterà.",
   "win.up.title": "Tempo scaduto",
   "win.up.text": "Lo streamer potrebbe scegliere un altro vincitore.",
   "win.press":
@@ -503,6 +561,7 @@ export const it: Translation = {
   "winnerField.platform-id": "Account di gioco o ID della piattaforma",
   "winnerField.text": "Messaggio per lo streamer",
   "winnerForm.title": "Dove dobbiamo mandare il premio?",
+  "winnerForm.notice": "Lo vede solo {name}. Eliminato dopo la consegna (max 30 giorni).",
   "winnerForm.send": "Invia",
   "winnerForm.saved": "Le tue risposte sono state inviate allo streamer.",
   "winnerForm.already-answered": "Hai già inviato le tue risposte.",
@@ -513,15 +572,23 @@ export const it: Translation = {
   "winnerForm.invalid": "Compila tutti i campi. L'e-mail deve contenere una @.",
   "answers.title": "Risposte dei vincitori",
   "answers.none": "Nessun vincitore ha ancora riscattato.",
+  "answers.pick": "Vincitore {n}: {name}",
   "answers.unnamed": "vincitore sconosciuto",
   "answers.waiting": "Non ancora inviate.",
   "answers.deleted": "Le risposte sono state eliminate.",
+  "answers.received": "Risposte ricevute.",
+  "answers.show": "Mostra le risposte",
+  "answers.hide": "Nascondi le risposte",
+  "answers.confirm.title": "Mostrare le risposte private?",
+  "answers.confirm.text": "Assicurati che questa pagina non sia nella tua live.",
+  "answers.confirm.show": "Mostra",
   "answers.closed": "Non inviate. Il modulo è chiuso.",
   "answers.delivered": "Consegnato il {at}.",
   "answers.markDelivered": "Segna come consegnato",
   "answers.deliverFailed":
     "Non è stato possibile segnare il premio come consegnato. Ricarica la pagina.",
   "answers.failed": "Non è stato possibile caricare le risposte.",
+  "answers.privacy": "Le vedi solo tu. Eliminate alla consegna o dopo 30 giorni.",
   "rules.summary": "Regole e biglietti",
   "rules.help": "Più biglietti riceve un gruppo, più alta è la sua probabilità di vincere.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -567,14 +634,17 @@ export const it: Translation = {
   "rules.copyHeading": "Regole del giveaway: {url}",
 
   "dash.title": "I miei giveaway",
+  "dash.settings.title": "Impostazioni",
   "dash.new.title": "Nuovo giveaway",
   "dash.new.button": "Nuovo giveaway",
   "dash.created.title": "Il tuo giveaway è attivo!",
   "dash.roomNotReady":
     "Il giveaway non è ancora del tutto pronto. Apri la pagina live per completare la configurazione.",
+  "dash.next": "Condividi questo link nella tua chat.",
   "dash.openLive": "Apri la pagina live",
   "dash.obs.title": "Aggiungi a OBS (facoltativo)",
   "dash.obs.text": "Mostra le iscrizioni nella tua live mentre le persone partecipano.",
+  "dash.obs.steps": "Come aggiungerlo in OBS",
   "dash.back": "Torna ai miei giveaway",
   "dash.access.title": "In attesa di approvazione",
   "dash.access.text":
@@ -618,6 +688,9 @@ export const it: Translation = {
     "Tutti i giveaway con i loro partecipanti, vincitori e prove dell'estrazione, il tuo account e il token di accesso memorizzato vengono eliminati definitivamente, e viene effettuata la disconnessione.",
   "dash.deleteData.confirm": "Sì, elimina tutto",
   "dash.blocks.title": "Account bloccati",
+  "dash.blocks.text": "Gli account bloccati non possono partecipare ai tuoi giveaway.",
+  "dash.blocks.info":
+    "Le loro iscrizioni ai giveaway aperti vengono rimosse; quelle ai giveaway chiusi restano. L'elenco viene eliminato insieme al tuo account.",
   "dash.blocks.count": "{count} di {max} account bloccati",
   "dash.blocks.none": "Nessun account bloccato.",
   "dash.blocks.label": "Nome utente da bloccare",
@@ -636,6 +709,8 @@ export const it: Translation = {
   "dash.blocks.room-unavailable":
     "Salvato, ma un giveaway in corso non ha ancora ricevuto la modifica. Ripeti la stessa azione.",
   "dash.history.title": "Storico pubblico",
+  "dash.history.text":
+    "Mostra i tuoi giveaway conclusi su una pagina pubblica. Nessun nome degli iscritti.",
   "dash.history.link": "Apri la tua pagina dello storico pubblico",
   "dash.history.turnOn": "Attiva lo storico pubblico",
   "dash.history.turnOff": "Disattiva lo storico pubblico",
@@ -664,6 +739,7 @@ export const it: Translation = {
   "share.copyOverlay": "Copia il link dell'overlay",
   "share.obs.1": "In OBS, trova il riquadro Fonti e premi il pulsante +.",
   "share.obs.2": "Scegli Browser e premi OK.",
+  "share.obs.3": "Incolla il link dell'overlay nel campo URL.",
   "share.obs.4": "Imposta Larghezza a 800 e Altezza a 600, poi premi OK.",
   "copy.copied": "Copiato!",
   "copy.failed": "Impossibile copiare. Il testo è selezionato: premi Ctrl+C.",
@@ -702,6 +778,8 @@ export const it: Translation = {
   "live.overlay.qr.on": "Mostra",
   "live.overlay.qr.off": "Nascondi",
   "overlayStyle.dash.summary": "Stile dell'overlay",
+  "overlayStyle.dash.help":
+    "L'aspetto del tuo overlay OBS. Un giveaway può avere un suo stile nella sua pagina live.",
   "overlayStyle.giveaway.summary": "Stile di questo overlay",
   "overlayStyle.giveaway.source": "Stile",
   "overlayStyle.giveaway.streamer": "Il mio stile",
@@ -759,6 +837,9 @@ export const it: Translation = {
   "live.draw.next": "Estrai il prossimo vincitore",
   "live.draw.question": "Chiudere le iscrizioni ed estrarre un vincitore?",
   "live.draw.due": "Estrazione del vincitore…",
+  "live.draw.nobodyLeft": "Tutti gli iscritti sono stati estratti.",
+  "live.draw.detail":
+    "Le iscrizioni si chiudono per sempre. Il vincitore viene estratto a breve, anche se chiudi questa pagina.",
   "live.draw.confirm": "Sì, chiudi le iscrizioni ed estrai",
   "live.draw.waiting":
     "In attesa del numero casuale pubblico (drand). Il vincitore viene estratto automaticamente tra {clock}.",
@@ -810,10 +891,18 @@ export const it: Translation = {
   "wizard.step.review": "Riepilogo",
   "wizard.q.basics": "Inizia dalle informazioni di base",
   "wizard.q.rules": "Imposta le regole di partecipazione",
+  "wizard.group.entry": "Chi e come",
+  "wizard.group.odds": "Probabilità",
+  "wizard.group.winners": "Vincitori",
+  "wizard.q.audience": "Chi può partecipare",
   "wizard.q.review": "Controlla il tuo giveaway",
   "wizard.fix": "Correggi questo campo per continuare.",
   "wizard.start": "Avvia il giveaway",
   "wizard.starting": "Avvio…",
+  "wizard.title.label": "Nome del giveaway",
+  "wizard.title.placeholder": "Giveaway della sedia gaming del venerdì",
+  "wizard.prize.label": "Cosa riceve il vincitore?",
+  "wizard.prize.placeholder": "Una sedia gaming o una carta Steam da 25 euro",
   "wizard.audience.everyone": "Tutti",
   "wizard.audience.everyone.help": "Qualsiasi spettatore può partecipare.",
   "wizard.audience.followers": "Solo follower",
@@ -821,19 +910,27 @@ export const it: Translation = {
     "Possono partecipare solo le persone che seguono il tuo canale.",
   "wizard.audience.subscribers": "Solo abbonati",
   "wizard.audience.subscribers.help": "Possono partecipare solo i tuoi abbonati paganti.",
+  "wizard.audience.subscribers.warning":
+    "L'iscrizione riservata agli abbonati può valere come lotteria a pagamento in alcuni paesi.",
   "wizard.audience.subscribers.info":
     "Un abbonamento è un acquisto a pagamento. In molti paesi un giveaway che richiede un acquisto per partecipare è una lotteria regolamentata. Valuta di far partecipare anche i follower o tutti gli spettatori.",
+  "wizard.minAge.label": "Età minima dell'account in giorni",
+  "wizard.minAge.help": "Blocca gli account appena creati.",
   "wizard.minAge.fewer": "Meno giorni",
   "wizard.minAge.more": "Più giorni",
   "wizard.official.legend": "Regolamento ufficiale (facoltativo)",
+  "wizard.official.help": "Solo se il tuo giveaway ne ha bisogno.",
   "wizard.winnerAge.label": "Età minima per vincere, in anni",
   "wizard.winnerAge.info":
     "Rafflink non può verificare l'età. La verifichi tu prima di consegnare il premio.",
   "wizard.winnerAge.fewer": "Meno anni",
   "wizard.winnerAge.more": "Più anni",
   "wizard.excludedCountries.label": "Luoghi in cui non si può vincere",
+  "wizard.excludedCountries.help": "Rafflink non può verificare dove vive una persona.",
+  "wizard.excludedCountries.placeholder": "es. Québec, Italia",
   "wizard.extraTerms.label": "Condizioni aggiuntive",
   "wizard.extraTerms.help": "Mostrate sotto le regole esattamente come le scrivi.",
+  "wizard.recent.legend": "Vincitori recenti",
   "wizard.recent.off": "No",
   "wizard.recent.off.help":
     "I vincitori dei tuoi giveaway precedenti possono partecipare di nuovo.",
@@ -848,6 +945,11 @@ export const it: Translation = {
   "wizard.recent.fewer": "Meno",
   "wizard.recent.more": "Più",
   "wizard.winnerForm.legend": "Modulo per il vincitore",
+  "wizard.winnerForm.help": "Chiesto dopo il riscatto. Solo tu vedi le risposte.",
+  "wizard.winnerForm.info":
+    "Le risposte vengono eliminate quando segni il premio come consegnato, al più tardi 30 giorni dopo il riscatto.",
+  "wizard.tickets.legend": "Biglietti extra",
+  "wizard.tickets.help": "Dai biglietti extra ad alcuni gruppi.",
   "wizard.tickets.fewer": "Meno biglietti per {group}",
   "wizard.tickets.more": "Più biglietti per {group}",
   "odds.same": "Tutti hanno la stessa probabilità di vincere.",
@@ -867,10 +969,14 @@ export const it: Translation = {
   "wizard.ending.atTime.help": "Le iscrizioni si chiudono da sole all'orario che scegli.",
   "wizard.closesAt.label": "Le iscrizioni terminano alle",
   "wizard.closesAt.help": "Viene usato il fuso orario di questo dispositivo.",
+  "wizard.claim.legend": "Tempo per riscattare",
   "wizard.claim.custom": "Personalizzato",
   "wizard.claim.minutes": "Minuti",
   "wizard.claim.fewer": "Meno minuti",
   "wizard.claim.more": "Più minuti",
+  "wizard.keyword.label": "Parola per riscattare",
+  "wizard.keyword.help":
+    "Lasciala vuota e qualsiasi messaggio in chat del vincitore riscatta il premio.",
   "review.name": "Nome",
   "review.prize": "Premio",
   "review.who": "Chi può partecipare",
@@ -907,11 +1013,26 @@ export const it: Translation = {
   "wizard.reconnect.points.info.kick":
     "Per elencare le tue ricompense punti canale, Rafflink deve poterle leggere. Ricollega Kick; le tue risposte restano.",
   "wizard.reconnect.button": "Ricollega {platform}",
+  "wizard.reconnect.text": "Serve un altro permesso di {platform}.",
   "wizard.chatKeyword.label": "Parola chiave di iscrizione",
+  "wizard.chatKeyword.help":
+    "Un messaggio in chat che inizia con questa parola iscrive lo spettatore.",
+  "wizard.chatKeyword.info":
+    "Stesse regole e stessi biglietti della pagina. Rafflink non scrive mai nella tua chat.",
+  "wizard.chatCost.kick":
+    "Usa una richiesta al server per ogni messaggio in chat. Oggi ne restano {remaining}.",
+  "wizard.chatCost.kick.info":
+    "Kick invia a Rafflink ogni messaggio in chat mentre le iscrizioni sono aperte, con o senza la parola chiave. Questo server consente {limit} richieste al giorno; una chat con 100 messaggi al minuto ne usa 6.000 all'ora.",
+  "wizard.chatCost.youtube": "Leggere la chat usa unità YouTube. Oggi ne restano {remaining}.",
+  "wizard.chatCost.topic": "il costo di lettura della chat",
+  "wizard.chatCost.youtube.info":
+    "Rafflink legge la chat mentre le iscrizioni sono aperte, circa {perMinute} unità al minuto, e dopo l'estrazione, finché i vincitori non riscattano, circa {winnerPerMinute} al minuto. Questo server ha {limit} unità al giorno.",
   "wizard.chatCost.youtubeByHand":
     "Chiudi questo giveaway a mano, quindi il server non può verificare in anticipo se le unità di oggi bastano: coprono circa {minutes} minuti di iscrizioni. Imposta un orario di chiusura per farlo verificare.",
   "wizard.autoEntry.legend": "Iscrizioni automatiche",
   "wizard.subEntry.label": "Iscrivi i nuovi abbonati",
+  "wizard.subEntry.help":
+    "I nuovi abbonati partecipano una volta. L'iscrizione dalla pagina o in chat resta gratuita.",
   "wizard.subEntry.info":
     "Chiunque si abboni, riceva un abbonamento in regalo o condivida un rinnovo in chat mentre le iscrizioni sono aperte viene iscritto una volta, con i biglietti del suo tier. Un rinnovo automatico silenzioso non iscrive: Twitch segnala solo i rinnovi che lo spettatore condivide. Partecipare dalla pagina o dalla chat resta gratuito, quindi nessuno deve pagare per partecipare.",
   "wizard.subEntry.info.kick":
@@ -1157,6 +1278,10 @@ export const it: Translation = {
   "verify.facts.leavesLink": "Apri l'elenco delle iscrizioni",
   "verify.run": "Verifica",
   "verify.running": "Verifica in corso…",
+  "verify.verdict.verified": "Estrazione verificata",
+  "verify.verdict.failed": "L'estrazione non torna",
+  "verify.verdict.incomplete": "Non è stato possibile verificare tutto",
+  "verify.checks.summary": "Cosa è stato verificato",
   "verify.check.counts.match": "L'elenco ha tante iscrizioni e biglietti quanti annunciati.",
   "verify.check.counts.mismatch": "L'elenco non ha il numero annunciato di iscrizioni e biglietti.",
   "verify.check.root.match": "La radice di Merkle dell'elenco è quella pubblicata.",
@@ -1186,6 +1311,8 @@ export const it: Translation = {
   "winnersResult.set": "Numero di vincitori salvato.",
   "winnersResult.rejected":
     "Impossibile salvare. Inserisci un numero intero di vincitori, almeno 1.",
+  "wizard.winners.label": "Numero di vincitori",
+  "wizard.winners.help": "Puoi cambiarlo più tardi.",
   "review.winners": "Vincitori",
   "verify.check.timing.match":
     "Il round drand è stato pubblicato dopo che l'elenco è stato fissato.",
@@ -1193,6 +1320,7 @@ export const it: Translation = {
     "Il round drand è stato pubblicato prima che l'elenco fosse fissato, quindi non ci si può fidare dell'estrazione.",
   "verify.facts.winners": "Vincitori previsti",
   "verify.facts.committed": "Elenco fissato il",
+  "verify.rerolls.note": "Le riestrazioni e le estrazioni extra sono elencate qui.",
   "verify.rerolls.count": "Estrazioni sostituite: {count}.",
   "verify.winner.before": "La precedono {count} estrazioni sostituite.",
   "verify.mine.title": "La tua iscrizione",
