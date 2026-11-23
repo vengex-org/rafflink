@@ -6,14 +6,19 @@ import {
   userTokens,
   type KickWorld,
 } from "../../test/kick-fixture.ts"
-import type { ChatListener, ChatSource, WatchTopics } from "../platform/chat-source.ts"
+import type {
+  ChannelEntryRefusal,
+  ChatListener,
+  ChatSource,
+  WatchTopics,
+} from "../platform/chat-source.ts"
 import type { StreamerAccess } from "../platform/provider.ts"
 import { kickChat } from "./kick-chat.ts"
 
 let world: KickWorld
 let access: StreamerAccess
 let unavailable: unknown[]
-let entryUnavailable: unknown[]
+let entryUnavailable: ChannelEntryRefusal[]
 let scheduled: number
 let topics: WatchTopics
 
@@ -31,7 +36,7 @@ beforeEach(async () => {
 const listener: ChatListener = {
   onMessage: () => {},
   onChannelEntry: () => {},
-  onChannelEntryUnavailable: (cause) => entryUnavailable.push(cause),
+  onChannelEntryUnavailable: (refusal) => entryUnavailable.push(refusal),
   topics: () => topics,
   onUnavailable: (cause) => unavailable.push(cause),
   onSchedule: () => {
@@ -332,18 +337,40 @@ describe("kickChat", () => {
     ])
   })
 
-  it("goes on with chat only when Kick refuses the redemption event", async () => {
-    topics = { chat: true, subscriptions: false, pointsRewardId: "reward-1" }
+  it("goes on with chat and subs when Kick refuses only the redemption event", async () => {
+    topics = { chat: true, subscriptions: true, pointsRewardId: "reward-1" }
     world.fake.control.refuseEvent("channel.reward.redemption.updated", "scope missing")
     const chat = source("g1")
 
     chat.open({ kind: "keyword", keyword: "!enter" })
     await settle()
 
-    expect(entryUnavailable).toHaveLength(1)
+    expect(entryUnavailable.map((refusal) => refusal.via)).toEqual(["points"])
     expect(unavailable).toEqual([])
-    expect(subscribedEvents()).toEqual(["chat.message.sent"])
-    expect(interestRows()[0]).toMatchObject({ keyword: "!enter", reward_id: null })
+    expect(subscribedEvents()).toEqual([
+      "channel.subscription.gifts",
+      "channel.subscription.new",
+      "channel.subscription.renewal",
+      "chat.message.sent",
+    ])
+    expect(interestRows()[0]).toMatchObject({ keyword: "!enter", sub_entry: 1, reward_id: null })
+  })
+
+  it("goes on with chat and points when Kick refuses the sub events, and reports subs once", async () => {
+    topics = { chat: true, subscriptions: true, pointsRewardId: "reward-1" }
+    world.fake.control.refuseEvent("channel.subscription.new", "scope missing")
+    world.fake.control.refuseEvent("channel.subscription.renewal", "scope missing")
+    const chat = source("g1")
+
+    chat.open({ kind: "keyword", keyword: "!enter" })
+    await settle()
+
+    expect(entryUnavailable.map((refusal) => refusal.via)).toEqual(["sub"])
+    expect(interestRows()[0]).toMatchObject({
+      keyword: "!enter",
+      sub_entry: 0,
+      reward_id: "reward-1",
+    })
   })
 
   it("gives up when Kick refuses the chat event", async () => {

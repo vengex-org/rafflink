@@ -1063,7 +1063,12 @@ describe("live page: winners", () => {
   it("says sub and points entry is off while entries are open to them", async () => {
     mockLive({
       "GET /api/live/gid-1": () =>
-        ok({ ...liveSnapshot, chatClaimUnavailable: true, channelEntryOff: true }),
+        ok({
+          ...liveSnapshot,
+          chatClaimUnavailable: true,
+          subEntryOff: true,
+          pointsEntryOff: true,
+        }),
     })
 
     const view = renderApp("/live/gid-1")
@@ -1071,6 +1076,30 @@ describe("live page: winners", () => {
     expect(await view.findByRole("heading", { name: "Chat watch is off" })).toBeTruthy()
     expect(view.getByText(/Sub and channel point entry is off/)).toBeTruthy()
     expect(view.queryByText(/Chat claim unavailable/)).toBeNull()
+  })
+
+  it("says only sub entry is off while the chat watch still runs", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, subEntryOff: true }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByRole("heading", { name: "Entry is partly off" })).toBeTruthy()
+    expect(view.getByText(/Sub entry is off/)).toBeTruthy()
+    expect(view.queryByText(/Channel point entry is off/)).toBeNull()
+    expect(view.queryByRole("heading", { name: "Chat watch is off" })).toBeNull()
+  })
+
+  it("says only channel point entry is off while the chat watch still runs", async () => {
+    mockLive({
+      "GET /api/live/gid-1": () => ok({ ...liveSnapshot, pointsEntryOff: true }),
+    })
+
+    const view = renderApp("/live/gid-1")
+
+    expect(await view.findByText(/Channel point entry is off/)).toBeTruthy()
+    expect(view.queryByText(/Sub entry is off/)).toBeNull()
   })
 
   it("explains that chat watch is off and marks a claim by hand", async () => {

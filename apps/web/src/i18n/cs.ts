@@ -646,7 +646,12 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "live.chatEntryOff.text":
     "Zapojení přes chat je vypnuté: Rafflink teď neumí číst tvůj chat, takže napsání klíčového slova nikoho nezapojí. Pokud soutěž bere zapojení přes stránku, diváci se mohou zapojit tam.",
   "live.channelEntryOff.text":
-    "Zapojení přes sub a body kanálu je vypnuté: Rafflink teď neumí číst tyto události Twitche, často proto, že bylo odebráno oprávnění. Bezplatné zapojení to neovlivní. Před další soutěží připoj Twitch znovu.",
+    "Zapojení přes sub a body kanálu je vypnuté: Rafflink teď neumí číst tyto události, často proto, že bylo odebráno oprávnění. Bezplatné zapojení to neovlivní. Před další soutěží připoj účet znovu.",
+  "live.subEntryOff.text":
+    "Zapojení přes sub je vypnuté: Rafflink teď neumí číst nové suby, často proto, že bylo odebráno oprávnění, takže sub nikoho nezapojí. Ostatní způsoby zapojení to neovlivní. Před další soutěží připoj účet znovu.",
+  "live.pointsEntryOff.text":
+    "Zapojení přes body kanálu je vypnuté: Rafflink teď neumí číst uplatnění odměny, často proto, že bylo odebráno oprávnění, takže uplatnění nikoho nezapojí. Ostatní způsoby zapojení to neovlivní. Před další soutěží připoj účet znovu.",
+  "live.entryWayOff.title": "Zapojení je částečně vypnuté",
   "live.chatOff.text":
     "Převzetí přes chat není dostupné: Rafflink teď neumí číst tvůj chat, takže vítězové nemohou výhru převzít napsáním do něj. Až ti vítěz řekne, že je tady, stiskni u jeho jména Označit jako převzaté.",
   "live.open.title": "Přihlašování je otevřené",

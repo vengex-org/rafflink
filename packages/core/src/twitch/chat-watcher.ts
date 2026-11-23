@@ -1,5 +1,6 @@
 import type { ResolvedConfig } from "../config.ts"
 import type {
+  ChannelEntryRefusal,
   ChatListener,
   ChatSource,
   ChatSourceFactory,
@@ -24,9 +25,12 @@ export interface ChatLink {
   readonly connector: SocketConnector
   /**
    * Creates the subscriptions of the topics for an EventSub session. A rejection ends the watch as unavailable;
-   * a refused sub or points subscription next to a held chat one resolves with its cause instead, null when all held.
+   * a refused sub or points subscription next to a held chat one is answered instead, once per entry way.
    */
-  readonly subscribe: (sessionId: string, topics: WatchTopics) => Promise<unknown>
+  readonly subscribe: (
+    sessionId: string,
+    topics: WatchTopics,
+  ) => Promise<readonly ChannelEntryRefusal[]>
 }
 
 /** What the Twitch chat source is built from: the target's link, with the room's clock and config. */
@@ -223,7 +227,7 @@ export class ChatWatcher implements ChatSource {
       (refused) => {
         if (this.handshake !== handshake) return
         this.promote(handshake, keepaliveMs)
-        if (refused !== null && refused !== undefined) this.deps.onChannelEntryUnavailable(refused)
+        for (const refusal of refused) this.deps.onChannelEntryUnavailable(refusal)
       },
       (cause: unknown) => {
         if (this.handshake !== handshake) return

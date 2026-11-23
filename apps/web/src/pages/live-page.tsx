@@ -143,6 +143,8 @@ export function LiveControls({
   const { message, busy, run } = useAction()
   const [clean, toggleClean] = useCleanMode(cleanModeKey)
   const rerollOver = rerollOverText(snapshot)
+  // With the chat watch stopped, its own banner says which entry way that costs.
+  const entryWayOff = snapshot.chatClaimUnavailable ? null : entryWayOffText(snapshot)
   const current = currentWinner(snapshot.winners)
   const currentEntrant =
     current === null || current.entrySeq === null
@@ -161,6 +163,15 @@ export function LiveControls({
               </span>
               <h2>{t("live.chatOff.title")}</h2>
               <p>{t(chatOffText(snapshot))}</p>
+            </section>
+          ) : null}
+          {entryWayOff !== null ? (
+            <section role="alert" className="card banner" data-tone="warning">
+              <span className="state-icon">
+                <AlertIcon />
+              </span>
+              <h2>{t("live.entryWayOff.title")}</h2>
+              <p>{t(entryWayOff)}</p>
             </section>
           ) : null}
           {rerollOver !== null && snapshot.winners.some(isUnsettled) ? (
@@ -302,10 +313,17 @@ function useCleanMode(storageKey: string): readonly [boolean, () => void] {
   return [clean, toggle]
 }
 
-/** What the stopped watch costs: chat entry while it is on, else sub and points entry, else the chat claim. */
+/** What the stopped watch costs: chat entry while it is on, else the sub or points entry, else the chat claim. */
 function chatOffText(snapshot: LiveSnapshot): MessageKey {
   if (snapshot.chatEntryOff) return "live.chatEntryOff.text"
-  return snapshot.channelEntryOff ? "live.channelEntryOff.text" : "live.chatOff.text"
+  return entryWayOffText(snapshot) ?? "live.chatOff.text"
+}
+
+/** Which of sub and points entry is off, or null while every way the giveaway takes works. */
+function entryWayOffText(snapshot: LiveSnapshot): MessageKey | null {
+  if (snapshot.subEntryOff && snapshot.pointsEntryOff) return "live.channelEntryOff.text"
+  if (snapshot.subEntryOff) return "live.subEntryOff.text"
+  return snapshot.pointsEntryOff ? "live.pointsEntryOff.text" : null
 }
 
 /** Why the streamer cannot pick another winner, or null while they can (or nothing is left to pick). */

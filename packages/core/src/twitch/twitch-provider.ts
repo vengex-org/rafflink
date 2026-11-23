@@ -166,7 +166,7 @@ export class TwitchProvider implements PlatformProvider {
       config: this.config,
       subscribe: async (sessionId, topics) => {
         const { accessToken, broadcasterId } = await context.streamerAccess()
-        await this.client.subscribeEvents(accessToken, broadcasterId, sessionId, topics)
+        return this.client.subscribeEvents(accessToken, broadcasterId, sessionId, topics)
       },
     })
   }

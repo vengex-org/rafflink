@@ -722,9 +722,27 @@ describe("subscribeEvents", () => {
       pointsRewardId: null,
     })
 
-    expect(refused).toBeInstanceOf(TwitchInvalid)
-    expect(refused).toMatchObject({ endpoint: "eventsub", status: 403 })
+    expect(refused).toHaveLength(1)
+    expect(refused[0]?.via).toBe("sub")
+    expect(refused[0]?.cause).toBeInstanceOf(TwitchInvalid)
+    expect(refused[0]?.cause).toMatchObject({ endpoint: "eventsub", status: 403 })
     expect(fake.control.eventSubSubscriptions()).toBe(1)
+  })
+
+  it("answers only the sub refusal and keeps the redemption subscription when the token lacks just the sub scope", async () => {
+    const { accessToken } = await signIn("200", [...CHAT_SCOPES, "channel:read:redemptions"])
+    fake.control.addUser({ ...streamer, broadcasterType: "affiliate" })
+    fake.control.setCustomRewards("200", [{ id: "reward-1", title: "Enter", cost: 100 }])
+    const session = await openSession()
+
+    const refused = await client.subscribeEvents(accessToken, "200", session.id, {
+      chat: true,
+      subscriptions: true,
+      pointsRewardId: "reward-1",
+    })
+
+    expect(refused.map((refusal) => refusal.via)).toEqual(["sub"])
+    expect(fake.control.eventSubSubscriptions()).toBe(2)
   })
 
   it("rejects sub topics without chat on a token without the sub scope as invalid", async () => {

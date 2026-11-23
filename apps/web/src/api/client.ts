@@ -1386,7 +1386,8 @@ function parseSharedSnapshotFields(source: Json) {
     now: num(source, "now"),
     chatClaimUnavailable: bool(source, "chatClaimUnavailable"),
     chatEntryOff: bool(source, "chatEntryOff"),
-    channelEntryOff: bool(source, "channelEntryOff"),
+    subEntryOff: bool(source, "subEntryOff"),
+    pointsEntryOff: bool(source, "pointsEntryOff"),
   }
 }
 

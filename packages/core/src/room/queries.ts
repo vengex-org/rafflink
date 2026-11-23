@@ -1,3 +1,5 @@
+import type { ChannelEntryRefusal } from "../platform/chat-source.ts"
+
 /** Entries since a time (parameter 1), for the entries per second of the live page. */
 export const recentEntriesCountSql = "SELECT COUNT(*) AS c FROM entries WHERE entered_at >= ?"
 
@@ -69,6 +71,12 @@ export const watchedChattersSql = `SELECT DISTINCT platform_user_id FROM draws
 
 /** A row while the room's chat source may hold a watch at the platform; none otherwise. */
 export const chatWatchedSql = "SELECT 1 FROM room_state WHERE id = 1 AND chat_watched = 1"
+
+/** Turns one way of channel entry off for the rest of the giveaway, after the platform refused its subscriptions. */
+export const entryWayUnavailableSql = {
+  sub: "UPDATE room_state SET sub_entry_unavailable = 1 WHERE id = 1",
+  points: "UPDATE room_state SET points_entry_unavailable = 1 WHERE id = 1",
+} as const satisfies Record<ChannelEntryRefusal["via"], string>
 
 /** Entrants after a sequence number (parameter 1), oldest first (parameter 2 is how many). */
 export const entrantsAfterSql = `SELECT seq, login, display_name, group_name, tickets, profile_image_url FROM entries

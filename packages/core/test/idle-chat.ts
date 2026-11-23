@@ -6,7 +6,7 @@ import { eventSubChat, type ChatWatcherConfig } from "../src/twitch/chat-watcher
 export function idleChat(clock: Clock, config: ChatWatcherConfig): ChatOpener {
   const source = eventSubChat({
     connector: { open: () => ({ close: () => {} }) },
-    subscribe: async () => {},
+    subscribe: async () => [],
     clock,
     config,
   })
