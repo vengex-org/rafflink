@@ -963,6 +963,8 @@ export const en = {
   "wizard.entry.chat": "Chat only",
   "wizard.entry.chat.help":
     "Viewers enter only by typing a keyword in your chat. The page shows the keyword and lets them check whether they are in.",
+  "wizard.entry.chatDelay":
+    "Chat entries show up a few seconds late, longer when many viewers type at once. Entries on the giveaway page count right away.",
   "wizard.reconnect.followers.info":
     "To check who follows you, Rafflink needs to read your followers. Reconnect Twitch; your answers stay.",
   "wizard.reconnect.subs.info":
@@ -1382,7 +1384,7 @@ export const en = {
 export type MessageKey = keyof typeof en
 
 /** Keys whose English copy is not translated yet; the other languages show the English text for them. */
-type EnglishOnlyKey = never
+type EnglishOnlyKey = "wizard.entry.chatDelay"
 
 /** What a language other than English provides: every key but the {@link EnglishOnlyKey}s. */
 export type Translation = Readonly<Omit<Record<MessageKey, string>, EnglishOnlyKey>>
