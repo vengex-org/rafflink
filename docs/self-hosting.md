@@ -36,11 +36,12 @@ You do not pick scopes in the console. Rafflink asks for them at sign-in:
 
 - streamers: `openid` and `user:read:chat` (to watch the chat for chat entries and claims and show the
   winners' messages). A streamer is asked to reconnect once for each extra feature, when a giveaway first uses
-  it: `moderator:read:followers` for a follower rule with chat, sub or points entry, `channel:read:subscriptions`
-  for sub entry or tier tickets with points entry, `channel:read:redemptions` for points entry,
+  it: `moderator:read:followers` for a followers-only rule or follower tickets with chat, sub or points entry,
+  `channel:read:subscriptions` for sub entry, or for a subscribers-only rule or tier tickets with points entry,
+  `channel:read:redemptions` for points entry,
   `channel:read:vips` and `moderation:read` for VIP or moderator tickets, and `moderation:read` for a moderator
   link for moderators only;
-- viewers: `openid`, plus `user:read:follows` when the giveaway has a follower rule and
+- viewers: `openid`, plus `user:read:follows` when the giveaway has a followers-only rule or follower tickets, and
   `user:read:subscriptions` when it has a subscribers-only rule or tier tickets (each viewer's own token
   checks them).
 
@@ -215,6 +216,16 @@ organization `vengex-ww`, with the commit as the release, when the repository ha
 `SENTRY_RELEASE` set to it, and the stack traces resolve against those maps. The maps never reach visitors:
 `apps/web/public/.assetsignore` keeps them out of the Cloudflare assets, and the Dockerfile deletes them from the
 image.
+
+### Sign-in queue
+
+Twitch limits how often one app may call its token endpoint, so a big giveaway can hit that limit when thousands of
+viewers sign in at once. When the endpoint answers 429 or 5xx, the sign-in callback puts the viewer's code in a
+queue (a Durable Object on Cloudflare, `queue.sqlite` on the Bun server) and the giveaway page tells the viewer
+they are being entered. The queue works through the codes once a second. After a 429 it pauses for
+`QUEUE_COOLDOWN_SECONDS`, drops to `QUEUE_DECREASE_PERCENT` of the rate that got the 429, and then speeds up by
+`QUEUE_INCREASE_STEP_PER_SECOND` each second until the next 429. On Workers Free one queue run may send only a few
+Twitch requests, so the queue there handles a few codes a second. The Bun server has no such cap.
 
 ### Server size (VPS)
 

@@ -26,14 +26,16 @@ export function moderatorUrl(token: string): string {
 
 export const repositoryUrl = "https://github.com/vengex-org/rafflink"
 
-/** The README section that lists the Twitch app settings, including the redirect URLs. */
-export const setupGuideUrl = `${repositoryUrl}#twitch-app-registration`
+const setupGuideBaseUrl = `${repositoryUrl}/blob/master/docs/self-hosting.md`
 
-/** The README section that lists each platform's app settings, including the redirect URLs. */
+/** The setup guide section that lists the Twitch app settings, including the redirect URLs. */
+export const setupGuideUrl = `${setupGuideBaseUrl}#twitch-app-registration`
+
+/** The setup guide section that lists each platform's app settings, including the redirect URLs. */
 export const appSetupUrls: Readonly<Record<Platform, string>> = {
   twitch: setupGuideUrl,
-  kick: `${repositoryUrl}#kick-app-registration-optional`,
-  youtube: `${repositoryUrl}#youtube-app-registration-optional`,
+  kick: `${setupGuideBaseUrl}#kick-app-registration-optional`,
+  youtube: `${setupGuideBaseUrl}#youtube-app-registration-optional`,
 }
 
 /** The pages the YouTube API Services terms require a YouTube app to link: YouTube's terms, Google's privacy policy and where a user removes the app's access. */

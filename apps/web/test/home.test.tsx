@@ -125,7 +125,7 @@ describe("home page", () => {
       "https://github.com/vengex-org/rafflink",
     )
     expect(footer.getByRole("link", { name: "Self-host guide" }).getAttribute("href")).toBe(
-      "https://github.com/vengex-org/rafflink#twitch-app-registration",
+      "https://github.com/vengex-org/rafflink/blob/master/docs/self-hosting.md#twitch-app-registration",
     )
     for (const name of ["GitHub", "Self-host guide"]) {
       const link = footer.getByRole("link", { name })
@@ -146,7 +146,7 @@ describe("home page", () => {
     const nav = within(view.getByRole("navigation", { name: "Main" }))
 
     expect(nav.getByRole("link", { name: "Self-host" }).getAttribute("href")).toBe(
-      "https://github.com/vengex-org/rafflink#twitch-app-registration",
+      "https://github.com/vengex-org/rafflink/blob/master/docs/self-hosting.md#twitch-app-registration",
     )
     expect(nav.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe(
       "https://github.com/vengex-org/rafflink",

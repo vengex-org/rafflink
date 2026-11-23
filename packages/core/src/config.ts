@@ -98,35 +98,39 @@ const maxEntryRetentionSeconds = 2_592_000
 type Env = Readonly<Record<string, string | undefined>>
 
 export const configSchema = {
-  twitchClientId: required("TWITCH_CLIENT_ID", text, "Twitch app registration, see the README"),
+  twitchClientId: required(
+    "TWITCH_CLIENT_ID",
+    text,
+    "Twitch app registration, see docs/self-hosting.md",
+  ),
   twitchClientSecret: required(
     "TWITCH_CLIENT_SECRET",
     text,
-    "Twitch app registration, see the README",
+    "Twitch app registration, see docs/self-hosting.md",
   ),
   kickClientId: withDefault(
     "KICK_CLIENT_ID",
     optional(text),
     "",
-    "Kick app registration, see the README; blank turns Kick sign-in off, set together with KICK_CLIENT_SECRET",
+    "Kick app registration, see docs/self-hosting.md; blank turns Kick sign-in off, set together with KICK_CLIENT_SECRET",
   ),
   kickClientSecret: withDefault(
     "KICK_CLIENT_SECRET",
     optional(text),
     "",
-    "Kick app registration, see the README; set together with KICK_CLIENT_ID",
+    "Kick app registration, see docs/self-hosting.md; set together with KICK_CLIENT_ID",
   ),
   youtubeClientId: withDefault(
     "YOUTUBE_CLIENT_ID",
     optional(text),
     "",
-    "Google OAuth web client of the YouTube Data API, see the README; blank turns YouTube sign-in off, set together with YOUTUBE_CLIENT_SECRET",
+    "Google OAuth web client of the YouTube Data API, see docs/self-hosting.md; blank turns YouTube sign-in off, set together with YOUTUBE_CLIENT_SECRET",
   ),
   youtubeClientSecret: withDefault(
     "YOUTUBE_CLIENT_SECRET",
     optional(text),
     "",
-    "Google OAuth web client of the YouTube Data API, see the README; set together with YOUTUBE_CLIENT_ID",
+    "Google OAuth web client of the YouTube Data API, see docs/self-hosting.md; set together with YOUTUBE_CLIENT_ID",
   ),
   signInDisabledPlatforms: withDefault(
     "SIGN_IN_DISABLED_PLATFORMS",
@@ -137,13 +141,13 @@ export const configSchema = {
   tokenSealKeys: required(
     "TOKEN_SEAL_KEYS",
     list(text),
-    "Key ring, comma separated, that seals stored streamer refresh tokens (spec AC-1) and winners' form answers",
+    "Key ring, comma separated, that seals stored streamer refresh tokens and winners' form answers",
   ),
-  sessionSecret: required("SESSION_SECRET", text, "Signs the session cookie (spec AC-1)"),
+  sessionSecret: required("SESSION_SECRET", text, "Signs the session cookie"),
   admins: required(
     "ADMIN_TWITCH_IDS",
     adminList,
-    "Who may open the admin page (spec AC-23), comma separated: numeric Twitch user ids, logins, or channel links such as https://twitch.tv/<login>; pin the ids, because logins are looked up at Twitch on first use",
+    "Who may open the admin page, comma separated: numeric Twitch user ids, logins, or channel links such as https://twitch.tv/<login>; pin the ids, because logins are looked up at Twitch on first use",
   ),
   publicUrl: required("PUBLIC_URL", url, "Public origin of the service, used for OAuth redirects"),
   openSignup: withDefault(
@@ -180,13 +184,13 @@ export const configSchema = {
     "DEFAULT_CLAIM_SECONDS",
     int(1),
     "300",
-    "Claim time after a draw when the giveaway sets none; spec AC-2",
+    "Claim time after a draw when the giveaway sets none",
   ),
   roleRefreshSeconds: withDefault(
     "ROLE_REFRESH_SECONDS",
     int(1),
     "300",
-    "Refresh of the VIP and moderator lists while entries are open; spec AC-13",
+    "Refresh of the VIP and moderator lists while entries are open",
   ),
   chatEntryCheckSeconds: withDefault(
     "CHAT_ENTRY_CHECK_SECONDS",
@@ -204,13 +208,13 @@ export const configSchema = {
     "LIVE_INTERVAL_MS",
     int(1),
     "1000",
-    "Shortest time between live page pushes; spec AC-4",
+    "Shortest time between live page pushes",
   ),
   liveLastNames: withDefault(
     "LIVE_LAST_NAMES",
     int(0),
     "20",
-    "Latest entrant names on the live page; spec AC-4",
+    "Latest entrant names on the live page",
   ),
   liveShuffleNames: withDefault(
     "LIVE_SHUFFLE_NAMES",
@@ -252,19 +256,19 @@ export const configSchema = {
     "QUEUE_POLL_SECONDS",
     int(1),
     "3",
-    "Page poll interval for a queued entry; spec AC-14",
+    "Page poll interval for a queued entry",
   ),
   queuePollMaxSeconds: withDefault(
     "QUEUE_POLL_MAX_SECONDS",
     int(1),
     "120",
-    "Page stops polling a queued entry after this; spec AC-14",
+    "Page stops polling a queued entry after this",
   ),
   queueCodeMaxAgeSeconds: withDefault(
     "QUEUE_CODE_MAX_AGE_SECONDS",
     int(1),
     "300",
-    "Queued authorization codes older than this are dropped; spec AC-14",
+    "Queued authorization codes older than this are dropped",
   ),
   queueProcessingTimeoutSeconds: withDefault(
     "QUEUE_PROCESSING_TIMEOUT_SECONDS",
@@ -288,13 +292,13 @@ export const configSchema = {
     "QUEUE_MAX_RATE_PER_SECOND",
     int(1),
     "500",
-    "Ceiling of the queue's drain rate, a safety rail: one pass processes this many codes at once, each with the Twitch requests of one entry and a room write; starting guess above the spec's 400 sign-ins per second",
+    "Ceiling of the queue's drain rate, a safety rail: one pass processes this many codes at once, each with the Twitch requests of one entry and a room write; starting guess above 400 sign-ins per second",
   ),
   queueDecreasePercent: withDefault(
     "QUEUE_DECREASE_PERCENT",
     int(1, 99),
     "67",
-    "After a 429 the queue drains at this percent of the rate that triggered it; the owner's choice of 2/3",
+    "After a 429 the queue drains at this percent of the rate that triggered it",
   ),
   queueIncreaseStepPerSecond: withDefault(
     "QUEUE_INCREASE_STEP_PER_SECOND",
@@ -330,7 +334,7 @@ export const configSchema = {
     "ENTRY_WRITE_RETRY_DELAYS_MS",
     list(int(0)),
     "200,500,1000",
-    "Delay before each retry of a failed room write, so also the retry count; spec AC-16",
+    "Delay before each retry of a failed room write, so also the retry count",
   ),
   entryWriteJitterPercent: withDefault(
     "ENTRY_WRITE_JITTER_PERCENT",
@@ -342,7 +346,7 @@ export const configSchema = {
     "HELIX_RETRY_DELAY_MS",
     int(0),
     "500",
-    "Wait before the single retry of a Helix 503; delay is a starting guess, one retry is spec AC-17",
+    "Wait before the single retry of a Helix 503; the delay is a starting guess",
   ),
   twitchIdBaseUrl: withDefault(
     "TWITCH_ID_BASE_URL",
@@ -444,7 +448,7 @@ export const configSchema = {
     "YOUTUBE_QUOTA_ALERT_PERCENT",
     int(1, 100),
     "70",
-    "The admin page warns once today's YouTube units reach this percent of YOUTUBE_DAILY_QUOTA_UNITS, so there is time to ask Google for more quota; the owner's choice",
+    "The admin page warns once today's YouTube units reach this percent of YOUTUBE_DAILY_QUOTA_UNITS, so there is time to ask Google for more quota",
   ),
   youtubeChatPollMinMs: withDefault(
     "YOUTUBE_CHAT_POLL_MIN_MS",
@@ -522,7 +526,7 @@ export const configSchema = {
     "VALIDATE_PERIOD_SECONDS",
     int(1),
     "3600",
-    "Streamer token validation period; Twitch requires hourly, spec AC-22",
+    "Streamer token validation period; Twitch requires hourly",
   ),
   sessionTtlSeconds: withDefault(
     "SESSION_TTL_SECONDS",
@@ -642,7 +646,7 @@ export const configSchema = {
     "USAGE_WARNING_THRESHOLD",
     int(0),
     "25000",
-    "Warn at giveaway creation below this many Worker requests left; spec AC-23",
+    "Warn at giveaway creation below this many Worker requests left",
   ),
   liveRateWindowSeconds: withDefault(
     "LIVE_RATE_WINDOW_SECONDS",
@@ -666,7 +670,7 @@ export const configSchema = {
     "ENTRY_RETENTION_SECONDS",
     int(1, maxEntryRetentionSeconds),
     "2592000",
-    "How long after a giveaway closes its entrants' personal data (login, display name, profile picture URL, group, tickets, channel role lists) is kept before the room alarm deletes it; spec Privacy promises 30 days, so more than that is rejected; it must not be below CLAIM_SECONDS_MAX plus REROLL_WINDOW_SECONDS, or a winner could still be claimed or rerolled after the entrants are gone",
+    "How long after a giveaway closes its entrants' personal data (login, display name, profile picture URL, group, tickets, channel role lists) is kept before the room alarm deletes it; the privacy policy promises 30 days, so more than that is rejected; it must not be below CLAIM_SECONDS_MAX plus REROLL_WINDOW_SECONDS, or a winner could still be claimed or rerolled after the entrants are gone",
   ),
   entryRetentionSweepBatch: withDefault(
     "ENTRY_RETENTION_SWEEP_BATCH",
@@ -696,7 +700,7 @@ export const configSchema = {
     "WINNER_FORM_RETENTION_SECONDS",
     int(1, maxEntryRetentionSeconds),
     "2592000",
-    "How long after the claim a winner's form answers (such as a shipping address) are kept before the room alarm deletes them, unless the streamer marks the prize delivered first; the winner can send the form only within this time; spec Privacy promises 30 days, so more than that is rejected",
+    "How long after the claim a winner's form answers (such as a shipping address) are kept before the room alarm deletes them, unless the streamer marks the prize delivered first; the winner can send the form only within this time; the privacy policy promises 30 days, so more than that is rejected",
   ),
   winnerAnswerMaxLength: withDefault(
     "WINNER_ANSWER_MAX_LENGTH",
@@ -714,7 +718,7 @@ export const configSchema = {
     "ENTRY_IP_LIMIT_PER_MINUTE",
     int(1),
     "60",
-    "Viewer sign-in callbacks one client address may make per minute; a loose backstop because mobile networks put many viewers behind one address (spec Abuse); the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
+    "Viewer sign-in callbacks one client address may make per minute; a loose backstop because mobile networks put many viewers behind one address; the Bun server reads it, the Cloudflare target takes the limit from wrangler.jsonc, where a test keeps the default equal",
   ),
   leavesIpLimitPerMinute: withDefault(
     "LEAVES_IP_LIMIT_PER_MINUTE",
@@ -792,7 +796,7 @@ export const configSchema = {
     "DRAND_LEAD_SECONDS",
     int(0),
     "6",
-    "A giveaway commits to the first drand round at least this long after the commit, so nobody knows its value yet; two quicknet periods, a starting guess; spec The draw",
+    "A giveaway commits to the first drand round at least this long after the commit, so nobody knows its value yet; two quicknet periods, a starting guess",
   ),
   drandPublishMarginSeconds: withDefault(
     "DRAND_PUBLISH_MARGIN_SECONDS",
@@ -804,7 +808,7 @@ export const configSchema = {
     "DRAND_RETRY_DELAYS_MS",
     list(int(0)),
     "200,500,1000",
-    "Delay before each retry of a drand round that failed or is not published yet, so also the retry count; same shape as the entry write retry, spec Retry",
+    "Delay before each retry of a drand round that failed or is not published yet, so also the retry count; same shape as the entry write retry",
   ),
   drandRetryJitterPercent: withDefault(
     "DRAND_RETRY_JITTER_PERCENT",
@@ -888,7 +892,7 @@ export const configSchema = {
     "USAGE_ALERT_PERCENT",
     int(1, 100),
     "70",
-    "The admin page warns once today's Worker or Durable Object requests reach this percent of the daily limit, so there is time to pay for Workers Paid and switch; the owner's choice",
+    "The admin page warns once today's Worker or Durable Object requests reach this percent of the daily limit, so there is time to pay for Workers Paid and switch",
   ),
   adminStatsCacheSeconds: withDefault(
     "ADMIN_STATS_CACHE_SECONDS",
@@ -906,19 +910,19 @@ export const configSchema = {
     "ADMIN_STATS_SERIES_MINUTES",
     int(1),
     "60",
-    "Minutes the admin page's entries, claims and 429 chart covers; the owner's choice of the last hour",
+    "Minutes the admin page's entries, claims and 429 chart covers",
   ),
   adminStatsDays: withDefault(
     "ADMIN_STATS_DAYS",
     int(1),
     "14",
-    "Days the admin page's growth chart and referral list cover, and how long daily referral counts are kept; the owner's choice of 14",
+    "Days the admin page's growth chart and referral list cover, and how long daily referral counts are kept",
   ),
   adminStatsReturnDays: withDefault(
     "ADMIN_STATS_RETURN_DAYS",
     int(1),
     "30",
-    "A streamer counts as returning when their second giveaway came within this many days of their first; the owner's choice of 30",
+    "A streamer counts as returning when their second giveaway came within this many days of their first",
   ),
   adminStatsRefsMax: withDefault(
     "ADMIN_STATS_REFS_MAX",
@@ -930,7 +934,7 @@ export const configSchema = {
     "METRICS_RETENTION_HOURS",
     int(1),
     "24",
-    "How long the per-minute entry, claim and 429 counters are kept before the writer deletes them; the owner's choice of 24 hours, the chart reads only the last ADMIN_STATS_SERIES_MINUTES",
+    "How long the per-minute entry, claim and 429 counters are kept before the writer deletes them; the chart reads only the last ADMIN_STATS_SERIES_MINUTES",
   ),
   referralVisitsPerDayMax: withDefault(
     "REFERRAL_VISITS_PER_DAY_MAX",
@@ -984,7 +988,7 @@ export const configSchema = {
     "SENTRY_DSN",
     optional(sentryDsn),
     "",
-    "Sentry DSN the Worker or the Bun server reports its errors to; blank reports nothing. The browser's DSN is PUBLIC_SENTRY_DSN of the web build, see the README",
+    "Sentry DSN the Worker or the Bun server reports its errors to; blank reports nothing. The browser's DSN is PUBLIC_SENTRY_DSN of the web build, see docs/self-hosting.md",
   ),
   sentryEnvironment: withDefault(
     "SENTRY_ENVIRONMENT",
@@ -1012,7 +1016,7 @@ export const webBuildSchema = {
     "PUBLIC_SENTRY_DSN",
     optional(sentryDsn),
     "",
-    "Sentry DSN the browser reports its errors to, written into the page by the web build, see the README; blank reports nothing. The web build reads SENTRY_ENVIRONMENT, SENTRY_RELEASE and SENTRY_SAMPLE_PERCENT for it too",
+    "Sentry DSN the browser reports its errors to, written into the page by the web build, see docs/self-hosting.md; blank reports nothing. The web build reads SENTRY_ENVIRONMENT, SENTRY_RELEASE and SENTRY_SAMPLE_PERCENT for it too",
   ),
 }
 

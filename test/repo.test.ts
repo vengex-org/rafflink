@@ -32,6 +32,20 @@ describe("repository", () => {
     expect(guide).toMatch(/^## Twitch app registration$/m)
     expect(guide).toMatch(/^### Docker \(any server\)$/m)
     expect(guide).toMatch(/^### Cloudflare$/m)
+
+    // The app links to sections of the guide; GitHub builds each anchor from the heading text.
+    const slugs = [...guide.matchAll(/^#+ (.+)$/gm)].map(([, heading = ""]) =>
+      heading
+        .toLowerCase()
+        .replace(/[^\w\- ]/g, "")
+        .replaceAll(" ", "-"),
+    )
+    const links = await Bun.file(new URL("apps/web/src/lib/links.ts", root)).text()
+    const anchors = [...links.matchAll(/setupGuideBaseUrl\}#([\w-]+)/g)].map(
+      ([, anchor = ""]) => anchor,
+    )
+    expect(anchors.length).toBeGreaterThan(0)
+    for (const anchor of anchors) expect(slugs).toContain(anchor)
   })
 
   // A part without its test file would drop its scenarios from that target without a failing test.
