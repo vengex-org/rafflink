@@ -7,6 +7,9 @@ export type Malformed = Parsed<never, "malformed">
 /** Subscription tier as Twitch writes it. */
 export type Tier = "1000" | "2000" | "3000"
 
+/** The tier number the rules read for each tier Twitch writes. */
+export const tierLevels: Readonly<Record<Tier, 1 | 2 | 3>> = { "1000": 1, "2000": 2, "3000": 3 }
+
 /** A Helix user found by login. */
 export interface UserLogin {
   readonly id: string
@@ -216,7 +219,7 @@ function firstEntry(body: unknown): Parsed<Record<string, unknown>, "malformed">
   return isRecord(first) ? { ok: true, value: first } : malformed
 }
 
-function isTier(value: unknown): value is Tier {
+export function isTier(value: unknown): value is Tier {
   return value === "1000" || value === "2000" || value === "3000"
 }
 

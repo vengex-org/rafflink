@@ -43,6 +43,8 @@ export interface WatchTopics {
 export interface ChatListener {
   readonly onMessage: (message: ChatMessage) => void
   readonly onChannelEntry: (event: ChannelEntryEvent) => void
+  /** The sub or points subscriptions were refused while the chat subscription held, so the watch goes on for chat only. */
+  readonly onChannelEntryUnavailable: (cause: unknown) => void
   readonly topics: () => WatchTopics
   /** Called once when the source gives up; the source is closed by then. */
   readonly onUnavailable: (cause: unknown) => void

@@ -1,6 +1,8 @@
 import { groups, supportedGroups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import {
+  channelEntryVias,
   minAgeMax,
+  type ChannelEntryVia,
   type GiveawayRules,
   type PointsReward,
   type RecentWinnersRule,
@@ -176,6 +178,22 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
   }
 }
 
+/**
+ * The sub and points entry the answers turn on whose scopes the token lacks; the server refuses such a giveaway.
+ * Chat entry works without its scope (every chatter counts as not following), so it never blocks.
+ */
+export function missingEntryScopes(
+  values: Values,
+  ready: readonly ChannelEntryVia[],
+): readonly ChannelEntryVia[] {
+  const used: Readonly<Record<ChannelEntryVia, boolean>> = {
+    chat: false,
+    sub: values.subEntry,
+    points: values.pointsReward !== null,
+  }
+  return channelEntryVias.filter((way) => used[way] && !ready.includes(way))
+}
+
 /** The first thing wrong with the answers of one step, or null; the server checks everything again. */
 export function stepIssue(step: Step, values: Values, now: number): Issue | null {
   switch (step) {
@@ -243,6 +261,7 @@ export function stepOfField(field: string): Step {
     || field === "claimSeconds"
     || field === "claimKeyword"
     || field === "chatKeyword"
+    || field === "subEntry"
     || field === "winnerCount"
     || field.startsWith("winnerForm")
     || field.startsWith("excludeRecentWinners")

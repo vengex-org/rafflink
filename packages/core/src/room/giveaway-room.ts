@@ -851,8 +851,8 @@ export class GiveawayRoom {
 
   // While entries are open: the oldest waiting chatters, with no more follow reads than one check may send;
   // the others wait for the next check, a period later. After the close: the last profile read of whoever
-  // still waits, with no follows and no tiers, so a minimum account age judges them on their real age and
-  // the read fits the subrequests of one invocation.
+  // still waits, with no follows and the tiers of the oldest redeemers only, so a minimum account age judges
+  // them on their real age and the read fits the subrequests of one invocation.
   private chatEntrantsDue(state: RoomState, now: Instant): ChatEntrantsDuty | null {
     const open = entriesOpen(state, now)
     if ((!open && !awaitsCommit(state)) || now < (this.chatCheckAt ?? now)) return null
@@ -864,11 +864,14 @@ export class GiveawayRoom {
     if (!open) {
       return {
         platform: state.platform,
-        chatters: rows.map((row) => ({
-          platformUserId: parseChatRequest(row).platformUserId,
-          followerCheck: false,
-          tierCheck: false,
-        })),
+        chatters: rows.map((row, index) => {
+          const request = parseChatRequest(row)
+          return {
+            platformUserId: request.platformUserId,
+            followerCheck: false,
+            tierCheck: request.via === "points" && index < tierChecksPerLastRead,
+          }
+        }),
       }
     }
     const chatters: ChatEntrantCheck[] = []
@@ -1761,8 +1764,8 @@ export class GiveawayRoom {
       state.status === "open" && takesChannelEntries(rules)
         ? {
             keyword: rules.chatKeyword,
-            subEntry: rules.subEntry,
-            pointsRewardId: rules.pointsReward?.id ?? null,
+            subEntry: rules.subEntry && !state.channelEntryUnavailable,
+            pointsRewardId: state.channelEntryUnavailable ? null : (rules.pointsReward?.id ?? null),
             platform: state.platform,
             broadcasterId: state.broadcasterId,
             closesAt: state.closesAt,
@@ -1773,6 +1776,8 @@ export class GiveawayRoom {
         onMessage: (message) => this.guarded("chat-message", () => this.onChatMessage(message)),
         onChannelEntry: (event) =>
           this.guarded("channel-entry", () => this.requestChannelEntry(event)),
+        onChannelEntryUnavailable: (cause) =>
+          this.guarded("channel-entry-unavailable", () => this.channelEntryUnavailable(cause)),
         topics: () => this.watchTopics(),
         onUnavailable: (cause) =>
           this.guarded("chat-unavailable", () => this.chatUnavailable(cause)),
@@ -1937,6 +1942,12 @@ export class GiveawayRoom {
   }
 
   // The watcher has already closed; the flag keeps the room from opening it again until a reroll.
+  // A later connection asks for chat only (see `syncChat`), so the refusal is not repeated at every reconnect.
+  private channelEntryUnavailable(cause: unknown): void {
+    this.sql.exec("UPDATE room_state SET channel_entry_unavailable = 1 WHERE id = 1", [])
+    this.recordFailure("eventsub", cause)
+  }
+
   private chatUnavailable(cause: unknown): void {
     this.sql.exec("UPDATE room_state SET chat_unavailable = 1 WHERE id = 1", [])
     this.guarded("viewer-push", () => this.pushViewers())
@@ -2196,6 +2207,10 @@ const chatEntrantsPerCheck = 100
 // The last profile read after the close takes 30 profile calls, well inside the 45 subrequests of a Cloudflare Free invocation; whoever is beyond enters unchecked at the commit.
 const chatEntrantsPerLastRead = chatEntrantsPerCheck * 30
 
+// The last read's tier calls (100 ids each) on top of its 30 profile calls: 10 more stay inside the same 45.
+// A redeemer beyond it enters with an unknown tier, as not subscribed.
+const tierChecksPerLastRead = chatEntrantsPerCheck * 10
+
 // A round is published at its time; the alarm waits this long more so the first try finds it.
 const drawLagMs = 500
 
@@ -2248,7 +2263,7 @@ function summarize(state: RoomState): RoomSummary {
     channelEntryOff:
       state.status === "open"
       && (state.rules.subEntry || state.rules.pointsReward !== null)
-      && state.chatUnavailable,
+      && (state.chatUnavailable || state.channelEntryUnavailable),
   }
 }
 

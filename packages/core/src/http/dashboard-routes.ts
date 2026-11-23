@@ -9,6 +9,7 @@ import type {
 } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
 import { parseOverlayTheme, type OverlayTheme } from "../domain/overlay-theme.ts"
+import type { ChannelEntryVia, GiveawayRules } from "../domain/rules.ts"
 import { generateCode } from "../lib/codes.ts"
 import { csvText } from "../lib/csv.ts"
 import { errorClass } from "../lib/error-class.ts"
@@ -70,7 +71,7 @@ import {
 import { sameOriginJson } from "./origin.ts"
 import { historyCacheKey } from "./history-routes.ts"
 import { deletePublicCache, readPublicCache, writePublicCache } from "./public-cache.ts"
-import { endStreamerSession } from "./session.ts"
+import { endStreamerSession, type StreamerSession } from "./session.ts"
 import { requireStreamer, type StreamerEnv } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
 import { winnerAnswersJson } from "./winner-answers.ts"
@@ -98,6 +99,9 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       providerFor(deps.platforms, streamer.platform).capabilities,
     )
     if (!parsed.ok) return c.json({ error: "invalid-input", ...parsed.issue }, 400)
+    if (!(await channelEntryReady(deps, streamer, parsed.value.rules))) {
+      return c.json({ error: "reconnect" }, 422)
+    }
     const created = await insertWithFreshCode(deps, {
       id: randomId(deps.random),
       streamerId: streamer.streamerId,
@@ -627,6 +631,22 @@ function winnersCsv(giveaway: Giveaway, picks: readonly WinnerPick[]): string {
       pick.deliveredAt === null ? "" : new Date(pick.deliveredAt).toISOString(),
     ]),
   ])
+}
+
+// A sub or points giveaway on a token without those scopes would watch nothing, so it is refused before it exists.
+async function channelEntryReady(
+  deps: AppDeps,
+  streamer: StreamerSession,
+  rules: GiveawayRules,
+): Promise<boolean> {
+  const needed: ChannelEntryVia[] = []
+  if (rules.subEntry) needed.push("sub")
+  if (rules.pointsReward !== null) needed.push("points")
+  if (needed.length === 0) return true
+  const token = await deps.accounts.findStreamerToken(streamer.streamerId)
+  if (token === null) return false
+  const ready = readyEntryWays(providerFor(deps.platforms, streamer.platform), token.scopes)
+  return needed.every((way) => ready.includes(way))
 }
 
 async function insertWithFreshCode(

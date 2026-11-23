@@ -126,7 +126,9 @@ purchase, so a free way in keeps the giveaway from being a paid lottery, and the
 without one. While entries are open the same EventSub socket also subscribes to `channel.subscribe` (new subs and
 gift subs, whose event names the recipient) and `channel.subscription.message` (resubs) when sub entry is on, and to
 `channel.channel_points_custom_reward_redemption.add` filtered by the chosen reward's id when points entry is on.
-`channel.subscription.gift` names the gifter, not the recipients, so it is not subscribed. Each event queues the
+`channel.subscription.gift` names the gifter, not the recipients, so it is not subscribed. Twitch sends
+`channel.subscription.message` only when a viewer shares the resub in chat, so a silent auto renewal does not enter;
+the wizard's help says so. Each event queues the
 viewer like a keyword message (`chat_entry_requests.via` = `sub` or `points`) for the same check, and the entry is
 written with `entries.via` = `sub` or `points`. A sub enters with the tier of its event; a redemption carries no
 tier, so the check reads the redeemers' tiers with one `GET /helix/subscriptions?user_id=` per check (streamer
@@ -134,11 +136,15 @@ token). Events after the end time or the close enter nobody, and the watch close
 
 - Scopes: sub entry asks for `channel:read:subscriptions`, points entry also for `channel:read:redemptions`, both
   with `moderator:read:followers` for the follow read (`?entry=sub`, `?entry=points`, combinable as
-  `?entry=chat,sub,points`). A watch whose token lacks one of them is refused by Twitch, gives up, and the live
-  page says sub and points entry is off.
+  `?entry=chat,sub,points`). Creating a sub or points giveaway on a token without them answers 422 `reconnect`,
+  and the wizard does not submit while they are missing. When Twitch still refuses the sub or points
+  subscriptions (a permission removed later), a watch that also reads chat keeps chat entry and claims, stops sub
+  and points entry for the giveaway (`room_state.channel_entry_unavailable`) and the live page says so; a watch
+  without chat gives up.
 - Rewards: the wizard lists the streamer's rewards with `GET /api/dash/rewards` (Helix
   `GET /channel_points/custom_rewards`). Channel points exist only for Affiliates and Partners, so the route first
-  reads `broadcaster_type` with the app token and hides the option otherwise, before asking for any scope. Rafflink
+  reads `broadcaster_type` with the app token and hides both options otherwise (subs need the same status),
+  before asking for any scope. Rafflink
   never marks a redemption as fulfilled. The help text promises no odds: a redemption is one entry with the tickets
   of the viewer's group, as the Twitch Channel Points policy requires.
 - Helix budget: the follow reads use the streamer's token, whose bucket is 800 points a minute; 15 every 3 s

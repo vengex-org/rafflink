@@ -3,7 +3,7 @@ import type { Entrant } from "../../src/room/rows.ts"
 import { Browser } from "./browser.ts"
 import { users } from "./fake-twitch.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
-import { scenario, type CreatedGiveaway, type World } from "./world.ts"
+import { defaultRules, scenario, type CreatedGiveaway, type World } from "./world.ts"
 
 const reward = { id: "reward-enter", title: "Enter the giveaway", cost: 500 } as const
 const otherReward = { id: "reward-hydrate", title: "Hydrate", cost: 100 } as const
@@ -46,41 +46,23 @@ export function channelEntryScenarios(context: ContractContext): void {
     },
   )
 
-  scenario(context, "subs and redemptions after the close enter nobody", async (world) => {
-    const target = await world.start({ CHAT_ENTRY_CHECK_SECONDS: "1" })
-    const giveaway = await world.createGiveaway(target, {
-      streamer: await channelEntryStreamer(world, target),
-      rules: { subEntry: true, pointsReward: { id: reward.id, title: reward.title } },
-    })
-    const { control } = world.twitch.fake
-    await world.waitFor(() => control.eventSubSubscriptions() >= 3, "the channel subscriptions")
-
-    expect((await world.closeGiveaway(giveaway)).status).toBe(200)
-    await world.waitFor(() => control.eventSubSubscriptions() === 0, "the watch to end")
-    control.sendSubscription(users.streamer.id, users.viewer.id, "new", "1000")
-    control.sendRedemption(users.streamer.id, users.viewer2.id, reward.id)
-    // Two check periods, in which a queued request would have been checked and entered.
-    await Bun.sleep(2_500)
-
-    expect((await world.live(giveaway)).entrantCount).toBe(0)
-  })
-
   scenario(
     context,
-    "a giveaway whose streamer token lacks the sub scope reports sub entry off instead of failing silently",
+    "a sub or points giveaway on a token without those scopes is refused with a reconnect answer",
     async (world) => {
       const target = await world.start()
-      const giveaway = await world.createGiveaway(target, { rules: { subEntry: true } })
+      const streamer = await world.signInStreamer(target)
 
-      await world.waitFor(
-        async () => (await world.live(giveaway)).channelEntryOff,
-        "the live page to report sub entry off",
-      )
-
-      expect(await world.live(giveaway)).toMatchObject({
-        channelEntryOff: true,
-        chatEntryOff: false,
-      })
+      for (const rules of [
+        { subEntry: true },
+        { pointsReward: { id: reward.id, title: reward.title } },
+      ]) {
+        const response = await streamer.postJson("/api/dash/giveaways", {
+          rules: { ...defaultRules, ...rules },
+        })
+        expect(response.status).toBe(422)
+        expect(await response.json()).toEqual({ error: "reconnect" })
+      }
     },
   )
 }

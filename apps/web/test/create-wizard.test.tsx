@@ -671,29 +671,75 @@ describe("create wizard", () => {
     expect(back.getByText("Cup")).toBeTruthy()
   })
 
-  it("enters new subscribers on top of page entry, after a reconnect for the sub scope", async () => {
-    const requests = mockFetch({
-      ...withCreate(createdReply),
-      "GET /api/session": session(["chat"]),
+  it("asks to reconnect for sub entry and does not go on until the token holds the sub scope", async () => {
+    mockFetch({
+      ...listed,
+      "GET /api/session": session(["chat", "points"]),
+      "GET /api/dash/rewards": () => ok(rewards),
     })
     const view = await openWizard()
     await toRules(view)
-    expect(view.getByText(/Entering on the page or in chat stays free/)).toBeTruthy()
+    expect(view.getByText(/A silent auto renewal does not enter/)).toBeTruthy()
 
-    fireEvent.click(view.getByRole("checkbox", { name: "Enter new subscribers" }))
-
+    fireEvent.click(await view.findByRole("checkbox", { name: "Enter new subscribers" }))
     const reconnect = await view.findByRole("link", { name: "Reconnect Twitch" })
     expect(reconnect.getAttribute("href")).toBe(
       "/auth/twitch/streamer/start?entry=sub&return=%2Fdashboard%2Fnew%3Fstep%3D2",
     )
     next(view)
+
+    expect(await view.findByText(/Reconnect Twitch first/)).toBeTruthy()
+    expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+  })
+
+  it("enters new subscribers on top of page entry once the token holds the sub scope", async () => {
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": session(["chat", "sub", "points"]),
+      "GET /api/dash/rewards": () => ok(rewards),
+    })
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(await view.findByRole("checkbox", { name: "Enter new subscribers" }))
+    next(view)
     await view.findByText("Step 3 of 3: Review")
     expect(view.getByText("New subscribers enter by themselves.")).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
     await view.findByRole("heading", { name: "Your giveaway is live!" })
+
     expect(
       requests.find((request) => request.route === "POST /api/dash/giveaways")?.body,
     ).toMatchObject({ rules: { subEntry: true, pageEntry: true, chatKeyword: null } })
+  })
+
+  it("goes back to the rules step when the server answers that the token needs a reconnect", async () => {
+    mockFetch({
+      ...withCreate({ status: 422, body: { error: "reconnect" } }),
+      "GET /api/session": session(["chat", "sub", "points"]),
+      "GET /api/dash/rewards": () => ok(rewards),
+    })
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(await view.findByRole("checkbox", { name: "Enter new subscribers" }))
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+
+    expect(await view.findByText(/Reconnect Twitch first/)).toBeTruthy()
+    expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+  })
+
+  it("hides sub entry for a channel without channel points, which has no subs either", async () => {
+    const requests = mockFetch(listed)
+    const view = await openWizard()
+    await toRules(view)
+    await waitFor(() =>
+      expect(requests.some((request) => request.route === "GET /api/dash/rewards")).toBe(true),
+    )
+    // The answer renders a tick after the request.
+    await Bun.sleep(10)
+
+    expect(view.queryByRole("checkbox", { name: "Enter new subscribers" })).toBeNull()
   })
 
   it("never lets sub or points entry stand alone: every entry way the wizard offers keeps page or chat entry", async () => {

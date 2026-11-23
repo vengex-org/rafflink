@@ -18,6 +18,7 @@ import {
   TwitchIcon,
   UsersIcon,
 } from "../components/icons.tsx"
+import type { PointsRewardsJson } from "@rafflink/core/http/json"
 import { getPointsRewards } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import {
@@ -338,6 +339,10 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
     streamer === null
       ? []
       : used.filter((way) => way !== "points" && !streamer.readyEntryWays.includes(way))
+  // Twitch gives subs and channel points to Affiliates and Partners only; the reward list says which a channel is.
+  const { result } = useLoad(getPointsRewards)
+  const rewards = result.state === "ready" && result.value !== "unauthorized" ? result.value : null
+  const offersSupport = rewards !== null && rewards.kind !== "no-channel-points"
   return (
     <>
       <Segmented
@@ -359,7 +364,7 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
           onChange={(chatKeyword) => setValues((current) => ({ ...current, chatKeyword }))}
         />
       ) : null}
-      {capabilities.subEntry || capabilities.pointsEntry ? (
+      {offersSupport && (capabilities.subEntry || capabilities.pointsEntry) ? (
         <fieldset className="field">
           <legend>{t("wizard.autoEntry.legend")}</legend>
           {capabilities.subEntry ? (
@@ -379,8 +384,13 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
               <p className="help">{t("wizard.subEntry.help")}</p>
             </>
           ) : null}
-          {capabilities.pointsEntry ? (
-            <PointsRewardField values={values} setValues={setValues} used={used} />
+          {capabilities.pointsEntry && rewards !== null ? (
+            <PointsRewardField
+              values={values}
+              setValues={setValues}
+              used={used}
+              rewards={rewards}
+            />
           ) : null}
         </fieldset>
       ) : null}
@@ -391,6 +401,9 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
           values={values}
         />
       ) : null}
+      {errorOf(i18n, issue, "subEntry") === null ? null : (
+        <p className="field-error">{errorOf(i18n, issue, "subEntry")}</p>
+      )}
     </>
   )
 }
@@ -403,11 +416,12 @@ function PointsRewardField({
   values,
   setValues,
   used,
-}: Omit<StepProps, "issue"> & { readonly used: readonly ChannelEntryVia[] }) {
+  rewards: answer,
+}: Omit<StepProps, "issue"> & {
+  readonly used: readonly ChannelEntryVia[]
+  readonly rewards: PointsRewardsJson
+}) {
   const { t } = useI18n()
-  const { result } = useLoad(getPointsRewards)
-  if (result.state !== "ready" || result.value === "unauthorized") return null
-  const answer = result.value
   switch (answer.kind) {
     case "no-channel-points":
       return null

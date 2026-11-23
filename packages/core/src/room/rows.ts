@@ -51,6 +51,8 @@ export type RoomState = {
   readonly eventSubFailures: number
   /** The chat watch gave up; the draw and a reroll clear it. */
   readonly chatUnavailable: boolean
+  /** Twitch refused the sub or points subscriptions while the chat subscription held. */
+  readonly channelEntryUnavailable: boolean
   readonly rolesRefreshAt: Instant | null
   readonly mirrorPending: boolean
   /** The retention alarm deleted the entrants' data. */
@@ -134,6 +136,7 @@ export function parseState(row: SqlRow, config: RulesConfig): RoomState {
     roleRefreshFailures: reader.int("role_refresh_failures"),
     eventSubFailures: reader.int("eventsub_failures"),
     chatUnavailable: reader.int("chat_unavailable") === 1,
+    channelEntryUnavailable: reader.int("channel_entry_unavailable") === 1,
     rolesRefreshAt: reader.nullableInt("roles_refresh_at"),
     mirrorPending: reader.int("mirror_pending") === 1,
     entriesDeleted: reader.int("entries_deleted") === 1,

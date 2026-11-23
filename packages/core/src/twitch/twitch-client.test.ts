@@ -712,13 +712,28 @@ describe("subscribeEvents", () => {
     expect(fake.control.eventSubSubscriptions()).toBe(3)
   })
 
-  it("rejects subscription topics on a token without the sub scope as invalid", async () => {
+  it("keeps the chat subscription and answers the refusal when the token lacks the sub scope", async () => {
+    const { accessToken } = await signIn("200", CHAT_SCOPES)
+    const session = await openSession()
+
+    const refused = await client.subscribeEvents(accessToken, "200", session.id, {
+      chat: true,
+      subscriptions: true,
+      pointsRewardId: null,
+    })
+
+    expect(refused).toBeInstanceOf(TwitchInvalid)
+    expect(refused).toMatchObject({ endpoint: "eventsub", status: 403 })
+    expect(fake.control.eventSubSubscriptions()).toBe(1)
+  })
+
+  it("rejects sub topics without chat on a token without the sub scope as invalid", async () => {
     const { accessToken } = await signIn("200", CHAT_SCOPES)
     const session = await openSession()
 
     const error = await rejection(
       client.subscribeEvents(accessToken, "200", session.id, {
-        chat: true,
+        chat: false,
         subscriptions: true,
         pointsRewardId: null,
       }),

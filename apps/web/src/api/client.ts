@@ -192,6 +192,8 @@ export type CreateResult =
   | { readonly kind: "unauthorized" }
   /** 403 `streamer_not_approved`: signup is closed and no admin approved the account. */
   | { readonly kind: "not-approved" }
+  /** 422 `reconnect`: sub or points entry is on and the streamer's token lacks its scopes. */
+  | { readonly kind: "reconnect" }
 
 export type AdminUsage = AdminUsageJson
 
@@ -486,6 +488,7 @@ export async function createGiveaway(input: CreateGiveawayBody): Promise<CreateR
   if (status === 403 && record(body, "refusal").error === "streamer_not_approved") {
     return { kind: "not-approved" }
   }
+  if (status === 422 && record(body, "refusal").error === "reconnect") return { kind: "reconnect" }
   if (status === 400) {
     const source = record(body, "issue")
     return {

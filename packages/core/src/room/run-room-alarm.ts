@@ -5,7 +5,7 @@ import { providerFor, readyEntryWays, type SubscriberTiers } from "../platform/p
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { AlarmDuties, ChatEntrantsDuty, GiveawayRoom } from "./giveaway-room.ts"
 import { mirrorStatus } from "./mirror-status.ts"
-import { openGiveawayStreamerAccess } from "./streamer-access.ts"
+import { openGiveawayStreamerAccess, type GiveawayStreamerAccess } from "./streamer-access.ts"
 
 export interface RoomAlarmDeps extends StreamerTokenDeps {
   readonly stats: Pick<StatsStore, "addMinutes">
@@ -80,11 +80,15 @@ async function checkChatEntrants(
   duty: ChatEntrantsDuty,
 ): Promise<void> {
   const provider = providerFor(deps.platforms, duty.platform)
+  // One token read and refresh serves the follow and the tier reads.
+  const access = duty.chatters.some((chatter) => chatter.followerCheck || chatter.tierCheck)
+    ? openGiveawayStreamerAccess(deps, giveawayId)
+    : null
   const [giveaway, profiles, follows, tiers] = await Promise.allSettled([
     deps.accounts.findGiveawayById(giveawayId),
     provider.userProfiles(duty.chatters.map((chatter) => chatter.platformUserId)),
-    readFollows(deps, giveawayId, duty),
-    readTiers(deps, giveawayId, duty),
+    readFollows(giveawayId, duty, access),
+    readTiers(giveawayId, duty, access),
   ])
   if (giveaway.status === "rejected") {
     console.warn("chat entry check failed", { giveawayId, errorClass: errorClass(giveaway.reason) })
@@ -147,16 +151,13 @@ const missingScopeLogged = new Set<string>()
  * as not following, as the rules treat an unknown follow. Every entry way's scopes include the follow read.
  */
 async function readFollows(
-  deps: StreamerTokenDeps,
   giveawayId: string,
   duty: ChatEntrantsDuty,
+  access: Promise<GiveawayStreamerAccess> | null,
 ): Promise<ReadonlyMap<string, boolean | null>> {
   const asked = duty.chatters.filter((chatter) => chatter.followerCheck)
-  if (asked.length === 0) return new Map()
-  const { provider, accessToken, broadcasterId, scopes } = await openGiveawayStreamerAccess(
-    deps,
-    giveawayId,
-  )
+  if (asked.length === 0 || access === null) return new Map()
+  const { provider, accessToken, broadcasterId, scopes } = await access
   if (!readyEntryWays(provider, scopes).includes("chat")) {
     logMissingScope(giveawayId, "chat entry follows not readable")
     return new Map(asked.map(({ platformUserId }) => [platformUserId, false]))
@@ -187,26 +188,29 @@ async function readFollows(
  * tier: every redeemer counts as not subscribed, as the rules treat an unknown tier.
  */
 async function readTiers(
-  deps: StreamerTokenDeps,
   giveawayId: string,
   duty: ChatEntrantsDuty,
+  access: Promise<GiveawayStreamerAccess> | null,
 ): Promise<SubscriberTiers> {
   const asked = duty.chatters.filter((chatter) => chatter.tierCheck)
-  if (asked.length === 0) return new Map()
-  const { provider, accessToken, broadcasterId, scopes } = await openGiveawayStreamerAccess(
-    deps,
-    giveawayId,
-  )
+  if (asked.length === 0 || access === null) return new Map()
+  const { provider, accessToken, broadcasterId, scopes } = await access
   if (!readyEntryWays(provider, scopes).includes("points")) {
     logMissingScope(giveawayId, "points entry tiers not readable")
     return new Map()
   }
-  return provider.subscriberTiers(
-    accessToken,
-    broadcasterId,
-    asked.map((chatter) => chatter.platformUserId),
-  )
+  const tiers = new Map<string, 1 | 2 | 3>()
+  for (let from = 0; from < asked.length; from += tiersPerCall) {
+    const ids = asked.slice(from, from + tiersPerCall).map((chatter) => chatter.platformUserId)
+    for (const [id, tier] of await provider.subscriberTiers(accessToken, broadcasterId, ids)) {
+      tiers.set(id, tier)
+    }
+  }
+  return tiers
 }
+
+// `subscriberTiers` takes at most 100 ids.
+const tiersPerCall = 100
 
 function logMissingScope(
   giveawayId: string,

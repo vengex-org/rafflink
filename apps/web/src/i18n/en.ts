@@ -310,6 +310,8 @@ export const en = {
   "issue.too-long": "This is too long. Make it shorter.",
   "issue.too-large": "This number is too large. Enter a smaller one.",
   "issue.no-entry-way": "Viewers need a way to enter: the page, the chat or both.",
+  "issue.reconnect":
+    "Reconnect Twitch first: sub and channel point entry need a permission Rafflink does not have yet.",
   "issue.not-a-timestamp": "Enter a valid date and time.",
   "issue.in-the-past": "The end time must be in the future.",
   "issue.unknown-kind": "Pick one of the options.",
@@ -634,7 +636,7 @@ export const en = {
   "live.chatEntryOff.text":
     "Chat entry is off: Rafflink cannot read your chat right now, so typing the keyword enters nobody. Viewers can still enter on the giveaway page if it takes page entries.",
   "live.channelEntryOff.text":
-    "Sub and channel point entry is off: Rafflink cannot read these Twitch events right now, often because a permission was removed. Viewers can still enter on the page or in chat. Reconnect Twitch before your next giveaway.",
+    "Sub and channel point entry is off: Rafflink cannot read these Twitch events right now, often because a permission was removed. The free way to enter is not affected. Reconnect Twitch before your next giveaway.",
   "live.chatOff.text":
     "Chat claim unavailable: Rafflink cannot read your chat right now, so winners cannot claim by typing there. When a winner tells you they are in, press Mark as claimed next to their name.",
   "live.open.title": "Entries are open",
@@ -892,7 +894,7 @@ export const en = {
   "wizard.autoEntry.legend": "Automatic entries",
   "wizard.subEntry.label": "Enter new subscribers",
   "wizard.subEntry.help":
-    "Everyone who subscribes, resubscribes or receives a gift sub while entries are open enters once, with the tickets of their tier. Entering on the page or in chat stays free, so nobody has to pay to take part.",
+    "Everyone who subscribes, gets a gift sub, or shares a resub in chat while entries are open enters once, with the tickets of their tier. A silent auto renewal does not enter: Twitch only reports a renewal the viewer shares. Entering on the page or in chat stays free, so nobody has to pay to take part.",
   "wizard.points.legend": "Channel point reward",
   "wizard.points.help":
     "Viewers who redeem this reward while entries are open enter once, like any other entry. Redeeming gives no extra tickets and no better chance to win.",

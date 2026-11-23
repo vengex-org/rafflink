@@ -1,4 +1,5 @@
 import type { Parsed } from "../../lib/parsed.ts"
+import { isTier, tierLevels } from "./parse-response.ts"
 import type {
   ChannelEntryEvent,
   ChannelViewer,
@@ -97,9 +98,12 @@ function parseSubscription(payload: Record<string, unknown>): Parsed<EventSubMes
   const { event } = payload
   if (!isRecord(event)) return malformed
   const viewer = eventViewer(event)
-  const subTier = eventTiers.get(event.tier)
-  if (viewer === null || subTier === undefined) return malformed
-  return { ok: true, value: { kind: "channel-entry", event: { via: "sub", viewer, subTier } } }
+  const { tier } = event
+  if (viewer === null || !isTier(tier)) return malformed
+  return {
+    ok: true,
+    value: { kind: "channel-entry", event: { via: "sub", viewer, subTier: tierLevels[tier] } },
+  }
 }
 
 function parseRedemption(payload: Record<string, unknown>): Parsed<EventSubMessage, "malformed"> {
@@ -122,12 +126,6 @@ function eventViewer(event: Record<string, unknown>): ChannelViewer | null {
   }
   return { platformUserId, login, displayName }
 }
-
-const eventTiers: ReadonlyMap<unknown, 1 | 2 | 3> = new Map([
-  ["1000", 1],
-  ["2000", 2],
-  ["3000", 3],
-])
 
 function parseChatNotification(
   payload: Record<string, unknown>,

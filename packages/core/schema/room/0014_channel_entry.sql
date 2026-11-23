@@ -1,6 +1,9 @@
 -- Subscriptions and channel point redemptions queue like the chat keyword, for the same profile and follow check. `via` says which way the request came. A sub request takes `sub_tier` from the subscription event, a points request has none and the check reads it.
 ALTER TABLE chat_entry_requests ADD COLUMN via TEXT NOT NULL DEFAULT 'chat' CHECK (via IN ('chat', 'sub', 'points'));
 
+-- 1 once Twitch refused the sub or points subscriptions of a watch that also reads chat: chat entry and claims go on, sub and points entry stop for the rest of the giveaway.
+ALTER TABLE room_state ADD COLUMN channel_entry_unavailable INTEGER NOT NULL DEFAULT 0 CHECK (channel_entry_unavailable IN (0, 1));
+
 -- SQLite cannot widen the CHECK of `entries.via` in place, so the table is copied into one that also takes 'sub' and 'points'.
 CREATE TABLE entries_next (
   seq INTEGER NOT NULL,

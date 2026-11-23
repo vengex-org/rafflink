@@ -22,8 +22,11 @@ export type ChatWatcherConfig = Pick<
 /** What a target supplies to watch chat: its sockets, and the call that subscribes a session to the channel. */
 export interface ChatLink {
   readonly connector: SocketConnector
-  /** Creates the subscriptions of the topics for an EventSub session. A rejection ends the watch as unavailable. */
-  readonly subscribe: (sessionId: string, topics: WatchTopics) => Promise<void>
+  /**
+   * Creates the subscriptions of the topics for an EventSub session. A rejection ends the watch as unavailable;
+   * a refused sub or points subscription next to a held chat one resolves with its cause instead, null when all held.
+   */
+  readonly subscribe: (sessionId: string, topics: WatchTopics) => Promise<unknown>
 }
 
 /** What the Twitch chat source is built from: the target's link, with the room's clock and config. */
@@ -217,8 +220,10 @@ export class ChatWatcher implements ChatSource {
     }
     handshake.deadline = this.handshakeDeadline()
     void this.deps.subscribe(sessionId, this.deps.topics()).then(
-      () => {
-        if (this.handshake === handshake) this.promote(handshake, keepaliveMs)
+      (refused) => {
+        if (this.handshake !== handshake) return
+        this.promote(handshake, keepaliveMs)
+        if (refused !== null && refused !== undefined) this.deps.onChannelEntryUnavailable(refused)
       },
       (cause: unknown) => {
         if (this.handshake !== handshake) return

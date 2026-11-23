@@ -23,6 +23,7 @@ import {
   parseUserProfile,
   parseUserProfiles,
   parseValidated,
+  tierLevels,
   type Tier,
 } from "./lib/parse-response.ts"
 import type { WatchTopics } from "../platform/chat-source.ts"
@@ -258,23 +259,18 @@ export class TwitchClient {
   /**
    * Subscribes the WebSocket session to the channel's topics, with the streamer's token: chat messages
    * need `user:read:chat` (the streamer is both the channel and the reading user), subscriptions
-   * `channel:read:subscriptions`, redemptions `channel:read:redemptions`. Rejects when any one is
-   * refused.
+   * `channel:read:subscriptions`, redemptions `channel:read:redemptions`. With chat among the topics only a
+   * refused chat subscription rejects: chat entry, the free way in, must not end with a refused sub or points
+   * subscription, whose error the answer carries instead (null when all held). Without chat any refusal rejects.
    */
   async subscribeEvents(
     accessToken: string,
     broadcasterId: string,
     sessionId: string,
     topics: WatchTopics,
-  ): Promise<void> {
+  ): Promise<unknown> {
     const channel = { broadcaster_user_id: broadcasterId }
     const subscriptions: { type: string; condition: Record<string, string> }[] = []
-    if (topics.chat) {
-      subscriptions.push({
-        type: eventSubTypes.chat,
-        condition: { ...channel, user_id: broadcasterId },
-      })
-    }
     if (topics.subscriptions) {
       subscriptions.push(
         { type: eventSubTypes.subscribe, condition: channel },
@@ -287,27 +283,34 @@ export class TwitchClient {
         condition: { ...channel, reward_id: topics.pointsRewardId },
       })
     }
-    await Promise.all(
-      subscriptions.map(({ type, condition }) =>
-        this.helix(
-          "eventsub",
-          "/helix/eventsub/subscriptions",
-          {},
-          accessToken,
-          parseSubscriptionCreated,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type,
-              version: "1",
-              condition,
-              transport: { method: "websocket", session_id: sessionId },
-            }),
-          },
-        ),
-      ),
+    const subscribe = (type: string, condition: Record<string, string>) =>
+      this.helix(
+        "eventsub",
+        "/helix/eventsub/subscriptions",
+        {},
+        accessToken,
+        parseSubscriptionCreated,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type,
+            version: "1",
+            condition,
+            transport: { method: "websocket", session_id: sessionId },
+          }),
+        },
+      )
+    if (!topics.chat) {
+      await Promise.all(subscriptions.map(({ type, condition }) => subscribe(type, condition)))
+      return null
+    }
+    await subscribe(eventSubTypes.chat, { ...channel, user_id: broadcasterId })
+    const settled = await Promise.allSettled(
+      subscriptions.map(({ type, condition }) => subscribe(type, condition)),
     )
+    const refused = settled.find((result) => result.status === "rejected")
+    return refused === undefined ? null : refused.reason
   }
 
   /** The tier of each of `userIds` (at most 100) who subscribes. Needs the streamer's token with `channel:read:subscriptions`. */
@@ -323,7 +326,7 @@ export class TwitchClient {
       accessToken,
       parseSubscribers,
     )
-    return new Map(subscribers.map(({ userId, tier }) => [userId, tierNumbers[tier]]))
+    return new Map(subscribers.map(({ userId, tier }) => [userId, tierLevels[tier]]))
   }
 
   /** The `broadcaster_type` of a channel: `partner`, `affiliate`, or empty for neither. An app token is enough. */
@@ -536,8 +539,6 @@ const globalBadgeVersion = "0"
 
 /** The part of an app token's lifetime it is used for, so a call that is slow to start does not meet it expired. */
 const appTokenUsableShare = 0.9
-
-const tierNumbers: Readonly<Record<Tier, 1 | 2 | 3>> = { "1000": 1, "2000": 2, "3000": 3 }
 
 const tierGroups: Readonly<Record<Tier, SubscriptionGroup>> = {
   "1000": "sub_t1",

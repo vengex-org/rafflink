@@ -313,6 +313,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "issue.too-large": "Toto číslo je príliš veľké. Zadaj menšie.",
   "issue.no-entry-way":
     "Diváci sa musia mať ako zapojiť: cez stránku, cez chat alebo oboma spôsobmi.",
+  "issue.reconnect":
+    "Najprv pripoj Twitch znova: zapojenie cez sub a body kanála potrebuje povolenie, ktoré Rafflink ešte nemá.",
   "issue.not-a-timestamp": "Zadaj platný dátum a čas.",
   "issue.in-the-past": "Čas ukončenia musí byť v budúcnosti.",
   "issue.unknown-kind": "Vyber jednu z možností.",
@@ -638,7 +640,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "live.chatEntryOff.text":
     "Zapojenie cez chat je vypnuté: Rafflink teraz nevie čítať tvoj chat, takže napísanie kľúčového slova nikoho nezapojí. Ak súťaž berie zapojenie cez stránku, diváci sa môžu zapojiť tam.",
   "live.channelEntryOff.text":
-    "Zapojenie cez sub a body kanála je vypnuté: Rafflink teraz nevie čítať tieto udalosti Twitchu, často preto, že bolo odobraté povolenie. Diváci sa stále môžu zapojiť cez stránku alebo chat. Pred ďalšou súťažou pripoj Twitch znova.",
+    "Zapojenie cez sub a body kanála je vypnuté: Rafflink teraz nevie čítať tieto udalosti Twitchu, často preto, že bolo odobraté povolenie. Bezplatné zapojenie to neovplyvní. Pred ďalšou súťažou pripoj Twitch znova.",
   "live.chatOff.text":
     "Prevzatie cez chat nie je dostupné: Rafflink teraz nevie čítať tvoj chat, takže víťazi výhru nemôžu prevziať napísaním doň. Keď ti víťaz povie, že je tu, stlač pri jeho mene Označiť ako prevzaté.",
   "live.open.title": "Zápis je otvorený",
@@ -898,7 +900,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.autoEntry.legend": "Automatické zapojenie",
   "wizard.subEntry.label": "Zapojiť nových odberateľov",
   "wizard.subEntry.help":
-    "Každý, kto si počas otvoreného zapájania predplatí kanál, predĺži predplatné alebo dostane darovaný sub, sa zapojí raz, s tiketmi svojho tieru. Zapojenie cez stránku alebo chat ostáva zadarmo, takže nikto nemusí platiť.",
+    "Každý, kto si počas otvoreného zapájania predplatí kanál, dostane darovaný sub alebo zdieľa predĺženie v chate, sa zapojí raz, s tiketmi svojho tieru. Tiché automatické predĺženie nezapojí nikoho: Twitch oznámi len predĺženie, ktoré divák zdieľa. Zapojenie cez stránku alebo chat ostáva zadarmo, takže nikto nemusí platiť.",
   "wizard.points.legend": "Odmena za body kanála",
   "wizard.points.help":
     "Diváci, ktorí túto odmenu uplatnia počas otvoreného zapájania, sa zapoja raz, ako pri každom inom zapojení. Uplatnenie nedáva tikety navyše ani lepšiu šancu na výhru.",

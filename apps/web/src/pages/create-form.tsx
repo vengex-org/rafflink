@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { Link, Navigate, useLocation, useSearchParams } from "react-router"
+import { channelEntryVias } from "@rafflink/core/domain/rules"
 import { createGiveaway, type CreateResult } from "../api/client.ts"
 import {
   ArrowLeftIcon,
@@ -20,6 +21,7 @@ import { errorClass } from "@rafflink/core/lib/error-class"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
   fitValues,
+  missingEntryScopes,
   stepIssue,
   stepOfField,
   toBody,
@@ -35,6 +37,8 @@ const saveAfterMs = 400
 
 const stepNames = ["wizard.step.basics", "wizard.step.rules", "wizard.step.review"] as const
 
+// Sub or points entry is on and Twitch has not granted its scopes: the reconnect note sits next to the field.
+const reconnectIssue: Issue = { field: "subEntry", message: "issue.reconnect" }
 /**
  * Creates a giveaway in three steps; each step is checked before the next, and the server's complaint sends the streamer back to its step.
  * The step is the `?step=` of the address: Next and Back add a history entry, so the browser's back button walks the steps.
@@ -64,7 +68,10 @@ export function CreateForm({
   const [id] = useState(() => saved?.id ?? crypto.randomUUID())
   const [typed, setValues] = useState(saved?.values ?? seed)
   // Until the session answers the wizard offers every rule; the server refuses one the platform cannot check.
-  const capabilities = useStreamerSession().streamer?.capabilities ?? everyCapability
+  const { streamer } = useStreamerSession()
+  const capabilities = streamer?.capabilities ?? everyCapability
+  // Signed out, the page shows the sign-in instead of the form, so nothing is missing yet.
+  const readyEntryWays = streamer?.readyEntryWays ?? channelEntryVias
   const values = fitValues(typed, capabilities)
   const [furthest, setFurthest] = useState<Step>(saved?.furthest ?? 1)
   const wanted = query.get("step")
@@ -114,6 +121,11 @@ export function CreateForm({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    if (step !== 1 && missingEntryScopes(values, readyEntryWays).length > 0) {
+      setIssue(reconnectIssue)
+      if (step === 3) showStep(2, "replace")
+      return
+    }
     if (step !== 3) {
       const problem = stepIssue(step, values, Date.now())
       setIssue(problem)
@@ -146,6 +158,10 @@ export function CreateForm({
           return
         case "not-approved":
           onNotApproved()
+          return
+        case "reconnect":
+          setIssue(reconnectIssue)
+          showStep(2, "replace")
           return
       }
     } catch (error) {

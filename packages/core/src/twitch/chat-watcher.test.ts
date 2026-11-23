@@ -177,10 +177,13 @@ class Subscriptions {
   readonly sessions: string[] = []
   readonly topics: WatchTopics[] = []
   refusal: Error | null = null
-  subscribe = async (sessionId: string, topics: WatchTopics): Promise<void> => {
+  /** What a session's sub and points subscriptions answer while chat holds; null when they hold too. */
+  channelRefusal: Error | null = null
+  subscribe = async (sessionId: string, topics: WatchTopics): Promise<Error | null> => {
     this.sessions.push(sessionId)
     this.topics.push(topics)
     if (this.refusal !== null) throw this.refusal
+    return this.channelRefusal
   }
 }
 
@@ -191,6 +194,7 @@ function watcherUnderTest(overrides: Readonly<Record<string, string>> = {}) {
   const subscriptions = new Subscriptions()
   const messages: ChatMessage[] = []
   const channelEntries: ChannelEntryEvent[] = []
+  const channelEntryRefusals: unknown[] = []
   const unavailable: unknown[] = []
   const schedules = { count: 0 }
   const topics: { current: WatchTopics } = {
@@ -203,6 +207,7 @@ function watcherUnderTest(overrides: Readonly<Record<string, string>> = {}) {
     config,
     onMessage: (message) => messages.push(message),
     onChannelEntry: (event) => channelEntries.push(event),
+    onChannelEntryUnavailable: (cause) => channelEntryRefusals.push(cause),
     topics: () => topics.current,
     onUnavailable: (cause) => unavailable.push(cause),
     onSchedule: () => void (schedules.count += 1),
@@ -214,6 +219,7 @@ function watcherUnderTest(overrides: Readonly<Record<string, string>> = {}) {
     subscriptions,
     messages,
     channelEntries,
+    channelEntryRefusals,
     topics,
     unavailable,
     schedules,
@@ -552,6 +558,21 @@ describe("ChatWatcher channel events", () => {
     ])
     socket?.receive(subscription("10", "Prime"))
     expect(socket?.closed).toBe(true)
+  })
+
+  it("keeps the watch live for chat and reports a refused sub or points subscription", async () => {
+    const { watcher, connector, subscriptions, channelEntryRefusals, unavailable, messages } =
+      watcherUnderTest()
+    const refusal = new Error("missing scope")
+    subscriptions.channelRefusal = refusal
+    watcher.open()
+    connector.sockets[0]?.receive(welcome("session-1"))
+    await flush()
+    connector.sockets[0]?.receive(chat("42", "!enter"))
+
+    expect(channelEntryRefusals).toEqual([refusal])
+    expect(unavailable).toEqual([])
+    expect(messages).toEqual([chatMessage("42", "!enter")])
   })
 
   it("gives up when Twitch revokes a sub subscription", async () => {
@@ -1912,6 +1933,50 @@ describe("sub and points entry", () => {
       subscriptions: false,
       pointsRewardId: null,
     })
+  })
+
+  it("keeps chat entry when Twitch refuses the sub and points subscriptions, and asks only for chat from then on", async () => {
+    const context = roomUnderTest({
+      rules: { chatKeyword: "!enter", subEntry: true, pointsReward: reward },
+      env: { LIVE_INTERVAL_MS: "1" },
+    })
+    spyOn(console, "warn").mockImplementation(() => {})
+    context.subscriptions.channelRefusal = new Error("missing scope")
+    const socket = context.connector.sockets[0]
+    socket?.receive(welcome("session-1"))
+    await flush()
+    context.clock.advance(1)
+    socket?.receive(chat("42", "!enter"))
+    context.clock.advance(1)
+    socket?.receive(subscription("43", "1000"))
+
+    expect(context.room.summary()).toMatchObject({ channelEntryOff: true, chatEntryOff: false })
+    expect(
+      context.room.onAlarm().chatEntrants?.chatters.map((chatter) => chatter.platformUserId),
+    ).toEqual(["42"])
+    socket?.fail(new Error("dropped"))
+    context.clock.advance(2_000)
+    context.room.onAlarm()
+    context.connector.sockets[1]?.receive(welcome("session-2"))
+    await flush()
+    expect(context.subscriptions.topics.at(-1)).toEqual({
+      chat: true,
+      subscriptions: false,
+      pointsRewardId: null,
+    })
+  })
+
+  it("reads the tiers of the oldest redeemers in the last read after the close", async () => {
+    const { room, clock, send } = await channelEntryRoom()
+    send(redemption("42", "reward-1"))
+    send(subscription("43", "1000"))
+    clock.advance(1)
+    room.close(null)
+
+    expect(room.onAlarm().chatEntrants?.chatters).toEqual([
+      { platformUserId: "42", followerCheck: false, tierCheck: true },
+      { platformUserId: "43", followerCheck: false, tierCheck: false },
+    ])
   })
 
   it("reports sub and points entry off when the watch gives up while entries are open", async () => {
