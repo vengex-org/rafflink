@@ -6,7 +6,7 @@ afterEach(() => {
   spyOn(console, "warn").mockRestore()
 })
 
-const drawn: RoomMirror = { status: "drawn", entrantCount: 3, winners: 2 }
+const drawn: RoomMirror = { status: "drawn", entrantCount: 3, winners: 2, claimed: 1, delivered: 0 }
 
 function text(mirror: RoomMirror): string {
   return `${mirror.status} ${mirror.entrantCount} ${mirror.winners}`

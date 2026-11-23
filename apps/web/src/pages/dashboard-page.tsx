@@ -471,6 +471,14 @@ function GiveawayItem({
           date: i18n.date(giveaway.createdAt),
         })}
       </p>
+      {giveaway.delivery === null || giveaway.delivery.claimed === 0 ? null : (
+        <p className="muted giveaway-meta">
+          {t("dash.delivered", {
+            delivered: i18n.number(giveaway.delivery.delivered),
+            claimed: i18n.number(giveaway.delivery.claimed),
+          })}
+        </p>
+      )}
       <div className="actions">
         <Link className={pinned ? "button" : "button text"} to={livePath(giveaway.id)}>
           <ActivityIcon />

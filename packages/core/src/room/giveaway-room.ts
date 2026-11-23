@@ -246,12 +246,16 @@ export type ClaimOutcome =
   | { readonly kind: "rerolled" }
   | { readonly kind: "not-a-winner" }
 
-/** What the account store keeps of the room: the status, and the counts the public history lists without waking the room. */
+/** What the account store keeps of the room: the status, and the counts the public history and the dashboard list without waking the room. */
 export interface RoomMirror {
   readonly status: RoomStatus
   readonly entrantCount: number
   /** The picks that were not rerolled. */
   readonly winners: number
+  /** The picks whose winner claimed. */
+  readonly claimed: number
+  /** The claimed picks whose prize the streamer marked delivered. */
+  readonly delivered: number
 }
 
 /** What the caller of {@link GiveawayRoom.onAlarm} still has to do, because it needs a port the room lacks. */
@@ -753,7 +757,7 @@ export class GiveawayRoom {
   /** Stops entries. Idempotent: closing a room that is not open reports its status. */
   close(by: Actor | null): CloseOutcome {
     if (!this.closeOpenRoom(by)) return { kind: "not-open", status: this.readState().status }
-    this.mirrorRetryAt = this.clock.now() + this.config.mirrorRetrySeconds * 1000
+    this.scheduleMirrorRetry(this.clock.now())
     this.afterOutcomeWrite()
     return { kind: "closed" }
   }
@@ -769,7 +773,7 @@ export class GiveawayRoom {
       return true
     })
     if (!closed) return { kind: "not-open", status: this.readState().status }
-    this.mirrorRetryAt = this.clock.now() + this.config.mirrorRetrySeconds * 1000
+    this.scheduleMirrorRetry(this.clock.now())
     this.afterOutcomeWrite()
     return { kind: "requested" }
   }
@@ -813,7 +817,7 @@ export class GiveawayRoom {
       ])
     }
     const mirrorDue = state.mirrorPending && now >= (this.mirrorRetryAt ?? now)
-    if (mirrorDue) this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+    if (mirrorDue) this.scheduleMirrorRetry(now)
     const chatEntrants = this.chatEntrantsDue(state, now)
     this.guarded("chat", () => {
       this.syncChat()
@@ -969,10 +973,13 @@ export class GiveawayRoom {
   /** What the account store should hold of the room now. */
   mirrorState(): RoomMirror {
     const state = this.readState()
+    const draws = this.readDraws()
     return {
       status: state.status,
       entrantCount: state.entrantCount,
-      winners: this.readDraws().filter((draw) => !draw.rerolled).length,
+      winners: draws.filter((draw) => !draw.rerolled).length,
+      claimed: draws.filter((draw) => draw.claim.state === "claimed").length,
+      delivered: draws.filter((draw) => draw.deliveredAt !== null).length,
     }
   }
 
@@ -983,6 +990,8 @@ export class GiveawayRoom {
       current.status === mirrored.status
       && current.entrantCount === mirrored.entrantCount
       && current.winners === mirrored.winners
+      && current.claimed === mirrored.claimed
+      && current.delivered === mirrored.delivered
     ) {
       this.sql.exec("UPDATE room_state SET mirror_pending = 0 WHERE id = 1", [])
     }
@@ -1109,7 +1118,7 @@ export class GiveawayRoom {
       return { kind: "drawn", winners }
     })
     if (flipped) {
-      this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+      this.scheduleMirrorRetry(now)
       this.afterOutcomeWrite()
     }
     return outcome
@@ -1134,14 +1143,12 @@ export class GiveawayRoom {
       }
       for (const winner of winners) this.insertPick(winner, now, claimSeconds, by)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
-      this.sql.exec(
-        "UPDATE room_state SET chat_unavailable = 0, mirror_pending = 1 WHERE id = 1",
-        [],
-      )
+      this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
+      this.sql.exec(markMirrorPendingSql, [])
       return { kind: "drawn", winners }
     })
     if (outcome.kind === "drawn") {
-      this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+      this.scheduleMirrorRetry(now)
       this.afterOutcomeWrite()
     }
     return outcome
@@ -1177,14 +1184,12 @@ export class GiveawayRoom {
       if (marked.length === 0) return rerollRefusal(this.readDraw(n)) ?? { kind: "unknown-pick" }
       this.insertPick(winner, now, state.claimSeconds, by)
       // A new waiting winner gets a fresh chat watch even when the last one gave up.
-      this.sql.exec(
-        "UPDATE room_state SET chat_unavailable = 0, mirror_pending = 1 WHERE id = 1",
-        [],
-      )
+      this.sql.exec("UPDATE room_state SET chat_unavailable = 0 WHERE id = 1", [])
+      this.sql.exec(markMirrorPendingSql, [])
       return { kind: "rerolled", replaced: n, winner }
     })
     if (outcome.kind === "rerolled") {
-      this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+      this.scheduleMirrorRetry(now)
       this.dropChatOf(draws.find((draw) => draw.n === n)?.platformUserId)
       this.afterOutcomeWrite()
     }
@@ -1198,14 +1203,19 @@ export class GiveawayRoom {
   claim(n: number, winner: Identity, via: ClaimedVia, by: Actor | null): ClaimOutcome {
     const now = this.clock.now()
     const markedBy = via === "manual" ? by : null
-    const claimed = this.sql.exec(
-      `UPDATE draws SET claimed_at = ?, claimed_via = ?, claim_marked_by = ?
-       WHERE n = ? AND platform = ? AND platform_user_id = ?
-         AND claimed_at IS NULL AND rerolled = 0 AND (? = 'manual' OR claim_until >= ?)
-       RETURNING n`,
-      [now, via, markedBy, n, winner.platform, winner.platformUserId, via, now],
-    )
+    const claimed = this.sql.transaction(() => {
+      const rows = this.sql.exec(
+        `UPDATE draws SET claimed_at = ?, claimed_via = ?, claim_marked_by = ?
+         WHERE n = ? AND platform = ? AND platform_user_id = ?
+           AND claimed_at IS NULL AND rerolled = 0 AND (? = 'manual' OR claim_until >= ?)
+         RETURNING n`,
+        [now, via, markedBy, n, winner.platform, winner.platformUserId, via, now],
+      )
+      if (rows.length === 1) this.sql.exec(markMirrorPendingSql, [])
+      return rows
+    })
     if (claimed.length === 1) {
+      this.scheduleMirrorRetry(now)
       this.afterOutcomeWrite()
       return { kind: "claimed" }
     }
@@ -1304,13 +1314,17 @@ export class GiveawayRoom {
       )
       if (marked.length === 1) {
         this.sql.exec("DELETE FROM winner_answers WHERE n = ?", [n])
+        this.sql.exec(markMirrorPendingSql, [])
         return { kind: "delivered" }
       }
       const draw = this.readDraw(n)
       if (draw === null) return { kind: "unknown-pick" }
       return draw.deliveredAt === null ? { kind: "not-claimed" } : { kind: "already-delivered" }
     })
-    if (outcome.kind === "delivered") this.guarded("alarm", () => this.rearm())
+    if (outcome.kind === "delivered") {
+      this.scheduleMirrorRetry(now)
+      this.guarded("alarm", () => this.rearm())
+    }
     return outcome
   }
 
@@ -1692,6 +1706,11 @@ export class GiveawayRoom {
   private retentionDeadline(state: RoomState): Instant | null {
     if (state.closedAt === null || this.sql.exec(retainedDataSql, []).length === 0) return null
     return state.closedAt + this.config.entryRetentionSeconds * 1000
+  }
+
+  // The route mirrors at once; the alarm retries only after this delay, so the two do not race.
+  private scheduleMirrorRetry(now: Instant): void {
+    this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
   }
 
   // A write the viewers' pages show: the same effects as {@link afterWrite}, plus the viewers' push.
@@ -2109,6 +2128,9 @@ const drawLagMs = 500
 
 // What a removed winner is called from then on, in every language; the privacy page quotes the word.
 const removedName = "removed"
+
+// A new pick, a reroll, a claim or a delivery changes the counts the account store mirrors.
+const markMirrorPendingSql = "UPDATE room_state SET mirror_pending = 1 WHERE id = 1"
 
 // 128 bits, enough that a published leaf cannot be matched to an id by trying ids.
 const saltBytes = 16

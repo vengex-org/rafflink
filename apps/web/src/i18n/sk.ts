@@ -556,6 +556,7 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "dash.empty.button": "Vytvoriť súťaž",
   "dash.prize": "Cena: {prize}",
   "dash.codeCreated": "Kód {code}, vytvorená {date}",
+  "dash.delivered": "Doručené: {delivered} z {claimed}",
   "dash.linkObs": "Odkaz a prekrytie pre OBS",
   "dash.duplicate": "Duplikovať",
   "dash.duplicate.label": "Duplikovať {name}",

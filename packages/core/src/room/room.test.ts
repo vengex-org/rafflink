@@ -1271,7 +1271,22 @@ describe("GiveawayRoom alarm", () => {
     await room.draw(1, null)
     await room.reroll(0, null)
 
-    expect(room.mirrorState()).toEqual({ status: "drawn", entrantCount: 3, winners: 2 })
+    expect(room.mirrorState()).toEqual({
+      status: "drawn",
+      entrantCount: 3,
+      winners: 2,
+      claimed: 0,
+      delivered: 0,
+    })
+  })
+
+  it("mirrors the claimed picks and the delivered prizes", async () => {
+    const { room, winner } = await drawnRoom()
+    await room.draw(1, null)
+    room.claim(0, winner, "rafflink", null)
+    room.markDelivered(0)
+
+    expect(room.mirrorState()).toMatchObject({ winners: 2, claimed: 1, delivered: 1 })
   })
 
   it("keeps newer counts pending when older ones were mirrored", async () => {
@@ -1285,17 +1300,23 @@ describe("GiveawayRoom alarm", () => {
     expect(room.onAlarm().mirrorDue).toBe(true)
   })
 
-  for (const [name, change] of [
-    ["a reroll", (room: GiveawayRoom) => room.reroll(0, null)],
-    ["a later draw", (room: GiveawayRoom) => room.draw(1, null)],
+  type Drawn = Awaited<ReturnType<typeof drawnRoom>>
+  const claimFirst = ({ room, winner }: Drawn) => room.claim(0, winner, "rafflink", null)
+  for (const [name, before, change] of [
+    ["a reroll", null, ({ room }: Drawn) => room.reroll(0, null)],
+    ["a later draw", null, ({ room }: Drawn) => room.draw(1, null)],
+    ["a claim", null, claimFirst],
+    ["a delivery", claimFirst, ({ room }: Drawn) => room.markDelivered(0)],
   ] as const) {
     it(`asks for a mirror after ${name} in a drawn room, until marked`, async () => {
-      const { room, clock } = await drawnRoom()
+      const context = await drawnRoom()
+      const { room, clock } = context
+      before?.(context)
       room.markMirrored(room.mirrorState())
       clock.advance(30_000)
       expect(room.onAlarm().mirrorDue).toBe(false)
 
-      await change(room)
+      await change(context)
       clock.advance(30_000)
       const due = room.onAlarm().mirrorDue
       room.markMirrored(room.mirrorState())

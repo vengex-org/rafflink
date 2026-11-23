@@ -1200,7 +1200,12 @@ function parseDashboardGiveaway(source: Json): DashboardGiveaway {
     overlayToken: text(source, "overlayToken"),
     createdAt: num(source, "createdAt"),
     hiddenFromHistory: bool(source, "hiddenFromHistory"),
+    delivery: source.delivery === null ? null : parseDelivery(child(source, "delivery")),
   }
+}
+
+function parseDelivery(source: Json): NonNullable<DashboardGiveaway["delivery"]> {
+  return { claimed: num(source, "claimed"), delivered: num(source, "delivered") }
 }
 
 /** A message of the live socket: the snapshot, and after a write the entrants added since the last push. */

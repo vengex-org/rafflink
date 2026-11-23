@@ -1,6 +1,11 @@
 import type { Context } from "hono"
 import { toHex } from "../lib/encoding.ts"
-import type { Giveaway, OwnedOverlayThemes, StreamerBlock } from "../accounts/account-store.ts"
+import type {
+  Giveaway,
+  OwnedOverlayThemes,
+  PrizeDelivery,
+  StreamerBlock,
+} from "../accounts/account-store.ts"
 import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import type { GiveawayRules } from "../domain/rules.ts"
 import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/plan-limits.ts"
@@ -167,6 +172,8 @@ export interface DashboardGiveaway {
   readonly createdAt: Instant
   /** The streamer keeps it off their public history page. */
   readonly hiddenFromHistory: boolean
+  /** Claimed picks and delivered prizes as the room last mirrored them; null until it does. */
+  readonly delivery: PrizeDelivery | null
 }
 
 /**
@@ -354,6 +361,7 @@ export function dashboardGiveaway(giveaway: Giveaway): DashboardGiveaway {
     overlayToken: giveaway.overlayToken,
     createdAt: giveaway.createdAt,
     hiddenFromHistory: giveaway.hiddenFromHistory,
+    delivery: giveaway.delivery,
   }
 }
 

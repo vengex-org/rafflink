@@ -9,6 +9,7 @@ import type {
   SaveAnswersOutcome,
   WinnerPick,
 } from "../room/giveaway-room.ts"
+import { mirrorStatus } from "../room/mirror-status.ts"
 import type { PollOutcome } from "../queue/token-queue.ts"
 import type { CallbackOutcome } from "../viewer/outcome.ts"
 import type { AppDeps } from "./deps.ts"
@@ -192,14 +193,16 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const pick = await pickOf(deps, giveaway, session)
     if (pick === undefined) return c.json({ kind: "not-a-winner" }, claimStatus["not-a-winner"])
-    const outcome = await deps.rooms
-      .get(giveaway.id)
-      .claim(
-        pick.n,
-        { platform: pick.platform, platformUserId: pick.platformUserId },
-        "rafflink",
-        null,
-      )
+    const room = deps.rooms.get(giveaway.id)
+    const outcome = await room.claim(
+      pick.n,
+      { platform: pick.platform, platformUserId: pick.platformUserId },
+      "rafflink",
+      null,
+    )
+    if (outcome.kind === "claimed") {
+      await mirrorStatus(room, deps.accounts, giveaway.id, deps.clock.now())
+    }
     return c.json({ kind: outcome.kind }, claimStatus[outcome.kind])
   })
 

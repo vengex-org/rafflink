@@ -218,8 +218,8 @@ describe("AccountStore public history", () => {
     await store.setPublicHistory("s1", true)
     await store.insertGiveaway(giveaway())
     await store.insertGiveaway(giveaway({ id: "g2", code: "FGHJK" }))
-    await store.setStatus("g1", { status: "drawn", entrantCount: 4, winners: 1 }, 7000)
-    await store.setStatus("g1", { status: "drawn", entrantCount: 4, winners: 2 }, 8000)
+    await store.setStatus("g1", { ...mirrored("drawn"), entrantCount: 4, winners: 1 }, 7000)
+    await store.setStatus("g1", { ...mirrored("drawn"), entrantCount: 4, winners: 2 }, 8000)
     // A drawn row whose counts no mirror has written yet.
     db.run("UPDATE giveaways SET status = 'drawn', closed_at = 9000 WHERE id = 'g2'")
 
@@ -235,6 +235,41 @@ describe("AccountStore public history", () => {
         winners: 2,
       },
     ])
+  })
+
+  it("lists the delivery counts of the latest mirror, and none before a mirror wrote them", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    await store.insertGiveaway(giveaway({ id: "g2", code: "FGHJK" }))
+    await store.setStatus("g1", { ...mirrored("drawn"), claimed: 1, delivered: 0 }, 7000)
+    await store.setStatus("g1", { ...mirrored("drawn"), claimed: 2, delivered: 1 }, 8000)
+
+    const listed = await store.listGiveaways("s1")
+
+    expect(listed.map(({ id, delivery }) => [id, delivery])).toEqual([
+      ["g2", null],
+      ["g1", { claimed: 2, delivered: 1 }],
+    ])
+  })
+
+  it("keeps the newer delivery counts when an older mirror arrives after them", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    await store.setStatus("g1", { ...mirrored("drawn"), claimed: 2, delivered: 1 }, 7000)
+    await store.setStatus("g1", { ...mirrored("drawn"), claimed: 1, delivered: 0 }, 8000)
+
+    expect((await store.findGiveawayById("g1"))?.delivery).toEqual({ claimed: 2, delivered: 1 })
+  })
+
+  it("refuses more delivered prizes than claimed ones, and one count without the other", async () => {
+    const { db, store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+
+    expect(() =>
+      db.run("UPDATE giveaways SET claimed = 1, delivered = 2 WHERE id = 'g1'"),
+    ).toThrow()
+    expect(() => db.run("UPDATE giveaways SET claimed = 1 WHERE id = 'g1'")).toThrow()
+    expect(() => db.run("UPDATE giveaways SET delivered = 0 WHERE id = 'g1'")).toThrow()
   })
 
   it("has no page for an unapproved streamer when only approved ones have one", async () => {
@@ -409,6 +444,7 @@ describe("AccountStore giveaways", () => {
       status: "open",
       blockListVersion: 0,
       hiddenFromHistory: false,
+      delivery: null,
     })
   })
 
