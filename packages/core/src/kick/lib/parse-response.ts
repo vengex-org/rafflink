@@ -57,6 +57,27 @@ export function parseSubscription(body: unknown): Parsed<SubscriptionOutcome, "m
   return typeof error === "string" ? { ok: true, value: { ok: false, error } } : malformed
 }
 
+/** One subscription of `GET /public/v1/events/subscriptions`. */
+export interface ListedSubscription {
+  readonly id: string
+  readonly event: string
+}
+
+export function parseSubscriptionList(
+  body: unknown,
+): Parsed<readonly ListedSubscription[], "malformed"> {
+  const data = dataArray(body)
+  if (!data.ok) return data
+  const subscriptions: ListedSubscription[] = []
+  for (const item of data.value) {
+    if (!isRecord(item) || typeof item.id !== "string" || typeof item.event !== "string") {
+      return malformed
+    }
+    subscriptions.push({ id: item.id, event: item.event })
+  }
+  return { ok: true, value: subscriptions }
+}
+
 /** The PEM text of `GET /public/v1/public-key`. */
 export function parsePublicKey(body: unknown): Parsed<string, "malformed"> {
   if (!isRecord(body) || !isRecord(body.data)) return malformed

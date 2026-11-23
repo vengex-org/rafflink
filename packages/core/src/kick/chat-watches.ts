@@ -7,6 +7,12 @@ export class KickChatRowError extends Error {
   }
 }
 
+/** The rooms that read one sender's messages in one channel, and whether any room watches the channel. */
+export interface ChannelReaders {
+  readonly watched: boolean
+  readonly readers: readonly string[]
+}
+
 /**
  * The Kick chat tables of the account store: which rooms watch which channel and whose messages each
  * reads, the one subscription per channel, and the ids of forwarded webhook messages.
@@ -38,14 +44,21 @@ export class KickChatWatches {
     return row === undefined ? null : text(row, "broadcaster_id")
   }
 
-  /** The giveaways watching the channel that read the sender's messages. */
-  async readersOf(broadcasterId: string, senderId: string): Promise<readonly string[]> {
+  /**
+   * The giveaways watching the channel that read the sender's messages; `watched` is false when no room
+   * watches the channel at all, so its subscription is left over.
+   */
+  async readersOf(broadcasterId: string, senderId: string): Promise<ChannelReaders> {
     const rows = await this.sql.all(
-      `SELECT giveaway_id FROM kick_chat_watches WHERE broadcaster_id = ?
-        AND (chatter_ids IS NULL OR EXISTS (SELECT 1 FROM json_each(chatter_ids) WHERE value = ?))`,
-      [broadcasterId, senderId],
+      `SELECT giveaway_id,
+          chatter_ids IS NULL OR EXISTS (SELECT 1 FROM json_each(chatter_ids) WHERE value = ?) AS reads
+        FROM kick_chat_watches WHERE broadcaster_id = ?`,
+      [senderId, broadcasterId],
     )
-    return rows.map((row) => text(row, "giveaway_id"))
+    return {
+      watched: rows.length > 0,
+      readers: rows.filter((row) => row.reads === 1).map((row) => text(row, "giveaway_id")),
+    }
   }
 
   /** The channel's subscription id, `null` when it has none. */
@@ -71,18 +84,21 @@ export class KickChatWatches {
     return rows.length > 0
   }
 
-  /**
-   * Deletes the channel's subscription row when no room watches the channel any more, in one statement so a
-   * room that starts watching meanwhile keeps it. Returns the deleted subscription id, `null` when kept or absent.
-   */
-  async releaseSubscription(broadcasterId: string): Promise<string | null> {
+  /** The channel's subscription id when no room watches the channel any more; `null` while one does, or without one. */
+  async unwatchedSubscription(broadcasterId: string): Promise<string | null> {
     const [row] = await this.sql.all(
-      `DELETE FROM kick_chat_subscriptions WHERE broadcaster_id = ?
-        AND NOT EXISTS (SELECT 1 FROM kick_chat_watches WHERE broadcaster_id = ?)
-        RETURNING subscription_id`,
+      `SELECT subscription_id FROM kick_chat_subscriptions WHERE broadcaster_id = ?
+        AND NOT EXISTS (SELECT 1 FROM kick_chat_watches WHERE broadcaster_id = ?)`,
       [broadcasterId, broadcasterId],
     )
     return row === undefined ? null : text(row, "subscription_id")
+  }
+
+  /** Deletes the row of a subscription that is gone at Kick; a row with another id is kept. */
+  async forgetSubscription(subscriptionId: string): Promise<void> {
+    await this.sql.run("DELETE FROM kick_chat_subscriptions WHERE subscription_id = ?", [
+      subscriptionId,
+    ])
   }
 
   /**

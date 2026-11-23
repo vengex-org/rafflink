@@ -13,7 +13,7 @@ export interface FakeKickOptions {
 }
 
 export type FailableEndpoint = "token" | "users" | "subscribe" | "unsubscribe" | "public-key"
-export type FailureStatus = 429 | 500 | 503
+export type FailureStatus = 400 | 429 | 500 | 503
 
 export interface Call {
   method: string

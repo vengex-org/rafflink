@@ -5,6 +5,7 @@ export type KickEndpoint =
   | "users"
   | "channels"
   | "subscribe"
+  | "subscriptions"
   | "unsubscribe"
   | "public-key"
 

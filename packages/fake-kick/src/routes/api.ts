@@ -68,7 +68,11 @@ export function apiRoutes(state: FakeState): Hono {
   })
 
   app.get("/events/subscriptions", auth, (c) => {
-    const data = [...state.subscriptions.values()].map((subscription) => ({
+    const broadcasterId = c.req.query("broadcaster_user_id")
+    const listed = [...state.subscriptions.values()].filter(
+      (subscription) => broadcasterId === undefined || subscription.broadcasterId === broadcasterId,
+    )
+    const data = listed.map((subscription) => ({
       id: subscription.id,
       broadcaster_user_id: Number(subscription.broadcasterId),
       event: subscription.event,
@@ -81,8 +85,9 @@ export function apiRoutes(state: FakeState): Hono {
   app.delete("/events/subscriptions", auth, (c) => {
     const failed = scriptedFailure(c, state, "unsubscribe")
     if (failed !== undefined) return failed
-    for (const id of c.req.queries("id") ?? []) state.subscriptions.delete(id)
-    return c.body(null, 204)
+    const ids = c.req.queries("id") ?? []
+    const deleted = ids.filter((id) => state.subscriptions.delete(id))
+    return deleted.length === 0 ? c.json({ message: "Not Found" }, 404) : c.body(null, 204)
   })
 
   return app

@@ -89,9 +89,16 @@ export function kickScenarios(context: ContractContext): void {
   })
 
   scenario(context, "a Kick webhook with a forged body claims nothing", async (world) => {
-    const target = await world.start()
+    const target = await world.start({ KICK_PUBLIC_KEY_REFRESH_SECONDS: "1" })
     const giveaway = await drawnKickGiveaway(world, target)
     await waitForKickSubscription(world)
+    // A valid message reads the key; past the refresh time a failed signature is refused instead of asked again.
+    const warm = await world.kick.fake.control.sendChatMessage(
+      kickUsers.streamer.id,
+      kickUsers.viewer2.id,
+      "hi",
+    )
+    await Bun.sleep(1100)
     const signed = await world.kick.fake.control.chatWebhook(
       kickUsers.streamer.id,
       kickUsers.viewer.id,
@@ -105,7 +112,7 @@ export function kickScenarios(context: ContractContext): void {
       body: signed.body.replace("hello", "claim!"),
     })
 
-    expect(response.status).toBe(401)
+    expect([warm, response.status]).toEqual([204, 401])
     expect((await world.live(giveaway)).winners[0]?.claim.state).toBe("waiting")
   })
 

@@ -9,6 +9,7 @@ import type {
 import type { StreamerAccess } from "../platform/provider.ts"
 import type { Clock, Instant } from "../ports.ts"
 import type { KickChatWatches } from "./chat-watches.ts"
+import { KickInvalid, KickRateLimited } from "./errors.ts"
 import type { KickClient } from "./kick-client.ts"
 
 export type KickChatConfig = Pick<
@@ -18,7 +19,7 @@ export type KickChatConfig = Pick<
 
 export interface KickChatDeps {
   readonly giveawayId: string
-  readonly client: Pick<KickClient, "subscribeChat" | "unsubscribe">
+  readonly client: Pick<KickClient, "subscribeChat" | "chatSubscriptionIds" | "unsubscribe">
   readonly watches: KickChatWatches
   readonly clock: Clock
   readonly config: KickChatConfig
@@ -32,8 +33,9 @@ export function kickChat(deps: KickChatDeps): ChatSourceFactory {
 
 /**
  * Keeps a room's row in the watch table and the channel's chat subscription at Kick. Every change to
- * the table or to Kick runs in order on one chain, so a close never overtakes the open before it. A
- * failed attach is retried at {@link KickChat.wakeAt}; after the last attempt the source gives up.
+ * the table or to Kick runs in order on one chain, so a close never overtakes the open before it, and a
+ * step that fails is logged and does not stop the steps after it. A failed attach is retried at
+ * {@link KickChat.wakeAt}; after the last attempt, or at once when Kick refuses for good, the source gives up.
  */
 export class KickChat implements ChatSource {
   private running = false
@@ -93,7 +95,12 @@ export class KickChat implements ChatSource {
   }
 
   private enqueue(step: () => Promise<void>): void {
-    this.chain = this.chain.then(step)
+    this.chain = this.chain.then(step).catch((error: unknown) => {
+      console.warn("kick chat step failed", {
+        giveawayId: this.deps.giveawayId,
+        errorClass: errorClass(error),
+      })
+    })
   }
 
   private async attach(): Promise<void> {
@@ -102,9 +109,7 @@ export class KickChat implements ChatSource {
       const access = await this.deps.streamerAccess()
       this.channel = access.broadcasterId
       await this.writeWatch()
-      if ((await this.deps.watches.subscriptionOf(access.broadcasterId)) === null) {
-        await this.subscribe(access)
-      }
+      await this.ensureSubscription(access.broadcasterId)
       this.attached = true
     } catch (error) {
       this.attachFailed(error)
@@ -123,25 +128,53 @@ export class KickChat implements ChatSource {
     this.written = key
   }
 
-  // A second room of the channel may subscribe at the same time; the one that stores second deletes its own.
-  private async subscribe(access: StreamerAccess): Promise<void> {
-    const subscriptionId = await this.deps.client.subscribeChat(
-      access.accessToken,
-      access.broadcasterId,
-    )
-    const saved = await this.deps.watches.saveSubscription(
-      access.broadcasterId,
-      subscriptionId,
-      this.deps.clock.now(),
-    )
-    if (!saved) await this.deps.client.unsubscribe(subscriptionId)
+  // A stored subscription Kick no longer lists (it drops one whose webhook failed for a day) is forgotten
+  // and made again. A second room of the channel may subscribe at the same time: the one that stores
+  // second cancels its own, unless Kick answered both with the same subscription.
+  private async ensureSubscription(broadcasterId: string): Promise<void> {
+    const stored = await this.deps.watches.subscriptionOf(broadcasterId)
+    if (stored !== null) {
+      if ((await this.deps.client.chatSubscriptionIds(broadcasterId)).includes(stored)) return
+      await this.deps.watches.forgetSubscription(stored)
+    }
+    const subscriptionId = await this.deps.client.subscribeChat(broadcasterId)
+    let saved: boolean
+    try {
+      saved = await this.deps.watches.saveSubscription(
+        broadcasterId,
+        subscriptionId,
+        this.deps.clock.now(),
+      )
+    } catch (error) {
+      await this.cancel(subscriptionId)
+      throw error
+    }
+    if (!saved && (await this.deps.watches.subscriptionOf(broadcasterId)) !== subscriptionId) {
+      await this.cancel(subscriptionId)
+    }
   }
 
+  // A subscription with no row that this cannot cancel is cancelled by the webhook route, which finds no watch for it.
+  private async cancel(subscriptionId: string): Promise<void> {
+    try {
+      await this.deps.client.unsubscribe(subscriptionId)
+    } catch (error) {
+      console.warn("kick chat unsubscribe failed", {
+        giveawayId: this.deps.giveawayId,
+        errorClass: errorClass(error),
+      })
+    }
+  }
+
+  // A refusal Kick gives for good (4xx other than 429) ends the watch at once; a 429 waits twice as long each time.
   private attachFailed(error: unknown): void {
     if (!this.running) return
     this.attempts += 1
-    if (this.attempts < this.deps.config.kickSubscribeMaxAttempts) {
-      this.retryAt = this.deps.clock.now() + this.deps.config.kickSubscribeRetryDelaySeconds * 1000
+    const permanent = error instanceof KickInvalid
+    if (!permanent && this.attempts < this.deps.config.kickSubscribeMaxAttempts) {
+      const factor = error instanceof KickRateLimited ? 2 ** (this.attempts - 1) : 1
+      this.retryAt =
+        this.deps.clock.now() + this.deps.config.kickSubscribeRetryDelaySeconds * 1000 * factor
       this.listener.onSchedule()
       return
     }
@@ -152,20 +185,15 @@ export class KickChat implements ChatSource {
     this.listener.onUnavailable(error)
   }
 
-  // A failure is logged and goes no further: the room has stopped reading either way, and a watch or a
-  // subscription left behind costs only webhook requests that find no reader.
+  // The row goes only after Kick deleted the subscription, so a failed delete leaves a record the webhook
+  // route can still cancel by.
   private async detach(): Promise<void> {
-    try {
-      const broadcasterId = await this.deps.watches.unwatch(this.deps.giveawayId)
-      if (broadcasterId === null) return
-      const released = await this.deps.watches.releaseSubscription(broadcasterId)
-      if (released !== null) await this.deps.client.unsubscribe(released)
-    } catch (error) {
-      console.warn("kick chat detach failed", {
-        giveawayId: this.deps.giveawayId,
-        errorClass: errorClass(error),
-      })
-    }
+    const broadcasterId = await this.deps.watches.unwatch(this.deps.giveawayId)
+    if (broadcasterId === null) return
+    const subscriptionId = await this.deps.watches.unwatchedSubscription(broadcasterId)
+    if (subscriptionId === null) return
+    await this.deps.client.unsubscribe(subscriptionId)
+    await this.deps.watches.forgetSubscription(subscriptionId)
   }
 }
 

@@ -1,31 +1,37 @@
 import { beforeEach, describe, expect, it, spyOn } from "bun:test"
 import type { SignedWebhook } from "@rafflink/fake-kick"
-import {
-  kickStreamer,
-  kickViewer,
-  kickWorld,
-  userTokens,
-  type KickWorld,
-} from "../../test/kick-fixture.ts"
+import { kickStreamer, kickViewer, kickWorld, type KickWorld } from "../../test/kick-fixture.ts"
 import type { ChatMessage } from "../platform/chat-source.ts"
-import { KickWebhookKey, parseChatEvent, receiveKickWebhook } from "./webhook.ts"
+import {
+  KickOrphanSubscriptions,
+  KickWebhookKey,
+  parseChatEvent,
+  receiveKickWebhook,
+  type KickWebhookDeps,
+} from "./webhook.ts"
 
 const giveawayId = "g1"
 const webhookUrl = "http://localhost/api/kick/webhook"
 
 let world: KickWorld
-let key: KickWebhookKey
+let deps: KickWebhookDeps
 let delivered: { giveawayId: string; message: ChatMessage }[]
 
 beforeEach(async () => {
   spyOn(console, "warn").mockImplementation(() => {})
   spyOn(console, "info").mockImplementation(() => {})
   world = kickWorld({ KICK_PUBLIC_KEY_REFRESH_SECONDS: "60", KICK_WEBHOOK_MAX_AGE_SECONDS: "300" })
-  key = new KickWebhookKey(world.client, world.clock, world.config)
+  deps = {
+    key: new KickWebhookKey(world.client, world.clock, world.config),
+    orphans: new KickOrphanSubscriptions(world.client, world.watches, world.clock, world.config),
+    watches: world.watches,
+    clock: world.clock,
+    config: world.config,
+  }
   delivered = []
   world.fake.control.setWebhookUrl(webhookUrl)
-  const { accessToken } = await userTokens(world, kickStreamer, ["user:read", "events:subscribe"])
-  await world.client.subscribeChat(accessToken, kickStreamer.id)
+  const subscriptionId = await world.client.subscribeChat(kickStreamer.id)
+  await world.watches.saveSubscription(kickStreamer.id, subscriptionId, world.clock.now())
   await world.watches.watch(giveawayId, kickStreamer.id, [kickViewer.id], world.clock.now())
 })
 
@@ -38,7 +44,7 @@ async function webhook(text = "claiming!", sentAt = new Date(world.clock.now()))
 function receive(signed: SignedWebhook, changes: Partial<SignedWebhook> = {}): Promise<Response> {
   const { headers, body } = { ...signed, ...changes }
   return receiveKickWebhook(
-    { key, watches: world.watches, clock: world.clock, config: world.config },
+    deps,
     new Request(webhookUrl, { method: "POST", headers, body }),
     async (id, message) => {
       delivered.push({ giveawayId: id, message })
@@ -48,6 +54,19 @@ function receive(signed: SignedWebhook, changes: Partial<SignedWebhook> = {}): P
 
 function publicKeyReads(): number {
   return world.fake.control.calls.filter((call) => call.path === "/public/v1/public-key").length
+}
+
+function unsubscribeCalls(): number {
+  return world.fake.control.calls.filter(
+    (call) => call.method === "DELETE" && call.path === "/public/v1/events/subscriptions",
+  ).length
+}
+
+/** Reads the key with a valid webhook and lets the refresh time pass, so a failed signature is refused at once. */
+async function warmKey(): Promise<void> {
+  expect((await receive(await webhook("warm"))).status).toBe(204)
+  delivered = []
+  world.clock.advance(60_000)
 }
 
 describe("receiveKickWebhook", () => {
@@ -70,6 +89,7 @@ describe("receiveKickWebhook", () => {
   })
 
   it("refuses a body that was changed after Kick signed it", async () => {
+    await warmKey()
     const signed = await webhook("claiming!")
 
     const response = await receive(signed, { body: signed.body.replace("claiming!", "forged!!!") })
@@ -101,15 +121,65 @@ describe("receiveKickWebhook", () => {
     expect(publicKeyReads()).toBe(2)
   })
 
-  it("does not read the key again sooner than the refresh time after the last read", async () => {
+  it("answers 503 for a failed signature sooner than the refresh time after the last read, so Kick sends it again", async () => {
     expect((await receive(await webhook("first"))).status).toBe(204)
     await world.fake.control.rotateKey()
     world.clock.advance(59_999)
 
     const response = await receive(await webhook("too soon"))
 
-    expect(response.status).toBe(401)
+    expect(response.status).toBe(503)
     expect(publicKeyReads()).toBe(1)
+  })
+
+  it("does not read the key again sooner than the refresh time after a failed read", async () => {
+    world.fake.control.failNext("public-key", 500, 1)
+
+    const failed = await receive(await webhook("first"))
+    const soon = await receive(await webhook("soon"))
+    world.clock.advance(60_000)
+    const later = await receive(await webhook("later"))
+
+    expect([failed.status, soon.status, later.status]).toEqual([503, 503, 204])
+    expect(publicKeyReads()).toBe(2)
+  })
+
+  it("refuses a body larger than 64 KiB before checking it", async () => {
+    const signed = await webhook("x".repeat(70_000))
+
+    const response = await receive(signed)
+
+    expect(response.status).toBe(413)
+    expect(publicKeyReads()).toBe(0)
+  })
+
+  it("cancels the subscription of a channel no room watches, once per retry time", async () => {
+    await world.watches.unwatch(giveawayId)
+    const orphan = await webhook("orphan")
+    const again = await webhook("orphan again")
+
+    const first = await receive(orphan)
+    const second = await receive(again)
+
+    expect([first.status, second.status]).toEqual([204, 204])
+    expect(world.fake.control.subscriptions()).toEqual([])
+    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBeNull()
+    expect(unsubscribeCalls()).toBe(1)
+    expect(delivered).toEqual([])
+  })
+
+  it("keeps the record of an orphan subscription whose cancel failed and tries again after the retry time", async () => {
+    await world.watches.unwatch(giveawayId)
+    world.fake.control.failNext("unsubscribe", 503, 1)
+
+    await receive(await webhook("orphan"))
+    const keptRow = await world.watches.subscriptionOf(kickStreamer.id)
+    world.clock.advance(300_000)
+    await receive(await webhook("orphan again"))
+
+    expect(keptRow).not.toBeNull()
+    expect(world.fake.control.subscriptions()).toEqual([])
+    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBeNull()
   })
 
   it("drops a replay of a message it handed on before", async () => {
@@ -181,7 +251,7 @@ describe("receiveKickWebhook", () => {
     const reached: string[] = []
 
     const response = await receiveKickWebhook(
-      { key, watches: world.watches, clock: world.clock, config: world.config },
+      deps,
       new Request(webhookUrl, { method: "POST", headers: signed.headers, body: signed.body }),
       async (id) => {
         if (id === giveawayId) throw new Error("room down")

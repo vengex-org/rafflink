@@ -47,6 +47,8 @@ export interface FakeKickControl {
   rotateKey(): Promise<void>
   /** The subscriptions that exist now. */
   subscriptions(): readonly Subscription[]
+  /** Deletes every subscription, as Kick does after a webhook kept failing for a day. */
+  dropSubscriptions(): void
   readonly calls: readonly Call[]
 }
 
@@ -112,6 +114,9 @@ export function createFakeKick(options: FakeKickOptions): FakeKick {
       await state.signingKey
     },
     subscriptions: () => [...state.subscriptions.values()],
+    dropSubscriptions() {
+      state.subscriptions.clear()
+    },
     calls: state.calls,
   }
 

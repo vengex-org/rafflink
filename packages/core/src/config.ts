@@ -348,6 +348,12 @@ export const configSchema = {
     "60",
     "Least time between two reads of Kick's webhook public key after a signature fails, so forged webhooks cannot make the Worker fetch the key on every request; starting guess",
   ),
+  kickOrphanRetrySeconds: withDefault(
+    "KICK_ORPHAN_RETRY_SECONDS",
+    int(1),
+    "300",
+    "Least time between two attempts to cancel a Kick chat subscription whose webhooks find no watching giveaway; each attempt is one Kick call, so a busy chat sends at most one per this time; starting guess",
+  ),
   kickSubscribeRetryDelaySeconds: withDefault(
     "KICK_SUBSCRIBE_RETRY_DELAY_SECONDS",
     int(1),
@@ -909,6 +915,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     kickTimeoutMs: read(env, configSchema.kickTimeoutMs),
     kickWebhookMaxAgeSeconds: read(env, configSchema.kickWebhookMaxAgeSeconds),
     kickPublicKeyRefreshSeconds: read(env, configSchema.kickPublicKeyRefreshSeconds),
+    kickOrphanRetrySeconds: read(env, configSchema.kickOrphanRetrySeconds),
     kickSubscribeRetryDelaySeconds: read(env, configSchema.kickSubscribeRetryDelaySeconds),
     kickSubscribeMaxAttempts: read(env, configSchema.kickSubscribeMaxAttempts),
     eventSubUrl: read(env, configSchema.eventSubUrl),

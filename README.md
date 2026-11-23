@@ -206,7 +206,8 @@ What a Kick giveaway can do:
   in the viewer group, and the create form offers only the rules Kick can check. Chat entry with a keyword is
   not available on Kick yet.
 - Rafflink subscribes to the streamer's chat when a winner is drawn and removes the subscription when the
-  claim and reroll time ends. While subscribed, every message in that chat is one request to your server or
+  claim and reroll time ends. A subscription Kick did not delete is cancelled when its next webhook finds no giveaway watching the
+  channel. While subscribed, every message in that chat is one request to your server or
   Worker; only messages from winners reach the giveaway's room. On the Workers Free plan this counts toward the
   100,000 requests a day.
 - Kick signs each webhook. Rafflink checks the signature with Kick's public key, refuses a webhook whose

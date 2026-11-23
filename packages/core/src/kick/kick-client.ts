@@ -8,6 +8,7 @@ import {
   parseChannelIds,
   parsePublicKey,
   parseSubscription,
+  parseSubscriptionList,
   parseUsers,
   type KickUser,
 } from "./lib/parse-response.ts"
@@ -110,15 +111,15 @@ export class KickClient {
   }
 
   /**
-   * Subscribes the app to the chat of the token's own channel; Kick takes the broadcaster from a user token.
-   * Returns the subscription id.
+   * Subscribes the app to the chat of a channel with the app's own token, the same token
+   * {@link unsubscribe} deletes it with. Returns the subscription id.
    */
-  async subscribeChat(accessToken: string, broadcasterId: string): Promise<string> {
+  async subscribeChat(broadcasterId: string): Promise<string> {
     const outcome = await this.api(
       "subscribe",
       "/public/v1/events/subscriptions",
       {},
-      accessToken,
+      await this.appAccessToken(),
       parseSubscription,
       {
         method: "POST",
@@ -134,9 +135,23 @@ export class KickClient {
     return outcome.subscriptionId
   }
 
+  /** The ids of the app's chat subscriptions of a channel, as Kick lists them now. */
+  async chatSubscriptionIds(broadcasterId: string): Promise<readonly string[]> {
+    const subscriptions = await this.api(
+      "subscriptions",
+      "/public/v1/events/subscriptions",
+      { broadcaster_user_id: broadcasterId },
+      await this.appAccessToken(),
+      parseSubscriptionList,
+    )
+    return subscriptions
+      .filter((subscription) => subscription.event === chatMessageEvent.name)
+      .map((subscription) => subscription.id)
+  }
+
   /**
-   * Deletes a subscription with the app's own token, so it works after the streamer's token is gone; Kick
-   * answers 204.
+   * Deletes a subscription with the app's own token, so it works after the streamer's token is gone. Kick
+   * answers 204; a 404 means the subscription is gone already, which is the same outcome.
    */
   async unsubscribe(subscriptionId: string): Promise<void> {
     const url = this.apiUrl("/public/v1/events/subscriptions", { id: [subscriptionId] })
@@ -144,7 +159,7 @@ export class KickClient {
       method: "DELETE",
       headers: { Authorization: `Bearer ${await this.appAccessToken()}` },
     })
-    await this.check("unsubscribe", response)
+    if (response.status !== 404) await this.check("unsubscribe", response)
     await response.body?.cancel()
   }
 

@@ -16,6 +16,9 @@ CREATE TABLE kick_chat_subscriptions (
   created_at INTEGER NOT NULL
 );
 
+-- A subscription that is gone at Kick is forgotten by its id.
+CREATE UNIQUE INDEX kick_chat_subscriptions_by_id ON kick_chat_subscriptions (subscription_id);
+
 -- Ids of the webhook messages forwarded to a room, so a replayed message reaches no room twice. A row older than the timestamp window is deleted, because a replay that old fails the timestamp check.
 CREATE TABLE kick_webhook_messages (
   message_id TEXT PRIMARY KEY,

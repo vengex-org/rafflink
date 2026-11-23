@@ -164,4 +164,78 @@ describe("kickChat", () => {
     expect(unavailable).toEqual([])
     expect(world.fake.control.subscriptions()).toHaveLength(1)
   })
+
+  it("gives up at once when Kick refuses the subscription for good", async () => {
+    world.fake.control.failNext("subscribe", 400, 1)
+    const chat = source("g1")
+
+    chat.open(winners)
+    await settle()
+
+    expect(scheduled).toBe(0)
+    expect(unavailable).toHaveLength(1)
+    expect(watchRows()).toEqual([])
+  })
+
+  it("waits twice as long after each 429", async () => {
+    world = kickWorld({ KICK_SUBSCRIBE_MAX_ATTEMPTS: "3", KICK_SUBSCRIBE_RETRY_DELAY_SECONDS: "5" })
+    world.fake.control.failNext("subscribe", 429, 2)
+    const chat = source("g1")
+    const start = world.clock.now()
+
+    chat.open(winners)
+    await settle()
+    const firstRetry = chat.wakeAt()
+    world.clock.advance(5000)
+    chat.onAlarm()
+    await settle()
+    const secondRetry = chat.wakeAt()
+
+    expect([firstRetry, secondRetry]).toEqual([start + 5000, start + 15_000])
+  })
+
+  it("subscribes again when Kick dropped the stored subscription", async () => {
+    source("g1").open(winners)
+    await settle()
+    world.fake.control.dropSubscriptions()
+
+    source("g2").open(winners)
+    await settle()
+
+    const [live] = world.fake.control.subscriptions()
+    expect(live).toBeDefined()
+    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBe(live?.id ?? "")
+  })
+
+  it("still closes after a failed watch write broke one step of the chain", async () => {
+    const chat = source("g1")
+    chat.open(winners)
+    await settle()
+    const watch = spyOn(world.watches, "watch").mockRejectedValueOnce(new Error("D1 down"))
+
+    chat.open({ kind: "chatters", userIds: [] })
+    await settle()
+    chat.close()
+    await settle()
+
+    expect(watch).toHaveBeenCalledTimes(1)
+    expect(watchRows()).toEqual([])
+    expect(world.fake.control.subscriptions()).toEqual([])
+  })
+
+  it("keeps the subscription's record while Kick does not delete it, so the webhook route can cancel it", async () => {
+    const chat = source("g1")
+    chat.open(winners)
+    await settle()
+    world.fake.control.failNext("unsubscribe", 503, 1)
+
+    chat.close()
+    await settle()
+
+    expect(watchRows()).toEqual([])
+    expect(world.fake.control.subscriptions()).toHaveLength(1)
+    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBe(
+      world.fake.control.subscriptions()[0]?.id ?? "",
+    )
+  })
 })

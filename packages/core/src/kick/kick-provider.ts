@@ -19,7 +19,12 @@ import { KickInvalid, KickRateLimited, KickUnavailable } from "./errors.ts"
 import { kickChat, type KickChatConfig } from "./kick-chat.ts"
 import { KickClient, kickAppOf, type KickClientConfig, type KickFetch } from "./kick-client.ts"
 import type { KickUser } from "./lib/parse-response.ts"
-import { KickWebhookKey, receiveKickWebhook, type KickWebhookConfig } from "./webhook.ts"
+import {
+  KickOrphanSubscriptions,
+  KickWebhookKey,
+  receiveKickWebhook,
+  type KickWebhookConfig,
+} from "./webhook.ts"
 
 export type KickProviderConfig = KickChatConfig & KickWebhookConfig
 
@@ -60,7 +65,7 @@ export function kickPlatform(
 export class KickProvider implements PlatformProvider {
   readonly platform = "kick"
   readonly capabilities = kickCapabilities
-  // `events:subscribe` lets the app subscribe to the streamer's chat with the streamer's token.
+  // The streamer grants `events:subscribe`, so the app reads their chat with their consent, though the app's own token makes the subscription.
   readonly scopes = {
     streamer: ["user:read", "events:subscribe"],
     viewer: ["user:read"],
@@ -68,6 +73,7 @@ export class KickProvider implements PlatformProvider {
   } as const
   readonly chatEntryScopes = [] as const
   private readonly key: KickWebhookKey
+  private readonly orphans: KickOrphanSubscriptions
 
   constructor(
     private readonly client: KickClient,
@@ -76,6 +82,7 @@ export class KickProvider implements PlatformProvider {
     private readonly config: KickProviderConfig,
   ) {
     this.key = new KickWebhookKey(client, clock, config)
+    this.orphans = new KickOrphanSubscriptions(client, watches, clock, config)
   }
 
   authorizeUrl(params: AuthorizeParams): string {
@@ -166,7 +173,13 @@ export class KickProvider implements PlatformProvider {
 
   readonly receiveWebhook = (request: Request, deliver: ChatDelivery): Promise<Response> =>
     receiveKickWebhook(
-      { key: this.key, watches: this.watches, clock: this.clock, config: this.config },
+      {
+        key: this.key,
+        orphans: this.orphans,
+        watches: this.watches,
+        clock: this.clock,
+        config: this.config,
+      },
       request,
       deliver,
     )
