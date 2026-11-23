@@ -1,5 +1,5 @@
 export { Browser } from "./browser.ts"
-export { defineContract } from "./define-contract.ts"
+export { contractParts, defineContract } from "./define-contract.ts"
 export { startFakeTwitch, users, type RunningFakeTwitch } from "./fake-twitch.ts"
 export { openSocket } from "./socket.ts"
 export type { ContractTarget, StartTarget } from "./target.ts"

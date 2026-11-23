@@ -228,7 +228,7 @@ export function kickScenarios(context: ContractContext): void {
         { ...reward, cost: 500, enabled: true },
         { ...otherReward, cost: 100, enabled: true },
       ])
-      const streamer = new Browser(target.url)
+      const streamer = new Browser(target)
       await streamer.signInAs(
         kickUsers.streamer.id,
         "/auth/kick/streamer/start?features=redemptions",

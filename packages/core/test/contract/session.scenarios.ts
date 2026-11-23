@@ -8,7 +8,7 @@ export function sessionScenarios(context: ContractContext): void {
   scenario(context, "a browser without a session sees a null streamer", async (world) => {
     const target = await world.start()
 
-    const response = await new Browser(target.url).request("/api/session")
+    const response = await new Browser(target).request("/api/session")
 
     expect(response.status).toBe(200)
     expect(response.headers.get("cache-control")).toBe("no-store")
@@ -32,7 +32,7 @@ export function sessionScenarios(context: ContractContext): void {
         LEGAL_UPDATED: "2026-02-28",
       })
 
-      const response = await new Browser(target.url).request("/api/session")
+      const response = await new Browser(target).request("/api/session")
 
       expect(await response.json()).toEqual({
         streamer: null,

@@ -299,7 +299,7 @@ async function callbackEntries(
 ): Promise<(string | null)[]> {
   const entries: (string | null)[] = []
   for (const [index, address] of forwardedFor.entries()) {
-    const response = await new Browser(server.url).signInAs(
+    const response = await new Browser({ url: server.url, reusesConnections: true }).signInAs(
       index === 0 ? users.viewer.id : users.viewer2.id,
       `/auth/twitch/viewer/start?giveaway=${code}`,
       twitch.fake.control,
@@ -346,7 +346,7 @@ describe("live pages", () => {
     )
     await waitFor(() => messages.length === 1, 5000, "the first snapshot")
 
-    const viewer = new Browser(server.url)
+    const viewer = new Browser({ url: server.url, reusesConnections: true })
     await viewer.signInAs(
       users.viewer.id,
       `/auth/twitch/viewer/start?giveaway=${code}`,
@@ -432,7 +432,7 @@ function distWithIndex(): string {
 }
 
 async function createGiveaway(server: RunningServer, extra: Record<string, unknown> = {}) {
-  const streamer = new Browser(server.url)
+  const streamer = new Browser({ url: server.url, reusesConnections: true })
   await streamer.signInAs(
     users.streamer.id,
     `/auth/twitch/streamer/start?features=${streamerFeatures.join(",")}`,

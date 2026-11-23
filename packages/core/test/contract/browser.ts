@@ -1,4 +1,5 @@
 import type { FakeTwitchControl } from "@rafflink/fake-twitch"
+import type { ContractTarget } from "./target.ts"
 
 type SignInControl = Pick<FakeTwitchControl, "signInAs">
 
@@ -6,7 +7,13 @@ type SignInControl = Pick<FakeTwitchControl, "signInAs">
 export class Browser {
   private readonly cookies = new Map<string, string>()
 
-  constructor(private readonly base: URL) {}
+  private readonly base: URL
+  private readonly keepalive: boolean
+
+  constructor(target: Pick<ContractTarget, "url" | "reusesConnections">) {
+    this.base = target.url
+    this.keepalive = target.reusesConnections
+  }
 
   async request(path: string, init: RequestInit = {}): Promise<Response> {
     const headers = new Headers(init.headers)
@@ -16,8 +23,7 @@ export class Browser {
       ...init,
       headers,
       redirect: "manual",
-      // A connection that Miniflare's assets router closed is reused by `fetch` and fails with ECONNRESET.
-      keepalive: false,
+      keepalive: this.keepalive,
     })
     for (const setCookie of response.headers.getSetCookie()) this.store(setCookie)
     return response

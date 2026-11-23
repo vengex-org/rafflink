@@ -7,7 +7,7 @@ import { resolveConfig } from "@rafflink/core/config"
 import { openKeyRing } from "@rafflink/core/lib/seal"
 import { systemClock, systemRandom } from "@rafflink/core/lib/system-ports"
 import { BunSqliteAsyncSql } from "@rafflink/core/sqlite-bun"
-import { defineContract } from "@rafflink/core/test/contract"
+import { defineContract, type StartTarget } from "@rafflink/core/test/contract"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import { kickPlatform } from "@rafflink/core/kick/kick-provider"
@@ -15,17 +15,22 @@ import { openDatabase } from "../src/database.ts"
 import { accountsFileName, startServer } from "../src/start-server.ts"
 import { tempDir } from "./fixtures.ts"
 
-let info: ReturnType<typeof spyOn>
+/** Registers contract part `part` against the Bun server, with its startup log muted. */
+export function defineServerContract(part: number): void {
+  let info: ReturnType<typeof spyOn>
 
-beforeEach(() => {
-  info = spyOn(console, "info").mockImplementation(() => {})
-})
+  beforeEach(() => {
+    info = spyOn(console, "info").mockImplementation(() => {})
+  })
 
-afterEach(() => {
-  info.mockRestore()
-})
+  afterEach(() => {
+    info.mockRestore()
+  })
 
-defineContract("bun", "injected-previews", "none", async (env, webDir) => {
+  defineContract("bun", "injected-previews", "none", startTarget, part)
+}
+
+const startTarget: StartTarget = async (env, webDir) => {
   const dir = tempDir()
   const config = resolveConfig({
     ...env,
@@ -52,6 +57,7 @@ defineContract("bun", "injected-previews", "none", async (env, webDir) => {
 
   return {
     url: server.url,
+    reusesConnections: true,
     stop: async () => {
       await server.stop()
       accountsDb.close()
@@ -61,4 +67,4 @@ defineContract("bun", "injected-previews", "none", async (env, webDir) => {
       await validateStreamerTokens(tokenDeps)
     },
   }
-})
+}

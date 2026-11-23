@@ -212,7 +212,7 @@ export function giveawayScenarios(context: ContractContext): void {
       const giveaway = await world.createGiveaway(target)
       const winner = await world.enter(target, giveaway.code, users.viewer.id)
       const loser = await world.enter(target, giveaway.code, users.viewer2.id)
-      const stranger = new Browser(target.url)
+      const stranger = new Browser(target)
       const meOf = async (browser: Browser): Promise<{ kind: string }> => {
         const page: { me: { kind: string } } = await (
           await browser.request(`/api/g/${giveaway.code}`)
