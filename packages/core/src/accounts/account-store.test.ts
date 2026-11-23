@@ -252,6 +252,26 @@ describe("AccountStore public history", () => {
     ])
   })
 
+  it("keeps the newer delivery counts when an older mirror arrives after them", async () => {
+    const { store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+    await store.setStatus("g1", { ...mirrored("drawn"), claimed: 2, delivered: 1 }, 7000)
+    await store.setStatus("g1", { ...mirrored("drawn"), claimed: 1, delivered: 0 }, 8000)
+
+    expect((await store.findGiveawayById("g1"))?.delivery).toEqual({ claimed: 2, delivered: 1 })
+  })
+
+  it("refuses more delivered prizes than claimed ones, and one count without the other", async () => {
+    const { db, store } = await withStreamers()
+    await store.insertGiveaway(giveaway())
+
+    expect(() =>
+      db.run("UPDATE giveaways SET claimed = 1, delivered = 2 WHERE id = 'g1'"),
+    ).toThrow()
+    expect(() => db.run("UPDATE giveaways SET claimed = 1 WHERE id = 'g1'")).toThrow()
+    expect(() => db.run("UPDATE giveaways SET delivered = 0 WHERE id = 'g1'")).toThrow()
+  })
+
   it("has no page for an unapproved streamer when only approved ones have one", async () => {
     const { store } = await withStreamers()
     await store.setPublicHistory("s1", true)

@@ -80,9 +80,13 @@ export const insertGiveawaySql = `INSERT INTO giveaways
   ON CONFLICT (code) DO NOTHING
   RETURNING id`
 
-/** Parameters: status, the close time to keep unless one is stored (NULL for open), entrant count, winners, claimed, delivered, giveaway id. */
-export const setStatusSql =
-  "UPDATE giveaways SET status = ?, closed_at = COALESCE(closed_at, ?), entrant_count = ?, winners = ?, claimed = ?, delivered = ? WHERE id = ?"
+/**
+ * Parameters: status, the close time to keep unless one is stored (NULL for open), entrant count, winners, claimed,
+ * delivered, giveaway id. Claims and deliveries are never undone, so their counts keep the larger value: a stale
+ * mirror that arrives after a newer one does not lower them.
+ */
+export const setStatusSql = `UPDATE giveaways SET status = ?, closed_at = COALESCE(closed_at, ?), entrant_count = ?, winners = ?,
+  claimed = MAX(COALESCE(claimed, 0), ?), delivered = MAX(COALESCE(delivered, 0), ?) WHERE id = ?`
 
 /** Ids of giveaways the room reported as no longer open and the retention sweep has not woken yet, fewest failed sweeps first, then oldest. Parameters: attempts below which a giveaway is tried, how many. */
 export const unarmedRetentionSql =
