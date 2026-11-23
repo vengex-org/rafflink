@@ -161,6 +161,9 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
   async receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
     return (await this.opened).room.receiveChat(...args)
   }
+  async receiveChannelEntries(...args: Parameters<GiveawayRoom["receiveChannelEntries"]>) {
+    return (await this.opened).room.receiveChannelEntries(...args)
+  }
   async liveCounts() {
     const { room } = await this.opened
     return { ...room.liveCounts(), viewers: this.ctx.getWebSockets(viewerTag).length }

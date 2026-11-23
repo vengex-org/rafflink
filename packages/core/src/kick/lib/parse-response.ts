@@ -1,3 +1,4 @@
+import type { PointsReward } from "../../domain/rules.ts"
 import type { Parsed } from "../../lib/parsed.ts"
 
 /** A Kick account as `GET /public/v1/users` answers it. */
@@ -44,17 +45,39 @@ export function parseChannelIds(body: unknown): Parsed<ReadonlyMap<string, strin
   return { ok: true, value: ids }
 }
 
-/** The answer for the one event a subscribe call asks for. */
-export function parseSubscription(body: unknown): Parsed<SubscriptionOutcome, "malformed"> {
+/** The answer for each event a subscribe call asks for, keyed by the event's name. */
+export function parseSubscriptions(
+  body: unknown,
+): Parsed<ReadonlyMap<string, SubscriptionOutcome>, "malformed"> {
   const data = dataArray(body)
   if (!data.ok) return data
-  const [first] = data.value
-  if (!isRecord(first)) return malformed
-  const { subscription_id: subscriptionId, error } = first
-  if (typeof subscriptionId === "string" && subscriptionId !== "") {
-    return { ok: true, value: { ok: true, subscriptionId } }
+  const outcomes = new Map<string, SubscriptionOutcome>()
+  for (const item of data.value) {
+    if (!isRecord(item) || typeof item.name !== "string") return malformed
+    const { subscription_id: subscriptionId, error } = item
+    if (typeof subscriptionId === "string" && subscriptionId !== "") {
+      outcomes.set(item.name, { ok: true, subscriptionId })
+    } else if (typeof error === "string") {
+      outcomes.set(item.name, { ok: false, error })
+    } else {
+      return malformed
+    }
   }
-  return typeof error === "string" ? { ok: true, value: { ok: false, error } } : malformed
+  return { ok: true, value: outcomes }
+}
+
+/** The enabled rewards of `GET /public/v1/channels/rewards`; Kick lists disabled ones too. */
+export function parseRewards(body: unknown): Parsed<readonly PointsReward[], "malformed"> {
+  const data = dataArray(body)
+  if (!data.ok) return data
+  const rewards: PointsReward[] = []
+  for (const item of data.value) {
+    if (!isRecord(item) || typeof item.id !== "string" || typeof item.title !== "string") {
+      return malformed
+    }
+    if (item.is_enabled === true) rewards.push({ id: item.id, title: item.title })
+  }
+  return { ok: true, value: rewards }
 }
 
 /** One subscription of `GET /public/v1/events/subscriptions`. */

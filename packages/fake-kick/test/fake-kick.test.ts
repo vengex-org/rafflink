@@ -120,4 +120,87 @@ describe("fake Kick", () => {
     expect(unknown.status).toBe(400)
     expect(await users.json()).toMatchObject({ data: [{ user_id: 300, name: "Streamer" }] })
   })
+
+  it("lists a channel's rewards only to its own token with channel:rewards:read", async () => {
+    fake.control.setRewards(viewer.id, [{ id: "r1", title: "Enter", cost: 100, enabled: true }])
+    const read = async (scope: string) => {
+      const tokens: { access_token: string } = await (
+        await token(await authorize(scope), verifier)
+      ).json()
+      return fake.app.request("/public/v1/channels/rewards", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      })
+    }
+
+    const without = await read("user:read")
+    const granted = await read("user:read channel:rewards:read")
+
+    expect(without.status).toBe(401)
+    expect(await granted.json()).toMatchObject({
+      data: [{ id: "r1", title: "Enter", cost: 100, is_enabled: true }],
+    })
+  })
+
+  it("answers a refused event with its error and subscribes the others", async () => {
+    const tokens: { access_token: string } = await (
+      await token(await authorize("user:read events:subscribe"), verifier)
+    ).json()
+    fake.control.refuseEvent("channel.reward.redemption.updated", "not allowed")
+
+    const response = await fake.app.request("/public/v1/events/subscriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+      body: JSON.stringify({
+        method: "webhook",
+        events: [
+          { name: "channel.subscription.new", version: 1 },
+          { name: "channel.reward.redemption.updated", version: 1 },
+        ],
+      }),
+    })
+
+    expect(await response.json()).toMatchObject({
+      data: [
+        { name: "channel.subscription.new", error: null },
+        { name: "channel.reward.redemption.updated", subscription_id: null, error: "not allowed" },
+      ],
+    })
+    expect(fake.control.subscriptions().map((subscription) => subscription.event)).toEqual([
+      "channel.subscription.new",
+    ])
+  })
+
+  it("signs gift sub and redemption webhooks of a subscribed channel with their recipients", async () => {
+    const tokens: { access_token: string } = await (
+      await token(await authorize("user:read events:subscribe"), verifier)
+    ).json()
+    fake.control.addUser({ id: "302", name: "Second" })
+    fake.control.setWebhookUrl("http://localhost/api/kick/webhook")
+    await fake.app.request("/public/v1/events/subscriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+      body: JSON.stringify({
+        method: "webhook",
+        events: [
+          { name: "channel.subscription.gifts", version: 1 },
+          { name: "channel.reward.redemption.updated", version: 1 },
+        ],
+      }),
+    })
+
+    const gifts = await fake.control.subscriptionWebhook(viewer.id, "gifts", ["302"])
+    const redemption = await fake.control.redemptionWebhook(viewer.id, "302", "r1", "pending")
+    const renewal = await fake.control.subscriptionWebhook(viewer.id, "renewal", ["302"])
+
+    expect(gifts?.headers["Kick-Event-Type"]).toBe("channel.subscription.gifts")
+    expect(JSON.parse(gifts?.body ?? "{}")).toMatchObject({
+      giftees: [{ user_id: 302, username: "Second" }],
+    })
+    expect(JSON.parse(redemption?.body ?? "{}")).toMatchObject({
+      status: "pending",
+      reward: { id: "r1" },
+      redeemer: { user_id: 302 },
+    })
+    expect(renewal).toBeNull()
+  })
 })

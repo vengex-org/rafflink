@@ -14,7 +14,13 @@ export interface FakeKickOptions {
   userPicker?: boolean
 }
 
-export type FailableEndpoint = "token" | "users" | "subscribe" | "unsubscribe" | "public-key"
+export type FailableEndpoint =
+  | "token"
+  | "users"
+  | "subscribe"
+  | "unsubscribe"
+  | "public-key"
+  | "rewards"
 export type FailureStatus = 400 | 429 | 500 | 503
 
 export interface Call {
@@ -49,6 +55,15 @@ export interface Subscription {
   version: number
 }
 
+/** A channel point reward as `GET /public/v1/channels/rewards` lists it. */
+export interface FakeKickReward {
+  /** A ulid at Kick. */
+  id: string
+  title: string
+  cost: number
+  enabled: boolean
+}
+
 export interface SigningKey {
   privateKey: CryptoKey
   /** The public half as the PEM text `GET /public/v1/public-key` serves. */
@@ -62,6 +77,10 @@ export interface FakeState {
   readonly accessTokens: Map<string, AccessToken>
   readonly refreshTokens: Map<string, RefreshToken>
   readonly subscriptions: Map<string, Subscription>
+  /** Events the subscribe call answers with this error instead of a subscription. */
+  readonly refusedEvents: Map<string, string>
+  /** Each broadcaster's rewards. */
+  readonly rewards: Map<string, FakeKickReward[]>
   readonly failures: Map<FailableEndpoint, FailureStatus[]>
   readonly calls: Call[]
   signingKey: Promise<SigningKey>
@@ -78,6 +97,9 @@ export function createState(options: FakeKickOptions): FakeState {
     accessTokens: new Map(),
     refreshTokens: new Map(),
     subscriptions: new Map(),
+    refusedEvents: new Map(),
+    rewards: new Map(),
+
     failures: new Map(),
     calls: [],
     signingKey: createSigningKey(),

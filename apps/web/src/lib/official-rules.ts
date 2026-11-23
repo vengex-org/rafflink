@@ -1,4 +1,5 @@
 import { supportedGroups, type Group } from "@rafflink/core/domain/groups"
+import { badgesSeen } from "@rafflink/core/domain/rules"
 import type { GiveawayView } from "../api/client.ts"
 import type { I18n } from "../i18n/i18n.tsx"
 import { platformNames } from "./platform-name.ts"
@@ -27,7 +28,7 @@ export function officialRules(
 ): OfficialRules {
   const { t } = i18n
   const { rules, streamerName: name } = giveaway
-  const shown = supportedGroups(giveaway.capabilities)
+  const shown = supportedGroups(giveaway.capabilities, badgesSeen(rules))
   const recentWinners = recentWinnersText(i18n, rules.excludeRecentWinners)
   const lines = [
     t("rules.organizer", { name }),

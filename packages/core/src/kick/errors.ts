@@ -8,6 +8,7 @@ export type KickEndpoint =
   | "subscriptions"
   | "unsubscribe"
   | "public-key"
+  | "rewards"
 
 /** Kick answered 429. */
 export class KickRateLimited extends PlatformRateLimited {

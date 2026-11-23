@@ -2,11 +2,16 @@ import type { ResolvedConfig } from "../config.ts"
 import { fromBase64 } from "../lib/encoding.ts"
 import { errorClass } from "../lib/error-class.ts"
 import { PlatformError } from "../platform/errors.ts"
-import type { ChatMessage, ChatterRoles } from "../platform/chat-source.ts"
-import type { ChatDelivery } from "../platform/provider.ts"
+import type {
+  ChannelEntryEvent,
+  ChannelViewer,
+  ChatMessage,
+  ChatterRoles,
+} from "../platform/chat-source.ts"
+import type { WebhookDelivery } from "../platform/provider.ts"
 import type { Clock, Instant } from "../ports.ts"
-import type { KickChatWatches } from "./chat-watches.ts"
-import { chatMessageEvent, type KickClient } from "./kick-client.ts"
+import type { ChannelReaders, KickChatWatches } from "./chat-watches.ts"
+import { kickEvents, type KickClient, type KickEvent } from "./kick-client.ts"
 import { isRecord, isUserId } from "./lib/parse-response.ts"
 
 export type KickWebhookConfig = Pick<
@@ -17,22 +22,22 @@ export type KickWebhookConfig = Pick<
 export interface KickWebhookDeps {
   readonly key: KickWebhookKey
   readonly orphans: KickOrphanSubscriptions
-  readonly watches: Pick<KickChatWatches, "readersOf" | "firstDelivery">
+  readonly watches: Pick<KickChatWatches, "chatReaders" | "channelEntryReaders" | "firstDelivery">
   readonly clock: Clock
   readonly config: KickWebhookConfig
 }
 
 /**
- * Answers one Kick webhook: checks the signature and the timestamp, then hands a chat message to the rooms
- * that read its sender, unless the same message id was handed on before. A check that fails is a 4xx, so
- * only a forged or broken request fails, except a 503 while Kick's key cannot be read or may have just
- * rotated, which Kick sends again. Kick drops a subscription whose webhook fails for a day. A chat
- * message of a channel no room watches cancels the subscription it came by.
+ * Answers one Kick webhook: checks the signature and the timestamp, then hands a chat message, the
+ * subscriptions or a redemption to the rooms that read them, unless the same message id was handed on
+ * before. A check that fails is a 4xx, so only a forged or broken request fails, except a 503 while
+ * Kick's key cannot be read or may have just rotated, which Kick sends again. Kick drops a subscription
+ * whose webhook fails for a day. An event of a channel no room watches cancels the subscription it came by.
  */
 export async function receiveKickWebhook(
   deps: KickWebhookDeps,
   request: Request,
-  deliver: ChatDelivery,
+  deliver: WebhookDelivery,
 ): Promise<Response> {
   const headers = webhookHeaders(request.headers)
   if (headers === null) return status(400)
@@ -65,22 +70,20 @@ export async function receiveKickWebhook(
     // Kick may have rotated its key since the last read; it sends a webhook again after a 5xx.
     return status(verdict === "key-pending" ? 503 : 401)
   }
-  if (
-    headers.type !== chatMessageEvent.name
-    || headers.version !== String(chatMessageEvent.version)
-  ) {
+  const event = kickEvents.find(
+    (candidate) => candidate.name === headers.type && String(candidate.version) === headers.version,
+  )
+  if (event === undefined) {
     console.info("kick webhook event ignored", { type: headers.type, version: headers.version })
     return status(204)
   }
-  const chat = parseChatEvent(body)
-  if (chat === null) {
-    console.warn("kick chat event malformed", { messageId: headers.messageId })
+  const parsed = parseKickEvent(event, body)
+  if (parsed === null) {
+    console.warn("kick webhook event malformed", { messageId: headers.messageId, type: event.name })
     return status(400)
   }
-  const { watched, readers } = await deps.watches.readersOf(
-    chat.broadcasterId,
-    chat.message.platformUserId,
-  )
+  if (parsed.kind === "ignored") return status(204)
+  const { watched, readers } = await readersOf(deps, parsed)
   if (!watched) {
     await deps.orphans.cancel(headers.subscriptionId)
     return status(204)
@@ -91,17 +94,39 @@ export async function receiveKickWebhook(
     console.info("kick webhook replay dropped", { messageId: headers.messageId })
     return status(204)
   }
-  // Each room gets the message on its own: one that fails must not keep it from the others.
-  const results = await Promise.allSettled(readers.map((id) => deliver(id, chat.message)))
+  // Each room gets the event on its own: one that fails must not keep it from the others.
+  const results = await Promise.allSettled(
+    readers.map((id) =>
+      parsed.kind === "chat"
+        ? deliver.chat(id, parsed.message)
+        : deliver.channelEntries(id, parsed.events),
+    ),
+  )
   results.forEach((result, index) => {
     if (result.status === "rejected") {
-      console.warn("kick chat delivery failed", {
+      console.warn("kick webhook delivery failed", {
         giveawayId: readers[index],
+        type: event.name,
         errorClass: errorClass(result.reason),
       })
     }
   })
   return status(204)
+}
+
+// The events of one webhook are of one channel and one kind, and a redemption's of one reward, so the first tells the readers of all.
+function readersOf(
+  deps: KickWebhookDeps,
+  parsed: ChatEvent | ChannelEntries,
+): Promise<ChannelReaders> {
+  if (parsed.kind === "chat") {
+    return deps.watches.chatReaders(
+      parsed.broadcasterId,
+      parsed.message.platformUserId,
+      parsed.message.text,
+    )
+  }
+  return deps.watches.channelEntryReaders(parsed.broadcasterId, parsed.events[0])
 }
 
 /**
@@ -232,31 +257,102 @@ function webhookHeaders(headers: Headers): WebhookHeaders | null {
 }
 
 interface ChatEvent {
+  readonly kind: "chat"
   readonly broadcasterId: string
   readonly message: ChatMessage
 }
 
-/** A `chat.message.sent` body (version 1); `null` for any other shape. */
-export function parseChatEvent(body: string): ChatEvent | null {
-  let event: unknown
-  try {
-    event = JSON.parse(body)
-  } catch {
+interface ChannelEntries {
+  readonly kind: "channel-entries"
+  readonly broadcasterId: string
+  readonly events: readonly [ChannelEntryEvent, ...ChannelEntryEvent[]]
+}
+
+/** A well-formed event that enters nobody: a redemption the streamer rejected, or a gift with no recipient. */
+interface IgnoredEvent {
+  readonly kind: "ignored"
+}
+
+/**
+ * The body of one of {@link kickEvents} (each version 1); `null` for any other shape. Kick has one
+ * subscriber level, read as tier 1, and names no tier in its events. A gift enters its recipients, not
+ * the gifter. A redemption enters while pending or accepted; one the streamer rejected enters nobody.
+ */
+export function parseKickEvent(
+  event: KickEvent,
+  body: string,
+): ChatEvent | ChannelEntries | IgnoredEvent | null {
+  const json = parseJson(body)
+  if (!isRecord(json) || !isRecord(json.broadcaster) || !isUserId(json.broadcaster.user_id)) {
     return null
   }
-  if (!isRecord(event) || !isRecord(event.broadcaster) || !isRecord(event.sender)) return null
-  const { broadcaster, sender, content } = event
-  if (!isUserId(broadcaster.user_id) || !isUserId(sender.user_id)) return null
-  if (typeof sender.username !== "string" || typeof content !== "string") return null
+  const broadcasterId = String(json.broadcaster.user_id)
+  switch (event.name) {
+    case "chat.message.sent": {
+      const sender = viewerOf(json.sender)
+      if (sender === null || !isRecord(json.sender) || typeof json.content !== "string") return null
+      return {
+        kind: "chat",
+        broadcasterId,
+        message: { ...sender, text: json.content, roles: rolesOf(json.sender.identity) },
+      }
+    }
+    case "channel.subscription.new":
+    case "channel.subscription.renewal":
+      return subscriptions(broadcasterId, [json.subscriber])
+    case "channel.subscription.gifts":
+      return Array.isArray(json.giftees) ? subscriptions(broadcasterId, json.giftees) : null
+    case "channel.reward.redemption.updated": {
+      const redeemer = viewerOf(json.redeemer)
+      const rewardId = isRecord(json.reward) ? json.reward.id : null
+      if (redeemer === null || typeof rewardId !== "string") return null
+      switch (json.status) {
+        case "pending":
+        case "accepted":
+          return {
+            kind: "channel-entries",
+            broadcasterId,
+            events: [{ via: "points", viewer: redeemer, rewardId }],
+          }
+        case "rejected":
+          return { kind: "ignored" }
+        default:
+          return null
+      }
+    }
+  }
+}
+
+function subscriptions(
+  broadcasterId: string,
+  users: readonly unknown[],
+): ChannelEntries | IgnoredEvent | null {
+  const events: ChannelEntryEvent[] = []
+  for (const user of users) {
+    const viewer = viewerOf(user)
+    if (viewer === null) return null
+    events.push({ via: "sub", viewer, subTier: 1 })
+  }
+  const [first, ...rest] = events
+  return first === undefined
+    ? { kind: "ignored" }
+    : { kind: "channel-entries", broadcasterId, events: [first, ...rest] }
+}
+
+function viewerOf(user: unknown): ChannelViewer | null {
+  if (!isRecord(user) || !isUserId(user.user_id) || typeof user.username !== "string") return null
   return {
-    broadcasterId: String(broadcaster.user_id),
-    message: {
-      platformUserId: String(sender.user_id),
-      login: sender.username.toLowerCase(),
-      displayName: sender.username,
-      text: content,
-      roles: rolesOf(sender.identity),
-    },
+    platformUserId: String(user.user_id),
+    login: user.username.toLowerCase(),
+    displayName: user.username,
+  }
+}
+
+function parseJson(body: string): unknown {
+  try {
+    return JSON.parse(body)
+  } catch {
+    return null
   }
 }
 

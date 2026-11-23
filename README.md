@@ -200,8 +200,8 @@ them, streamers and viewers can also sign in with Kick, and a Kick winner can cl
    - **Redirect URLs:** both callback URLs of your installation, with your `PUBLIC_URL` as the origin:
      - `https://rafflink.example.com/auth/kick/streamer`
      - `https://rafflink.example.com/auth/kick/viewer`
-   - **Scopes:** `user:read` (who signed in) and `events:subscribe` (the streamer's chat while a winner can
-     claim).
+   - **Scopes:** `user:read` (who signed in), `events:subscribe` (the streamer's chat, subscriptions and
+     reward redemptions) and `channel:rewards:read` (the reward list for channel point entry).
    - **Enable Webhooks:** on, with the URL `https://rafflink.example.com/api/kick/webhook`. Kick posts chat
      messages there, so the URL must be reachable over the public internet with HTTPS. A Bun server on a
      laptop needs a tunnel for Kick chat claims; sign-in works without one.
@@ -209,14 +209,21 @@ them, streamers and viewers can also sign in with Kick, and a Kick winner can cl
 
 What a Kick giveaway can do:
 
-- Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages, so every Kick entrant is
-  in the viewer group, and the create form offers only the rules Kick can check. Chat entry with a keyword is
-  not available on Kick yet.
-- Rafflink subscribes to the streamer's chat when a winner is drawn and removes the subscription when the
-  claim and reroll time ends. A subscription Kick did not delete is cancelled when its next webhook finds no giveaway watching the
-  channel. While subscribed, every message in that chat is one request to your server or
-  Worker; only messages from winners reach the giveaway's room. On the Workers Free plan this counts toward the
-  100,000 requests a day.
+- Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages, so the create form offers
+  only the rules Kick can check. A giveaway with page entry puts every Kick entrant in the viewer group. A chat
+  only giveaway can also give subscriber and moderator tickets: the badges of the entry message tell them, and
+  a sub event counts as a subscriber. Kick has one subscriber level.
+- Viewers can enter with a chat keyword, and new subs, renewals, gift recipients and redemptions of a chosen
+  channel point reward can enter by themselves. A redemption enters while pending or accepted; one the
+  streamer rejects enters nobody. Page or chat entry stays on beside sub and reward entry.
+- Rafflink subscribes to the streamer's chat while chat entries are open and from the draw until the claim
+  and reroll time ends, and to the subscription and redemption events while entries are open to them. Each
+  subscription is removed once no giveaway reads it. A subscription Kick did not delete is cancelled when its
+  next webhook finds no giveaway watching the channel. While subscribed, every message in that chat is one
+  request to your server or Worker and one database read; only keyword messages while entries are open and
+  messages from winners reach the giveaway's room. On the Workers Free plan this counts toward the 100,000
+  requests a day, and the create form shows what is left today before a Kick chat entry giveaway.
+
 - Kick signs each webhook. Rafflink checks the signature with Kick's public key, refuses a webhook whose
   timestamp is more than `KICK_WEBHOOK_MAX_AGE_SECONDS` away from now, and drops a repeated message id.
 

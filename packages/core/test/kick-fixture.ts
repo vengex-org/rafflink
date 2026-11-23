@@ -8,6 +8,7 @@ import { accountsSchema, TestClock } from "./app-fixture.ts"
 
 export const kickStreamer: FakeKickUser = { id: "300", name: "Kick_Streamer" }
 export const kickViewer: FakeKickUser = { id: "301", name: "Kick_Viewer" }
+export const kickSecond: FakeKickUser = { id: "302", name: "Kick_Second" }
 
 const app = { clientId: "kick-client", clientSecret: "kick-secret" } as const
 const origin = "http://fake-kick.test"

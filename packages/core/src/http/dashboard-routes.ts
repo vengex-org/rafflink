@@ -56,6 +56,7 @@ import {
   type OverlayThemeJson,
   type OwnerLiveSnapshot,
   type PointsRewardsJson,
+  type RequestBudgetJson,
 } from "./json.ts"
 import {
   closeEntries,
@@ -265,6 +266,12 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       })
       return c.json({ error: "platform-unavailable" }, 503)
     }
+  })
+
+  // The wizard warns before a Kick chat entry giveaway, whose webhooks cost a Worker request per chat message.
+  app.get("/api/dash/request-budget", async (c) => {
+    c.header("Cache-Control", "no-store")
+    return c.json<RequestBudgetJson>({ budget: await workerRequestBudget(deps) })
   })
 
   app.get("/api/dash/blocks", async (c) => {
@@ -770,19 +777,24 @@ async function todayUsage(deps: AppDeps, limits: PlanLimits | null): Promise<Usa
 }
 
 async function usageWarnings(deps: AppDeps): Promise<UsageWarning[]> {
+  const budget = await workerRequestBudget(deps)
+  return budget !== null && budget.remaining < deps.config.usageWarningThreshold
+    ? [{ kind: "worker-requests-low", remaining: budget.remaining }]
+    : []
+}
+
+// Null when the plan caps no day, or the plan or the usage source does not answer.
+async function workerRequestBudget(deps: AppDeps): Promise<RequestBudgetJson["budget"]> {
   const plan = await activePlan(deps)
-  if (plan === "unavailable") return []
+  if (plan === "unavailable") return null
   try {
     const usage = await todayUsage(deps, plan === null ? null : plan.limits)
     const limit = usage?.workerRequests.limit ?? null
-    if (usage === null || limit === null) return []
-    const remaining = limit - usage.workerRequests.used
-    return remaining < deps.config.usageWarningThreshold
-      ? [{ kind: "worker-requests-low", remaining }]
-      : []
+    if (usage === null || limit === null) return null
+    return { limit, remaining: limit - usage.workerRequests.used }
   } catch (error) {
     warnUsageUnavailable(error)
-    return []
+    return null
   }
 }
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import type { PlatformCapabilities } from "../platform/provider.ts"
 import { bestGroup, supportedGroups, type Tickets } from "./groups.ts"
 
 const tickets: Tickets = {
@@ -32,7 +33,7 @@ describe("bestGroup", () => {
 })
 
 describe("supportedGroups", () => {
-  const all = {
+  const all: PlatformCapabilities = {
     followerCheck: true,
     subTiers: true,
     vip: true,
@@ -42,10 +43,11 @@ describe("supportedGroups", () => {
     chatEntry: true,
     subEntry: true,
     pointsEntry: true,
+    chatBadgeGroups: [],
   }
 
   it("keeps every group on a platform that can tell them all", () => {
-    expect(supportedGroups(all)).toEqual([
+    expect(supportedGroups(all, false)).toEqual([
       "viewer",
       "follower",
       "sub_t1",
@@ -57,21 +59,37 @@ describe("supportedGroups", () => {
   })
 
   it("drops the groups the platform cannot tell, keeping viewers and moderators", () => {
-    expect(supportedGroups({ ...all, followerCheck: false, subTiers: false, vip: false })).toEqual([
-      "viewer",
-      "moderator",
-    ])
+    expect(
+      supportedGroups({ ...all, followerCheck: false, subTiers: false, vip: false }, false),
+    ).toEqual(["viewer", "moderator"])
   })
 
   it("keeps only viewers on a platform that tells no channel role either", () => {
     expect(
-      supportedGroups({
-        ...all,
-        followerCheck: false,
-        subTiers: false,
-        vip: false,
-        moderatorRole: false,
-      }),
+      supportedGroups(
+        {
+          ...all,
+          followerCheck: false,
+          subTiers: false,
+          vip: false,
+          moderatorRole: false,
+        },
+        false,
+      ),
     ).toEqual(["viewer"])
+  })
+
+  it("adds the chat badge groups only when every entrant shows a badge or a sub event", () => {
+    const kick: PlatformCapabilities = {
+      ...all,
+      followerCheck: false,
+      subTiers: false,
+      vip: false,
+      moderatorRole: false,
+      chatBadgeGroups: ["sub_t1", "moderator"],
+    }
+
+    expect(supportedGroups(kick, true)).toEqual(["viewer", "sub_t1", "moderator"])
+    expect(supportedGroups(kick, false)).toEqual(["viewer"])
   })
 })

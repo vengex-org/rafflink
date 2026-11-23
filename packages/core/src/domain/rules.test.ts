@@ -618,6 +618,7 @@ describe("unsupportedRule", () => {
     chatEntry: true,
     subEntry: true,
     pointsEntry: true,
+    chatBadgeGroups: [],
   }
   // Kick: no follower lookup, no VIP and no account age.
   const kick: PlatformCapabilities = {
@@ -673,6 +674,34 @@ describe("unsupportedRule", () => {
     })
     expect(
       unsupportedRule({ ...tierless, tickets: { ...tierless.tickets, sub_t2: 2 } }, noTiers),
+    ).toEqual({ field: "tickets.sub_t2", code: "unsupported" })
+  })
+
+  it("accepts chat badge group tickets only when no entrant comes by the page or points", () => {
+    const badges: PlatformCapabilities = {
+      ...twitch,
+      subTiers: false,
+      moderatorRole: false,
+      chatBadgeGroups: ["sub_t1", "moderator"],
+    }
+    const chatOnly: GiveawayRules = {
+      ...rules,
+      tickets: { ...rules.tickets, sub_t1: 2, sub_t2: 0, sub_t3: 0, moderator: 3 },
+      chatKeyword: "!enter",
+      pageEntry: false,
+      subEntry: true,
+    }
+
+    expect(unsupportedRule(chatOnly, badges)).toBeNull()
+    expect(unsupportedRule({ ...chatOnly, pageEntry: true }, badges)).toEqual({
+      field: "tickets.sub_t1",
+      code: "unsupported",
+    })
+    expect(
+      unsupportedRule({ ...chatOnly, pointsReward: { id: "r-1", title: "Enter" } }, badges),
+    ).toEqual({ field: "tickets.sub_t1", code: "unsupported" })
+    expect(
+      unsupportedRule({ ...chatOnly, tickets: { ...chatOnly.tickets, sub_t2: 1 } }, badges),
     ).toEqual({ field: "tickets.sub_t2", code: "unsupported" })
   })
 

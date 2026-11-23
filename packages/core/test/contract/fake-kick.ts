@@ -4,6 +4,9 @@ export const kickUsers = {
   streamer: kickUser("300", "Kick_Streamer"),
   viewer: kickUser("301", "Kick_Viewer"),
   viewer2: kickUser("302", "Kick_Viewer2"),
+  viewer3: kickUser("303", "Kick_Viewer3"),
+  viewer4: kickUser("304", "Kick_Viewer4"),
+  viewer5: kickUser("305", "Kick_Viewer5"),
 } as const
 
 function kickUser(id: string, name: string): FakeKickUser {

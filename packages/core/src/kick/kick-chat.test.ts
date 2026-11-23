@@ -6,14 +6,16 @@ import {
   userTokens,
   type KickWorld,
 } from "../../test/kick-fixture.ts"
-import type { ChatListener, ChatSource } from "../platform/chat-source.ts"
+import type { ChatListener, ChatSource, WatchTopics } from "../platform/chat-source.ts"
 import type { StreamerAccess } from "../platform/provider.ts"
 import { kickChat } from "./kick-chat.ts"
 
 let world: KickWorld
 let access: StreamerAccess
 let unavailable: unknown[]
+let entryUnavailable: unknown[]
 let scheduled: number
+let topics: WatchTopics
 
 beforeEach(async () => {
   spyOn(console, "warn").mockImplementation(() => {})
@@ -21,14 +23,16 @@ beforeEach(async () => {
   const { accessToken } = await userTokens(world, kickStreamer, ["user:read", "events:subscribe"])
   access = { accessToken, broadcasterId: kickStreamer.id }
   unavailable = []
+  entryUnavailable = []
   scheduled = 0
+  topics = { chat: true, subscriptions: false, pointsRewardId: null }
 })
 
 const listener: ChatListener = {
   onMessage: () => {},
   onChannelEntry: () => {},
-  onChannelEntryUnavailable: () => {},
-  topics: () => ({ chat: true, subscriptions: false, pointsRewardId: null }),
+  onChannelEntryUnavailable: (cause) => entryUnavailable.push(cause),
+  topics: () => topics,
   onUnavailable: (cause) => unavailable.push(cause),
   onSchedule: () => {
     scheduled += 1
@@ -207,7 +211,9 @@ describe("kickChat", () => {
 
     const [live] = world.fake.control.subscriptions()
     expect(live).toBeDefined()
-    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBe(live?.id ?? "")
+    expect(await world.watches.subscriptionsOf(kickStreamer.id)).toEqual([
+      { event: "chat.message.sent", subscriptionId: live?.id ?? "" },
+    ])
   })
 
   it("still closes after a failed watch write broke one step of the chain", async () => {
@@ -237,8 +243,126 @@ describe("kickChat", () => {
 
     expect(watchRows()).toEqual([])
     expect(world.fake.control.subscriptions()).toHaveLength(1)
-    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBe(
-      world.fake.control.subscriptions()[0]?.id ?? "",
-    )
+    expect(await world.watches.subscriptionsOf(kickStreamer.id)).toEqual([
+      {
+        event: "chat.message.sent",
+        subscriptionId: world.fake.control.subscriptions()[0]?.id ?? "",
+      },
+    ])
+  })
+
+  it("records the keyword and subscribes the sub and redemption events the topics ask for", async () => {
+    topics = { chat: true, subscriptions: true, pointsRewardId: "reward-1" }
+    const chat = source("g1")
+
+    chat.open({ kind: "keyword", keyword: "!enter" })
+    await settle()
+
+    expect(interestRows()).toEqual([
+      {
+        giveaway_id: "g1",
+        chatter_ids: "[]",
+        keyword: "!enter",
+        sub_entry: 1,
+        reward_id: "reward-1",
+      },
+    ])
+    expect(subscribedEvents()).toEqual([
+      "channel.reward.redemption.updated",
+      "channel.subscription.gifts",
+      "channel.subscription.new",
+      "channel.subscription.renewal",
+      "chat.message.sent",
+    ])
+  })
+
+  it("drops the sub and redemption subscriptions once no watch reads them, and keeps chat", async () => {
+    topics = { chat: true, subscriptions: true, pointsRewardId: "reward-1" }
+    const chat = source("g1")
+    chat.open({ kind: "keyword", keyword: "!enter" })
+    await settle()
+
+    topics = { chat: true, subscriptions: false, pointsRewardId: null }
+    chat.open(winners)
+    await settle()
+
+    expect(subscribedEvents()).toEqual(["chat.message.sent"])
+    expect(interestRows()).toEqual([
+      {
+        giveaway_id: "g1",
+        chatter_ids: `["${kickViewer.id}"]`,
+        keyword: null,
+        sub_entry: 0,
+        reward_id: null,
+      },
+    ])
+  })
+
+  it("keeps the sub subscriptions while another room of the channel still reads them", async () => {
+    topics = { chat: true, subscriptions: true, pointsRewardId: null }
+    const first = source("g1")
+    first.open({ kind: "keyword", keyword: "!enter" })
+    await settle()
+    const second = source("g2")
+    second.open({ kind: "keyword", keyword: "!join" })
+    await settle()
+
+    first.close()
+    await settle()
+
+    expect(subscribedEvents()).toEqual([
+      "channel.subscription.gifts",
+      "channel.subscription.new",
+      "channel.subscription.renewal",
+      "chat.message.sent",
+    ])
+  })
+
+  it("goes on with chat only when Kick refuses the redemption event", async () => {
+    topics = { chat: true, subscriptions: false, pointsRewardId: "reward-1" }
+    world.fake.control.refuseEvent("channel.reward.redemption.updated", "scope missing")
+    const chat = source("g1")
+
+    chat.open({ kind: "keyword", keyword: "!enter" })
+    await settle()
+
+    expect(entryUnavailable).toHaveLength(1)
+    expect(unavailable).toEqual([])
+    expect(subscribedEvents()).toEqual(["chat.message.sent"])
+    expect(interestRows()[0]).toMatchObject({ keyword: "!enter", reward_id: null })
+  })
+
+  it("gives up when Kick refuses the chat event", async () => {
+    world.fake.control.refuseEvent("chat.message.sent", "not allowed")
+    const chat = source("g1")
+
+    chat.open(winners)
+    await settle()
+
+    expect(unavailable).toHaveLength(1)
+    expect(watchRows()).toEqual([])
   })
 })
+
+interface InterestRow {
+  giveaway_id: string
+  chatter_ids: string | null
+  keyword: string | null
+  sub_entry: number
+  reward_id: string | null
+}
+
+function interestRows(): InterestRow[] {
+  return world.db
+    .query<InterestRow, []>(
+      "SELECT giveaway_id, chatter_ids, keyword, sub_entry, reward_id FROM kick_chat_watches ORDER BY giveaway_id",
+    )
+    .all()
+}
+
+function subscribedEvents(): string[] {
+  return world.fake.control
+    .subscriptions()
+    .map((subscription) => subscription.event)
+    .toSorted()
+}

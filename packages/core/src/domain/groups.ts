@@ -33,9 +33,19 @@ export function bestGroup(tickets: Tickets, memberOf: readonly Group[]): BestGro
   return best
 }
 
-/** The groups a platform can tell a viewer is in; every platform knows viewers. */
-export function supportedGroups(capabilities: PlatformCapabilities): readonly Group[] {
-  return groups.filter((group) => isSupported(group, capabilities))
+/**
+ * The groups a platform can tell a viewer is in; every platform knows viewers. With `badgesSeen`, every
+ * entrant comes by chat or a sub event, so the groups of its chat badges count too.
+ */
+export function supportedGroups(
+  capabilities: PlatformCapabilities,
+  badgesSeen: boolean,
+): readonly Group[] {
+  return groups.filter(
+    (group) =>
+      isSupported(group, capabilities)
+      || (badgesSeen && capabilities.chatBadgeGroups.includes(group)),
+  )
 }
 
 function isSupported(group: Group, capabilities: PlatformCapabilities): boolean {

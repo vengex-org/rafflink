@@ -57,11 +57,11 @@ export interface ChatListener {
  * {@link ChatSource.wakeAt}.
  */
 /**
- * Whose messages the owner reads now: every chatter's while chat entries are open, otherwise only the
- * winners'. A source may drop the others before they reach the owner.
+ * Whose messages the owner reads now: those asking to enter with the keyword while chat entries are
+ * open, otherwise only the winners'. A source may drop the others before they reach the owner.
  */
 export type ChatAudience =
-  | { readonly kind: "everyone" }
+  | { readonly kind: "keyword"; readonly keyword: string }
   | { readonly kind: "chatters"; readonly userIds: readonly string[] }
 
 export interface ChatSource {

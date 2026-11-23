@@ -221,6 +221,11 @@ export type PointsRewardsJson =
   | { readonly kind: "reconnect" }
   | { readonly kind: "no-channel-points" }
 
+/** Today's Worker requests under the plan's daily cap; `budget` is null when the plan caps no day or the usage cannot be read. */
+export interface RequestBudgetJson {
+  readonly budget: { readonly limit: number; readonly remaining: number } | null
+}
+
 /** The streamer's block list on the dashboard, newest first; `blockListMax` is how many it may hold. */
 export interface BlockListJson {
   readonly blocks: readonly StreamerBlock[]

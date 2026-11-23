@@ -154,6 +154,23 @@ token). Events after the end time or the close enter nobody, and the watch close
 - The process keeps the streamer's access token for 90% of its announced lifetime, so the checks do not refresh
   it each time.
 
+**Kick chat, sub and points entry (#61, #62).** Kick sends its events only as signed webhooks to
+`/api/kick/webhook`, with one subscription per event and channel, made and deleted with the app token:
+`chat.message.sent` for every watch, `channel.subscription.new`, `.renewal` and `.gifts` while a watch has sub
+entry, and `channel.reward.redemption.updated` while it has a reward. A watch row (`kick_chat_watches`) holds
+what each room reads: its winners' ids, its keyword while chat entries are open, sub entry and the reward id. The
+route reads the rows of the channel once per webhook, matches the keyword itself and calls a room only for a
+message it reads, so a chat message that asks for nothing costs one Worker request and one D1 read and no
+Durable Object request. A subscription stays while any watch of the channel reads its topic
+(`kick_event_subscriptions.topic`). Kick has one subscriber level and names no tier in its events: a sub enters
+as tier 1, and every recipient of a gift enters. A redemption enters while pending or accepted, and a rejected
+one enters nobody. Subscriber and moderator tickets come from the chat badges, so they are offered only on a
+chat only giveaway without points entry (`chatBadgeGroups`); with page or points entry every Kick entrant is a
+viewer. Points entry asks for `channel:rewards:read` for the reward list; chat and sub entry need no scope past
+`events:subscribe`. When Kick refuses the sub or redemption subscriptions, chat entry and claims go on as on
+Twitch. Before a Kick chat entry giveaway the wizard shows the plan's daily Worker request limit and what is left
+of it today (`GET /api/dash/request-budget`).
+
 **Chat watch.** Besides chat entry, Rafflink reads chat from the draw until the giveaway is finished: the reroll window
 (`REROLL_WINDOW_SECONDS`, default one hour) after the latest claim time of a pick that is not rerolled. Claims
 happen only in the claim window; the rest of the watch shows the winners' newest messages on the live page:

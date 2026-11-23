@@ -883,6 +883,54 @@ describe("create wizard", () => {
     })
   })
 
+  it("offers Kick subscriber and moderator tickets only for chat only entry, with the chat cost and today's budget", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      followerCheck: false,
+      subTiers: false,
+      vip: false,
+      accountAge: false,
+      moderatorRole: false,
+      chatBadgeGroups: ["sub_t1", "moderator"],
+    }
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick", capabilities },
+        }),
+      "GET /api/dash/request-budget": () => ok({ budget: { limit: 100_000, remaining: 42_000 } }),
+    })
+    const view = await openWizard()
+    fillGiveaway(view)
+    await toRules(view)
+    const pageOnly = {
+      subscribers: view.queryByLabelText("Subscribers, tier 1"),
+      cost: view.queryByText(/left today/),
+    }
+
+    fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
+    fireEvent.change(await view.findByLabelText("Subscribers, tier 1"), { target: { value: "3" } })
+    fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "5" } })
+    const cost = await view.findByText(/42,000 are left today/)
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    expect(pageOnly).toEqual({ subscribers: null, cost: null })
+    expect(cost.textContent).toContain("daily limit of 100,000")
+    expect(view.queryByLabelText("Subscribers, tier 2")).toBeNull()
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect(body).toMatchObject({
+      rules: {
+        tickets: { viewer: 1, follower: 0, sub_t1: 3, sub_t2: 0, sub_t3: 0, vip: 0, moderator: 5 },
+        pageEntry: false,
+      },
+    })
+  })
+
   it("hides the audience choice and its warning when the platform offers only Everyone", async () => {
     const capabilities = {
       ...supportedSession.streamer.capabilities,

@@ -901,6 +901,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "wizard.chatKeyword.label": "Kľúčové slovo na zapojenie",
   "wizard.chatKeyword.help":
     "Správa v chate, ktorá začína týmto slovom, diváka zapojí s rovnakými pravidlami a lístkami ako stránka. Rafflink do tvojho chatu nikdy nepíše.",
+  "wizard.chatCost.kick":
+    "Kick posiela Rafflinku každú správu z chatu, kým sú zápisy otvorené, aj bez kľúčového slova, a každá spotrebuje jednu požiadavku z denného limitu {limit} tohto servera. Chat so 100 správami za minútu spotrebuje 6 000 požiadaviek za hodinu. Na dnes zostáva {remaining}.",
   "wizard.autoEntry.legend": "Automatické zapojenie",
   "wizard.subEntry.label": "Zapojiť nových odberateľov",
   "wizard.subEntry.help":

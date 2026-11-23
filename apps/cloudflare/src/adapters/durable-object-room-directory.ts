@@ -116,6 +116,9 @@ class DurableObjectRoomStub implements RoomStub {
   receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
     return inRoom(() => this.stub.receiveChat(...args))
   }
+  receiveChannelEntries(...args: Parameters<GiveawayRoom["receiveChannelEntries"]>) {
+    return inRoom(() => this.stub.receiveChannelEntries(...args))
+  }
   liveCounts() {
     return inRoom(() => this.stub.liveCounts())
   }

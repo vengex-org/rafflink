@@ -1,4 +1,5 @@
 import type { ResolvedConfig } from "../config.ts"
+import type { PointsReward } from "../domain/rules.ts"
 import type { Parsed } from "../lib/parsed.ts"
 import type { AuthorizeParams, ExchangedCode } from "../platform/provider.ts"
 import { parseAppToken, parseTokenResponse } from "../twitch/lib/parse-response.ts"
@@ -7,10 +8,13 @@ import {
   isRecord,
   parseChannelIds,
   parsePublicKey,
-  parseSubscription,
+  parseRewards,
   parseSubscriptionList,
+  parseSubscriptions,
   parseUsers,
   type KickUser,
+  type ListedSubscription,
+  type SubscriptionOutcome,
 } from "./lib/parse-response.ts"
 
 export { KickInvalid, KickRateLimited, KickUnavailable } from "./errors.ts"
@@ -37,8 +41,23 @@ export function kickAppOf(
   return clientId === null || clientSecret === null ? null : { clientId, clientSecret }
 }
 
-/** The event a chat watch subscribes to, as Kick names it. */
-export const chatMessageEvent = { name: "chat.message.sent", version: 1 } as const
+/**
+ * The events a watch of a Kick channel subscribes to, as Kick names them (docs.kick.com, event types), each
+ * with the topic a room must read for it: chat messages always, the subscription events with sub entry,
+ * redemptions with points entry.
+ */
+export const kickEvents = [
+  { name: "chat.message.sent", version: 1, topic: "chat" },
+  { name: "channel.subscription.new", version: 1, topic: "sub" },
+  { name: "channel.subscription.renewal", version: 1, topic: "sub" },
+  { name: "channel.subscription.gifts", version: 1, topic: "sub" },
+  { name: "channel.reward.redemption.updated", version: 1, topic: "points" },
+] as const
+
+export type KickEvent = (typeof kickEvents)[number]
+
+/** What a watch reads of its channel, and so which subscriptions it needs. */
+export type KickTopic = KickEvent["topic"]
 
 /** Kick's OAuth 2.1 server (`id.kick.com`) and public API (`api.kick.com`). */
 export class KickClient {
@@ -111,42 +130,46 @@ export class KickClient {
   }
 
   /**
-   * Subscribes the app to the chat of a channel with the app's own token, the same token
-   * {@link unsubscribe} deletes it with. Returns the subscription id.
+   * Subscribes the app to `events` of a channel in one call, with the app's own token, the same token
+   * {@link unsubscribe} deletes them with. Kick answers each event on its own: a subscription id, or the
+   * reason it refused that one; the answer is keyed by event name.
    */
-  async subscribeChat(broadcasterId: string): Promise<string> {
-    const outcome = await this.api(
+  async subscribe(
+    broadcasterId: string,
+    events: readonly KickEvent[],
+  ): Promise<ReadonlyMap<string, SubscriptionOutcome>> {
+    return this.api(
       "subscribe",
       "/public/v1/events/subscriptions",
       {},
       await this.appAccessToken(),
-      parseSubscription,
+      parseSubscriptions,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          events: [chatMessageEvent],
+          events: events.map(({ name, version }) => ({ name, version })),
           method: "webhook",
           broadcaster_user_id: Number(broadcasterId),
         }),
       },
     )
-    if (!outcome.ok) throw new KickInvalid("subscribe", 200, { reason: outcome.error })
-    return outcome.subscriptionId
   }
 
-  /** The ids of the app's chat subscriptions of a channel, as Kick lists them now. */
-  async chatSubscriptionIds(broadcasterId: string): Promise<readonly string[]> {
-    const subscriptions = await this.api(
+  /** The app's subscriptions of a channel, as Kick lists them now. */
+  async subscriptions(broadcasterId: string): Promise<readonly ListedSubscription[]> {
+    return this.api(
       "subscriptions",
       "/public/v1/events/subscriptions",
       { broadcaster_user_id: broadcasterId },
       await this.appAccessToken(),
       parseSubscriptionList,
     )
-    return subscriptions
-      .filter((subscription) => subscription.event === chatMessageEvent.name)
-      .map((subscription) => subscription.id)
+  }
+
+  /** The enabled channel point rewards of the token's own channel; needs `channel:rewards:read`. */
+  async rewards(accessToken: string): Promise<readonly PointsReward[]> {
+    return this.api("rewards", "/public/v1/channels/rewards", {}, accessToken, parseRewards)
   }
 
   /**

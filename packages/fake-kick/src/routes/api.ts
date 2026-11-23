@@ -5,7 +5,15 @@ import { takeFailure, type AccessToken, type FailableEndpoint, type FakeState } 
 
 type ApiEnv = { Variables: { token: AccessToken } }
 
-/** `api.kick.com/public/v1`: users, channels, the webhook public key and event subscriptions. */
+/** One item of the subscribe answer: a subscription id, or the reason Kick refused the event. */
+interface SubscribeAnswer {
+  name: string
+  version: number
+  subscription_id: string | null
+  error: string | null
+}
+
+/** `api.kick.com/public/v1`: users, channels, channel rewards, the webhook public key and event subscriptions. */
 export function apiRoutes(state: FakeState): Hono {
   const app = new Hono()
   const auth = bearerAuth(state)
@@ -38,6 +46,27 @@ export function apiRoutes(state: FakeState): Hono {
     return c.json({ data: channels, message: "OK" })
   })
 
+  app.get("/channels/rewards", auth, (c) => {
+    const failed = scriptedFailure(c, state, "rewards")
+    if (failed !== undefined) return failed
+    const token = c.get("token")
+    if (token.userId === null || !token.scopes.includes("channel:rewards:read")) {
+      return c.json({ message: "Unauthorized" }, 401)
+    }
+    const data = (state.rewards.get(token.userId) ?? []).map((reward) => ({
+      id: reward.id,
+      title: reward.title,
+      description: "",
+      cost: reward.cost,
+      background_color: "#00e701",
+      is_enabled: reward.enabled,
+      is_paused: false,
+      is_user_input_required: false,
+      should_redemptions_skip_request_queue: false,
+    }))
+    return c.json({ data, message: "OK" })
+  })
+
   app.post("/events/subscriptions", auth, async (c) => {
     const failed = scriptedFailure(c, state, "subscribe")
     if (failed !== undefined) return failed
@@ -51,11 +80,16 @@ export function apiRoutes(state: FakeState): Hono {
     }
     // A user token subscribes its own channel; Kick ignores the body's broadcaster then.
     const broadcasterId = token.userId ?? String(body.broadcaster_user_id)
-    const data = body.events.flatMap((event: unknown) => {
+    const data = body.events.flatMap((event: unknown): SubscribeAnswer[] => {
       if (!isRecord(event) || typeof event.name !== "string" || typeof event.version !== "number") {
         return []
       }
+      const refusal = state.refusedEvents.get(event.name)
+      if (refusal !== undefined) {
+        return [{ name: event.name, version: event.version, subscription_id: null, error: refusal }]
+      }
       const id = crypto.randomUUID()
+
       state.subscriptions.set(id, {
         id,
         broadcasterId,

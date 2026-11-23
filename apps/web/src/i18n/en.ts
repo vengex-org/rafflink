@@ -897,6 +897,8 @@ export const en = {
   "wizard.chatKeyword.label": "Entry keyword",
   "wizard.chatKeyword.help":
     "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
+  "wizard.chatCost.kick":
+    "Kick sends every chat message to Rafflink while entries are open, with or without the keyword, and each one uses a request of this server's daily limit of {limit}. A chat with 100 messages a minute uses 6,000 requests an hour. {remaining} are left today.",
   "wizard.autoEntry.legend": "Automatic entries",
   "wizard.subEntry.label": "Enter new subscribers",
   "wizard.subEntry.help":

@@ -96,6 +96,21 @@ describe("KickProvider", () => {
     })
     expect(await provider.accountByLogin("nobody_here")).toBeNull()
   })
+
+  it("lists the enabled rewards of the streamer's channel with channel:rewards:read", async () => {
+    world.fake.control.setRewards(kickStreamer.id, [
+      { id: "01HREWARD0001", title: "Enter the giveaway", cost: 500, enabled: true },
+      { id: "01HREWARD0002", title: "Retired", cost: 100, enabled: false },
+    ])
+    const tokens = await userTokens(world, kickStreamer, [
+      ...provider.scopes.streamer,
+      ...provider.entryScopes.points,
+    ])
+
+    expect(await provider.pointsRewards(tokens.accessToken)).toEqual([
+      { id: "01HREWARD0001", title: "Enter the giveaway" },
+    ])
+  })
 })
 
 describe("kickPlatform", () => {

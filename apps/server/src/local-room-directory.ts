@@ -327,6 +327,9 @@ class LocalRoomStub implements RoomStub {
   receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
     return inRoom(() => this.room.receiveChat(...args))
   }
+  receiveChannelEntries(...args: Parameters<GiveawayRoom["receiveChannelEntries"]>) {
+    return inRoom(() => this.room.receiveChannelEntries(...args))
+  }
   liveCounts() {
     return inRoom(() => ({ ...this.room.liveCounts(), viewers: this.viewers() }))
   }

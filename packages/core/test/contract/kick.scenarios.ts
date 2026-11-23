@@ -1,4 +1,6 @@
 import { expect } from "bun:test"
+import type { Entrant } from "../../src/room/rows.ts"
+import { Browser } from "./browser.ts"
 import { kickUsers } from "./fake-kick.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import {
@@ -10,10 +12,13 @@ import {
   type World,
 } from "./world.ts"
 
-// Kick tells no follows, subscriptions, VIPs or moderators, so only viewers get tickets.
+// Kick's API tells no follows, subscriptions, VIPs or moderators, so a giveaway with page entry gives only viewers tickets.
 const kickRules = {
   tickets: { viewer: 1, follower: 0, sub_t1: 0, sub_t2: 0, sub_t3: 0, vip: 0, moderator: 0 },
 }
+
+const reward = { id: "01HKICKREWARDENTER0000000", title: "Enter the giveaway" } as const
+const otherReward = { id: "01HKICKREWARDHYDRATE00000", title: "Hydrate" } as const
 
 export function kickScenarios(context: ContractContext): void {
   scenario(context, "a streamer signs in with Kick and runs a Kick giveaway", async (world) => {
@@ -161,6 +166,123 @@ export function kickScenarios(context: ContractContext): void {
       expect(world.kick.fake.control.subscriptions()).toEqual([])
     },
   )
+
+  scenario(
+    context,
+    "a Kick chat keyword enters chatters with the tickets of their badges, and other messages enter nobody",
+    async (world) => {
+      const target = await world.start({ CHAT_ENTRY_CHECK_SECONDS: "1" })
+      const streamer = await world.signInKickStreamer(target)
+      const giveaway = await world.createGiveaway(target, {
+        streamer,
+        rules: {
+          tickets: { ...kickRules.tickets, sub_t1: 3, moderator: 7 },
+          chatKeyword: "!enter",
+          pageEntry: false,
+        },
+      })
+      await waitForKickSubscription(world)
+      const { control } = world.kick.fake
+
+      const statuses = [
+        await control.sendChatMessage(kickUsers.streamer.id, kickUsers.viewer.id, "!enter", [
+          "subscriber",
+        ]),
+        await control.sendChatMessage(kickUsers.streamer.id, kickUsers.viewer2.id, "hello !enter"),
+        await control.sendChatMessage(kickUsers.streamer.id, kickUsers.viewer2.id, "!Enter me", [
+          "moderator",
+        ]),
+        await control.sendChatMessage(kickUsers.streamer.id, kickUsers.viewer3.id, "gg"),
+      ]
+      await world.waitFor(
+        async () => (await world.live(giveaway)).entrantCount === 2,
+        "the two keyword chatters to enter",
+      )
+
+      expect(statuses).toEqual([204, 204, 204, 204])
+      expect(
+        (await entrants(giveaway)).map(({ login, group, tickets }) => ({ login, group, tickets })),
+      ).toEqual([
+        { login: "kick_viewer", group: "sub_t1", tickets: 3 },
+        { login: "kick_viewer2", group: "moderator", tickets: 7 },
+      ])
+    },
+  )
+
+  scenario(
+    context,
+    "a Kick sub, renewal, gift recipient and redemption of the chosen reward each enter once, and none after the close",
+    async (world) => {
+      const target = await world.start({ CHAT_ENTRY_CHECK_SECONDS: "1" })
+      const { control } = world.kick.fake
+      control.setRewards(kickUsers.streamer.id, [
+        { ...reward, cost: 500, enabled: true },
+        { ...otherReward, cost: 100, enabled: true },
+      ])
+      const streamer = new Browser(target.url)
+      await streamer.signInAs(
+        kickUsers.streamer.id,
+        "/auth/kick/streamer/start?entry=sub,points",
+        control,
+      )
+      const giveaway = await world.createGiveaway(target, {
+        streamer,
+        rules: { ...kickRules, subEntry: true, pointsReward: reward },
+      })
+      await world.waitFor(() => control.subscriptions().length === 5, "the Kick subscriptions")
+      const broadcaster = kickUsers.streamer.id
+
+      await control.sendSubscription(broadcaster, "new", [kickUsers.viewer.id])
+      await control.sendSubscription(broadcaster, "renewal", [kickUsers.viewer2.id])
+      await control.sendSubscription(broadcaster, "gifts", [kickUsers.viewer3.id])
+      await control.sendRedemption(broadcaster, kickUsers.viewer4.id, reward.id, "pending")
+      await control.sendRedemption(broadcaster, kickUsers.viewer4.id, reward.id, "accepted")
+      await control.sendRedemption(broadcaster, kickUsers.viewer5.id, otherReward.id, "accepted")
+      await world.waitFor(
+        async () => (await world.live(giveaway)).entrantCount === 4,
+        "the four supporters to enter",
+      )
+      const late = await control.subscriptionWebhook(broadcaster, "new", [kickUsers.viewer5.id])
+      if (late === null) throw new Error("the fake Kick sent no webhook")
+      await world.closeGiveaway(giveaway)
+      const lateStatus = (
+        await fetch(late.url, { method: "POST", headers: late.headers, body: late.body })
+      ).status
+
+      expect(lateStatus).toBe(204)
+      expect(
+        (await entrants(giveaway)).map(({ login, group, tickets }) => ({ login, group, tickets })),
+      ).toEqual(
+        ["kick_viewer", "kick_viewer2", "kick_viewer3", "kick_viewer4"].map((login) => ({
+          login,
+          group: "viewer",
+          tickets: 1,
+        })),
+      )
+    },
+  )
+
+  scenario(
+    context,
+    "a Kick points giveaway on a token without channel:rewards:read is refused with a reconnect answer",
+    async (world) => {
+      const target = await world.start()
+      const streamer = await world.signInKickStreamer(target)
+
+      const response = await streamer.postJson("/api/dash/giveaways", {
+        rules: { ...defaultRules, ...kickRules, pointsReward: reward },
+      })
+
+      expect(response.status).toBe(422)
+      expect(await response.json()).toEqual({ error: "reconnect" })
+    },
+  )
+}
+
+async function entrants(giveaway: CreatedGiveaway): Promise<readonly Entrant[]> {
+  const response = await giveaway.streamer.request(`/api/live/${giveaway.id}/entrants`)
+  const body: { rows: Entrant[] } = await response.json()
+  return body.rows
 }
 
 async function kickGiveaway(
