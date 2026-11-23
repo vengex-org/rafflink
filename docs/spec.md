@@ -453,7 +453,9 @@ list, 1000 leaves of 40 bytes per row). Room migration 0005 adds `draw_requested
 no `usage_daily` table (see Hosting) and no `giveaways.platforms` column (see Platforms).
 
 - `giveaways.status` and `room_state.status` are `open`, `closed` or `drawn`. The room owns the status, the
-  accounts store mirrors it, and the room alarm retries a mirror that failed.
+  accounts store mirrors it, and the room alarm retries a mirror that failed. The same mirror copies the
+  entrant and winner counts and the claimed and delivered counts (`giveaways.claimed`, `giveaways.delivered`,
+  accounts migration 0017), so the public history and the dashboard history read no room.
 - `overlay_token`: the credential of the read-only overlay URL of the live page, compared in constant time.
 - `streamer_overlay.theme_json` and `giveaways.overlay_theme_json`: an `OverlayTheme`, parsed by
   `parseOverlayTheme`. A giveaway's own style wins over the streamer's; with neither the overlay looks as it did

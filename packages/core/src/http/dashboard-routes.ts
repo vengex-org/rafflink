@@ -30,6 +30,7 @@ import {
 } from "../room/giveaway-room.ts"
 import { pushBlockList } from "../room/room-exclusions.ts"
 import { deleteGiveaway } from "../room/delete-giveaway.ts"
+import { mirrorStatus } from "../room/mirror-status.ts"
 import { denseDays, denseMinutes } from "../stats/series.ts"
 import { liveGiveaways } from "../stats/live-giveaways.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
@@ -178,7 +179,11 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     withOwnedRoom(c, deps, async (giveaway) => {
       const n = integerField(await readJson(c), "n", 0)
       if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
-      const outcome = await deps.rooms.get(giveaway.id).markDelivered(n)
+      const room = deps.rooms.get(giveaway.id)
+      const outcome = await room.markDelivered(n)
+      if (outcome.kind === "delivered") {
+        await mirrorStatus(room, deps.accounts, giveaway.id, deps.clock.now())
+      }
       return c.json({ kind: outcome.kind }, deliveredStatus[outcome.kind])
     }),
   )

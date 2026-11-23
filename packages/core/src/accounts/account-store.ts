@@ -127,7 +127,12 @@ export interface Giveaway {
   readonly blockListVersion: number
   /** The streamer keeps the giveaway off their public history page. */
   readonly hiddenFromHistory: boolean
+  /** The prize delivery counts the room mirrored; null until it mirrors them. */
+  readonly delivery: PrizeDelivery | null
 }
+
+/** How many winners of a giveaway claimed, and how many of their prizes the streamer marked delivered. */
+export type PrizeDelivery = Pick<RoomMirror, "claimed" | "delivered">
 
 export type NewGiveaway = Omit<
   Giveaway,
@@ -137,6 +142,7 @@ export type NewGiveaway = Omit<
   | "status"
   | "blockListVersion"
   | "hiddenFromHistory"
+  | "delivery"
 >
 
 /** A link that lets whoever opens it act on one giveaway as its moderator; the store keeps a hash of its token, never the token. */
@@ -456,6 +462,8 @@ export class AccountStore {
       mirror.status === "open" ? null : at,
       mirror.entrantCount,
       mirror.winners,
+      mirror.claimed,
+      mirror.delivered,
       giveawayId,
     ])
   }
@@ -632,8 +640,16 @@ export class AccountStore {
       createdAt: reader.int("created_at"),
       blockListVersion: reader.int("block_list_version"),
       hiddenFromHistory: reader.int("hidden_from_history") === 1,
+      delivery: parseDelivery(reader),
     }
   }
+}
+
+// The mirror writes both counts at once, so a row has both or neither.
+function parseDelivery(reader: RowReader): PrizeDelivery | null {
+  const claimed = reader.nullableInt("claimed")
+  const delivered = reader.nullableInt("delivered")
+  return claimed === null || delivered === null ? null : { claimed, delivered }
 }
 
 function parseStreamer(row: SqlRow): StreamerRecord {

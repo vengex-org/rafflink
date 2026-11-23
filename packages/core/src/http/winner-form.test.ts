@@ -217,6 +217,42 @@ describe("the winner form", () => {
     expect(csv.split("\r\n")[1]).toEndWith(`,"${new Date(deliveredAt).toISOString()}"`)
   })
 
+  it("lists the claimed and delivered counts on the dashboard from the mirror, without reading a room", async () => {
+    const { browser, id, winner, code } = await drawnWithForm()
+    const delivery = async () => {
+      const body: { giveaways: { id: string; delivery: unknown }[] } = await (
+        await browser.request("/api/dash/giveaways")
+      ).json()
+      return body.giveaways.find((giveaway) => giveaway.id === id)?.delivery
+    }
+    const drawn = await delivery()
+    await winner.request(`/api/g/${code}/claim`, { method: "POST" })
+    const claimed = await delivery()
+    await sameOriginPost(browser, `/api/dash/giveaways/${id}/delivered`, { n: 0 })
+    const rooms = spyOn(harness.rooms, "get")
+
+    const delivered = await delivery()
+
+    expect(drawn).toEqual({ claimed: 0, delivered: 0 })
+    expect(claimed).toEqual({ claimed: 1, delivered: 0 })
+    expect(delivered).toEqual({ claimed: 1, delivered: 1 })
+    expect(rooms).not.toHaveBeenCalled()
+  })
+
+  it("mirrors a claim the streamer marks by hand", async () => {
+    const { browser, id } = await drawnWithForm()
+
+    await browser.postJson(`/api/dash/giveaways/${id}/claim`, { n: 0 })
+    const body: { giveaways: { id: string; delivery: unknown }[] } = await (
+      await browser.request("/api/dash/giveaways")
+    ).json()
+
+    expect(body.giveaways.find((giveaway) => giveaway.id === id)?.delivery).toEqual({
+      claimed: 1,
+      delivered: 0,
+    })
+  })
+
   it("loses the answers 30 days after the claim and keeps that they were sent", async () => {
     const { id, code, winner } = await claimedWithForm()
     await sendAnswers(winner, code)

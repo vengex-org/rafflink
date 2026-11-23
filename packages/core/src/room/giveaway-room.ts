@@ -246,12 +246,16 @@ export type ClaimOutcome =
   | { readonly kind: "rerolled" }
   | { readonly kind: "not-a-winner" }
 
-/** What the account store keeps of the room: the status, and the counts the public history lists without waking the room. */
+/** What the account store keeps of the room: the status, and the counts the public history and the dashboard list without waking the room. */
 export interface RoomMirror {
   readonly status: RoomStatus
   readonly entrantCount: number
   /** The picks that were not rerolled. */
   readonly winners: number
+  /** The picks whose winner claimed. */
+  readonly claimed: number
+  /** The claimed picks whose prize the streamer marked delivered. */
+  readonly delivered: number
 }
 
 /** What the caller of {@link GiveawayRoom.onAlarm} still has to do, because it needs a port the room lacks. */
@@ -969,10 +973,13 @@ export class GiveawayRoom {
   /** What the account store should hold of the room now. */
   mirrorState(): RoomMirror {
     const state = this.readState()
+    const draws = this.readDraws()
     return {
       status: state.status,
       entrantCount: state.entrantCount,
-      winners: this.readDraws().filter((draw) => !draw.rerolled).length,
+      winners: draws.filter((draw) => !draw.rerolled).length,
+      claimed: draws.filter((draw) => draw.claim.state === "claimed").length,
+      delivered: draws.filter((draw) => draw.deliveredAt !== null).length,
     }
   }
 
@@ -983,6 +990,8 @@ export class GiveawayRoom {
       current.status === mirrored.status
       && current.entrantCount === mirrored.entrantCount
       && current.winners === mirrored.winners
+      && current.claimed === mirrored.claimed
+      && current.delivered === mirrored.delivered
     ) {
       this.sql.exec("UPDATE room_state SET mirror_pending = 0 WHERE id = 1", [])
     }
@@ -1198,14 +1207,19 @@ export class GiveawayRoom {
   claim(n: number, winner: Identity, via: ClaimedVia, by: Actor | null): ClaimOutcome {
     const now = this.clock.now()
     const markedBy = via === "manual" ? by : null
-    const claimed = this.sql.exec(
-      `UPDATE draws SET claimed_at = ?, claimed_via = ?, claim_marked_by = ?
-       WHERE n = ? AND platform = ? AND platform_user_id = ?
-         AND claimed_at IS NULL AND rerolled = 0 AND (? = 'manual' OR claim_until >= ?)
-       RETURNING n`,
-      [now, via, markedBy, n, winner.platform, winner.platformUserId, via, now],
-    )
+    const claimed = this.sql.transaction(() => {
+      const rows = this.sql.exec(
+        `UPDATE draws SET claimed_at = ?, claimed_via = ?, claim_marked_by = ?
+         WHERE n = ? AND platform = ? AND platform_user_id = ?
+           AND claimed_at IS NULL AND rerolled = 0 AND (? = 'manual' OR claim_until >= ?)
+         RETURNING n`,
+        [now, via, markedBy, n, winner.platform, winner.platformUserId, via, now],
+      )
+      if (rows.length === 1) this.sql.exec(markMirrorPendingSql, [])
+      return rows
+    })
     if (claimed.length === 1) {
+      this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
       this.afterOutcomeWrite()
       return { kind: "claimed" }
     }
@@ -1304,13 +1318,17 @@ export class GiveawayRoom {
       )
       if (marked.length === 1) {
         this.sql.exec("DELETE FROM winner_answers WHERE n = ?", [n])
+        this.sql.exec(markMirrorPendingSql, [])
         return { kind: "delivered" }
       }
       const draw = this.readDraw(n)
       if (draw === null) return { kind: "unknown-pick" }
       return draw.deliveredAt === null ? { kind: "not-claimed" } : { kind: "already-delivered" }
     })
-    if (outcome.kind === "delivered") this.guarded("alarm", () => this.rearm())
+    if (outcome.kind === "delivered") {
+      this.mirrorRetryAt = now + this.config.mirrorRetrySeconds * 1000
+      this.guarded("alarm", () => this.rearm())
+    }
     return outcome
   }
 
@@ -2109,6 +2127,9 @@ const drawLagMs = 500
 
 // What a removed winner is called from then on, in every language; the privacy page quotes the word.
 const removedName = "removed"
+
+// A claim or a delivery changes the counts the account store mirrors.
+const markMirrorPendingSql = "UPDATE room_state SET mirror_pending = 1 WHERE id = 1"
 
 // 128 bits, enough that a published leaf cannot be matched to an id by trying ids.
 const saltBytes = 16

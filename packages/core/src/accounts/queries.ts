@@ -1,6 +1,6 @@
 const giveawayColumns = `g.id, g.code, g.streamer_id, s.platform, s.platform_user_id AS broadcaster_id, s.display_name AS streamer_name,
   g.title, g.prize, g.rules_json, g.status, g.closes_at, g.claim_seconds, g.winner_count, g.overlay_token, g.created_at, s.block_list_version,
-  g.hidden_from_history`
+  g.hidden_from_history, g.claimed, g.delivered`
 const giveawayFrom = "FROM giveaways g JOIN streamers s ON s.id = g.streamer_id"
 
 /** A giveaway by its short code (parameter 1). */
@@ -80,9 +80,9 @@ export const insertGiveawaySql = `INSERT INTO giveaways
   ON CONFLICT (code) DO NOTHING
   RETURNING id`
 
-/** Parameters: status, the close time to keep unless one is stored (NULL for open), entrant count, winners, giveaway id. */
+/** Parameters: status, the close time to keep unless one is stored (NULL for open), entrant count, winners, claimed, delivered, giveaway id. */
 export const setStatusSql =
-  "UPDATE giveaways SET status = ?, closed_at = COALESCE(closed_at, ?), entrant_count = ?, winners = ? WHERE id = ?"
+  "UPDATE giveaways SET status = ?, closed_at = COALESCE(closed_at, ?), entrant_count = ?, winners = ?, claimed = ?, delivered = ? WHERE id = ?"
 
 /** Ids of giveaways the room reported as no longer open and the retention sweep has not woken yet, fewest failed sweeps first, then oldest. Parameters: attempts below which a giveaway is tried, how many. */
 export const unarmedRetentionSql =

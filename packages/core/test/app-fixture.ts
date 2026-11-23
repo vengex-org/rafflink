@@ -330,7 +330,7 @@ export const validRules = {
 
 /** What a room with `status` mirrors when it has no entrants and no picks. */
 export function mirrored(status: RoomStatus): RoomMirror {
-  return { status, entrantCount: 0, winners: 0 }
+  return { status, entrantCount: 0, winners: 0, claimed: 0, delivered: 0 }
 }
 
 /** The header a test sets to give a request a client address; the real targets read the one their edge sets. */

@@ -49,6 +49,7 @@ export const dashboardGiveaway: DashboardGiveaway = {
   overlayToken: "tok-1",
   createdAt: 1_700_000_000_000,
   hiddenFromHistory: false,
+  delivery: null,
 }
 
 export const liveSnapshot: LiveSnapshot = {

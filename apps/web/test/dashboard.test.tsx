@@ -478,6 +478,24 @@ describe("dashboard history", () => {
     expect(links.every((link) => link.hasAttribute("download"))).toBe(true)
   })
 
+  it("shows how many claimed prizes were delivered, and nothing before a claim or the mirror", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () =>
+        ok({
+          giveaways: [
+            { ...finished[0], delivery: { claimed: 3, delivered: 2 } },
+            { ...finished[1], delivery: { claimed: 0, delivered: 0 } },
+            { ...dashboardGiveaway, id: "c", code: "CCCCC", status: "drawn", delivery: null },
+          ],
+        }),
+    })
+
+    const view = renderApp("/dashboard")
+
+    expect(await view.findByText("2 of 3 delivered")).toBeTruthy()
+    expect(view.queryAllByText(/ delivered$/)).toHaveLength(1)
+  })
+
   it("narrows the finished giveaways to a search by name, prize or code", async () => {
     mockFetch({ "GET /api/dash/giveaways": () => ok({ giveaways: finished }) })
 

@@ -120,6 +120,9 @@ export async function markClaimed(
     "manual",
     by,
   )
+  if (outcome.kind === "claimed") {
+    await mirrorStatus(room, deps.accounts, giveaway.id, deps.clock.now())
+  }
   return c.json({ kind: outcome.kind }, manualClaimStatus[outcome.kind])
 }
 

@@ -552,6 +552,7 @@ export const en = {
   "dash.empty.button": "Create giveaway",
   "dash.prize": "Prize: {prize}",
   "dash.codeCreated": "Code {code}, created {date}",
+  "dash.delivered": "{delivered} of {claimed} delivered",
   "dash.linkObs": "Link and OBS overlay",
   "dash.duplicate": "Duplicate",
   "dash.duplicate.label": "Duplicate {name}",
