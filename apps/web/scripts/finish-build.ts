@@ -25,6 +25,12 @@ const html = withErrorReportingMeta(await Bun.file(indexPath).text(), errorRepor
 await Bun.write(indexPath, html)
 const prerender = resolveWebPrerender(process.env)
 if (prerender === null) console.info("web build prerenders no page", { reason: "no PUBLIC_URL" })
+// Likely a build that forgot the operator: its legal pages say no one published contact details.
+if (prerender !== null && prerender.operatorName === null) {
+  console.warn("web build prerenders the legal pages without an operator", {
+    missing: "OPERATOR_NAME",
+  })
+}
 const prerendered = await writePrerender(dist, html, prerender)
 // A prerendered page runs the shell's inline scripts only; its JSON blocks never run, so the shell's hashes cover it.
 const scriptHashes = await inlineScriptHashes(html)

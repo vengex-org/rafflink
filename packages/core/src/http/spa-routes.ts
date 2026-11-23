@@ -26,15 +26,13 @@ import { isApiPath } from "./api-paths.ts"
 import type { AppDeps } from "./deps.ts"
 import { publicHistoryAnswer, type PublicHistoryAnswer } from "./history-routes.ts"
 import { contentSecurityPolicy } from "./security-headers.ts"
+import { noindex } from "./static-headers.ts"
 
 /**
  * A file of the web build by its path relative to the build's root, such as `index.html`, the app shell; null when
  * no web app is deployed next to this server.
  */
 export type WebFileLoader = (file: string) => Promise<string | null>
-
-/** `X-Robots-Tag` of the pages search engines must not index, beside the robots meta of the app shell. */
-export const noindex = "noindex, nofollow"
 
 // The preview of a shared list draw; the list itself is in the fragment, which never reaches the server.
 // Only the Bun server applies it: Cloudflare serves `/draw` from the static assets without the Worker.
@@ -114,6 +112,11 @@ export function spaRoutes(deps: AppDeps, loadFile: WebFileLoader): Hono {
   app.get("*", async (c, next) => {
     const { pathname } = new URL(c.req.url)
     if (isApiPath(pathname)) return next()
+    // The app redirects a localized page to its one spelling (`/de` to `/de/`, `/privacy/` to `/privacy`), and its
+    // prerendered markup is for that address; served at another one, hydration would not match.
+    const address = pageOfPath(pathname)
+    const canonical = address === null ? pathname : localizedPath(address.language, address.page)
+    if (canonical !== pathname) return c.redirect(`${canonical}${new URL(c.req.url).search}`, 308)
     const page = await pageOf(loadFile, pathname)
     if (page === null) return next()
 
@@ -158,14 +161,8 @@ async function pageOf(
   loadFile: WebFileLoader,
   pathname: string,
 ): Promise<{ readonly html: string; readonly prerendered: boolean } | null> {
-  const address = pageOfPath(pathname)
   const manifest = await loadFile(prerenderManifestFile)
-  const file =
-    manifest === null
-      ? undefined
-      : parsePrerenderManifest(manifest).get(
-          address === null ? pathname : localizedPath(address.language, address.page),
-        )
+  const file = manifest === null ? undefined : parsePrerenderManifest(manifest).get(pathname)
   const prerendered = file === undefined ? null : await loadFile(file)
   if (prerendered !== null) return { html: prerendered, prerendered: true }
   const shell = await loadFile(shellFile)

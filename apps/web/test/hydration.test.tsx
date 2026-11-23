@@ -91,6 +91,9 @@ describe("hydration of a prerendered page", () => {
       "The streaming platform did not answer. Please try again.",
     )
     expect(inputOf(page.getByRole("radio", { name: "Dark" })).checked).toBe(true)
+    expect(inputOf(page.getByRole("radio", { name: "System" })).checked).toBe(false)
+    act(() => page.getByRole("radio", { name: "System" }).click())
+    expect(inputOf(page.getByRole("radio", { name: "System" })).checked).toBe(true)
   })
 
   it("takes over every localized page in its language, with and without another language stored", async () => {

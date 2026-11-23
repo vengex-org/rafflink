@@ -17,9 +17,13 @@ import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import { dashboardPath, drawPath, verifyLookupPath } from "../lib/routes.ts"
 import { useConsumedParam } from "../lib/use-consumed-param.ts"
 import { useHydrated } from "../lib/use-hydrated.ts"
+import type { SitePage } from "./site-page.ts"
 
 /** Extra top-level routes of the deployment, rendered before the catch-all routes. */
 export const siteRoutes: ReactElement | null = null
+
+/** The deployment's own pages the web build prerenders in every language; each has its routes in {@link siteRoutes}. */
+export const prerenderPages: readonly SitePage[] = []
 
 export function HomePage() {
   const { t } = useI18n()

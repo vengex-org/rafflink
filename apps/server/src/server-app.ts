@@ -5,7 +5,7 @@ import {
   fakeTwitchPrefixes,
   fakeYouTubePrefixes,
 } from "@rafflink/core/http/api-paths"
-import { staticCacheControl } from "@rafflink/core/http/static-headers"
+import { staticCacheControl, staticRobotsTag } from "@rafflink/core/http/static-headers"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { captureException } from "@sentry/core"
 import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
@@ -115,7 +115,11 @@ export function createServerApp(options: ServerAppOptions): Hono {
   if (staticDir !== null) {
     const files = serveStatic({
       root: staticDir,
-      onFound: (_path, c) => c.header("Cache-Control", staticCacheControl(c.req.path)),
+      onFound: (_path, c) => {
+        c.header("Cache-Control", staticCacheControl(c.req.path))
+        const robots = staticRobotsTag(c.req.path)
+        if (robots !== null) c.header("X-Robots-Tag", robots)
+      },
     })
     app.use("*", (c, next) => (isPagePath(c.req.path) ? next() : files(c, next)))
   }
@@ -124,9 +128,12 @@ export function createServerApp(options: ServerAppOptions): Hono {
   return app
 }
 
-/** The paths `serveStatic` would answer with an HTML page of the build itself, bypassing the page of core and its CSP. */
+/**
+ * The paths core answers as pages: every path without a file extension and every HTML file. `serveStatic` would
+ * answer `/de` with `de/index.html` itself, bypassing the page of core and its CSP.
+ */
 function isPagePath(pathname: string): boolean {
-  return pathname.endsWith("/") || pathname.endsWith(".html")
+  return !/\.[^/]+$/.test(pathname) || pathname.endsWith(".html")
 }
 
 // What a socket that never opened has to forget when it closes.

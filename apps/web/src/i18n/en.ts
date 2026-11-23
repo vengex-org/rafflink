@@ -1035,9 +1035,9 @@ export const en = {
     "This is a translation. Where it differs from the English version, the English version prevails.",
 
   // The title and description search engines and link previews show for a prerendered page.
-  "meta.home.title": "Rafflink: giveaways for Twitch and Kick streamers",
+  "meta.home.title": "Rafflink: fair giveaways your chat can check",
   "meta.home.description":
-    "Create a giveaway, share one link and draw winners live on stream. Free, open source, and anyone can check the draw.",
+    "Free giveaway tool for streamers. Viewers enter from a link in chat, you draw live on stream, and anyone can check the draw.",
   "meta.privacy.title": "Privacy policy | Rafflink",
   "meta.privacy.description":
     "What Rafflink stores about streamers and viewers, why, for how long, and how to have it deleted.",

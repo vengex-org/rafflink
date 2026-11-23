@@ -11,8 +11,10 @@ import { MemoryRouter } from "react-router"
 import { prerender, writePrerender, type RenderedPage } from "../scripts/prerender.tsx"
 import { AppRoutes } from "../src/app.tsx"
 import { loadDictionary } from "../src/i18n/dictionaries.ts"
+import { formatDate } from "../src/i18n/i18n.tsx"
+import { templateUpdated } from "../src/pages/legal-page.tsx"
 import { languages } from "../src/i18n/language.ts"
-import { localizedPages, localizedPath } from "../src/lib/routes.ts"
+import { localizedPages, localizedPath, pageOfPath } from "../src/lib/routes.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
 
 // The app's own shell, without the stylesheet the test DOM would try to load when it parses a page.
@@ -134,7 +136,9 @@ describe("prerender", () => {
       localizedPages.map((page) => localizedPath(language, page)),
     )
     expect(pages.map(({ path }) => path)).toEqual(expectedPaths)
-    for (const { path, file, language, page } of pages) {
+    for (const { path, file, language } of pages) {
+      const page = pageOfPath(path)?.page
+      if (page === undefined) throw new Error(`${path} is no localized page`)
       const dictionary = await loadDictionary(language)
       const parsed = parsePage(await Bun.file(join(dir, file)).text())
       const head = parsed.head
@@ -188,7 +192,7 @@ describe("prerender", () => {
     )
     expect(sitemap.match(/<xhtml:link /g)?.length).toBe(expectedPaths.length * 10)
     expect(await Bun.file(join(dir, "robots.txt")).text()).toBe(
-      `User-agent: *\nDisallow: /home\n\nSitemap: ${publicUrl}/sitemap.xml\n`,
+      `User-agent: *\n\nSitemap: ${publicUrl}/sitemap.xml\n`,
     )
 
     // A later build without PUBLIC_URL leaves the folder as a build that never prerendered.
@@ -205,7 +209,7 @@ describe("prerender", () => {
       const { container, recoverable } = await hydrate(page)
 
       expect([page.path, recoverable.mock.calls.length]).toEqual([page.path, 0])
-      if (page.page !== "home") {
+      if (page.name !== "home") {
         expect([page.path, container.textContent.includes(operator.email)]).toEqual([
           page.path,
           true,
@@ -238,7 +242,9 @@ describe("prerender", () => {
     })
     await waitFor(() => expect(container.textContent).toContain("Other Operator"))
     expect(container.textContent).not.toContain("Example Operator")
-    expect(container.textContent).toContain("Last updated: Nov 23, 2026")
+    expect(container.textContent).toContain(
+      `Last updated: ${formatDate("en", Date.parse(`${templateUpdated}T00:00`))}`,
+    )
   })
 
   it("says the operator published no details on a legal page built without one", async () => {
@@ -248,6 +254,38 @@ describe("prerender", () => {
 
     expect(parsePage(terms.html).querySelector("#root")?.textContent).toContain(
       "has not published contact details",
+    )
+  })
+
+  // A separate process: the app's modules are loaded in this one already, so a plugin here could swap nothing.
+  it("prerenders the home page and the own pages of a deployment whose site module a preloaded plugin swaps", async () => {
+    const publicDir = mkdtempSync(join(tmpdir(), "rafflink-public-"))
+    writeFileSync(join(publicDir, "robots.txt"), "User-agent: *\n")
+    writeFileSync(join(dir, "index.html"), shell)
+
+    const build = Bun.spawnSync(
+      [
+        "bun",
+        "--preload",
+        join(import.meta.dir, "fixtures", "site-seam.ts"),
+        join(import.meta.dir, "..", "scripts", "finish-build.ts"),
+        dir,
+        publicDir,
+      ],
+      { env: { ...process.env, PUBLIC_URL: publicUrl, OPERATOR_NAME: "", OPERATOR_EMAIL: "" } },
+    )
+    rmSync(publicDir, { recursive: true, force: true })
+
+    expect(build.exitCode).toBe(0)
+    const home = parsePage(await Bun.file(join(dir, "home.html")).text())
+    const compare = parsePage(await Bun.file(join(dir, "de", "compare.html")).text())
+    expect(home.querySelector("#root h1")?.textContent).toBe("Hosted home")
+    expect([compare.title, compare.querySelector("#root h1")?.textContent]).toEqual([
+      "Compare de",
+      "Compare in de",
+    ])
+    expect(await Bun.file(join(dir, "sitemap.xml")).text()).toContain(
+      `<loc>${publicUrl}/de/compare</loc>`,
     )
   })
 })

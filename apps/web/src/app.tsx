@@ -5,7 +5,7 @@ import { ErrorBoundary } from "./components/error-boundary.tsx"
 import { Layout } from "./components/layout.tsx"
 import { Failed, NotFound } from "./components/notice.tsx"
 import { I18nProvider } from "./i18n/i18n.tsx"
-import { addressLanguage, languages, parseLanguage, storedLanguage } from "./i18n/language.ts"
+import { languages, parseLanguage, storedLanguage } from "./i18n/language.ts"
 import { useChooseLanguage } from "./i18n/localized-pages.ts"
 import { AdminPage } from "./pages/admin-page.tsx"
 import { CreatedGiveawayPage, NewGiveawayPage } from "./pages/create-page.tsx"
@@ -32,12 +32,13 @@ import {
   type LocalizedPage,
 } from "./lib/routes.ts"
 import { useConsumedParam } from "./lib/use-consumed-param.ts"
+import { pageAddressLanguage } from "./i18n/page-language.ts"
 import { HomePage, siteRoutes } from "./site/site.tsx"
 
 export function AppRoutes() {
   const { pathname } = useLocation()
   return (
-    <I18nProvider addressLanguage={addressLanguage(pathname)}>
+    <I18nProvider addressLanguage={pageAddressLanguage(pathname)}>
       <LinkedLanguage />
       <ErrorBoundary fallback={<Failed />}>
         <CanonicalPath>

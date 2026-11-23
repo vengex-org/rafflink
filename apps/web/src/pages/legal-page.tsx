@@ -117,7 +117,7 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
 }
 
 /** The day the template texts last changed, as an ISO date. Update it with every edit of the texts. */
-const templateUpdated = "2026-11-23"
+export const templateUpdated = "2026-11-23"
 
 /** What the build embedded in the page, read once, so hydration renders what the prerender did. */
 function useBuiltLegalData(): BuiltLegalData | null {

@@ -16,9 +16,10 @@
     // `apiPrefixes` in packages/core/src/http/api-paths.ts. So does the home page, which counts `?ref=` visits
     // and answers the English home page the web build prerendered, or the app shell with PUBLIC_URL in its
     // canonical and Open Graph tags. The other prerendered pages are static files with absolute addresses.
+    // `/home`, where the assets would serve that English home page file, runs it too and gets the noindex shell.
     // The public history pages, `historyPagePattern` in packages/core/src/http/static-headers.ts, run it as
     // well: indexing is the streamer's choice and an old login redirects.
-    "run_worker_first": ["/api/*", "/auth/*", "/", "/s/*"],
+    "run_worker_first": ["/api/*", "/auth/*", "/", "/home", "/s/*"],
   },
   // Set PUBLIC_URL, TWITCH_CLIENT_ID and ADMIN_TWITCH_IDS under "vars" and the secrets with
   // `wrangler secret put`; every key is listed in .env.example.

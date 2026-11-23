@@ -4,7 +4,7 @@ import type { WebPrerenderConfig } from "@rafflink/core/config"
 import { operatorOf } from "@rafflink/core/http/session-routes"
 import { languages, sourceLanguage, type Language } from "@rafflink/core/lib/languages"
 import {
-  alternates,
+  alternatesOf,
   legalDataElementId,
   localizedPages,
   localizedPath,
@@ -12,8 +12,9 @@ import {
   prerenderFile,
   prerenderManifest,
   prerenderManifestFile,
-  servedPath,
-  type LocalizedPage,
+  segmentFile,
+  segmentPath,
+  type Alternate,
   type PrerenderedPage,
 } from "@rafflink/core/lib/page-paths"
 import {
@@ -25,23 +26,26 @@ import {
 import { renderToString } from "react-dom/server"
 import { StaticRouter } from "react-router"
 import { AppRoutes } from "../src/app.tsx"
-import { loadDictionary, type MessageKey } from "../src/i18n/dictionaries.ts"
+import { loadDictionary, type Dictionary } from "../src/i18n/dictionaries.ts"
 import { repositoryUrl } from "../src/lib/links.ts"
 import { builtLegalData, PrerenderedLegal } from "../src/pages/legal-page.tsx"
+import { prerenderPages } from "../src/site/site.tsx"
 
-/** A page the build renders: its address, its file and its HTML. */
+/** A page the build renders in one language: its address, its file, the page's name and its HTML. */
 export interface RenderedPage extends PrerenderedPage {
   readonly language: Language
-  readonly page: LocalizedPage
+  /** A localized page of the page model, or the segment of a deployment's own page. */
+  readonly name: string
+  readonly alternates: readonly Alternate[]
   readonly html: string
 }
 
 export const sitemapFile = "sitemap.xml"
 
 /**
- * Writes every localized page in every language into `dist`, with the manifest, `sitemap.xml` and its line in
- * `robots.txt`; without a config it writes none. It first removes what an earlier build in `dist` prerendered, so
- * no page keeps an operator the build no longer has.
+ * Writes every page in every language into `dist`, with the manifest, `sitemap.xml` and its line in `robots.txt`;
+ * without a config it writes none. It first removes what an earlier build in `dist` prerendered, so no page keeps
+ * an operator the build no longer has.
  */
 export async function writePrerender(
   dist: string,
@@ -55,15 +59,16 @@ export async function writePrerender(
   await Bun.write(join(dist, prerenderManifestFile), prerenderManifest(pages))
   await Bun.write(join(dist, sitemapFile), sitemap(config.publicUrl, pages))
   const robots = Bun.file(join(dist, "robots.txt"))
-  await Bun.write(robots, `${await robots.text()}${robotsLines(config.publicUrl)}`)
+  await Bun.write(robots, `${await robots.text()}\nSitemap: ${config.publicUrl}/${sitemapFile}\n`)
   return pages
 }
 
 /**
- * Renders each localized page in each language into the app shell: its markup in `#root`, its language, title,
- * description and absolute addresses in the head, the hreflang alternates, and on the English home page the
- * structured data search engines read. The robots meta of the shell is left out. A legal page carries the
- * operator it was rendered with, which the browser reads back while it hydrates.
+ * Renders the localized pages and the deployment's `prerenderPages` (the site seam) in each language into the app
+ * shell: its markup in `#root`, its language, title, description and absolute addresses in the head, the hreflang
+ * alternates, and on the English home page the structured data search engines read. The robots meta of the shell
+ * is left out. A legal page carries the operator it was rendered with, which the browser reads back while it
+ * hydrates.
  */
 export async function prerender(
   shell: string,
@@ -71,12 +76,13 @@ export async function prerender(
 ): Promise<RenderedPage[]> {
   const { publicUrl } = config
   const operator = operatorOf(config)
+  const targets = [...localizedPages.map(localizedTarget), ...prerenderPages.map(siteTarget)]
   const pages: RenderedPage[] = []
   for (const language of languages) {
     const dictionary = await loadDictionary(language)
-    for (const page of localizedPages) {
-      const path = localizedPath(language, page)
-      const legal = page === "home" ? null : builtLegalData(operator, language)
+    for (const target of targets) {
+      const path = target.path(language)
+      const legal = target.legal ? builtLegalData(operator, language) : null
       const markup = renderToString(
         <PrerenderedLegal value={legal}>
           <StaticRouter location={path}>
@@ -84,35 +90,63 @@ export async function prerender(
           </StaticRouter>
         </PrerenderedLegal>,
       )
-      const { title, description } = metaKeys[page]
+      const text = target.meta(language, dictionary)
+      const alternates = alternatesOf(target.path)
       let html = renderSpaHtml(withoutRobotsMeta(shell), {
         url: `${publicUrl}${path}`,
         image: `${publicUrl}/og.png`,
-        text: { title: dictionary[title], description: dictionary[description] },
+        text,
       })
       html = replaceRequired(html, /<html lang="[^"]*">/, `<html lang="${language}">`)
-      html = html.replace("</head>", () => `${alternateLinks(publicUrl, page)}</head>`)
+      html = html.replace("</head>", () => `${alternateLinks(publicUrl, alternates)}</head>`)
       if (legal !== null) html = embedJson(html, legalDataElementId, path, JSON.stringify(legal))
-      if (page === "home" && language === sourceLanguage) {
-        html = embedJsonLd(
-          html,
-          JSON.stringify(softwareApplication(publicUrl, dictionary[description])),
-        )
+      if (target.name === "home" && language === sourceLanguage) {
+        html = embedJsonLd(html, JSON.stringify(softwareApplication(publicUrl, text.description)))
       }
       html = replaceRequired(html, /<div id="root"><\/div>/, `<div id="root">${markup}</div>`)
-      pages.push({ path, file: prerenderFile(language, page), language, page, html })
+      const file = target.file(language)
+      pages.push({ path, file, language, name: target.name, alternates, html })
     }
   }
   return pages
+}
+
+/** What the prerender needs of a page, whether the page model or the deployment lists it. */
+interface PrerenderTarget {
+  readonly name: string
+  path(language: Language): string
+  file(language: Language): string
+  meta(language: Language, dictionary: Dictionary): { title: string; description: string }
+  /** It names the operator, so it carries the one it was built with. */
+  readonly legal: boolean
+}
+
+function localizedTarget(page: (typeof localizedPages)[number]): PrerenderTarget {
+  const { title, description } = metaKeys[page]
+  return {
+    name: page,
+    path: (language) => localizedPath(language, page),
+    file: (language) => prerenderFile(language, page),
+    meta: (_, dictionary) => ({ title: dictionary[title], description: dictionary[description] }),
+    legal: page !== "home",
+  }
+}
+
+function siteTarget(page: (typeof prerenderPages)[number]): PrerenderTarget {
+  return {
+    name: page.segment,
+    path: (language) => segmentPath(language, page.segment),
+    file: (language) => segmentFile(language, page.segment),
+    meta: (language) => page.meta(language),
+    legal: false,
+  }
 }
 
 const metaKeys = {
   home: { title: "meta.home.title", description: "meta.home.description" },
   privacy: { title: "meta.privacy.title", description: "meta.privacy.description" },
   terms: { title: "meta.terms.title", description: "meta.terms.description" },
-} as const satisfies Readonly<
-  Record<LocalizedPage, { readonly title: MessageKey; readonly description: MessageKey }>
->
+} as const
 
 async function removePrerendered(dist: string): Promise<void> {
   const manifest = Bun.file(join(dist, prerenderManifestFile))
@@ -131,9 +165,9 @@ function replaceRequired(html: string, pattern: RegExp, replacement: string): st
   return html.replace(pattern, () => replacement)
 }
 
-// PUBLIC_URL is an origin and the paths are the page model's, so neither needs escaping in an attribute.
-function alternateLinks(publicUrl: string, page: LocalizedPage): string {
-  return alternates(page)
+// PUBLIC_URL is an origin and the paths are built from language codes and page names, so neither needs escaping.
+function alternateLinks(publicUrl: string, alternates: readonly Alternate[]): string {
+  return alternates
     .map(
       ({ hreflang, path }) =>
         `<link rel="alternate" hreflang="${hreflang}" href="${publicUrl}${path}" />`,
@@ -159,8 +193,8 @@ function softwareApplication(publicUrl: string, description: string) {
 }
 
 function sitemap(publicUrl: string, pages: readonly RenderedPage[]): string {
-  const urls = pages.map(({ path, page }) => {
-    const links = alternates(page).map(
+  const urls = pages.map(({ path, alternates }) => {
+    const links = alternates.map(
       ({ hreflang, path: alternate }) =>
         `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${publicUrl}${alternate}"/>`,
     )
@@ -173,11 +207,4 @@ function sitemap(publicUrl: string, pages: readonly RenderedPage[]): string {
     "</urlset>",
     "",
   ].join("\n")
-}
-
-// The English home page is a file of its own, since `index.html` stays the shell; it is reachable at its file's
-// address too, where it names `/` as canonical and crawlers are asked not to go.
-function robotsLines(publicUrl: string): string {
-  const englishHome = servedPath(prerenderFile(sourceLanguage, "home"))
-  return `Disallow: ${englishHome}\n\nSitemap: ${publicUrl}/${sitemapFile}\n`
 }

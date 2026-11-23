@@ -14,6 +14,7 @@ import {
 import { Flag } from "./flag.tsx"
 import { ChevronDownIcon, MoonIcon, SlidersIcon, SunIcon, TvIcon } from "./icons.tsx"
 import { SegmentRow } from "./segment-row.tsx"
+import { useHydrated } from "../lib/use-hydrated.ts"
 
 /** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. `children` come first in the popover. */
 export function SettingsMenu({ children }: { readonly children?: ReactNode | undefined }) {
@@ -53,16 +54,21 @@ export function SettingsMenu({ children }: { readonly children?: ReactNode | und
 /** System, Light or Dark; the choice is kept in the browser and `System` follows the OS. */
 export function ThemeSwitch() {
   const { t } = useI18n()
-  const [theme, setTheme] = useState(storedTheme)
+  // A prerendered page knows no stored theme, so the hydrating render shows "System" as the HTML does; the stored
+  // theme shows right after, and the theme script of index.html has applied it before first paint.
+  const hydrated = useHydrated()
+  const [picked, setPicked] = useState<Theme | null>(null)
+  const theme = picked ?? (hydrated ? storedTheme() : "system")
 
   useEffect(() => {
+    if (!hydrated) return
     applyTheme(theme)
     if (theme !== "system") return
     const query = window.matchMedia(darkQuery)
     const follow = () => applyTheme(theme)
     query.addEventListener("change", follow)
     return () => query.removeEventListener("change", follow)
-  }, [theme])
+  }, [hydrated, theme])
 
   const options = themes.map((value) => ({
     value,
@@ -79,7 +85,7 @@ export function ThemeSwitch() {
         labels="hidden"
         onSelect={(next) => {
           storeTheme(next)
-          setTheme(next)
+          setPicked(next)
         }}
       />
     </fieldset>

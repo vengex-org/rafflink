@@ -65,6 +65,37 @@ export function pageScenarios(context: ContractContext): void {
     },
   )
 
+  scenario(
+    context,
+    "a prerendered page at another spelling redirects to its address instead of serving its file",
+    async (world) => {
+      const target = await world.start()
+
+      for (const [path, address] of [
+        ["/de", "/de/"],
+        ["/de/privacy/", "/de/privacy"],
+      ] as const) {
+        const response = await fetch(new URL(path, target.url), { redirect: "manual" })
+
+        expect([path, [307, 308].includes(response.status)]).toEqual([path, true])
+        expect(new URL(response.headers.get("location") ?? "", target.url).pathname).toBe(address)
+      }
+    },
+  )
+
+  scenario(
+    context,
+    "the address of the English home page file answers the shell, not indexed",
+    async (world) => {
+      const target = await world.start()
+
+      const html = await (await page(target, "/home")).text()
+
+      expect(html).toContain(robotsMeta)
+      expect(html).not.toContain("Prerendered /")
+    },
+  )
+
   scenario(context, "the favicon answers an icon, not the page", async (world) => {
     const target = await world.start()
 

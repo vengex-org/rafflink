@@ -19,12 +19,14 @@ describe("staticCacheControl", () => {
 })
 
 describe("headersFile", () => {
-  it("lists the headers for every file without a robots header and detaches no-cache from the hashed bundles and the fonts", () => {
+  it("lists the headers for every file, keeps the prerender manifest out of search results and detaches no-cache from the hashed bundles and the fonts", () => {
     expect(headersFile({ "X-Test": "1" })).toBe(
       [
         "/*",
         "  X-Test: 1",
         "  Cache-Control: no-cache",
+        "/prerendered.json",
+        "  X-Robots-Tag: noindex, nofollow",
         "/index-*.js",
         "  ! Cache-Control",
         "  Cache-Control: public, max-age=31536000, immutable",
