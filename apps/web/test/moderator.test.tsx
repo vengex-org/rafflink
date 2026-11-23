@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { act, cleanup, fireEvent, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, waitFor, within } from "@testing-library/react"
 import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { stubClipboard } from "./clipboard.ts"
 import { FakeSocket, installFakeSocket } from "./fake-socket.ts"
@@ -215,6 +215,37 @@ describe("moderator links on the streamer's live page", () => {
     fireEvent.click(view.getByRole("button", { name: "Copy moderator link" }))
     await view.findByText("Copied!")
     expect(copied).toEqual([`http://rafflink.test/mod#${token}`])
+  })
+
+  it("offers no moderators-only link where the platform does not tell who moderates", async () => {
+    const kickGiveaway = {
+      ...giveaway,
+      platform: "kick",
+      capabilities: { ...giveaway.capabilities, moderatorRole: false },
+    }
+    const requests = mockStreamer({
+      "GET /api/g/ABCDE": () => ok(kickGiveaway),
+      "GET /api/dash/giveaways/gid-1/moderator-links": () => ok({ links: [] }),
+      "POST /api/dash/giveaways/gid-1/moderator-links": () => ({
+        status: 201,
+        body: { link: { id: "d".repeat(32), requireMod: false, createdAt: 1 }, token },
+      }),
+    })
+
+    const view = renderApp("/live/gid-1")
+    fireEvent.click(await view.findByRole("button", { name: "Moderator links" }))
+    await view.findByText("No moderator link works now.")
+    // The choice goes once the giveaway's facts, and with them its platform, are loaded.
+    await waitFor(() =>
+      expect(view.queryByRole("radio", { name: "Anyone with the link" })).toBeNull(),
+    )
+    fireEvent.click(view.getByRole("button", { name: "Create link" }))
+
+    await view.findByRole("textbox", { name: "New link. Copy it now, it is shown only once." })
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/giveaways/gid-1/moderator-links")
+        ?.body,
+    ).toEqual({ requireMod: false })
   })
 
   it("makes a link for anyone who has it when the streamer picks that", async () => {

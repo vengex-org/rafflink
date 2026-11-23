@@ -152,9 +152,13 @@ describe("one-time parameters", () => {
 
     const view = renderApp("/?signin=try-again")
 
-    expect(view.getByRole("alert").textContent).toBe("Twitch did not answer. Please try again.")
+    expect(view.getByRole("alert").textContent).toBe(
+      "The streaming platform did not answer. Please try again.",
+    )
     await waitFor(() => expect(view.address()).toBe("/"))
-    expect(view.getByRole("alert").textContent).toBe("Twitch did not answer. Please try again.")
+    expect(view.getByRole("alert").textContent).toBe(
+      "The streaming platform did not answer. Please try again.",
+    )
   })
 
   it("keeps the other parameters when it removes one", async () => {
@@ -172,7 +176,7 @@ describe("one-time parameters", () => {
 
     expect(
       await view.findByRole("heading", {
-        name: "Férové Twitch súťaže, žrebované naživo na streame.",
+        name: "Férové súťaže, žrebované naživo na streame.",
       }),
     ).toBeTruthy()
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
@@ -184,14 +188,14 @@ describe("one-time parameters", () => {
     mockFetch({})
     const view = renderApp("/?lang=sk")
     await view.findByRole("heading", {
-      name: "Férové Twitch súťaže, žrebované naživo na streame.",
+      name: "Férové súťaže, žrebované naživo na streame.",
     })
     await waitFor(() => expect(view.address()).toBe("/"))
 
     fireEvent.click(view.getByRole("radio", { name: "English" }))
 
     expect(
-      await view.findByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
+      await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
     ).toBeTruthy()
   })
 
@@ -199,17 +203,17 @@ describe("one-time parameters", () => {
     mockFetch({})
     const view = renderApp("/?lang=sk")
     await view.findByRole("heading", {
-      name: "Férové Twitch súťaže, žrebované naživo na streame.",
+      name: "Férové súťaže, žrebované naživo na streame.",
     })
     await waitFor(() => expect(view.address()).toBe("/"))
     fireEvent.click(view.getByRole("radio", { name: "English" }))
-    await view.findByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." })
+    await view.findByRole("heading", { name: "Fair giveaways, drawn live on stream." })
 
     view.go("/?lang=sk")
 
     expect(
       await view.findByRole("heading", {
-        name: "Férové Twitch súťaže, žrebované naživo na streame.",
+        name: "Férové súťaže, žrebované naživo na streame.",
       }),
     ).toBeTruthy()
     await waitFor(() => expect(view.address()).toBe("/"))

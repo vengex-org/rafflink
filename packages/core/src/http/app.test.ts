@@ -656,7 +656,7 @@ describe("sign-in refused by Twitch", () => {
       `/auth/twitch/streamer?error=access_denied&error_description=The+user+denied+you+access&state=${state}`,
     )
 
-    expect(response.headers.get("location")).toBe("/?error=access_denied")
+    expect(response.headers.get("location")).toBe("/?error=access_denied&platform=twitch")
     expect(browser.cookieNames()).toEqual([])
     expect(sqlRows(harness.accountsDb, "SELECT id FROM streamers")).toHaveLength(0)
     expect(tokenCalls()).toBe(0)
@@ -669,7 +669,7 @@ describe("sign-in refused by Twitch", () => {
 
     const response = await browser.request(`/auth/twitch/viewer?error=access_denied&state=${state}`)
 
-    expect(response.headers.get("location")).toBe(`/${code}?error=access_denied`)
+    expect(response.headers.get("location")).toBe(`/${code}?error=access_denied&platform=twitch`)
     expect(browser.cookieNames()).toEqual([])
     expect(harness.rooms.roomFor(id).summary().entrantCount).toBe(0)
   })
@@ -679,7 +679,7 @@ describe("sign-in refused by Twitch", () => {
       "/auth/twitch/viewer?error=%3Cscript%3E&error_description=%3Cb%3Ex%3C%2Fb%3E",
     )
 
-    expect(response.headers.get("location")).toBe("/?error=error")
+    expect(response.headers.get("location")).toBe("/?error=error&platform=twitch")
   })
 })
 

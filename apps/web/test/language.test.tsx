@@ -40,7 +40,7 @@ describe("language", () => {
     const view = renderApp("/")
 
     expect(
-      view.getByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
+      view.getByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
     ).toBeTruthy()
     expect(document.documentElement.lang).toBe("en")
   })
@@ -51,7 +51,7 @@ describe("language", () => {
     const view = renderApp("/")
 
     expect(
-      view.getByRole("heading", { name: "Férové Twitch súťaže, žrebované naživo na streame." }),
+      view.getByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
     ).toBeTruthy()
     expect(document.documentElement.lang).toBe("sk")
   })
@@ -62,7 +62,7 @@ describe("language", () => {
     const view = renderApp("/")
 
     expect(
-      view.getByRole("heading", { name: "Férové Twitch soutěže, losované živě na streamu." }),
+      view.getByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
     ).toBeTruthy()
     expect(document.documentElement.lang).toBe("cs")
   })
@@ -74,7 +74,7 @@ describe("language", () => {
     fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
 
     expect(
-      view.getByRole("heading", { name: "Férové Twitch súťaže, žrebované naživo na streame." }),
+      view.getByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
     ).toBeTruthy()
     expect(view.getByRole("link", { name: "Prihlásiť sa" })).toBeTruthy()
     expect(document.documentElement.lang).toBe("sk")
@@ -83,7 +83,7 @@ describe("language", () => {
     view.unmount()
     const again = renderApp("/")
     expect(
-      again.getByRole("heading", { name: "Férové Twitch súťaže, žrebované naživo na streame." }),
+      again.getByRole("heading", { name: "Férové súťaže, žrebované naživo na streame." }),
     ).toBeTruthy()
   })
 
@@ -94,7 +94,7 @@ describe("language", () => {
     const view = renderApp("/")
 
     expect(
-      view.getByRole("heading", { name: "Férové Twitch soutěže, losované živě na streamu." }),
+      view.getByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
     ).toBeTruthy()
   })
 
@@ -105,7 +105,7 @@ describe("language", () => {
     const view = renderApp("/")
 
     expect(
-      view.getByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
+      view.getByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
     ).toBeTruthy()
   })
 
@@ -121,12 +121,12 @@ describe("language", () => {
     const view = renderApp("/")
 
     expect(
-      view.getByRole("heading", { name: "Fair Twitch giveaways, drawn live on stream." }),
+      view.getByRole("heading", { name: "Fair giveaways, drawn live on stream." }),
     ).toBeTruthy()
     fireEvent.click(view.getByRole("radio", { name: "Čeština" }))
 
     expect(
-      view.getByRole("heading", { name: "Férové Twitch soutěže, losované živě na streamu." }),
+      view.getByRole("heading", { name: "Férové soutěže, losované živě na streamu." }),
     ).toBeTruthy()
   })
 

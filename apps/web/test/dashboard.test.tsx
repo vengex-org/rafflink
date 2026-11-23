@@ -62,7 +62,7 @@ describe("dashboard", () => {
     const steps = view.getAllByRole("listitem").map((item) => item.textContent)
     expect(steps).toEqual([
       "Create it. Say what you give away and who can enter.",
-      "Share the link. Paste it in your chat. Viewers sign in with Twitch to enter.",
+      "Share the link. Paste it in your chat. Viewers sign in on the giveaway page to enter.",
       "Draw live. Close entries and pick the winner on your stream.",
     ])
     fireEvent.click(view.getByRole("link", { name: "Create giveaway" }))
@@ -658,7 +658,7 @@ describe("dashboard block list", () => {
     })
 
     const view = renderApp("/dashboard")
-    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+    fireEvent.change(await view.findByLabelText("Username to block"), {
       target: { value: "@Spammer" },
     })
     fireEvent.click(view.getByRole("button", { name: "Block" }))
@@ -667,7 +667,7 @@ describe("dashboard block list", () => {
     expect(
       await view.findByRole("button", { name: "Remove spammer from the block list" }),
     ).toBeTruthy()
-    expect(inputOf(view.getByLabelText("Twitch username to block")).value).toBe("")
+    expect(inputOf(view.getByLabelText("Username to block")).value).toBe("")
     expect(requests.find((request) => request.route === "POST /api/dash/blocks")?.body).toEqual({
       login: "@Spammer",
     })
@@ -680,7 +680,7 @@ describe("dashboard block list", () => {
     })
 
     const view = renderApp("/dashboard")
-    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+    fireEvent.change(await view.findByLabelText("Username to block"), {
       target: { value: "spammer" },
     })
     fireEvent.click(view.getByRole("button", { name: "Block" }))
@@ -689,22 +689,26 @@ describe("dashboard block list", () => {
   })
 
   it.each([
-    [400, { error: "invalid-input", field: "login" }, "Enter a Twitch username."],
-    [404, { error: "unknown-login" }, "There is no Twitch account with that username."],
+    [400, { error: "invalid-input", field: "login" }, "Enter a username."],
+    [404, { error: "unknown-login" }, "There is no account with that username."],
     [409, { error: "block-list-full" }, "The block list is full. Remove an account first."],
-    [503, { error: "platform-unavailable" }, "Twitch did not answer. Try again in a moment."],
+    [
+      503,
+      { error: "platform-unavailable" },
+      "The streaming platform did not answer. Try again in a moment.",
+    ],
     [401, { error: "unauthorized" }, "Something went wrong. Try again."],
   ])("explains a refused block (%d) and keeps what was typed", async (status, body, message) => {
     mockFetch({ ...withBlocks([]).routes, "POST /api/dash/blocks": () => ({ status, body }) })
 
     const view = renderApp("/dashboard")
-    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+    fireEvent.change(await view.findByLabelText("Username to block"), {
       target: { value: "nobody" },
     })
     fireEvent.click(view.getByRole("button", { name: "Block" }))
 
     expect(await view.findByText(message)).toBeTruthy()
-    expect(inputOf(view.getByLabelText("Twitch username to block")).value).toBe("nobody")
+    expect(inputOf(view.getByLabelText("Username to block")).value).toBe("nobody")
   })
 
   it("lists an account that was saved while a running giveaway did not get the list, and says to repeat", async () => {
@@ -718,7 +722,7 @@ describe("dashboard block list", () => {
     })
 
     const view = renderApp("/dashboard")
-    fireEvent.change(await view.findByLabelText("Twitch username to block"), {
+    fireEvent.change(await view.findByLabelText("Username to block"), {
       target: { value: "spammer" },
     })
     fireEvent.click(view.getByRole("button", { name: "Block" }))
@@ -805,7 +809,7 @@ describe("dashboard block list", () => {
     const view = renderApp("/dashboard")
 
     expect(await view.findByText("Something went wrong. Reload the page.")).toBeTruthy()
-    expect(view.queryByLabelText("Twitch username to block")).toBeNull()
+    expect(view.queryByLabelText("Username to block")).toBeNull()
   })
 })
 

@@ -28,6 +28,7 @@
       "dependencies": {
         "@hono/bun": "1.0.1",
         "@rafflink/core": "workspace:*",
+        "@rafflink/fake-kick": "workspace:*",
         "@rafflink/fake-twitch": "workspace:*",
         "@rafflink/web": "workspace:*",
         "hono": "4.13.19",

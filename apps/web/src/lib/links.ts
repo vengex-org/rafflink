@@ -1,3 +1,4 @@
+import type { Platform } from "@rafflink/core/platform/provider"
 import type { OverlayOptions } from "./overlay-options.ts"
 import { giveawayPath, moderatorOpenPath, overlayPath, verifyPath } from "./routes.ts"
 
@@ -27,6 +28,12 @@ export const repositoryUrl = "https://github.com/vengex-org/rafflink"
 
 /** The README section that lists the Twitch app settings, including the redirect URLs. */
 export const setupGuideUrl = `${repositoryUrl}#twitch-app-registration`
+
+/** The README section that lists each platform's app settings, including the redirect URLs. */
+export const appSetupUrls: Readonly<Record<Platform, string>> = {
+  twitch: setupGuideUrl,
+  kick: `${repositoryUrl}#kick-app-registration-optional`,
+}
 
 /** Cloudflare's page of the Workers plans, where the owner compares Free and Paid before paying in the dashboard. */
 export const cloudflarePlansUrl = "https://www.cloudflare.com/plans/developer-platform/"

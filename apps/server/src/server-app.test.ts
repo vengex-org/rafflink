@@ -38,6 +38,7 @@ describe("viewer socket", () => {
         },
       },
       fakeTwitch: null,
+      fakeKick: null,
       staticDir: null,
     })
 
@@ -77,6 +78,7 @@ describe.each([
         overlaySnapshotText: name === "overlay" ? read : unusedText,
       },
       fakeTwitch: null,
+      fakeKick: null,
       staticDir: null,
     })
 
@@ -111,6 +113,7 @@ describe("a socket whose first message cannot be built", () => {
         },
       },
       fakeTwitch: null,
+      fakeKick: null,
       staticDir: null,
     })
 

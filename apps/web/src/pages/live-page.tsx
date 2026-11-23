@@ -216,6 +216,7 @@ export function LiveControls({
               snapshot={snapshot}
               overlayToken={overlayToken}
               donateUrl={donateUrl}
+              modsOffered={facts === null || facts.capabilities.moderatorRole}
               onHide={toggleClean}
             />
           )}

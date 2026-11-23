@@ -1230,11 +1230,11 @@ describe("chat entry", () => {
     const view = renderApp("/ABCDE")
 
     expect(await view.findByText("Or type !enter in the chat of Streamy to enter.")).toBeTruthy()
-    fireEvent.change(view.getByLabelText("Your Twitch login"), { target: { value: " fan " } })
+    fireEvent.change(view.getByLabelText("Your username"), { target: { value: " fan " } })
     fireEvent.click(view.getByRole("button", { name: "Am I in?" }))
     expect(await view.findByText("fan is in the giveaway.")).toBeTruthy()
 
-    fireEvent.change(view.getByLabelText("Your Twitch login"), { target: { value: "nobody" } })
+    fireEvent.change(view.getByLabelText("Your username"), { target: { value: "nobody" } })
     fireEvent.click(view.getByRole("button", { name: "Am I in?" }))
     expect(await view.findByText(/^nobody is not in the giveaway yet\./)).toBeTruthy()
     expect(requests.filter((request) => request.route.includes("/entered"))).toHaveLength(2)
@@ -1270,7 +1270,7 @@ describe("chat entry", () => {
     })
     const view = renderApp("/ABCDE")
 
-    fireEvent.change(await view.findByLabelText("Your Twitch login"), {
+    fireEvent.change(await view.findByLabelText("Your username"), {
       target: { value: "fan" },
     })
     fireEvent.click(view.getByRole("button", { name: "Am I in?" }))

@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import type { EntrySummary } from "@rafflink/core/room/rows"
 import type { GiveawayView } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
+import { platformNames } from "../lib/platform-name.ts"
 import { waitText } from "../lib/rules-text.ts"
 import type { EntryView } from "../lib/use-entry-result.ts"
 import { AlertIcon, CheckIcon, ClockIcon, GiftIcon, LockIcon, LogInIcon } from "./icons.tsx"
@@ -36,6 +37,7 @@ export function EntryPanel({
   const i18n = useI18n()
   const { t } = i18n
   const { status } = giveaway
+  const onPlatform = { platform: platformNames[giveaway.platform] }
   const card = entry === null ? null : entryCard(entry, giveaway, i18n)
   const canEnter = status === "open" && (card === null || card.retry)
   // These outcomes end the flow, so a step count would suggest it goes on.
@@ -73,7 +75,7 @@ export function EntryPanel({
   if (card === null && status === "drawn") {
     return (
       <GiveawayState tone="info" icon={<LockIcon />} title={t("giveaway.drawn.title")}>
-        <p className="viewer-note">{t("giveaway.drawn.text")}</p>
+        <p className="viewer-note">{t("giveaway.drawn.text", onPlatform)}</p>
         {signIn(t(giveaway.platform === "kick" ? "signIn.buttonKick" : "signIn.button"))}
       </GiveawayState>
     )
@@ -94,7 +96,9 @@ export function EntryPanel({
       >
         {card !== null && card.entered && tickets !== null ? <TicketBox tickets={tickets} /> : null}
         <div className="viewer-notes">
-          <p className="viewer-note">{card === null ? t("giveaway.ready.text") : card.detail}</p>
+          <p className="viewer-note">
+            {card === null ? t("giveaway.ready.text", onPlatform) : card.detail}
+          </p>
           {card !== null && card.help !== null ? <p className="viewer-note">{card.help}</p> : null}
         </div>
         {canEnter
@@ -103,7 +107,7 @@ export function EntryPanel({
         {entry?.kind === "not-eligible" && entry.reason === "broadcaster" ? (
           <a className="button outlined block" href={`${signInHref}&force_verify=true`}>
             <LogInIcon />
-            {t("entry.otherAccount")}
+            {t("entry.otherAccount", onPlatform)}
           </a>
         ) : null}
       </GiveawayState>
@@ -127,6 +131,7 @@ interface EntryCard {
 
 function entryCard(entry: EntryView, giveaway: GiveawayView, i18n: I18n): EntryCard {
   const { t } = i18n
+  const onPlatform = { platform: platformNames[giveaway.platform] }
   switch (entry.kind) {
     case "entered":
       return {
@@ -156,7 +161,7 @@ function entryCard(entry: EntryView, giveaway: GiveawayView, i18n: I18n): EntryC
         icon: <span className="spinner" aria-hidden="true" />,
         title: t("entry.pending.title"),
         detail: t("entry.pending.detail", { wait: waitText(i18n, giveaway.poll.maxMs) }),
-        help: t("entry.pending.help"),
+        help: t("entry.pending.help", onPlatform),
         step: 2,
         retry: false,
         entered: false,
@@ -167,7 +172,7 @@ function entryCard(entry: EntryView, giveaway: GiveawayView, i18n: I18n): EntryC
         icon: <LockIcon />,
         title: t("entry.notEligible.title"),
         detail: t(`reason.${entry.reason}`),
-        help: t(`reasonHelp.${entry.reason}`),
+        help: t(`reasonHelp.${entry.reason}`, onPlatform),
         step: 1,
         retry: false,
         entered: false,
@@ -210,7 +215,7 @@ function entryCard(entry: EntryView, giveaway: GiveawayView, i18n: I18n): EntryC
         tone: "danger",
         icon: <AlertIcon />,
         title: t("entry.tryAgain.title"),
-        detail: t("entry.tryAgain.detail"),
+        detail: t("entry.tryAgain.detail", onPlatform),
         help: t("entry.tryAgain.help"),
         step: 1,
         retry: true,

@@ -4,7 +4,7 @@ import type { StreamerTokenDeps } from "@rafflink/core/accounts/streamer-token"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import type { ResolvedConfig } from "@rafflink/core/config"
-import { apiPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
+import { apiPrefixes, fakeKickPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
 import { DrandBeacon } from "@rafflink/core/beacon/drand-beacon"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { errorClass } from "@rafflink/core/lib/error-class"
@@ -22,6 +22,7 @@ import { TokenQueue, type TokenQueueStub } from "@rafflink/core/queue/token-queu
 import { BunSqliteAsyncSql, BunSqliteSyncSql } from "@rafflink/core/sqlite-bun"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
+import { kickAppOf, type KickApp } from "@rafflink/core/kick/kick-client"
 import { kickPlatform } from "@rafflink/core/kick/kick-provider"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
@@ -59,7 +60,10 @@ const rateWindowMs = 60_000
 // Hourly, like the Cloudflare cron of wrangler.jsonc that runs the same sweep.
 const historySweepMs = 3_600_000
 
-/** Opens the data folder, starts the timers and listens. With `config.devFakeTwitch` the fake Twitch answers at the Twitch URLs. */
+/**
+ * Opens the data folder, starts the timers and listens. With `config.devFakeTwitch` the fake Twitch answers at the
+ * Twitch URLs, with `config.devFakeKick` the fake Kick at the Kick URLs.
+ */
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   const { config, staticDir, devSpa, devPublicDir } = options
   const clock = systemClock
@@ -146,10 +150,15 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null
+  const kickApp = kickAppOf(config)
+  // resolveConfig refuses DEV_FAKE_KICK without a Kick app, so the fake never runs without one.
+  const fakeKick =
+    config.devFakeKick && kickApp !== null ? await createFakeKickApp(kickApp, config) : null
   const app = createServerApp({
     api: createApp(deps, staticDir === null ? null : indexTemplateOf(staticDir)),
     rooms,
     fakeTwitch,
+    fakeKick,
     staticDir: staticDir ?? devPublicDir,
   })
   const server = Bun.serve({
@@ -231,6 +240,16 @@ async function createFakeTwitchApp(config: ResolvedConfig): Promise<Hono> {
   return fake.app
 }
 
+// Loaded here for the same reason as the fake Twitch. Its webhooks go to this server, as the Kick app's settings would say.
+async function createFakeKickApp(kickApp: KickApp, config: ResolvedConfig): Promise<Hono> {
+  const { createFakeKick, devFakeKickOptions, devFakeKickUsers } =
+    await import("@rafflink/fake-kick")
+  const fake = createFakeKick({ ...devFakeKickOptions, ...kickApp })
+  for (const user of devFakeKickUsers) fake.control.addUser(user)
+  fake.control.setWebhookUrl(new URL("/api/kick/webhook", config.publicUrl).href)
+  return fake.app
+}
+
 // A wildcard route for the SPA would swallow every path, so each path the server answers is listed.
 // The folder is read once at start: a file added to it later needs a restart.
 function devRoutes(app: Hono, spa: Bun.HTMLBundle, publicDir: string | null) {
@@ -243,7 +262,7 @@ function devRoutes(app: Hono, spa: Bun.HTMLBundle, publicDir: string | null) {
           entry.isDirectory() ? `/${entry.name}/*` : `/${entry.name}`,
         )
   const handled = [
-    ...[...apiPrefixes, ...fakeTwitchPrefixes].map((prefix) => `${prefix}*`),
+    ...[...apiPrefixes, ...fakeTwitchPrefixes, ...fakeKickPrefixes].map((prefix) => `${prefix}*`),
     ...publicPaths,
   ]
   return { ...Object.fromEntries(handled.map((path) => [path, answered])), "/*": spa }

@@ -41,13 +41,13 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "signIn.button": "Přihlásit se přes Twitch",
   "signIn.buttonKick": "Přihlásit se přes Kick",
   "signIn.why.admin": "Pro otevření administrace se přihlas přes Twitch.",
-  "signIn.why.expired": "Přihlášení vypršelo. Přihlas se přes Twitch a pokračuj.",
-  "signIn.why.dashboard": "Pro vytváření a vedení soutěží se přihlas přes Twitch.",
-  "signIn.why.live": "Pro otevření živé stránky tvé soutěže se přihlas přes Twitch.",
+  "signIn.why.expired": "Přihlášení vypršelo. Přihlas se a pokračuj.",
+  "signIn.why.dashboard": "Pro vytváření a vedení soutěží se přihlas.",
+  "signIn.why.live": "Pro otevření živé stránky tvé soutěže se přihlas.",
 
-  "home.title": "Férové Twitch soutěže, losované živě na streamu.",
+  "home.title": "Férové soutěže, losované živě na streamu.",
   "home.text": "Diváci se zapojí jedním klikem a ty losuješ před chatem.",
-  "home.login": "Přihlásit se přes Twitch",
+  "home.login": "Přihlásit se a začít",
   "home.stage.toClaim": "na převzetí",
   "home.reads": "Čteme jen tvé jméno, VIP, moderátory a chat.",
   "home.trust.supportKoFi": "Podpoř na Ko-fi",
@@ -56,14 +56,14 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "home.footer.label": "Patička",
   "home.problemTitle": "Přihlášení se nepovedlo",
   "home.problem.invalidState": "Přihlášení vypršelo. Zkus to prosím znovu.",
-  "home.problem.tryAgain": "Twitch neodpověděl. Zkus to prosím znovu.",
+  "home.problem.tryAgain": "Streamovací platforma neodpověděla. Zkus to prosím znovu.",
 
-  "oauthError.title": "Přihlášení přes Twitch selhalo",
-  "oauthError.access_denied": "Přihlášení přes Twitch jsi zrušil.",
+  "oauthError.title": "Přihlášení přes {platform} selhalo",
+  "oauthError.access_denied": "Přihlášení přes {platform} jsi zrušil.",
   "oauthError.redirect_mismatch":
-    "Tato instalace Rafflinku není v konzoli pro vývojáře Twitche nastavená správně. Provozovatel musí doplnit adresy přesměrování.",
-  "oauthError.setupLink": "Podívej se na kroky nastavení aplikace na Twitchi",
-  "oauthError.generic": "Twitch tě nedokázal přihlásit.",
+    "Tato instalace Rafflinku není ve vývojářském nastavení platformy {platform} nastavená správně. Provozovatel musí doplnit adresy přesměrování.",
+  "oauthError.setupLink": "Podívej se na kroky nastavení aplikace pro {platform}",
+  "oauthError.generic": "Platforma {platform} tě nedokázala přihlásit.",
   "oauthError.code": "Kód chyby: {code}",
   "oauthError.tryAgain": "Zkusit znovu",
   "oauthError.dismiss": "Zavřít",
@@ -186,8 +186,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "entrants.none": "Zatím se nikdo nepřihlásil.",
   "entrants.title": "Přihlášení",
   "entrants.search.label": "Hledat podle jména",
-  "entrants.search.help":
-    "Napiš pár písmen jména nebo loginu na Twitchi. Na velikosti písmen nezáleží.",
+  "entrants.search.help": "Napiš pár písmen jména nebo loginu. Na velikosti písmen nezáleží.",
   "entrants.col.name": "Jméno",
   "entrants.col.tickets": "Losy",
   "entrants.col.status": "Stav",
@@ -247,8 +246,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "reason.page-entry-off": "Do této soutěže se dá zapojit jen přes chat streamu.",
   "reasonHelp.page-entry-off":
     "Pro zapojení napiš do chatu streamu klíčové slovo, které vidíš na této stránce.",
-  "reasonHelp.broadcaster": "Pro zapojení se přihlas jiným účtem na Twitchi.",
-  "entry.otherAccount": "Použít jiný účet na Twitchi",
+  "reasonHelp.broadcaster": "Pro zapojení se přihlas jiným účtem na platformě {platform}.",
+  "entry.otherAccount": "Použít jiný účet na platformě {platform}",
   "reason.blocked": "Do této soutěže se nemůžeš zapojit.",
   "reasonHelp.blocked": "Pokud máš otázky, zeptej se streamera.",
   "reason.recent-winner":
@@ -275,8 +274,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "viewerClaim.expired": "Čas na převzetí vypršel.",
   "viewerClaim.rerolled": "Streamer vybral jiného vítěze.",
   "viewerClaim.not-a-winner": "V této soutěži nejsi vítěz.",
-  "viewerClaim.rejected":
-    "Převzetí se nepovedlo. Přihlas se přes Twitch znovu a stiskni Převzít výhru.",
+  "viewerClaim.rejected": "Převzetí se nepovedlo. Přihlas se znovu a stiskni Převzít výhru.",
 
   "closeResult.closed": "Přihlašování je uzavřené.",
   "closeResult.not-open": "Přihlašování už bylo uzavřené.",
@@ -405,11 +403,12 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "giveaway.aboutToClose": "Přihlašování se chystá skončit.",
   "giveaway.closesIn": "Přihlašování končí za {time}.",
   "giveaway.drawn.title": "Vítězové jsou vylosovaní",
-  "giveaway.drawn.text": "Přihlas se přes Twitch a uvidíš, jestli jsi vyhrál.",
+  "giveaway.drawn.text": "Přihlas se přes {platform} a uvidíš, jestli jsi vyhrál.",
   "giveaway.notThisTime.title": "Tentokrát ne",
   "giveaway.notThisTime.text": "Vítěz je vylosovaný. Tentokrát jsi to nebyl ty.",
   "giveaway.ready.title": "Chceš se zapojit?",
-  "giveaway.ready.text": "Přihlas se účtem na Twitchi a získej svůj los. Zabere to jen pár vteřin.",
+  "giveaway.ready.text":
+    "Přihlas se účtem na platformě {platform} a získej svůj los. Zabere to jen pár vteřin.",
   "giveaway.enter": "Zapojit se přes Twitch",
   "giveaway.enterKick": "Zapojit se přes Kick",
   "giveaway.signedOut.title": "Přihlas se a zapoj se",
@@ -437,7 +436,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "entry.role.moderator": "jako moderátor",
   "entry.pending.title": "Přihlašujeme tě",
   "entry.pending.detail": "Trvá to nejvýš {wait}. Tuto stránku nezavírej.",
-  "entry.pending.help": "Twitch je vytížený. Stránka se obnoví sama.",
+  "entry.pending.help": "Platforma {platform} je vytížená. Stránka se obnoví sama.",
   "entry.notEligible.title": "Nemůžeš se zapojit",
   "entry.dropped.title": "Tvoje přihláška trvala příliš dlouho",
   "entry.dropped.detail":
@@ -447,7 +446,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "entry.timedOut.detail": "Odpověď nepřišla včas.",
   "entry.timedOut.help": "Stiskni tlačítko a zapoj se znovu.",
   "entry.tryAgain.title": "Zkus to znovu",
-  "entry.tryAgain.detail": "Twitch neodpověděl včas.",
+  "entry.tryAgain.detail": "Platforma {platform} neodpověděla včas.",
   "entry.tryAgain.help": "Stiskni tlačítko a zkus to ještě jednou.",
   "entry.rateLimited.title": "Příliš mnoho pokusů",
   "entry.rateLimited.detail": "Zkoušel ses zapojit příliš často za krátkou dobu.",
@@ -506,12 +505,12 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "rules.blocked": "Účty, které {name} zablokoval, se zapojit nemohou.",
   "rules.broadcaster": "{name} se do vlastní soutěže zapojit nemůže.",
   "rules.platform":
-    "Twitch tuto soutěž nesponzoruje, nepodporuje ani nepořádá a nemá s ní nic společného.",
+    "{platform} tuto soutěž nesponzoruje, nepodporuje ani nepořádá a nemá s ní nic společného.",
   "rules.prize": "Výhra: {prize}",
   "rules.prizeNone": "Výhra tu není popsaná. Zeptej se: {name}.",
-  "rules.enterPage": "Zapojíš se tak, že se na této stránce přihlásíš přes Twitch.",
+  "rules.enterPage": "Zapojíš se tak, že se na této stránce přihlásíš přes {platform}.",
   "rules.enterChat":
-    'Zapojíš se tak, že dokud je přihlašování otevřené, napíšeš "{keyword}" do Twitch chatu kanálu {name}.',
+    'Zapojíš se tak, že dokud je přihlašování otevřené, napíšeš "{keyword}" do chatu kanálu {name} na platformě {platform}.',
   "rules.enterSub":
     "Pokud si během otevřeného zapojování předplatíš kanál {name}, prodloužíš předplatné nebo dostaneš darovaný sub, také se zapojíš. Předplatné k zapojení nikdy nepotřebuješ.",
   "rules.enterPoints":
@@ -543,7 +542,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "dash.created.title": "Tvoje soutěž běží!",
   "dash.roomNotReady":
     "Soutěž ještě není úplně připravená. Otevři živou stránku a dokonči nastavení.",
-  "dash.next": "Teď dej vědět chatu. Vlož zprávu níže do chatu na Twitchi. Kód soutěže je {code}.",
+  "dash.next": "Teď dej vědět chatu. Vlož zprávu níže do chatu streamu. Kód soutěže je {code}.",
   "dash.openLive": "Otevřít živou stránku",
   "dash.obs.title": "Přidat do OBS (nepovinné)",
   "dash.obs.text": "Zobraz přihlášky ve svém streamu, zatímco se lidé zapojují.",
@@ -558,7 +557,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "dash.empty.create.lead": "Vytvoř ji.",
   "dash.empty.create.rest": "Řekni, co rozdáváš a kdo se může zapojit.",
   "dash.empty.share.lead": "Sdílej odkaz.",
-  "dash.empty.share.rest": "Vlož ho do chatu. Diváci se zapojí přihlášením přes Twitch.",
+  "dash.empty.share.rest": "Vlož ho do chatu. Diváci se zapojí přihlášením na stránce soutěže.",
   "dash.empty.draw.lead": "Losuj živě.",
   "dash.empty.draw.rest": "Uzavři přihlašování a vylosuj vítěze ve svém streamu.",
   "dash.empty.button": "Vytvořit soutěž",
@@ -586,14 +585,14 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "dash.deleteData.button": "Smazat všechny moje údaje",
   "dash.deleteData.question": "Smazat všechny tvoje údaje?",
   "dash.deleteData.detail":
-    "Všechny giveawaye se zapojenými, výherci a důkazem losování, tvůj účet i uložený Twitch token se natrvalo smažou a budeš odhlášen.",
+    "Všechny giveawaye se zapojenými, výherci a důkazem losování, tvůj účet i uložený přihlašovací token se natrvalo smažou a budeš odhlášen.",
   "dash.deleteData.confirm": "Ano, smazat vše",
   "dash.blocks.title": "Zablokované účty",
   "dash.blocks.text":
     "Zablokované účty se nemohou zapojit do žádného tvého giveawaye. Jejich zapojení v ještě otevřených giveawayích se odstraní, v uzavřených zůstanou. Seznam se smaže spolu s tvým účtem.",
   "dash.blocks.count": "Zablokovaných účtů: {count} z {max}",
   "dash.blocks.none": "Žádné zablokované účty.",
-  "dash.blocks.label": "Twitch jméno k zablokování",
+  "dash.blocks.label": "Jméno k zablokování",
   "dash.blocks.add": "Zablokovat",
   "dash.blocks.remove": "Odebrat",
   "dash.blocks.remove.label": "Odebrat {login} ze seznamu zablokovaných",
@@ -601,10 +600,11 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "dash.blocks.added": "Účet je zablokovaný.",
   "dash.blocks.exists": "Tento účet už je zablokovaný.",
   "dash.blocks.removed": "Účet byl odebrán ze seznamu zablokovaných.",
-  "dash.blocks.invalid-input": "Zadej Twitch jméno.",
-  "dash.blocks.unknown-login": "Účet na Twitchi s tímto jménem neexistuje.",
+  "dash.blocks.invalid-input": "Zadej jméno.",
+  "dash.blocks.unknown-login": "Účet s tímto jménem neexistuje.",
   "dash.blocks.block-list-full": "Seznam zablokovaných je plný. Nejdřív nějaký účet odeber.",
-  "dash.blocks.platform-unavailable": "Twitch neodpověděl. Zkus to za chvíli znovu.",
+  "dash.blocks.platform-unavailable":
+    "Streamovací platforma neodpověděla. Zkus to za chvíli znovu.",
   "dash.blocks.room-unavailable":
     "Uloženo, ale běžící giveaway změnu ještě nedostal. Zkus stejnou akci znovu.",
   "dash.history.title": "Veřejná historie",
@@ -799,7 +799,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "wizard.prize.label": "Co vítěz dostane? (nepovinné)",
   "wizard.prize.help": "Příklad: herní židle nebo dárková karta Steam za 25 eur",
   "wizard.audience.everyone": "Každý",
-  "wizard.audience.everyone.help": "Zapojit se může každý divák s účtem na Twitchi.",
+  "wizard.audience.everyone.help": "Zapojit se může každý divák.",
   "wizard.audience.followers": "Jen sledující",
   "wizard.audience.followers.help": "Zapojit se mohou jen lidé, kteří sledují tvůj kanál.",
   "wizard.audience.subscribers": "Jen předplatitelé",
@@ -889,7 +889,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "review.keywordChat": "Vítěz může napsat i „{keyword}“ do tvého chatu.",
   "wizard.entry.legend": "Jak se diváci zapojí",
   "wizard.entry.page": "Stránka soutěže",
-  "wizard.entry.page.help": "Diváci se přihlásí přes Twitch na stránce soutěže.",
+  "wizard.entry.page.help": "Diváci se přihlásí na stránce soutěže.",
   "wizard.entry.both": "Stránka i chat",
   "wizard.entry.both.help": "Diváci se mohou zapojit i napsáním klíčového slova do tvého chatu.",
   "wizard.entry.chat": "Jen chat",
@@ -923,7 +923,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "review.pointsEntry": "Uplatnění „{reward}“ zapojí diváka.",
   "giveaway.chatEntry": "Nebo napiš {keyword} do chatu kanálu {name} a zapojíš se.",
   "giveaway.lookup.legend": "Zapojení přes chat",
-  "giveaway.lookup.label": "Tvoje jméno na Twitchi",
+  "giveaway.lookup.label": "Tvoje jméno",
   "giveaway.lookup.button": "Jsem v soutěži?",
   "giveaway.lookup.yes": "{login} je v soutěži.",
   "giveaway.lookup.no":
@@ -941,7 +941,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
 
   "privacy.title": "Zásady ochrany osobních údajů",
   "privacy.intro":
-    "Rafflink losuje výherce giveawayů na Twitchi. Tyto zásady vysvětlují, jaké osobní údaje zpracovává, proč, jak dlouho a jaká práva máš. Jsou záměrně stručné.",
+    "Rafflink losuje výherce giveawayů na Twitchi a Kicku. Tyto zásady vysvětlují, jaké osobní údaje zpracovává, proč, jak dlouho a jaká práva máš. Jsou záměrně stručné.",
   "privacy.controller.h": "Kdo je odpovědný",
   "privacy.controller.p1":
     "Správcem tvých osobních údajů na této instanci je {operator}. Kontakt: {contact}.",
@@ -951,17 +951,17 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Rafflink je open source a každý si může spustit vlastní kopii. Tento text popisuje, co dělá software; správcem údajů na instanci je ten, kdo ji provozuje. Projekt Rafflink od instancí, které provozují jiní, nedostává žádná data.",
   "privacy.data.h": "Jaké údaje se zpracovávají",
   "privacy.data.p1":
-    "Vše pochází z Twitche, když se jím přihlásíš. Rafflink žádá jen přístup pro čtení a nikdy nepíše do chatu.",
+    "Vše pochází z Twitche nebo Kicku, podle toho, přes který se přihlásíš. Rafflink žádá jen přístup pro čtení a nikdy nepíše do chatu.",
   "privacy.data.i1":
-    "Streameři: Twitch user ID, přihlašovací jméno, předchozí přihlašovací jméno po přejmenování (aby odkaz na starou veřejnou historii přesměroval), zobrazované jméno, URL profilového obrázku na Twitchi a čas prvního přihlášení, dále giveawaye, které vytvoří (název, text výhry, pravidla, kód odkazu, časy), a jejich výsledky.",
+    "Streameři: user ID na platformě, přihlašovací jméno, předchozí přihlašovací jméno po přejmenování (aby odkaz na starou veřejnou historii přesměroval), zobrazované jméno, URL profilového obrázku a čas prvního přihlášení, dále giveawaye, které vytvoří (název, text výhry, pravidla, kód odkazu, časy), a jejich výsledky.",
   "privacy.data.i2":
-    "Streameři: Twitch refresh token, uložený šifrovaně. Díky němu Rafflink během giveawaye čte seznam VIP a moderátorů kanálu a chat a ověří, že ten, kdo otevře odkaz pro moderátora, kanál moderuje.",
+    "Streameři: refresh token platformy, uložený šifrovaně. Díky němu Rafflink během giveawaye čte seznam VIP a moderátorů kanálu a chat a ověří, že ten, kdo otevře odkaz pro moderátora, kanál moderuje.",
   "privacy.data.i3":
-    "Účastníci: Twitch user ID, přihlašovací jméno, zobrazované jméno, URL profilového obrázku na Twitchi, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů, čas zapojení a náhodná hodnota (salt), díky které je losování ověřitelné. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
+    "Účastníci: user ID na platformě, přihlašovací jméno, zobrazované jméno, URL profilového obrázku, skupina, která dala tikety (divák, follower, úroveň předplatitele, VIP nebo moderátor), počet tiketů, čas zapojení a náhodná hodnota (salt), díky které je losování ověřitelné. Kontrola follow a předplatného použije tvůj Twitch token jednou a token se neukládá.",
   "privacy.data.i4":
-    "Všichni vylosovaní, i ti nahrazení novým losem: Twitch ID uživatele, přihlašovací a zobrazované jméno, výsledek losování a to, zda a jak byla výhra převzata. ID uživatele zůstává u losu i poté, co bylo jméno nahrazeno slovem „removed“.",
+    "Všichni vylosovaní, i ti nahrazení novým losem: ID uživatele na platformě, přihlašovací a zobrazované jméno, výsledek losování a to, zda a jak byla výhra převzata. ID uživatele zůstává u losu i poté, co bylo jméno nahrazeno slovem „removed“.",
   "privacy.data.i5":
-    "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo klíčové slovo pro zapojení a převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují. Když napíšeš klíčové slovo, uloží se tvoje Twitch ID, přihlašovací jméno, zobrazované jméno a role z tvých odznaků v chatu, dokud se zapojení nezkontroluje; pak jsi v soutěži stejně jako ze stránky a sledování kanálu se ověří tokenem streamera.",
+    "Zprávy z chatu: čtou se jen v paměti, aby se rozpoznalo klíčové slovo pro zapojení a převzetí výhry a aby se na živé stránce ukázaly zprávy výherce. Nikdy se neukládají ani nelogují. Když napíšeš klíčové slovo, uloží se tvoje ID na platformě, přihlašovací jméno, zobrazované jméno a role z tvých odznaků v chatu, dokud se zapojení nezkontroluje; pak jsi v soutěži stejně jako ze stránky a sledování kanálu se ověří tokenem streamera.",
   "privacy.data.i6":
     "Technické údaje: hostitel zpracovává tvou IP adresu a údaje o požadavku, aby stránku doručil a ochránil ji před zneužitím, například omezeními rychlosti.",
   "privacy.data.i7":
@@ -969,9 +969,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.data.i8":
     "Moderátoři, kteří otevřou odkaz pro moderátora: odkaz ukládá jen hash svého tajemství. Když je odkaz pro moderátory kanálu, moderátor se přihlásí přes Twitch a Rafflink porovná jeho Twitch user ID se seznamem moderátorů kanálu. ID zůstane jen v cookie moderátora, nic jiného se o něm neukládá a žádný Twitch token se nedrží.",
   "privacy.data.i9":
-    "Zablokované účty: streamer může zablokovat účty ve svých giveawayích. Rafflink pak u účtu streamera uloží Twitch user ID a přihlašovací jméno zablokované osoby a čas bloku. Každá místnost giveawaye streamera si drží kopii zablokovaných user ID, aby je mohla odmítnout. Pokud se osoba už zapojila do giveawaye, který je ještě otevřený, její záznam se smaže.",
+    "Zablokované účty: streamer může zablokovat účty ve svých giveawayích. Rafflink pak u účtu streamera uloží user ID na platformě a přihlašovací jméno zablokované osoby a čas bloku. Každá místnost giveawaye streamera si drží kopii zablokovaných user ID, aby je mohla odmítnout. Pokud se osoba už zapojila do giveawaye, který je ještě otevřený, její záznam se smaže.",
   "privacy.data.i10":
-    "Nedávní vítězové: když streamer nezapojuje nedávné vítěze, Twitch user ID vítězů jeho předchozích giveawayů se zkopírují do místnosti nového giveawaye, aby je mohla odmítnout.",
+    "Nedávní vítězové: když streamer nezapojuje nedávné vítěze, user ID vítězů na platformě jeho předchozích giveawayů se zkopírují do místnosti nového giveawaye, aby je mohla odmítnout.",
   "privacy.data.i11":
     "Vítězové, kteří vyplní formulář pro vítěze: odpovědi, o které streamer požádal, například jméno, e-mail, doručovací adresa, ID herního účtu nebo zpráva pro streamera. Ukládají se šifrovaně, číst je může jen streamer daného giveawaye, aby doručil výhru, a nikdy se nezapisují do logů. Vítěz může formulář poslat jen jednou.",
   "privacy.purposes.h": "Proč a na jakém právním základě",
@@ -983,16 +983,16 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "K udržení přihlášení pomocí cookies, které jsou k tomu nezbytné. Rafflink nepoužívá reklamu, analytické nástroje ani sledování a údaje neprodává ani nepředává pro marketing. Uchovává jen souhrnné počty, které neobsahují osobní údaje, například návštěvy podle značky zdroje za den a přihlášky a převzetí za minutu.",
   "privacy.retention.h": "Jak dlouho se údaje uchovávají",
   "privacy.retention.i1":
-    "Zapojení (Twitch ID uživatelů, jména, URL obrázků, skupiny, tikety, časy zapojení, soli) se mažou nejpozději 30 dní po uzavření giveawaye; provozovatel může nastavit kratší dobu. Smažou se i zapojení vylosovaných; jejich ID a jména zůstávají u losu, i u těch nahrazených novým losem (viz níže).",
+    "Zapojení (ID uživatelů na platformě, jména, URL obrázků, skupiny, tikety, časy zapojení, soli) se mažou nejpozději 30 dní po uzavření giveawaye; provozovatel může nastavit kratší dobu. Smažou se i zapojení vylosovaných; jejich ID a jména zůstávají u losu, i u těch nahrazených novým losem (viz níže).",
   "privacy.retention.i2":
-    "Když streamer odebere Rafflinku přístup na Twitchi, smaže se jen uložený Twitch token. Účet a giveawaye zůstávají, dokud je streamer nesmaže na svém přehledu, jeden giveaway nebo všechny údaje najednou, nebo dokud o to nepožádá provozovatele (viz kontakt výše).",
+    "Když streamer odebere Rafflinku přístup na Twitchi nebo Kicku, smaže se jen uložený token. Účet a giveawaye zůstávají, dokud je streamer nesmaže na svém přehledu, jeden giveaway nebo všechny údaje najednou, nebo dokud o to nepožádá provozovatele (viz kontakt výše).",
   "privacy.retention.i3": "Přihlašovací kódy čekající ve frontě se po několika minutách zahodí.",
   "privacy.retention.i4":
     "Logy hostitele uchovává provozovatel nebo jeho poskytovatel hostingu podle vlastních podmínek.",
   "privacy.retention.i5":
-    "Giveaway (název, výhra, pravidla, data, počty zapojených a tiketů), všichni vylosovaní, i ti nahrazení novým losem, s Twitch ID, přihlašovacím a zobrazovaným jménem a stavem převzetí, Merkleův kořen seznamu zapojení a seznam jeho listů (hashe a počty tiketů, bez jmen) zůstávají, dokud streamer giveaway nesmaže, aby šlo doručit výhru a aby losování mohl později ověřit kdokoli. Provozovatel může nastavit počet dní po uzavření losování, po kterých se giveawaye mažou.",
+    "Giveaway (název, výhra, pravidla, data, počty zapojených a tiketů), všichni vylosovaní, i ti nahrazení novým losem, s ID na platformě, přihlašovacím a zobrazovaným jménem a stavem převzetí, Merkleův kořen seznamu zapojení a seznam jeho listů (hashe a počty tiketů, bez jmen) zůstávají, dokud streamer giveaway nesmaže, aby šlo doručit výhru a aby losování mohl později ověřit kdokoli. Provozovatel může nastavit počet dní po uzavření losování, po kterých se giveawaye mažou.",
   "privacy.retention.i6":
-    "Blok (Twitch user ID a přihlašovací jméno) se uchovává, aby se daná osoba nezapojila do giveawayů streamera, dokud ho streamer neodebere na přehledu nebo nesmaže svůj účet. Kopie zablokovaných user ID a user ID nedávných vítězů v místnosti giveawaye se smažou spolu se záznamy toho giveawaye, nejpozději 30 dní po jeho uzavření.",
+    "Blok (user ID na platformě a přihlašovací jméno) se uchovává, aby se daná osoba nezapojila do giveawayů streamera, dokud ho streamer neodebere na přehledu nebo nesmaže svůj účet. Kopie zablokovaných user ID a user ID nedávných vítězů v místnosti giveawaye se smažou spolu se záznamy toho giveawaye, nejpozději 30 dní po jeho uzavření.",
   "privacy.retention.i7":
     "Odpovědi z formuláře pro vítěze se smažou, když streamer označí výhru jako doručenou, nejpozději 30 dní po převzetí; provozovatel může nastavit kratší dobu. U losu zůstává jen čas odeslání formuláře a čas doručení. Smazání giveawaye nebo účtu streamera smaže odpovědi hned.",
   "privacy.recipients.h": "Kdo další údaje vidí",
@@ -1000,7 +1000,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.recipients.i1":
     "Poskytovatel hostingu této instance službu uchovává a doručuje jako zpracovatel provozovatele a může údaje zpracovávat i mimo Evropský hospodářský prostor podle vlastních podmínek a záruk.",
   "privacy.recipients.i2":
-    "Twitch je poskytovatel identity. Dostává tvé přihlášení a během giveawaye také volání API ke kontrole follow, předplatného a rolí a odběr chatu, kterým se rozpoznává převzetí výhry. Prohlížeč streamera navíc načítá profilové obrázky a odznaky předplatitelů z obrazových serverů Twitche. Twitch je samostatný správce podle vlastních zásad ochrany soukromí.",
+    "Twitch je poskytovatel identity při přihlášení přes Twitch. Dostává tvé přihlášení a během giveawaye také volání API ke kontrole follow, předplatného a rolí a odběr chatu, kterým se rozpoznává převzetí výhry. Prohlížeč streamera navíc načítá profilové obrázky a odznaky předplatitelů z obrazových serverů Twitche. Twitch je samostatný správce podle vlastních zásad ochrany soukromí. Kick je poskytovatel identity při přihlášení přes Kick. Dostává tvé přihlášení a během giveawaye také odběr, kterým posílá Rafflinku zprávy z chatu streamera. Kick je samostatný správce podle vlastních zásad ochrany soukromí.",
   "privacy.recipients.i3":
     "Streamer, který giveaway vede, vidí jeho účastníky a výherce. Jména účastníků a výherců se zobrazují na živé stránce giveawaye a v overlayi, jejich profilové obrázky na živé stránce.",
   "privacy.recipients.i4":
@@ -1030,7 +1030,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "privacy.rights.none":
     "Provozovatel této instance tu nezveřejnil kontaktní údaje a osoba, která ti poslala odkaz, nemusí být provozovatel. Bez kontaktu tu není zaručený způsob, jak tato práva uplatnit přes tuto stránku.",
   "privacy.rights.p2":
-    "Přístup Rafflinku můžeš kdykoli odebrat také v nastavení Twitche v části Connections.",
+    "Přístup Rafflinku můžeš kdykoli odebrat také v nastavení Twitche v části Connections nebo v nastavení účtu na Kicku.",
   "privacy.rights.i1": "Přístup k údajům, jejich oprava, omezení zpracování a přenositelnost.",
   "privacy.rights.i2":
     "Výmaz, například jména výherce, které po giveawayi zůstává: provozovatel ho nahradí slovem „removed“ a losování zůstane ověřitelné.",
@@ -1045,9 +1045,9 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Přihlášením nebo zapojením do giveawaye na Rafflinku tyto podmínky přijímáš. Pokud s nimi nesouhlasíš, službu nepoužívej.",
   "terms.service.h": "Služba",
   "terms.service.p1":
-    "Rafflink umožňuje streamerovi na Twitchi vytvořit giveaway, sbírat zapojení a losovat výherce živě. Tuto instanci provozuje {operator}.",
+    "Rafflink umožňuje streamerovi na Twitchi nebo Kicku vytvořit giveaway, sbírat zapojení a losovat výherce živě. Tuto instanci provozuje {operator}.",
   "terms.service.none":
-    "Rafflink umožňuje streamerovi na Twitchi vytvořit giveaway, sbírat zapojení a losovat výherce živě. Tuto instanci provozuje její provozovatel, který tu nezveřejnil kontaktní údaje. Obrať se na osobu, která ti poslala odkaz.",
+    "Rafflink umožňuje streamerovi na Twitchi nebo Kicku vytvořit giveaway, sbírat zapojení a losovat výherce živě. Tuto instanci provozuje její provozovatel, který tu nezveřejnil kontaktní údaje. Obrať se na osobu, která ti poslala odkaz.",
   "terms.service.p2":
     "Služba se poskytuje tak, jak je, a tak, jak je dostupná, bez jakékoli záruky. Může se kdykoli změnit, omezit nebo ukončit a nemá garantovanou dostupnost.",
   "terms.source.h": "Open source",
@@ -1066,14 +1066,14 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Odpovídáš za to, jak použiješ údaje účastníků, které vidíš, podle předpisů o ochraně osobních údajů, které se na tebe vztahují.",
   "terms.viewers.h": "Diváci",
   "terms.viewers.i1":
-    "Zapojení je ze strany Rafflinku vždy zdarma a vyžaduje účet na Twitchi. Rafflink nikdy nežádá od diváků platbu.",
+    "Zapojení je ze strany Rafflinku vždy zdarma a vyžaduje účet na Twitchi nebo Kicku. Rafflink nikdy nežádá od diváků platbu.",
   "terms.viewers.i2":
     "Výhru poskytuje streamer, ne Rafflink. Rafflink není stranou giveawaye a neslibuje výhru ani její doručení.",
   "terms.viewers.i3":
     "Výhru je třeba převzít v čase, který streamer určil. Poté může streamer losovat znovu.",
-  "terms.twitch.h": "Twitch",
-  "terms.twitch.p1":
-    "Na tvé používání Twitche přes Rafflink se vztahují Terms of Service, Community Guidelines a Developer Services Agreement společnosti Twitch. Rafflink není s Twitchem spojen ani jím podporován.",
+  "terms.platforms.h": "Twitch a Kick",
+  "terms.platforms.p1":
+    "Na tvé používání Twitche přes Rafflink se vztahují Terms of Service, Community Guidelines a Developer Services Agreement společnosti Twitch. Rafflink není s Twitchem spojen ani jím podporován. Na tvé používání Kicku přes Rafflink se vztahují podmínky a pravidla Kicku a Rafflink není spojen ani s Kickem, ani jím podporován.",
   "terms.use.h": "Přípustné používání",
   "terms.use.p1": "Zavazuješ se, že nebudeš:",
   "terms.use.i1": "používat boty, skripty ani jinou automatizaci k zapojení nebo převzetí výhry,",
@@ -1084,7 +1084,7 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "vést nezákonné giveawaye ani dávat do názvu či textu výhry nezákonný nebo urážlivý obsah.",
   "terms.liability.h": "Odpovědnost",
   "terms.liability.p1":
-    "V rozsahu, který zákon dovoluje, neodpovídáme za nepřímou ani následnou škodu, za giveaway, výhru ani spor mezi streamerem a divákem, ani za výpadek Rafflinku nebo Twitche. Naše celková odpovědnost je omezena částkou, kterou jsi nám za službu zaplatil, což je u bezplatného účtu nula.",
+    "V rozsahu, který zákon dovoluje, neodpovídáme za nepřímou ani následnou škodu, za giveaway, výhru ani spor mezi streamerem a divákem, ani za výpadek Rafflinku, Twitche nebo Kicku. Naše celková odpovědnost je omezena částkou, kterou jsi nám za službu zaplatil, což je u bezplatného účtu nula.",
   "terms.liability.p2":
     "Nic z toho neomezuje odpovědnost, kterou zákon omezit nedovoluje, například odpovědnost za úmysl nebo za újmu na zdraví, ani tvá práva spotřebitele.",
   "terms.changes.h": "Změny",

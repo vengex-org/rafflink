@@ -9,7 +9,7 @@ import { tokenHash } from "../lib/token-hash.ts"
 import type { Instant } from "../ports.ts"
 import { PlatformError, PlatformIdentityRejected } from "../platform/errors.ts"
 import { codeChallenge, codeVerifier } from "../platform/pkce.ts"
-import { configuredProviders, type PlatformProvider } from "../platform/provider.ts"
+import { configuredProviders, providerFor, type PlatformProvider } from "../platform/provider.ts"
 import { callbackPath, redirectUri } from "../platform/redirect.ts"
 import { openGiveawayStreamerAccess, StreamerTokenMissing } from "../room/streamer-access.ts"
 import type { AppDeps } from "./deps.ts"
@@ -225,6 +225,10 @@ function linkManagement(deps: AppDeps): Hono<StreamerEnv> {
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     const requireMod = objectField(await readJson(c), "requireMod")
     if (typeof requireMod !== "boolean") {
+      return c.json({ error: "invalid-input", field: "requireMod" }, 400)
+    }
+    // A platform that does not tell who moderates the channel could never let anyone open a mods-only link.
+    if (requireMod && !providerFor(deps.platforms, giveaway.platform).capabilities.moderatorRole) {
       return c.json({ error: "invalid-input", field: "requireMod" }, 400)
     }
     const secret = randomId(deps.random)
