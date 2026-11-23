@@ -111,6 +111,7 @@ describe("legal pages", () => {
       expect.arrayContaining([
         "https://www.youtube.com/t/terms",
         "https://policies.google.com/privacy",
+        "https://developers.google.com/terms/api-services-user-data-policy",
         "https://myaccount.google.com/permissions",
       ]),
     )

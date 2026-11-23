@@ -1117,8 +1117,6 @@ export const sk: Translation = {
     "Rafflink používa služby YouTube API. Prihlásením cez YouTube súhlasíš so Zmluvnými podmienkami YouTube ({youtubeTerms}). Na to, čo Google robí s tvojimi údajmi, sa vzťahujú Pravidlá ochrany súkromia Google ({googlePrivacy}).",
   "privacy.youtube.i2":
     "Diváci sa cez Google nikdy neprihlasujú. Zapíšu sa napísaním kľúčového slova do chatu a Rafflink prečíta ID ich kanála, meno zobrazené v chate, správu a to, či sú členmi kanála alebo moderátormi.",
-  "privacy.youtube.i3":
-    "Údaje divákov z YouTube, ktoré Rafflink uchováva, sa vymažú do 30 dní: zápisy najneskôr 30 dní po uzavretí giveawayu a spolu s nimi mená výhercov, takže pri vyžrebovaní zostane iba ID ich kanála.",
   "privacy.cookies.h": "Cookies a lokálne úložisko",
   "privacy.cookies.p1":
     "Rafflink nastavuje iba nevyhnutne potrebné cookies, preto sa nezobrazuje žiadny súhlasový banner. Všetky sú HTTP-only a nepoužívajú sa na nič iné.",

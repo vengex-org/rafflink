@@ -1127,8 +1127,6 @@ export const pl: Translation = {
     "Rafflink korzysta z usług API YouTube. Logując się przez YouTube, akceptujesz Warunki korzystania z YouTube ({youtubeTerms}). Do tego, co Google robi z twoimi danymi, ma zastosowanie Polityka prywatności Google ({googlePrivacy}).",
   "privacy.youtube.i2":
     "Widzowie nigdy nie logują się przez Google. Zgłaszają się, pisząc słowo kluczowe na czacie, a Rafflink czyta ID ich kanału, nazwę widoczną na czacie, wiadomość oraz to, czy są członkami kanału lub moderatorami.",
-  "privacy.youtube.i3":
-    "Dane widzów z YouTube przechowywane przez Rafflink są usuwane w ciągu 30 dni: zgłoszenia najpóźniej 30 dni po zamknięciu rozdania, a razem z nimi nazwy zwycięzców, tak że przy wylosowaniu zostaje tylko ID ich kanału.",
   "privacy.cookies.h": "Ciasteczka i pamięć lokalna",
   "privacy.cookies.p1":
     "Rafflink ustawia tylko niezbędne ciasteczka, więc nie pokazuje banera zgody. Wszystkie są typu HTTP-only i nie są używane do niczego innego.",

@@ -1151,8 +1151,6 @@ export const it: Translation = {
     "Rafflink usa i Servizi API di YouTube. Accedendo con YouTube accetti i Termini di servizio di YouTube ({youtubeTerms}). Per ciò che Google fa con i tuoi dati valgono le Norme sulla privacy di Google ({googlePrivacy}).",
   "privacy.youtube.i2":
     "Gli spettatori non accedono mai con Google. Si iscrivono scrivendo la parola chiave in chat, e Rafflink legge il loro ID canale, il nome mostrato in chat, il messaggio e se sono membri del canale o moderatori.",
-  "privacy.youtube.i3":
-    "I dati di YouTube degli spettatori che Rafflink conserva vengono eliminati entro 30 giorni: le iscrizioni al più tardi 30 giorni dopo la chiusura del giveaway e, insieme a loro, i nomi dei vincitori, così all'estrazione resta solo il loro ID canale.",
   "privacy.cookies.h": "Cookie e archiviazione locale",
   "privacy.cookies.p1":
     "Rafflink imposta solo cookie strettamente necessari, quindi non viene mostrato alcun banner per il consenso. Sono tutti HTTP-only e non vengono usati per nient'altro.",

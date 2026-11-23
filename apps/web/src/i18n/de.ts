@@ -1154,8 +1154,6 @@ export const de: Translation = {
     "Rafflink nutzt die YouTube API Services. Wenn du dich mit YouTube anmeldest, stimmst du den Nutzungsbedingungen von YouTube zu ({youtubeTerms}). Für das, was Google mit deinen Daten macht, gilt die Datenschutzerklärung von Google ({googlePrivacy}).",
   "privacy.youtube.i2":
     "Zuschauer melden sich nie mit Google an. Sie machen mit, indem sie das Stichwort in den Chat schreiben, und Rafflink liest ihre Kanal-ID, den im Chat angezeigten Namen, die Nachricht und ob sie Kanalmitglied oder Moderator sind.",
-  "privacy.youtube.i3":
-    "YouTube-Daten von Zuschauern, die Rafflink speichert, werden innerhalb von 30 Tagen gelöscht: die Teilnahmen spätestens 30 Tage nach Ende des Gewinnspiels und mit ihnen die Namen der Gewinner, sodass bei der Ziehung nur ihre Kanal-ID bleibt.",
   "privacy.cookies.h": "Cookies und lokaler Speicher",
   "privacy.cookies.p1":
     "Rafflink setzt nur unbedingt erforderliche Cookies, deshalb wird kein Einwilligungsbanner gezeigt. Alle sind HTTP-only und werden für nichts anderes verwendet.",
