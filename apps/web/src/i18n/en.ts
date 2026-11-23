@@ -1120,14 +1120,18 @@ export const en = {
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "Rafflink uses YouTube API Services. By signing in with YouTube you agree to the YouTube Terms of Service ({youtubeTerms}). The Google Privacy Policy ({googlePrivacy}) applies to what Google does with your data.",
+  "privacy.youtube.p2":
+    "Rafflink's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy ({googleUserData}), including the Limited Use requirements.",
   "privacy.youtube.i1":
-    "A YouTube streamer signs in with Google and gives Rafflink read-only access to their YouTube account. Rafflink keeps the channel ID, the handle, the channel name and a sealed refresh token, and reads the active live stream and its chat.",
+    "A YouTube streamer signs in with Google and gives Rafflink read-only access to their YouTube account (the youtube.readonly scope). Rafflink reads only your channel ID, handle and name to sign you in as your channel, your active live stream to find its chat, and that chat's messages to enter viewers who type the keyword and to show a winner's replies. About you it stores the channel ID, handle, name and an encrypted refresh token. What it stores about viewers is in the next points. Chat messages are never stored, and Rafflink never posts or changes anything on YouTube.",
+  "privacy.youtube.i5":
+    "Rafflink uses this Google data only to run your giveaways. It never sells it, never uses it for ads and shares it only with the parties listed above. Nobody reads it unless you ask for help with your account, security requires it or the law does.",
   "privacy.youtube.i2":
     "Viewers never sign in with Google. They enter by writing the keyword in the chat, and Rafflink reads their channel ID, the name shown in the chat, the message and whether they are a channel member or a moderator.",
   "privacy.youtube.i3":
-    "Viewers' YouTube data that Rafflink stores is deleted within 30 days: the entries at most 30 days after the giveaway closes, and the names of its winners with them, so only their channel ID stays with the pick.",
+    "For each viewer who types the keyword, Rafflink stores their channel ID, the name shown in the chat (as display name and login name), their group (viewer, member or moderator), tickets, entry time and a random value for the draw. Winners' names and channel IDs are also stored with their picks. All of it is deleted at most 30 days after the giveaway closes, or sooner if the operator sets a shorter time. Only a winner's channel ID stays with the pick.",
   "privacy.youtube.i4":
-    "You can remove Rafflink's access to your YouTube account at any time in your Google account's permissions ({googlePermissions}). The stored token is then deleted at the next hourly check.",
+    "You can remove Rafflink's access to your YouTube account at any time in your Google account's permissions ({googlePermissions}). The stored token is then deleted at the next hourly check. Deleting your Rafflink account on the dashboard deletes the stored token and your data, but the access you gave in your Google account stays until you remove it there.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",
@@ -1398,6 +1402,11 @@ export type MessageKey = keyof typeof en
 type EnglishOnlyKey =
   | "wizard.entry.chatDelay"
   | "privacy.intro"
+  | "privacy.youtube.p2"
+  | "privacy.youtube.i1"
+  | "privacy.youtube.i3"
+  | "privacy.youtube.i4"
+  | "privacy.youtube.i5"
   | "meta.home.title"
   | "meta.home.description"
   | "meta.privacy.title"

@@ -111,6 +111,7 @@ describe("legal pages", () => {
       expect.arrayContaining([
         "https://www.youtube.com/t/terms",
         "https://policies.google.com/privacy",
+        "https://developers.google.com/terms/api-services-user-data-policy",
         "https://myaccount.google.com/permissions",
       ]),
     )
@@ -254,7 +255,7 @@ describe("legal pages", () => {
       browserLanguage("en-US")
       const view = renderApp("/privacy")
 
-      await view.findByText("Last updated: Nov 23, 2026")
+      await view.findByText("Last updated: Nov 24, 2026")
     } finally {
       process.env.TZ = zone
     }
