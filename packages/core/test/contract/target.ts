@@ -1,6 +1,12 @@
 /** A running instance of one deployment target; the contract talks to it over HTTP and WebSocket only. */
 export interface ContractTarget {
   readonly url: URL
+  /**
+   * Whether a client may keep a connection open for its next request. A connection Miniflare's assets router closed
+   * is reused by `fetch` and fails with ECONNRESET; a new connection per request leaves a socket in TIME_WAIT for two
+   * minutes, enough of them in parallel test runs to use up the local ports.
+   */
+  readonly reusesConnections: boolean
   stop(): Promise<void>
   /** Runs the hourly streamer token validation once and returns when it has finished. */
   runValidateJob(): Promise<void>

@@ -322,6 +322,10 @@ describe("create wizard", () => {
   it("keeps the focus in a field while the streamer types into it", async () => {
     mockFetch(listed)
     const view = await openWizard()
+    // The step heading takes the focus in an effect that can still be pending when the step text shows; the
+    // streamer clicks the field after it.
+    const heading = view.getByRole("heading", { name: "Start with the basics" })
+    await waitFor(() => expect(document.activeElement === heading).toBe(true))
     const title = inputOf(view.getByLabelText("Giveaway name optional"))
     title.focus()
 

@@ -11,8 +11,10 @@
     "format": "bun fmt --no-script",
     "format:check": "bun fmt --no-script --check",
     "typecheck": "bun check --no-script && bun check --no-script -p apps/cloudflare/tsconfig.json",
-    "test": "bun test --path-ignore-patterns 'apps/web/**' && bun run --filter @rafflink/web test",
-    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test",
+    "test": "bun scripts/run-parallel.ts test:core test:web",
+    "test:core": "bun test --parallel --path-ignore-patterns 'apps/web/**'",
+    "test:web": "bun run --filter @rafflink/web test",
+    "check": "bun scripts/run-parallel.ts lint format:check typecheck test:core test:web",
     "build": "bun run --filter '*' build",
     "env:example": "bun scripts/env-example.ts",
     "load-test": "BUN_CONFIG_MAX_HTTP_REQUESTS=20000 bun scripts/load-test.ts"

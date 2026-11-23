@@ -565,6 +565,10 @@ describe("viewer page: reload window", () => {
     })
     const first = renderApp("/ABCDE?entry=pending&ticket=T1")
     await first.findByRole("heading", { name: "You are in" })
+    // The reload after the settled entry stores its answer a moment after the outcome shows.
+    await waitFor(() =>
+      expect(window.sessionStorage.getItem("rafflink:giveaway:ABCDE")).not.toBeNull(),
+    )
     cleanup()
 
     const second = renderApp("/ABCDE")

@@ -114,6 +114,7 @@ function target(
   if (cron === undefined) throw new TypeError("wrangler.jsonc has no cron trigger")
   return {
     url,
+    reusesConnections: false,
     stop: () => miniflare.dispose(),
     runValidateJob: async () => {
       const result = await worker.scheduled({ cron })

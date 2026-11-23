@@ -62,7 +62,7 @@ export function entryScenarios(context: ContractContext): void {
   scenario(context, "a forged state writes nothing", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)
-    const viewer = new Browser(target.url)
+    const viewer = new Browser(target)
     const authorizeUrl = await viewer.beginSignIn(
       `/auth/twitch/viewer/start?giveaway=${giveaway.code}`,
     )
@@ -78,7 +78,7 @@ export function entryScenarios(context: ContractContext): void {
   scenario(context, "a forged nonce writes nothing", async (world) => {
     const target = await world.start()
     const giveaway = await world.createGiveaway(target)
-    const viewer = new Browser(target.url)
+    const viewer = new Browser(target)
     const authorizeUrl = await viewer.beginSignIn(
       `/auth/twitch/viewer/start?giveaway=${giveaway.code}`,
     )

@@ -18,6 +18,9 @@ afterEach(() => {
 })
 
 const giveawayRoute = { "GET /api/g/ABCDE": () => ok(giveaway) }
+const shortPollRoute = {
+  "GET /api/g/ABCDE": () => ok({ ...giveaway, poll: { intervalMs: 10, maxMs: 80 } }),
+}
 const wonRoute = (
   claimRemainingMs: number,
   claim: { state: string; at?: number; via?: string },
@@ -733,7 +736,7 @@ describe("entry outcomes", () => {
 
   it("replaces the address too when the poll runs past its maximum", async () => {
     mockFetch({
-      ...giveawayRoute,
+      ...shortPollRoute,
       "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "pending", ticket: "T1" }),
     })
 
@@ -830,7 +833,7 @@ describe("entry outcomes", () => {
 
   it("offers Enter with Twitch when the poll runs past its maximum", async () => {
     mockFetch({
-      ...giveawayRoute,
+      ...shortPollRoute,
       "GET /api/g/ABCDE/pending/T1": () => ok({ kind: "pending", ticket: "T1" }),
     })
 

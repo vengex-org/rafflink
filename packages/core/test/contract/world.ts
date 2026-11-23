@@ -158,7 +158,7 @@ export class World {
     userId: string = users.streamer.id,
     features: readonly StreamerFeature[] = streamerFeatures,
   ): Promise<Browser> {
-    const streamer = new Browser(target.url)
+    const streamer = new Browser(target)
     const query = features.length === 0 ? "" : `?features=${features.join(",")}`
     await streamer.signInAs(userId, `/auth/twitch/streamer/start${query}`, this.twitch.fake.control)
     return streamer
@@ -168,7 +168,7 @@ export class World {
     target: ContractTarget,
     userId: string = kickUsers.streamer.id,
   ): Promise<Browser> {
-    const streamer = new Browser(target.url)
+    const streamer = new Browser(target)
     await streamer.signInAs(userId, "/auth/kick/streamer/start", this.kick.fake.control)
     return streamer
   }
@@ -177,14 +177,14 @@ export class World {
     target: ContractTarget,
     channelId: string = youtubeChannels.streamer.id,
   ): Promise<Browser> {
-    const streamer = new Browser(target.url)
+    const streamer = new Browser(target)
     await streamer.signInAs(channelId, "/auth/youtube/streamer/start", this.youtube.fake.control)
     return streamer
   }
 
   /** Signs `userId` in at the fake Kick as a viewer of the giveaway. */
   async enterKick(target: ContractTarget, code: string, userId: string): Promise<EntryResult> {
-    const viewer = new Browser(target.url)
+    const viewer = new Browser(target)
     const response = await viewer.signInAs(
       userId,
       `/auth/kick/viewer/start?giveaway=${code}`,
@@ -217,7 +217,7 @@ export class World {
     target: ContractTarget,
     code: string,
     userId: string,
-    viewer: Browser = new Browser(target.url),
+    viewer: Browser = new Browser(target),
   ): Promise<EntryResult> {
     const response = await viewer.signInAs(
       userId,
@@ -234,7 +234,7 @@ export class World {
     userId: string,
     address: string,
   ): Promise<EntryResult> {
-    const viewer = new Browser(target.url)
+    const viewer = new Browser(target)
     const response = await viewer.signInAs(
       userId,
       `/auth/twitch/viewer/start?giveaway=${code}`,

@@ -46,7 +46,7 @@ export function youtubeScenarios(context: ContractContext): void {
   scenario(context, "a Google account without a YouTube channel is refused", async (world) => {
     const target = await world.start()
     world.youtube.fake.control.signInAs(null)
-    const streamer = new Browser(target.url)
+    const streamer = new Browser(target)
 
     const start = await streamer.request("/auth/youtube/streamer/start")
     const consent = await fetch(start.headers.get("location") ?? "", { redirect: "manual" })

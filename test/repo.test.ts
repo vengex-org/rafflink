@@ -3,6 +3,7 @@ import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { renderSpaHtml } from "../packages/core/src/lib/spa-html.ts"
+import { contractParts } from "../packages/core/test/contract/define-contract.ts"
 
 const root = new URL("../", import.meta.url)
 const web = new URL("apps/web/", root)
@@ -28,6 +29,21 @@ describe("repository", () => {
     const readme = await Bun.file(new URL("README.md", root)).text()
     expect(readme).toMatch(/^## Twitch app registration$/m)
     expect(readme).toMatch(/^## Self-hosting$/m)
+  })
+
+  // A part without its test file would drop its scenarios from that target without a failing test.
+  it("runs every contract part against both targets, one test file each", async () => {
+    const expected = contractParts.map((_, index) => `contract-${index + 1}.test.ts`)
+    for (const app of ["apps/server/test", "apps/cloudflare/test"]) {
+      const dir = new URL(`${app}/`, root)
+      const files = [...new Bun.Glob("contract-*.test.ts").scanSync(fileURLToPath(dir))]
+      expect(files.toSorted()).toEqual(expected)
+      for (const [index, name] of expected.entries()) {
+        // The part number is the last argument of the define call that ends the file.
+        const source = await Bun.file(new URL(name, dir)).text()
+        expect(source.match(/(\d+)\)\s*$/)?.[1]).toBe(String(index + 1))
+      }
+    }
   })
 
   // A relative asset URL resolves against /g/<code> and the SPA fallback answers it with HTML: a blank page.
