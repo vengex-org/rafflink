@@ -2046,6 +2046,17 @@ describe("live page: the controls bar", () => {
   })
 })
 
+/** The live page with its winner answers panel, once it says the answers came. */
+async function answersPanel() {
+  const view = renderApp("/live/gid-1")
+  const panel = within(
+    (await view.findByRole("heading", { name: "Winner answers" })).closest("section")
+      ?? document.body,
+  )
+  await panel.findByText("Answers received.")
+  return { view, panel }
+}
+
 describe("live page: winner form answers", () => {
   const withForm = { ...giveaway, rules: { ...giveaway.rules, winnerForm: ["name", "address"] } }
   const sent = { n: 1, answers: "sent", deliveredAt: null, held: true }
@@ -2060,16 +2071,6 @@ describe("live page: winner form answers", () => {
       "GET /api/dash/giveaways/gid-1/answers/1": () => ok({ values }),
       ...routes,
     })
-  }
-
-  async function answersPanel() {
-    const view = renderApp("/live/gid-1")
-    const panel = within(
-      (await view.findByRole("heading", { name: "Winner answers" })).closest("section")
-        ?? document.body,
-    )
-    await panel.findByText("Answers received.")
-    return { view, panel }
   }
 
   it("says the answers came without showing or loading them, and marks the prize delivered", async () => {
