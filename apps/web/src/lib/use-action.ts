@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 
 /** Runs one request at a time and keeps the message for its outcome, for a polite live region; the page shows it in the current language. An outcome with no message clears the last one. */
 export function useAction() {
@@ -19,6 +20,7 @@ export function useAction() {
         return outcome
       } catch (error) {
         console.error("action failed", { errorClass: errorClass(error) })
+        reportError(error)
         setMessage("action.failed")
         return "failed"
       } finally {

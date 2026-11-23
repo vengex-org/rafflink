@@ -1066,6 +1066,8 @@ export const it: Readonly<Record<MessageKey, string>> = {
     "Quando uno streamer attiva il proprio storico pubblico, chiunque può vedere lì il nome dello streamer e i suoi giveaway conclusi: titolo, premio, data di chiusura e numero di partecipanti e di vincitori. La pagina non nomina nessun partecipante né vincitore, e lo streamer può nascondere singoli giveaway o disattivare la pagina. I motori di ricerca indicizzano la pagina solo se lo streamer lo permette.",
   "privacy.recipients.i6":
     "Le risposte al modulo per il vincitore vanno allo streamer che gestisce il giveaway e a nessun altro: moderatori, overlay e pagine pubbliche non le mostrano mai.",
+  "privacy.recipients.i7":
+    "Se il gestore attiva la segnalazione degli errori, Sentry (Functional Software, Inc.) riceve, come responsabile del trattamento per conto del gestore, le segnalazioni degli errori nel browser e sul server e le conserva nella sua regione UE in Germania. Una segnalazione contiene l'errore, dove si è verificato, il browser e il sistema operativo; come qualsiasi server, Sentry vede l'indirizzo IP della connessione. I cookie, il contenuto delle richieste, i codici di accesso, i token di Twitch e Kick e le risposte dei vincitori nel modulo vengono rimossi prima dell'invio di una segnalazione.",
   "privacy.cookies.h": "Cookie e archiviazione locale",
   "privacy.cookies.p1":
     "Rafflink imposta solo cookie strettamente necessari, quindi non viene mostrato alcun banner per il consenso. Sono tutti HTTP-only e non vengono usati per nient'altro.",

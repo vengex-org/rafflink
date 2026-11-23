@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test"
 import { inlineScript, spaTemplate } from "../../test/contract/spa-fixture.ts"
-import { inlineScriptHashes, renderSpaHtml } from "./spa-html.ts"
+import {
+  errorReportOrigin,
+  inlineScriptHashes,
+  renderSpaHtml,
+  withErrorReportingMeta,
+} from "./spa-html.ts"
 
 const meta = { url: "https://example.test/ABCDE", image: "https://example.test/og.png" }
 
@@ -60,5 +65,38 @@ describe("inlineScriptHashes", () => {
 
   it("finds no hash in a page without inline scripts", async () => {
     expect(await inlineScriptHashes(`<script src="/a.js"></script>`)).toEqual([])
+  })
+})
+
+describe("withErrorReportingMeta", () => {
+  const reporting = {
+    sentryDsn: "https://public@o1.ingest.de.sentry.io/2",
+    sentryEnvironment: "production",
+    sentryRelease: "abc123",
+    sentrySamplePercent: 50,
+  }
+
+  it("writes the settings into the head, and the CSP origin is the DSN's ingest", async () => {
+    const html = withErrorReportingMeta(spaTemplate, reporting)
+
+    expect(html).toContain(`<meta name="sentry-dsn" content="${reporting.sentryDsn}" />`)
+    expect(html).toContain(`<meta name="sentry-environment" content="production" />`)
+    expect(html).toContain(`<meta name="sentry-release" content="abc123" />`)
+    expect(html).toContain(`<meta name="sentry-sample-percent" content="50" />`)
+    expect(errorReportOrigin(html)).toBe("https://o1.ingest.de.sentry.io")
+    expect(await inlineScriptHashes(html)).toEqual(await inlineScriptHashes(spaTemplate))
+  })
+
+  it("leaves the page as it is without a DSN, so the CSP allows no ingest", () => {
+    const html = withErrorReportingMeta(spaTemplate, { ...reporting, sentryDsn: null })
+
+    expect(html).toBe(spaTemplate)
+    expect(errorReportOrigin(html)).toBeNull()
+  })
+
+  it("leaves out the release when none is set", () => {
+    const html = withErrorReportingMeta(spaTemplate, { ...reporting, sentryRelease: null })
+
+    expect(html).not.toContain("sentry-release")
   })
 })

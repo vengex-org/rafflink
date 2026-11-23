@@ -9,6 +9,7 @@ import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import { DurableObjectAlarm } from "../adapters/durable-object-alarm.ts"
 import { DurableObjectRoomDirectory } from "../adapters/durable-object-room-directory.ts"
 import { DurableObjectSyncSql } from "../adapters/durable-object-sync-sql.ts"
+import { sentryReportError } from "../adapters/sentry-report-error.ts"
 import type { WorkerEnv } from "../env.ts"
 import { runtimeOf } from "../runtime.ts"
 
@@ -74,6 +75,7 @@ export class TokenQueueDO extends DurableObject<WorkerEnv> {
       rooms: entryDeps.rooms,
       // An alarm invocation may send only as many external subrequests as the plan allows.
       entriesPerInvocation: entriesPerInvocation(planLimits(await this.startPlan(), config)),
+      reportError: sentryReportError,
     })
   }
 

@@ -2177,7 +2177,7 @@ describe("logs", () => {
     }
   })
 
-  it("name the error class and the request id for an unexpected error", async () => {
+  it("name the error class and the request id for an unexpected error, and report it", async () => {
     const error = spyOn(console, "error").mockImplementation(() => {})
     const { code } = await createGiveaway(harness)
     harness.rooms.hooks.beforeEnter = () => {
@@ -2191,6 +2191,9 @@ describe("logs", () => {
     expect(error.mock.calls[0]).toEqual([
       "request failed",
       { requestId: body.requestId, errorClass: "TypeError" },
+    ])
+    expect(harness.reported).toEqual([
+      { error: new TypeError("secret detail"), context: { requestId: body.requestId } },
     ])
     error.mockRestore()
   })

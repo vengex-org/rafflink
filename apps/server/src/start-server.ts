@@ -8,6 +8,8 @@ import { apiPrefixes, fakeKickPrefixes, fakeTwitchPrefixes } from "@rafflink/cor
 import { DrandBeacon } from "@rafflink/core/beacon/drand-beacon"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { captureException } from "@sentry/core"
+import type { ReportError } from "@rafflink/core/ports"
 import { MemoryPublicCache } from "@rafflink/core/lib/memory-public-cache"
 import { MemoryRateLimiter } from "@rafflink/core/lib/memory-rate-limiter"
 import { openKeyRing } from "@rafflink/core/lib/seal"
@@ -59,6 +61,11 @@ const roomsDirName = "rooms"
 const rateWindowMs = 60_000
 // Hourly, like the Cloudflare cron of wrangler.jsonc that runs the same sweep.
 const historySweepMs = 3_600_000
+
+// Tags, not extra data: a request id or a giveaway id is what an issue is searched by.
+const reportError: ReportError = (error, context) => {
+  captureException(error, { tags: context })
+}
 
 /**
  * Opens the data folder, starts the timers and listens. With `config.devFakeTwitch` the fake Twitch answers at the
@@ -115,6 +122,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     try {
       await queue.onAlarm()
     } catch (error) {
+      captureException(error)
       console.error("token queue alarm failed", { errorClass: errorClass(error) })
     }
   })
@@ -129,6 +137,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     rooms,
     // Bun caps no subrequests: one invocation runs the whole pass.
     entriesPerInvocation: config.queueMaxRatePerSecond,
+    reportError,
   })
   const deps: AppDeps = {
     ...entryDeps,
@@ -147,6 +156,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       rateWindowMs,
     ),
     clientAddress: (request) => clientAddress(request, server, config.clientIpHeader),
+    reportError,
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null
@@ -200,6 +210,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     try {
       console.info("streamer token validation", await validateStreamerTokens(tokenDeps))
     } catch (error) {
+      captureException(error)
       console.error("streamer token validation failed", { errorClass: errorClass(error) })
     }
   }
@@ -209,6 +220,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       const deleted = await deleteExpiredGiveaways({ accounts, rooms, clock, config }, days)
       console.info("history retention sweep", { deleted })
     } catch (error) {
+      captureException(error)
       console.error("history retention sweep failed", { errorClass: errorClass(error) })
     }
   }

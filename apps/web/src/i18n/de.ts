@@ -1070,6 +1070,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
     "Wenn ein Streamer seinen öffentlichen Verlauf einschaltet, kann dort jeder den Namen des Streamers und seine beendeten Gewinnspiele sehen: Titel, Preis, Enddatum und die Zahl der Teilnehmer und Gewinner. Die Seite nennt keine Teilnehmer und keine Gewinner, und der Streamer kann einzelne Gewinnspiele ausblenden oder die Seite ausschalten. Suchmaschinen indexieren die Seite nur, wenn der Streamer es erlaubt.",
   "privacy.recipients.i6":
     "Antworten im Gewinnerformular gehen an den Streamer, der das Gewinnspiel leitet, und an niemanden sonst: Moderatoren, das Overlay und die öffentlichen Seiten zeigen sie nie.",
+  "privacy.recipients.i7":
+    "Wenn der Betreiber die Fehlerberichte einschaltet, empfängt Sentry (Functional Software, Inc.) als Auftragsverarbeiter des Betreibers Berichte über Fehler im Browser und auf dem Server und speichert sie in seiner EU-Region in Deutschland. Ein Bericht enthält den Fehler, den Ort, an dem er auftrat, den Browser und das Betriebssystem; wie jeder Server sieht Sentry die IP-Adresse der Verbindung. Cookies, Inhalte von Anfragen, Anmeldecodes, Twitch- und Kick-Tokens und die Formularantworten der Gewinner werden vor dem Senden eines Berichts entfernt.",
   "privacy.cookies.h": "Cookies und lokaler Speicher",
   "privacy.cookies.p1":
     "Rafflink setzt nur unbedingt erforderliche Cookies, deshalb wird kein Einwilligungsbanner gezeigt. Alle sind HTTP-only und werden für nichts anderes verwendet.",

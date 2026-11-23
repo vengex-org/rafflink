@@ -1,5 +1,6 @@
 import { publicDrandUrls, quicknet, roundPath, roundTime } from "@rafflink/core/lib/drand"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "../lib/error-reporting.ts"
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import { CopyLink } from "../components/copy-field.tsx"
@@ -94,6 +95,7 @@ function DrawForm() {
       navigate({ hash: shareFragment(commit, hash).fragment }, { state: listFile(commit) })
     } catch (error) {
       console.error("list commit failed", { errorClass: errorClass(error) })
+      reportError(error)
       setFailed(true)
     } finally {
       setBusy(false)
@@ -423,6 +425,7 @@ function useRoundDraw(commit: ListCommit, attempt: number): Draw {
       },
       (error: unknown) => {
         console.error("list draw failed", { errorClass: errorClass(error) })
+        reportError(error)
         if (current) setDraw({ attempt, draw: { state: "failed" } })
       },
     )

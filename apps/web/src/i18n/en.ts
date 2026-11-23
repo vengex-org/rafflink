@@ -1033,6 +1033,8 @@ export const en = {
     "When a streamer turns on their public history, anyone can see the streamer's name and their finished giveaways there: title, prize, close date and the numbers of entrants and winners. The page names no entrant and no winner, and the streamer can hide single giveaways or turn the page off. Search engines index the page only when the streamer allows it.",
   "privacy.recipients.i6":
     "Winner form answers go to the streamer who runs the giveaway and nobody else: moderators, the overlay and the public pages never show them.",
+  "privacy.recipients.i7":
+    "If the operator turns on error reporting, Sentry (Functional Software, Inc.) receives reports of errors in the browser and on the server as the operator's processor and stores them in its EU region in Germany. A report holds the error, where it happened, the browser and the operating system; like any server, Sentry sees the IP address of the connection. Cookies, request contents, sign-in codes, Twitch and Kick tokens and winner form answers are removed before a report is sent.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",

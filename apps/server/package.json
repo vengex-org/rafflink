@@ -13,6 +13,8 @@
     "@rafflink/fake-kick": "workspace:*",
     "@rafflink/fake-twitch": "workspace:*",
     "@rafflink/web": "workspace:*",
+    "@sentry/bun": "11.11.0",
+    "@sentry/core": "11.11.0",
     "hono": "4.13.19"
   }
 }

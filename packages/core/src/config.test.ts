@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { ConfigError, configSchema, resolveConfig } from "./config.ts"
+import { ConfigError, configSchema, resolveConfig, resolveWebErrorReporting } from "./config.ts"
 import { queuedEntryTwitchRequests } from "./twitch/queued-entry-requests.ts"
 
 const required = {
@@ -474,6 +474,67 @@ describe("resolveConfig", () => {
       env: "DONATE_URL",
       reason: "not-a-url",
     })
+  })
+
+  it("reports no errors by default and reads a Sentry DSN, its environment, release and sample percent", () => {
+    const off = resolveConfig({ ...required, SENTRY_DSN: "  ", SENTRY_RELEASE: "" })
+    const on = resolveConfig({
+      ...required,
+      SENTRY_DSN: " https://key@o1.ingest.de.sentry.io/42 ",
+      SENTRY_ENVIRONMENT: "staging",
+      SENTRY_RELEASE: "abc123",
+      SENTRY_SAMPLE_PERCENT: "0",
+    })
+
+    expect(off).toMatchObject({
+      sentryDsn: null,
+      sentryEnvironment: "production",
+      sentryRelease: null,
+      sentrySamplePercent: 100,
+    })
+    expect(on).toMatchObject({
+      sentryDsn: "https://key@o1.ingest.de.sentry.io/42",
+      sentryEnvironment: "staging",
+      sentryRelease: "abc123",
+      sentrySamplePercent: 0,
+    })
+  })
+
+  it.each([
+    ["no URL", "o1.ingest.de.sentry.io/42", "not-a-url"],
+    ["no public key", "https://o1.ingest.de.sentry.io/42", "not-a-sentry-dsn"],
+    ["no project id", "https://key@o1.ingest.de.sentry.io/", "not-a-sentry-dsn"],
+    [
+      "a project path that is not a number",
+      "https://key@o1.ingest.de.sentry.io/web",
+      "not-a-sentry-dsn",
+    ],
+    ["another scheme", "ftp://key@o1.ingest.de.sentry.io/42", "not-a-sentry-dsn"],
+  ])("rejects a Sentry DSN with %s", (_, dsn, reason) => {
+    expect(failure({ ...required, SENTRY_DSN: dsn })).toMatchObject({ env: "SENTRY_DSN", reason })
+  })
+
+  it("keeps the Sentry sample a percent from 0 to 100", () => {
+    expect(failure({ ...required, SENTRY_SAMPLE_PERCENT: "101" })).toMatchObject({
+      env: "SENTRY_SAMPLE_PERCENT",
+      reason: "out-of-range",
+    })
+  })
+
+  it("reads the browser's DSN from PUBLIC_SENTRY_DSN, not the server's, without the server settings", () => {
+    const web = resolveWebErrorReporting({
+      SENTRY_DSN: "https://server@o1.ingest.de.sentry.io/1",
+      PUBLIC_SENTRY_DSN: "https://browser@o1.ingest.de.sentry.io/2",
+      SENTRY_RELEASE: "abc123",
+    })
+
+    expect(web).toEqual({
+      sentryDsn: "https://browser@o1.ingest.de.sentry.io/2",
+      sentryEnvironment: "production",
+      sentryRelease: "abc123",
+      sentrySamplePercent: 100,
+    })
+    expect(resolveWebErrorReporting({}).sentryDsn).toBeNull()
   })
 
   it("leaves the operator settings null when unset or blank", () => {

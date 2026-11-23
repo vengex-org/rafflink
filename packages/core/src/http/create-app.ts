@@ -32,9 +32,11 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   if (spaTemplate !== null) app.route("/", spaRoutes(deps, spaTemplate))
 
   app.notFound((c) => c.json({ error: "not-found" }, 404))
-  // Only the error class and the request id: a message or a stack can carry a token, a code or a name.
+  // The log keeps only the error class and the request id: a message or a stack can carry a token, a code or a name.
+  // The report to Sentry carries both, after `scrubEvent` of lib/error-reporting.ts removed the secrets it knows.
   app.onError((error, c) => {
     const id = c.get("requestId")
+    deps.reportError(error, { requestId: id })
     console.error("request failed", {
       requestId: id,
       errorClass: errorClass(error),

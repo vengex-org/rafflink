@@ -4,7 +4,7 @@ import type { ResolvedConfig } from "../config.ts"
 import type { KeyRing } from "../lib/seal.ts"
 import type { PlanQueue } from "../plan/current-plan.ts"
 import type { PlatformProviders } from "../platform/provider.ts"
-import type { Clock, PublicCache, RateLimiter, Random, UsageMeter } from "../ports.ts"
+import type { Clock, PublicCache, RateLimiter, Random, ReportError, UsageMeter } from "../ports.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { TokenQueueStub } from "../queue/token-queue.ts"
 import type { RoomDirectory } from "../room/room-directory.ts"
@@ -33,4 +33,6 @@ export interface AppDeps {
   readonly moderatorIpLimiter: RateLimiter
   /** The address of the client behind a request as this target's edge reports it, or null when it reports none. */
   readonly clientAddress: (request: Request) => string | null
+  /** Where a request that failed is reported, beside the log. */
+  readonly reportError: ReportError
 }

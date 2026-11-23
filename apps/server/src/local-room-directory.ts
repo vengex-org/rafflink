@@ -1,4 +1,5 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { captureException } from "@sentry/core"
 import { SQLiteError, type Database } from "bun:sqlite"
 import { mkdirSync, readdirSync, rmSync } from "node:fs"
 import { join } from "node:path"
@@ -220,6 +221,7 @@ export class LocalRoomDirectory implements RoomDirectory {
     try {
       await this.deps.onAlarm(giveawayId, room)
     } catch (error) {
+      captureException(error)
       console.error("room alarm failed", {
         giveawayId,
         errorClass: errorClass(error),

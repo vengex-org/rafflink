@@ -14,9 +14,15 @@ const d1Binding = "DB"
  * the network service, which allows loopback addresses.
  */
 export const startWorker: StartTarget = async (env, webDir) => {
+  const { miniflare, url, worker, wrangler } = await startMiniflare(env, webDir)
+  return target(miniflare, url, worker, wrangler.crons)
+}
+
+/** {@link startWorker} with the Miniflare instance in reach, for a test that addresses a Durable Object itself. */
+export async function startMiniflare(env: Record<string, string>, webDir: string) {
   const [bundle, wrangler] = await Promise.all([bundleWorker(), readWranglerConfig()])
   const miniflare = new Miniflare({
-    modules: [{ type: "ESModule", path: "worker.js", contents: bundle }],
+    modules: [{ type: "ESModule", path: "worker.js", contents: bundle.code }],
     compatibilityDate: wrangler.compatibilityDate,
     compatibilityFlags: [...wrangler.compatibilityFlags],
     d1Databases: [d1Binding],
@@ -45,7 +51,7 @@ export const startWorker: StartTarget = async (env, webDir) => {
   try {
     await applyAccountsMigrations(miniflare)
     const [url, worker] = await Promise.all([miniflare.ready, miniflare.getWorker()])
-    return target(miniflare, url, worker, wrangler.crons)
+    return { miniflare, url, worker, wrangler }
   } catch (error) {
     await miniflare.dispose()
     throw error

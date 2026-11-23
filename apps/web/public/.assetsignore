@@ -1,0 +1,2 @@
+# Source maps go to Sentry from CI, never to the public assets.
+*.map

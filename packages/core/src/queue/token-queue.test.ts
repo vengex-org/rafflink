@@ -63,6 +63,7 @@ function setup(
   const clock = new TestClock(1_000_000)
   const alarm = new TestAlarm()
   const calls: QueuedCode[] = []
+  const reported: [unknown, Readonly<Record<string, string>>][] = []
   const queue = new TokenQueue({
     sql,
     alarm,
@@ -80,8 +81,9 @@ function setup(
       }),
     },
     entriesPerInvocation: invocationBudget,
+    reportError: (error, context) => void reported.push([error, context]),
   })
-  return { queue, db, clock, alarm, calls }
+  return { queue, db, clock, alarm, calls, reported }
 }
 
 function item(code: string, giveawayId = "g1"): QueuedCode {
@@ -536,9 +538,9 @@ describe("TokenQueue rate", () => {
     expect(queue.stats()).toMatchObject({ ratePerSecond: 2, cooldownUntil: 0, queued: 1 })
   })
 
-  it("lets one failing code leave the rest of the pass alone and logs no code", async () => {
+  it("lets one failing code leave the rest of the pass alone, reports it and logs no code", async () => {
     const error = spyOn(console, "error").mockImplementation(() => {})
-    const { queue, clock } = setup(async (queued) => {
+    const { queue, clock, reported } = setup(async (queued) => {
       if (queued.code === "bad") throw new TypeError("secret detail")
       return entered
     })
@@ -555,6 +557,7 @@ describe("TokenQueue rate", () => {
       errorClass: "TypeError",
     })
     expect(JSON.stringify(error.mock.calls)).not.toContain("bad")
+    expect(reported).toEqual([[new TypeError("secret detail"), { giveawayId: "g3" }]])
     error.mockRestore()
   })
 })
@@ -807,6 +810,7 @@ describe("token queue schema", () => {
       process: async () => entered,
       rooms: { get: () => ({ entriesPerSecondBefore: async () => 0 }) },
       entriesPerInvocation: config.queueMaxRatePerSecond,
+      reportError: () => {},
     })
 
     expect(queue.enqueue(item("c1"), "rate-limited").queueUntil).toBe(
@@ -835,6 +839,7 @@ describe("token queue upgrade", () => {
       process: async () => entered,
       rooms: { get: () => ({ entriesPerSecondBefore: async () => 0 }) },
       entriesPerInvocation: config.queueMaxRatePerSecond,
+      reportError: () => {},
     })
     await queue.onAlarm()
 
@@ -947,6 +952,7 @@ describe("TokenQueue populated before the 429 counters", () => {
       process: async () => entered,
       rooms: { get: () => ({ entriesPerSecondBefore: async () => 0 }) },
       entriesPerInvocation: config.queueMaxRatePerSecond,
+      reportError: () => {},
     })
 
     expect(queue.stats()).toMatchObject({

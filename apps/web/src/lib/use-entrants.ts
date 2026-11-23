@@ -3,6 +3,7 @@ import type { EntrantsDelta } from "@rafflink/core/room/giveaway-room"
 import type { Entrant } from "@rafflink/core/room/rows"
 import { useLiveApi } from "./live-api.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 
 export interface EntrantsState {
   /** In the order they entered. */
@@ -74,6 +75,7 @@ export function useEntrants(
         setState((previous) => ({ ...previous, phase: "ready" }))
       } catch (error) {
         console.error("entrants load failed", { errorClass: errorClass(error) })
+        reportError(error)
         failed = true
         if (alive) setState((previous) => ({ ...previous, phase: "failed" }))
       } finally {

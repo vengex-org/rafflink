@@ -31,6 +31,7 @@ export type ConfigReason =
   | "fake-kick-needs-local-public-url"
   | "not-a-cloudflare-plan"
   | "not-a-login"
+  | "not-a-sentry-dsn"
 
 /** Why a setting failed; a list entry that is not a secret also names itself. */
 export type ConfigIssue =
@@ -871,6 +872,56 @@ export const configSchema = {
     "",
     "Date (YYYY-MM-DD) shown as the last update of the privacy policy and the terms; blank shows the date of the template text shipped with Rafflink",
   ),
+  sentryDsn: withDefault(
+    "SENTRY_DSN",
+    optional(sentryDsn),
+    "",
+    "Sentry DSN the Worker or the Bun server reports its errors to; blank reports nothing. The browser's DSN is PUBLIC_SENTRY_DSN of the web build, see the README",
+  ),
+  sentryEnvironment: withDefault(
+    "SENTRY_ENVIRONMENT",
+    text,
+    "production",
+    "Environment the error reports carry, such as production or staging; the web build reads it too",
+  ),
+  sentryRelease: withDefault(
+    "SENTRY_RELEASE",
+    optional(text),
+    "",
+    "Release the error reports carry: the commit the deployment was built from, which must match the release CI uploaded the source maps for; the web build reads it too; blank sends none",
+  ),
+  sentrySamplePercent: withDefault(
+    "SENTRY_SAMPLE_PERCENT",
+    int(0, 100),
+    "100",
+    "Percent of errors sent to Sentry; lower it when one noisy error would use up the 5,000 errors a month of the Sentry free plan; the web build reads it too",
+  ),
+}
+
+/** Settings only the web build reads: it writes them into the page, so they are fixed when the page is built. */
+export const webBuildSchema = {
+  sentryDsn: withDefault(
+    "PUBLIC_SENTRY_DSN",
+    optional(sentryDsn),
+    "",
+    "Sentry DSN the browser reports its errors to, written into the page by the web build, see the README; blank reports nothing. The web build reads SENTRY_ENVIRONMENT, SENTRY_RELEASE and SENTRY_SAMPLE_PERCENT for it too",
+  ),
+}
+
+/** The settings of an error reporter: the server's from {@link resolveConfig}, the browser's from {@link resolveWebErrorReporting}. */
+export type ErrorReportingConfig = Pick<
+  ResolvedConfig,
+  "sentryDsn" | "sentryEnvironment" | "sentryRelease" | "sentrySamplePercent"
+>
+
+/** The browser's error reporting settings, which the web build reads without the required server settings. */
+export function resolveWebErrorReporting(env: Env): ErrorReportingConfig {
+  return {
+    sentryDsn: read(env, webBuildSchema.sentryDsn),
+    sentryEnvironment: read(env, configSchema.sentryEnvironment),
+    sentryRelease: read(env, configSchema.sentryRelease),
+    sentrySamplePercent: read(env, configSchema.sentrySamplePercent),
+  }
 }
 
 export function resolveConfig(env: Env): ResolvedConfig {
@@ -1009,6 +1060,10 @@ export function resolveConfig(env: Env): ResolvedConfig {
     operatorId: read(env, configSchema.operatorId),
     operatorEmail: read(env, configSchema.operatorEmail),
     legalUpdated: read(env, configSchema.legalUpdated),
+    sentryDsn: read(env, configSchema.sentryDsn),
+    sentryEnvironment: read(env, configSchema.sentryEnvironment),
+    sentryRelease: read(env, configSchema.sentryRelease),
+    sentrySamplePercent: read(env, configSchema.sentrySamplePercent),
   }
   // The texts name the controller with a contact, and the other keys describe the named operator.
   if (config.operatorName === null) {
@@ -1196,6 +1251,15 @@ function socketUrl(raw: string): Parsed<string, ConfigReason> {
   const parsed = new URL(value)
   if (parsed.protocol !== "ws:" && parsed.protocol !== "wss:") return fail("not-a-url")
   return ok(parsed.href)
+}
+
+// A DSN is the ingest origin with the project's public key as the user and the project id as the path.
+function sentryDsn(raw: string): Parsed<string, ConfigReason> {
+  const value = raw.trim()
+  if (!URL.canParse(value)) return fail("not-a-url")
+  const { protocol, username, pathname } = new URL(value)
+  const ingest = (protocol === "https:" || protocol === "http:") && username !== ""
+  return ingest && /^\/\d+$/.test(pathname) ? ok(value) : fail("not-a-sentry-dsn")
 }
 
 /** Entries are told apart by shape: digits are an id, `twitch.tv/<login>` links and bare names are logins. */

@@ -1,4 +1,5 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 import type { ViewerPush } from "@rafflink/core/room/giveaway-room"
 import { useEffect, useState } from "react"
 import { ApiShapeError, record } from "../api/decode.ts"
@@ -65,6 +66,7 @@ export function useViewerPush(code: string, enabled: boolean): ViewerPush | null
         } catch (error) {
           if (!(error instanceof ApiShapeError || error instanceof SyntaxError)) throw error
           console.error("viewer push ignored", { errorClass: errorClass(error) })
+          reportError(error)
         }
       })
       next.addEventListener("close", () => {

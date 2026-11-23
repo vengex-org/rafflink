@@ -1,3 +1,4 @@
+import type { ErrorReportingConfig } from "../config.ts"
 import { toBase64 } from "./encoding.ts"
 
 /** What a page tells browsers and link previews about itself. */
@@ -40,6 +41,36 @@ export function embedJson(html: string, id: string, path: string, json: string):
   return html.replace("</head>", () => `${element}</head>`)
 }
 
+/** The `<meta>` names that carry the browser's error reporting settings from the web build to the page. */
+export const errorReportingMetaNames = {
+  dsn: "sentry-dsn",
+  environment: "sentry-environment",
+  release: "sentry-release",
+  samplePercent: "sentry-sample-percent",
+} as const
+
+/** Writes the error reporting settings into the head of the built `index.html`; without a DSN it stays as it is. */
+export function withErrorReportingMeta(html: string, config: ErrorReportingConfig): string {
+  if (config.sentryDsn === null) return html
+  const names = errorReportingMetaNames
+  const tags = [
+    metaTag(names.dsn, config.sentryDsn),
+    metaTag(names.environment, config.sentryEnvironment),
+    ...(config.sentryRelease === null ? [] : [metaTag(names.release, config.sentryRelease)]),
+    metaTag(names.samplePercent, String(config.sentrySamplePercent)),
+  ]
+  return html.replace("</head>", () => `${tags.join("")}</head>`)
+}
+
+/** The origin of the Sentry ingest the page's error reporter posts to, which its CSP must allow; null when it has none. */
+export function errorReportOrigin(html: string): string | null {
+  const found = new RegExp(`<meta name="${errorReportingMetaNames.dsn}" content="([^"]+)"`).exec(
+    html,
+  )
+  const dsn = found?.[1]
+  return dsn === undefined || !URL.canParse(dsn) ? null : new URL(dsn).origin
+}
+
 /** The CSP hash sources (`sha256-...`) of the inline scripts of `html`, which a CSP without `unsafe-inline` allows by hash. */
 export async function inlineScriptHashes(html: string): Promise<string[]> {
   const hashes: string[] = []
@@ -66,6 +97,10 @@ function replaceTag(
     found,
     () => `<${tag} ${key}="${keyValue}" ${valueAttribute}="${escapeHtml(value)}" />`,
   )
+}
+
+function metaTag(name: string, content: string): string {
+  return `<meta name="${name}" content="${escapeHtml(content)}" />`
 }
 
 function escapeHtml(text: string): string {

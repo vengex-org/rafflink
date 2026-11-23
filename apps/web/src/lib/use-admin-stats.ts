@@ -1,4 +1,5 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 import { useEffect, useRef, useState } from "react"
 import { getAdminStats, type AdminStats } from "../api/client.ts"
 
@@ -36,6 +37,7 @@ export function useAdminStats(): { readonly load: AdminStatsLoad; refreshNow(): 
         if (mounted) setLoad({ state: "ready", stats: last.current })
       } catch (error) {
         console.error("admin stats failed", { errorClass: errorClass(error) })
+        reportError(error)
         if (mounted) setLoad({ state: "failed", stats: last.current })
       } finally {
         inFlight = false

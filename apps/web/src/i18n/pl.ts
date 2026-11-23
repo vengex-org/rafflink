@@ -1042,6 +1042,8 @@ export const pl: Readonly<Record<MessageKey, string>> = {
     "Gdy streamer włączy swoją publiczną historię, każdy może tam zobaczyć nazwę streamera i jego zakończone rozdania: tytuł, nagrodę, datę zamknięcia oraz liczbę uczestników i zwycięzców. Strona nie wymienia żadnego uczestnika ani zwycięzcy, a streamer może ukryć pojedyncze rozdania albo wyłączyć stronę. Wyszukiwarki indeksują stronę tylko wtedy, gdy streamer na to pozwoli.",
   "privacy.recipients.i6":
     "Odpowiedzi z formularza zwycięzcy trafiają do streamera, który prowadzi rozdanie, i do nikogo innego: moderatorzy, nakładka i strony publiczne nigdy ich nie pokazują.",
+  "privacy.recipients.i7":
+    "Jeśli operator włączy zgłaszanie błędów, Sentry (Functional Software, Inc.) otrzymuje jako podmiot przetwarzający w imieniu operatora zgłoszenia błędów z przeglądarki i serwera i przechowuje je w swoim regionie UE w Niemczech. Zgłoszenie zawiera błąd, miejsce jego wystąpienia, przeglądarkę i system operacyjny; jak każdy serwer, Sentry widzi adres IP połączenia. Ciasteczka, treść żądań, kody logowania, tokeny Twitcha i Kicka oraz odpowiedzi zwycięzców w formularzu są usuwane przed wysłaniem zgłoszenia.",
   "privacy.cookies.h": "Ciasteczka i pamięć lokalna",
   "privacy.cookies.p1":
     "Rafflink ustawia tylko niezbędne ciasteczka, więc nie pokazuje banera zgody. Wszystkie są typu HTTP-only i nie są używane do niczego innego.",

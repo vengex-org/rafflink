@@ -3,6 +3,7 @@ import type { EntrantsDelta } from "@rafflink/core/room/giveaway-room"
 import { ApiShapeError, record, type Json } from "../api/decode.ts"
 import { getLive, parseLivePush } from "../api/client.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 
 export type LiveState<Snapshot> =
   | { readonly state: "loading" }
@@ -71,6 +72,7 @@ export function useLive<Snapshot>(
         } catch (error) {
           if (!(error instanceof ApiShapeError || error instanceof SyntaxError)) throw error
           console.error("live message ignored", { errorClass: errorClass(error) })
+          reportError(error)
         }
       })
       next.addEventListener("close", (event) => {
@@ -109,6 +111,7 @@ export function useLive<Snapshot>(
       },
       (error: unknown) => {
         console.error("live load failed", { errorClass: errorClass(error) })
+        reportError(error)
         if (current) setLive({ state: "failed" })
       },
     )

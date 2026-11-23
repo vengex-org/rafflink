@@ -52,3 +52,16 @@ jobs:
         if: steps.scope.outputs.scope == 'full'
       - run: bun run build
         if: steps.scope.outputs.scope == 'full'
+      # The source maps of a master build go to Sentry under the commit as the release, with debug ids injected; a deploy
+      # built from the same commit, injected the same way, resolves against them. Skipped without the secret (forks).
+      - name: Upload source maps to Sentry
+        if: github.event_name == 'push'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: vengex-ww
+          SENTRY_URL: https://de.sentry.io
+        run: |
+          if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "No SENTRY_AUTH_TOKEN, source maps not uploaded"; exit 0; fi
+          bunx @sentry/cli@3.8.2 sourcemaps inject apps/web/dist apps/cloudflare/dist
+          bunx @sentry/cli@3.8.2 sourcemaps upload --project rafflink-web --release "$GITHUB_SHA" apps/web/dist
+          bunx @sentry/cli@3.8.2 sourcemaps upload --project rafflink-worker --release "$GITHUB_SHA" apps/cloudflare/dist

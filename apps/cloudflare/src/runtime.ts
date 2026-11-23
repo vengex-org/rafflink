@@ -12,7 +12,7 @@ import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import { kickPlatform } from "@rafflink/core/kick/kick-provider"
 import { D1AsyncSql } from "./adapters/d1-async-sql.ts"
 import { RateLimitBindingLimiter } from "./adapters/rate-limit-binding.ts"
-import { settingsOf, type WorkerEnv } from "./env.ts"
+import { isolateKeyOf, settingsOf, type WorkerEnv } from "./env.ts"
 
 /** What the Worker and both Durable Objects share, built once per isolate from the environment. */
 export interface Runtime extends StreamerTokenDeps {
@@ -23,18 +23,30 @@ export interface Runtime extends StreamerTokenDeps {
   readonly admins: AdminDirectory
 }
 
-const runtimes = new WeakMap<WorkerEnv, Promise<Runtime>>()
+const configs = new WeakMap<object, ResolvedConfig>()
+const runtimes = new WeakMap<object, Promise<Runtime>>()
+
+/** The settings of the environment, parsed once per isolate; the Sentry wrappers read them on every request. */
+export function configOf(env: WorkerEnv): ResolvedConfig {
+  const key = isolateKeyOf(env)
+  const existing = configs.get(key)
+  if (existing !== undefined) return existing
+  const config = resolveConfig(settingsOf(env))
+  configs.set(key, config)
+  return config
+}
 
 export function runtimeOf(env: WorkerEnv): Promise<Runtime> {
-  const existing = runtimes.get(env)
+  const key = isolateKeyOf(env)
+  const existing = runtimes.get(key)
   if (existing !== undefined) return existing
   const opened = openRuntime(env)
-  runtimes.set(env, opened)
+  runtimes.set(key, opened)
   return opened
 }
 
 async function openRuntime(env: WorkerEnv): Promise<Runtime> {
-  const config = resolveConfig(settingsOf(env))
+  const config = configOf(env)
   const sql = new D1AsyncSql(env.DB)
   // Called through a wrapper: the global `fetch` throws when it is called as a method of another object.
   const twitch = new TwitchClient(config, (input, init) => fetch(input, init))

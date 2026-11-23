@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useState } from "react"
 import { useSearchParams } from "react-router"
 import { pollEntry, type EntryResult } from "../api/client.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 import type { PollTiming } from "./poll-timing.ts"
 import { forgetStoredGiveaway } from "./stored-giveaway.ts"
 
@@ -64,6 +65,7 @@ export function useEntryResult(
           }
         } catch (error) {
           console.error("entry poll failed", { errorClass: errorClass(error) })
+          reportError(error)
         }
       }
     })()

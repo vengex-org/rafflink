@@ -10,7 +10,13 @@ import {
   historyPath,
   verifyPath,
 } from "../lib/page-paths.ts"
-import { embedJson, inlineScriptHashes, renderSpaHtml, type PageMeta } from "../lib/spa-html.ts"
+import {
+  embedJson,
+  errorReportOrigin,
+  inlineScriptHashes,
+  renderSpaHtml,
+  type PageMeta,
+} from "../lib/spa-html.ts"
 import { isApiPath } from "./api-paths.ts"
 import type { AppDeps } from "./deps.ts"
 import { publicHistoryAnswer, type PublicHistoryAnswer } from "./history-routes.ts"
@@ -53,7 +59,7 @@ export function spaRoutes(deps: AppDeps, loadTemplate: SpaTemplateLoader): Hono 
         : await publicHistoryAnswer(deps, provider.platform, login)
     const scriptHashes = await inlineScriptHashes(template)
     const headers = {
-      "Content-Security-Policy": contentSecurityPolicy(scriptHashes),
+      "Content-Security-Policy": contentSecurityPolicy(scriptHashes, errorReportOrigin(template)),
       "Cache-Control": "no-cache",
     }
     const image = `${publicUrl}/og.png`
@@ -131,7 +137,7 @@ export function spaRoutes(deps: AppDeps, loadTemplate: SpaTemplateLoader): Hono 
           }
     const scriptHashes = await inlineScriptHashes(template)
     return c.html(renderSpaHtml(template, meta), 200, {
-      "Content-Security-Policy": contentSecurityPolicy(scriptHashes),
+      "Content-Security-Policy": contentSecurityPolicy(scriptHashes, errorReportOrigin(template)),
       "Cache-Control": "no-cache",
       ...(indexablePaths.includes(pathname) ? {} : { "X-Robots-Tag": noindex }),
     })

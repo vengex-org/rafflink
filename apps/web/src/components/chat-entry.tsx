@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "../lib/error-reporting.ts"
 import { isLoginEntered } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import { TextField } from "./form-fields.tsx"
@@ -36,6 +37,7 @@ export function ChatEntry({
       setAnswer({ kind: "answered", login: typed, entered: await isLoginEntered(code, typed) })
     } catch (error) {
       console.error("entrant lookup failed", { errorClass: errorClass(error) })
+      reportError(error)
       setAnswer({ kind: "failed" })
     } finally {
       setBusy(false)

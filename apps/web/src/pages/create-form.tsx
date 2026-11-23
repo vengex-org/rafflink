@@ -18,6 +18,7 @@ import { useI18n } from "../i18n/i18n.tsx"
 import { dashboardPath } from "../lib/routes.ts"
 import { isCreated, markCreated, readDraft, takeReconnectDraft } from "../lib/wizard-draft.ts"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "../lib/error-reporting.ts"
 import { BasicsStep, ReviewStep, RulesStep } from "./create-steps.tsx"
 import {
   fitValues,
@@ -166,6 +167,7 @@ export function CreateForm({
       }
     } catch (error) {
       console.error("create failed", { errorClass: errorClass(error) })
+      reportError(error)
       setFailed(true)
     } finally {
       setBusy(false)
