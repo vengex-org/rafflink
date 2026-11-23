@@ -218,7 +218,7 @@ export function unsupportedRule(
   if (rules.minAccountAgeDays !== null && !capabilities.accountAge) {
     return unsupported("minAccountAgeDays")
   }
-  const supported = supportedGroups(capabilities)
+  const supported = supportedGroups(capabilities, badgesSeen(rules))
   const untold = groups.find((group) => !supported.includes(group) && rules.tickets[group] > 0)
   if (untold !== undefined) return unsupported(`tickets.${untold}`)
   if (rules.pageEntry && !capabilities.pageEntry) return unsupported("pageEntry")
@@ -234,6 +234,14 @@ export function unsupportedRule(
  */
 export function accountAgeDays(now: Instant, createdAt: Instant | null): number | null {
   return createdAt === null ? null : Math.max(0, Math.floor((now - createdAt) / msPerDay))
+}
+
+/**
+ * Whether every entrant of a giveaway with these rules enters by the chat keyword or a sub event, so the
+ * platform's chat badge groups can weigh them; page and points entrants show no badge.
+ */
+export function badgesSeen(rules: Pick<GiveawayRules, "pageEntry" | "pointsReward">): boolean {
+  return !rules.pageEntry && rules.pointsReward === null
 }
 
 /** Whether a chat message asks to enter: its text starts with the keyword as a whole word, in any letter case. */

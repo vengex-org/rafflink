@@ -4,7 +4,6 @@ import type {
   AuthorizeParams,
   ChannelRoles,
   ChatContext,
-  ChatDelivery,
   ExchangedCode,
   PlatformAccount,
   PlatformCapabilities,
@@ -14,6 +13,7 @@ import type {
   SubscriptionGroup,
   TokenValidation,
   UserProfile,
+  WebhookDelivery,
 } from "../platform/provider.ts"
 import type { AsyncSql, Clock } from "../ports.ts"
 import { KickChatWatches } from "./chat-watches.ts"
@@ -30,8 +30,8 @@ import {
 
 export type KickProviderConfig = KickChatConfig & KickWebhookConfig
 
-// Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages, so a Kick giveaway
-// can only weigh everyone as a viewer. Chat, sub and channel point entry wait for #61.
+// Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages. Only the badges of a
+// chat message tell a subscriber (Kick has one level) or a moderator, and a sub event tells a subscriber.
 const kickCapabilities: PlatformCapabilities = {
   followerCheck: false,
   subTiers: false,
@@ -39,9 +39,10 @@ const kickCapabilities: PlatformCapabilities = {
   accountAge: false,
   moderatorRole: false,
   pageEntry: true,
-  chatEntry: false,
-  subEntry: false,
-  pointsEntry: false,
+  chatEntry: true,
+  subEntry: true,
+  pointsEntry: true,
+  chatBadgeGroups: ["sub_t1", "moderator"],
 }
 
 const noBadges: SubscriberBadges = { sub_t1: null, sub_t2: null, sub_t3: null }
@@ -75,7 +76,8 @@ export class KickProvider implements PlatformProvider {
     viewer: ["user:read"],
     moderator: ["user:read"],
   } as const
-  readonly entryScopes = { chat: [], sub: [], points: [] } as const
+  // Chat and sub events come through the app's own subscriptions; only the reward list needs the streamer's token.
+  readonly entryScopes = { chat: [], sub: [], points: ["channel:rewards:read"] } as const
   private readonly key: KickWebhookKey
   private readonly orphans: KickOrphanSubscriptions
 
@@ -147,12 +149,13 @@ export class KickProvider implements PlatformProvider {
     return new Map()
   }
 
+  /** Every Kick channel can make channel point rewards; the reward list tells whether it has any. */
   async hasChannelPoints(): Promise<boolean> {
-    return false
+    return true
   }
 
-  async pointsRewards(): Promise<readonly PointsReward[]> {
-    return []
+  pointsRewards(accessToken: string): Promise<readonly PointsReward[]> {
+    return this.client.rewards(accessToken)
   }
 
   async channelRoles(): Promise<ChannelRoles> {
@@ -187,7 +190,7 @@ export class KickProvider implements PlatformProvider {
     })
   }
 
-  readonly receiveWebhook = (request: Request, deliver: ChatDelivery): Promise<Response> =>
+  readonly receiveWebhook = (request: Request, deliver: WebhookDelivery): Promise<Response> =>
     receiveKickWebhook(
       {
         key: this.key,

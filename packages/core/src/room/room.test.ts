@@ -3435,6 +3435,40 @@ describe("GiveawayRoom webhook chat", () => {
   // The claim time of `giveaway` plus REROLL_WINDOW_SECONDS of `baseEnv`, and one millisecond.
   const watchOverMs = (300 + 600) * 1000 + 1
 
+  function openWithChat(changes: Partial<GiveawayRules>) {
+    const sources: RecordedSource[] = []
+    const sql = new BunSqliteSyncSql(new Database(":memory:"))
+    applyMigrations(sql, roomMigrations)
+    const room = roomWithChat(sources, sql, new TestClock(0))
+    room.init({ ...giveaway, rules: { ...giveaway.rules, ...changes } })
+    room.loadExclusions(noExclusions)
+    return { room, sources }
+  }
+
+  const subscriber = { platformUserId: "7", login: "sub7", displayName: "Sub7" }
+
+  it("opens the chat for the entry keyword while chat entries are open", () => {
+    const { sources } = openWithChat({ chatKeyword: "!enter" })
+
+    expect(sources.at(-1)?.opened.at(-1)).toEqual({ kind: "keyword", keyword: "!enter" })
+  })
+
+  it("queues a sub a webhook brought while sub entries are open, and none after the close", () => {
+    const { room } = openWithChat({ subEntry: true })
+
+    room.receiveChannelEntries([{ via: "sub", viewer: subscriber, subTier: 1 }])
+    const queued = room.onAlarm().chatEntrants?.chatters.map((chatter) => chatter.platformUserId)
+    room.close(null)
+    room.receiveChannelEntries([
+      { via: "sub", viewer: { ...subscriber, platformUserId: "8" }, subTier: 1 },
+    ])
+
+    expect(queued).toEqual(["7"])
+    expect(room.onAlarm().chatEntrants?.chatters.map((chatter) => chatter.platformUserId)).toEqual([
+      "7",
+    ])
+  })
+
   it("opens the chat for the winners only after the draw", async () => {
     const { sources, winnerId } = await drawnWithChat()
 

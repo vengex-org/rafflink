@@ -901,17 +901,25 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Aby Rafflink zapojil nové předplatitele, potřebuje číst tvoje předplatitele a sledující. Připoj Twitch znovu, tvoje odpovědi zůstanou.",
   "wizard.reconnect.points.text":
     "Aby Rafflink zapojil diváky, kteří uplatní odměnu za body kanálu, potřebuje číst tvoje odměny, jejich uplatnění, předplatitele a sledující. Připoj Twitch znovu, tvoje odpovědi zůstanou.",
-  "wizard.reconnect.button": "Připojit Twitch znovu",
+  "wizard.reconnect.points.text.kick":
+    "Aby Rafflink ukázal tvoje odměny za body kanálu, potřebuje je číst. Připoj Kick znovu, tvoje odpovědi zůstanou.",
+  "wizard.reconnect.button": "Připojit {platform} znovu",
   "wizard.chatKeyword.label": "Klíčové slovo pro zapojení",
   "wizard.chatKeyword.help":
     "Zpráva v chatu, která začíná tímto slovem, diváka zapojí se stejnými pravidly a losy jako stránka. Rafflink do tvého chatu nikdy nepíše.",
+  "wizard.chatCost.kick":
+    "Kick posílá Rafflinku každou zprávu z chatu, dokud je přihlašování otevřené, i bez klíčového slova, a každá spotřebuje jeden požadavek z denního limitu {limit} tohoto serveru. Chat se 100 zprávami za minutu spotřebuje 6 000 požadavků za hodinu. Na dnešek zbývá {remaining}.",
   "wizard.autoEntry.legend": "Automatické zapojení",
   "wizard.subEntry.label": "Zapojit nové předplatitele",
   "wizard.subEntry.help":
     "Každý, kdo si během otevřeného zapojování předplatí kanál, dostane darovaný sub nebo sdílí prodloužení v chatu, se zapojí jednou, s tikety svého tieru. Tiché automatické prodloužení nikoho nezapojí: Twitch oznámí jen prodloužení, které divák sdílí. Zapojení přes stránku nebo chat zůstává zdarma, takže nikdo nemusí platit.",
+  "wizard.subEntry.help.kick":
+    "Každý, kdo si během otevřeného zapojování předplatí kanál, prodlouží předplatné nebo dostane darovaný sub, se zapojí jednou, s tikety předplatitele. Kick má jednu úroveň předplatného a oznámí každé prodloužení. Zapojení přes stránku nebo chat zůstává zdarma, takže nikdo nemusí platit.",
   "wizard.points.legend": "Odměna za body kanálu",
   "wizard.points.help":
     "Diváci, kteří tuto odměnu uplatní během otevřeného zapojování, se zapojí jednou, jako při každém jiném zapojení. Uplatnění nedává tikety navíc ani lepší šanci na výhru.",
+  "wizard.points.none":
+    "Tvůj kanál zatím nemá žádné odměny za body. Vytvoř si odměnu v nastavení kanálu a pak otevři tento krok znovu.",
   "wizard.points.off": "Žádná odměna",
   "wizard.points.selected":
     "Rafflink uplatnění neoznačí jako splněné, vyřiď ho ve frontě odměn jako obvykle.",

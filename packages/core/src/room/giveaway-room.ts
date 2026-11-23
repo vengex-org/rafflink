@@ -1802,10 +1802,11 @@ export class GiveawayRoom {
     })
   }
 
-  // Every chatter while entries are open to a keyword, otherwise the winners whose pick is not rerolled:
-  // the only ones whose messages the room shows or claims with.
+  // The keyword while entries are open to it, otherwise the winners whose pick is not rerolled: the only
+  // ones whose messages the room shows or claims with.
   private chatAudience(state: RoomState): ChatAudience {
-    if ((this.channelEntrySettings?.keyword ?? null) !== null) return { kind: "everyone" }
+    const keyword = this.channelEntrySettings?.keyword ?? null
+    if (keyword !== null) return { kind: "keyword", keyword }
     const rows = this.sql.exec(watchedChattersSql, [state.platform])
     return {
       kind: "chatters",
@@ -1821,6 +1822,18 @@ export class GiveawayRoom {
     this.guarded("chat", () => this.syncChat())
     if (this.chat === null || !this.chatWatchOpen(this.readState())) return
     this.guarded("chat-message", () => this.onChatMessage(message))
+  }
+
+  /**
+   * The subscriptions and channel point redemptions one platform webhook brought, read like those the
+   * room's chat source delivers while the chat watch runs, and dropped otherwise.
+   */
+  receiveChannelEntries(events: readonly ChannelEntryEvent[]): void {
+    this.guarded("chat", () => this.syncChat())
+    if (this.chat === null || !this.chatWatchOpen(this.readState())) return
+    for (const event of events) {
+      this.guarded("channel-entry", () => this.requestChannelEntry(event))
+    }
   }
 
   private chatWatchOpen(state: RoomState): boolean {

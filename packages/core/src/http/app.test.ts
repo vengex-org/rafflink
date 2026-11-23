@@ -109,6 +109,7 @@ describe("session", () => {
           chatEntry: true,
           subEntry: true,
           pointsEntry: true,
+          chatBadgeGroups: [],
         },
         readyEntryWays: [],
         publicHistory: false,

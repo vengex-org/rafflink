@@ -109,3 +109,33 @@ describe("usage warning at giveaway creation", () => {
     warn.mockRestore()
   })
 })
+
+async function budget(): Promise<unknown> {
+  const response = await browser.request("/api/dash/request-budget")
+  expect(response.status).toBe(200)
+  return response.json()
+}
+
+describe("request budget for the wizard", () => {
+  it("tells the daily limit and what is left of it today", async () => {
+    harness.usage.usage = usageWithRemaining(60_000)
+
+    expect(await budget()).toEqual({ budget: { limit: 100_000, remaining: 60_000 } })
+  })
+
+  it("tells no budget on a target without a daily limit, and when the usage cannot be read", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    harness.usage.usage = null
+    const uncapped = await budget()
+    harness.usage.failure = new Error("analytics down")
+
+    expect([uncapped, await budget()]).toEqual([{ budget: null }, { budget: null }])
+    warn.mockRestore()
+  })
+
+  it("answers only a signed-in streamer", async () => {
+    const response = await new Browser(harness).request("/api/dash/request-budget")
+
+    expect(response.status).toBe(401)
+  })
+})

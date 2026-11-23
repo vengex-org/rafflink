@@ -1,11 +1,20 @@
 import { beforeEach, describe, expect, it, spyOn } from "bun:test"
 import type { SignedWebhook } from "@rafflink/fake-kick"
-import { kickStreamer, kickViewer, kickWorld, type KickWorld } from "../../test/kick-fixture.ts"
-import type { ChatMessage } from "../platform/chat-source.ts"
+import {
+  kickSecond,
+  kickStreamer,
+  kickViewer,
+  kickWorld,
+  type KickWorld,
+} from "../../test/kick-fixture.ts"
+import type { ChannelEntryEvent, ChatMessage } from "../platform/chat-source.ts"
+import type { WebhookDelivery } from "../platform/provider.ts"
+import type { WatchInterest } from "./chat-watches.ts"
+import { kickEvents, type KickEvent } from "./kick-client.ts"
 import {
   KickOrphanSubscriptions,
   KickWebhookKey,
-  parseChatEvent,
+  parseKickEvent,
   receiveKickWebhook,
   type KickWebhookDeps,
 } from "./webhook.ts"
@@ -16,6 +25,58 @@ const webhookUrl = "http://localhost/api/kick/webhook"
 let world: KickWorld
 let deps: KickWebhookDeps
 let delivered: { giveawayId: string; message: ChatMessage }[]
+let entered: { giveawayId: string; events: readonly ChannelEntryEvent[] }[]
+
+const readsWinner: WatchInterest = {
+  chatterIds: [kickViewer.id],
+  keyword: null,
+  subEntry: false,
+  rewardId: null,
+}
+
+const recording: WebhookDelivery = {
+  chat: async (id, message) => {
+    delivered.push({ giveawayId: id, message })
+  },
+  channelEntries: async (id, events) => {
+    entered.push({ giveawayId: id, events })
+  },
+}
+
+/** Subscribes the streamer's channel to `events` at the fake and stores each subscription. */
+async function subscribe(events: readonly KickEvent[]): Promise<void> {
+  const outcomes = await world.client.subscribe(kickStreamer.id, events)
+  for (const event of events) {
+    const outcome = outcomes.get(event.name)
+    if (outcome?.ok !== true) throw new Error(`the fake refused ${event.name}`)
+    await world.watches.saveSubscription(
+      kickStreamer.id,
+      event,
+      outcome.subscriptionId,
+      world.clock.now(),
+    )
+  }
+}
+
+function sub(user: { id: string; name: string }): ChannelEntryEvent {
+  return {
+    via: "sub",
+    viewer: { platformUserId: user.id, login: user.name.toLowerCase(), displayName: user.name },
+    subTier: 1,
+  }
+}
+
+function byName(name: string): KickEvent {
+  const found = kickEvents.find((candidate) => candidate.name === name)
+  if (found === undefined) throw new Error(`no event ${name}`)
+  return found
+}
+
+function chatEvent(): KickEvent {
+  const event = kickEvents.find((candidate) => candidate.topic === "chat")
+  if (event === undefined) throw new Error("no chat event")
+  return event
+}
 
 beforeEach(async () => {
   spyOn(console, "warn").mockImplementation(() => {})
@@ -29,10 +90,10 @@ beforeEach(async () => {
     config: world.config,
   }
   delivered = []
+  entered = []
   world.fake.control.setWebhookUrl(webhookUrl)
-  const subscriptionId = await world.client.subscribeChat(kickStreamer.id)
-  await world.watches.saveSubscription(kickStreamer.id, subscriptionId, world.clock.now())
-  await world.watches.watch(giveawayId, kickStreamer.id, [kickViewer.id], world.clock.now())
+  await subscribe([chatEvent()])
+  await world.watches.watch(giveawayId, kickStreamer.id, readsWinner, world.clock.now())
 })
 
 async function webhook(text = "claiming!", sentAt = new Date(world.clock.now())) {
@@ -46,9 +107,7 @@ function receive(signed: SignedWebhook, changes: Partial<SignedWebhook> = {}): P
   return receiveKickWebhook(
     deps,
     new Request(webhookUrl, { method: "POST", headers, body }),
-    async (id, message) => {
-      delivered.push({ giveawayId: id, message })
-    },
+    recording,
   )
 }
 
@@ -163,7 +222,7 @@ describe("receiveKickWebhook", () => {
 
     expect([first.status, second.status]).toEqual([204, 204])
     expect(world.fake.control.subscriptions()).toEqual([])
-    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBeNull()
+    expect(await world.watches.subscriptionsOf(kickStreamer.id)).toEqual([])
     expect(unsubscribeCalls()).toBe(1)
     expect(delivered).toEqual([])
   })
@@ -173,13 +232,13 @@ describe("receiveKickWebhook", () => {
     world.fake.control.failNext("unsubscribe", 503, 1)
 
     await receive(await webhook("orphan"))
-    const keptRow = await world.watches.subscriptionOf(kickStreamer.id)
+    const keptRows = await world.watches.subscriptionsOf(kickStreamer.id)
     world.clock.advance(300_000)
     await receive(await webhook("orphan again"))
 
-    expect(keptRow).not.toBeNull()
+    expect(keptRows).toHaveLength(1)
     expect(world.fake.control.subscriptions()).toEqual([])
-    expect(await world.watches.subscriptionOf(kickStreamer.id)).toBeNull()
+    expect(await world.watches.subscriptionsOf(kickStreamer.id)).toEqual([])
   })
 
   it("drops a replay of a message it handed on before", async () => {
@@ -208,13 +267,34 @@ describe("receiveKickWebhook", () => {
     expect(delivered).toHaveLength(1)
   })
 
-  it("hands nothing on for a sender no room reads", async () => {
-    await world.watches.watch(giveawayId, kickStreamer.id, [], world.clock.now())
+  it("hands nothing on for a sender no room reads, and keeps the chat subscription a winner watch needs", async () => {
+    await world.watches.watch(
+      giveawayId,
+      kickStreamer.id,
+      { ...readsWinner, chatterIds: ["999"] },
+      world.clock.now(),
+    )
 
     const response = await receive(await webhook())
 
     expect(response.status).toBe(204)
     expect(delivered).toEqual([])
+    expect(unsubscribeCalls()).toBe(0)
+  })
+
+  it("cancels the chat subscription when the channel's only watch reads subs and no chat", async () => {
+    await world.watches.watch(
+      giveawayId,
+      kickStreamer.id,
+      { ...readsWinner, chatterIds: [], subEntry: true },
+      world.clock.now(),
+    )
+
+    const response = await receive(await webhook())
+
+    expect(response.status).toBe(204)
+    expect(world.fake.control.subscriptions()).toEqual([])
+    expect(await world.watches.subscriptionsOf(kickStreamer.id)).toEqual([])
   })
 
   it("answers 503 while Kick does not serve its key, so Kick sends the webhook again", async () => {
@@ -246,25 +326,106 @@ describe("receiveKickWebhook", () => {
   })
 
   it("keeps handing a message to the other rooms when one room fails", async () => {
-    await world.watches.watch("g2", kickStreamer.id, [kickViewer.id], world.clock.now())
+    await world.watches.watch("g2", kickStreamer.id, readsWinner, world.clock.now())
     const signed = await webhook()
     const reached: string[] = []
 
     const response = await receiveKickWebhook(
       deps,
       new Request(webhookUrl, { method: "POST", headers: signed.headers, body: signed.body }),
-      async (id) => {
-        if (id === giveawayId) throw new Error("room down")
-        reached.push(id)
+      {
+        ...recording,
+        chat: async (id) => {
+          if (id === giveawayId) throw new Error("room down")
+          reached.push(id)
+        },
       },
     )
 
     expect(response.status).toBe(204)
     expect(reached).toEqual(["g2"])
   })
+
+  it("hands a room only the chat messages that ask to enter with its keyword", async () => {
+    await world.watches.watch(
+      giveawayId,
+      kickStreamer.id,
+      { ...readsWinner, chatterIds: [], keyword: "!enter" },
+      world.clock.now(),
+    )
+
+    for (const text of ["hello", "!entering", "gg", "!ENTER please", "what is !enter"]) {
+      expect((await receive(await webhook(text))).status).toBe(204)
+    }
+
+    expect(delivered.map((entry) => entry.message.text)).toEqual(["!ENTER please"])
+  })
+
+  it("hands each new sub, renewal and gift recipient to the rooms with sub entry, in one call per webhook", async () => {
+    world.fake.control.addUser(kickSecond)
+    await subscribe(kickEvents.filter((event) => event.topic === "sub"))
+    await world.watches.watch(
+      "g2",
+      kickStreamer.id,
+      { ...readsWinner, subEntry: true },
+      world.clock.now(),
+    )
+    const { control } = world.fake
+
+    for (const signed of [
+      await control.subscriptionWebhook(kickStreamer.id, "new", [kickViewer.id]),
+      await control.subscriptionWebhook(kickStreamer.id, "renewal", [kickSecond.id]),
+      await control.subscriptionWebhook(kickStreamer.id, "gifts", [kickViewer.id, kickSecond.id]),
+    ]) {
+      if (signed === null) throw new Error("the fake sent no webhook")
+      expect((await receive(signed)).status).toBe(204)
+    }
+
+    expect(entered).toEqual([
+      { giveawayId: "g2", events: [sub(kickViewer)] },
+      { giveawayId: "g2", events: [sub(kickSecond)] },
+      { giveawayId: "g2", events: [sub(kickViewer), sub(kickSecond)] },
+    ])
+  })
+
+  it("hands a pending or accepted redemption of a room's reward to that room only, and a rejected one to none", async () => {
+    await subscribe(kickEvents.filter((event) => event.topic === "points"))
+    await world.watches.watch(
+      "g2",
+      kickStreamer.id,
+      { ...readsWinner, rewardId: "reward-enter" },
+      world.clock.now(),
+    )
+    const { control } = world.fake
+
+    for (const [rewardId, status] of [
+      ["reward-enter", "pending"],
+      ["reward-hydrate", "accepted"],
+      ["reward-enter", "rejected"],
+      ["reward-enter", "accepted"],
+    ] as const) {
+      const signed = await control.redemptionWebhook(
+        kickStreamer.id,
+        kickViewer.id,
+        rewardId,
+        status,
+      )
+      if (signed === null) throw new Error("the fake sent no webhook")
+      expect((await receive(signed)).status).toBe(204)
+    }
+
+    expect(entered.map((entry) => entry.giveawayId)).toEqual(["g2", "g2"])
+    expect(entered[0]?.events).toEqual([
+      {
+        via: "points",
+        viewer: { platformUserId: kickViewer.id, login: "kick_viewer", displayName: "Kick_Viewer" },
+        rewardId: "reward-enter",
+      },
+    ])
+  })
 })
 
-describe("parseChatEvent", () => {
+describe("parseKickEvent", () => {
   const event = {
     message_id: "m1",
     broadcaster: { user_id: 300, username: "Kick_Streamer", identity: null },
@@ -283,21 +444,43 @@ describe("parseChatEvent", () => {
   }
 
   it("reads the moderator and subscriber badges", () => {
-    expect(parseChatEvent(JSON.stringify(event))?.message.roles).toEqual({
-      subTier: 1,
-      isVip: false,
-      isModerator: true,
+    expect(parseKickEvent(chatEvent(), JSON.stringify(event))).toMatchObject({
+      kind: "chat",
+      message: { roles: { subTier: 1, isVip: false, isModerator: true } },
     })
   })
 
   it("refuses a sender id that is not a positive integer", () => {
     for (const userId of [0, -1, 1.5, "301", null]) {
       const body = JSON.stringify({ ...event, sender: { ...event.sender, user_id: userId } })
-      expect(parseChatEvent(body)).toBeNull()
+      expect(parseKickEvent(chatEvent(), body)).toBeNull()
     }
   })
 
   it("refuses a body that is not JSON", () => {
-    expect(parseChatEvent("not json")).toBeNull()
+    expect(parseKickEvent(chatEvent(), "not json")).toBeNull()
+  })
+
+  it("refuses a redemption in a status Kick does not document, and a gift event without giftees", () => {
+    const redemption = {
+      broadcaster: event.broadcaster,
+      redeemer: { user_id: 301, username: "Kick_Viewer" },
+      reward: { id: "r1" },
+      status: "fulfilled",
+    }
+    const gifts = { broadcaster: event.broadcaster, giftees: null }
+
+    expect(
+      parseKickEvent(byName("channel.reward.redemption.updated"), JSON.stringify(redemption)),
+    ).toBeNull()
+    expect(parseKickEvent(byName("channel.subscription.gifts"), JSON.stringify(gifts))).toBeNull()
+  })
+
+  it("enters nobody for a gift event with an empty recipient list", () => {
+    const gifts = { broadcaster: event.broadcaster, giftees: [] }
+
+    expect(parseKickEvent(byName("channel.subscription.gifts"), JSON.stringify(gifts))).toEqual({
+      kind: "ignored",
+    })
   })
 })

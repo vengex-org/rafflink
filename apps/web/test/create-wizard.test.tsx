@@ -712,6 +712,44 @@ describe("create wizard", () => {
     ).toMatchObject({ rules: { subEntry: true, pageEntry: true, chatKeyword: null } })
   })
 
+  it("sends a Kick streamer to reconnect Kick for the reward list", async () => {
+    mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick" },
+        }),
+      "GET /api/dash/rewards": () => ok({ kind: "reconnect" }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+
+    const reconnect = await view.findByRole("link", { name: "Reconnect Kick" })
+    expect(reconnect.getAttribute("href")).toBe(
+      "/auth/kick/streamer/start?entry=points&return=%2Fdashboard%2Fnew%3Fstep%3D2",
+    )
+    expect(view.getByText(/To list your channel point rewards/)).toBeTruthy()
+  })
+
+  it("tells a Kick streamer without rewards to create one, and describes Kick renewals", async () => {
+    mockFetch({
+      ...listed,
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick" },
+        }),
+      "GET /api/dash/rewards": () => ok({ kind: "rewards", rewards: [] }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+
+    expect(await view.findByText(/has no channel point rewards yet/)).toBeTruthy()
+    expect(view.getByText(/Kick has one subscription level/)).toBeTruthy()
+    expect(view.queryByRole("group", { name: "Channel point reward" })).toBeNull()
+  })
+
   it("goes back to the rules step when the server answers that the token needs a reconnect", async () => {
     mockFetch({
       ...withCreate({ status: 422, body: { error: "reconnect" } }),
@@ -880,6 +918,54 @@ describe("create wizard", () => {
     const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
     expect(body).toMatchObject({
       rules: { tickets: { sub_t1: 0, sub_t2: 0, sub_t3: 0 }, subsOnly: false },
+    })
+  })
+
+  it("offers Kick subscriber and moderator tickets only for chat only entry, with the chat cost and today's budget", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      followerCheck: false,
+      subTiers: false,
+      vip: false,
+      accountAge: false,
+      moderatorRole: false,
+      chatBadgeGroups: ["sub_t1", "moderator"],
+    }
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "kick", capabilities },
+        }),
+      "GET /api/dash/request-budget": () => ok({ budget: { limit: 100_000, remaining: 42_000 } }),
+    })
+    const view = await openWizard()
+    fillGiveaway(view)
+    await toRules(view)
+    const pageOnly = {
+      subscribers: view.queryByLabelText("Subscribers, tier 1"),
+      cost: view.queryByText(/left today/),
+    }
+
+    fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
+    fireEvent.change(await view.findByLabelText("Subscribers, tier 1"), { target: { value: "3" } })
+    fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "5" } })
+    const cost = await view.findByText(/42,000 are left today/)
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    expect(pageOnly).toEqual({ subscribers: null, cost: null })
+    expect(cost.textContent).toContain("daily limit of 100,000")
+    expect(view.queryByLabelText("Subscribers, tier 2")).toBeNull()
+    const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
+    expect(body).toMatchObject({
+      rules: {
+        tickets: { viewer: 1, follower: 0, sub_t1: 3, sub_t2: 0, sub_t3: 0, vip: 0, moderator: 5 },
+        pageEntry: false,
+      },
     })
   })
 

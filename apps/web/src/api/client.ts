@@ -37,6 +37,7 @@ import type {
   PointsRewardsJson,
   PublicGiveaway,
   PublicHistoryJson,
+  RequestBudgetJson,
   SessionJson,
   VerifyJson,
   ViewerState,
@@ -271,6 +272,11 @@ function capabilitiesOf(source: Json): PlatformCapabilities {
     chatEntry: bool(source, "chatEntry"),
     subEntry: bool(source, "subEntry"),
     pointsEntry: bool(source, "pointsEntry"),
+    chatBadgeGroups: textList(source, "chatBadgeGroups").map((value) => {
+      const group = groups.find((item) => item === value)
+      if (group === undefined) throw new ApiShapeError("chatBadgeGroups")
+      return group
+    }),
   }
 }
 
@@ -938,7 +944,17 @@ export type AddBlockResult = "added" | "exists" | AddBlockRefusal | "unauthorize
 
 export type RemoveBlockResult = "removed" | "room-unavailable" | "unauthorized"
 
-/** The signed-in streamer's block list, newest first, and how many it may hold. */
+/** Today's Worker requests under the plan's daily cap, for the wizard's Kick chat cost note; `budget` is null without a cap. */
+export async function getRequestBudget(): Promise<RequestBudgetJson | "unauthorized"> {
+  const { status, body } = await send("/api/dash/request-budget")
+  if (status === 401) return "unauthorized"
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "requestBudget")
+  if (source.budget === null) return { budget: null }
+  const budget = child(source, "budget")
+  return { budget: { limit: num(budget, "limit"), remaining: num(budget, "remaining") } }
+}
+
 /** The streamer's channel point rewards for the wizard, or why there are none to pick. */
 export async function getPointsRewards(): Promise<PointsRewardsJson | "unauthorized"> {
   const { status, body } = await send("/api/dash/rewards")
@@ -959,6 +975,7 @@ function parsePointsReward(source: Json): PointsReward {
   return { id: text(source, "id"), title: text(source, "title") }
 }
 
+/** The signed-in streamer's block list, newest first, and how many it may hold. */
 export async function getBlocks(): Promise<BlockListJson | "unauthorized"> {
   const { status, body } = await send("/api/dash/blocks")
   if (status === 401) return "unauthorized"

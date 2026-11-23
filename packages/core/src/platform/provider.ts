@@ -6,7 +6,7 @@ import {
   type ViewerFacts,
 } from "../domain/rules.ts"
 import type { Clock, Instant, SocketConnector } from "../ports.ts"
-import type { ChatMessage, ChatSourceFactory } from "./chat-source.ts"
+import type { ChannelEntryEvent, ChatMessage, ChatSourceFactory } from "./chat-source.ts"
 
 /** The streaming platforms the app signs in with; the `platform` column of streamers, giveaways and entries. */
 const platforms = ["twitch", "kick"] as const
@@ -40,6 +40,11 @@ export interface PlatformCapabilities {
   readonly subEntry: boolean
   /** Viewers enter by redeeming a channel point reward. */
   readonly pointsEntry: boolean
+  /**
+   * Groups only the chat badges and subscription events tell. They count on a giveaway that sees a badge
+   * or a sub event for every entrant, so one with neither page nor points entry.
+   */
+  readonly chatBadgeGroups: readonly Group[]
 }
 
 /** A platform that can check every rule and offers both entry ways. */
@@ -53,6 +58,7 @@ export const everyCapability: PlatformCapabilities = {
   chatEntry: true,
   subEntry: true,
   pointsEntry: true,
+  chatBadgeGroups: [],
 }
 
 export interface AuthorizeParams {
@@ -192,14 +198,21 @@ export interface PlatformProvider {
   /** The chat of one giveaway's channel, whatever this platform's transport. */
   chatSource(context: ChatContext): ChatSourceFactory
   /**
-   * Answers the platform's webhook at `/api/<platform>/webhook`, handing each chat message it proves to
+   * Answers the platform's webhook at `/api/<platform>/webhook`, handing each event it proves to
    * `deliver`; absent on a platform that sends no webhooks.
    */
-  readonly receiveWebhook?: (request: Request, deliver: ChatDelivery) => Promise<Response>
+  readonly receiveWebhook?: (request: Request, deliver: WebhookDelivery) => Promise<Response>
 }
 
-/** Hands one chat message a webhook brought to the room of a giveaway. */
-export type ChatDelivery = (giveawayId: string, message: ChatMessage) => Promise<void>
+/** Hands what one webhook brought to the room of a giveaway. */
+export interface WebhookDelivery {
+  readonly chat: (giveawayId: string, message: ChatMessage) => Promise<void>
+  /** The subscriptions or redemptions of one webhook, in one call per room. */
+  readonly channelEntries: (
+    giveawayId: string,
+    events: readonly ChannelEntryEvent[],
+  ) => Promise<void>
+}
 
 /** The provider of each platform this install signs in with: Twitch always, the others when their app is configured. */
 export type PlatformProviders = Readonly<

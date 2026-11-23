@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
-import { supportedGroups, type Group } from "@rafflink/core/domain/groups"
+import type { Group } from "@rafflink/core/domain/groups"
 import { channelEntryVias, type ChannelEntryVia } from "@rafflink/core/domain/rules"
 import { winnerFieldKinds } from "@rafflink/core/domain/winner-form"
 import type { PlatformCapabilities } from "@rafflink/core/platform/provider"
@@ -14,12 +14,13 @@ import {
   HeartIcon,
   LinkIcon,
   LockIcon,
+  LogInIcon,
   StarIcon,
   TwitchIcon,
   UsersIcon,
 } from "../components/icons.tsx"
 import type { PointsRewardsJson } from "@rafflink/core/http/json"
-import { getPointsRewards } from "../api/client.ts"
+import { getPointsRewards, getRequestBudget } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
 import {
   claimTimeText,
@@ -32,12 +33,14 @@ import { dashboardNewPath, entryReconnectPath } from "../lib/routes.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { keepDraftForReconnect } from "../lib/wizard-draft.ts"
 import { useStreamerSession } from "../components/streamer-session.tsx"
+import { platformNames } from "../lib/platform-name.ts"
 import {
   audienceOffered,
   claimPresets,
   claimSecondsOf,
   entryWaysOffered,
   oddsOf,
+  ticketGroups,
   type ClaimPreset,
   type Audience,
   type Ending,
@@ -232,7 +235,7 @@ export function RulesStep({
         values={values}
         setValues={setValues}
         issue={issue}
-        shown={supportedGroups(capabilities)}
+        shown={ticketGroups(values, capabilities)}
       />
       <StepperField
         name="winnerCount"
@@ -364,6 +367,7 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
           onChange={(chatKeyword) => setValues((current) => ({ ...current, chatKeyword }))}
         />
       ) : null}
+      {usesChat && streamer?.platform === "kick" ? <KickChatCostNote /> : null}
       {offersSupport && (capabilities.subEntry || capabilities.pointsEntry) ? (
         <fieldset className="field">
           <legend>{t("wizard.autoEntry.legend")}</legend>
@@ -381,7 +385,13 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
                 />
                 {t("wizard.subEntry.label")}
               </label>
-              <p className="help">{t("wizard.subEntry.help")}</p>
+              <p className="help">
+                {t(
+                  streamer?.platform === "kick"
+                    ? "wizard.subEntry.help.kick"
+                    : "wizard.subEntry.help",
+                )}
+              </p>
             </>
           ) : null}
           {capabilities.pointsEntry && rewards !== null ? (
@@ -422,18 +432,32 @@ function PointsRewardField({
   readonly rewards: PointsRewardsJson
 }) {
   const { t } = useI18n()
+  const { streamer } = useStreamerSession()
   switch (answer.kind) {
     case "no-channel-points":
       return null
     case "reconnect":
       return (
         <ReconnectNote
-          texts={[t("wizard.reconnect.points.text")]}
+          texts={[
+            t(
+              streamer?.platform === "kick"
+                ? "wizard.reconnect.points.text.kick"
+                : "wizard.reconnect.points.text",
+            ),
+          ]}
           ways={[...used, "points"]}
           values={values}
         />
       )
     case "rewards": {
+      if (answer.rewards.length === 0) {
+        return (
+          <p className="help" role="note">
+            {t("wizard.points.none")}
+          </p>
+        )
+      }
       const options: readonly SegmentOption<string>[] = [
         { value: "", label: t("wizard.points.off"), icon: null, description: "" },
         ...answer.rewards.map((reward) => ({
@@ -460,6 +484,26 @@ function PointsRewardField({
   }
 }
 
+/**
+ * Kick sends every chat message of the channel as a webhook, each one a Worker request, so a chat entry
+ * giveaway on a plan with a daily cap shows that cap and what is left of it today. Hidden without a cap.
+ */
+function KickChatCostNote() {
+  const i18n = useI18n()
+  const { result } = useLoad(getRequestBudget)
+  const budget =
+    result.state === "ready" && result.value !== "unauthorized" ? result.value.budget : null
+  if (budget === null) return null
+  return (
+    <p className="help" role="note">
+      {i18n.t("wizard.chatCost.kick", {
+        limit: i18n.number(budget.limit),
+        remaining: i18n.number(Math.max(0, budget.remaining)),
+      })}
+    </p>
+  )
+}
+
 /** Asks the streamer to sign in again with the scopes of `ways`; the answers wait in session storage meanwhile. */
 function ReconnectNote({
   texts,
@@ -471,6 +515,8 @@ function ReconnectNote({
   readonly values: Values
 }) {
   const { t } = useI18n()
+  const { streamer } = useStreamerSession()
+  const platform = streamer?.platform ?? "twitch"
   return (
     <div className="help" role="note">
       {texts.map((text) => (
@@ -478,11 +524,11 @@ function ReconnectNote({
       ))}
       <a
         className="button outlined"
-        href={entryReconnectPath(ways, dashboardNewPath({ step: 2 }))}
+        href={entryReconnectPath(platform, ways, dashboardNewPath({ step: 2 }))}
         onClick={() => keepDraftForReconnect(values)}
       >
-        <TwitchIcon />
-        {t("wizard.reconnect.button")}
+        <LogInIcon />
+        {t("wizard.reconnect.button", { platform: platformNames[platform] })}
       </a>
     </div>
   )
@@ -641,7 +687,7 @@ export function ReviewStep({
 }: { readonly values: Values } & CapabilitiesProps) {
   const i18n = useI18n()
   const { t } = i18n
-  const customTickets = supportedGroups(capabilities).filter(
+  const customTickets = ticketGroups(values, capabilities).filter(
     (group) => values.tickets[group].trim() !== "1",
   )
   const keyword = values.claimKeyword.trim()

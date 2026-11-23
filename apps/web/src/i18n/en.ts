@@ -893,17 +893,25 @@ export const en = {
     "To enter new subscribers, Rafflink needs to read your subscribers and followers. Reconnect Twitch; your answers stay.",
   "wizard.reconnect.points.text":
     "To enter viewers who redeem a channel point reward, Rafflink needs to read your rewards, redemptions, subscribers and followers. Reconnect Twitch; your answers stay.",
-  "wizard.reconnect.button": "Reconnect Twitch",
+  "wizard.reconnect.points.text.kick":
+    "To list your channel point rewards, Rafflink needs to read them. Reconnect Kick; your answers stay.",
+  "wizard.reconnect.button": "Reconnect {platform}",
   "wizard.chatKeyword.label": "Entry keyword",
   "wizard.chatKeyword.help":
     "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
+  "wizard.chatCost.kick":
+    "Kick sends every chat message to Rafflink while entries are open, with or without the keyword, and each one uses a request of this server's daily limit of {limit}. A chat with 100 messages a minute uses 6,000 requests an hour. {remaining} are left today.",
   "wizard.autoEntry.legend": "Automatic entries",
   "wizard.subEntry.label": "Enter new subscribers",
   "wizard.subEntry.help":
     "Everyone who subscribes, gets a gift sub, or shares a resub in chat while entries are open enters once, with the tickets of their tier. A silent auto renewal does not enter: Twitch only reports a renewal the viewer shares. Entering on the page or in chat stays free, so nobody has to pay to take part.",
+  "wizard.subEntry.help.kick":
+    "Everyone who subscribes, renews or gets a gift sub while entries are open enters once, with the tickets of a subscriber. Kick has one subscription level and reports every renewal. Entering on the page or in chat stays free, so nobody has to pay to take part.",
   "wizard.points.legend": "Channel point reward",
   "wizard.points.help":
     "Viewers who redeem this reward while entries are open enter once, like any other entry. Redeeming gives no extra tickets and no better chance to win.",
+  "wizard.points.none":
+    "Your channel has no channel point rewards yet. Create one in your channel settings, then open this step again.",
   "wizard.points.off": "No reward",
   "wizard.points.selected":
     "Rafflink does not mark the redemption as fulfilled; handle it in your reward queue as usual.",

@@ -264,6 +264,9 @@ class InProcessRoomStub implements RoomStub {
   async receiveChat(...args: Parameters<GiveawayRoom["receiveChat"]>) {
     this.room.receiveChat(...args)
   }
+  async receiveChannelEntries(...args: Parameters<GiveawayRoom["receiveChannelEntries"]>) {
+    this.room.receiveChannelEntries(...args)
+  }
   async liveCounts() {
     return { ...this.room.liveCounts(), viewers: 0 }
   }

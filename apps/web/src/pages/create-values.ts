@@ -1,5 +1,6 @@
 import { groups, supportedGroups, type Group, type Tickets } from "@rafflink/core/domain/groups"
 import {
+  badgesSeen,
   channelEntryVias,
   minAgeMax,
   type ChannelEntryVia,
@@ -106,18 +107,26 @@ export const initialValues: Values = {
  * lacks falls back to one it has. The wizard hides those controls, so an answer kept from elsewhere never reaches the server.
  */
 export function fitValues(values: Values, capabilities: PlatformCapabilities): Values {
-  const supported = supportedGroups(capabilities)
-  const tickets = { ...values.tickets }
-  for (const group of groups) if (!supported.includes(group)) tickets[group] = "0"
-  return {
+  const fitted: Values = {
     ...values,
-    tickets,
     audience: audienceOffered(values.audience, capabilities) ? values.audience : "everyone",
     minAccountAgeDays: capabilities.accountAge ? values.minAccountAgeDays : "",
     entryWays: fitEntryWays(values.entryWays, capabilities),
     subEntry: capabilities.subEntry && values.subEntry,
     pointsReward: capabilities.pointsEntry ? values.pointsReward : null,
   }
+  const supported = ticketGroups(fitted, capabilities)
+  const tickets = { ...values.tickets }
+  for (const group of groups) if (!supported.includes(group)) tickets[group] = "0"
+  return { ...fitted, tickets }
+}
+
+/** The ticket groups the platform can tell for these answers: its chat badge groups only when every entrant comes by chat or a sub. */
+export function ticketGroups(values: Values, capabilities: PlatformCapabilities): readonly Group[] {
+  return supportedGroups(
+    capabilities,
+    badgesSeen({ pageEntry: values.entryWays !== "chat", pointsReward: values.pointsReward }),
+  )
 }
 
 export function audienceOffered(audience: Audience, capabilities: PlatformCapabilities): boolean {
