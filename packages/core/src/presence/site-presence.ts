@@ -6,6 +6,9 @@ export type PresenceKind = (typeof presenceKinds)[number]
 /** The WebSocket each page of the site except the stream's pages holds open, with its page kind in `?kind=`. */
 export const presenceSocketPath = "/api/presence"
 
+/** Set by the presence route on its answer to an upgrade request: the page kind the target's socket layer tags the socket with. */
+export const presenceKindHeader = "x-rafflink-presence-kind"
+
 /** How many pages are open on the site now, in total and per kind. Counts only: nothing names a person. */
 export interface PresenceCounts {
   readonly total: number

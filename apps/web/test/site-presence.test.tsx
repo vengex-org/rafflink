@@ -120,9 +120,13 @@ describe("SitePresence", () => {
     renderAt("/privacy")
 
     const socket = await opened(1)
+    act(() => socket.open())
+    await settle()
 
+    expect(FakeSocket.opened).toHaveLength(1)
     expect(socket.url).toEndWith("/api/presence?kind=legal")
     expect(socket.url).toStartWith("ws")
+    expect(socket.sent).toEqual([])
   })
 
   it("opens no socket on the overlay", async () => {

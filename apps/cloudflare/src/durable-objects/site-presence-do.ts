@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import { parsePresenceKind, presenceCountsOf } from "@rafflink/core/presence/site-presence"
+import { presenceCountsOf, presenceKindHeader } from "@rafflink/core/presence/site-presence"
 import type { WorkerEnv } from "../env.ts"
 
 /**
@@ -12,13 +12,13 @@ export class SitePresenceObject extends DurableObject<WorkerEnv> {
     return presenceCountsOf((kind) => this.ctx.getWebSockets(kind).length)
   }
 
-  /** Accepts a page's socket; the Worker has already checked its origin and its kind. */
+  /** Accepts a page's socket, tagged with the kind the presence route of core named in a header. */
   override async fetch(request: Request): Promise<Response> {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
       return new Response("expected a WebSocket upgrade", { status: 426 })
     }
-    const kind = parsePresenceKind(new URL(request.url).searchParams.get("kind"))
-    if (kind === null) throw new TypeError("the presence route passed no page kind")
+    const kind = request.headers.get(presenceKindHeader)
+    if (kind === null) return new Response("expected a page kind", { status: 400 })
     const pair = new WebSocketPair()
     this.ctx.acceptWebSocket(pair[1], [kind])
     return new Response(null, { status: 101, webSocket: pair[0] })

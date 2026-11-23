@@ -858,8 +858,9 @@ function youtubeUnitsNeeded(
   return budget.unitsPerMinute * entryMinutes + budget.winnerUnitsPerMinute * claimMinutes
 }
 
-/** The admin page shows "unavailable" instead of failing when the presence count does not answer. */
+/** The admin page shows "unavailable" instead of failing when the presence count does not answer or the target has none. */
 async function adminPresence(deps: AppDeps): Promise<AdminStatsJson["presence"]> {
+  if (deps.presence === null) return "unavailable"
   try {
     return await deps.presence.counts()
   } catch (error) {

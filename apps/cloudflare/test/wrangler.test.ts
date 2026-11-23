@@ -46,6 +46,7 @@ describe("wrangler.jsonc", () => {
       entryIpLimitPerMinute,
       leavesIpLimitPerMinute,
       moderatorIpLimitPerMinute,
+      presenceIpLimitPerMinute,
     } = resolveConfig(required)
 
     expect(rateLimits.ENTRY_USER_LIMITER).toMatchObject({
@@ -59,6 +60,10 @@ describe("wrangler.jsonc", () => {
     })
     expect(rateLimits.MODERATOR_IP_LIMITER).toMatchObject({
       limit: moderatorIpLimitPerMinute,
+      period: 60,
+    })
+    expect(rateLimits.PRESENCE_IP_LIMITER).toMatchObject({
+      limit: presenceIpLimitPerMinute,
       period: 60,
     })
   })

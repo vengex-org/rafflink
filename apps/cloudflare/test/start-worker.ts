@@ -18,8 +18,15 @@ export const startWorker: StartTarget = async (env, webDir) => {
   return target(miniflare, url, worker, wrangler.crons)
 }
 
-/** {@link startWorker} with the Miniflare instance in reach, for a test that addresses a Durable Object itself. */
-export async function startMiniflare(env: Record<string, string>, webDir: string) {
+/**
+ * {@link startWorker} with the Miniflare instance in reach, for a test that addresses a Durable Object itself;
+ * `without-presence` leaves out the presence bindings, like a deployment whose wrangler config predates them.
+ */
+export async function startMiniflare(
+  env: Record<string, string>,
+  webDir: string,
+  bindings: "all" | "without-presence" = "all",
+) {
   const [bundle, wrangler] = await Promise.all([bundleWorker(), readWranglerConfig()])
   const miniflare = new Miniflare({
     modules: [{ type: "ESModule", path: "worker.js", contents: bundle.code }],
@@ -29,7 +36,9 @@ export async function startMiniflare(env: Record<string, string>, webDir: string
     durableObjects: {
       ROOMS: { className: "GiveawayRoomObject", useSQLite: true },
       QUEUE: { className: "TokenQueueDO", useSQLite: true },
-      PRESENCE: { className: "SitePresenceObject", useSQLite: true },
+      ...(bindings === "all"
+        ? { PRESENCE: { className: "SitePresenceObject", useSQLite: true } }
+        : {}),
     },
     // The assets and the paths that run the Worker first are the ones of wrangler.jsonc; `_headers` is read from the folder.
     assets: {
@@ -42,7 +51,14 @@ export async function startMiniflare(env: Record<string, string>, webDir: string
       },
     },
     bindings: env,
-    ratelimits: rateLimitsOf(env, wrangler.rateLimits),
+    ratelimits: rateLimitsOf(
+      env,
+      bindings === "all"
+        ? wrangler.rateLimits
+        : Object.fromEntries(
+            Object.entries(wrangler.rateLimits).filter(([name]) => name !== "PRESENCE_IP_LIMITER"),
+          ),
+    ),
     outboundService: { network: { allow: ["public", "private", "local"], deny: [] } },
     // Info and warnings of the Worker are expected traffic of the scenarios; errors stay visible.
     log: new Log(LogLevel.ERROR),
@@ -69,6 +85,7 @@ function rateLimitsOf(
     ENTRY_IP_LIMITER: env.ENTRY_IP_LIMIT_PER_MINUTE,
     LEAVES_IP_LIMITER: env.LEAVES_IP_LIMIT_PER_MINUTE,
     MODERATOR_IP_LIMITER: env.MODERATOR_IP_LIMIT_PER_MINUTE,
+    PRESENCE_IP_LIMITER: env.PRESENCE_IP_LIMIT_PER_MINUTE,
   }
   return Object.fromEntries(
     Object.entries(configured).map(([name, { namespaceId, limit }]) => {

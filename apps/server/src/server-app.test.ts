@@ -2,7 +2,7 @@ import { websocket } from "@hono/bun"
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { MemorySitePresence } from "@rafflink/core/lib/memory-site-presence"
-import type { PresenceCounts } from "@rafflink/core/presence/site-presence"
+import { presenceKindHeader, type PresenceCounts } from "@rafflink/core/presence/site-presence"
 import { Hono } from "hono"
 import { createServerApp } from "./server-app.ts"
 import { liveTopic, overlayTopic, viewerTopic } from "./local-room-directory.ts"
@@ -180,7 +180,9 @@ async function countsReach(presence: MemorySitePresence, expected: PresenceCount
 describe("presence socket", () => {
   it("counts an open socket under its page kind and drops it when it closes", async () => {
     const { presence, open } = startPresence(
-      new Hono().get("/api/presence", (c) => c.body(null, 204)),
+      new Hono().get("/api/presence", (c) =>
+        c.body(null, 204, { [presenceKindHeader]: c.req.query("kind") ?? "" }),
+      ),
     )
 
     const home = open("home")

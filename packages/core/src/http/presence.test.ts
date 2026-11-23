@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import { createHarness, type Harness } from "../../test/app-fixture.ts"
+import { createHarness, testAddressHeader, type Harness } from "../../test/app-fixture.ts"
 import { MemorySitePresence } from "../lib/memory-site-presence.ts"
-import { parsePresenceKind, presenceKinds } from "../presence/site-presence.ts"
+import { parsePresenceKind, presenceKindHeader, presenceKinds } from "../presence/site-presence.ts"
 
 let harness: Harness
 
@@ -18,15 +18,46 @@ describe("presence socket route", () => {
   const socketRequest = (query: string, headers: Record<string, string>) =>
     harness.app.request(`/api/presence${query}`, { headers: { ...upgrade, ...headers } })
 
-  it("admits an upgrade of every page kind from the site's own origin", async () => {
-    const statuses = await Promise.all(
-      presenceKinds.map(
-        async (kind) =>
-          (await socketRequest(`?kind=${kind}`, { origin: harness.config.publicUrl })).status,
+  it("admits an upgrade of every page kind from the site's own origin and names the kind", async () => {
+    const answers = await Promise.all(
+      presenceKinds.map((kind) =>
+        socketRequest(`?kind=${kind}`, { origin: harness.config.publicUrl }),
       ),
     )
 
-    expect(statuses).toEqual(presenceKinds.map(() => 204))
+    expect(answers.map((answer) => answer.status)).toEqual(presenceKinds.map(() => 204))
+    expect(answers.map((answer) => answer.headers.get(presenceKindHeader))).toEqual([
+      ...presenceKinds,
+    ])
+  })
+
+  it("refuses an address past PRESENCE_IP_LIMIT_PER_MINUTE and admits another", async () => {
+    await harness.stop()
+    harness = await createHarness({ env: { PRESENCE_IP_LIMIT_PER_MINUTE: "2" } })
+    const from = (address: string) =>
+      socketRequest("?kind=home", {
+        origin: harness.config.publicUrl,
+        [testAddressHeader]: address,
+      })
+
+    const statuses = [
+      (await from("203.0.113.5")).status,
+      (await from("203.0.113.5")).status,
+      (await from("203.0.113.5")).status,
+      (await from("203.0.113.6")).status,
+    ]
+
+    expect(statuses).toEqual([204, 204, 429, 204])
+  })
+
+  it("answers 404 where the target has no presence count", async () => {
+    await harness.stop()
+    harness = await createHarness({ withoutPresence: true })
+
+    const response = await socketRequest("?kind=home", { origin: harness.config.publicUrl })
+
+    expect(response.status).toBe(404)
+    expect(response.headers.get(presenceKindHeader)).toBeNull()
   })
 
   it("refuses an upgrade from another origin and one without an origin", async () => {

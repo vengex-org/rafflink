@@ -8,11 +8,14 @@ export interface WorkerEnv {
   readonly DB: D1Database
   readonly ROOMS: DurableObjectNamespace<GiveawayRoomObject>
   readonly QUEUE: DurableObjectNamespace<TokenQueueDO>
-  readonly PRESENCE: DurableObjectNamespace<SitePresenceObject>
+  /** Absent in a deployment whose wrangler config predates the presence count; the count is then off. */
+  readonly PRESENCE?: DurableObjectNamespace<SitePresenceObject>
   readonly ENTRY_USER_LIMITER: RateLimit
   readonly ENTRY_IP_LIMITER: RateLimit
   readonly LEAVES_IP_LIMITER: RateLimit
   readonly MODERATOR_IP_LIMITER: RateLimit
+  /** Absent like {@link PRESENCE}; presence sockets then have no address limit. */
+  readonly PRESENCE_IP_LIMITER?: RateLimit
 }
 
 /**

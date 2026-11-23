@@ -37,7 +37,7 @@
     ],
   },
   // Workers Rate Limiting counts per key in 60 second periods. The limits equal the defaults of
-  // ENTRY_USER_LIMIT_PER_MINUTE, ENTRY_IP_LIMIT_PER_MINUTE, LEAVES_IP_LIMIT_PER_MINUTE and MODERATOR_IP_LIMIT_PER_MINUTE; a test keeps them equal.
+  // ENTRY_USER_LIMIT_PER_MINUTE, ENTRY_IP_LIMIT_PER_MINUTE, LEAVES_IP_LIMIT_PER_MINUTE, MODERATOR_IP_LIMIT_PER_MINUTE and PRESENCE_IP_LIMIT_PER_MINUTE; a test keeps them equal.
   "ratelimits": [
     {
       "name": "ENTRY_USER_LIMITER",
@@ -54,6 +54,11 @@
       "name": "MODERATOR_IP_LIMITER",
       "namespace_id": "1004",
       "simple": { "limit": 10, "period": 60 },
+    },
+    {
+      "name": "PRESENCE_IP_LIMITER",
+      "namespace_id": "1005",
+      "simple": { "limit": 30, "period": 60 },
     },
   ],
   "migrations": [

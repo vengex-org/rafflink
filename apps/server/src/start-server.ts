@@ -171,6 +171,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     clientAddress: (request) => clientAddress(request, server, config.clientIpHeader),
     reportError,
     presence,
+    presenceIpLimiter: new MemoryRateLimiter(clock, config.presenceIpLimitPerMinute, rateWindowMs),
   }
 
   const fakeTwitch = config.devFakeTwitch ? await createFakeTwitchApp(config) : null

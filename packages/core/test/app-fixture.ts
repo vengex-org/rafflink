@@ -382,6 +382,8 @@ export interface HarnessOptions {
   readonly capabilities?: Partial<PlatformCapabilities>
   /** The built `index.html` the pages are answered with; without it the app answers the API only. */
   readonly spaTemplate?: string
+  /** True leaves the app without a presence count, like a Worker deployed without its binding. */
+  readonly withoutPresence?: boolean
   /** The YouTube quota the admin page reads; none, as without a Google client, when absent. */
   readonly youtubeQuota?: YouTubeQuota
 }
@@ -477,7 +479,8 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     moderatorIpLimiter: new MemoryRateLimiter(clock, config.moderatorIpLimitPerMinute, 60_000),
     clientAddress: (request) => request.headers.get(testAddressHeader),
     reportError: (error, context) => void reported.push({ error, context }),
-    presence,
+    presence: options.withoutPresence === true ? null : presence,
+    presenceIpLimiter: new MemoryRateLimiter(clock, config.presenceIpLimitPerMinute, 60_000),
   }
   return {
     app: createApp(deps, spaTemplateLoader(options.spaTemplate)),

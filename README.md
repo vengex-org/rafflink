@@ -548,11 +548,17 @@ days, streamers who came back for a second giveaway within `ADMIN_STATS_RETURN_D
 
 People on the site: every tab of the site opens one WebSocket to `/api/presence?kind=<kind>`, where the kind is
 home, legal, dashboard (with the admin page), giveaway or other, and sends nothing. The OBS overlay, the
-streamer's live page and a moderator's live page open none. On Cloudflare every socket hibernates in one
+streamer's live page and a moderator's live page open none: they are not visitors, they hold sockets of their
+own, and an overlay left open in OBS would count for hours. On Cloudflare every socket hibernates in one
 `SitePresenceObject` Durable Object (binding `PRESENCE`), so a tab costs one Worker request and one Durable
 Object request when it opens, and again when it moves to a page of another kind; the Bun server counts the
-sockets in memory. The admin page shows the counts per kind. Nothing about a visitor is stored or logged. A
-dropped socket reconnects with the backoff of the viewer push, and the tab closes it on `pagehide`.
+sockets in memory. The admin page shows the counts per kind. Nothing about a visitor is stored or logged; the
+client address is only the key of `PRESENCE_IP_LIMIT_PER_MINUTE` (30, the `PRESENCE_IP_LIMITER` binding on
+Cloudflare). A dropped socket reconnects with the backoff of the viewer push and gives up after 4 failures in a
+row over at least a minute, so a tab whose socket keeps failing stops being counted until it moves to a page of
+another kind or is reloaded; every try is a billed request. The tab closes the socket on `pagehide`. A
+Cloudflare deployment whose wrangler config lacks the `PRESENCE` binding answers the socket with 404 and the
+admin page shows the count as unavailable; without `PRESENCE_IP_LIMITER` the sockets have no address limit.
 
 The statistics are aggregate counts and nothing else. The chart reads per-minute counters that each giveaway
 room adds to the account database once a minute while it is active (`metrics_minute`, deleted after

@@ -10,7 +10,7 @@ import { errorClass } from "@rafflink/core/lib/error-class"
 import { captureException } from "@sentry/core"
 import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
 import type { MemorySitePresence } from "@rafflink/core/lib/memory-site-presence"
-import { parsePresenceKind, presenceSocketPath } from "@rafflink/core/presence/site-presence"
+import { presenceKindHeader, presenceSocketPath } from "@rafflink/core/presence/site-presence"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import {
@@ -189,8 +189,8 @@ function presenceSocket(api: Hono, presence: ServerAppOptions["presence"]): Midd
     if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return next()
     const checked = await api.fetch(c.req.raw)
     if (!checked.ok) return checked
-    const kind = parsePresenceKind(c.req.query("kind"))
-    if (kind === null) throw new TypeError("the presence route passed no page kind")
+    const kind = checked.headers.get(presenceKindHeader)
+    if (kind === null) throw new TypeError("the presence route named no page kind")
     let leave = keepNothing
     return upgradeWebSocket(() => ({
       onOpen: () => {

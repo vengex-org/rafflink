@@ -10,6 +10,7 @@ import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streame
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { armRetentionAlarms } from "@rafflink/core/room/arm-retention"
 import { deleteExpiredGiveaways } from "@rafflink/core/room/delete-giveaway"
+import type { RateLimiter } from "@rafflink/core/ports"
 import type { Hono } from "hono"
 import { CacheApiPublicCache } from "./adapters/cache-api-public-cache.ts"
 import { createUsageMeter } from "./adapters/cloudflare-usage-meter.ts"
@@ -39,6 +40,9 @@ export const TokenQueueDO = instrumentDurableObjectWithSentry(sentryOptionsOf, T
 export const SitePresenceObject = instrumentDurableObjectWithSentry(sentryOptionsOf, SitePresence)
 
 const apps = new WeakMap<object, Promise<Hono>>()
+
+// The presence limiter of a deployment without its binding: the presence route is off there anyway.
+const noLimit: RateLimiter = { allow: async () => true }
 
 export default withSentry(sentryOptionsOf, {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
@@ -76,12 +80,16 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     moderatorIpLimiter: new RateLimitBindingLimiter(env.MODERATOR_IP_LIMITER),
     clientAddress: connectingAddress,
     reportError: sentryReportError,
-    presence: durableObjectSitePresence(env.PRESENCE),
+    presence: env.PRESENCE === undefined ? null : durableObjectSitePresence(env.PRESENCE),
+    presenceIpLimiter:
+      env.PRESENCE_IP_LIMITER === undefined
+        ? noLimit
+        : new RateLimitBindingLimiter(env.PRESENCE_IP_LIMITER),
   }
   return createWorkerApp({
     api: createApp(deps, indexTemplateOf(env.ASSETS, runtime.config.publicUrl)),
     rooms: env.ROOMS,
-    presence: env.PRESENCE,
+    presence: env.PRESENCE ?? null,
   })
 }
 

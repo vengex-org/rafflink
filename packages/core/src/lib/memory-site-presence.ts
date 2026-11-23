@@ -1,25 +1,27 @@
 import {
   presenceCountsOf,
   type PresenceCounts,
-  type PresenceKind,
   type SitePresence,
 } from "../presence/site-presence.ts"
 
-/** A {@link SitePresence} in the memory of one process: the open sockets per kind, nothing about who holds them. */
+/**
+ * A {@link SitePresence} in the memory of one process: the open sockets per tag, nothing about who holds them.
+ * Like the tags of the Cloudflare presence object, only a tag that is a page kind is counted.
+ */
 export class MemorySitePresence implements SitePresence {
-  private readonly open = new Map<PresenceKind, number>()
+  private readonly open = new Map<string, number>()
 
-  /** Counts a socket of `kind` that just opened; the returned function counts it closed. */
-  join(kind: PresenceKind): () => void {
-    this.open.set(kind, this.openOf(kind) + 1)
-    return () => this.open.set(kind, this.openOf(kind) - 1)
+  /** Counts a socket tagged with the kind the presence route named; the returned function counts it closed. */
+  join(tag: string): () => void {
+    this.open.set(tag, this.openOf(tag) + 1)
+    return () => this.open.set(tag, this.openOf(tag) - 1)
   }
 
   async counts(): Promise<PresenceCounts> {
     return presenceCountsOf((kind) => this.openOf(kind))
   }
 
-  private openOf(kind: PresenceKind): number {
-    return this.open.get(kind) ?? 0
+  private openOf(tag: string): number {
+    return this.open.get(tag) ?? 0
   }
 }

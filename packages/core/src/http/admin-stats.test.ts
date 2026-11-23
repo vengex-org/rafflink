@@ -7,10 +7,21 @@ import {
   validRules,
   type Harness,
 } from "../../test/app-fixture.ts"
+import { resolveConfig } from "../config.ts"
+import { BunSqliteAsyncSql } from "../sqlite-bun.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
 import type { AdminStatsJson } from "./json.ts"
 
 let harness: Harness | null = null
+
+const requiredEnv = {
+  TWITCH_CLIENT_ID: "client",
+  TWITCH_CLIENT_SECRET: "secret",
+  TOKEN_SEAL_KEYS: "k",
+  SESSION_SECRET: "session",
+  ADMIN_TWITCH_IDS: "1",
+  PUBLIC_URL: "https://rafflink.app",
+}
 
 afterEach(async () => {
   await harness?.stop()
@@ -166,6 +177,42 @@ describe("GET /api/admin/stats", () => {
     expect(warn).toHaveBeenCalledWith("presence unavailable", { errorClass: "Error" })
     counts.mockRestore()
     warn.mockRestore()
+  })
+
+  it("shows the presence as unavailable without a warning where the target has no presence count", async () => {
+    harness = await createHarness({ withoutPresence: true })
+    const admin = await adminBrowser(harness)
+    const warn = spyOn(console, "warn")
+
+    expect((await stats(admin)).presence).toBe("unavailable")
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  // A Worker invocation on the Free plan may make 50 subrequests: every D1 query, Durable Object call, cache
+  // call and fetch counts. The most a request makes is its own subrequests plus one per room it asks.
+  it("stays within 50 subrequests with signup closed and the most rooms ADMIN_STATS_LIVE_ROOMS_MAX allows", async () => {
+    const mostRooms = 30
+    expect(() => resolveConfig({ ...requiredEnv, ADMIN_STATS_LIVE_ROOMS_MAX: "31" })).toThrow()
+    const running = await start({ OPEN_SIGNUP: "false", ADMIN_STATS_CACHE_SECONDS: "0" })
+    const admin = await adminBrowser(running)
+    const calls = [
+      spyOn(BunSqliteAsyncSql.prototype, "all"),
+      spyOn(BunSqliteAsyncSql.prototype, "run"),
+      spyOn(BunSqliteAsyncSql.prototype, "batch"),
+      spyOn(running.deps.queue, "stats"),
+      spyOn(running.presence, "counts"),
+      spyOn(running.usage, "today"),
+      spyOn(running.deps.publicCache, "read"),
+      spyOn(running.deps.publicCache, "write"),
+    ]
+
+    await stats(admin)
+    const own = calls.reduce((sum, spy) => sum + spy.mock.calls.length, 0)
+
+    expect(own).toBeGreaterThan(0)
+    expect(own + mostRooms).toBeLessThanOrEqual(50)
+    for (const spy of calls) spy.mockRestore()
   })
 
   it("asks the rooms of the newest giveaways only, up to ADMIN_STATS_LIVE_ROOMS_MAX", async () => {
