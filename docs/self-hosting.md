@@ -173,6 +173,10 @@ Both targets need your own Twitch app (see above) and the required settings list
 [.env.example](../.env.example), which `bun run env:example` generates from the config schema.
 
 The home page is intentionally plain: a sign-in button and the footer links. A deployment that wants a richer page replaces the one module `apps/web/src/site/site.tsx` at build time.
+Its `prerenderPages` lists the deployment's own pages to prerender in every language (`/compare`, `/de/compare`).
+The prerender runs the app in `apps/web/scripts/finish-build.ts`, so run that script with the plugin that swaps the
+module preloaded: `bun --preload ./seam.ts apps/web/scripts/finish-build.ts <dist> <public>`, where `seam.ts`
+calls `Bun.plugin` with it.
 
 Optional support link: set `DONATE_URL` to an `https://` page (Ko-fi, GitHub Sponsors and the like) and a quiet
 "Support" link appears in the home page footer, above the drawn giveaways on the dashboard, in the account menu
@@ -187,6 +191,14 @@ the rest, and `LEGAL_UPDATED` (`YYYY-MM-DD`) sets the date shown as the last upd
 `OPERATOR_NAME`. Without any of them the pages say the operator has published no contact details. The retention
 and cookie lifetimes in the texts are the defaults of the matching settings (see `.env.example`); if you change
 them, change the texts too. Rafflink sends no data to the Rafflink project from any install.
+
+Search engines: build the web app with `PUBLIC_URL` (and the `OPERATOR_*` keys and `LEGAL_UPDATED` above) set in
+the environment of the build, and it prerenders the home page and the two legal pages in every language: `/`,
+`/privacy`, `/terms`, and `/de/`, `/de/privacy`, `/de/terms` and so on. Each page has its text, title,
+description, absolute canonical address and the addresses of its other languages in the HTML, and the build adds
+`sitemap.xml` and its line in `robots.txt`. The legal pages name the operator the build had. Without `PUBLIC_URL`
+the build writes the app alone, as before. The settings are read again at runtime, so after a change build
+again: an operator set only at runtime replaces the "no contact details" text once the page has loaded.
 
 ### Error reporting with Sentry (optional)
 
@@ -263,7 +275,8 @@ server.
    ```
 
    For error reporting (see above), the build also takes `PUBLIC_SENTRY_DSN`, `SENTRY_RELEASE`,
-   `SENTRY_ENVIRONMENT` and `SENTRY_SAMPLE_PERCENT` from `apps/server/.env`.
+   `SENTRY_ENVIRONMENT` and `SENTRY_SAMPLE_PERCENT` from `apps/server/.env`, and for the prerendered pages
+   (see Search engines above) `PUBLIC_URL`, the `OPERATOR_*` keys and `LEGAL_UPDATED`.
 
 Data lives in the Docker volume `rafflink-data`, mounted at `/data` (`DATA_DIR`): `accounts.sqlite` with
 streamers and giveaways, `queue.sqlite` with the token queue and one `rooms/<id>.sqlite` file per giveaway.
@@ -353,7 +366,9 @@ are Coolify's defaults; check them in your Coolify proxy settings.
 
 You need a Cloudflare account with Workers and D1. Run the `wrangler` commands in `apps/cloudflare`.
 
-1. Build the web app and the Worker bundle from the repository root: `bun run build`.
+1. Build the web app and the Worker bundle from the repository root: `bun run build`. With
+   `PUBLIC_URL=https://rafflink.example.com bun run build` (plus the `OPERATOR_*` keys) the web build prerenders the
+   pages search engines index (see Search engines under Settings and deployment).
 2. Sign in and create the database:
 
    ```sh
@@ -457,9 +472,9 @@ letters, digits and hyphens, up to 32 characters; anything else is ignored) adds
 the day, and the page lists the busiest labels. The count has no cookie, address or other visitor data, and a
 new label beyond `REFERRAL_SOURCES_PER_DAY_MAX` (100) a day, and every visit beyond `REFERRAL_VISITS_PER_DAY_MAX` (2000) a day, is ignored (each count is a D1 write). Cloudflare's own request analytics
 (the usage meter above) are the only other source; no analytics service or script is added.
-Scripts, styles, icons and the app pages are static assets that Cloudflare serves without the Worker. Only
-`/api/*`, `/auth/*`, the pages search engines index (`/`, `/privacy` and `/terms`) and the public history pages
-(`/s/*`) count as Worker requests; the Worker writes `PUBLIC_URL` into the canonical and Open Graph tags of those pages. A giveaway page load makes one such request, and the
+Scripts, styles, icons, the app pages and the prerendered pages are static assets that Cloudflare serves without
+the Worker. Only `/api/*`, `/auth/*`, the home page `/` (it counts `?ref=` visits), `/home` (the noindex shell instead of the English home page file) and the public history pages
+(`/s/*`) count as Worker requests. A giveaway page load makes one such request, and the
 public part of its answer is kept for `PUBLIC_GIVEAWAY_CACHE_SECONDS` (5 by default) in the Cache API, so a
 refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache API stores nothing on a
 `workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
@@ -472,7 +487,7 @@ Object, because each room copies its entrant and winner counts into D1 with its 
 `PUBLIC_HISTORY_MAX` (20) giveaways by close time. Turning the page off, hiding or deleting a giveaway drops the
 cached answer of the data centre that saved the change; elsewhere it shows once the cached answer expires. While
 `OPEN_SIGNUP` is off only an approved streamer has the page. The page is `noindex` until the streamer allows search
-engines in the dashboard; then it drops `X-Robots-Tag` and keeps its canonical and Open Graph tags. When a sign-in sees
+engines in the dashboard; then it drops `X-Robots-Tag` and the robots meta and keeps its canonical and Open Graph tags. When a sign-in sees
 a renamed Twitch account, the login it replaced is kept, and `/s/<platform>/<old login>` answers 301 to the new login
 (308 for the API path) while no account holds the old login and the page is on. Only the latest rename is kept.
 The home page is one Worker request itself. The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
@@ -548,15 +563,22 @@ served and from the built `apps/web/dist/index.html` when it writes `_headers`, 
 no manual step; a test fails if the built page has a second inline script. A page built with
 `PUBLIC_SENTRY_DSN` adds the Sentry ingest of that DSN to `connect-src`, read from the same built page.
 
-On Cloudflare the app pages are static: the headers above come from `apps/web/dist/_headers`, which the web build
-writes (with the hash of the inline script), and `X-Robots-Tag: noindex, nofollow` covers every path except
-the home and legal pages. Those three and the public history pages run the Worker, which answers them like the Bun server does, with `PUBLIC_URL`
-in the canonical, `og:url`, `og:image` and `twitter:image` tags; link previews and search engines ignore relative
-URLs there. A pasted giveaway link shows the generic preview of the home page with its relative URLs, so most
-previews show no image. The Bun server
-answers each page itself and gives the page of a giveaway link (`/<code>`, `/<code>/verify` and the old `/g/<code>`, which the page then replaces with `/<code>`) its title, prize
-and streamer name in the title, Open Graph and Twitter tags, so a pasted link previews well; it sends the same
-noindex rule. `/robots.txt` is a static file in `apps/web/public` for both targets; there is no sitemap.
+Search engines index only the home and legal pages in each language and the public history pages a streamer
+allows. The app's `index.html` carries `<meta name="robots" content="noindex, nofollow">`, so every page served
+from it stays out; the prerendered pages (see Search engines under Settings and deployment) leave it out, and so do the home
+and legal pages of a build without them.
+
+On Cloudflare the app pages and the prerendered pages are static: the headers above come from
+`apps/web/dist/_headers`, which the web build writes (with the hash of the inline script). The prerendered pages
+carry `PUBLIC_URL` in their canonical, `og:url`, `og:image` and `twitter:image` tags from the build; link previews
+and search engines ignore relative URLs there. The home page and the public history pages run the Worker, which
+answers them like the Bun server does. A pasted giveaway link shows the generic preview of the home page with its
+relative URLs, so most previews show no image. The Bun server answers each page itself, with the prerendered file
+of a page when the build wrote one, and gives the page of a giveaway link (`/<code>`, `/<code>/verify` and the
+old `/g/<code>`, which the page then replaces with `/<code>`) its title, prize and streamer name in the title, Open
+Graph and Twitter tags, so a pasted link previews well; it also sends `X-Robots-Tag: noindex, nofollow` with each
+page search engines must not index. `/robots.txt` is a static file in `apps/web/public` for both targets, to
+which a prerendering build adds its `sitemap.xml`.
 
 The OBS overlay is a browser source that opens `/overlay/...` as a top-level page, so
 `frame-ancestors 'none'` does not affect it. Once the entry link leaves the stream (while a draw runs and after
