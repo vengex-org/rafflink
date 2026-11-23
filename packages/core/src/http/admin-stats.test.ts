@@ -139,6 +139,35 @@ describe("GET /api/admin/stats", () => {
     expect((await stats(admin)).usage).toMatchObject({ workerRequests: { used: 70_000 } })
   })
 
+  it("counts the pages open on the site per kind, without the ones that closed", async () => {
+    const running = await start()
+    const admin = await adminBrowser(running)
+    running.presence.join("home")
+    running.presence.join("giveaway")
+    const leave = running.presence.join("legal")
+    leave()
+
+    expect((await stats(admin)).presence).toEqual({
+      total: 2,
+      byKind: { home: 1, legal: 0, dashboard: 0, giveaway: 1, other: 0 },
+    })
+  })
+
+  it("shows the presence as unavailable when its count does not answer, and the rest of the numbers", async () => {
+    const running = await start()
+    const admin = await adminBrowser(running)
+    const counts = spyOn(running.presence, "counts").mockRejectedValue(new Error("down"))
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+
+    const answer = await stats(admin)
+
+    expect(answer.presence).toBe("unavailable")
+    expect(answer.openGiveaways).toBe(0)
+    expect(warn).toHaveBeenCalledWith("presence unavailable", { errorClass: "Error" })
+    counts.mockRestore()
+    warn.mockRestore()
+  })
+
   it("asks the rooms of the newest giveaways only, up to ADMIN_STATS_LIVE_ROOMS_MAX", async () => {
     const running = await start({ ADMIN_STATS_LIVE_ROOMS_MAX: "1" })
     const first = await createGiveaway(running)

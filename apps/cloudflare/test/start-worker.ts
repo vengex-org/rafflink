@@ -29,6 +29,7 @@ export async function startMiniflare(env: Record<string, string>, webDir: string
     durableObjects: {
       ROOMS: { className: "GiveawayRoomObject", useSQLite: true },
       QUEUE: { className: "TokenQueueDO", useSQLite: true },
+      PRESENCE: { className: "SitePresenceObject", useSQLite: true },
     },
     // The assets and the paths that run the Worker first are the ones of wrangler.jsonc; `_headers` is read from the folder.
     assets: {

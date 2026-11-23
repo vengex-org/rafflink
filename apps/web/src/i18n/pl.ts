@@ -155,6 +155,16 @@ export const pl: Readonly<Record<MessageKey, string>> = {
   "admin.live.rateLimitedHour": "odpowiedzi Twitch 429 w ostatniej godzinie",
   "admin.live.partial":
     "Widzowie, zgłoszenia i odbiory obejmują {shown} najnowszych z {total} otwartych rozdań.",
+  "admin.presence.title": "Teraz na stronie",
+  "admin.presence.hint":
+    "Otwarte karty według strony, którą pokazują. Nakładki OBS i strony na żywo się nie liczą.",
+  "admin.presence.total": "osób na stronie",
+  "admin.presence.home": "strona główna",
+  "admin.presence.legal": "regulamin i prywatność",
+  "admin.presence.dashboard": "panel i admin",
+  "admin.presence.giveaway": "strony rozdań",
+  "admin.presence.other": "inne strony",
+  "admin.presence.unavailable": "Liczba osób na stronie jest teraz niedostępna.",
   "admin.giveaways.title": "Otwarte rozdania",
   "admin.giveaways.none": "Żadne rozdanie nie jest otwarte.",
   "admin.giveaways.streamer": "Streamer",

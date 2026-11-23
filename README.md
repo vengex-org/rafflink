@@ -546,6 +546,14 @@ last `ADMIN_STATS_SERIES_MINUTES` (60) minutes, giveaways and new streamers per 
 days, streamers who came back for a second giveaway within `ADMIN_STATS_RETURN_DAYS` (30), and, with
 `OPEN_SIGNUP=false`, how many streamers wait for approval.
 
+People on the site: every tab of the site opens one WebSocket to `/api/presence?kind=<kind>`, where the kind is
+home, legal, dashboard (with the admin page), giveaway or other, and sends nothing. The OBS overlay, the
+streamer's live page and a moderator's live page open none. On Cloudflare every socket hibernates in one
+`SitePresenceObject` Durable Object (binding `PRESENCE`), so a tab costs one Worker request and one Durable
+Object request when it opens, and again when it moves to a page of another kind; the Bun server counts the
+sockets in memory. The admin page shows the counts per kind. Nothing about a visitor is stored or logged. A
+dropped socket reconnects with the backoff of the viewer push, and the tab closes it on `pagehide`.
+
 The statistics are aggregate counts and nothing else. The chart reads per-minute counters that each giveaway
 room adds to the account database once a minute while it is active (`metrics_minute`, deleted after
 `METRICS_RETENTION_HOURS`, 24). The token queue keeps its 429 counts in its own database the same way. The daily

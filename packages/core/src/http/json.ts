@@ -10,6 +10,7 @@ import type { OverlayTheme } from "../domain/overlay-theme.ts"
 import type { ChannelEntryVia, GiveawayRules, PointsReward } from "../domain/rules.ts"
 import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/plan-limits.ts"
 import type { Usage, UsageAlert } from "../plan/usage.ts"
+import type { PresenceCounts } from "../presence/site-presence.ts"
 import type { QueueStats } from "../queue/token-queue.ts"
 import type { Instant } from "../ports.ts"
 import type { WinnerAnswers, WinnerFieldKind } from "../domain/winner-form.ts"
@@ -324,6 +325,8 @@ export interface AdminStatsJson {
   /** The newest open giveaways, at most ADMIN_STATS_LIVE_ROOMS_MAX; the sums below cover only these. */
   readonly giveaways: readonly AdminLiveGiveawayJson[]
   readonly viewers: number
+  /** The pages open on the whole site now, per page kind; "unavailable" when the count does not answer. */
+  readonly presence: PresenceCounts | "unavailable"
   readonly entriesLastMinute: number
   readonly claimsLastMinute: number
   readonly queue: QueueStats

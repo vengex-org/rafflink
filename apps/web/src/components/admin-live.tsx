@@ -1,8 +1,9 @@
+import { presenceKinds } from "@rafflink/core/presence/site-presence"
 import type { AdminStats } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { AdminStatsLoad } from "../lib/use-admin-stats.ts"
 import { GrowthChart, MinuteChart } from "./admin-charts.tsx"
-import { ActivityIcon, AlertIcon, GiftIcon, UsersIcon } from "./icons.tsx"
+import { ActivityIcon, AlertIcon, EyeIcon, GiftIcon, UsersIcon } from "./icons.tsx"
 import { Stat } from "./live-parts.tsx"
 import { Status } from "./notice.tsx"
 
@@ -20,11 +21,12 @@ export function LiveStatus({ load }: { readonly load: AdminStatsLoad }) {
   )
 }
 
-/** The key numbers of this minute, the open giveaways, the last hour and the growth, each as a card of the admin grid. */
+/** The key numbers of this minute, the people on the site, the open giveaways, the last hour and the growth, each as a card of the admin grid. */
 export function LiveCards({ stats }: { readonly stats: AdminStats }) {
   return (
     <>
       <LiveNow stats={stats} />
+      <OnSite presence={stats.presence} />
       <OpenGiveaways stats={stats} />
       <LastHour stats={stats} />
       <Growth stats={stats} />
@@ -70,6 +72,35 @@ function LiveNow({ stats }: { readonly stats: AdminStats }) {
           })}
         </p>
       ) : null}
+    </section>
+  )
+}
+
+function OnSite({ presence }: { readonly presence: AdminStats["presence"] }) {
+  const { t, number } = useI18n()
+  return (
+    <section className="card" aria-labelledby="on-site">
+      <h2 id="on-site">{t("admin.presence.title")}</h2>
+      <p className="muted">{t("admin.presence.hint")}</p>
+      {presence === "unavailable" ? (
+        <p>{t("admin.presence.unavailable")}</p>
+      ) : (
+        <dl className="stats">
+          <Stat
+            icon={<UsersIcon />}
+            value={number(presence.total)}
+            label={t("admin.presence.total")}
+          />
+          {presenceKinds.map((kind) => (
+            <Stat
+              key={kind}
+              icon={<EyeIcon />}
+              value={number(presence.byKind[kind])}
+              label={t(`admin.presence.${kind}`)}
+            />
+          ))}
+        </dl>
+      )}
     </section>
   )
 }

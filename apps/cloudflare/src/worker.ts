@@ -19,7 +19,9 @@ import {
   durableObjectTokenQueue,
 } from "./adapters/durable-object-token-queue.ts"
 import { RateLimitBindingLimiter, connectingAddress } from "./adapters/rate-limit-binding.ts"
+import { durableObjectSitePresence } from "./adapters/durable-object-site-presence.ts"
 import { GiveawayRoomObject as GiveawayRoom } from "./durable-objects/giveaway-room-do.ts"
+import { SitePresenceObject as SitePresence } from "./durable-objects/site-presence-do.ts"
 import { TokenQueueDO as TokenQueue } from "./durable-objects/token-queue-do.ts"
 import { isolateKeyOf, type WorkerEnv } from "./env.ts"
 import { configOf, runtimeOf } from "./runtime.ts"
@@ -34,6 +36,7 @@ function sentryOptionsOf(env: WorkerEnv): CloudflareOptions {
 // The class names are the `class_name`s of wrangler.jsonc.
 export const GiveawayRoomObject = instrumentDurableObjectWithSentry(sentryOptionsOf, GiveawayRoom)
 export const TokenQueueDO = instrumentDurableObjectWithSentry(sentryOptionsOf, TokenQueue)
+export const SitePresenceObject = instrumentDurableObjectWithSentry(sentryOptionsOf, SitePresence)
 
 const apps = new WeakMap<object, Promise<Hono>>()
 
@@ -73,10 +76,12 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     moderatorIpLimiter: new RateLimitBindingLimiter(env.MODERATOR_IP_LIMITER),
     clientAddress: connectingAddress,
     reportError: sentryReportError,
+    presence: durableObjectSitePresence(env.PRESENCE),
   }
   return createWorkerApp({
     api: createApp(deps, indexTemplateOf(env.ASSETS, runtime.config.publicUrl)),
     rooms: env.ROOMS,
+    presence: env.PRESENCE,
   })
 }
 

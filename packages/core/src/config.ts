@@ -877,7 +877,7 @@ export const configSchema = {
     "ADMIN_STATS_LIVE_ROOMS_MAX",
     int(0, 30),
     "20",
-    "Most open giveaways one admin statistics request asks for live counts, newest first; each costs one Durable Object subrequest on Cloudflare; a request makes 13 other subrequests (session, 2 open giveaways, queue, plan, usage, minutes, 3 daily counts, referrals, 2 access lists), so the Free plan's 50 holds up to 30 and 20 leaves headroom; the rest show as a number",
+    "Most open giveaways one admin statistics request asks for live counts, newest first; each costs one Durable Object subrequest on Cloudflare; a request makes 14 other subrequests (session, 2 open giveaways, queue, presence, plan, usage, minutes, 3 daily counts, referrals, 2 access lists), so the Free plan's 50 holds up to 30 and 20 leaves headroom; the rest show as a number",
   ),
   adminStatsSeriesMinutes: withDefault(
     "ADMIN_STATS_SERIES_MINUTES",

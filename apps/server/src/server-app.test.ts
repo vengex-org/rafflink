@@ -1,6 +1,8 @@
 import { websocket } from "@hono/bun"
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
+import { MemorySitePresence } from "@rafflink/core/lib/memory-site-presence"
+import type { PresenceCounts } from "@rafflink/core/presence/site-presence"
 import { Hono } from "hono"
 import { createServerApp } from "./server-app.ts"
 import { liveTopic, overlayTopic, viewerTopic } from "./local-room-directory.ts"
@@ -37,6 +39,7 @@ describe("viewer socket", () => {
           return "first"
         },
       },
+      presence: new MemorySitePresence(),
       fakeTwitch: null,
       fakeKick: null,
       fakeYouTube: null,
@@ -78,6 +81,7 @@ describe.each([
         liveSnapshotText: name === "live" ? read : unusedText,
         overlaySnapshotText: name === "overlay" ? read : unusedText,
       },
+      presence: new MemorySitePresence(),
       fakeTwitch: null,
       fakeKick: null,
       fakeYouTube: null,
@@ -114,6 +118,7 @@ describe("a socket whose first message cannot be built", () => {
           throw new RangeError("database is locked")
         },
       },
+      presence: new MemorySitePresence(),
       fakeTwitch: null,
       fakeKick: null,
       fakeYouTube: null,
@@ -134,5 +139,72 @@ describe("a socket whose first message cannot be built", () => {
       errorClass: "RangeError",
     })
     logged.mockRestore()
+  })
+})
+
+function startPresence(api: Hono) {
+  const presence = new MemorySitePresence()
+  const server = Bun.serve({
+    port: 0,
+    fetch: (request, bunServer) => app.fetch(request, bunServer),
+    websocket,
+  })
+  stops.push(() => void server.stop(true))
+  const app = createServerApp({
+    api,
+    rooms: {
+      attachSocket: keepSocket,
+      viewerPushText: unusedText,
+      liveSnapshotText: unusedText,
+      overlaySnapshotText: unusedText,
+    },
+    presence,
+    fakeTwitch: null,
+    fakeKick: null,
+    fakeYouTube: null,
+    staticDir: null,
+  })
+  const open = (kind: string) =>
+    new WebSocket(`ws://localhost:${server.port}/api/presence?kind=${kind}`)
+  return { presence, open }
+}
+
+async function countsReach(presence: MemorySitePresence, expected: PresenceCounts): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (Bun.deepEquals(await presence.counts(), expected)) return
+    await Bun.sleep(10)
+  }
+  expect(await presence.counts()).toEqual(expected)
+}
+
+describe("presence socket", () => {
+  it("counts an open socket under its page kind and drops it when it closes", async () => {
+    const { presence, open } = startPresence(
+      new Hono().get("/api/presence", (c) => c.body(null, 204)),
+    )
+
+    const home = open("home")
+    open("giveaway")
+    await countsReach(presence, {
+      total: 2,
+      byKind: { home: 1, legal: 0, dashboard: 0, giveaway: 1, other: 0 },
+    })
+    home.close()
+
+    await countsReach(presence, {
+      total: 1,
+      byKind: { home: 0, legal: 0, dashboard: 0, giveaway: 1, other: 0 },
+    })
+  })
+
+  it("counts nothing for a socket the route of core refuses", async () => {
+    const { presence, open } = startPresence(
+      new Hono().get("/api/presence", (c) => c.json({ error: "forbidden-origin" }, 403)),
+    )
+
+    const socket = open("home")
+    await new Promise((resolve) => socket.addEventListener("close", resolve))
+
+    expect((await presence.counts()).total).toBe(0)
   })
 })

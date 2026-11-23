@@ -155,6 +155,16 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "admin.live.rateLimitedHour": "odpovědí 429 od Twitche za poslední hodinu",
   "admin.live.partial":
     "Diváci, přihlášky a převzetí zahrnují {shown} nejnovějších z {total} otevřených soutěží.",
+  "admin.presence.title": "Teď na webu",
+  "admin.presence.hint":
+    "Otevřené karty podle stránky, kterou ukazují. OBS overlaye a živé stránky se nepočítají.",
+  "admin.presence.total": "lidí na webu",
+  "admin.presence.home": "domovská stránka",
+  "admin.presence.legal": "podmínky a soukromí",
+  "admin.presence.dashboard": "nástěnka a admin",
+  "admin.presence.giveaway": "stránky soutěží",
+  "admin.presence.other": "ostatní stránky",
+  "admin.presence.unavailable": "Počet lidí na webu teď není k dispozici.",
   "admin.giveaways.title": "Otevřené soutěže",
   "admin.giveaways.none": "Žádná soutěž není otevřená.",
   "admin.giveaways.streamer": "Streamer",

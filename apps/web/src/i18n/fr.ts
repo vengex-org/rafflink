@@ -159,6 +159,17 @@ export const fr: Readonly<Record<MessageKey, string>> = {
   "admin.live.rateLimitedHour": "réponses 429 de Twitch dans la dernière heure",
   "admin.live.partial":
     "Les viewers, participations et réclamations couvrent les {shown} plus récents des {total} giveaways ouverts.",
+  "admin.presence.title": "Sur le site maintenant",
+  "admin.presence.hint":
+    "Onglets ouverts selon la page affichée. Les overlays OBS et les pages live ne comptent pas.",
+  "admin.presence.total": "personnes sur le site",
+  "admin.presence.home": "page d'accueil",
+  "admin.presence.legal": "conditions et confidentialité",
+  "admin.presence.dashboard": "tableau de bord et admin",
+  "admin.presence.giveaway": "pages de giveaways",
+  "admin.presence.other": "autres pages",
+  "admin.presence.unavailable":
+    "Le nombre de personnes sur le site n'est pas disponible pour l'instant.",
   "admin.giveaways.title": "Giveaways ouverts",
   "admin.giveaways.none": "Aucun giveaway n'est ouvert.",
   "admin.giveaways.streamer": "Streamer",

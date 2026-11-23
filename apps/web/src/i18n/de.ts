@@ -158,6 +158,16 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "admin.live.rateLimitedHour": "Twitch-429-Antworten in der letzten Stunde",
   "admin.live.partial":
     "Zuschauer, Teilnahmen und Abholungen beziehen sich auf die {shown} neuesten von {total} offenen Gewinnspielen.",
+  "admin.presence.title": "Gerade auf der Seite",
+  "admin.presence.hint":
+    "Offene Tabs nach der Seite, die sie zeigen. OBS-Overlays und Live-Seiten zählen nicht.",
+  "admin.presence.total": "Personen auf der Seite",
+  "admin.presence.home": "Startseite",
+  "admin.presence.legal": "Bedingungen und Datenschutz",
+  "admin.presence.dashboard": "Dashboard und Admin",
+  "admin.presence.giveaway": "Gewinnspielseiten",
+  "admin.presence.other": "andere Seiten",
+  "admin.presence.unavailable": "Die Zahl der Personen auf der Seite ist gerade nicht verfügbar.",
   "admin.giveaways.title": "Offene Gewinnspiele",
   "admin.giveaways.none": "Kein Gewinnspiel ist offen.",
   "admin.giveaways.streamer": "Streamer",

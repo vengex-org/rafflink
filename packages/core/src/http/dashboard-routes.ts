@@ -707,17 +707,27 @@ async function adminStats(deps: AppDeps): Promise<AdminStatsJson> {
   const now = deps.clock.now()
   const seriesFrom = startOfMinute(now) - (config.adminStatsSeriesMinutes - 1) * minuteMs
   const growthFrom = startOfDay(now) - (config.adminStatsDays - 1) * dayMs
-  const [live, queue, usage, minutes, giveawaysPerDay, streamersPerDay, returning, referrals] =
-    await Promise.all([
-      liveGiveaways(deps, config.adminStatsLiveRoomsMax),
-      deps.queue.stats(),
-      activePlan(deps).then((plan) => usageOfPlan(deps, plan)),
-      deps.stats.minutes(seriesFrom),
-      deps.stats.giveawaysPerDay(growthFrom),
-      deps.stats.streamersPerDay(growthFrom),
-      deps.stats.returningStreamers(config.adminStatsReturnDays * dayMs),
-      deps.stats.topReferrals(growthFrom, config.adminStatsRefsMax),
-    ])
+  const [
+    live,
+    presence,
+    queue,
+    usage,
+    minutes,
+    giveawaysPerDay,
+    streamersPerDay,
+    returning,
+    referrals,
+  ] = await Promise.all([
+    liveGiveaways(deps, config.adminStatsLiveRoomsMax),
+    adminPresence(deps),
+    deps.queue.stats(),
+    activePlan(deps).then((plan) => usageOfPlan(deps, plan)),
+    deps.stats.minutes(seriesFrom),
+    deps.stats.giveawaysPerDay(growthFrom),
+    deps.stats.streamersPerDay(growthFrom),
+    deps.stats.returningStreamers(config.adminStatsReturnDays * dayMs),
+    deps.stats.topReferrals(growthFrom, config.adminStatsRefsMax),
+  ])
   const counted = live.giveaways.flatMap((giveaway) =>
     giveaway.counts === null ? [] : [giveaway.counts],
   )
@@ -728,6 +738,7 @@ async function adminStats(deps: AppDeps): Promise<AdminStatsJson> {
     openGiveaways: live.total,
     giveaways: live.giveaways,
     viewers: sum((counts) => counts.viewers),
+    presence,
     entriesLastMinute: sum((counts) => counts.entriesLastMinute),
     claimsLastMinute: sum((counts) => counts.claimsLastMinute),
     queue,
@@ -845,6 +856,16 @@ function youtubeUnitsNeeded(
   const entryMinutes = closesAt === null ? 1 : Math.ceil((closesAt - now) / minuteMs)
   const claimMinutes = Math.ceil((claimSeconds * 1000) / minuteMs)
   return budget.unitsPerMinute * entryMinutes + budget.winnerUnitsPerMinute * claimMinutes
+}
+
+/** The admin page shows "unavailable" instead of failing when the presence count does not answer. */
+async function adminPresence(deps: AppDeps): Promise<AdminStatsJson["presence"]> {
+  try {
+    return await deps.presence.counts()
+  } catch (error) {
+    console.warn("presence unavailable", { errorClass: errorClass(error) })
+    return "unavailable"
+  }
 }
 
 /** The admin page shows "unavailable" instead of failing when the count cannot be read. */

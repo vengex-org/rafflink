@@ -806,6 +806,7 @@ export async function getAdminStats(fresh: boolean): Promise<AdminStats> {
       counts: giveaway.counts === null ? null : parseLiveCounts(child(giveaway, "counts")),
     })),
     viewers: num(source, "viewers"),
+    presence: parsePresence(source),
     entriesLastMinute: num(source, "entriesLastMinute"),
     claimsLastMinute: num(source, "claimsLastMinute"),
     queue: parseQueue(child(source, "queue")),
@@ -828,6 +829,22 @@ export async function getAdminStats(fresh: boolean): Promise<AdminStats> {
       ref: text(row, "ref"),
       visits: num(row, "visits"),
     })),
+  }
+}
+
+function parsePresence(source: Json): AdminStats["presence"] {
+  if (source.presence === "unavailable") return "unavailable"
+  const presence = child(source, "presence")
+  const byKind = child(presence, "byKind")
+  return {
+    total: num(presence, "total"),
+    byKind: {
+      home: num(byKind, "home"),
+      legal: num(byKind, "legal"),
+      dashboard: num(byKind, "dashboard"),
+      giveaway: num(byKind, "giveaway"),
+      other: num(byKind, "other"),
+    },
   }
 }
 
