@@ -76,8 +76,6 @@ const nobodyLeft: LiveSnapshot = { ...drawn, rerollOpen: false, rerollBlocked: "
 
 const windowOverText =
   "The time to pick another winner is over. Contact the winners who have not claimed, or start a new giveaway."
-const nobodyLeftText =
-  "Everyone who entered has been drawn. Contact the winners who have not claimed, or start a new giveaway."
 
 const entrantOf = (seq: number, displayName: string): Entrant => ({
   seq,
@@ -111,7 +109,8 @@ const plateName = (view: ReturnType<typeof renderApp>) =>
 const entrantsHeading = (view: ReturnType<typeof renderApp>) =>
   view.getByRole("heading", { name: /^Entrants/ }).textContent
 
-const openStage = { name: "Entries are open" }
+/** The words behind the LIVE chip: the page has loaded a giveaway that takes entries. */
+const openStage = "Entries open"
 
 describe("live page: collecting entries", () => {
   it("never invites the streamer to run a giveaway", async () => {
@@ -119,7 +118,7 @@ describe("live page: collecting entries", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByRole("heading", openStage)).toBeTruthy()
+    expect(await view.findByText(openStage)).toBeTruthy()
     expect(view.queryByRole("link", { name: "Run your own giveaway with Rafflink" })).toBeNull()
   })
 
@@ -128,7 +127,7 @@ describe("live page: collecting entries", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByRole("heading", openStage)).toBeTruthy()
+    expect(await view.findByText(openStage)).toBeTruthy()
     expect(view.getByRole("heading", { level: 1, name: "Summer giveaway" })).toBeTruthy()
     expect(await view.findByText("Streamy gives away A gaming chair")).toBeTruthy()
     expect(entrantsHeading(view)).toBe("Entrants 3")
@@ -165,12 +164,12 @@ describe("live page: collecting entries", () => {
     )
   })
 
-  it("says that entries are open with the LIVE chip and the stage title", async () => {
+  it("says that entries are open with the LIVE chip in the top bar", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findByRole("heading", { name: "Entries are open" })).toBeTruthy()
+    expect(await view.findByText("Entries open")).toBeTruthy()
     expect(view.getByText("LIVE")).toBeTruthy()
   })
 
@@ -231,7 +230,7 @@ describe("live page: collecting entries", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
 
     expect(view.queryByText("Latest entrants")).toBeNull()
   })
@@ -318,7 +317,7 @@ describe("live page: collecting entries", () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
 
     expect(view.queryByRole("heading", { name: "Problems" })).toBeNull()
   })
@@ -355,8 +354,7 @@ describe("live page: drawing", () => {
     })
 
     const view = renderApp("/live/gid-1")
-    expect(await view.findByText(/closes entries, then draws the first winner/)).toBeTruthy()
-    fireEvent.click(view.getByRole("button", { name: "Draw winner" }))
+    fireEvent.click(await view.findByRole("button", { name: "Draw winner" }))
     expect(view.getByText("Close entries and draw a winner?")).toBeTruthy()
     expect(requests.some((request) => request.route === drawPath)).toBe(false)
     fireEvent.click(view.getByRole("button", { name: "Yes, close entries and draw" }))
@@ -595,7 +593,7 @@ describe("live page: drawing", () => {
 
     const view = renderApp("/live/gid-1")
 
-    expect(await view.findAllByText("Everyone who entered has been drawn.")).not.toHaveLength(0)
+    expect(await view.findByText("All entrants drawn.")).toBeTruthy()
     expect(view.getByRole("button", { name: "Draw next winner" }).hasAttribute("disabled")).toBe(
       true,
     )
@@ -960,17 +958,16 @@ describe("live page: winners", () => {
 
     expect(view.queryByRole("button", { name: /^Reroll|^Pick another winner/ })).toBeNull()
     expect(view.getByText(windowOverText)).toBeTruthy()
-    expect(view.queryByText(nobodyLeftText)).toBeNull()
   })
 
-  it("says everyone was drawn when nobody is left to pick, instead of the time being over", async () => {
+  it("says only beside the draw button that everyone was drawn when nobody is left to pick", async () => {
     mockDrawn({ "GET /api/live/gid-1": () => ok(nobodyLeft) })
 
     const view = renderApp("/live/gid-1")
     await view.findByText("Claimed")
 
     expect(view.queryByRole("button", { name: /^Reroll|^Pick another winner/ })).toBeNull()
-    expect(view.getByText(nobodyLeftText)).toBeTruthy()
+    expect(view.getAllByText("All entrants drawn.")).toHaveLength(1)
     expect(view.queryByText(windowOverText)).toBeNull()
   })
 
@@ -996,7 +993,6 @@ describe("live page: winners", () => {
     await view.findByRole("heading", { name: "Winner 1 of 1" })
 
     expect(view.queryByText(windowOverText)).toBeNull()
-    expect(view.queryByText(nobodyLeftText)).toBeNull()
   })
 
   it("keeps the reroll buttons and shows no explanation while the reroll window is open", async () => {
@@ -1006,7 +1002,6 @@ describe("live page: winners", () => {
     await view.findByRole("heading", { name: "Winner 1 of 3" })
 
     expect(view.queryByText(windowOverText)).toBeNull()
-    expect(view.queryByText(nobodyLeftText)).toBeNull()
   })
 
   it("says when the server refuses because the reroll window is over", async () => {
@@ -1556,7 +1551,7 @@ describe("live page: access and connection", () => {
   it("reconnects after the socket drops and says so meanwhile", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
     const view = renderApp("/live/gid-1")
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
 
     act(() => FakeSocket.opened[0]?.drop())
 
@@ -1568,11 +1563,11 @@ describe("live page: access and connection", () => {
   it("ignores a push that is not a snapshot", async () => {
     mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
     const view = renderApp("/live/gid-1")
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
 
     act(() => FakeSocket.opened[0]?.push({ nonsense: true }))
 
-    expect(view.getByRole("heading", openStage)).toBeTruthy()
+    expect(view.getByText(openStage)).toBeTruthy()
   })
 })
 
@@ -1641,7 +1636,7 @@ describe("live page: overlay link", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
     fireEvent.click(view.getByRole("radio", { name: "Winner only" }))
     fireEvent.click(view.getByRole("radio", { name: "Show" }))
 
@@ -1658,7 +1653,7 @@ describe("live page: overlay link", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
     fireEvent.click(view.getByRole("radio", { name: "Corner badge" }))
     fireEvent.click(view.getByRole("radio", { name: "Automatic" }))
 
@@ -1672,7 +1667,7 @@ describe("live page: overlay link", () => {
     mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, overlayToken: "tok-1" }) })
 
     const view = renderApp("/live/gid-1")
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
     act(() => FakeSocket.opened[0]?.push({ ...liveSnapshot, entrantCount: 9 }))
 
     await waitFor(() => expect(entrantsHeading(view)).toBe("Entrants 9"))
@@ -1684,7 +1679,7 @@ describe("live page: overlay link", () => {
 
     const view = renderApp("/live/gid-1")
 
-    await view.findByRole("heading", openStage)
+    await view.findByText(openStage)
     expect(view.queryByLabelText("Overlay link")).toBeNull()
   })
 })
@@ -1738,7 +1733,7 @@ describe("live page: its own frame", () => {
     fireEvent.click(bar.getByRole("radio", { name: "Čeština" }))
 
     expect(document.documentElement.dataset.theme).toBe("dark")
-    expect(await view.findByRole("heading", { name: "Přihlašování je otevřené" })).toBeTruthy()
+    expect(await view.findByText("Přihlašování je otevřené")).toBeTruthy()
   })
 
   it("takes the copy button and the settings out of the top bar in clean mode", async () => {
@@ -2028,33 +2023,26 @@ describe("live page: the controls bar", () => {
     expect(view.queryByRole("dialog")).toBeNull()
   })
 
-  it.each([
-    ["open", liveSnapshot, "Open", "Closed"],
-    ["closed", { ...liveSnapshot, status: "closed" }, "Closed", "Open"],
-    ["drawn", drawn, "Closed", "Open"],
-  ] as const)(
-    "marks the %s state of the entries switch as pressed",
-    async (_name, snapshot, pressed, other) => {
-      mockLive({ "GET /api/live/gid-1": () => ok(snapshot) })
-
-      const view = renderApp("/live/gid-1")
-      const group = within(await view.findByRole("group", { name: "Entries" }))
-
-      expect(group.getByRole("button", { name: pressed }).getAttribute("aria-pressed")).toBe("true")
-      expect(group.getByRole("button", { name: other }).getAttribute("aria-pressed")).not.toBe(
-        "true",
-      )
-    },
-  )
-
-  it("cannot reopen entries once they are closed", async () => {
-    mockLive({ "GET /api/live/gid-1": () => ok({ ...liveSnapshot, status: "closed" }) })
+  it("marks Open as pressed in the entries switch while entries are open", async () => {
+    mockLive({ "GET /api/live/gid-1": () => ok(liveSnapshot) })
 
     const view = renderApp("/live/gid-1")
     const group = within(await view.findByRole("group", { name: "Entries" }))
 
-    expect(group.getByRole("button", { name: "Open" }).hasAttribute("disabled")).toBe(true)
-    expect(group.getByRole("button", { name: "Closed" }).hasAttribute("disabled")).toBe(true)
+    expect(group.getByRole("button", { name: "Open" }).getAttribute("aria-pressed")).toBe("true")
+    expect(group.getByRole("button", { name: "Closed" }).getAttribute("aria-pressed")).toBeNull()
+  })
+
+  it.each([
+    ["closed", { ...liveSnapshot, status: "closed" }],
+    ["drawn", drawn],
+  ] as const)("leaves the entries switch out once entries are %s", async (_name, snapshot) => {
+    mockLive({ "GET /api/live/gid-1": () => ok(snapshot) })
+
+    const view = renderApp("/live/gid-1")
+    await view.findByRole("region", { name: "Giveaway settings" })
+
+    expect(view.queryByRole("group", { name: "Entries" })).toBeNull()
   })
 })
 
@@ -2099,7 +2087,7 @@ describe("live page: winner form answers", () => {
     )
 
     expect(await panel.findByText("Bob Smith")).toBeTruthy()
-    expect(panel.getByRole("heading", { name: "Pick 2: Bob" })).toBeTruthy()
+    expect(panel.getByRole("heading", { name: "Winner 2: Bob" })).toBeTruthy()
     fireEvent.click(panel.getByRole("button", { name: "Mark delivered" }))
     expect(await panel.findByText(`Delivered on ${claimedAtText}.`)).toBeTruthy()
     expect(panel.queryByText("Bob Smith")).toBeNull()

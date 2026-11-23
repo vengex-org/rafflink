@@ -203,7 +203,7 @@ export function EntrantsSection({
   )
 }
 
-/** How many entrants each tier has, with what a ticket of the tier is worth. Without the rules (`ticketsPerGroup` null while they load) it lists the tiers that have entrants. */
+/** How many entrants each tier has, with what a ticket of the tier is worth. Without the rules (`ticketsPerGroup` null while they load or when they failed) it lists the tiers that have entrants. */
 export function Tiers({
   rows,
   ticketsPerGroup,

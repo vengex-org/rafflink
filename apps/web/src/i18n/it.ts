@@ -514,7 +514,6 @@ export const it: Translation = {
   "winnerForm.invalid": "Compila tutti i campi. L'e-mail deve contenere una @.",
   "answers.title": "Risposte dei vincitori",
   "answers.none": "Nessun vincitore ha ancora riscattato.",
-  "answers.pick": "Estrazione {n}: {name}",
   "answers.unnamed": "vincitore sconosciuto",
   "answers.waiting": "Non ancora inviate.",
   "answers.deleted": "Le risposte sono state eliminate.",
@@ -524,8 +523,6 @@ export const it: Translation = {
   "answers.deliverFailed":
     "Non è stato possibile segnare il premio come consegnato. Ricarica la pagina.",
   "answers.failed": "Non è stato possibile caricare le risposte.",
-  "answers.privacy":
-    "Solo tu vedi queste risposte, i moderatori no. Segnare il premio come consegnato le elimina, altrimenti vengono eliminate 30 giorni dopo il riscatto.",
   "rules.summary": "Regole e biglietti",
   "rules.help": "Più biglietti riceve un gruppo, più alta è la sua probabilità di vincere.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -576,8 +573,6 @@ export const it: Translation = {
   "dash.created.title": "Il tuo giveaway è attivo!",
   "dash.roomNotReady":
     "Il giveaway non è ancora del tutto pronto. Apri la pagina live per completare la configurazione.",
-  "dash.next":
-    "Ora avvisa la tua chat. Incolla il messaggio qui sotto nella chat della live. Il codice del giveaway è {code}.",
   "dash.openLive": "Apri la pagina live",
   "dash.obs.title": "Aggiungi a OBS (facoltativo)",
   "dash.obs.text": "Mostra le iscrizioni nella tua live mentre le persone partecipano.",
@@ -674,7 +669,6 @@ export const it: Translation = {
   "share.copyOverlay": "Copia il link dell'overlay",
   "share.obs.1": "In OBS, trova il riquadro Fonti e premi il pulsante +.",
   "share.obs.2": "Scegli Browser e premi OK.",
-  "share.obs.3": "Incolla il link dell'overlay qui sotto nel campo URL.",
   "share.obs.4": "Imposta Larghezza a 800 e Altezza a 600, poi premi OK.",
   "copy.copied": "Copiato!",
   "copy.failed": "Impossibile copiare. Il testo è selezionato: premi Ctrl+C.",
@@ -692,7 +686,6 @@ export const it: Translation = {
   "live.entryWayOff.title": "L'iscrizione è in parte disattivata",
   "live.chatOff.text":
     "Riscatto via chat non disponibile: Rafflink al momento non può leggere la tua chat, quindi i vincitori non possono riscattare scrivendo lì. Quando un vincitore ti dice che c'è, premi Segna come riscattato accanto al suo nome.",
-  "live.open.title": "Le iscrizioni sono aperte",
   "live.closesAt": "Le iscrizioni si chiudono da sole alle {time}.",
   "live.close.label": "Chiudi le iscrizioni",
   "live.close.question": "Chiudere le iscrizioni ora?",
@@ -772,12 +765,7 @@ export const it: Translation = {
     "Un'altra estrazione è avvenuta nello stesso momento. Premi di nuovo Estrai il vincitore.",
   "live.draw.next": "Estrai il prossimo vincitore",
   "live.draw.question": "Chiudere le iscrizioni ed estrarre un vincitore?",
-  "live.draw.open":
-    "Estrai il vincitore chiude le iscrizioni, poi estrae il primo vincitore quando il numero casuale pubblico (drand) è pronto.",
   "live.draw.due": "Estrazione del vincitore…",
-  "live.draw.nobodyLeft": "Tutti gli iscritti sono già stati estratti.",
-  "live.draw.detail":
-    "Le iscrizioni si chiudono e non possono riaprirsi. Il primo vincitore viene estratto appena il numero casuale pubblico (drand) è pronto, anche se chiudi questa pagina.",
   "live.draw.confirm": "Sì, chiudi le iscrizioni ed estrai",
   "live.draw.waiting":
     "In attesa del numero casuale pubblico (drand). Il vincitore viene estratto automaticamente tra {clock}.",
@@ -789,8 +777,6 @@ export const it: Translation = {
   "live.mark.aria": "Segna come riscattato per {name}",
   "live.reroll.over":
     "Il tempo per scegliere un altro vincitore è finito. Contatta i vincitori che non hanno riscattato o avvia un nuovo giveaway.",
-  "live.reroll.nobodyLeft":
-    "Tutti gli iscritti sono già stati estratti. Contatta i vincitori che non hanno riscattato o avvia un nuovo giveaway.",
   "live.reroll.question": "Scegliere un altro vincitore al posto di {name}?",
   "live.reroll.detail": "{name} perde il premio. Non si può annullare.",
   "live.reroll.confirm": "Sì, scegli un altro vincitore",

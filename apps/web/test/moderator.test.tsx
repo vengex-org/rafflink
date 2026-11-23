@@ -42,7 +42,7 @@ describe("opening a moderator link", () => {
 
     const view = renderApp(`/mod#${token}`)
 
-    expect(await view.findByRole("heading", { name: "Entries are open" })).toBeTruthy()
+    expect(await view.findByText("Entries open")).toBeTruthy()
     expect(view.address()).toBe("/mod/gid-1")
     expect(
       requests.find((request) => request.route === "POST /api/moderator-links/open")?.body,

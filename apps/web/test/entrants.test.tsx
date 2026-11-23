@@ -164,10 +164,35 @@ describe("entrants table: the list", () => {
     })
     await view.findByText("Cy")
 
-    const tiers = within(view.getByRole("list", { name: "Entrants per tier" }))
+    const tiers = within(await view.findByRole("list", { name: "Entrants per tier" }))
     expect(tiers.getByText("Viewer").nextElementSibling?.textContent).toBe("1")
     expect(tiers.getByText("Tier 2").nextElementSibling?.textContent).toBe("1")
     expect(tiers.queryByText("Mod")).toBeNull()
+  })
+
+  it("leaves the tier counts out when every group gets the same tickets", async () => {
+    const sameTickets = {
+      ...giveaway,
+      rules: {
+        ...giveaway.rules,
+        tickets: {
+          ...giveaway.rules.tickets,
+          follower: 1,
+          sub_t1: 1,
+          sub_t2: 1,
+          sub_t3: 1,
+          vip: 1,
+          moderator: 1,
+        },
+      },
+    }
+    const { view } = await openLive([entrant(1, "Ada"), entrant(2, "Cy", "sub_t2")], {
+      "GET /api/g/ABCDE": () => ok(sameTickets),
+    })
+    await view.findByText("Cy")
+    await view.findByText("Streamy gives away A gaming chair")
+
+    expect(view.queryByRole("list", { name: "Entrants per tier" })).toBeNull()
   })
 
   it("shows the login in small type only when it differs from the display name", async () => {

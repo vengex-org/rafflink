@@ -99,6 +99,8 @@
 
   /* One pixel of the 1920px stream canvas the live page is drawn on; it shrinks with the window down to about half. */
   --u: clamp(0.55px, calc(100vw / 1920), 1px);
+  /* The letters in the winner's name; each winner plate sets its own, so the live page can fit the name on one line. */
+  --chars: 12;
 
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --dur: 180ms;

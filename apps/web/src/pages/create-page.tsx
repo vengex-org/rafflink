@@ -1,10 +1,11 @@
 import { useState } from "react"
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router"
 import type { DashboardGiveaway } from "@rafflink/core/http/json"
+import { Disclosure } from "../components/disclosure.tsx"
 import { ActivityIcon, ArrowLeftIcon, CheckIcon, TvIcon } from "../components/icons.tsx"
 import { NotFound, SignIn } from "../components/notice.tsx"
 import { Page } from "../components/page.tsx"
-import { ObsSteps, ShareLinks } from "../components/share-panel.tsx"
+import { ObsStepList, OverlayLink, ShareLinks } from "../components/share-panel.tsx"
 import { useI18n } from "../i18n/i18n.tsx"
 import { readNotice, type DashboardNotice } from "../lib/dashboard-notice.ts"
 import { dashboardCreatedPath, dashboardPath, livePath } from "../lib/routes.ts"
@@ -80,7 +81,7 @@ function CreatedScreen({
   /** Null when the page was opened by its address: the warnings belong to the moment of creating. */
   readonly notice: Extract<DashboardNotice, { kind: "created" }> | null
 }) {
-  const { t, rich, plural } = useI18n()
+  const { t, plural } = useI18n()
   return (
     <div className="created">
       <div className="created-head">
@@ -104,7 +105,7 @@ function CreatedScreen({
           <h2 id="share-title" className="sr-only">
             {t("live.share.title")}
           </h2>
-          <p>{rich("dash.next", { code: <strong>{giveaway.code}</strong> })}</p>
+          <p>{t("dash.next")}</p>
           <ShareLinks code={giveaway.code} />
           <Link className="button large" to={livePath(giveaway.id)}>
             <ActivityIcon />
@@ -117,7 +118,10 @@ function CreatedScreen({
           </span>
           <h2 id="obs-title">{t("dash.obs.title")}</h2>
           <p>{t("dash.obs.text")}</p>
-          <ObsSteps giveaway={giveaway} />
+          <OverlayLink giveaway={giveaway} />
+          <Disclosure icon={null} summary={t("dash.obs.steps")} open={false}>
+            <ObsStepList />
+          </Disclosure>
         </section>
       </div>
       <Link className="button outlined" to={dashboardPath}>

@@ -520,7 +520,6 @@ export const fr: Translation = {
   "winnerForm.invalid": "Remplis tous les champs. L'e-mail doit contenir un @.",
   "answers.title": "Réponses des gagnants",
   "answers.none": "Aucun gagnant n'a encore réclamé.",
-  "answers.pick": "Tirage {n} : {name}",
   "answers.unnamed": "gagnant inconnu",
   "answers.waiting": "Pas encore envoyé.",
   "answers.deleted": "Les réponses ont été supprimées.",
@@ -529,8 +528,6 @@ export const fr: Translation = {
   "answers.markDelivered": "Marquer comme livré",
   "answers.deliverFailed": "Impossible de marquer le lot comme livré. Recharge la page.",
   "answers.failed": "Impossible de charger les réponses.",
-  "answers.privacy":
-    "Toi seul vois ces réponses, pas les modérateurs. Marquer le lot comme livré les supprime, sinon elles sont supprimées 30 jours après la réclamation.",
   "rules.summary": "Règles et tickets",
   "rules.help": "Plus un groupe reçoit de tickets, plus ses chances de gagner sont grandes.",
   "rules.groupTickets": "{group} : {tickets}",
@@ -582,8 +579,6 @@ export const fr: Translation = {
   "dash.created.title": "Ton giveaway est en ligne !",
   "dash.roomNotReady":
     "Le giveaway n'est pas encore entièrement prêt. Ouvre la page live pour terminer la configuration.",
-  "dash.next":
-    "Ensuite, préviens ton chat. Colle le message ci-dessous dans le chat de ton stream. Le code du giveaway est {code}.",
   "dash.openLive": "Ouvrir la page live",
   "dash.obs.title": "Ajouter à OBS (facultatif)",
   "dash.obs.text": "Affiche les participations sur ton stream pendant que les gens s'inscrivent.",
@@ -680,7 +675,6 @@ export const fr: Translation = {
   "share.copyOverlay": "Copier le lien de l'overlay",
   "share.obs.1": "Dans OBS, trouve le panneau Sources et appuie sur le bouton +.",
   "share.obs.2": "Choisis Navigateur et appuie sur OK.",
-  "share.obs.3": "Colle le lien de l'overlay ci-dessous dans le champ URL.",
   "share.obs.4": "Règle la largeur sur 800 et la hauteur sur 600, puis appuie sur OK.",
   "copy.copied": "Copié !",
   "copy.failed": "Impossible de copier. Le texte est sélectionné : appuie sur Ctrl+C.",
@@ -698,7 +692,6 @@ export const fr: Translation = {
   "live.entryWayOff.title": "La participation est partiellement désactivée",
   "live.chatOff.text":
     "Réclamation par le chat indisponible : Rafflink ne peut pas lire ton chat pour le moment, donc les gagnants ne peuvent pas réclamer en y écrivant. Quand un gagnant te dit qu'il est là, appuie sur Marquer comme réclamé à côté de son nom.",
-  "live.open.title": "Les participations sont ouvertes",
   "live.closesAt": "Les participations se ferment toutes seules le {time}.",
   "live.close.label": "Fermer les participations",
   "live.close.question": "Fermer les participations maintenant ?",
@@ -779,12 +772,7 @@ export const fr: Translation = {
     "Un autre tirage a eu lieu au même moment. Appuie à nouveau sur Tirer le gagnant.",
   "live.draw.next": "Tirer le gagnant suivant",
   "live.draw.question": "Fermer les participations et tirer un gagnant ?",
-  "live.draw.open":
-    "Tirer le gagnant ferme les participations, puis tire le premier gagnant dès que le nombre aléatoire public (drand) est prêt.",
   "live.draw.due": "Tirage du gagnant…",
-  "live.draw.nobodyLeft": "Tous les participants ont été tirés.",
-  "live.draw.detail":
-    "Les participations se ferment et ne peuvent pas rouvrir. Le premier gagnant est tiré dès que le nombre aléatoire public (drand) est prêt, même si tu fermes cette page.",
   "live.draw.confirm": "Oui, fermer les participations et tirer",
   "live.draw.waiting":
     "En attente du nombre aléatoire public (drand). Le gagnant sera tiré automatiquement dans {clock}.",
@@ -796,8 +784,6 @@ export const fr: Translation = {
   "live.mark.aria": "Marquer comme réclamé pour {name}",
   "live.reroll.over":
     "Le délai pour tirer un autre gagnant est écoulé. Contacte les gagnants qui n'ont pas réclamé, ou lance un nouveau giveaway.",
-  "live.reroll.nobodyLeft":
-    "Tous les participants ont été tirés. Contacte les gagnants qui n'ont pas réclamé, ou lance un nouveau giveaway.",
   "live.reroll.question": "Tirer un autre gagnant à la place de {name} ?",
   "live.reroll.detail": "{name} perd le lot. Cette action est irréversible.",
   "live.reroll.confirm": "Oui, tirer un autre gagnant",

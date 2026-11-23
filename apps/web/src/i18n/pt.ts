@@ -513,7 +513,6 @@ export const pt: Translation = {
   "winnerForm.invalid": "Preencha todos os campos. O e-mail precisa ter um @.",
   "answers.title": "Respostas dos vencedores",
   "answers.none": "Nenhum vencedor resgatou ainda.",
-  "answers.pick": "Sorteado {n}: {name}",
   "answers.unnamed": "vencedor desconhecido",
   "answers.waiting": "Ainda não enviado.",
   "answers.deleted": "As respostas foram apagadas.",
@@ -522,8 +521,6 @@ export const pt: Translation = {
   "answers.markDelivered": "Marcar como entregue",
   "answers.deliverFailed": "Não foi possível marcar o prêmio como entregue. Recarregue a página.",
   "answers.failed": "Não foi possível carregar as respostas.",
-  "answers.privacy":
-    "Só você vê estas respostas, os moderadores não. Marcar o prêmio como entregue apaga as respostas; caso contrário, elas são apagadas 30 dias depois do resgate.",
   "rules.summary": "Regras e bilhetes",
   "rules.help": "Quanto mais bilhetes um grupo recebe, maior a chance de ganhar.",
   "rules.groupTickets": "{group}: {tickets}",
@@ -574,8 +571,6 @@ export const pt: Translation = {
   "dash.created.title": "Seu sorteio está no ar!",
   "dash.roomNotReady":
     "O sorteio ainda não está totalmente pronto. Abra a página ao vivo para terminar de configurá-lo.",
-  "dash.next":
-    "Agora avise o seu chat. Cole a mensagem abaixo no chat da sua stream. O código do sorteio é {code}.",
   "dash.openLive": "Abrir a página ao vivo",
   "dash.obs.title": "Adicionar ao OBS (opcional)",
   "dash.obs.text": "Mostre as inscrições na sua stream enquanto as pessoas entram.",
@@ -671,7 +666,6 @@ export const pt: Translation = {
   "share.copyOverlay": "Copiar link do overlay",
   "share.obs.1": "No OBS, encontre o quadro Fontes e clique no botão +.",
   "share.obs.2": "Escolha Navegador e clique em OK.",
-  "share.obs.3": "Cole o link do overlay abaixo no campo URL.",
   "share.obs.4": "Defina Largura como 800 e Altura como 600 e clique em OK.",
   "copy.copied": "Copiado!",
   "copy.failed": "Não foi possível copiar. O texto está selecionado: pressione Ctrl+C.",
@@ -689,7 +683,6 @@ export const pt: Translation = {
   "live.entryWayOff.title": "As inscrições estão parcialmente desligadas",
   "live.chatOff.text":
     "Resgate pelo chat indisponível: o Rafflink não consegue ler seu chat agora, então os vencedores não podem resgatar digitando lá. Quando um vencedor avisar que está presente, clique em Marcar como resgatado ao lado do nome dele.",
-  "live.open.title": "As inscrições estão abertas",
   "live.closesAt": "As inscrições encerram sozinhas às {time}.",
   "live.close.label": "Encerrar inscrições",
   "live.close.question": "Encerrar as inscrições agora?",
@@ -769,12 +762,7 @@ export const pt: Translation = {
     "Outro sorteio aconteceu no mesmo instante. Clique em Sortear vencedor de novo.",
   "live.draw.next": "Sortear o próximo vencedor",
   "live.draw.question": "Encerrar as inscrições e sortear um vencedor?",
-  "live.draw.open":
-    "Sortear vencedor encerra as inscrições e depois sorteia o primeiro vencedor quando o número aleatório público (drand) estiver pronto.",
   "live.draw.due": "Sorteando o vencedor…",
-  "live.draw.nobodyLeft": "Todos que participaram já foram sorteados.",
-  "live.draw.detail":
-    "As inscrições são encerradas e não podem ser reabertas. O primeiro vencedor é sorteado assim que o número aleatório público (drand) estiver pronto, mesmo que você feche esta página.",
   "live.draw.confirm": "Sim, encerrar e sortear",
   "live.draw.waiting":
     "Aguardando o número aleatório público (drand). O vencedor é sorteado automaticamente em {clock}.",
@@ -786,8 +774,6 @@ export const pt: Translation = {
   "live.mark.aria": "Marcar o prêmio de {name} como resgatado",
   "live.reroll.over":
     "O prazo para escolher outro vencedor acabou. Entre em contato com os vencedores que não resgataram ou comece um novo sorteio.",
-  "live.reroll.nobodyLeft":
-    "Todos que participaram já foram sorteados. Entre em contato com os vencedores que não resgataram ou comece um novo sorteio.",
   "live.reroll.question": "Escolher outro vencedor no lugar de {name}?",
   "live.reroll.detail": "{name} perde o prêmio. Isso não pode ser desfeito.",
   "live.reroll.confirm": "Sim, escolher outro vencedor",

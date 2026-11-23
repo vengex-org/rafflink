@@ -16,7 +16,7 @@ import { WinnerPlate } from "./winner-plate.tsx"
 import { standingWinners } from "../lib/standing-winners.ts"
 import { useDrawShuffle } from "../lib/use-draw-shuffle.ts"
 
-/** What the stage shows for each step: that entries are open, the closed count, or the winner of the moment with the claim clock. */
+/** What the stage shows for each step: nothing while entries are open (the top bar says so), the closed count, or the winner of the moment with the claim clock. */
 export function LiveStage({
   snapshot,
   facts,
@@ -39,7 +39,7 @@ export function LiveStage({
   }
   switch (snapshot.status) {
     case "open":
-      return <OpenStage snapshot={snapshot} />
+      return null
     case "closed":
       return <ClosedStage snapshot={snapshot} />
     case "drawn":
@@ -81,21 +81,6 @@ function ShuffleStage({
 
 const waitMsOf = (snapshot: LiveSnapshot) =>
   snapshot.drawAvailableAt === null ? null : snapshot.drawAvailableAt - snapshot.now
-
-function OpenStage({ snapshot }: { readonly snapshot: LiveSnapshot }) {
-  const { t, dateTime } = useI18n()
-  const headId = useId()
-  return (
-    <section className="live-stage" aria-labelledby={headId}>
-      <div className="live-stage-head">
-        <h2 id={headId}>{t("live.open.title")}</h2>
-        {snapshot.closesAt === null ? null : (
-          <p>{t("live.closesAt", { time: dateTime(snapshot.closesAt) })}</p>
-        )}
-      </div>
-    </section>
-  )
-}
 
 function ClosedStage({ snapshot }: { readonly snapshot: LiveSnapshot }) {
   const i18n = useI18n()

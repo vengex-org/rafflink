@@ -129,7 +129,7 @@ export function LiveSettings({
           setWinnerCount={setWinnerCount}
         />
       )}
-      <EntriesSwitch id={id} busy={busy} run={run} status={snapshot.status} />
+      {snapshot.status === "open" ? <EntriesSwitch id={id} busy={busy} run={run} /> : null}
       <span className="live-settings-end">
         {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
         {moderatorLinks === null ? null : (
@@ -273,50 +273,37 @@ function RerollPick({
   )
 }
 
-/** Entries only close: from Open the Closed side asks first, and once closed nothing reopens them. */
-function EntriesSwitch({
-  id,
-  busy,
-  run,
-  status,
-}: Doing & { readonly status: LiveSnapshot["status"] }) {
+/** Entries only close: the Closed side asks first. Once closed nothing reopens them, so the switch is shown only while they are open. */
+function EntriesSwitch({ id, busy, run }: Doing) {
   const { t } = useI18n()
   const { closeEntries } = useLiveApi()
   const labelId = useId()
-  const open = status === "open"
   return (
     <div className="live-seg">
       <span id={labelId} className="live-seg-label">
         {t("live.entries.label")}
       </span>
       <fieldset className="live-seg-options" aria-labelledby={labelId}>
-        <button type="button" aria-pressed={open} disabled>
+        <button type="button" aria-pressed disabled>
           {t("live.entries.open")}
         </button>
-        {open ? (
-          <ConfirmAction
-            icon={<LockIcon />}
-            label={t("live.entries.closed")}
-            question={t("live.close.question")}
-            detail={t("live.close.detail")}
-            confirmLabel={t("live.close.confirm")}
-            busy={busy}
-            disabled={false}
-            className="live-seg-close"
-            shortcut={null}
-            onConfirm={() =>
-              void run(
-                () => closeEntries(id),
-                (outcome) => `closeResult.${outcome}`,
-              )
-            }
-          />
-        ) : (
-          <button type="button" aria-pressed disabled>
-            <LockIcon />
-            {t("live.entries.closed")}
-          </button>
-        )}
+        <ConfirmAction
+          icon={<LockIcon />}
+          label={t("live.entries.closed")}
+          question={t("live.close.question")}
+          detail={t("live.close.detail")}
+          confirmLabel={t("live.close.confirm")}
+          busy={busy}
+          disabled={false}
+          className="live-seg-close"
+          shortcut={null}
+          onConfirm={() =>
+            void run(
+              () => closeEntries(id),
+              (outcome) => `closeResult.${outcome}`,
+            )
+          }
+        />
       </fieldset>
     </div>
   )
@@ -369,6 +356,18 @@ function DrawControls({
   const remainingMs = useRemainingMs(waitMs)
   const { status, drawRequested, entrantCount } = snapshot
   const blocked = blockedText(snapshot, t)
+  const help =
+    blocked
+    ?? drawHelp(
+      {
+        status,
+        drawRequested,
+        remainingMs,
+        standing: standingWinners(snapshot.winners).length,
+        planned: snapshot.winnerCount,
+      },
+      i18n,
+    )
   const batch = batchSize(snapshot)
   const draw = (count: number) =>
     void run(
@@ -384,19 +383,11 @@ function DrawControls({
     )
   return (
     <>
-      <p id="draw-help" className="live-draw-help">
-        {blocked
-          ?? drawHelp(
-            {
-              status,
-              drawRequested,
-              remainingMs,
-              standing: standingWinners(snapshot.winners).length,
-              planned: snapshot.winnerCount,
-            },
-            i18n,
-          )}
-      </p>
+      {help === null ? null : (
+        <p id="draw-help" className="live-draw-help">
+          {help}
+        </p>
+      )}
       {status === "open" ? (
         <ConfirmAction
           icon={<ShuffleIcon />}
@@ -413,12 +404,14 @@ function DrawControls({
       ) : (
         <>
           <DrawButton
+            describedBy={help === null ? null : "draw-help"}
             label={t(status === "drawn" ? "live.draw.next" : "live.draw.label")}
             disabled={busy || blocked !== null || drawRequested}
             onPress={() => draw(1)}
           />
           {batch > 1 ? (
             <BatchDraw
+              describedBy={help === null ? null : "draw-help"}
               most={batch}
               value={batchCount ?? String(batch)}
               disabled={busy || blocked !== null || drawRequested}
@@ -436,10 +429,13 @@ function DrawControls({
 }
 
 function DrawButton({
+  describedBy,
   label,
   disabled,
   onPress,
 }: {
+  /** The id of the help line beside the button, or null when none is shown. */
+  readonly describedBy: string | null
   readonly label: string
   readonly disabled: boolean
   readonly onPress: () => void
@@ -456,7 +452,7 @@ function DrawButton({
       className="live-btn primary"
       disabled={disabled}
       aria-keyshortcuts="d"
-      aria-describedby="draw-help"
+      aria-describedby={describedBy ?? undefined}
       onClick={onPress}
     >
       <ShuffleIcon />
@@ -468,12 +464,15 @@ function DrawButton({
 
 /** How many winners one press draws, 1 to `most`, and the button that draws them. */
 function BatchDraw({
+  describedBy,
   most,
   value,
   disabled,
   onChange,
   onDraw,
 }: {
+  /** The id of the help line beside the button, or null when none is shown. */
+  readonly describedBy: string | null
   readonly most: number
   readonly value: string
   readonly disabled: boolean
@@ -494,7 +493,7 @@ function BatchDraw({
         value={value}
         min={1}
         invalid={!valid}
-        describedBy="draw-help"
+        describedBy={describedBy}
         onChange={onChange}
         decreaseLabel={t("winners.fewer")}
         increaseLabel={t("winners.more")}
@@ -538,10 +537,11 @@ function drawHelp(
     readonly planned: number
   },
   { t, number }: I18n,
-): string {
+): string | null {
   switch (state.status) {
+    // The Draw winner question says what the press does.
     case "open":
-      return t("live.draw.open")
+      return null
     case "closed":
       if (state.remainingMs > 0)
         return t("live.draw.waiting", { clock: formatClock(state.remainingMs) })

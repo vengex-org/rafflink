@@ -15,20 +15,25 @@ export function ShareLinks({ code }: { readonly code: string }) {
   )
 }
 
-export function ObsSteps({
-  giveaway,
-}: {
-  readonly giveaway: Pick<DashboardGiveaway, "id" | "overlayToken">
-}) {
-  const { t } = useI18n()
-  const url = overlayUrl(giveaway.id, giveaway.overlayToken)
+type OverlayGiveaway = Pick<DashboardGiveaway, "id" | "overlayToken">
+
+export function ObsSteps({ giveaway }: { readonly giveaway: OverlayGiveaway }) {
   return (
     <>
       <ObsStepList />
-      <CopyLink label={t("share.overlay")} value={url} buttonLabel={t("share.copyOverlay")} clipped>
-        {url}
-      </CopyLink>
+      <OverlayLink giveaway={giveaway} />
     </>
+  )
+}
+
+/** The overlay address of the giveaway, cut to one row, with its copy button. */
+export function OverlayLink({ giveaway }: { readonly giveaway: OverlayGiveaway }) {
+  const { t } = useI18n()
+  const url = overlayUrl(giveaway.id, giveaway.overlayToken)
+  return (
+    <CopyLink label={t("share.overlay")} value={url} buttonLabel={t("share.copyOverlay")} clipped>
+      {url}
+    </CopyLink>
   )
 }
 

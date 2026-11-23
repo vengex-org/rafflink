@@ -85,7 +85,7 @@ function PickAnswers({
       {values === null ? (
         <p className="help">{t(stateText(pick))}</p>
       ) : (
-        <dl>
+        <dl className="winner-answer-list">
           {form.map((kind) => (
             <div key={kind}>
               <dt>{t(`winnerField.${kind}`)}</dt>
@@ -97,7 +97,7 @@ function PickAnswers({
       {pick.deliveredAt === null ? (
         <button
           type="button"
-          className="live-btn ghost"
+          className="live-btn secondary"
           disabled={busy}
           onClick={async () => {
             const outcome = await run(
