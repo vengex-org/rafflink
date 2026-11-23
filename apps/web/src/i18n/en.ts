@@ -791,7 +791,8 @@ export const en = {
   "live.draw.question": "Close entries and draw a winner?",
   "live.draw.due": "Drawing the winner…",
   "live.draw.nobodyLeft": "All entrants drawn.",
-  "live.draw.detail": "Entries close for good. The winner is drawn in a few seconds.",
+  "live.draw.detail":
+    "Entries close for good. The winner is drawn shortly, even if you close this page.",
   "live.draw.confirm": "Yes, close entries and draw",
   "live.draw.waiting":
     "Waiting for the public random number (drand). The winner is drawn by itself in {clock}.",

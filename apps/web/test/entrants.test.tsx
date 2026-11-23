@@ -157,6 +157,19 @@ describe("entrants table: the list", () => {
     expect(tiers.getByText("Mod").nextElementSibling?.textContent).toBe("0x7")
   })
 
+  it("lists only the tiers that have entrants while the rules of the giveaway are unknown", async () => {
+    spyOn(console, "error").mockImplementation(() => {})
+    const { view } = await openLive([entrant(1, "Ada"), entrant(2, "Cy", "sub_t2", 4)], {
+      "GET /api/g/ABCDE": () => ({ status: 500, body: { error: "unavailable" } }),
+    })
+    await view.findByText("Cy")
+
+    const tiers = within(await view.findByRole("list", { name: "Entrants per tier" }))
+    expect(tiers.getByText("Viewer").nextElementSibling?.textContent).toBe("1")
+    expect(tiers.getByText("Tier 2").nextElementSibling?.textContent).toBe("1")
+    expect(tiers.queryByText("Mod")).toBeNull()
+  })
+
   it("leaves the tier counts out when every group gets the same tickets", async () => {
     const sameTickets = {
       ...giveaway,

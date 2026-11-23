@@ -237,7 +237,7 @@ export function LiveControls({
   )
 }
 
-/** The numbers beside the list: how fast people enter while entries are open, and how many entered per tier when some tiers get bonus tickets. */
+/** The numbers beside the list: how fast people enter while entries are open, and how many entered per tier when some tiers get bonus tickets or the rules are unknown. */
 function LiveStats({
   snapshot,
   facts,
@@ -252,8 +252,8 @@ function LiveStats({
   const headId = useId()
   const open = snapshot.status === "open"
   const tickets = facts === null ? null : facts.rules.tickets
-  const bonus = tickets !== null && hasBonusTickets(tickets)
-  if (!open && !bonus) return null
+  const showTiers = tickets === null ? rows.length > 0 : hasBonusTickets(tickets)
+  if (!open && !showTiers) return null
   return (
     <section className="live-card live-stats" aria-labelledby={headId}>
       <h2 id={headId}>{t("live.stats.title")}</h2>
@@ -263,7 +263,7 @@ function LiveStats({
           <strong>{i18n.decimal(snapshot.entriesPerSecond)}</strong> {t("stat.perSecond")}
         </p>
       ) : null}
-      {bonus ? <Tiers rows={rows} ticketsPerGroup={tickets} /> : null}
+      {showTiers ? <Tiers rows={rows} ticketsPerGroup={tickets} /> : null}
     </section>
   )
 }

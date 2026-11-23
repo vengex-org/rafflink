@@ -404,12 +404,14 @@ function DrawControls({
       ) : (
         <>
           <DrawButton
+            describedBy={help === null ? null : "draw-help"}
             label={t(status === "drawn" ? "live.draw.next" : "live.draw.label")}
             disabled={busy || blocked !== null || drawRequested}
             onPress={() => draw(1)}
           />
           {batch > 1 ? (
             <BatchDraw
+              describedBy={help === null ? null : "draw-help"}
               most={batch}
               value={batchCount ?? String(batch)}
               disabled={busy || blocked !== null || drawRequested}
@@ -427,10 +429,13 @@ function DrawControls({
 }
 
 function DrawButton({
+  describedBy,
   label,
   disabled,
   onPress,
 }: {
+  /** The id of the help line beside the button, or null when none is shown. */
+  readonly describedBy: string | null
   readonly label: string
   readonly disabled: boolean
   readonly onPress: () => void
@@ -447,7 +452,7 @@ function DrawButton({
       className="live-btn primary"
       disabled={disabled}
       aria-keyshortcuts="d"
-      aria-describedby="draw-help"
+      aria-describedby={describedBy ?? undefined}
       onClick={onPress}
     >
       <ShuffleIcon />
@@ -459,12 +464,15 @@ function DrawButton({
 
 /** How many winners one press draws, 1 to `most`, and the button that draws them. */
 function BatchDraw({
+  describedBy,
   most,
   value,
   disabled,
   onChange,
   onDraw,
 }: {
+  /** The id of the help line beside the button, or null when none is shown. */
+  readonly describedBy: string | null
   readonly most: number
   readonly value: string
   readonly disabled: boolean
@@ -485,7 +493,7 @@ function BatchDraw({
         value={value}
         min={1}
         invalid={!valid}
-        describedBy="draw-help"
+        describedBy={describedBy}
         onChange={onChange}
         decreaseLabel={t("winners.fewer")}
         increaseLabel={t("winners.more")}

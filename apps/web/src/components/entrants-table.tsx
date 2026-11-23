@@ -203,13 +203,13 @@ export function EntrantsSection({
   )
 }
 
-/** How many entrants each tier that may enter has, with what a ticket of the tier is worth. */
+/** How many entrants each tier has, with what a ticket of the tier is worth. Without the rules (`ticketsPerGroup` null while they load or when they failed) it lists the tiers that have entrants. */
 export function Tiers({
   rows,
   ticketsPerGroup,
 }: {
   readonly rows: readonly { readonly group: Group }[]
-  readonly ticketsPerGroup: Tickets
+  readonly ticketsPerGroup: Tickets | null
 }) {
   const { t, number } = useI18n()
   const counts = useMemo(() => {
@@ -217,7 +217,9 @@ export function Tiers({
     for (const { group } of rows) byGroup.set(group, (byGroup.get(group) ?? 0) + 1)
     return byGroup
   }, [rows])
-  const shown = groups.filter((group) => ticketsPerGroup[group] > 0)
+  const shown = groups.filter((group) =>
+    ticketsPerGroup === null ? counts.has(group) : ticketsPerGroup[group] > 0,
+  )
   if (shown.length === 0) return null
   return (
     <ul className="live-tiers" aria-label={t("entrants.tiers")}>
@@ -226,7 +228,7 @@ export function Tiers({
           <span className="live-tier-name">{t(`tier.${group}`)}</span>
           <span className="live-tier-count">
             <span>{number(counts.get(group) ?? 0)}</span>
-            <small>x{number(ticketsPerGroup[group])}</small>
+            {ticketsPerGroup === null ? null : <small>x{number(ticketsPerGroup[group])}</small>}
           </span>
         </li>
       ))}
