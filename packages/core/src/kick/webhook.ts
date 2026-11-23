@@ -366,6 +366,7 @@ function rolesOf(identity: unknown): ChatterRoles {
       : []
   return {
     subTier: badges.includes("subscriber") ? 1 : null,
+    isMember: false,
     isVip: badges.includes("vip"),
     isModerator: badges.includes("moderator"),
   }

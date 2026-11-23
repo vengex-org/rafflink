@@ -1,5 +1,6 @@
 import type { LeavesJson, MyLeafJson } from "@rafflink/core/http/json"
 import { publicDrandUrls, roundPath } from "@rafflink/core/lib/drand"
+import type { Platform } from "@rafflink/core/platform/provider"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { reportError } from "../lib/error-reporting.ts"
 import { useCallback, useEffect, useEffectEvent, useState } from "react"
@@ -188,7 +189,12 @@ function Checker({
         {run.state === "done" ? <Results verdict={run.verdict} commitment={commitment} /> : null}
       </section>
       {load.verify.picks.length === 0 ? null : <Picks picks={load.verify.picks} />}
-      <Mine mine={mine} verdict={run.state === "done" ? run.verdict.mine : null} code={code} />
+      <Mine
+        mine={mine}
+        verdict={run.state === "done" ? run.verdict.mine : null}
+        code={code}
+        platform={load.verify.platform}
+      />
     </>
   )
 }
@@ -281,21 +287,26 @@ function CheckMark({ outcome }: { readonly outcome: string }) {
   }
 }
 
+// A YouTube viewer enters in chat and never signs in, so no browser holds their salt: the checks prove the draw, not their place in it.
 function Mine({
   mine,
   verdict,
   code,
+  platform,
 }: {
   readonly mine: MyLeafJson | null
   readonly verdict: OwnEntry | null
   readonly code: string
+  readonly platform: Platform
 }) {
   const i18n = useI18n()
   const { t } = i18n
   return (
     <section className="verify-mine">
       <h2>{t("verify.mine.title")}</h2>
-      {mine === null ? (
+      {mine === null && platform === "youtube" ? (
+        <p>{t("verify.mine.chatOnly")}</p>
+      ) : mine === null ? (
         <p>
           {t("verify.mine.signedOut")} <Link to={giveawayPath(code)}>{t("verify.back")}</Link>
         </p>

@@ -35,6 +35,7 @@ import type {
   SyncSql,
 } from "../ports.ts"
 import { maxBoundParameters } from "../ports.ts"
+import { keepsWinnerNames, winnerChatEndsWithClaims } from "../platform/provider.ts"
 import type {
   ChannelEntryEvent,
   ChannelEntryRefusal,
@@ -150,7 +151,10 @@ export interface GiveawayInit {
 }
 
 /** A viewer entering: who they are on the giveaway's platform and what the platform said about them. */
-export type RoomViewer = Omit<ViewerFacts, "userId" | "isVip" | "isModerator" | "exclusion"> & {
+export type RoomViewer = Omit<
+  ViewerFacts,
+  "userId" | "isMember" | "isVip" | "isModerator" | "exclusion"
+> & {
   readonly platformUserId: string
   readonly login: string
   readonly displayName: string
@@ -818,7 +822,8 @@ export class GiveawayRoom {
     }
     // The end of the chat watch changes the snapshot too, also when every pick is claimed and no reroll window runs.
     pushNow =
-      (state.status === "drawn" && (this.rerollWindowOver() || this.chatWatchOver())) || pushNow
+      (state.status === "drawn" && (this.rerollWindowOver() || this.chatWatchOver(state)))
+      || pushNow
     if (this.deleteExpiredEntries(state, now)) {
       pushNow = true
       state = this.readState()
@@ -1530,6 +1535,7 @@ export class GiveawayRoom {
       userId: viewer.platformUserId,
       isFollower: viewer.isFollower,
       subTier: viewer.subTier,
+      isMember: chatRoles.isMember,
       isVip: chatRoles.isVip || roles.includes("vip"),
       isModerator: chatRoles.isModerator || roles.includes("moderator"),
       accountAgeDays: viewer.accountAgeDays,
@@ -1696,6 +1702,9 @@ export class GiveawayRoom {
       this.sql.exec("DELETE FROM entries", [])
       this.sql.exec("DELETE FROM channel_roles", [])
       this.sql.exec("DELETE FROM excluded_users", [])
+      if (!keepsWinnerNames(state.platform)) {
+        this.sql.exec("UPDATE draws SET login = ?, display_name = ?", [removedName, removedName])
+      }
       this.sql.exec("UPDATE room_state SET entries_deleted = 1 WHERE id = 1", [])
     })
     console.info("room entries deleted", {
@@ -1857,11 +1866,13 @@ export class GiveawayRoom {
   }
 
   private winnerChatWatched(state: RoomState): boolean {
-    return state.status === "drawn" && !state.chatUnavailable && !this.chatWatchOver()
+    return state.status === "drawn" && !state.chatUnavailable && !this.chatWatchOver(state)
   }
 
-  private chatWatchOver(): boolean {
-    const end = this.standingWindowEnd()
+  private chatWatchOver(state: RoomState): boolean {
+    const end = winnerChatEndsWithClaims(state.platform)
+      ? this.nextClaimDeadline()
+      : this.standingWindowEnd()
     return end === null || this.clock.now() > end
   }
 
@@ -1914,6 +1925,7 @@ export class GiveawayRoom {
         if (!settings.subEntry) return
         this.queueEntryRequest(settings, event.viewer, "sub", {
           subTier: event.subTier,
+          isMember: false,
           isVip: false,
           isModerator: false,
         })
@@ -1922,6 +1934,7 @@ export class GiveawayRoom {
         if (event.rewardId !== settings.pointsRewardId) return
         this.queueEntryRequest(settings, event.viewer, "points", {
           subTier: null,
+          isMember: false,
           isVip: false,
           isModerator: false,
         })
@@ -1948,6 +1961,7 @@ export class GiveawayRoom {
       roles.isModerator ? 1 : 0,
       now,
       via,
+      roles.isMember ? 1 : 0,
     ])
     if (queued.length > 0) this.guarded("alarm", () => this.rearm())
   }
@@ -2220,7 +2234,7 @@ interface ChatterLine {
 }
 
 // The roles a chat badge can show beyond the stored role lists.
-type ChatRoleBadges = Pick<ChatterRoles, "isVip" | "isModerator">
+type ChatRoleBadges = Pick<ChatterRoles, "isMember" | "isVip" | "isModerator">
 
 // How an entry is written: its `via` and the roles the chat badges add to the stored lists.
 interface EntryWay {
@@ -2228,7 +2242,10 @@ interface EntryWay {
   readonly roles: ChatRoleBadges
 }
 
-const pageEntry: EntryWay = { via: "page", roles: { isVip: false, isModerator: false } }
+const pageEntry: EntryWay = {
+  via: "page",
+  roles: { isMember: false, isVip: false, isModerator: false },
+}
 
 function chatEntry(request: ChatRequest): EntryWay {
   return { via: request.via, roles: request.roles }

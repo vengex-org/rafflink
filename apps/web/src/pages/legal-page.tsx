@@ -5,7 +5,12 @@ import { Page } from "../components/page.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
-import { repositoryUrl } from "../lib/links.ts"
+import {
+  googlePermissionsUrl,
+  googlePrivacyUrl,
+  repositoryUrl,
+  youtubeTermsUrl,
+} from "../lib/links.ts"
 import type { Load } from "../lib/use-load.ts"
 
 /** One headed part of a legal text: paragraphs first, then a bullet list. */
@@ -40,6 +45,21 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
     repository: (
       <ExternalLink kind="own" href={repositoryUrl}>
         {repositoryUrl}
+      </ExternalLink>
+    ),
+    youtubeTerms: (
+      <ExternalLink kind="reference" href={youtubeTermsUrl}>
+        {youtubeTermsUrl}
+      </ExternalLink>
+    ),
+    googlePrivacy: (
+      <ExternalLink kind="reference" href={googlePrivacyUrl}>
+        {googlePrivacyUrl}
+      </ExternalLink>
+    ),
+    googlePermissions: (
+      <ExternalLink kind="reference" href={googlePermissionsUrl}>
+        {googlePermissionsUrl}
       </ExternalLink>
     ),
   }
@@ -181,6 +201,16 @@ const privacy: LegalDocument = {
       ],
     },
     {
+      heading: "privacy.youtube.h",
+      paragraphs: ["privacy.youtube.p1"],
+      items: [
+        "privacy.youtube.i1",
+        "privacy.youtube.i2",
+        "privacy.youtube.i3",
+        "privacy.youtube.i4",
+      ],
+    },
+    {
       heading: "privacy.cookies.h",
       paragraphs: ["privacy.cookies.p1"],
       items: [
@@ -237,7 +267,7 @@ const terms: LegalDocument = {
     },
     {
       heading: "terms.platforms.h",
-      paragraphs: ["terms.platforms.p1"],
+      paragraphs: ["terms.platforms.p1", "terms.platforms.p2"],
       items: [],
     },
     {

@@ -7,6 +7,7 @@ export const groups = [
   "sub_t1",
   "sub_t2",
   "sub_t3",
+  "member",
   "vip",
   "moderator",
 ] as const
@@ -62,5 +63,8 @@ function isSupported(group: Group, capabilities: PlatformCapabilities): boolean 
       return capabilities.subTiers
     case "vip":
       return capabilities.vip
+    // Only a chat message tells a channel member.
+    case "member":
+      return false
   }
 }

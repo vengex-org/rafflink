@@ -104,6 +104,7 @@ function Report({
             }}
           />
         )}
+        {report.youtubeQuota === null ? null : <YouTubeQuotaCard quota={report.youtubeQuota} />}
         {report.signupOpen ? null : <AccessCard />}
         <section className="card" aria-labelledby="queue">
           <h2 id="queue">{t("admin.queue.title")}</h2>
@@ -433,6 +434,40 @@ function ActiveLimits({ limits }: { readonly limits: AdminPlanJson["limits"] }) 
   )
 }
 
+/** Google's daily quota of the install's YouTube API calls, with a warning from YOUTUBE_QUOTA_ALERT_PERCENT on. */
+function YouTubeQuotaCard({ quota }: { readonly quota: NonNullable<AdminUsage["youtubeQuota"]> }) {
+  const { t, number } = useI18n()
+  return (
+    <section className="card" aria-labelledby="youtube-quota">
+      <h2 id="youtube-quota">{t("admin.youtube.title")}</h2>
+      <p className="muted">{t("admin.youtube.hint")}</p>
+      {quota === "unavailable" ? (
+        <p>{t("admin.unavailable")}</p>
+      ) : (
+        <>
+          <Bar
+            icon={<ActivityIcon />}
+            label={t("admin.youtube.units")}
+            used={quota.used}
+            limit={quota.limit}
+            text={t("admin.youtube.usageText", {
+              used: number(quota.used),
+              limit: number(quota.limit),
+            })}
+          />
+          {quota.alert ? (
+            <p role="alert" className="field-error">
+              {t("admin.youtube.alert", {
+                percent: number(Math.floor((quota.used * 100) / quota.limit)),
+              })}
+            </p>
+          ) : null}
+        </>
+      )}
+    </section>
+  )
+}
+
 function UsageBars({ usage }: { readonly usage: Usage | null | "unavailable" }) {
   const { t } = useI18n()
   if (usage === null) return <p>{t("admin.noLimit")}</p>
@@ -460,12 +495,15 @@ function Bar({
   label,
   used,
   limit,
+  text,
 }: {
   readonly icon: ReactNode
   readonly label: string
   readonly used: number
   /** Null on a plan without a daily cap: the count shows without a bar. */
   readonly limit: number | null
+  /** The sentence under the bar; the request counts' when absent. */
+  readonly text?: string
 }) {
   const { t, number } = useI18n()
   return (
@@ -476,9 +514,10 @@ function Bar({
       </p>
       {limit === null ? null : <progress value={used} max={limit} aria-label={label} />}
       <p className="usage-text">
-        {limit === null
-          ? t("admin.usageNoLimit", { used: number(used) })
-          : t("admin.usageText", { used: number(used), limit: number(limit) })}
+        {text
+          ?? (limit === null
+            ? t("admin.usageNoLimit", { used: number(used) })
+            : t("admin.usageText", { used: number(used), limit: number(limit) }))}
       </p>
     </div>
   )

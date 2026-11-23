@@ -96,6 +96,7 @@ export function Status({ children }: { readonly children: ReactNode }) {
 const signInLabels: Readonly<Record<Platform, MessageKey>> = {
   twitch: "signIn.button",
   kick: "signIn.buttonKick",
+  youtube: "signIn.buttonYouTube",
 }
 
 /** Signing in brings the streamer back to the page they are on; one button per platform the install signs in with. */

@@ -27,7 +27,16 @@ interface RoomBinding {
 }
 
 const rules: GiveawayRules = {
-  tickets: { viewer: 1, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 1, moderator: 1 },
+  tickets: {
+    viewer: 1,
+    follower: 1,
+    sub_t1: 1,
+    sub_t2: 1,
+    sub_t3: 1,
+    member: 0,
+    vip: 1,
+    moderator: 1,
+  },
   subsOnly: false,
   followersOnly: false,
   minAccountAgeDays: null,

@@ -1,5 +1,10 @@
 import { serveStatic, upgradeWebSocket } from "@hono/bun"
-import { apiPrefixes, fakeKickPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
+import {
+  apiPrefixes,
+  fakeKickPrefixes,
+  fakeTwitchPrefixes,
+  fakeYouTubePrefixes,
+} from "@rafflink/core/http/api-paths"
 import { staticCacheControl } from "@rafflink/core/http/static-headers"
 import { errorClass } from "@rafflink/core/lib/error-class"
 import { captureException } from "@sentry/core"
@@ -25,17 +30,19 @@ export interface ServerAppOptions {
   readonly fakeTwitch: Hono | null
   /** Mounted under {@link fakeKickPrefixes} in dev only. */
   readonly fakeKick: Hono | null
+  /** Mounted under {@link fakeYouTubePrefixes} in dev only. */
+  readonly fakeYouTube: Hono | null
   /** The built SPA files except `index.html`, which the HTTP app of core answers as a page; null serves no files. */
   readonly staticDir: string | null
 }
 
 /**
  * Everything the Bun server answers except the dev SPA bundle: the API, WebSocket upgrades of the
- * live, overlay and viewer routes, the fake Twitch and fake Kick in dev, the SPA files, and the pages of core for every
+ * live, overlay and viewer routes, the fake Twitch, Kick and YouTube in dev, the SPA files, and the pages of core for every
  * other path.
  */
 export function createServerApp(options: ServerAppOptions): Hono {
-  const { api, rooms, fakeTwitch, fakeKick, staticDir } = options
+  const { api, rooms, fakeTwitch, fakeKick, fakeYouTube, staticDir } = options
   const app = new Hono()
 
   app.get(
@@ -93,6 +100,11 @@ export function createServerApp(options: ServerAppOptions): Hono {
   for (const prefix of fakeKickPrefixes) {
     app.all(`${prefix}*`, (c) =>
       fakeKick === null ? api.fetch(c.req.raw) : fakeKick.fetch(c.req.raw, c.env),
+    )
+  }
+  for (const prefix of fakeYouTubePrefixes) {
+    app.all(`${prefix}*`, (c) =>
+      fakeYouTube === null ? api.fetch(c.req.raw) : fakeYouTube.fetch(c.req.raw, c.env),
     )
   }
   if (staticDir !== null) {

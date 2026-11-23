@@ -39,6 +39,7 @@ describe("viewer socket", () => {
       },
       fakeTwitch: null,
       fakeKick: null,
+      fakeYouTube: null,
       staticDir: null,
     })
 
@@ -79,6 +80,7 @@ describe.each([
       },
       fakeTwitch: null,
       fakeKick: null,
+      fakeYouTube: null,
       staticDir: null,
     })
 
@@ -114,6 +116,7 @@ describe("a socket whose first message cannot be built", () => {
       },
       fakeTwitch: null,
       fakeKick: null,
+      fakeYouTube: null,
       staticDir: null,
     })
 

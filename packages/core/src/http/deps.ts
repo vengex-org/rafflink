@@ -8,6 +8,7 @@ import type { Clock, PublicCache, RateLimiter, Random, ReportError, UsageMeter }
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { TokenQueueStub } from "../queue/token-queue.ts"
 import type { RoomDirectory } from "../room/room-directory.ts"
+import type { YouTubeQuota } from "../youtube/quota.ts"
 
 export interface AppDeps {
   readonly config: ResolvedConfig
@@ -24,6 +25,8 @@ export interface AppDeps {
    * server), where the admin page shows no plan and the switch answers 404.
    */
   readonly planQueue: PlanQueue | null
+  /** Today's YouTube units; null on an install without a Google client. */
+  readonly youtubeQuota: YouTubeQuota | null
   readonly publicCache: PublicCache
   readonly keyRing: KeyRing
   readonly admins: AdminDirectory

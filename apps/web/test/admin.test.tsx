@@ -56,6 +56,7 @@ function adminAnswer(overrides: Record<string, unknown> = {}) {
     alertPercent: 70,
     signupOpen: true,
     queue,
+    youtubeQuota: null,
     ...overrides,
   })
 }
@@ -112,6 +113,39 @@ describe("admin page", () => {
     expect(view.getByText("none")).toBeTruthy()
     expect(view.getByText("3")).toBeTruthy()
     expect(view.getByText("entries processed twice, one result discarded")).toBeTruthy()
+  })
+
+  it("shows today's YouTube units, and warns once they reach the alert percent", async () => {
+    mockAdmin({
+      "GET /api/admin/usage": () =>
+        adminAnswer({ youtubeQuota: { used: 7_200, limit: 10_000, alert: true } }),
+    })
+
+    const view = renderApp("/admin")
+
+    const bar = await view.findByRole("progressbar", { name: "YouTube units today" })
+    expect(bar.getAttribute("value")).toBe("7200")
+    expect(view.getByText("7,200 of 10,000 units used today")).toBeTruthy()
+    expect(view.getByRole("alert").textContent).toContain("72% of the daily cap")
+  })
+
+  it("says the YouTube count is unavailable when the server could not read it", async () => {
+    mockAdmin({ "GET /api/admin/usage": () => adminAnswer({ youtubeQuota: "unavailable" }) })
+
+    const view = renderApp("/admin")
+    const card = (await view.findByRole("heading", { name: "YouTube quota" })).closest("section")
+
+    expect(card?.textContent).toContain("Today's usage is unavailable right now.")
+    expect(view.queryByRole("progressbar", { name: "YouTube units today" })).toBeNull()
+  })
+
+  it("shows no YouTube quota on an install without YouTube", async () => {
+    mockAdmin({ "GET /api/admin/usage": () => adminAnswer() })
+
+    const view = renderApp("/admin")
+
+    expect(await view.findByText("7")).toBeTruthy()
+    expect(view.queryByText("YouTube quota")).toBeNull()
   })
 
   it("says the usage is unavailable when the usage source did not answer", async () => {

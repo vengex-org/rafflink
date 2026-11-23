@@ -81,6 +81,7 @@ export const initialValues: Values = {
     sub_t1: "1",
     sub_t2: "1",
     sub_t3: "1",
+    member: "0",
     vip: "1",
     moderator: "1",
   },
@@ -165,6 +166,7 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
       sub_t1: String(rules.tickets.sub_t1),
       sub_t2: String(rules.tickets.sub_t2),
       sub_t3: String(rules.tickets.sub_t3),
+      member: String(rules.tickets.member),
       vip: String(rules.tickets.vip),
       moderator: String(rules.tickets.moderator),
     },
@@ -351,6 +353,7 @@ function ticketCounts(typed: Values["tickets"]): Tickets {
     sub_t1: Number(typed.sub_t1),
     sub_t2: Number(typed.sub_t2),
     sub_t3: Number(typed.sub_t3),
+    member: Number(typed.member),
     vip: Number(typed.vip),
     moderator: Number(typed.moderator),
   }

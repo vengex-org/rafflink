@@ -31,6 +31,7 @@
         "@rafflink/core": "workspace:*",
         "@rafflink/fake-kick": "workspace:*",
         "@rafflink/fake-twitch": "workspace:*",
+        "@rafflink/fake-youtube": "workspace:*",
         "@rafflink/web": "workspace:*",
         "@sentry/bun": "11.11.0",
         "@sentry/core": "11.11.0",
@@ -74,6 +75,7 @@
       "devDependencies": {
         "@rafflink/fake-kick": "workspace:*",
         "@rafflink/fake-twitch": "workspace:*",
+        "@rafflink/fake-youtube": "workspace:*",
       },
     },
     "packages/fake-kick": {
@@ -90,6 +92,13 @@
         "@hono/bun": "1.0.1",
         "hono": "4.13.19",
         "jose": "6.2.18",
+      },
+    },
+    "packages/fake-youtube": {
+      "name": "@rafflink/fake-youtube",
+      "version": "0.0.0",
+      "dependencies": {
+        "hono": "4.13.19",
       },
     },
   },
@@ -337,6 +346,8 @@
     "@rafflink/fake-kick": ["@rafflink/fake-kick@workspace:packages/fake-kick"],
 
     "@rafflink/fake-twitch": ["@rafflink/fake-twitch@workspace:packages/fake-twitch"],
+
+    "@rafflink/fake-youtube": ["@rafflink/fake-youtube@workspace:packages/fake-youtube"],
 
     "@rafflink/server": ["@rafflink/server@workspace:apps/server"],
 

@@ -4,7 +4,12 @@ import type { StreamerTokenDeps } from "@rafflink/core/accounts/streamer-token"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
 import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import type { ResolvedConfig } from "@rafflink/core/config"
-import { apiPrefixes, fakeKickPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
+import {
+  apiPrefixes,
+  fakeKickPrefixes,
+  fakeTwitchPrefixes,
+  fakeYouTubePrefixes,
+} from "@rafflink/core/http/api-paths"
 import { DrandBeacon } from "@rafflink/core/beacon/drand-beacon"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { errorClass } from "@rafflink/core/lib/error-class"
@@ -26,6 +31,8 @@ import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import { kickAppOf, type KickApp } from "@rafflink/core/kick/kick-client"
 import { kickPlatform } from "@rafflink/core/kick/kick-provider"
+import { youtubeAppOf, type YouTubeApp } from "@rafflink/core/youtube/youtube-client"
+import { youtubePlatform } from "@rafflink/core/youtube/youtube-provider"
 import { enterQueuedCode } from "@rafflink/core/viewer/enter-giveaway"
 import type { Hono } from "hono"
 import { existsSync, mkdirSync, readdirSync } from "node:fs"
@@ -69,7 +76,8 @@ const reportError: ReportError = (error, context) => {
 
 /**
  * Opens the data folder, starts the timers and listens. With `config.devFakeTwitch` the fake Twitch answers at the
- * Twitch URLs, with `config.devFakeKick` the fake Kick at the Kick URLs.
+ * Twitch URLs, with `config.devFakeKick` the fake Kick at the Kick URLs, with `config.devFakeYouTube` the fake YouTube at
+ * the Google URLs.
  */
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   const { config, staticDir, devSpa, devPublicDir } = options
@@ -85,9 +93,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const stats = new StatsStore(accountsSql, config)
   const twitch = new TwitchClient(config, fetch)
   const keyRing = await openKeyRing(config.tokenSealKeys)
+  const youtube = youtubePlatform(config, fetch, clock, accountsSql)
   const platforms = {
     twitch: new TwitchProvider(twitch, clock, config),
     ...kickPlatform(config, fetch, clock, accountsSql),
+    ...youtube,
   }
   const tokenDeps: StreamerTokenDeps = { clock, random, platforms, accounts, keyRing }
   const connector = new BunSocketConnector()
@@ -145,6 +155,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     stats,
     usage: { today: async () => null },
     planQueue: null,
+    youtubeQuota: youtube.youtube?.quota ?? null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
     keyRing,
     admins: new AdminDirectory(config, twitch),
@@ -164,11 +175,16 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   // resolveConfig refuses DEV_FAKE_KICK without a Kick app, so the fake never runs without one.
   const fakeKick =
     config.devFakeKick && kickApp !== null ? await createFakeKickApp(kickApp, config) : null
+  const youtubeApp = youtubeAppOf(config)
+  // resolveConfig refuses DEV_FAKE_YOUTUBE without a Google client as well.
+  const fakeYouTube =
+    config.devFakeYouTube && youtubeApp !== null ? await createFakeYouTubeApp(youtubeApp) : null
   const app = createServerApp({
     api: createApp(deps, staticDir === null ? null : indexTemplateOf(staticDir)),
     rooms,
     fakeTwitch,
     fakeKick,
+    fakeYouTube,
     staticDir: staticDir ?? devPublicDir,
   })
   const server = Bun.serve({
@@ -262,6 +278,15 @@ async function createFakeKickApp(kickApp: KickApp, config: ResolvedConfig): Prom
   return fake.app
 }
 
+// Loaded here for the same reason as the fake Twitch.
+async function createFakeYouTubeApp(youtubeApp: YouTubeApp): Promise<Hono> {
+  const { createFakeYouTube, devFakeYouTubeOptions, startDevFakeYouTube } =
+    await import("@rafflink/fake-youtube")
+  const fake = createFakeYouTube({ ...devFakeYouTubeOptions, ...youtubeApp })
+  startDevFakeYouTube(fake)
+  return fake.app
+}
+
 // A wildcard route for the SPA would swallow every path, so each path the server answers is listed.
 // The folder is read once at start: a file added to it later needs a restart.
 function devRoutes(app: Hono, spa: Bun.HTMLBundle, publicDir: string | null) {
@@ -274,7 +299,9 @@ function devRoutes(app: Hono, spa: Bun.HTMLBundle, publicDir: string | null) {
           entry.isDirectory() ? `/${entry.name}/*` : `/${entry.name}`,
         )
   const handled = [
-    ...[...apiPrefixes, ...fakeTwitchPrefixes, ...fakeKickPrefixes].map((prefix) => `${prefix}*`),
+    ...[...apiPrefixes, ...fakeTwitchPrefixes, ...fakeKickPrefixes, ...fakeYouTubePrefixes].map(
+      (prefix) => `${prefix}*`,
+    ),
     ...publicPaths,
   ]
   return { ...Object.fromEntries(handled.map((path) => [path, answered])), "/*": spa }

@@ -29,6 +29,7 @@ export type ConfigReason =
   | "below-claim-and-reroll-windows"
   | "fake-twitch-needs-local-public-url"
   | "fake-kick-needs-local-public-url"
+  | "fake-youtube-needs-local-public-url"
   | "not-a-cloudflare-plan"
   | "not-a-login"
   | "not-a-sentry-dsn"
@@ -104,6 +105,18 @@ export const configSchema = {
     "",
     "Kick app registration, see the README; set together with KICK_CLIENT_ID",
   ),
+  youtubeClientId: withDefault(
+    "YOUTUBE_CLIENT_ID",
+    optional(text),
+    "",
+    "Google OAuth web client of the YouTube Data API, see the README; blank turns YouTube sign-in off, set together with YOUTUBE_CLIENT_SECRET",
+  ),
+  youtubeClientSecret: withDefault(
+    "YOUTUBE_CLIENT_SECRET",
+    optional(text),
+    "",
+    "Google OAuth web client of the YouTube Data API, see the README; set together with YOUTUBE_CLIENT_ID",
+  ),
   tokenSealKeys: required(
     "TOKEN_SEAL_KEYS",
     list(text),
@@ -139,6 +152,12 @@ export const configSchema = {
     bool,
     "false",
     "Mounts the fake Kick routes, whose app is KICK_CLIENT_ID and KICK_CLIENT_SECRET; never true in production",
+  ),
+  devFakeYouTube: withDefault(
+    "DEV_FAKE_YOUTUBE",
+    bool,
+    "false",
+    "Mounts the fake Google OAuth and YouTube routes, whose client is YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET; never true in production",
   ),
   defaultClaimSeconds: withDefault(
     "DEFAULT_CLAIM_SECONDS",
@@ -373,6 +392,72 @@ export const configSchema = {
     int(1),
     "3",
     "Attempts to subscribe to a channel's Kick chat before the room shows chat claim unavailable; starting guess",
+  ),
+  youtubeAuthBaseUrl: withDefault(
+    "YOUTUBE_AUTH_BASE_URL",
+    url,
+    "https://accounts.google.com",
+    "Origin of Google's OAuth consent page; only tests change it",
+  ),
+  youtubeTokenBaseUrl: withDefault(
+    "YOUTUBE_TOKEN_BASE_URL",
+    url,
+    "https://oauth2.googleapis.com",
+    "Origin of Google's OAuth token and token info endpoints; only tests change it",
+  ),
+  youtubeApiBaseUrl: withDefault(
+    "YOUTUBE_API_BASE_URL",
+    url,
+    "https://www.googleapis.com",
+    "Origin of the YouTube Data API v3 (channels, live broadcasts, live chat messages); only tests change it",
+  ),
+  youtubeTimeoutMs: withDefault(
+    "YOUTUBE_TIMEOUT_MS",
+    int(1),
+    "5000",
+    "Timeout of every outbound Google and YouTube call; starting guess, the same as TWITCH_TIMEOUT_MS",
+  ),
+  youtubeDailyQuotaUnits: withDefault(
+    "YOUTUBE_DAILY_QUOTA_UNITS",
+    int(1),
+    "10000",
+    "YouTube Data API units the install spends per Pacific day, counted per call in the accounts database; a chat watch stops and a giveaway that would pass it is refused; 10,000 is Google's default quota of a project, raise it only after Google granted more",
+  ),
+  youtubeQuotaAlertPercent: withDefault(
+    "YOUTUBE_QUOTA_ALERT_PERCENT",
+    int(1, 100),
+    "70",
+    "The admin page warns once today's YouTube units reach this percent of YOUTUBE_DAILY_QUOTA_UNITS, so there is time to ask Google for more quota; the owner's choice",
+  ),
+  youtubeChatPollMinMs: withDefault(
+    "YOUTUBE_CHAT_POLL_MIN_MS",
+    int(1000),
+    "5000",
+    "Least wait between two reads of a YouTube live chat, whatever shorter interval YouTube suggests; each read costs 5 units, so 5 seconds is 60 units a minute, which is also the rate the create form estimates with; starting guess",
+  ),
+  youtubeWinnerPollMinMs: withDefault(
+    "YOUTUBE_WINNER_POLL_MIN_MS",
+    int(1000),
+    "30000",
+    "Least wait between two reads of a YouTube live chat after the draw, while only winners' claims are read: 30 seconds is 10 units a minute, and a claim still lands well within a claim time of minutes; starting guess",
+  ),
+  youtubeChatRetryDelaySeconds: withDefault(
+    "YOUTUBE_CHAT_RETRY_DELAY_SECONDS",
+    int(1),
+    "5",
+    "Wait before the next read of a YouTube live chat after one failed; starting guess",
+  ),
+  youtubeChatMaxAttempts: withDefault(
+    "YOUTUBE_CHAT_MAX_ATTEMPTS",
+    int(1),
+    "3",
+    "Failed reads of a YouTube live chat in a row before the room shows chat entry or chat claim unavailable; starting guess",
+  ),
+  youtubeBroadcastRetrySeconds: withDefault(
+    "YOUTUBE_BROADCAST_RETRY_SECONDS",
+    int(1),
+    "60",
+    "Wait between two looks for the streamer's active YouTube broadcast while a giveaway waits for its chat, so a giveaway made before the stream starts finds the chat once it does; each look costs 1 unit; starting guess",
   ),
   eventSubUrl: withDefault(
     "EVENTSUB_URL",
@@ -930,6 +1015,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     twitchClientSecret: read(env, configSchema.twitchClientSecret),
     kickClientId: read(env, configSchema.kickClientId),
     kickClientSecret: read(env, configSchema.kickClientSecret),
+    youtubeClientId: read(env, configSchema.youtubeClientId),
+    youtubeClientSecret: read(env, configSchema.youtubeClientSecret),
     tokenSealKeys: read(env, configSchema.tokenSealKeys),
     sessionSecret: read(env, configSchema.sessionSecret),
     admins: read(env, configSchema.admins),
@@ -938,6 +1025,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     streamerAccessListMax: read(env, configSchema.streamerAccessListMax),
     devFakeTwitch: read(env, configSchema.devFakeTwitch),
     devFakeKick: read(env, configSchema.devFakeKick),
+    devFakeYouTube: read(env, configSchema.devFakeYouTube),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
     chatEntryCheckSeconds: read(env, configSchema.chatEntryCheckSeconds),
@@ -977,6 +1065,17 @@ export function resolveConfig(env: Env): ResolvedConfig {
     kickOrphanRetrySeconds: read(env, configSchema.kickOrphanRetrySeconds),
     kickSubscribeRetryDelaySeconds: read(env, configSchema.kickSubscribeRetryDelaySeconds),
     kickSubscribeMaxAttempts: read(env, configSchema.kickSubscribeMaxAttempts),
+    youtubeAuthBaseUrl: read(env, configSchema.youtubeAuthBaseUrl),
+    youtubeTokenBaseUrl: read(env, configSchema.youtubeTokenBaseUrl),
+    youtubeApiBaseUrl: read(env, configSchema.youtubeApiBaseUrl),
+    youtubeTimeoutMs: read(env, configSchema.youtubeTimeoutMs),
+    youtubeDailyQuotaUnits: read(env, configSchema.youtubeDailyQuotaUnits),
+    youtubeQuotaAlertPercent: read(env, configSchema.youtubeQuotaAlertPercent),
+    youtubeChatPollMinMs: read(env, configSchema.youtubeChatPollMinMs),
+    youtubeWinnerPollMinMs: read(env, configSchema.youtubeWinnerPollMinMs),
+    youtubeChatRetryDelaySeconds: read(env, configSchema.youtubeChatRetryDelaySeconds),
+    youtubeChatMaxAttempts: read(env, configSchema.youtubeChatMaxAttempts),
+    youtubeBroadcastRetrySeconds: read(env, configSchema.youtubeBroadcastRetrySeconds),
     eventSubUrl: read(env, configSchema.eventSubUrl),
     eventSubSubscribeSeconds: read(env, configSchema.eventSubSubscribeSeconds),
     eventSubConnectionMaxSeconds: read(env, configSchema.eventSubConnectionMaxSeconds),
@@ -1085,6 +1184,14 @@ export function resolveConfig(env: Env): ResolvedConfig {
       config.kickClientId === null ? configSchema.kickClientId : configSchema.kickClientSecret
     throw new ConfigError(missing.env, "missing")
   }
+  // A Google client is its id and its secret as well.
+  if ((config.youtubeClientId === null) !== (config.youtubeClientSecret === null)) {
+    const missing =
+      config.youtubeClientId === null
+        ? configSchema.youtubeClientId
+        : configSchema.youtubeClientSecret
+    throw new ConfigError(missing.env, "missing")
+  }
   // The page gives up polling before the code could expire, so a polling page never outlives its code.
   if (config.queuePollMaxSeconds >= config.queueCodeMaxAgeSeconds) {
     throw new ConfigError(configSchema.queuePollMaxSeconds.env, "not-below-queue-code-max-age")
@@ -1129,6 +1236,13 @@ export function resolveConfig(env: Env): ResolvedConfig {
   // The fake Kick takes the Kick app's id and secret, so a fake without them would sign no one in.
   if (config.devFakeKick && config.kickClientId === null) {
     throw new ConfigError(configSchema.kickClientId.env, "missing")
+  }
+  // The fake YouTube signs anyone in as well, and takes the Google client's id and secret.
+  if (config.devFakeYouTube && !isLocalOrigin(config.publicUrl)) {
+    throw new ConfigError(configSchema.devFakeYouTube.env, "fake-youtube-needs-local-public-url")
+  }
+  if (config.devFakeYouTube && config.youtubeClientId === null) {
+    throw new ConfigError(configSchema.youtubeClientId.env, "missing")
   }
   return config
 }

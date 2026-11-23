@@ -14,7 +14,16 @@ import {
 
 // Kick's API tells no follows, subscriptions, VIPs or moderators, so a giveaway with page entry gives only viewers tickets.
 const kickRules = {
-  tickets: { viewer: 1, follower: 0, sub_t1: 0, sub_t2: 0, sub_t3: 0, vip: 0, moderator: 0 },
+  tickets: {
+    viewer: 1,
+    follower: 0,
+    sub_t1: 0,
+    sub_t2: 0,
+    sub_t3: 0,
+    member: 0,
+    vip: 0,
+    moderator: 0,
+  },
 }
 
 const reward = { id: "01HKICKREWARDENTER0000000", title: "Enter the giveaway" } as const

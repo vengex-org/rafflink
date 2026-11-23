@@ -166,6 +166,26 @@ describe("routes", () => {
     expect(mounted.status).toBe(200)
   })
 
+  it("mounts the fake YouTube routes only with DEV_FAKE_YOUTUBE", async () => {
+    // The Google URLs point at a closed local port, so nothing reaches the real Google.
+    const googleClient = {
+      YOUTUBE_CLIENT_ID: "fake-youtube-id",
+      YOUTUBE_CLIENT_SECRET: "fake-youtube-secret",
+      YOUTUBE_AUTH_BASE_URL: "http://127.0.0.1:9",
+      YOUTUBE_TOKEN_BASE_URL: "http://127.0.0.1:9",
+      YOUTUBE_API_BASE_URL: "http://127.0.0.1:9",
+    }
+    const without = await launch(googleClient)
+    const withFake = await launch({ ...googleClient, DEV_FAKE_YOUTUBE: "true" })
+
+    const missing = await fetch(new URL("/tokeninfo?access_token=x", without.url))
+    const mounted = await fetch(new URL("/tokeninfo?access_token=x", withFake.url))
+
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toEqual({ error: "not-found" })
+    expect([mounted.status, await mounted.json()]).toEqual([400, { error: "invalid_token" }])
+  })
+
   it("lets a dev sign-in pick the second fake user with login_hint", async () => {
     const server = await launch({ DEV_FAKE_TWITCH: "true" })
     const known = await fetch(

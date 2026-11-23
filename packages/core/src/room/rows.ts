@@ -246,6 +246,7 @@ export function parseChatRequest(row: SqlRow): ChatRequest {
     via: reader.oneOf("via", channelEntryVias),
     roles: {
       subTier,
+      isMember: reader.int("member") === 1,
       isVip: reader.int("vip") === 1,
       isModerator: reader.int("moderator") === 1,
     },

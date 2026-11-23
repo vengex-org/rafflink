@@ -128,7 +128,7 @@ export function giveawayRoutes(deps: AppDeps): Hono {
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     c.header("Cache-Control", "no-store")
     const verification = await deps.rooms.get(giveaway.id).verification()
-    return c.json(verifyJson(verification))
+    return c.json(verifyJson(verification, providerFor(deps.platforms, giveaway.platform).platform))
   })
 
   // The Merkle root in the path names the list: a code freed by a deleted giveaway and given to a new one

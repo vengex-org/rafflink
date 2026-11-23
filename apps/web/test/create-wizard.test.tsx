@@ -253,7 +253,7 @@ describe("create wizard", () => {
 
     expect(view.getByText(message)).toBeTruthy()
     expect(view.getByLabelText(label).getAttribute("aria-invalid")).toBe("true")
-    expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
   })
 
   it("asks for an end time when entries end at a set time, and not for one in the past", async () => {
@@ -367,7 +367,16 @@ describe("create wizard", () => {
       title: "Cup",
       prize: "A chair",
       rules: {
-        tickets: { viewer: 1, follower: 1, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 5, moderator: 1 },
+        tickets: {
+          viewer: 1,
+          follower: 1,
+          sub_t1: 1,
+          sub_t2: 1,
+          sub_t3: 1,
+          member: 0,
+          vip: 5,
+          moderator: 1,
+        },
         subsOnly: true,
         followersOnly: false,
         minAccountAgeDays: 7,
@@ -481,7 +490,16 @@ describe("create wizard", () => {
       title: "Cup",
       prize: "A chair",
       rules: {
-        tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 0 },
+        tickets: {
+          viewer: 1,
+          follower: 2,
+          sub_t1: 3,
+          sub_t2: 4,
+          sub_t3: 5,
+          member: 0,
+          vip: 6,
+          moderator: 0,
+        },
         subsOnly: false,
         followersOnly: true,
         minAccountAgeDays: 30,
@@ -566,7 +584,7 @@ describe("create wizard", () => {
       next(view)
 
       expect(await view.findByText("Enter a whole number, 1 or more.")).toBeTruthy()
-      expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+      expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
       expect(view.getByLabelText("How many giveaways back").getAttribute("aria-invalid")).toBe(
         "true",
       )
@@ -689,7 +707,7 @@ describe("create wizard", () => {
     next(view)
 
     expect(await view.findByText(/Reconnect Twitch first/)).toBeTruthy()
-    expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
   })
 
   it("enters new subscribers on top of page entry once the token holds the sub scope", async () => {
@@ -764,7 +782,7 @@ describe("create wizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
 
     expect(await view.findByText(/Reconnect Twitch first/)).toBeTruthy()
-    expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
   })
 
   it("hides sub entry for a channel without channel points, which has no subs either", async () => {
@@ -885,7 +903,16 @@ describe("create wizard", () => {
     const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
     expect(body).toMatchObject({
       rules: {
-        tickets: { viewer: 1, follower: 0, sub_t1: 1, sub_t2: 1, sub_t3: 1, vip: 0, moderator: 2 },
+        tickets: {
+          viewer: 1,
+          follower: 0,
+          sub_t1: 1,
+          sub_t2: 1,
+          sub_t3: 1,
+          member: 0,
+          vip: 0,
+          moderator: 2,
+        },
         followersOnly: false,
         chatKeyword: null,
         pageEntry: true,
@@ -919,6 +946,49 @@ describe("create wizard", () => {
     expect(body).toMatchObject({
       rules: { tickets: { sub_t1: 0, sub_t2: 0, sub_t3: 0 }, subsOnly: false },
     })
+  })
+
+  it("shows a YouTube streamer what reading the chat costs and goes back to the rules when today's units are short", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      followerCheck: false,
+      subTiers: false,
+      vip: false,
+      accountAge: false,
+      moderatorRole: false,
+      pageEntry: false,
+      subEntry: false,
+      pointsEntry: false,
+      chatBadgeGroups: ["member", "moderator"],
+    }
+    mockFetch({
+      ...withCreate({ status: 409, body: { error: "youtube-quota", needed: 600, remaining: 100 } }),
+      "GET /api/session": () =>
+        ok({
+          ...supportedSession,
+          streamer: { ...supportedSession.streamer, platform: "youtube", capabilities },
+        }),
+      "GET /api/dash/youtube-budget": () =>
+        ok({ limit: 10_000, remaining: 4_000, unitsPerMinute: 60, winnerUnitsPerMinute: 10 }),
+    })
+    const view = await openWizard()
+    fillGiveaway(view)
+    await toRules(view)
+    const note = await view.findByText(/4,000 are left today/)
+    const memberTickets = view.getByLabelText("Channel members")
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+
+    expect(await view.findByText(/Today's YouTube units are not enough/)).toBeTruthy()
+    expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
+    expect(note.textContent).toContain("about 60 of the 10,000 YouTube units")
+    expect(note.textContent).toContain("about 10 a minute")
+    expect(note.textContent).toContain("about 66 minutes of entries")
+    expect(memberTickets).toBeTruthy()
+    expect(view.queryByLabelText("Subscribers, tier 1")).toBeNull()
+    expect(view.queryByRole("radio", { name: /Giveaway page/ })).toBeNull()
+    expect(view.getByRole("radio", { name: /Chat only/ })).toBeTruthy()
   })
 
   it("offers Kick subscriber and moderator tickets only for chat only entry, with the chat cost and today's budget", async () => {
@@ -963,7 +1033,16 @@ describe("create wizard", () => {
     const body = requests.find((request) => request.route === "POST /api/dash/giveaways")?.body
     expect(body).toMatchObject({
       rules: {
-        tickets: { viewer: 1, follower: 0, sub_t1: 3, sub_t2: 0, sub_t3: 0, vip: 0, moderator: 5 },
+        tickets: {
+          viewer: 1,
+          follower: 0,
+          sub_t1: 3,
+          sub_t2: 0,
+          sub_t3: 0,
+          member: 0,
+          vip: 0,
+          moderator: 5,
+        },
         pageEntry: false,
       },
     })
@@ -1555,7 +1634,7 @@ describe("create wizard", () => {
 
       expect(view.getByText("Enter a whole number of minutes, 1 or more.")).toBeTruthy()
       expect(view.getByLabelText("Minutes").getAttribute("aria-invalid")).toBe("true")
-      expect(view.getByText("Step 2 of 3: Entry rules")).toBeTruthy()
+      expect(await view.findByText("Step 2 of 3: Entry rules")).toBeTruthy()
     })
 
     it("shows the server's refusal of the custom time under the minutes", async () => {

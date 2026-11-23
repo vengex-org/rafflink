@@ -5,7 +5,16 @@ import type { LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import type { GiveawayView } from "../src/api/client.ts"
 
 export const rules: GiveawayRules = {
-  tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 2,
+    sub_t1: 3,
+    sub_t2: 4,
+    sub_t3: 5,
+    member: 0,
+    vip: 6,
+    moderator: 7,
+  },
   subsOnly: false,
   followersOnly: false,
   minAccountAgeDays: null,

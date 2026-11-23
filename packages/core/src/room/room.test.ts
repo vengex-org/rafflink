@@ -56,7 +56,16 @@ const baseEnv = {
 const config = resolveConfig(baseEnv)
 
 const rules: GiveawayRules = {
-  tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 2,
+    sub_t1: 3,
+    sub_t2: 4,
+    sub_t3: 5,
+    member: 0,
+    vip: 6,
+    moderator: 7,
+  },
   subsOnly: false,
   followersOnly: false,
   minAccountAgeDays: null,
@@ -878,7 +887,38 @@ describe("GiveawayRoom reroll", () => {
   })
 })
 
+// Whether the room watches the winner's chat before and after the winner claims.
+async function winnerChatAroundClaim(platform: string): Promise<boolean[]> {
+  const { room } = setup({ ...giveaway, platform })
+  enterMany(room, ["1", "2"])
+  room.close(null)
+  await room.draw(1, null)
+  const [pick] = room.picks()
+  const before = room.liveSnapshot().winnerChatOpen
+  room.claim(0, { platform, platformUserId: pick?.platformUserId ?? "" }, "rafflink", null)
+  return [before, room.liveSnapshot().winnerChatOpen]
+}
+
 describe("GiveawayRoom claim", () => {
+  it("stops watching a YouTube winner's chat once they claimed, while Twitch keeps watching to the reroll window", async () => {
+    expect(await winnerChatAroundClaim("youtube")).toEqual([true, false])
+    expect(await winnerChatAroundClaim("twitch")).toEqual([true, true])
+  })
+
+  it("stops watching a YouTube winner's chat when their claim time ends", async () => {
+    const { room, clock } = setup({ ...giveaway, platform: "youtube" })
+    enterMany(room, ["1", "2"])
+    room.close(null)
+    await room.draw(1, null)
+
+    clock.advance(giveaway.claimSeconds * 1000)
+    const atDeadline = room.liveSnapshot().winnerChatOpen
+    clock.advance(1)
+    room.onAlarm()
+
+    expect([atDeadline, room.liveSnapshot().winnerChatOpen]).toEqual([true, false])
+  })
+
   it("lets the first claim win and refuses the second", async () => {
     const { room, sql, winner } = await drawnRoom()
 
@@ -2403,6 +2443,25 @@ describe("GiveawayRoom retention", () => {
     expect(count(sql, "entries")).toBe(0)
   })
 
+  it("replaces a YouTube winner's name with removed at the retention time and keeps the channel id", async () => {
+    const { room, clock } = setup({ ...giveaway, platform: "youtube" })
+    enterMany(room, ["1", "2", "3"])
+    room.close(null)
+    await room.draw(1, null)
+    const [drawn] = room.picks()
+
+    clock.advance(retentionMs - 1)
+    room.onAlarm()
+    const before = room.picks()
+    clock.advance(1)
+    room.onAlarm()
+
+    expect(before).toMatchObject([{ login: `login${drawn?.platformUserId}` }])
+    expect(room.picks()).toMatchObject([
+      { platformUserId: drawn?.platformUserId, login: "removed", displayName: "removed" },
+    ])
+  })
+
   it("keeps the name of a rerolled winner with the pick", async () => {
     const { room, clock } = await drawnRoom()
     await room.reroll(0, null)
@@ -3395,7 +3454,7 @@ function chatMessage(platformUserId: string, text: string): ChatMessage {
     login: `login${platformUserId}`,
     displayName: `Name${platformUserId}`,
     text,
-    roles: { subTier: null, isVip: false, isModerator: false },
+    roles: { subTier: null, isMember: false, isVip: false, isModerator: false },
   }
 }
 

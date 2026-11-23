@@ -4,6 +4,7 @@ import type { Instant } from "../ports.ts"
 /** What the chatter's badges on this message say about them in the channel, as the platform reads its own badges. */
 export interface ChatterRoles {
   readonly subTier: ViewerFacts["subTier"]
+  readonly isMember: boolean
   readonly isVip: boolean
   readonly isModerator: boolean
 }

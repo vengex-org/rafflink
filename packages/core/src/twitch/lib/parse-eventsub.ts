@@ -160,7 +160,7 @@ function parseChatNotification(
 // Twitch writes each badge as `{ set_id, id, info }`; `info` (the months of a sub badge) is not read.
 function parseBadges(value: unknown): ChatterRoles | null {
   if (!Array.isArray(value)) return null
-  let roles: ChatterRoles = { subTier: null, isVip: false, isModerator: false }
+  let roles: ChatterRoles = { subTier: null, isMember: false, isVip: false, isModerator: false }
   for (const badge of value) {
     if (!isRecord(badge) || typeof badge.set_id !== "string" || typeof badge.id !== "string") {
       return null

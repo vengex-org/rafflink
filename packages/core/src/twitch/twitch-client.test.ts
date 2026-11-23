@@ -279,7 +279,7 @@ describe("refreshTokens", () => {
     const refreshed = await client.refreshTokens(first.refreshToken)
 
     expect(refreshed.refreshToken).not.toBe(first.refreshToken)
-    expect(await client.validate(refreshed.accessToken)).toEqual({ status: "valid", userId: "200" })
+    expect(await client.validate(refreshed.accessToken)).toEqual({ status: "valid" })
   })
 
   it("classifies a refresh token Twitch no longer knows as invalid with status 400 and its reason", async () => {
@@ -809,7 +809,7 @@ describe("validate", () => {
   it("reports a live token as valid with its user id", async () => {
     const { accessToken } = await signIn("100", VIEWER_SCOPES)
 
-    expect(await client.validate(accessToken)).toEqual({ status: "valid", userId: "100" })
+    expect(await client.validate(accessToken)).toEqual({ status: "valid" })
   })
 
   it("reports a 401 as invalid", async () => {

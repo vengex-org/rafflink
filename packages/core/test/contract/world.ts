@@ -12,6 +12,12 @@ import {
   startFakeKick,
   type RunningFakeKick,
 } from "./fake-kick.ts"
+import {
+  startFakeYouTube,
+  youtubeChannels,
+  youtubeClientCredentials,
+  type RunningFakeYouTube,
+} from "./fake-youtube.ts"
 import { openSocket, type LiveMessage } from "./socket.ts"
 import { webFixture } from "./spa-fixture.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
@@ -27,7 +33,16 @@ export const vipsPath = "/helix/channels/vips"
 export const moderatorsPath = "/helix/moderation/moderators"
 
 export const defaultRules: GiveawayRules = {
-  tickets: { viewer: 1, follower: 2, sub_t1: 3, sub_t2: 4, sub_t3: 5, vip: 6, moderator: 7 },
+  tickets: {
+    viewer: 1,
+    follower: 2,
+    sub_t1: 3,
+    sub_t2: 4,
+    sub_t3: 5,
+    member: 0,
+    vip: 6,
+    moderator: 7,
+  },
   subsOnly: false,
   followersOnly: false,
   minAccountAgeDays: null,
@@ -97,6 +112,7 @@ export function scenario(
 export class World {
   readonly twitch: RunningFakeTwitch = startFakeTwitch()
   readonly kick: RunningFakeKick = startFakeKick()
+  readonly youtube: RunningFakeYouTube = startFakeYouTube()
   readonly drand: RunningFakeDrand = startFakeDrand()
   private readonly targets: ContractTarget[] = []
   private readonly sockets: WebSocket[] = []
@@ -120,6 +136,7 @@ export class World {
     for (const target of this.targets) await target.stop()
     await this.twitch.stop()
     await this.kick.stop()
+    await this.youtube.stop()
     await this.drand.stop()
     this.web.remove()
   }
@@ -149,6 +166,15 @@ export class World {
   ): Promise<Browser> {
     const streamer = new Browser(target.url)
     await streamer.signInAs(userId, "/auth/kick/streamer/start", this.kick.fake.control)
+    return streamer
+  }
+
+  async signInYouTubeStreamer(
+    target: ContractTarget,
+    channelId: string = youtubeChannels.streamer.id,
+  ): Promise<Browser> {
+    const streamer = new Browser(target.url)
+    await streamer.signInAs(channelId, "/auth/youtube/streamer/start", this.youtube.fake.control)
     return streamer
   }
 
@@ -273,6 +299,14 @@ export class World {
       KICK_ID_BASE_URL: this.kick.origin,
       KICK_API_BASE_URL: this.kick.origin,
       KICK_TIMEOUT_MS: "2000",
+      YOUTUBE_CLIENT_ID: youtubeClientCredentials.id,
+      YOUTUBE_CLIENT_SECRET: youtubeClientCredentials.secret,
+      YOUTUBE_AUTH_BASE_URL: this.youtube.origin,
+      YOUTUBE_TOKEN_BASE_URL: this.youtube.origin,
+      YOUTUBE_API_BASE_URL: this.youtube.origin,
+      YOUTUBE_TIMEOUT_MS: "2000",
+      YOUTUBE_CHAT_POLL_MIN_MS: "1000",
+      YOUTUBE_WINNER_POLL_MIN_MS: "1000",
       TWITCH_ID_BASE_URL: this.twitch.origin,
       TWITCH_HELIX_BASE_URL: this.twitch.origin,
       EVENTSUB_URL: `${this.twitch.origin.replace(/^http/, "ws")}${eventSubPath}`,

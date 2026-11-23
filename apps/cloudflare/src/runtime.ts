@@ -10,6 +10,8 @@ import { AdminDirectory } from "@rafflink/core/admin/admin-directory"
 import { TwitchClient } from "@rafflink/core/twitch/twitch-client"
 import { TwitchProvider } from "@rafflink/core/twitch/twitch-provider"
 import { kickPlatform } from "@rafflink/core/kick/kick-provider"
+import type { YouTubeQuota } from "@rafflink/core/youtube/quota"
+import { youtubePlatform } from "@rafflink/core/youtube/youtube-provider"
 import { D1AsyncSql } from "./adapters/d1-async-sql.ts"
 import { RateLimitBindingLimiter } from "./adapters/rate-limit-binding.ts"
 import { isolateKeyOf, settingsOf, type WorkerEnv } from "./env.ts"
@@ -21,6 +23,7 @@ export interface Runtime extends StreamerTokenDeps {
   readonly beacon: RandomnessBeacon
   readonly stats: StatsStore
   readonly admins: AdminDirectory
+  readonly youtubeQuota: YouTubeQuota | null
 }
 
 const configs = new WeakMap<object, ResolvedConfig>()
@@ -50,6 +53,7 @@ async function openRuntime(env: WorkerEnv): Promise<Runtime> {
   const sql = new D1AsyncSql(env.DB)
   // Called through a wrapper: the global `fetch` throws when it is called as a method of another object.
   const twitch = new TwitchClient(config, (input, init) => fetch(input, init))
+  const youtube = youtubePlatform(config, (input, init) => fetch(input, init), systemClock, sql)
   return {
     config,
     clock: systemClock,
@@ -57,7 +61,9 @@ async function openRuntime(env: WorkerEnv): Promise<Runtime> {
     platforms: {
       twitch: new TwitchProvider(twitch, systemClock, config),
       ...kickPlatform(config, (input, init) => fetch(input, init), systemClock, sql),
+      ...youtube,
     },
+    youtubeQuota: youtube.youtube?.quota ?? null,
     admins: new AdminDirectory(config, twitch),
     beacon: new DrandBeacon(config, (input, init) => fetch(input, init), systemRandom),
     accounts: new AccountStore(sql, config),
