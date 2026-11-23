@@ -823,43 +823,29 @@ export const de: Translation = {
   "wizard.step.review": "Prüfen",
   "wizard.q.basics": "Fang mit den Grundlagen an",
   "wizard.q.rules": "Leg die Teilnahmeregeln fest",
-  "wizard.q.audience": "Wer kann mitmachen?",
   "wizard.q.review": "Prüf dein Gewinnspiel",
   "wizard.fix": "Bitte korrigier das, um weiterzumachen.",
   "wizard.start": "Gewinnspiel starten",
   "wizard.starting": "Startet…",
-  "wizard.title.label": "Name des Gewinnspiels (optional)",
-  "wizard.title.help":
-    "Zuschauer sehen das oben auf der Seite. Beispiel: Gaming-Stuhl-Gewinnspiel am Freitag. Lass es leer, dann sehen sie stattdessen den Code des Gewinnspiels.",
-  "wizard.prize.label": "Was bekommt der Gewinner? (optional)",
-  "wizard.prize.help": "Beispiel: Ein Gaming-Stuhl oder eine Steam-Karte über 25 Euro",
   "wizard.audience.everyone": "Alle",
   "wizard.audience.everyone.help": "Jeder Zuschauer kann mitmachen.",
   "wizard.audience.followers": "Nur Follower",
   "wizard.audience.followers.help": "Nur Leute, die deinem Kanal folgen, können mitmachen.",
   "wizard.audience.subscribers": "Nur Abonnenten",
   "wizard.audience.subscribers.help": "Nur deine zahlenden Abonnenten können mitmachen.",
-  "wizard.audience.subscribers.warning":
+  "wizard.audience.subscribers.info":
     "Ein Abo ist ein bezahlter Kauf. In vielen Ländern ist ein Gewinnspiel, bei dem man zum Mitmachen etwas kaufen muss, eine regulierte Lotterie. Überleg, auch Follower oder alle Zuschauer mitmachen zu lassen.",
-  "wizard.minAge.label": "Mindestalter des Kontos in Tagen (optional)",
-  "wizard.minAge.help":
-    "Verhindert, dass Leute neue Konten nur zum Mitmachen anlegen. Lass es leer, um jedes Konto zuzulassen.",
   "wizard.minAge.fewer": "Weniger Tage",
   "wizard.minAge.more": "Mehr Tage",
   "wizard.official.legend": "Offizielle Regeln (optional)",
-  "wizard.official.help":
-    "Die Gewinnspielseite zeigt Regeln, die aus deinen Einstellungen erstellt werden. Füg diese nur hinzu, wenn dein Gewinnspiel sie braucht.",
   "wizard.winnerAge.label": "Mindestalter zum Gewinnen, in Jahren",
-  "wizard.winnerAge.help":
+  "wizard.winnerAge.info":
     "Rafflink kann das Alter nicht prüfen. Du prüfst es, bevor du den Preis übergibst.",
   "wizard.winnerAge.fewer": "Weniger Jahre",
   "wizard.winnerAge.more": "Mehr Jahre",
   "wizard.excludedCountries.label": "Orte, an denen man nicht gewinnen kann",
-  "wizard.excludedCountries.help":
-    "Beispiel: Quebec, Italien. Rafflink kann nicht prüfen, wo jemand wohnt.",
   "wizard.extraTerms.label": "Zusätzliche Bedingungen",
   "wizard.extraTerms.help": "Werden unter den Regeln genau so angezeigt, wie du sie schreibst.",
-  "wizard.recent.legend": "Letzte Gewinner ausschließen",
   "wizard.recent.off": "Aus",
   "wizard.recent.off.help": "Gewinner deiner früheren Gewinnspiele können wieder mitmachen.",
   "wizard.recent.giveaways": "Letzte Gewinnspiele",
@@ -873,11 +859,6 @@ export const de: Translation = {
   "wizard.recent.fewer": "Weniger",
   "wizard.recent.more": "Mehr",
   "wizard.winnerForm.legend": "Gewinnerformular",
-  "wizard.winnerForm.help":
-    "Nach der Abholung füllt der Gewinner diese Felder auf der Gewinnspielseite aus. Nur du siehst die Antworten. Sie werden gelöscht, wenn du den Preis als geliefert markierst, spätestens 30 Tage nach der Abholung.",
-  "wizard.tickets.legend": "Tickets pro Gruppe",
-  "wizard.tickets.help":
-    "Jede Gruppe bekommt 1 Ticket. Mehr Tickets bedeuten eine bessere Gewinnchance, zum Beispiel 3 für Abonnenten. Lass es so, wenn alle die gleiche Chance haben sollen.",
   "wizard.tickets.fewer": "Weniger Tickets für {group}",
   "wizard.tickets.more": "Mehr Tickets für {group}",
   "odds.same": "Alle haben die gleiche Gewinnchance.",
@@ -897,14 +878,10 @@ export const de: Translation = {
   "wizard.ending.atTime.help": "Die Teilnahme endet von selbst zur gewählten Zeit.",
   "wizard.closesAt.label": "Teilnahme endet um",
   "wizard.closesAt.help": "Es gilt die Zeitzone dieses Geräts.",
-  "wizard.claim.legend": "Wie lange hat ein Gewinner Zeit, den Preis abzuholen?",
   "wizard.claim.custom": "Eigene",
   "wizard.claim.minutes": "Minuten",
   "wizard.claim.fewer": "Weniger Minuten",
   "wizard.claim.more": "Mehr Minuten",
-  "wizard.keyword.label": "Chat-Wort (optional)",
-  "wizard.keyword.help":
-    "Ein Gewinner kann auch abholen, indem er dieses Wort in deinen Chat schreibt. Lass es leer, dann zählt jede Chatnachricht des Gewinners.",
   "review.name": "Name",
   "review.prize": "Preis",
   "review.who": "Wer mitmachen kann",
@@ -932,29 +909,23 @@ export const de: Translation = {
   "wizard.entry.chat": "Nur Chat",
   "wizard.entry.chat.help":
     "Zuschauer machen nur mit, indem sie ein Stichwort in deinen Chat schreiben. Die Seite zeigt das Stichwort und lässt sie prüfen, ob sie dabei sind.",
-  "wizard.reconnect.chat.text":
+  "wizard.reconnect.chat.info":
     "Um zu prüfen, ob dir ein Chat-Teilnehmer folgt, braucht Rafflink eine weitere Twitch-Berechtigung (deine Follower lesen). Verbinde Twitch neu; deine Antworten bleiben erhalten.",
-  "wizard.reconnect.sub.text":
+  "wizard.reconnect.sub.info":
     "Um neue Abonnenten einzutragen, muss Rafflink deine Abonnenten und Follower lesen. Verbinde Twitch neu; deine Antworten bleiben erhalten.",
-  "wizard.reconnect.points.text":
+  "wizard.reconnect.points.info":
     "Um Zuschauer einzutragen, die eine Kanalpunkte-Belohnung einlösen, muss Rafflink deine Belohnungen, Einlösungen, Abonnenten und Follower lesen. Verbinde Twitch neu; deine Antworten bleiben erhalten.",
-  "wizard.reconnect.points.text.kick":
+  "wizard.reconnect.points.info.kick":
     "Um deine Kanalpunkte-Belohnungen aufzulisten, muss Rafflink sie lesen. Verbinde Kick neu; deine Antworten bleiben erhalten.",
   "wizard.reconnect.button": "{platform} neu verbinden",
   "wizard.chatKeyword.label": "Teilnahme-Stichwort",
-  "wizard.chatKeyword.help":
-    "Eine Chatnachricht, die mit diesem Wort beginnt, trägt den Zuschauer ein, mit denselben Regeln und Tickets wie auf der Seite. Rafflink schreibt nie in deinen Chat.",
-  "wizard.chatCost.kick":
-    "Kick schickt jede Chatnachricht an Rafflink, solange die Teilnahme offen ist, mit oder ohne Stichwort, und jede verbraucht eine Anfrage vom Tageslimit dieses Servers ({limit}). Ein Chat mit 100 Nachrichten pro Minute verbraucht 6.000 Anfragen pro Stunde. Heute sind noch {remaining} übrig.",
-  "wizard.chatCost.youtube":
-    "Rafflink liest den YouTube-Chat, solange die Teilnahme offen ist, und verbraucht dabei pro Minute etwa {perMinute} der {limit} YouTube-Einheiten, die dieser Server pro Tag hat, und nach der Ziehung, bis die Gewinner abholen, etwa {winnerPerMinute} pro Minute. Heute sind noch {remaining} übrig.",
   "wizard.chatCost.youtubeByHand":
     "Du beendest dieses Gewinnspiel von Hand, daher kann der Server nicht vorab prüfen, ob die Einheiten von heute reichen: Sie decken etwa {minutes} Minuten Teilnahme. Lege ein Ende fest, damit es geprüft wird.",
   "wizard.autoEntry.legend": "Automatische Teilnahmen",
   "wizard.subEntry.label": "Neue Abonnenten eintragen",
-  "wizard.subEntry.help":
+  "wizard.subEntry.info":
     "Wer abonniert, ein Geschenk-Abo bekommt oder ein Resub im Chat teilt, solange die Teilnahme offen ist, macht einmal mit, mit den Tickets seines Tiers. Eine stille automatische Verlängerung zählt nicht: Twitch meldet nur Verlängerungen, die der Zuschauer teilt. Die Teilnahme über die Seite oder den Chat bleibt kostenlos, niemand muss also zahlen, um mitzumachen.",
-  "wizard.subEntry.help.kick":
+  "wizard.subEntry.info.kick":
     "Wer abonniert, verlängert oder ein Geschenk-Abo bekommt, solange die Teilnahme offen ist, macht einmal mit, mit den Tickets eines Abonnenten. Kick hat nur eine Abo-Stufe und meldet jede Verlängerung. Die Teilnahme über die Seite oder den Chat bleibt kostenlos, niemand muss also zahlen, um mitzumachen.",
   "wizard.points.legend": "Kanalpunkte-Belohnung",
   "wizard.points.help":
@@ -1229,9 +1200,6 @@ export const de: Translation = {
   "winnersResult.set": "Gewinnerzahl gespeichert.",
   "winnersResult.rejected":
     "Speichern fehlgeschlagen. Gib eine ganze Zahl an Gewinnern ein, mindestens 1.",
-  "wizard.winners.label": "Wie viele Gewinner?",
-  "wizard.winners.help":
-    "Wie viele Gewinner du ziehen willst. Du kannst später mehr oder weniger ziehen.",
   "review.winners": "Gewinner",
   "verify.check.timing.match":
     "Die drand-Runde wurde veröffentlicht, nachdem die Liste festgeschrieben war.",

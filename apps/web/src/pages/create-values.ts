@@ -283,6 +283,11 @@ export function stepOfField(field: string): Step {
 }
 
 /** The odds the ticket counts of the `shown` groups give, or null while a count is not a whole number. */
+/** Whether any of the `shown` groups gets other tickets than a new giveaway gives it. */
+export function bonusTicketsSet(typed: Values["tickets"], shown: readonly Group[]): boolean {
+  return shown.some((group) => typed[group].trim() !== initialValues.tickets[group])
+}
+
 export function oddsOf(typed: Values["tickets"], shown: readonly Group[]): Odds | null {
   if (!shown.every((group) => isWholeNumber(typed[group]))) return null
   return ticketOdds(ticketCounts(typed), shown)

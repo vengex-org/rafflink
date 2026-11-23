@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react"
+import { useId, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import type { Group } from "@rafflink/core/domain/groups"
 import { channelEntryVias, type ChannelEntryVia } from "@rafflink/core/domain/rules"
 import { winnerFieldKinds } from "@rafflink/core/domain/winner-form"
@@ -16,9 +16,13 @@ import {
   LockIcon,
   LogInIcon,
   StarIcon,
+  TagIcon,
   TwitchIcon,
   UsersIcon,
 } from "../components/icons.tsx"
+import { Disclosure } from "../components/disclosure.tsx"
+import { InfoTip } from "../components/info-tip.tsx"
+import { Notice } from "../components/notice.tsx"
 import type { PointsRewardsJson } from "@rafflink/core/http/json"
 import { getPointsRewards, getRequestBudget, getYouTubeBudget } from "../api/client.ts"
 import { useI18n, type I18n } from "../i18n/i18n.tsx"
@@ -36,9 +40,11 @@ import { useStreamerSession } from "../components/streamer-session.tsx"
 import { platformNames } from "../lib/platform-name.ts"
 import {
   audienceOffered,
+  bonusTicketsSet,
   claimPresets,
   claimSecondsOf,
   entryWaysOffered,
+  initialValues,
   oddsOf,
   ticketGroups,
   type ClaimPreset,
@@ -82,7 +88,9 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
       <TextField
         name="title"
         label={t("wizard.title.label")}
-        help={t("wizard.title.help")}
+        help={null}
+        optional
+        placeholder={t("wizard.title.placeholder")}
         type="text"
         value={values.title}
         error={errorOf(i18n, issue, "title")}
@@ -91,7 +99,9 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
       <TextField
         name="prize"
         label={t("wizard.prize.label")}
-        help={t("wizard.prize.help")}
+        help={null}
+        optional
+        placeholder={t("wizard.prize.placeholder")}
         type="text"
         value={values.prize}
         error={errorOf(i18n, issue, "prize")}
@@ -121,18 +131,32 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
   )
 }
 
-/** What the generated rules cannot know from the other answers: a minimum age, excluded places, the streamer's own terms. */
+const officialFields = ["minAge", "excludedCountries", "extraTerms"] as const
+
+/**
+ * What the generated rules cannot know from the other answers: a minimum age, excluded places, the streamer's own
+ * terms. Few giveaways need them, so the section starts closed unless one is filled in or has a problem to fix.
+ */
 function OfficialRulesFields({ values, setValues, issue }: StepProps) {
   const i18n = useI18n()
   const { t } = i18n
+  const [open, setOpen] = useState(() =>
+    officialFields.some((field) => values[field].trim() !== ""),
+  )
+  const flagged = officialFields.some((field) => issue?.field === field)
   return (
-    <fieldset className="field">
-      <legend>{t("wizard.official.legend")}</legend>
-      <p className="help">{t("wizard.official.help")}</p>
+    <Disclosure
+      icon={<TagIcon />}
+      summary={t("wizard.official.legend")}
+      open={open || flagged}
+      onToggle={setOpen}
+    >
+      <p className="help official-intro">{t("wizard.official.help")}</p>
       <StepperField
         name="minAge"
         label={t("wizard.winnerAge.label")}
-        help={t("wizard.winnerAge.help")}
+        help={null}
+        info={t("wizard.winnerAge.info")}
         min={1}
         value={values.minAge}
         error={errorOf(i18n, issue, "minAge")}
@@ -144,6 +168,7 @@ function OfficialRulesFields({ values, setValues, issue }: StepProps) {
         name="excludedCountries"
         label={t("wizard.excludedCountries.label")}
         help={t("wizard.excludedCountries.help")}
+        placeholder={t("wizard.excludedCountries.placeholder")}
         type="text"
         value={values.excludedCountries}
         error={errorOf(i18n, issue, "excludedCountries")}
@@ -160,7 +185,7 @@ function OfficialRulesFields({ values, setValues, issue }: StepProps) {
         error={errorOf(i18n, issue, "extraTerms")}
         onChange={(extraTerms) => setValues((current) => ({ ...current, extraTerms }))}
       />
-    </fieldset>
+    </Disclosure>
   )
 }
 
@@ -200,72 +225,103 @@ export function RulesStep({
   const audiences = allAudiences.filter((option) => audienceOffered(option.value, capabilities))
   return (
     <>
-      {audiences.length > 1 ? (
-        <Segmented
-          name="audience"
-          legend={t("wizard.q.audience")}
-          help={null}
-          options={audiences}
-          value={values.audience}
-          onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
+      <WizardGroup title={t("wizard.group.entry")}>
+        <EntryWaysField
+          values={values}
+          setValues={setValues}
+          issue={issue}
+          capabilities={capabilities}
         />
-      ) : null}
-      {audiences.length > 1 && values.audience === "subscribers" ? (
-        <p className="help" role="note">
-          {t("wizard.audience.subscribers.warning")}
-        </p>
-      ) : null}
-      {capabilities.accountAge ? (
+        {audiences.length > 1 ? (
+          <Segmented
+            name="audience"
+            legend={t("wizard.q.audience")}
+            help={null}
+            options={audiences}
+            value={values.audience}
+            onSelect={(audience) => setValues((current) => ({ ...current, audience }))}
+          />
+        ) : null}
+        {audiences.length > 1 && values.audience === "subscribers" ? (
+          <Notice tone="warning">
+            <p>
+              {t("wizard.audience.subscribers.warning")}{" "}
+              <InfoTip
+                topic={t("wizard.audience.subscribers")}
+                text={t("wizard.audience.subscribers.info")}
+              />
+            </p>
+          </Notice>
+        ) : null}
+      </WizardGroup>
+      <WizardGroup title={t("wizard.group.odds")}>
+        <TicketsField
+          values={values}
+          setValues={setValues}
+          issue={issue}
+          shown={ticketGroups(values, capabilities)}
+        />
+        <RecentWinnersField values={values} setValues={setValues} issue={issue} />
+        {capabilities.accountAge ? (
+          <StepperField
+            name="minAccountAgeDays"
+            label={t("wizard.minAge.label")}
+            help={t("wizard.minAge.help")}
+            optional
+            min={0}
+            value={values.minAccountAgeDays}
+            error={errorOf(i18n, issue, "minAccountAgeDays")}
+            onChange={(minAccountAgeDays) =>
+              setValues((current) => ({ ...current, minAccountAgeDays }))
+            }
+            decreaseLabel={t("wizard.minAge.fewer")}
+            increaseLabel={t("wizard.minAge.more")}
+          />
+        ) : null}
+      </WizardGroup>
+      <WizardGroup title={t("wizard.group.winners")}>
         <StepperField
-          name="minAccountAgeDays"
-          label={t("wizard.minAge.label")}
-          help={t("wizard.minAge.help")}
-          min={0}
-          value={values.minAccountAgeDays}
-          error={errorOf(i18n, issue, "minAccountAgeDays")}
-          onChange={(minAccountAgeDays) =>
-            setValues((current) => ({ ...current, minAccountAgeDays }))
-          }
-          decreaseLabel={t("wizard.minAge.fewer")}
-          increaseLabel={t("wizard.minAge.more")}
+          name="winnerCount"
+          label={t("wizard.winners.label")}
+          help={t("wizard.winners.help")}
+          min={1}
+          value={values.winnerCount}
+          error={errorOf(i18n, issue, "winnerCount")}
+          onChange={(winnerCount) => setValues((current) => ({ ...current, winnerCount }))}
+          decreaseLabel={t("winners.fewer")}
+          increaseLabel={t("winners.more")}
         />
-      ) : null}
-      <RecentWinnersField values={values} setValues={setValues} issue={issue} />
-      <TicketsField
-        values={values}
-        setValues={setValues}
-        issue={issue}
-        shown={ticketGroups(values, capabilities)}
-      />
-      <StepperField
-        name="winnerCount"
-        label={t("wizard.winners.label")}
-        help={t("wizard.winners.help")}
-        min={1}
-        value={values.winnerCount}
-        error={errorOf(i18n, issue, "winnerCount")}
-        onChange={(winnerCount) => setValues((current) => ({ ...current, winnerCount }))}
-        decreaseLabel={t("winners.fewer")}
-        increaseLabel={t("winners.more")}
-      />
-      <ClaimField values={values} setValues={setValues} issue={issue} />
-      <TextField
-        name="claimKeyword"
-        label={t("wizard.keyword.label")}
-        help={t("wizard.keyword.help")}
-        type="text"
-        value={values.claimKeyword}
-        error={errorOf(i18n, issue, "claimKeyword")}
-        onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
-      />
-      <EntryWaysField
-        values={values}
-        setValues={setValues}
-        issue={issue}
-        capabilities={capabilities}
-      />
-      <WinnerFormField values={values} setValues={setValues} />
+        <ClaimField values={values} setValues={setValues} issue={issue} />
+        <TextField
+          name="claimKeyword"
+          label={t("wizard.keyword.label")}
+          help={t("wizard.keyword.help")}
+          optional
+          type="text"
+          value={values.claimKeyword}
+          error={errorOf(i18n, issue, "claimKeyword")}
+          onChange={(claimKeyword) => setValues((current) => ({ ...current, claimKeyword }))}
+        />
+        <WinnerFormField values={values} setValues={setValues} />
+      </WizardGroup>
     </>
+  )
+}
+
+/** A titled part of a step: the rules step splits its fields into who enters, the odds, and the winners. */
+function WizardGroup({
+  title,
+  children,
+}: {
+  readonly title: string
+  readonly children: ReactNode
+}) {
+  const id = useId()
+  return (
+    <section className="wizard-group" aria-labelledby={id}>
+      <h3 id={id}>{title}</h3>
+      {children}
+    </section>
   )
 }
 
@@ -275,7 +331,10 @@ function WinnerFormField({ values, setValues }: Omit<StepProps, "issue">) {
   return (
     <fieldset className="field">
       <legend>{t("wizard.winnerForm.legend")}</legend>
-      <p className="help">{t("wizard.winnerForm.help")}</p>
+      <p className="help">
+        {t("wizard.winnerForm.help")}{" "}
+        <InfoTip topic={t("wizard.winnerForm.legend")} text={t("wizard.winnerForm.info")} />
+      </p>
       {winnerFieldKinds.map((kind) => (
         <label key={kind} className="check">
           <input
@@ -361,6 +420,7 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
           name="chatKeyword"
           label={t("wizard.chatKeyword.label")}
           help={t("wizard.chatKeyword.help")}
+          info={t("wizard.chatKeyword.info")}
           type="text"
           value={values.chatKeyword}
           error={errorOf(i18n, issue, "chatKeyword")}
@@ -376,25 +436,29 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
           <legend>{t("wizard.autoEntry.legend")}</legend>
           {capabilities.subEntry ? (
             <>
-              <label className="check">
-                <input
-                  type="checkbox"
-                  name="subEntry"
-                  checked={values.subEntry}
-                  onChange={(event) => {
-                    const subEntry = event.currentTarget.checked
-                    setValues((current) => ({ ...current, subEntry }))
-                  }}
+              <div className="field-head">
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    name="subEntry"
+                    checked={values.subEntry}
+                    onChange={(event) => {
+                      const subEntry = event.currentTarget.checked
+                      setValues((current) => ({ ...current, subEntry }))
+                    }}
+                  />
+                  {t("wizard.subEntry.label")}
+                </label>
+                <InfoTip
+                  topic={t("wizard.subEntry.label")}
+                  text={t(
+                    streamer?.platform === "kick"
+                      ? "wizard.subEntry.info.kick"
+                      : "wizard.subEntry.info",
+                  )}
                 />
-                {t("wizard.subEntry.label")}
-              </label>
-              <p className="help">
-                {t(
-                  streamer?.platform === "kick"
-                    ? "wizard.subEntry.help.kick"
-                    : "wizard.subEntry.help",
-                )}
-              </p>
+              </div>
+              <p className="help">{t("wizard.subEntry.help")}</p>
             </>
           ) : null}
           {capabilities.pointsEntry && rewards !== null ? (
@@ -409,7 +473,7 @@ function EntryWaysField({ values, setValues, issue, capabilities }: StepProps & 
       ) : null}
       {missing.length > 0 ? (
         <ReconnectNote
-          texts={missing.map((way) => t(`wizard.reconnect.${way}.text`))}
+          reasons={missing.map((way) => t(`wizard.reconnect.${way}.info`))}
           ways={used}
           values={values}
         />
@@ -442,11 +506,11 @@ function PointsRewardField({
     case "reconnect":
       return (
         <ReconnectNote
-          texts={[
+          reasons={[
             t(
               streamer?.platform === "kick"
-                ? "wizard.reconnect.points.text.kick"
-                : "wizard.reconnect.points.text",
+                ? "wizard.reconnect.points.info.kick"
+                : "wizard.reconnect.points.info",
             ),
           ]}
           ways={[...used, "points"]}
@@ -456,9 +520,9 @@ function PointsRewardField({
     case "rewards": {
       if (answer.rewards.length === 0) {
         return (
-          <p className="help" role="note">
-            {t("wizard.points.none")}
-          </p>
+          <Notice tone="info">
+            <p>{t("wizard.points.none")}</p>
+          </Notice>
         )
       }
       const options: readonly SegmentOption<string>[] = [
@@ -498,12 +562,17 @@ function KickChatCostNote() {
     result.state === "ready" && result.value !== "unauthorized" ? result.value.budget : null
   if (budget === null) return null
   return (
-    <p className="help" role="note">
-      {i18n.t("wizard.chatCost.kick", {
-        limit: i18n.number(budget.limit),
-        remaining: i18n.number(Math.max(0, budget.remaining)),
-      })}
-    </p>
+    <Notice tone="info">
+      <p>
+        {i18n.t("wizard.chatCost.kick", {
+          remaining: i18n.number(Math.max(0, budget.remaining)),
+        })}{" "}
+        <InfoTip
+          topic={i18n.t("wizard.chatCost.topic")}
+          text={i18n.t("wizard.chatCost.kick.info", { limit: i18n.number(budget.limit) })}
+        />
+      </p>
+    </Notice>
   )
 }
 
@@ -517,50 +586,63 @@ function YouTubeQuotaNote({ closedByHand }: { readonly closedByHand: boolean }) 
   const { result } = useLoad(getYouTubeBudget)
   const budget = result.state === "ready" && result.value !== "unauthorized" ? result.value : null
   if (budget === null) return null
+  const math = i18n.t("wizard.chatCost.youtube.info", {
+    perMinute: i18n.number(budget.unitsPerMinute),
+    winnerPerMinute: i18n.number(budget.winnerUnitsPerMinute),
+    limit: i18n.number(budget.limit),
+  })
+  const byHand = i18n.t("wizard.chatCost.youtubeByHand", {
+    minutes: i18n.number(Math.max(0, Math.floor(budget.remaining / budget.unitsPerMinute))),
+  })
   return (
-    <p className="help" role="note">
-      {i18n.t("wizard.chatCost.youtube", {
-        perMinute: i18n.number(budget.unitsPerMinute),
-        winnerPerMinute: i18n.number(budget.winnerUnitsPerMinute),
-        limit: i18n.number(budget.limit),
-        remaining: i18n.number(Math.max(0, budget.remaining)),
-      })}
-      {closedByHand
-        ? ` ${i18n.t("wizard.chatCost.youtubeByHand", {
-            minutes: i18n.number(Math.max(0, Math.floor(budget.remaining / budget.unitsPerMinute))),
-          })}`
-        : null}
-    </p>
+    <Notice tone="info">
+      <p>
+        {i18n.t("wizard.chatCost.youtube", {
+          remaining: i18n.number(Math.max(0, budget.remaining)),
+        })}{" "}
+        <InfoTip
+          topic={i18n.t("wizard.chatCost.topic")}
+          text={closedByHand ? `${math} ${byHand}` : math}
+        />
+      </p>
+    </Notice>
   )
 }
 
-/** Asks the streamer to sign in again with the scopes of `ways`; the answers wait in session storage meanwhile. */
+/**
+ * Asks the streamer to sign in again with the scopes of `ways`, with what each scope is for behind the (i);
+ * the answers wait in session storage meanwhile.
+ */
 function ReconnectNote({
-  texts,
+  reasons,
   ways,
   values,
 }: {
-  readonly texts: readonly string[]
+  readonly reasons: readonly string[]
   readonly ways: readonly ChannelEntryVia[]
   readonly values: Values
 }) {
   const { t } = useI18n()
   const { streamer } = useStreamerSession()
   const platform = streamer?.platform ?? "twitch"
+  const button = t("wizard.reconnect.button", { platform: platformNames[platform] })
   return (
-    <div className="help" role="note">
-      {texts.map((text) => (
-        <p key={text}>{text}</p>
-      ))}
-      <a
-        className="button outlined"
-        href={entryReconnectPath(platform, ways, dashboardNewPath({ step: 2 }))}
-        onClick={() => keepDraftForReconnect(values)}
-      >
-        <LogInIcon />
-        {t("wizard.reconnect.button", { platform: platformNames[platform] })}
-      </a>
-    </div>
+    <Notice tone="warning">
+      <p>
+        {t("wizard.reconnect.text", { platform: platformNames[platform] })}{" "}
+        <InfoTip topic={button} text={reasons.join(" ")} />
+      </p>
+      <div className="notice-action">
+        <a
+          className="button outlined"
+          href={entryReconnectPath(platform, ways, dashboardNewPath({ step: 2 }))}
+          onClick={() => keepDraftForReconnect(values)}
+        >
+          <LogInIcon />
+          {button}
+        </a>
+      </div>
+    </Notice>
   )
 }
 
@@ -617,7 +699,11 @@ function RecentWinnersField({ values, setValues, issue }: StepProps) {
   )
 }
 
-/** The tickets each group gets; `shown` picks the groups that get a row. */
+/**
+ * The tickets each group gets, behind a Bonus tickets switch; `shown` picks the groups that get a row. The switch
+ * starts on when the answers already give a group other tickets than the default, or a row has a problem to fix.
+ * Switching it off puts every group back to the default tickets.
+ */
 export function TicketsField({
   values,
   setValues,
@@ -626,34 +712,63 @@ export function TicketsField({
 }: StepProps & { readonly shown: readonly Group[] }) {
   const i18n = useI18n()
   const { t } = i18n
+  const [bonus, setBonus] = useState(() => bonusTicketsSet(values.tickets, shown))
+  const on = bonus || issue?.field.startsWith("tickets.") === true
   const odds = oddsOf(values.tickets, shown)
   return (
-    <fieldset className="field">
-      <legend>{t("wizard.tickets.legend")}</legend>
+    <div className="field">
+      <label className="check bonus-toggle">
+        <input
+          type="checkbox"
+          name="bonusTickets"
+          checked={on}
+          onChange={(event) => {
+            const checked = event.currentTarget.checked
+            setBonus(checked)
+            if (!checked) setValues((current) => ({ ...current, tickets: initialValues.tickets }))
+          }}
+        />
+        {t("wizard.tickets.legend")}
+      </label>
       <p className="help">{t("wizard.tickets.help")}</p>
-      <div className="ticket-table">
-        {shown.map((group) => (
-          <StepperField
-            key={group}
-            name={`tickets.${group}`}
-            label={t(`group.${group}`)}
-            help={null}
-            min={0}
-            value={values.tickets[group]}
-            error={errorOf(i18n, issue, `tickets.${group}`)}
-            onChange={(count) =>
-              setValues((current) => ({
-                ...current,
-                tickets: { ...current.tickets, [group]: count },
-              }))
-            }
-            decreaseLabel={t("wizard.tickets.fewer", { group: t(`group.${group}`) })}
-            increaseLabel={t("wizard.tickets.more", { group: t(`group.${group}`) })}
-          />
-        ))}
-      </div>
-      {odds === null ? null : <output className="odds">{oddsText(i18n, odds)}</output>}
-    </fieldset>
+      {on ? <TicketRows values={values} setValues={setValues} issue={issue} shown={shown} /> : null}
+      {on && odds !== null && odds.kind !== "same" ? (
+        <output className="odds">{oddsText(i18n, odds)}</output>
+      ) : null}
+    </div>
+  )
+}
+
+function TicketRows({
+  values,
+  setValues,
+  issue,
+  shown,
+}: StepProps & { readonly shown: readonly Group[] }) {
+  const i18n = useI18n()
+  const { t } = i18n
+  return (
+    <div className="ticket-table">
+      {shown.map((group) => (
+        <StepperField
+          key={group}
+          name={`tickets.${group}`}
+          label={t(`group.${group}`)}
+          help={null}
+          min={0}
+          value={values.tickets[group]}
+          error={errorOf(i18n, issue, `tickets.${group}`)}
+          onChange={(count) =>
+            setValues((current) => ({
+              ...current,
+              tickets: { ...current.tickets, [group]: count },
+            }))
+          }
+          decreaseLabel={t("wizard.tickets.fewer", { group: t(`group.${group}`) })}
+          increaseLabel={t("wizard.tickets.more", { group: t(`group.${group}`) })}
+        />
+      ))}
+    </div>
   )
 }
 

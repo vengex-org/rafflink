@@ -814,43 +814,29 @@ export const pt: Translation = {
   "wizard.step.review": "Revisão",
   "wizard.q.basics": "Comece pelo básico",
   "wizard.q.rules": "Defina as regras de inscrição",
-  "wizard.q.audience": "Quem pode participar?",
   "wizard.q.review": "Confira seu sorteio",
   "wizard.fix": "Corrija isto para continuar.",
   "wizard.start": "Iniciar sorteio",
   "wizard.starting": "Iniciando…",
-  "wizard.title.label": "Nome do sorteio (opcional)",
-  "wizard.title.help":
-    "Os espectadores veem isto no topo da página. Exemplo: Sorteio de cadeira gamer de sexta. Se deixar em branco, eles veem o código do sorteio.",
-  "wizard.prize.label": "O que o vencedor ganha? (opcional)",
-  "wizard.prize.help": "Exemplo: Uma cadeira gamer ou um gift card Steam de 50 reais",
   "wizard.audience.everyone": "Todo mundo",
   "wizard.audience.everyone.help": "Qualquer espectador pode participar.",
   "wizard.audience.followers": "Só seguidores",
   "wizard.audience.followers.help": "Só quem segue seu canal pode participar.",
   "wizard.audience.subscribers": "Só inscritos",
   "wizard.audience.subscribers.help": "Só seus inscritos pagantes podem participar.",
-  "wizard.audience.subscribers.warning":
+  "wizard.audience.subscribers.info":
     "Uma inscrição é uma compra paga. Em muitos países, um sorteio que exige uma compra para participar é uma loteria regulamentada. Considere deixar seguidores ou todos os espectadores participarem também.",
-  "wizard.minAge.label": "Idade mínima da conta em dias (opcional)",
-  "wizard.minAge.help":
-    "Impede que as pessoas criem contas novas só para participar. Deixe em branco para aceitar qualquer conta.",
   "wizard.minAge.fewer": "Menos dias",
   "wizard.minAge.more": "Mais dias",
   "wizard.official.legend": "Regras oficiais (opcional)",
-  "wizard.official.help":
-    "A página do sorteio mostra regras geradas a partir das suas configurações. Adicione estas só se o seu sorteio precisar delas.",
   "wizard.winnerAge.label": "Idade mínima para ganhar, em anos",
-  "wizard.winnerAge.help":
+  "wizard.winnerAge.info":
     "O Rafflink não consegue verificar a idade. Você verifica antes de entregar o prêmio.",
   "wizard.winnerAge.fewer": "Menos anos",
   "wizard.winnerAge.more": "Mais anos",
   "wizard.excludedCountries.label": "Lugares onde as pessoas não podem ganhar",
-  "wizard.excludedCountries.help":
-    "Exemplo: Quebec, Itália. O Rafflink não consegue verificar onde alguém mora.",
   "wizard.extraTerms.label": "Condições extras",
   "wizard.extraTerms.help": "Aparecem abaixo das regras exatamente como você escrever.",
-  "wizard.recent.legend": "Bloquear vencedores recentes",
   "wizard.recent.off": "Desligado",
   "wizard.recent.off.help": "Os vencedores dos seus sorteios anteriores podem participar de novo.",
   "wizard.recent.giveaways": "Últimos sorteios",
@@ -864,11 +850,6 @@ export const pt: Translation = {
   "wizard.recent.fewer": "Menos",
   "wizard.recent.more": "Mais",
   "wizard.winnerForm.legend": "Formulário do vencedor",
-  "wizard.winnerForm.help":
-    "Depois de resgatar, o vencedor preenche estes campos na página do sorteio. Só você vê as respostas. Elas são apagadas quando você marca o prêmio como entregue, no máximo 30 dias depois do resgate.",
-  "wizard.tickets.legend": "Bilhetes por grupo",
-  "wizard.tickets.help":
-    "Cada grupo recebe 1 bilhete. Mais bilhetes significam mais chance de ganhar, por exemplo 3 para inscritos. Deixe como está se todo mundo deve ter a mesma chance.",
   "wizard.tickets.fewer": "Menos bilhetes para {group}",
   "wizard.tickets.more": "Mais bilhetes para {group}",
   "odds.same": "Todo mundo tem a mesma chance de ganhar.",
@@ -888,14 +869,10 @@ export const pt: Translation = {
   "wizard.ending.atTime.help": "As inscrições encerram sozinhas no horário que você escolher.",
   "wizard.closesAt.label": "As inscrições terminam em",
   "wizard.closesAt.help": "Usa o fuso horário deste dispositivo.",
-  "wizard.claim.legend": "Quanto tempo um vencedor tem para resgatar o prêmio?",
   "wizard.claim.custom": "Personalizado",
   "wizard.claim.minutes": "Minutos",
   "wizard.claim.fewer": "Menos minutos",
   "wizard.claim.more": "Mais minutos",
-  "wizard.keyword.label": "Palavra no chat (opcional)",
-  "wizard.keyword.help":
-    "Um vencedor também pode resgatar digitando esta palavra no seu chat. Se deixar em branco, qualquer mensagem do vencedor no chat vale.",
   "review.name": "Nome",
   "review.prize": "Prêmio",
   "review.who": "Quem pode participar",
@@ -923,29 +900,23 @@ export const pt: Translation = {
   "wizard.entry.chat": "Só chat",
   "wizard.entry.chat.help":
     "Os espectadores só participam digitando uma palavra-chave no seu chat. A página mostra a palavra-chave e permite verificar se eles estão participando.",
-  "wizard.reconnect.chat.text":
+  "wizard.reconnect.chat.info":
     "Para verificar se quem se inscreve pelo chat segue você, o Rafflink precisa de mais uma permissão da Twitch (ler seus seguidores). Reconecte a Twitch; suas respostas ficam salvas.",
-  "wizard.reconnect.sub.text":
+  "wizard.reconnect.sub.info":
     "Para inscrever novos inscritos, o Rafflink precisa ler seus inscritos e seguidores. Reconecte a Twitch; suas respostas ficam salvas.",
-  "wizard.reconnect.points.text":
+  "wizard.reconnect.points.info":
     "Para inscrever espectadores que resgatam uma recompensa de pontos do canal, o Rafflink precisa ler suas recompensas, resgates, inscritos e seguidores. Reconecte a Twitch; suas respostas ficam salvas.",
-  "wizard.reconnect.points.text.kick":
+  "wizard.reconnect.points.info.kick":
     "Para listar suas recompensas de pontos do canal, o Rafflink precisa lê-las. Reconecte a Kick; suas respostas ficam salvas.",
   "wizard.reconnect.button": "Reconectar {platform}",
   "wizard.chatKeyword.label": "Palavra-chave de inscrição",
-  "wizard.chatKeyword.help":
-    "Uma mensagem no chat que começa com esta palavra inscreve o espectador, com as mesmas regras e bilhetes da página. O Rafflink nunca escreve no seu chat.",
-  "wizard.chatCost.kick":
-    "A Kick envia ao Rafflink todas as mensagens do chat enquanto as inscrições estão abertas, com ou sem a palavra-chave, e cada uma usa uma requisição do limite diário deste servidor, que é {limit}. Um chat com 100 mensagens por minuto usa 6.000 requisições por hora. Restam {remaining} hoje.",
-  "wizard.chatCost.youtube":
-    "O Rafflink lê o chat do YouTube enquanto as inscrições estão abertas, usando cerca de {perMinute} por minuto das {limit} unidades do YouTube que este servidor tem por dia, e depois do sorteio até os vencedores resgatarem, usando cerca de {winnerPerMinute} por minuto. Restam {remaining} hoje.",
   "wizard.chatCost.youtubeByHand":
     "Você fecha este sorteio manualmente, então o servidor não consegue verificar antes se as unidades de hoje bastam: elas cobrem cerca de {minutes} minutos de inscrições. Defina um horário de término para que isso seja verificado.",
   "wizard.autoEntry.legend": "Inscrições automáticas",
   "wizard.subEntry.label": "Inscrever novos inscritos",
-  "wizard.subEntry.help":
+  "wizard.subEntry.info":
     "Todo mundo que se inscreve, ganha um sub de presente ou compartilha uma renovação no chat enquanto as inscrições estão abertas participa uma vez, com os bilhetes do seu nível. Uma renovação automática silenciosa não inscreve: a Twitch só informa uma renovação que o espectador compartilha. Participar pela página ou pelo chat continua grátis, então ninguém precisa pagar para participar.",
-  "wizard.subEntry.help.kick":
+  "wizard.subEntry.info.kick":
     "Todo mundo que se inscreve, renova ou ganha um sub de presente enquanto as inscrições estão abertas participa uma vez, com os bilhetes de um inscrito. A Kick tem um único nível de inscrição e informa todas as renovações. Participar pela página ou pelo chat continua grátis, então ninguém precisa pagar para participar.",
   "wizard.points.legend": "Recompensa de pontos do canal",
   "wizard.points.help":
@@ -1215,9 +1186,6 @@ export const pt: Translation = {
   "winnersResult.set": "Número de vencedores salvo.",
   "winnersResult.rejected":
     "Não foi possível salvar. Digite um número inteiro de vencedores, pelo menos 1.",
-  "wizard.winners.label": "Quantos vencedores?",
-  "wizard.winners.help":
-    "Quantos vencedores você planeja sortear. Você pode sortear mais ou menos depois.",
   "review.winners": "Vencedores",
   "verify.check.timing.match": "A rodada drand foi publicada depois que a lista foi fixada.",
   "verify.check.timing.mismatch":

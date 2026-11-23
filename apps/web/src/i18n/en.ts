@@ -25,6 +25,8 @@ export const en = {
   "common.dismiss": "Dismiss",
   "common.back": "Back",
   "common.next": "Next",
+  "common.optional": "optional",
+  "info.about": "About {topic}",
   "common.reloadPage": "Reload page",
   "action.failed": "Something went wrong. Try again.",
 
@@ -844,16 +846,18 @@ export const en = {
   "wizard.step.review": "Review",
   "wizard.q.basics": "Start with the basics",
   "wizard.q.rules": "Set the entry rules",
-  "wizard.q.audience": "Who can enter?",
+  "wizard.group.entry": "Who and how",
+  "wizard.group.odds": "Odds",
+  "wizard.group.winners": "Winners",
+  "wizard.q.audience": "Who can enter",
   "wizard.q.review": "Check your giveaway",
   "wizard.fix": "Please fix this to continue.",
   "wizard.start": "Start giveaway",
   "wizard.starting": "Starting…",
-  "wizard.title.label": "Giveaway name (optional)",
-  "wizard.title.help":
-    "Viewers see this at the top of the page. Example: Friday gaming chair giveaway. Leave it empty and they see the giveaway code instead.",
-  "wizard.prize.label": "What does the winner get? (optional)",
-  "wizard.prize.help": "Example: A gaming chair, or a 25 euro Steam card",
+  "wizard.title.label": "Giveaway name",
+  "wizard.title.placeholder": "Friday gaming chair giveaway",
+  "wizard.prize.label": "What does the winner get?",
+  "wizard.prize.placeholder": "A gaming chair, or a 25 euro Steam card",
   "wizard.audience.everyone": "Everyone",
   "wizard.audience.everyone.help": "Any viewer can enter.",
   "wizard.audience.followers": "Followers only",
@@ -861,26 +865,26 @@ export const en = {
   "wizard.audience.subscribers": "Subscribers only",
   "wizard.audience.subscribers.help": "Only your paying subscribers can enter.",
   "wizard.audience.subscribers.warning":
+    "Sub-only entry may count as a paid lottery in some countries.",
+  "wizard.audience.subscribers.info":
     "A subscription is a paid purchase. In many countries a giveaway that needs a purchase to enter is a regulated lottery. Consider letting followers or all viewers enter too.",
-  "wizard.minAge.label": "Minimum account age in days (optional)",
-  "wizard.minAge.help":
-    "Stops people from making fresh accounts just to enter. Leave it empty to allow any account.",
+  "wizard.minAge.label": "Minimum account age in days",
+  "wizard.minAge.help": "Blocks fresh accounts.",
   "wizard.minAge.fewer": "Fewer days",
   "wizard.minAge.more": "More days",
   "wizard.official.legend": "Official rules (optional)",
-  "wizard.official.help":
-    "The giveaway page shows rules made from your settings. Add these only if your giveaway needs them.",
+  "wizard.official.help": "Only if your giveaway needs them.",
   "wizard.winnerAge.label": "Minimum age to win, in years",
-  "wizard.winnerAge.help":
+  "wizard.winnerAge.info":
     "Rafflink cannot check age. You check it before you hand over the prize.",
   "wizard.winnerAge.fewer": "Fewer years",
   "wizard.winnerAge.more": "More years",
   "wizard.excludedCountries.label": "Places where people cannot win",
-  "wizard.excludedCountries.help":
-    "Example: Quebec, Italy. Rafflink cannot check where someone lives.",
+  "wizard.excludedCountries.help": "Rafflink cannot check where someone lives.",
+  "wizard.excludedCountries.placeholder": "e.g. Quebec, Italy",
   "wizard.extraTerms.label": "Extra terms",
   "wizard.extraTerms.help": "Shown under the rules exactly as you write them.",
-  "wizard.recent.legend": "Keep out recent winners",
+  "wizard.recent.legend": "Recent winners",
   "wizard.recent.off": "Off",
   "wizard.recent.off.help": "Winners of your earlier giveaways can enter again.",
   "wizard.recent.giveaways": "Last giveaways",
@@ -893,11 +897,11 @@ export const en = {
   "wizard.recent.fewer": "Fewer",
   "wizard.recent.more": "More",
   "wizard.winnerForm.legend": "Winner form",
-  "wizard.winnerForm.help":
-    "After claiming, the winner fills these in on the giveaway page. Only you see the answers. They are deleted when you mark the prize delivered, at the latest 30 days after the claim.",
-  "wizard.tickets.legend": "Tickets per group",
-  "wizard.tickets.help":
-    "Every group gets 1 ticket. More tickets mean a better chance of winning, for example 3 for subscribers. Leave this as it is if everyone should have the same chance.",
+  "wizard.winnerForm.help": "Asked after the claim. Only you see answers.",
+  "wizard.winnerForm.info":
+    "Answers are deleted when you mark the prize delivered, at the latest 30 days after the claim.",
+  "wizard.tickets.legend": "Bonus tickets",
+  "wizard.tickets.help": "Give some groups extra tickets.",
   "wizard.tickets.fewer": "Fewer tickets for {group}",
   "wizard.tickets.more": "More tickets for {group}",
   "odds.same": "Everyone has the same chance of winning.",
@@ -917,14 +921,13 @@ export const en = {
   "wizard.ending.atTime.help": "Entries close by themselves at the time you pick.",
   "wizard.closesAt.label": "Entries end at",
   "wizard.closesAt.help": "This uses the time zone of this device.",
-  "wizard.claim.legend": "How long does a winner have to claim the prize?",
+  "wizard.claim.legend": "Time to claim",
   "wizard.claim.custom": "Custom",
   "wizard.claim.minutes": "Minutes",
   "wizard.claim.fewer": "Fewer minutes",
   "wizard.claim.more": "More minutes",
-  "wizard.keyword.label": "Chat word (optional)",
-  "wizard.keyword.help":
-    "A winner can also claim by typing this word in your chat. Leave it empty and any chat message from the winner counts.",
+  "wizard.keyword.label": "Claim word",
+  "wizard.keyword.help": "Leave it empty and any chat message from the winner claims.",
   "review.name": "Name",
   "review.prize": "Prize",
   "review.who": "Who can enter",
@@ -951,29 +954,35 @@ export const en = {
   "wizard.entry.chat": "Chat only",
   "wizard.entry.chat.help":
     "Viewers enter only by typing a keyword in your chat. The page shows the keyword and lets them check whether they are in.",
-  "wizard.reconnect.chat.text":
+  "wizard.reconnect.chat.info":
     "To check whether a chat entrant follows you, Rafflink needs one more Twitch permission (read your followers). Reconnect Twitch; your answers stay.",
-  "wizard.reconnect.sub.text":
+  "wizard.reconnect.sub.info":
     "To enter new subscribers, Rafflink needs to read your subscribers and followers. Reconnect Twitch; your answers stay.",
-  "wizard.reconnect.points.text":
+  "wizard.reconnect.points.info":
     "To enter viewers who redeem a channel point reward, Rafflink needs to read your rewards, redemptions, subscribers and followers. Reconnect Twitch; your answers stay.",
-  "wizard.reconnect.points.text.kick":
+  "wizard.reconnect.points.info.kick":
     "To list your channel point rewards, Rafflink needs to read them. Reconnect Kick; your answers stay.",
   "wizard.reconnect.button": "Reconnect {platform}",
+  "wizard.reconnect.text": "Needs one more {platform} permission.",
   "wizard.chatKeyword.label": "Entry keyword",
-  "wizard.chatKeyword.help":
-    "A chat message that starts with this word enters the viewer, with the same rules and tickets as the page. Rafflink never writes in your chat.",
-  "wizard.chatCost.kick":
-    "Kick sends every chat message to Rafflink while entries are open, with or without the keyword, and each one uses a request of this server's daily limit of {limit}. A chat with 100 messages a minute uses 6,000 requests an hour. {remaining} are left today.",
-  "wizard.chatCost.youtube":
-    "Rafflink reads the YouTube chat while entries are open, using about {perMinute} of the {limit} YouTube units this server has a day each minute, and after the draw until winners claim, using about {winnerPerMinute} a minute. {remaining} are left today.",
+  "wizard.chatKeyword.help": "A chat message that starts with this word enters the viewer.",
+  "wizard.chatKeyword.info":
+    "Same rules and tickets as on the page. Rafflink never writes in your chat.",
+  "wizard.chatCost.kick": "Uses a server request per chat message. {remaining} left today.",
+  "wizard.chatCost.kick.info":
+    "Kick sends every chat message to Rafflink while entries are open, with or without the keyword. This server allows {limit} requests a day; a chat with 100 messages a minute uses 6,000 an hour.",
+  "wizard.chatCost.youtube": "Reading the chat uses YouTube units. {remaining} left today.",
+  "wizard.chatCost.topic": "the chat reading cost",
+  "wizard.chatCost.youtube.info":
+    "Rafflink reads the chat while entries are open, about {perMinute} units a minute, and after the draw until winners claim, about {winnerPerMinute} a minute. This server has {limit} units a day.",
   "wizard.chatCost.youtubeByHand":
     "You close this giveaway by hand, so the server cannot check in advance that today's units last: they cover about {minutes} minutes of entries. Set an end time to have it checked.",
   "wizard.autoEntry.legend": "Automatic entries",
   "wizard.subEntry.label": "Enter new subscribers",
-  "wizard.subEntry.help":
+  "wizard.subEntry.help": "New subscribers enter once. Entry on the page or in chat stays free.",
+  "wizard.subEntry.info":
     "Everyone who subscribes, gets a gift sub, or shares a resub in chat while entries are open enters once, with the tickets of their tier. A silent auto renewal does not enter: Twitch only reports a renewal the viewer shares. Entering on the page or in chat stays free, so nobody has to pay to take part.",
-  "wizard.subEntry.help.kick":
+  "wizard.subEntry.info.kick":
     "Everyone who subscribes, renews or gets a gift sub while entries are open enters once, with the tickets of a subscriber. Kick has one subscription level and reports every renewal. Entering on the page or in chat stays free, so nobody has to pay to take part.",
   "wizard.points.legend": "Channel point reward",
   "wizard.points.help":
@@ -1242,8 +1251,8 @@ export const en = {
   "live.winners.save": "Save",
   "winnersResult.set": "Winner count saved.",
   "winnersResult.rejected": "Could not save. Enter a whole number of winners, at least 1.",
-  "wizard.winners.label": "How many winners?",
-  "wizard.winners.help": "How many winners you plan to draw. You can draw more or fewer later.",
+  "wizard.winners.label": "Number of winners",
+  "wizard.winners.help": "You can change this later.",
   "review.winners": "Winners",
   "verify.check.timing.match": "The drand round was published after the list was fixed.",
   "verify.check.timing.mismatch":
@@ -1387,6 +1396,41 @@ type EnglishOnlyKey =
   | "live.draw.detail"
   | "live.draw.nobodyLeft"
   | "share.obs.3"
+  | "common.optional"
+  | "info.about"
+  | "wizard.audience.subscribers.warning"
+  | "wizard.chatCost.kick"
+  | "wizard.chatCost.kick.info"
+  | "wizard.chatCost.topic"
+  | "wizard.chatCost.youtube"
+  | "wizard.chatCost.youtube.info"
+  | "wizard.chatKeyword.help"
+  | "wizard.chatKeyword.info"
+  | "wizard.claim.legend"
+  | "wizard.excludedCountries.help"
+  | "wizard.excludedCountries.placeholder"
+  | "wizard.group.entry"
+  | "wizard.group.odds"
+  | "wizard.group.winners"
+  | "wizard.keyword.help"
+  | "wizard.keyword.label"
+  | "wizard.minAge.help"
+  | "wizard.minAge.label"
+  | "wizard.official.help"
+  | "wizard.prize.label"
+  | "wizard.prize.placeholder"
+  | "wizard.q.audience"
+  | "wizard.recent.legend"
+  | "wizard.reconnect.text"
+  | "wizard.subEntry.help"
+  | "wizard.tickets.help"
+  | "wizard.tickets.legend"
+  | "wizard.title.label"
+  | "wizard.title.placeholder"
+  | "wizard.winnerForm.help"
+  | "wizard.winnerForm.info"
+  | "wizard.winners.help"
+  | "wizard.winners.label"
 
 type PluralSuffix = "one" | "few" | "other" | "many"
 

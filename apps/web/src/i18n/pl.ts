@@ -804,43 +804,29 @@ export const pl: Translation = {
   "wizard.step.review": "Podsumowanie",
   "wizard.q.basics": "Zacznij od podstaw",
   "wizard.q.rules": "Ustal zasady zgłoszeń",
-  "wizard.q.audience": "Kto może się zgłosić?",
   "wizard.q.review": "Sprawdź swoje rozdanie",
   "wizard.fix": "Popraw to, aby kontynuować.",
   "wizard.start": "Zacznij rozdanie",
   "wizard.starting": "Uruchamianie…",
-  "wizard.title.label": "Nazwa rozdania (opcjonalnie)",
-  "wizard.title.help":
-    "Widzowie zobaczą ją na górze strony. Przykład: Piątkowe rozdanie fotela gamingowego. Jeśli zostawisz puste, zobaczą zamiast niej kod rozdania.",
-  "wizard.prize.label": "Co dostanie zwycięzca? (opcjonalnie)",
-  "wizard.prize.help": "Przykład: Fotel gamingowy albo karta Steam za 25 euro",
   "wizard.audience.everyone": "Wszyscy",
   "wizard.audience.everyone.help": "Każdy widz może się zgłosić.",
   "wizard.audience.followers": "Tylko obserwujący",
   "wizard.audience.followers.help": "Zgłosić się mogą tylko osoby, które obserwują twój kanał.",
   "wizard.audience.subscribers": "Tylko subskrybenci",
   "wizard.audience.subscribers.help": "Zgłosić się mogą tylko twoi płacący subskrybenci.",
-  "wizard.audience.subscribers.warning":
+  "wizard.audience.subscribers.info":
     "Subskrypcja to płatny zakup. W wielu krajach rozdanie, które wymaga zakupu, aby wziąć udział, jest regulowaną loterią. Rozważ dopuszczenie także obserwujących lub wszystkich widzów.",
-  "wizard.minAge.label": "Minimalny wiek konta w dniach (opcjonalnie)",
-  "wizard.minAge.help":
-    "Powstrzymuje ludzi przed zakładaniem nowych kont tylko po to, by się zgłosić. Zostaw puste, aby dopuścić każde konto.",
   "wizard.minAge.fewer": "Mniej dni",
   "wizard.minAge.more": "Więcej dni",
   "wizard.official.legend": "Oficjalne zasady (opcjonalnie)",
-  "wizard.official.help":
-    "Strona rozdania pokazuje zasady utworzone z twoich ustawień. Dodaj te pola tylko wtedy, gdy twoje rozdanie ich potrzebuje.",
   "wizard.winnerAge.label": "Minimalny wiek do wygrania, w latach",
-  "wizard.winnerAge.help":
+  "wizard.winnerAge.info":
     "Rafflink nie może sprawdzić wieku. Sprawdzasz go sam, zanim przekażesz nagrodę.",
   "wizard.winnerAge.fewer": "Mniej lat",
   "wizard.winnerAge.more": "Więcej lat",
   "wizard.excludedCountries.label": "Miejsca, w których nie można wygrać",
-  "wizard.excludedCountries.help":
-    "Przykład: Quebec, Włochy. Rafflink nie może sprawdzić, gdzie ktoś mieszka.",
   "wizard.extraTerms.label": "Dodatkowe warunki",
   "wizard.extraTerms.help": "Pokazane pod zasadami dokładnie tak, jak je napiszesz.",
-  "wizard.recent.legend": "Wyklucz ostatnich zwycięzców",
   "wizard.recent.off": "Wyłączone",
   "wizard.recent.off.help": "Zwycięzcy twoich wcześniejszych rozdań mogą zgłosić się ponownie.",
   "wizard.recent.giveaways": "Ostatnie rozdania",
@@ -854,11 +840,6 @@ export const pl: Translation = {
   "wizard.recent.fewer": "Mniej",
   "wizard.recent.more": "Więcej",
   "wizard.winnerForm.legend": "Formularz zwycięzcy",
-  "wizard.winnerForm.help":
-    "Po odebraniu nagrody zwycięzca wypełnia te pola na stronie rozdania. Odpowiedzi widzisz tylko ty. Zostaną usunięte, gdy oznaczysz nagrodę jako dostarczoną, najpóźniej 30 dni po odbiorze.",
-  "wizard.tickets.legend": "Bilety na grupę",
-  "wizard.tickets.help":
-    "Każda grupa dostaje 1 bilet. Więcej biletów to większa szansa na wygraną, na przykład 3 dla subskrybentów. Zostaw tak, jak jest, jeśli wszyscy mają mieć równe szanse.",
   "wizard.tickets.fewer": "Mniej biletów dla: {group}",
   "wizard.tickets.more": "Więcej biletów dla: {group}",
   "odds.same": "Wszyscy mają równe szanse na wygraną.",
@@ -878,14 +859,10 @@ export const pl: Translation = {
   "wizard.ending.atTime.help": "Zgłoszenia zamkną się same o wybranej godzinie.",
   "wizard.closesAt.label": "Zgłoszenia kończą się",
   "wizard.closesAt.help": "Używana jest strefa czasowa tego urządzenia.",
-  "wizard.claim.legend": "Ile czasu ma zwycięzca na odebranie nagrody?",
   "wizard.claim.custom": "Własny",
   "wizard.claim.minutes": "Minuty",
   "wizard.claim.fewer": "Mniej minut",
   "wizard.claim.more": "Więcej minut",
-  "wizard.keyword.label": "Słowo na czacie (opcjonalnie)",
-  "wizard.keyword.help":
-    "Zwycięzca może też odebrać nagrodę, wpisując to słowo na twoim czacie. Jeśli zostawisz puste, liczy się każda wiadomość zwycięzcy na czacie.",
   "review.name": "Nazwa",
   "review.prize": "Nagroda",
   "review.who": "Kto może się zgłosić",
@@ -913,29 +890,23 @@ export const pl: Translation = {
   "wizard.entry.chat": "Tylko czat",
   "wizard.entry.chat.help":
     "Widzowie zgłaszają się tylko przez wpisanie słowa kluczowego na twoim czacie. Strona pokazuje słowo kluczowe i pozwala sprawdzić, czy są w rozdaniu.",
-  "wizard.reconnect.chat.text":
+  "wizard.reconnect.chat.info":
     "Aby sprawdzić, czy osoba zgłoszona przez czat cię obserwuje, Rafflink potrzebuje jeszcze jednego uprawnienia Twitcha (odczyt obserwujących). Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
-  "wizard.reconnect.sub.text":
+  "wizard.reconnect.sub.info":
     "Aby zgłaszać nowych subskrybentów, Rafflink musi czytać twoich subskrybentów i obserwujących. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
-  "wizard.reconnect.points.text":
+  "wizard.reconnect.points.info":
     "Aby zgłaszać widzów, którzy wymieniają punkty kanału na nagrodę, Rafflink musi czytać twoje nagrody, wymiany, subskrybentów i obserwujących. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
-  "wizard.reconnect.points.text.kick":
+  "wizard.reconnect.points.info.kick":
     "Aby pokazać listę twoich nagród za punkty kanału, Rafflink musi je czytać. Połącz ponownie Kick; twoje odpowiedzi zostaną.",
   "wizard.reconnect.button": "Połącz ponownie {platform}",
   "wizard.chatKeyword.label": "Słowo kluczowe zgłoszenia",
-  "wizard.chatKeyword.help":
-    "Wiadomość na czacie zaczynająca się od tego słowa zgłasza widza, z tymi samymi zasadami i biletami co strona. Rafflink nigdy nie pisze na twoim czacie.",
-  "wizard.chatCost.kick":
-    "Kick wysyła do Rafflink każdą wiadomość z czatu, gdy zgłoszenia są otwarte, ze słowem kluczowym czy bez, a każda zużywa jedno żądanie z dziennego limitu tego serwera ({limit}). Czat ze 100 wiadomościami na minutę zużywa 6000 żądań na godzinę. Na dziś zostało: {remaining}.",
-  "wizard.chatCost.youtube":
-    "Rafflink czyta czat YouTube, gdy zgłoszenia są otwarte, zużywając na minutę około {perMinute} z {limit} dziennych jednostek YouTube tego serwera, a po losowaniu, dopóki zwycięzcy nie odbiorą nagrody, około {winnerPerMinute} na minutę. Na dziś zostało: {remaining}.",
   "wizard.chatCost.youtubeByHand":
     "To rozdanie zamykasz ręcznie, więc serwer nie może wcześniej sprawdzić, czy dzisiejsze jednostki wystarczą: wystarczą na około {minutes} minut zgłoszeń. Ustaw godzinę zakończenia, aby to sprawdzić.",
   "wizard.autoEntry.legend": "Automatyczne zgłoszenia",
   "wizard.subEntry.label": "Zgłaszaj nowych subskrybentów",
-  "wizard.subEntry.help":
+  "wizard.subEntry.info":
     "Każdy, kto zasubskrybuje, dostanie suba w prezencie albo udostępni odnowienie na czacie, gdy zgłoszenia są otwarte, zostaje zgłoszony raz, z biletami swojego tieru. Ciche automatyczne odnowienie nie zgłasza: Twitch zgłasza tylko odnowienie, które widz udostępni. Zgłoszenie na stronie lub na czacie pozostaje bezpłatne, więc nikt nie musi płacić, aby wziąć udział.",
-  "wizard.subEntry.help.kick":
+  "wizard.subEntry.info.kick":
     "Każdy, kto zasubskrybuje, odnowi subskrypcję albo dostanie suba w prezencie, gdy zgłoszenia są otwarte, zostaje zgłoszony raz, z biletami subskrybenta. Kick ma jeden poziom subskrypcji i zgłasza każde odnowienie. Zgłoszenie na stronie lub na czacie pozostaje bezpłatne, więc nikt nie musi płacić, aby wziąć udział.",
   "wizard.points.legend": "Nagroda za punkty kanału",
   "wizard.points.help":
@@ -1202,9 +1173,6 @@ export const pl: Translation = {
   "winnersResult.set": "Liczba zwycięzców zapisana.",
   "winnersResult.rejected":
     "Nie udało się zapisać. Wpisz całkowitą liczbę zwycięzców, co najmniej 1.",
-  "wizard.winners.label": "Ilu zwycięzców?",
-  "wizard.winners.help":
-    "Ilu zwycięzców planujesz wylosować. Później możesz wylosować więcej lub mniej.",
   "review.winners": "Zwycięzcy",
   "verify.check.timing.match": "Runda drand została opublikowana po ustaleniu listy.",
   "verify.check.timing.mismatch":
