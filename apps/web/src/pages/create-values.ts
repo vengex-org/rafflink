@@ -43,6 +43,8 @@ export interface Values {
   title: string
   prize: string
   audience: Audience
+  /** Off sends every group the default tickets, whatever the rows held while it was on. */
+  bonusTickets: boolean
   tickets: Record<Group, string>
   minAccountAgeDays: string
   ending: Ending
@@ -75,6 +77,7 @@ export const initialValues: Values = {
   title: "",
   prize: "",
   audience: "everyone",
+  bonusTickets: false,
   tickets: {
     viewer: "1",
     follower: "1",
@@ -117,7 +120,7 @@ export function fitValues(values: Values, capabilities: PlatformCapabilities): V
     pointsReward: capabilities.pointsEntry ? values.pointsReward : null,
   }
   const supported = ticketGroups(fitted, capabilities)
-  const tickets = { ...values.tickets }
+  const tickets = { ...(values.bonusTickets ? values.tickets : initialValues.tickets) }
   for (const group of groups) if (!supported.includes(group)) tickets[group] = "0"
   return { ...fitted, tickets }
 }
@@ -160,6 +163,10 @@ export function valuesFrom(giveaway: DashboardGiveaway): Values {
     title: giveaway.title ?? "",
     prize: giveaway.prize ?? "",
     audience: rules.subsOnly ? "subscribers" : rules.followersOnly ? "followers" : "everyone",
+    // A group the platform cannot tell holds 0 too, so such a copy opens with Bonus tickets on.
+    bonusTickets: groups.some(
+      (group) => String(rules.tickets[group]) !== initialValues.tickets[group],
+    ),
     tickets: {
       viewer: String(rules.tickets.viewer),
       follower: String(rules.tickets.follower),
@@ -283,11 +290,6 @@ export function stepOfField(field: string): Step {
 }
 
 /** The odds the ticket counts of the `shown` groups give, or null while a count is not a whole number. */
-/** Whether any of the `shown` groups gets other tickets than a new giveaway gives it. */
-export function bonusTicketsSet(typed: Values["tickets"], shown: readonly Group[]): boolean {
-  return shown.some((group) => typed[group].trim() !== initialValues.tickets[group])
-}
-
 export function oddsOf(typed: Values["tickets"], shown: readonly Group[]): Odds | null {
   if (!shown.every((group) => isWholeNumber(typed[group]))) return null
   return ticketOdds(ticketCounts(typed), shown)

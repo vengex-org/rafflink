@@ -382,6 +382,35 @@ describe("create wizard", () => {
     })
   })
 
+  it("keeps the bonus tickets of a group the entry ways hide out of the submitted rules", async () => {
+    const capabilities = {
+      ...supportedSession.streamer.capabilities,
+      moderatorRole: false,
+      chatBadgeGroups: ["moderator"],
+    }
+    const requests = mockFetch({
+      ...withCreate(createdReply),
+      "GET /api/session": () =>
+        ok({ ...supportedSession, streamer: { ...supportedSession.streamer, capabilities } }),
+    })
+    const view = await openWizard()
+    await toRules(view)
+    fireEvent.click(view.getByRole("radio", { name: /Chat only/ }))
+    openBonusTickets(view)
+    fireEvent.change(view.getByLabelText("Moderators"), { target: { value: "5" } })
+
+    fireEvent.click(view.getByRole("radio", { name: /Giveaway page/ }))
+    expect(view.queryByLabelText("Moderators")).toBeNull()
+    next(view)
+    await view.findByText("Step 3 of 3: Review")
+    fireEvent.click(view.getByRole("button", { name: "Start giveaway" }))
+    await view.findByRole("heading", { name: "Your giveaway is live!" })
+
+    expect(
+      requests.find((request) => request.route === "POST /api/dash/giveaways")?.body,
+    ).toMatchObject({ rules: { tickets: { moderator: 0 } } })
+  })
+
   it("sends the answers as the API expects", async () => {
     const requests = mockFetch(withCreate(createdReply))
     const view = await openWizard()

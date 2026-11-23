@@ -153,6 +153,10 @@ export function CreateForm({
           return
         case "invalid":
           setIssue({ field: result.field, message: `issue.${result.code}` })
+          // A refused ticket count needs its row, which shows only with Bonus tickets on.
+          if (result.field.startsWith("tickets.")) {
+            setValues((current) => ({ ...current, bonusTickets: true }))
+          }
           showStep(stepOfField(result.field), "replace")
           return
         case "unauthorized":

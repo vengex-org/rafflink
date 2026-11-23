@@ -40,7 +40,6 @@ import { useStreamerSession } from "../components/streamer-session.tsx"
 import { platformNames } from "../lib/platform-name.ts"
 import {
   audienceOffered,
-  bonusTicketsSet,
   claimPresets,
   claimSecondsOf,
   entryWaysOffered,
@@ -133,6 +132,10 @@ export function BasicsStep({ values, setValues, issue }: StepProps) {
 
 const officialFields = ["minAge", "excludedCountries", "extraTerms"] as const
 
+function flaggedBy(problem: Issue | null): boolean {
+  return officialFields.some((field) => problem?.field === field)
+}
+
 /**
  * What the generated rules cannot know from the other answers: a minimum age, excluded places, the streamer's own
  * terms. Few giveaways need them, so the section starts closed unless one is filled in or has a problem to fix.
@@ -140,15 +143,20 @@ const officialFields = ["minAge", "excludedCountries", "extraTerms"] as const
 function OfficialRulesFields({ values, setValues, issue }: StepProps) {
   const i18n = useI18n()
   const { t } = i18n
-  const [open, setOpen] = useState(() =>
-    officialFields.some((field) => values[field].trim() !== ""),
+  const [open, setOpen] = useState(
+    () => flaggedBy(issue) || officialFields.some((field) => values[field].trim() !== ""),
   )
-  const flagged = officialFields.some((field) => issue?.field === field)
+  // A new problem in one of these fields opens the section; the streamer can still close it afterwards.
+  const [seenIssue, setSeenIssue] = useState(issue)
+  if (issue !== seenIssue) {
+    setSeenIssue(issue)
+    if (flaggedBy(issue)) setOpen(true)
+  }
   return (
     <Disclosure
       icon={<TagIcon />}
       summary={t("wizard.official.legend")}
-      open={open || flagged}
+      open={open}
       onToggle={setOpen}
     >
       <p className="help official-intro">{t("wizard.official.help")}</p>
@@ -700,8 +708,7 @@ function RecentWinnersField({ values, setValues, issue }: StepProps) {
 }
 
 /**
- * The tickets each group gets, behind a Bonus tickets switch; `shown` picks the groups that get a row. The switch
- * starts on when the answers already give a group other tickets than the default, or a row has a problem to fix.
+ * The tickets each group gets, behind a Bonus tickets switch; `shown` picks the groups that get a row.
  * Switching it off puts every group back to the default tickets.
  */
 export function TicketsField({
@@ -712,8 +719,7 @@ export function TicketsField({
 }: StepProps & { readonly shown: readonly Group[] }) {
   const i18n = useI18n()
   const { t } = i18n
-  const [bonus, setBonus] = useState(() => bonusTicketsSet(values.tickets, shown))
-  const on = bonus || issue?.field.startsWith("tickets.") === true
+  const on = values.bonusTickets
   const odds = oddsOf(values.tickets, shown)
   return (
     <div className="field">
@@ -723,9 +729,12 @@ export function TicketsField({
           name="bonusTickets"
           checked={on}
           onChange={(event) => {
-            const checked = event.currentTarget.checked
-            setBonus(checked)
-            if (!checked) setValues((current) => ({ ...current, tickets: initialValues.tickets }))
+            const bonusTickets = event.currentTarget.checked
+            setValues((current) => ({
+              ...current,
+              bonusTickets,
+              tickets: bonusTickets ? current.tickets : initialValues.tickets,
+            }))
           }}
         />
         {t("wizard.tickets.legend")}
