@@ -40,8 +40,10 @@
   background: transparent;
 }
 
+/* Rows keep their content height when the box is taller than the plates, as in the style preview's stage. */
 .overlay {
   display: grid;
+  align-content: start;
   justify-items: start;
   gap: var(--space-3);
   padding: var(--space-3);
