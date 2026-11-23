@@ -1,6 +1,7 @@
 import type { LeavesJson, MyLeafJson } from "@rafflink/core/http/json"
 import { publicDrandUrls, roundPath } from "@rafflink/core/lib/drand"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "../lib/error-reporting.ts"
 import { useCallback, useEffect, useEffectEvent, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { getVerifyLoad, type VerifyLoad } from "../api/client.ts"
@@ -150,6 +151,7 @@ function Checker({
       (verdict) => setRun({ state: "done", verdict }),
       (error: unknown) => {
         console.error("verification failed", { errorClass: errorClass(error) })
+        reportError(error)
         setRun({ state: "failed" })
       },
     )

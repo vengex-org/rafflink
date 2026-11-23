@@ -8,7 +8,7 @@ import {
 
 describe("securityHeaders", () => {
   it("sends every header and no HSTS without https", () => {
-    const headers = securityHeaders({ hsts: false, scriptHashes: [] })
+    const headers = securityHeaders({ hsts: false, scriptHashes: [], errorReportOrigin: null })
 
     expect(Object.keys(headers)).toEqual([
       "Content-Security-Policy",
@@ -20,13 +20,15 @@ describe("securityHeaders", () => {
   })
 
   it("adds HSTS with https", () => {
-    expect(securityHeaders({ hsts: true, scriptHashes: [] })["Strict-Transport-Security"]).toBe(
-      "max-age=31536000; includeSubDomains",
-    )
+    expect(
+      securityHeaders({ hsts: true, scriptHashes: [], errorReportOrigin: null })[
+        "Strict-Transport-Security"
+      ],
+    ).toBe("max-age=31536000; includeSubDomains")
   })
 
   it("allows each script hash in script-src and nothing inline in style-src", () => {
-    const policy = contentSecurityPolicy(["sha256-a", "sha256-b"])
+    const policy = contentSecurityPolicy(["sha256-a", "sha256-b"], null)
 
     expect(policy).toContain("script-src 'self' 'sha256-a' 'sha256-b';")
     expect(policy).toContain("style-src 'self';")
@@ -34,14 +36,20 @@ describe("securityHeaders", () => {
   })
 
   it("lets the page show images from itself, data URLs and Twitch's image host only", () => {
-    expect(contentSecurityPolicy([])).toContain(
+    expect(contentSecurityPolicy([], null)).toContain(
       "img-src 'self' data: https://static-cdn.jtvnw.net;",
     )
   })
 
   it("lets the page read the public drand APIs and no other origin", () => {
-    expect(contentSecurityPolicy([])).toContain(
+    expect(contentSecurityPolicy([], null)).toContain(
       "connect-src 'self' https://api.drand.sh https://drand.cloudflare.com;",
+    )
+  })
+
+  it("lets a page with an error reporter post to its Sentry ingest", () => {
+    expect(contentSecurityPolicy([], "https://o1.ingest.de.sentry.io")).toContain(
+      "connect-src 'self' https://api.drand.sh https://drand.cloudflare.com https://o1.ingest.de.sentry.io;",
     )
   })
 })

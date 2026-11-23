@@ -1,7 +1,8 @@
 import { useEffect, useEffectEvent, type ReactNode } from "react"
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router"
+import { ErrorBoundary } from "./components/error-boundary.tsx"
 import { Layout } from "./components/layout.tsx"
-import { NotFound } from "./components/notice.tsx"
+import { Failed, NotFound } from "./components/notice.tsx"
 import { I18nProvider, useI18n } from "./i18n/i18n.tsx"
 import { parseLanguage } from "./i18n/language.ts"
 import { AdminPage } from "./pages/admin-page.tsx"
@@ -25,37 +26,48 @@ export function AppRoutes() {
   return (
     <I18nProvider>
       <LinkedLanguage />
-      <CanonicalPath>
-        <Routes>
-          <Route path="overlay/:id/:token" caseSensitive element={<OverlayPage />} />
-          <Route path="live/:id" caseSensitive element={<LivePage />} />
-          <Route path="mod/:id" caseSensitive element={<ModeratorLivePage />} />
-          <Route element={<Layout account />}>
-            <Route path="dashboard" caseSensitive element={<DashboardPage />} />
-            <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
-            <Route path="dashboard/created/:id" caseSensitive element={<CreatedGiveawayPage />} />
-            <Route path="admin" caseSensitive element={<AdminPage />} />
-            <Route path="privacy" caseSensitive element={<PrivacyPage />} />
-            <Route path="terms" caseSensitive element={<TermsPage />} />
-            <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
-            <Route index element={<HomePage />} />
-            <Route path="*" element={<NotFound title="notFound.page" />} />
-          </Route>
-          {/* The list draw makes no request but the drand round, and a moderator link's opener needs no streamer header, so both skip the session lookup. */}
-          <Route element={<Layout account={false} />}>
-            <Route path="draw" caseSensitive element={<DrawPage />} />
-            <Route path="mod" caseSensitive element={<ModeratorOpenPage />} />
-          </Route>
-          {siteRoutes}
-          <Route element={<Layout account={false} />}>
-            <Route path="s/:platform/:login" element={<HistoryPage />} />
-            <Route path="g/:code" element={<MovedGiveaway page="giveaway" />} />
-            <Route path="g/:code/verify" element={<MovedGiveaway page="verify" />} />
-            <Route path=":code" element={<GiveawayPage />} />
-            <Route path=":code/verify" element={<VerifyPage />} />
-          </Route>
-        </Routes>
-      </CanonicalPath>
+      <ErrorBoundary fallback={<Failed />}>
+        <CanonicalPath>
+          <Routes>
+            {/* A broken overlay shows nothing on the stream rather than an error card. */}
+            <Route
+              path="overlay/:id/:token"
+              caseSensitive
+              element={
+                <ErrorBoundary fallback={null}>
+                  <OverlayPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route path="live/:id" caseSensitive element={<LivePage />} />
+            <Route path="mod/:id" caseSensitive element={<ModeratorLivePage />} />
+            <Route element={<Layout account />}>
+              <Route path="dashboard" caseSensitive element={<DashboardPage />} />
+              <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
+              <Route path="dashboard/created/:id" caseSensitive element={<CreatedGiveawayPage />} />
+              <Route path="admin" caseSensitive element={<AdminPage />} />
+              <Route path="privacy" caseSensitive element={<PrivacyPage />} />
+              <Route path="terms" caseSensitive element={<TermsPage />} />
+              <Route path="verify" caseSensitive element={<VerifyLookupPage />} />
+              <Route index element={<HomePage />} />
+              <Route path="*" element={<NotFound title="notFound.page" />} />
+            </Route>
+            {/* The list draw makes no request but the drand round, and a moderator link's opener needs no streamer header, so both skip the session lookup. */}
+            <Route element={<Layout account={false} />}>
+              <Route path="draw" caseSensitive element={<DrawPage />} />
+              <Route path="mod" caseSensitive element={<ModeratorOpenPage />} />
+            </Route>
+            {siteRoutes}
+            <Route element={<Layout account={false} />}>
+              <Route path="s/:platform/:login" element={<HistoryPage />} />
+              <Route path="g/:code" element={<MovedGiveaway page="giveaway" />} />
+              <Route path="g/:code/verify" element={<MovedGiveaway page="verify" />} />
+              <Route path=":code" element={<GiveawayPage />} />
+              <Route path=":code/verify" element={<VerifyPage />} />
+            </Route>
+          </Routes>
+        </CanonicalPath>
+      </ErrorBoundary>
     </I18nProvider>
   )
 }

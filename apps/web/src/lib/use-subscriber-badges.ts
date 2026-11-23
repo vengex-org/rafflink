@@ -1,4 +1,5 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 import type { SubscriberBadges } from "@rafflink/core/platform/provider"
 import { useEffect, useState } from "react"
 import { useLiveApi } from "./live-api.ts"
@@ -17,6 +18,7 @@ export function useSubscriberBadges(giveawayId: string | undefined): SubscriberB
       },
       (error: unknown) => {
         console.error("subscriber badges failed", { errorClass: errorClass(error) })
+        reportError(error)
       },
     )
     return () => {

@@ -44,6 +44,9 @@ export function webFixture(): { path: string; remove: () => void } {
   writeFileSync(join(path, "index.html"), spaTemplate)
   writeFileSync(join(path, "favicon.ico"), emptyIcon)
   const scriptHashes = [inlineScriptSource.slice(1, -1)]
-  writeFileSync(join(path, "_headers"), headersFile(securityHeaders({ hsts: true, scriptHashes })))
+  writeFileSync(
+    join(path, "_headers"),
+    headersFile(securityHeaders({ hsts: true, scriptHashes, errorReportOrigin: null })),
+  )
   return { path, remove: () => rmSync(path, { recursive: true, force: true }) }
 }

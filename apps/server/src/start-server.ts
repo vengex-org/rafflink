@@ -8,6 +8,7 @@ import { apiPrefixes, fakeKickPrefixes, fakeTwitchPrefixes } from "@rafflink/cor
 import { DrandBeacon } from "@rafflink/core/beacon/drand-beacon"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { captureException } from "@sentry/core"
 import { MemoryPublicCache } from "@rafflink/core/lib/memory-public-cache"
 import { MemoryRateLimiter } from "@rafflink/core/lib/memory-rate-limiter"
 import { openKeyRing } from "@rafflink/core/lib/seal"
@@ -115,6 +116,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     try {
       await queue.onAlarm()
     } catch (error) {
+      captureException(error)
       console.error("token queue alarm failed", { errorClass: errorClass(error) })
     }
   })
@@ -200,6 +202,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     try {
       console.info("streamer token validation", await validateStreamerTokens(tokenDeps))
     } catch (error) {
+      captureException(error)
       console.error("streamer token validation failed", { errorClass: errorClass(error) })
     }
   }
@@ -209,6 +212,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       const deleted = await deleteExpiredGiveaways({ accounts, rooms, clock, config }, days)
       console.info("history retention sweep", { deleted })
     } catch (error) {
+      captureException(error)
       console.error("history retention sweep failed", { errorClass: errorClass(error) })
     }
   }

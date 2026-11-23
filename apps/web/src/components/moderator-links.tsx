@@ -1,6 +1,7 @@
 import { useId, useState } from "react"
 import type { ModeratorLinkJson } from "@rafflink/core/http/json"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "../lib/error-reporting.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { ModeratorLinksApi } from "../lib/live-api.ts"
 import { moderatorUrl } from "../lib/links.ts"
@@ -55,6 +56,7 @@ export function ModeratorLinks({
       setListed({ state: "ready", links: await api.list(id) })
     } catch (error) {
       console.error("moderator links failed", { errorClass: errorClass(error) })
+      reportError(error)
       setListed({ state: "failed" })
     }
   }

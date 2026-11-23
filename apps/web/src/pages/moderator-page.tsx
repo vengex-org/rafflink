@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Navigate, useLocation, useParams, useSearchParams } from "react-router"
 import type { EntrantsDelta, LiveSnapshot } from "@rafflink/core/room/giveaway-room"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "../lib/error-reporting.ts"
 import {
   moderatorSnapshotPath,
   openModeratorLink,
@@ -48,6 +49,7 @@ export function ModeratorOpenPage() {
       },
       (error: unknown) => {
         console.error("moderator link failed", { errorClass: errorClass(error) })
+        reportError(error)
         if (current) setResult("failed")
       },
     )

@@ -1,4 +1,5 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { reportError } from "./error-reporting.ts"
 import { useCallback, useEffect, useState } from "react"
 
 export type Load<T> =
@@ -19,6 +20,7 @@ export function useLoad<T>(load: () => Promise<T>): { readonly result: Load<T>; 
       },
       (error: unknown) => {
         console.error("load failed", { errorClass: errorClass(error), round })
+        reportError(error)
         if (current) setResult({ state: "failed" })
       },
     )

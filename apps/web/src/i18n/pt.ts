@@ -1060,6 +1060,8 @@ export const pt: Readonly<Record<MessageKey, string>> = {
     "Quando um streamer ativa o histórico público, qualquer pessoa pode ver lá o nome do streamer e os sorteios finalizados dele: título, prêmio, data de encerramento e os números de participantes e vencedores. A página não nomeia nenhum participante nem nenhum vencedor, e o streamer pode esconder sorteios individuais ou desativar a página. Os buscadores só indexam a página quando o streamer permite.",
   "privacy.recipients.i6":
     "As respostas do formulário do vencedor vão para o streamer que conduz o sorteio e para mais ninguém: os moderadores, o overlay e as páginas públicas nunca as mostram.",
+  "privacy.recipients.i7":
+    "Se o operador ativar o relatório de erros, a Sentry (Functional Software, Inc.) recebe, como subcontratante do operador, relatórios de erros no navegador e no servidor e guarda-os na sua região da UE, na Alemanha. Um relatório contém o erro, onde ocorreu, o navegador e o sistema operativo; como qualquer servidor, a Sentry vê o endereço IP da ligação. Os cookies, o conteúdo dos pedidos, os códigos de início de sessão, os tokens do Twitch e do Kick e as respostas dos vencedores no formulário são removidos antes de um relatório ser enviado.",
   "privacy.cookies.h": "Cookies e armazenamento local",
   "privacy.cookies.p1":
     "O Rafflink define só cookies estritamente necessários, por isso nenhum banner de consentimento é exibido. Todos são HTTP-only e não são usados para mais nada.",

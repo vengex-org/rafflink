@@ -8,6 +8,7 @@ import {
   type Harness,
 } from "../../test/app-fixture.ts"
 import { spaTemplate } from "../../test/contract/spa-fixture.ts"
+import { withErrorReportingMeta } from "../lib/spa-html.ts"
 import { dayMs } from "../stats/time.ts"
 import { createApp } from "./create-app.ts"
 
@@ -88,6 +89,25 @@ describe("page routes", () => {
     expect(terms.headers.get("x-robots-tag")).toBeNull()
     expect(dashboard.headers.get("x-robots-tag")).toBe("noindex, nofollow")
     expect(verify.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+  })
+
+  it("lets a page whose build carries a Sentry DSN post to that ingest and to no other", async () => {
+    const reporting = withErrorReportingMeta(spaTemplate, {
+      sentryDsn: "https://public@o1.ingest.de.sentry.io/2",
+      sentryEnvironment: "production",
+      sentryRelease: null,
+      sentrySamplePercent: 100,
+    })
+    const reported = createApp(harness.deps, async () => reporting)
+    const created = await createGiveaway(harness, users.streamerA.id)
+
+    for (const path of ["/", `/${created.code}`, "/s/twitch/nobody"]) {
+      const withIngest = (await reported.request(path)).headers.get("content-security-policy")
+      const without = (await app.request(path)).headers.get("content-security-policy")
+
+      expect(withIngest).toContain(" https://o1.ingest.de.sentry.io;")
+      expect(without).not.toContain("sentry.io")
+    }
   })
 
   it("keeps an unknown API path a JSON 404", async () => {

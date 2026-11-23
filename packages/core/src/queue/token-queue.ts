@@ -1,3 +1,4 @@
+import { captureException } from "@sentry/core"
 import { errorClass } from "../lib/error-class.ts"
 import type { ResolvedConfig } from "../config.ts"
 import { randomId } from "../lib/random-id.ts"
@@ -371,6 +372,7 @@ export class TokenQueue {
     try {
       attempt = await this.process(item)
     } catch (error) {
+      captureException(error, { extra: { giveawayId: item.giveawayId } })
       console.error("queue item failed", {
         giveawayId: item.giveawayId,
         errorClass: errorClass(error),

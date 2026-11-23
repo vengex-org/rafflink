@@ -1040,6 +1040,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Když streamer zapne veřejnou historii, kdokoli na ní vidí jméno streamera a jeho ukončené giveawaye: název, cenu, datum uzavření a počet přihlášených a vítězů. Stránka neuvádí jména přihlášených ani vítězů a streamer může jednotlivé giveawaye skrýt nebo stránku vypnout. Vyhledávače stránku indexují, jen pokud to streamer povolí.",
   "privacy.recipients.i6":
     "Odpovědi z formuláře pro vítěze dostane jen streamer, který giveaway vede: moderátoři, overlay ani veřejné stránky je nikdy nezobrazí.",
+  "privacy.recipients.i7":
+    "Pokud provozovatel zapne hlášení chyb, Sentry (Functional Software, Inc.) přijímá jako zpracovatel provozovatele hlášení o chybách v prohlížeči a na serveru a ukládá je ve svém regionu EU v Německu. Hlášení obsahuje chybu, místo, kde nastala, prohlížeč a operační systém; jako každý server vidí Sentry IP adresu spojení. Cookies, obsah požadavků, přihlašovací kódy, tokeny Twitche a Kicku a odpovědi výherců ve formuláři se před odesláním hlášení odstraní.",
   "privacy.cookies.h": "Cookies a lokální úložiště",
   "privacy.cookies.p1":
     "Rafflink nastavuje jen nezbytně nutné cookies, proto se nezobrazuje žádný souhlasový banner. Všechny jsou HTTP-only a nepoužívají se k ničemu jinému.",

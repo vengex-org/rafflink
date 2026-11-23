@@ -248,6 +248,35 @@ the rest, and `LEGAL_UPDATED` (`YYYY-MM-DD`) sets the date shown as the last upd
 and cookie lifetimes in the texts are the defaults of the matching settings (see `.env.example`); if you change
 them, change the texts too. Rafflink sends no data to the Rafflink project from any install.
 
+### Error reporting with Sentry (optional)
+
+Each target can send its errors to your own Sentry project. Without a DSN nothing is loaded and nothing is sent,
+which is the default for local development, the tests and self-hosting.
+
+- `SENTRY_DSN`: the DSN of the Worker or the Bun server, read at runtime. On Cloudflare set it with
+  `bunx wrangler secret put SENTRY_DSN`.
+- `PUBLIC_SENTRY_DSN`: the browser's DSN, read by the web build (`bun run build`), which writes it into the page.
+  The page then loads the Sentry SDK as a separate file, and the Content-Security-Policy allows the Sentry ingest
+  of that DSN in `connect-src`. After a change, build again.
+- `SENTRY_ENVIRONMENT` (default `production`), `SENTRY_RELEASE` (the commit the deployment was built from) and
+  `SENTRY_SAMPLE_PERCENT` (default 100; lower it when one noisy error would use up the 5,000 errors a month of the
+  Sentry free plan) apply to all three. The web build reads them too.
+
+Only errors are sent: no tracing, no session replay, no logs. The reports leave out cookies, headers, request
+bodies, query parameters and the user, and a filter removes the `Authorization` header, OAuth `code` and `state`,
+Twitch and Kick tokens, token-shaped strings, secrets in a path and winner form answers before a report leaves. A
+report of the Worker or the Bun server carries the error class and the stack but not the message, which can quote
+a login or a platform id. Expected outcomes are not reported: a 401
+after a session expired, a Twitch or Kick 429 that is retried, and a Kick webhook with a wrong signature.
+
+Source maps: `bun run build` writes them next to the bundles in `apps/web/dist` and `apps/cloudflare/dist`. A
+push to master uploads them from CI to the Sentry projects `rafflink-web` and `rafflink-worker` of the
+organization `vengex-ww`, with the commit as the release, when the repository has the GitHub Actions secret
+`SENTRY_AUTH_TOKEN` (an organization token that may upload source maps). Build and deploy the same commit with
+`SENTRY_RELEASE` set to it, and the stack traces resolve against those maps. The maps never reach visitors:
+`apps/web/public/.assetsignore` keeps them out of the Cloudflare assets, and the Dockerfile deletes them from the
+image.
+
 ### Server size (VPS)
 
 One Bun process serves everything and writes entries to SQLite, so a small VPS is enough. The entry path runs on
@@ -282,6 +311,9 @@ server.
    cd apps/server
    docker compose up -d --build
    ```
+
+   For error reporting (see above), the build also takes `PUBLIC_SENTRY_DSN`, `SENTRY_RELEASE`,
+   `SENTRY_ENVIRONMENT` and `SENTRY_SAMPLE_PERCENT` from `apps/server/.env`.
 
 Data lives in the Docker volume `rafflink-data`, mounted at `/data` (`DATA_DIR`): `accounts.sqlite` with
 streamers and giveaways, `queue.sqlite` with the token queue and one `rooms/<id>.sqlite` file per giveaway.
@@ -537,6 +569,10 @@ To upgrade, pull the new code, run `bun run build`, apply new migrations with
 first: the new code reads columns that only the migration adds. After the upgrade that introduced streamer
 approval, streamers that signed in earlier wait for approval unless `OPEN_SIGNUP` is `true`.
 
+With error reporting, build with `SENTRY_RELEASE=$(git rev-parse HEAD)` (and `PUBLIC_SENTRY_DSN` for the
+browser) and deploy with `bunx wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)`, so the reports of
+the page and of the Worker name the commit whose source maps CI uploaded.
+
 ## Security headers, link previews and OBS
 
 Every API response and every page carries a Content-Security-Policy (`default-src 'self'`, no inline styles,
@@ -544,7 +580,8 @@ Every API response and every page carries a Content-Security-Policy (`default-sr
 `Cross-Origin-Opener-Policy`; `Strict-Transport-Security` is added when `PUBLIC_URL` is https. The one
 inline script of `index.html` (the theme) is allowed by its hash. The hash is computed from the page that is
 served and from the built `apps/web/dist/index.html` when it writes `_headers`, so editing the script needs
-no manual step; a test fails if the built page has a second inline script.
+no manual step; a test fails if the built page has a second inline script. A page built with
+`PUBLIC_SENTRY_DSN` adds the Sentry ingest of that DSN to `connect-src`, read from the same built page.
 
 On Cloudflare the app pages are static: the headers above come from `apps/web/dist/_headers`, which the web build
 writes (with the hash of the inline script), and `X-Robots-Tag: noindex, nofollow` covers every path except

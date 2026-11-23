@@ -13,6 +13,14 @@ export interface WorkerEnv {
   readonly MODERATOR_IP_LIMITER: RateLimit
 }
 
+/**
+ * What the caches built once per isolate are keyed by. Not `env` itself: the Sentry wrappers hand every request
+ * and every Durable Object a new proxy of it, while the D1 binding they return stays the same object.
+ */
+export function isolateKeyOf(env: WorkerEnv): object {
+  return env.DB
+}
+
 /** The string values of the environment: variables and secrets, without the bindings. */
 export function settingsOf(env: WorkerEnv): Record<string, string> {
   const settings: Record<string, string> = {}

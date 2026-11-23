@@ -1,4 +1,11 @@
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { sentryOptions } from "@rafflink/core/lib/error-reporting"
+import {
+  captureException,
+  instrumentDurableObjectWithSentry,
+  withSentry,
+  type CloudflareOptions,
+} from "@sentry/cloudflare"
 import { validateStreamerTokens } from "@rafflink/core/accounts/validate-streamer-tokens"
 import { createApp, type AppDeps, type SpaTemplateLoader } from "@rafflink/core/http/create-app"
 import { armRetentionAlarms } from "@rafflink/core/room/arm-retention"
@@ -12,16 +19,24 @@ import {
   durableObjectTokenQueue,
 } from "./adapters/durable-object-token-queue.ts"
 import { RateLimitBindingLimiter, connectingAddress } from "./adapters/rate-limit-binding.ts"
-import type { WorkerEnv } from "./env.ts"
-import { runtimeOf } from "./runtime.ts"
+import { GiveawayRoomObject as GiveawayRoom } from "./durable-objects/giveaway-room-do.ts"
+import { TokenQueueDO as TokenQueue } from "./durable-objects/token-queue-do.ts"
+import { isolateKeyOf, type WorkerEnv } from "./env.ts"
+import { configOf, runtimeOf } from "./runtime.ts"
 import { createWorkerApp } from "./worker-app.ts"
 
-export { GiveawayRoomObject } from "./durable-objects/giveaway-room-do.ts"
-export { TokenQueueDO } from "./durable-objects/token-queue-do.ts"
+// Without a DSN the SDK is disabled and builds no transport.
+function sentryOptionsOf(env: WorkerEnv): CloudflareOptions {
+  return sentryOptions(configOf(env)) ?? { enabled: false }
+}
 
-const apps = new WeakMap<WorkerEnv, Promise<Hono>>()
+// The class names are the `class_name`s of wrangler.jsonc.
+export const GiveawayRoomObject = instrumentDurableObjectWithSentry(sentryOptionsOf, GiveawayRoom)
+export const TokenQueueDO = instrumentDurableObjectWithSentry(sentryOptionsOf, TokenQueue)
 
-export default {
+const apps = new WeakMap<object, Promise<Hono>>()
+
+export default withSentry(sentryOptionsOf, {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     return (await appOf(env)).fetch(request)
   },
@@ -32,13 +47,14 @@ export default {
     ctx.waitUntil(armRetention(env))
     ctx.waitUntil(deleteExpiredHistory(env))
   },
-}
+} satisfies ExportedHandler<WorkerEnv>)
 
 function appOf(env: WorkerEnv): Promise<Hono> {
-  const existing = apps.get(env)
+  const key = isolateKeyOf(env)
+  const existing = apps.get(key)
   if (existing !== undefined) return existing
   const opened = openApp(env)
-  apps.set(env, opened)
+  apps.set(key, opened)
   return opened
 }
 
@@ -76,6 +92,7 @@ async function validateTokens(env: WorkerEnv): Promise<void> {
   try {
     console.info("streamer token validation", await validateStreamerTokens(await runtimeOf(env)))
   } catch (error) {
+    captureException(error)
     console.error("streamer token validation failed", {
       errorClass: errorClass(error),
     })
@@ -93,6 +110,7 @@ async function armRetention(env: WorkerEnv): Promise<void> {
     )
     console.info("retention sweep", { woken })
   } catch (error) {
+    captureException(error)
     console.error("retention sweep failed", { errorClass: errorClass(error) })
   }
 }
@@ -109,6 +127,7 @@ async function deleteExpiredHistory(env: WorkerEnv): Promise<void> {
     )
     console.info("history retention sweep", { deleted })
   } catch (error) {
+    captureException(error)
     console.error("history retention sweep failed", { errorClass: errorClass(error) })
   }
 }

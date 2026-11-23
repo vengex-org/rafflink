@@ -2,6 +2,7 @@ import { serveStatic, upgradeWebSocket } from "@hono/bun"
 import { apiPrefixes, fakeKickPrefixes, fakeTwitchPrefixes } from "@rafflink/core/http/api-paths"
 import { staticCacheControl } from "@rafflink/core/http/static-headers"
 import { errorClass } from "@rafflink/core/lib/error-class"
+import { captureException } from "@sentry/core"
 import { moderatorLinkHeader } from "@rafflink/core/http/moderator-routes"
 import { viewerRoomHeader } from "@rafflink/core/http/viewer-socket"
 import { Hono, type Context, type MiddlewareHandler } from "hono"
@@ -155,6 +156,7 @@ function socketRoute(
         try {
           ws.send(first())
         } catch (error) {
+          captureException(error)
           console.error("socket first message failed", { topic, errorClass: errorClass(error) })
           ws.close(internalErrorCloseCode)
         }
