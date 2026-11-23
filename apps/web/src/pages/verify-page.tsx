@@ -6,11 +6,13 @@ import { reportError } from "../lib/error-reporting.ts"
 import { useCallback, useEffect, useEffectEvent, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { getVerifyLoad, type VerifyLoad } from "../api/client.ts"
+import { Disclosure } from "../components/disclosure.tsx"
 import {
   AlertIcon,
   ArrowLeftIcon,
   CheckCircleIcon,
   ClockIcon,
+  InfoIcon,
   ShuffleIcon,
 } from "../components/icons.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
@@ -257,17 +259,45 @@ function Results({
       text: t(`verify.check.winners.${verdict.winners}`, { round: commitment.round }),
     },
   ]
+  const overall = overallOutcome(rows.map((row) => row.outcome))
   return (
-    <ul className="verify-checks" aria-live="polite">
-      {rows.map((row) => (
-        <li key={row.text} data-outcome={row.outcome}>
-          <CheckMark outcome={row.outcome} />
-          {row.text}
-        </li>
-      ))}
-    </ul>
+    <div className="verify-result" aria-live="polite">
+      <h2 className="verify-verdict" data-outcome={overall}>
+        <CheckMark outcome={verdictMark[overall]} />
+        {t(`verify.verdict.${overall}`)}
+      </h2>
+      {/* A failed or unfinished check stays open, so the reason is in view. */}
+      <Disclosure
+        icon={<InfoIcon />}
+        summary={t("verify.checks.summary")}
+        open={overall !== "verified"}
+      >
+        <ul className="verify-checks">
+          {rows.map((row) => (
+            <li key={row.text} data-outcome={row.outcome}>
+              <CheckMark outcome={row.outcome} />
+              {row.text}
+            </li>
+          ))}
+        </ul>
+      </Disclosure>
+    </div>
   )
 }
+
+type Overall = "verified" | "failed" | "incomplete"
+
+/** The draw is verified when every check matched, fails when any did not, and is unfinished otherwise. */
+function overallOutcome(outcomes: readonly string[]): Overall {
+  if (outcomes.includes("mismatch")) return "failed"
+  return outcomes.every((outcome) => outcome === "match") ? "verified" : "incomplete"
+}
+
+const verdictMark = {
+  verified: "match",
+  failed: "mismatch",
+  incomplete: "none",
+} as const satisfies Record<Overall, string>
 
 const signatureOutcome = {
   valid: "match",

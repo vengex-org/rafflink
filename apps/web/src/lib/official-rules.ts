@@ -31,7 +31,7 @@ export function officialRules(
   const { t } = i18n
   const { rules, streamerName: name } = giveaway
   const shown = supportedGroups(giveaway.capabilities, badgesSeen(rules))
-  const recentWinners = recentWinnersText(i18n, rules.excludeRecentWinners)
+  const recentWinners = recentWinnersText(i18n, rules.excludeRecentWinners, { kind: "rules", name })
   const lines = [
     t("rules.organizer", { name }),
     t("rules.platform", { platform: platformNames[giveaway.platform] }),

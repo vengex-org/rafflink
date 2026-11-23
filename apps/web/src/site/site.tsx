@@ -6,12 +6,13 @@ import type { ReactElement } from "react"
 import { Link } from "react-router"
 import { DonateLink } from "../components/donate-link.tsx"
 import { ExternalLink } from "../components/external-link.tsx"
-import { AlertIcon, LogInIcon } from "../components/icons.tsx"
+import { AlertIcon, LogInIcon, PlatformIcon } from "../components/icons.tsx"
 import { StateCard } from "../components/state-card.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { repositoryUrl, setupGuideUrl } from "../lib/links.ts"
+import { platformNames } from "../lib/platform-name.ts"
 import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import { dashboardPath, drawPath, verifyLookupPath } from "../lib/routes.ts"
 import { useConsumedParam } from "../lib/use-consumed-param.ts"
@@ -24,7 +25,7 @@ export function HomePage() {
   const { t } = useI18n()
   const signin = useConsumedParam("signin")
   const problem = useHydrated() ? signInProblem(signin?.value ?? null) : null
-  const { streamer, donateUrl } = useStreamerSession()
+  const { streamer, donateUrl, signInPlatforms } = useStreamerSession()
   const privacyPath = useLocalizedPath("privacy")
   const termsPath = useLocalizedPath("terms")
   return (
@@ -49,7 +50,16 @@ export function HomePage() {
               {t(streamer === null ? "home.login" : "nav.myGiveaways")}
             </Link>
           </div>
-          <p className="home-reads">{t("home.reads")}</p>
+          <p className="home-platforms">
+            {t("home.worksWith")}
+            {signInPlatforms.map((platform) => (
+              <span key={platform}>
+                <PlatformIcon platform={platform} />
+                {platformNames[platform]}
+              </span>
+            ))}
+          </p>
+          {streamer === null ? <p className="home-reads">{t("home.reads")}</p> : null}
         </div>
       </section>
       <footer className="home-footer">

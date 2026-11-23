@@ -12,6 +12,7 @@ import { SettingsMenu } from "./header-controls.tsx"
 import { LogInIcon } from "./icons.tsx"
 import { Avatar } from "./live-parts.tsx"
 import {
+  rememberedSignIn,
   StreamerSessionProvider,
   useStreamerSession,
   type SignedInStreamer,
@@ -19,17 +20,22 @@ import {
 
 /**
  * The app bar and the page column; every page shares one width, so edges line up and nothing jumps between pages.
- * `account` asks the server who the streamer is, which only the streamer's pages need.
+ * `account` says when the bar asks the server who the streamer is: `always` on the streamer's pages, `remembered` only in
+ * a browser where a streamer signed in before, `never` on pages with no use for it.
  * A page that picks its frame itself passes its content as `children` instead of being a route here.
  */
 export function Layout({
   account,
   children,
 }: {
-  readonly account: boolean
+  readonly account: "always" | "remembered" | "never"
   readonly children?: ReactNode | undefined
 }) {
   const { t } = useI18n()
+  // Read once, so a sign-in elsewhere does not swap the bar's state under the open page.
+  const [asks] = useState(
+    () => account === "always" || (account === "remembered" && rememberedSignIn()),
+  )
   // The home page ends with its own footer and renders SiteNav in its bar.
   const { pathname } = useLocation()
   const isHome = pageOfPath(pathname)?.page === "home"
@@ -55,7 +61,7 @@ export function Layout({
             <Link className="button text app-verify" to={verifyLookupPath}>
               {t("nav.verify")}
             </Link>
-            {account ? <Account /> : <LoginLink />}
+            {asks ? <Account /> : <LoginLink />}
             <SettingsMenu>
               <Link className="settings-verify" to={verifyLookupPath}>
                 {t("nav.verify")}
@@ -83,7 +89,7 @@ export function Layout({
       ) : null}
     </div>
   )
-  return account ? <StreamerSessionProvider>{page}</StreamerSessionProvider> : page
+  return asks ? <StreamerSessionProvider>{page}</StreamerSessionProvider> : page
 }
 
 /** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. The way out and the dashboard link sit in one account button. */

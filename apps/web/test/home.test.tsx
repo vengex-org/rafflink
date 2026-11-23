@@ -157,7 +157,7 @@ describe("home page", () => {
       expect(link.getAttribute("rel")).toBe("noopener")
     }
     expect(nav.queryByRole("link", { name: "Verify a draw" })).toBeNull()
-    expect(view.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/dashboard")
+    expect(view.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/dashboard")
     expect(
       view.getAllByRole("link").filter((link) => link.getAttribute("href") === "/demo"),
     ).toEqual([])

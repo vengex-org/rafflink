@@ -7,10 +7,10 @@ export const en = {
   "nav.verify": "Verify a draw",
   "nav.github": "GitHub",
   "link.newTab": "Opens in a new tab",
-  "nav.login": "Log in",
-  "nav.logout": "Log out",
+  "nav.login": "Sign in",
+  "nav.logout": "Sign out",
   "nav.support": "Support Rafflink",
-  "nav.loggedOut": "Logged out.",
+  "nav.loggedOut": "Signed out.",
   "theme.legend": "Theme",
   "theme.system": "System",
   "theme.light": "Light",
@@ -43,7 +43,6 @@ export const en = {
   "signIn.buttonYouTube": "Sign in with YouTube",
   "signIn.why.admin": "Sign in with Twitch to open the admin page.",
   "signIn.why.expired": "Your session ended. Sign in to go on.",
-  "signIn.why.dashboard": "Sign in to create and run giveaways.",
   "signIn.why.live": "Sign in to open the live page of your giveaway.",
 
   "home.title": "Fair giveaways, drawn live on stream.",
@@ -51,6 +50,7 @@ export const en = {
   "home.login": "Sign in and start",
   "home.stage.toClaim": "to claim",
   "home.reads": "We only read your name, VIPs, moderators and chat.",
+  "home.worksWith": "Works with",
   "home.trust.supportKoFi": "Support on Ko-fi",
   "home.trust.support": "Support Rafflink",
   "home.footer.guide": "Self-host guide",
@@ -373,15 +373,30 @@ export const en = {
   "year.few": "{count} years",
   "year.other": "{count} years",
   "year.many": "{count} years",
-  "recentGiveaways.one": "Winners of the streamer's last giveaway cannot enter.",
-  "recentGiveaways.few": "Winners of the streamer's last {count} giveaways cannot enter.",
-  "recentGiveaways.other": "Winners of the streamer's last {count} giveaways cannot enter.",
-  "recentGiveaways.many": "Winners of the streamer's last {count} giveaways cannot enter.",
-  "recentDays.one": "Winners of the streamer's giveaways from the last day cannot enter.",
-  "recentDays.few": "Winners of the streamer's giveaways from the last {count} days cannot enter.",
-  "recentDays.other":
-    "Winners of the streamer's giveaways from the last {count} days cannot enter.",
-  "recentDays.many": "Winners of the streamer's giveaways from the last {count} days cannot enter.",
+  "recentGiveaways.one": "Winners of {name}'s last giveaway cannot enter.",
+  "recentGiveaways.few": "Winners of {name}'s last {count} giveaways cannot enter.",
+  "recentGiveaways.other": "Winners of {name}'s last {count} giveaways cannot enter.",
+  "recentGiveaways.many": "Winners of {name}'s last {count} giveaways cannot enter.",
+  "recentDays.one": "Winners of {name}'s giveaways from the last day cannot enter.",
+  "recentDays.few": "Winners of {name}'s giveaways from the last {count} days cannot enter.",
+  "recentDays.other": "Winners of {name}'s giveaways from the last {count} days cannot enter.",
+  "recentDays.many": "Winners of {name}'s giveaways from the last {count} days cannot enter.",
+  "recentGiveawaysOwn.one": "Winners of your last giveaway cannot enter.",
+  "recentGiveawaysOwn.few": "Winners of your last {count} giveaways cannot enter.",
+  "recentGiveawaysOwn.other": "Winners of your last {count} giveaways cannot enter.",
+  "recentGiveawaysOwn.many": "Winners of your last {count} giveaways cannot enter.",
+  "recentDaysOwn.one": "Winners of your giveaways from the last day cannot enter.",
+  "recentDaysOwn.few": "Winners of your giveaways from the last {count} days cannot enter.",
+  "recentDaysOwn.other": "Winners of your giveaways from the last {count} days cannot enter.",
+  "recentDaysOwn.many": "Winners of your giveaways from the last {count} days cannot enter.",
+  "recentGiveawaysShort.one": "no winners of the last giveaway",
+  "recentGiveawaysShort.few": "no winners of the last {count} giveaways",
+  "recentGiveawaysShort.other": "no winners of the last {count} giveaways",
+  "recentGiveawaysShort.many": "no winners of the last {count} giveaways",
+  "recentDaysShort.one": "no winners from the last day",
+  "recentDaysShort.few": "no winners from the last {count} days",
+  "recentDaysShort.other": "no winners from the last {count} days",
+  "recentDaysShort.many": "no winners from the last {count} days",
   "entered.one": "{count} person entered",
   "entered.few": "{count} people entered",
   "entered.other": "{count} people entered",
@@ -416,8 +431,13 @@ export const en = {
   "who.followers": "Only followers can enter.",
   "who.everyone": "Everyone can enter.",
   "who.ticketGroups": "Only the groups that get tickets can enter.",
-  "extraTickets.subs": "Subscribers get {tickets}.",
-  "extraTickets.some": "Some viewers get extra tickets. The list below shows how many.",
+  "whoShort.both": "Subscribers who follow",
+  "whoShort.subs": "Subscribers only",
+  "whoShort.followers": "Followers only",
+  "whoShort.everyone": "Everyone",
+  "whoShort.ticketGroups": "Only groups with tickets",
+  "extraTicketsShort.subs": "subscribers get {tickets}",
+  "extraTicketsShort.some": "bonus tickets for some",
   "ticket.cannotEnter": "cannot enter",
   "claimTime.clock": "{clock} minutes",
 
@@ -496,7 +516,8 @@ export const en = {
   "win.another.title": "Another winner was picked",
   "win.title": "You won",
   "win.claimed.title": "Prize claimed",
-  "win.claimedAt": "Claimed on {at}.",
+  "win.claimedAt": "Claimed on {at}. {name} will contact you.",
+  "win.contact": "{name} will contact you.",
   "win.up.title": "Time is up",
   "win.up.text": "The streamer may pick another winner.",
   "win.press": "Claim now, or the streamer may pick someone else when the timer ends.",
@@ -510,8 +531,7 @@ export const en = {
   "winnerField.platform-id": "Game account or platform ID",
   "winnerField.text": "Message to the streamer",
   "winnerForm.title": "Where should the prize go?",
-  "winnerForm.notice":
-    "Only {name}, who runs this giveaway, sees your answers, to deliver the prize. They are deleted when the prize is marked delivered, at the latest 30 days after your claim. You can send the form once.",
+  "winnerForm.notice": "Only {name} sees this. Deleted after delivery (max 30 days).",
   "winnerForm.send": "Send",
   "winnerForm.saved": "Your answers were sent to the streamer.",
   "winnerForm.already-answered": "You already sent your answers.",
@@ -1198,6 +1218,10 @@ export const en = {
   "verify.facts.leavesLink": "Open the entry list",
   "verify.run": "Verify",
   "verify.running": "Checking…",
+  "verify.verdict.verified": "Draw verified",
+  "verify.verdict.failed": "Draw does not check out",
+  "verify.verdict.incomplete": "Not everything could be checked",
+  "verify.checks.summary": "What was checked",
   "verify.check.counts.match": "The list has as many entries and tickets as announced.",
   "verify.check.counts.mismatch":
     "The list does not have the announced number of entries and tickets.",
@@ -1231,8 +1255,7 @@ export const en = {
     "The drand round was published before the list was fixed, so the draw cannot be trusted.",
   "verify.facts.winners": "Planned winners",
   "verify.facts.committed": "List fixed at",
-  "verify.rerolls.note":
-    "The streamer may reroll a winner who did not meet the conditions of the giveaway. The streamer may also draw more winners than planned, one at a time. Every pick and every reroll stays in this list.",
+  "verify.rerolls.note": "Rerolls and extra draws are listed here.",
   "verify.rerolls.count": "Rerolled picks: {count}.",
   "verify.winner.before": "{count} rerolled picks came before it.",
   "verify.mine.title": "Your entry",
@@ -1340,7 +1363,29 @@ export const en = {
 export type MessageKey = keyof typeof en
 
 /** Keys whose English copy is not translated yet; the other languages show the English text for them. */
-type EnglishOnlyKey = "giveaway.paused.title" | "giveaway.paused.text"
+type EnglishOnlyKey =
+  | "giveaway.paused.title"
+  | "giveaway.paused.text"
+  | "nav.login"
+  | "nav.logout"
+  | "nav.loggedOut"
+  | "home.worksWith"
+  | `recentGiveaways.${PluralSuffix}`
+  | `recentDays.${PluralSuffix}`
+  | `recentGiveawaysOwn.${PluralSuffix}`
+  | `recentDaysOwn.${PluralSuffix}`
+  | `recentGiveawaysShort.${PluralSuffix}`
+  | `recentDaysShort.${PluralSuffix}`
+  | `whoShort.${"both" | "subs" | "followers" | "everyone" | "ticketGroups"}`
+  | `extraTicketsShort.${"subs" | "some"}`
+  | "win.claimedAt"
+  | "win.contact"
+  | "winnerForm.notice"
+  | "verify.rerolls.note"
+  | `verify.verdict.${"verified" | "failed" | "incomplete"}`
+  | "verify.checks.summary"
+
+type PluralSuffix = "one" | "few" | "other" | "many"
 
 /** What a language other than English provides: every key but the {@link EnglishOnlyKey}s. */
 export type Translation = Readonly<Omit<Record<MessageKey, string>, EnglishOnlyKey>>

@@ -3,12 +3,7 @@ import type { GiveawayView } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { shareUrl, verifyUrl } from "../lib/links.ts"
 import { officialRules, officialRulesText } from "../lib/official-rules.ts"
-import {
-  extraTicketsText,
-  peopleText,
-  recentWinnersText,
-  whoCanEnterText,
-} from "../lib/rules-text.ts"
+import { peopleText, whoCanEnterSummary } from "../lib/rules-text.ts"
 import { formatLeft, useClock, useRemainingMs } from "../lib/use-remaining.ts"
 import { CopyButton } from "./copy-field.tsx"
 import { ChevronDownIcon } from "./icons.tsx"
@@ -25,8 +20,6 @@ export function GiveawayFacts({
 }) {
   const i18n = useI18n()
   const { t } = i18n
-  const extraTickets = extraTicketsText(i18n, giveaway.rules.tickets)
-  const recentWinners = recentWinnersText(i18n, giveaway.rules.excludeRecentWinners)
   return (
     <dl className="viewer-facts">
       {kind === "pool" ? (
@@ -34,14 +27,7 @@ export function GiveawayFacts({
       ) : (
         <>
           <Fact label={t("giveaway.row.who")} format="text">
-            {whoCanEnterText(
-              i18n,
-              giveaway.rules.subsOnly,
-              giveaway.rules.followersOnly,
-              giveaway.rules.tickets.viewer === 0,
-            )}
-            {extraTickets === null ? null : ` ${extraTickets}`}
-            {recentWinners === null ? null : ` ${recentWinners}`}
+            {whoCanEnterSummary(i18n, giveaway.rules)}
           </Fact>
           {giveaway.status === "open" ? (
             <Fact label={t("giveaway.row.entries")} format="text">

@@ -724,10 +724,11 @@ export function ReviewStep({
   const recent =
     values.recentWinners === "off"
       ? null
-      : recentWinnersText(i18n, {
-          kind: values.recentWinners,
-          count: Number(values.recentWinnersCount),
-        })
+      : recentWinnersText(
+          i18n,
+          { kind: values.recentWinners, count: Number(values.recentWinnersCount) },
+          { kind: "own" },
+        )
   return (
     <dl className="review">
       <ReviewRow label={t("review.name")} value={textOrNotSet(i18n, values.title)} />

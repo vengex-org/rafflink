@@ -60,11 +60,7 @@ export function DashboardGate({
     case "failed":
       return <Failed onReload={reload} />
     case "ready":
-      return result.value === "unauthorized" ? (
-        <SignIn why="signIn.why.dashboard" />
-      ) : (
-        children(result.value, reload)
-      )
+      return result.value === "unauthorized" ? <SignIn /> : children(result.value, reload)
   }
 }
 

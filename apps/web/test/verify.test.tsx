@@ -111,9 +111,8 @@ describe("verify page", () => {
   it("recomputes the root and the winners from the list and the drand round and says they match", async () => {
     const view = await verified()
 
-    expect(
-      await view.findByText("The list has as many entries and tickets as announced."),
-    ).toBeTruthy()
+    expect(await view.findByRole("heading", { name: "Draw verified" })).toBeTruthy()
+    expect(view.getByText("The list has as many entries and tickets as announced.")).toBeTruthy()
     expect(view.getByText("The Merkle root of the list is the published root.")).toBeTruthy()
     expect(
       view.getByText(
@@ -181,6 +180,7 @@ describe("verify page", () => {
         "The winners do not follow from the list and the random number of drand round 1000000.",
       ),
     ).toBeTruthy()
+    expect(view.getByRole("heading", { name: "Draw does not check out" })).toBeTruthy()
   })
 
   it("says the root does not match when the published root is not the root of the list", async () => {
@@ -250,9 +250,7 @@ describe("verify page", () => {
 
     expect(await view.findByText("Planned winners")).toBeTruthy()
     expect(view.getByText("List fixed at")).toBeTruthy()
-    expect(
-      view.getByText(/The streamer may reroll a winner who did not meet the conditions/),
-    ).toBeTruthy()
+    expect(view.getByText("Rerolls and extra draws are listed here.")).toBeTruthy()
   })
 
   it("lists every rerolled pick and how many rerolled picks came before each standing winner", async () => {

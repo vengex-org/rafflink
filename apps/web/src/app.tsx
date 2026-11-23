@@ -53,7 +53,7 @@ export function AppRoutes() {
             />
             <Route path="live/:id" caseSensitive element={<LivePage />} />
             <Route path="mod/:id" caseSensitive element={<ModeratorLivePage />} />
-            <Route element={<Layout account />}>
+            <Route element={<Layout account="always" />}>
               <Route path="dashboard" caseSensitive element={<DashboardPage />} />
               <Route path="dashboard/new" caseSensitive element={<NewGiveawayPage />} />
               <Route path="dashboard/created/:id" caseSensitive element={<CreatedGiveawayPage />} />
@@ -63,12 +63,13 @@ export function AppRoutes() {
               <Route path="*" element={<NotFound title="notFound.page" />} />
             </Route>
             {/* The list draw makes no request but the drand round, and a moderator link's opener needs no streamer header, so both skip the session lookup. */}
-            <Route element={<Layout account={false} />}>
+            <Route element={<Layout account="never" />}>
               <Route path="draw" caseSensitive element={<DrawPage />} />
               <Route path="mod" caseSensitive element={<ModeratorOpenPage />} />
             </Route>
             {siteRoutes}
-            <Route element={<Layout account={false} />}>
+            {/* Viewers crowd these pages, so only a browser that signed in as a streamer before asks who is signed in. */}
+            <Route element={<Layout account="remembered" />}>
               <Route path="s/:platform/:login" element={<HistoryPage />} />
               <Route path="g/:code" element={<MovedGiveaway page="giveaway" />} />
               <Route path="g/:code/verify" element={<MovedGiveaway page="verify" />} />

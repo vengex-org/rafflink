@@ -4,6 +4,7 @@ import { stubClipboard } from "./clipboard.ts"
 import { installFakeSocket } from "./fake-socket.ts"
 import { claimedAt, claimedAtText, giveaway, rules, supportedSession } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
+import { wholeText } from "./queries.ts"
 import { renderApp } from "./render-app.tsx"
 
 let restoreSocket = () => {}
@@ -317,7 +318,7 @@ describe("giveaway landing", () => {
     expect(await view.findByRole("heading", { level: 1, name: "A gaming chair" })).toBeTruthy()
     expect(view.getByText("Streamy, Summer giveaway")).toBeTruthy()
     expect(view.getByText("1,204 people entered")).toBeTruthy()
-    expect(await whoRow(view)).toMatch(/Only followers can enter\./)
+    expect(await whoRow(view)).toBe("Followers only · bonus tickets for some")
     expect(view.getByText("Entries stay open until the streamer closes them.")).toBeTruthy()
   })
 
@@ -382,23 +383,17 @@ describe("giveaway landing", () => {
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText(/Everyone can enter\. Subscribers get 3 tickets\./)).toBeTruthy()
+    expect(await whoRow(view)).toBe("Everyone · subscribers get 3 tickets")
   })
 
   it.each([
-    [{ kind: "giveaways", count: 3 }, /Winners of the streamer's last 3 giveaways cannot enter\./],
-    [{ kind: "giveaways", count: 1 }, /Winners of the streamer's last giveaway cannot enter\./],
-    [
-      { kind: "days", count: 30 },
-      /Winners of the streamer's giveaways from the last 30 days cannot enter\./,
-    ],
-    [
-      { kind: "days", count: 1 },
-      /Winners of the streamer's giveaways from the last day cannot enter\./,
-    ],
+    [{ kind: "giveaways", count: 3 }, "no winners of the last 3 giveaways"],
+    [{ kind: "giveaways", count: 1 }, "no winners of the last giveaway"],
+    [{ kind: "days", count: 30 }, "no winners from the last 30 days"],
+    [{ kind: "days", count: 1 }, "no winners from the last day"],
   ])(
     "says who is kept out as recent winners (%j) next to who can enter",
-    async (rule, sentence) => {
+    async (rule, fragment) => {
       mockFetch({
         "GET /api/g/ABCDE": () =>
           ok({ ...giveaway, rules: { ...giveaway.rules, excludeRecentWinners: rule } }),
@@ -406,18 +401,32 @@ describe("giveaway landing", () => {
 
       const view = renderApp("/ABCDE")
 
-      expect(await whoRow(view)).toMatch(sentence)
-      expect(await whoRow(view)).toMatch(/Everyone can enter\./)
+      expect(await whoRow(view)).toBe(`Everyone · bonus tickets for some · ${fragment}`)
     },
   )
 
-  it("adds no recent-winners sentence when the giveaway keeps none out", async () => {
+  it("names the channel in the rules when recent winners are kept out", async () => {
+    mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({
+          ...giveaway,
+          rules: { ...giveaway.rules, excludeRecentWinners: { kind: "giveaways", count: 3 } },
+        }),
+    })
+
+    const view = renderApp("/ABCDE")
+
+    expect(
+      await view.findByText("Winners of Streamy's last 3 giveaways cannot enter."),
+    ).toBeTruthy()
+  })
+
+  it("adds no recent-winners part when the giveaway keeps none out", async () => {
     mockFetch(giveawayRoute)
 
     const view = renderApp("/ABCDE")
 
-    expect(await whoRow(view)).toMatch(/Everyone can enter\./)
-    expect(view.queryByText(/Winners of the streamer/)).toBeNull()
+    expect(await whoRow(view)).toBe("Everyone · bonus tickets for some")
   })
 
   it("lists the tickets of every group and the claim time under the rules", async () => {
@@ -432,7 +441,6 @@ describe("giveaway landing", () => {
     expect(view.getByText("Viewers: 1 ticket")).toBeTruthy()
     expect(view.getByText("Account at least 30 days old")).toBeTruthy()
     expect(view.getByText("Winners have 5 minutes to claim.")).toBeTruthy()
-    expect(view.getByText(/Some viewers get extra tickets/)).toBeTruthy()
   })
 
   it("lists only the groups the giveaway's platform can tell", async () => {
@@ -617,8 +625,21 @@ describe("entry outcomes", () => {
     expect(
       view.getByText("The streamer draws the winner live. Keep this page open or come back later."),
     ).toBeTruthy()
-    expect(view.getByText("All 2 steps done")).toBeTruthy()
+    expect(view.queryByRole("list", { name: "Steps" })).toBeNull()
     expect(view.queryByRole("link", { name: "Enter with Twitch" })).toBeNull()
+  })
+
+  it("drops the chat keyword and the Am I in? check once the sign-in entered the viewer", async () => {
+    mockFetch({
+      "GET /api/g/ABCDE": () =>
+        ok({ ...giveaway, rules: { ...giveaway.rules, chatKeyword: "!enter" } }),
+    })
+
+    const view = renderApp("/ABCDE?entry=entered")
+
+    expect(await view.findByRole("heading", { name: "You are in" })).toBeTruthy()
+    expect(view.queryByRole("button", { name: "Am I in?" })).toBeNull()
+    expect(view.queryByText("!enter")).toBeNull()
   })
 
   it("keeps the first entry and says You are in again", async () => {
@@ -853,7 +874,7 @@ describe("winner form", () => {
     const view = renderApp("/ABCDE")
 
     expect(await view.findByRole("heading", { name: "Where should the prize go?" })).toBeTruthy()
-    expect(view.getByText(/Only Ada, who runs this giveaway, sees your answers/)).toBeTruthy()
+    expect(view.getByText("Only Ada sees this. Deleted after delivery (max 30 days).")).toBeTruthy()
     fireEvent.change(view.getByLabelText("Name"), { target: { value: "Ann" } })
     fireEvent.change(view.getByLabelText("E-mail"), { target: { value: "ann@example.com" } })
     fireEvent.click(view.getByRole("button", { name: "Send" }))
@@ -890,7 +911,7 @@ describe("winner claim", () => {
     expect(view.getByRole("timer").textContent).toMatch(/^1:(29|30)$/)
     expect(view.getByText("left to claim")).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Claim my prize" }))
-    expect(await view.findByText("Claimed! The streamer will contact you.")).toBeTruthy()
+    expect(await view.findByText(/Streamy will contact you./)).toBeTruthy()
     expect(view.queryByRole("button", { name: "Claim my prize" })).toBeNull()
     expect(requests.map((request) => request.route)).toContain("POST /api/g/ABCDE/claim")
   })
@@ -934,7 +955,9 @@ describe("winner claim", () => {
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText(`Claimed on ${claimedAtText}.`)).toBeTruthy()
+    expect(
+      await view.findByText(`Claimed on ${claimedAtText}. Streamy will contact you.`),
+    ).toBeTruthy()
     expect(view.getByText("Your entry: 3 tickets as a follower.")).toBeTruthy()
   })
 
@@ -1019,7 +1042,7 @@ describe("winner claim", () => {
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText("Claimed! The streamer will contact you.")).toBeTruthy()
+    expect(await view.findByText(/Streamy will contact you./)).toBeTruthy()
     expect(view.queryByRole("button", { name: "Claim my prize" })).toBeNull()
   })
 })
@@ -1247,7 +1270,9 @@ describe("chat entry", () => {
     })
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText("Or type !enter in the chat of Streamy to enter.")).toBeTruthy()
+    expect(
+      await view.findByText(wholeText("Or type !enter in the chat of Streamy to enter.")),
+    ).toBeTruthy()
     fireEvent.change(view.getByLabelText("Your username"), { target: { value: " fan " } })
     fireEvent.click(view.getByRole("button", { name: "Am I in?" }))
     expect(await view.findByText("fan is in the giveaway.")).toBeTruthy()
@@ -1266,9 +1291,11 @@ describe("chat entry", () => {
 
     const view = renderApp("/ABCDE")
 
-    expect(await view.findByText("Or type !enter in the chat of Streamy to enter.")).toBeTruthy()
+    expect(
+      await view.findByText(wholeText("Or type !enter in the chat of Streamy to enter.")),
+    ).toBeTruthy()
     expect(view.getByRole("button", { name: "Am I in?" })).toBeTruthy()
-    expect(view.queryByRole("link", { name: /Enter with Twitch|Sign in/ })).toBeNull()
+    expect(view.queryByRole("link", { name: /Enter with Twitch|Sign in with/ })).toBeNull()
   })
 
   it("hides the keyword while chat entry is off and keeps the lookup", async () => {
@@ -1277,7 +1304,9 @@ describe("chat entry", () => {
     const view = renderApp("/ABCDE")
 
     expect(await view.findByRole("button", { name: "Am I in?" })).toBeTruthy()
-    expect(view.queryByText("Or type !enter in the chat of Streamy to enter.")).toBeNull()
+    expect(
+      view.queryByText(wholeText("Or type !enter in the chat of Streamy to enter.")),
+    ).toBeNull()
   })
 
   it("says the check did not work when the lookup fails", async () => {

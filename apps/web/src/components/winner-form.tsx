@@ -36,7 +36,7 @@ export function WinnerForm({
         if (outcome === "saved" || outcome === "already-answered") setSent(true)
       }}
     >
-      <h2 id={headId}>{t("winnerForm.title")}</h2>
+      <h3 id={headId}>{t("winnerForm.title")}</h3>
       <p className="help">{t("winnerForm.notice", { name: streamerName })}</p>
       {form.map((kind) => (
         <AnswerField
