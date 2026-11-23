@@ -280,16 +280,15 @@ describe("shared list draw", () => {
     const view = renderApp(await linkTo(shortList))
 
     const gaveUp = () => view.queryByText("Could not read drand round 1000000. Try again later.")
-    // Each try awaits two answers before its pause; the loop lets them settle, then skips the pause. setImmediate is
-    // not faked and waits a whole event loop turn, which a busy machine needs for the answers.
-    for (let step = 0; step < 50 && gaveUp() === null; step++) {
+    // waitFor cannot run on the fake clock, so the loop is the wait: each turn lets the answers of a try settle
+    // (setImmediate is not faked) and skips its pause, until the page gives up or the test times out.
+    while (gaveUp() === null) {
       await act(async () => {
         await new Promise<void>((resolve) => setImmediate(resolve))
         jest.advanceTimersByTime(500)
       })
     }
 
-    expect(gaveUp()).toBeTruthy()
     jest.useRealTimers()
     answering = true
     fireEvent.click(view.getByRole("button", { name: "Try again" }))

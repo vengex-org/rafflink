@@ -274,9 +274,9 @@ describe("verify page", () => {
     ).toBeTruthy()
   })
 
-  // The test and the page each hash 500 picks over 600 entrants; beside other test workers that takes seconds.
-  it("replays a 500-pick batch the room drew and lists the first 50 picks until asked for all", async () => {
-    const entrants = Array.from({ length: 600 }, (_, index) => ({
+  // The page replays every pick before it answers; beside other test workers that takes more than findBy's 1 s.
+  it("replays a batch the room drew and lists the first 50 picks until asked for all", async () => {
+    const entrants = Array.from({ length: 80 }, (_, index) => ({
       platform: "twitch",
       platformUserId: `u${String(index).padStart(4, "0")}`,
       tickets: (index % 5) + 1,
@@ -285,7 +285,7 @@ describe("verify page", () => {
     const seed = fromHex(round.randomness)
     if (seed === null) throw new Error("bad fixture randomness")
     // The room's batch draw, not the page's replay, gives the expected picks.
-    const picks = await pickWinners(seed, 0, 500, entrants, [])
+    const picks = await pickWinners(seed, 0, 60, entrants, [])
     const root = toHex(
       await merkleRoot(
         entrants.map((entrant) => ({
@@ -296,9 +296,9 @@ describe("verify page", () => {
     )
     const big = {
       ...drawn,
-      entrantCount: 600,
+      entrantCount: 80,
       ticketTotal: entrants.reduce((sum, entrant) => sum + entrant.tickets, 0),
-      winnerCount: 500,
+      winnerCount: 60,
       commitment: { ...drawn.commitment, merkleRoot: root },
       picks: picks.map((pick) => ({ n: pick.n, leafIndex: pick.leafIndex, rerolled: false })),
     }
@@ -315,13 +315,13 @@ describe("verify page", () => {
       await view.findByText(
         "The winners follow from the list and the random number of drand round 1000000.",
         {},
-        { timeout: 10_000 },
+        { timeout: 3000 },
       ),
     ).toBeTruthy()
     expect(view.container.querySelectorAll(".verify-picks li")).toHaveLength(50)
-    fireEvent.click(view.getByRole("button", { name: "Show all 500 picks" }))
-    expect(view.container.querySelectorAll(".verify-picks li")).toHaveLength(500)
-  }, 15_000)
+    fireEvent.click(view.getByRole("button", { name: "Show all 60 picks" }))
+    expect(view.container.querySelectorAll(".verify-picks li")).toHaveLength(60)
+  })
 
   it("says the counts do not match when the announced tickets differ from the list", async () => {
     const view = await verified({
