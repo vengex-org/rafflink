@@ -124,6 +124,7 @@ export function GiveawayRules({ giveaway }: { readonly giveaway: GiveawayView })
           </>
         )}
         <p>{rules.notice}</p>
+        {rules.englishPrevails === null ? null : <p>{rules.englishPrevails}</p>}
         <div className="viewer-rules-copy">
           <CopyButton
             value={officialRulesText(i18n, rules, shareUrl(giveaway.code))}

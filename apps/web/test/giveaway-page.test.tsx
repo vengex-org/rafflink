@@ -276,6 +276,23 @@ describe("official rules", () => {
       "These rules are made from the giveaway's settings. They are a template, not legal advice.",
     )
   })
+
+  it("say in a translation that the English rules prevail, on the page and in the copied text", async () => {
+    const prevails = "Toto je preklad. Ak sa líši od anglickej verzie, platí anglická verzia."
+    window.localStorage.setItem("rafflink-language", "sk")
+    const copied = stubClipboard(false)
+    mockFetch(giveawayRoute)
+    try {
+      const view = renderApp("/ABCDE")
+
+      expect(await view.findByText(prevails)).toBeTruthy()
+      fireEvent.click(view.getByRole("button", { name: "Kopírovať pravidlá ako text" }))
+      await waitFor(() => expect(copied).toHaveLength(1))
+      expect(copied[0]?.split("\n").at(-1)).toBe(prevails)
+    } finally {
+      window.localStorage.clear()
+    }
+  })
 })
 
 // The "Who can enter" row above the rules; the rules list repeats its sentences one by one.

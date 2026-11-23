@@ -329,35 +329,46 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "ticket.one": "{count} lístok",
   "ticket.few": "{count} lístky",
   "ticket.other": "{count} lístkov",
+  "ticket.many": "{count} lístkov",
   "drawBatch.one": "Vyžrebovať {count} víťaza",
   "drawBatch.few": "Vyžrebovať {count} víťazov",
   "drawBatch.other": "Vyžrebovať {count} víťazov",
+  "drawBatch.many": "Vyžrebovať {count} víťazov",
   "winners.one": "{count} víťaz",
   "winners.few": "{count} víťazi",
   "winners.other": "{count} víťazov",
+  "winners.many": "{count} víťazov",
   "minute.one": "{count} minúta",
   "minute.few": "{count} minúty",
   "minute.other": "{count} minút",
+  "minute.many": "{count} minút",
   "day.one": "{count} deň",
   "day.few": "{count} dni",
   "day.other": "{count} dní",
+  "day.many": "{count} dní",
   "year.one": "{count} rok",
   "year.few": "{count} roky",
   "year.other": "{count} rokov",
+  "year.many": "{count} rokov",
   "recentGiveaways.one": "Výhercovia posledného giveawayu streamera sa nemôžu zapojiť.",
   "recentGiveaways.few": "Výhercovia posledných {count} giveawayov streamera sa nemôžu zapojiť.",
   "recentGiveaways.other": "Výhercovia posledných {count} giveawayov streamera sa nemôžu zapojiť.",
+  "recentGiveaways.many": "Výhercovia posledných {count} giveawayov streamera sa nemôžu zapojiť.",
   "recentDays.one": "Výhercovia giveawayov streamera z posledného dňa sa nemôžu zapojiť.",
   "recentDays.few": "Výhercovia giveawayov streamera z posledných {count} dní sa nemôžu zapojiť.",
   "recentDays.other": "Výhercovia giveawayov streamera z posledných {count} dní sa nemôžu zapojiť.",
+  "recentDays.many": "Výhercovia giveawayov streamera z posledných {count} dní sa nemôžu zapojiť.",
   "entered.one": "Zapísal sa {count} človek",
   "entered.few": "Zapísali sa {count} ľudia",
   "entered.other": "Zapísalo sa {count} ľudí",
+  "entered.many": "Zapísalo sa {count} ľudí",
   "usageLow.one":
     "Pozor: server má na dnes už len {count} požiadavku. Keď sa minú, zápisy môžu prestať fungovať.",
   "usageLow.few":
     "Pozor: server má na dnes už len {count} požiadavky. Keď sa minú, zápisy môžu prestať fungovať.",
   "usageLow.other":
+    "Pozor: server má na dnes už len {count} požiadaviek. Keď sa minú, zápisy môžu prestať fungovať.",
+  "usageLow.many":
     "Pozor: server má na dnes už len {count} požiadaviek. Keď sa minú, zápisy môžu prestať fungovať.",
   "roleFailures.one":
     "Raz Rafflink nedokázal z Twitchu načítať zoznamy VIP a moderátorov. Títo diváci možno nemajú extra lístky.",
@@ -365,11 +376,15 @@ export const sk: Readonly<Record<MessageKey, string>> = {
     "{count}-krát Rafflink nedokázal z Twitchu načítať zoznamy VIP a moderátorov. Títo diváci možno nemajú extra lístky.",
   "roleFailures.other":
     "{count}-krát Rafflink nedokázal z Twitchu načítať zoznamy VIP a moderátorov. Títo diváci možno nemajú extra lístky.",
+  "roleFailures.many":
+    "{count}-krát Rafflink nedokázal z Twitchu načítať zoznamy VIP a moderátorov. Títo diváci možno nemajú extra lístky.",
   "chatFailures.one":
     "Raz Rafflink stratil spojenie s tvojím chatom. Sledovanie chatu mohlo zmeškať správy.",
   "chatFailures.few":
     "{count}-krát Rafflink stratil spojenie s tvojím chatom. Sledovanie chatu mohlo zmeškať správy.",
   "chatFailures.other":
+    "{count}-krát Rafflink stratil spojenie s tvojím chatom. Sledovanie chatu mohlo zmeškať správy.",
+  "chatFailures.many":
     "{count}-krát Rafflink stratil spojenie s tvojím chatom. Sledovanie chatu mohlo zmeškať správy.",
 
   "who.both": "Zapojiť sa môžu len predplatitelia, ktorí kanál sledujú.",
@@ -947,6 +962,8 @@ export const sk: Readonly<Record<MessageKey, string>> = {
   "legal.operator.id": "identifikačné číslo {id}",
   "legal.unavailable": "Údaje o tom, kto prevádzkuje túto inštanciu, sa nepodarilo načítať.",
   "legal.retry": "Skúsiť znova",
+  "legal.englishPrevails":
+    "Toto je preklad. Ak sa líši od anglickej verzie, platí anglická verzia.",
 
   "privacy.title": "Zásady ochrany osobných údajov",
   "privacy.intro":

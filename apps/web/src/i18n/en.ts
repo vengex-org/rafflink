@@ -323,40 +323,51 @@ export const en = {
   "issue.future": "Pick a time in the future.",
   "issue.wholeYears": "Enter a whole number of years from 1 to 99, or leave it empty.",
 
-  // English has no "few" form; every plural base keeps all three keys so each language shares one key set.
+  // Each plural base has a key per CLDR category of `Intl.PluralRules` the languages use (`few`: 2 to 4 in Czech, Slovak and Polish; `many`: 5 to 21 in Polish), so every language shares one key set. A language without a category repeats its `other` text.
   "ticket.one": "{count} ticket",
   "ticket.few": "{count} tickets",
   "ticket.other": "{count} tickets",
+  "ticket.many": "{count} tickets",
   "drawBatch.one": "Draw {count} winner",
   "drawBatch.few": "Draw {count} winners",
   "drawBatch.other": "Draw {count} winners",
+  "drawBatch.many": "Draw {count} winners",
   "winners.one": "{count} winner",
   "winners.few": "{count} winners",
   "winners.other": "{count} winners",
+  "winners.many": "{count} winners",
   "minute.one": "{count} minute",
   "minute.few": "{count} minutes",
   "minute.other": "{count} minutes",
+  "minute.many": "{count} minutes",
   "day.one": "{count} day",
   "day.few": "{count} days",
   "day.other": "{count} days",
+  "day.many": "{count} days",
   "year.one": "{count} year",
   "year.few": "{count} years",
   "year.other": "{count} years",
+  "year.many": "{count} years",
   "recentGiveaways.one": "Winners of the streamer's last giveaway cannot enter.",
   "recentGiveaways.few": "Winners of the streamer's last {count} giveaways cannot enter.",
   "recentGiveaways.other": "Winners of the streamer's last {count} giveaways cannot enter.",
+  "recentGiveaways.many": "Winners of the streamer's last {count} giveaways cannot enter.",
   "recentDays.one": "Winners of the streamer's giveaways from the last day cannot enter.",
   "recentDays.few": "Winners of the streamer's giveaways from the last {count} days cannot enter.",
   "recentDays.other":
     "Winners of the streamer's giveaways from the last {count} days cannot enter.",
+  "recentDays.many": "Winners of the streamer's giveaways from the last {count} days cannot enter.",
   "entered.one": "{count} person entered",
   "entered.few": "{count} people entered",
   "entered.other": "{count} people entered",
+  "entered.many": "{count} people entered",
   "usageLow.one":
     "Heads up: the server has only {count} request left for today. Entries may stop working once they run out.",
   "usageLow.few":
     "Heads up: the server has only {count} requests left for today. Entries may stop working once they run out.",
   "usageLow.other":
+    "Heads up: the server has only {count} requests left for today. Entries may stop working once they run out.",
+  "usageLow.many":
     "Heads up: the server has only {count} requests left for today. Entries may stop working once they run out.",
   "roleFailures.one":
     "Once Rafflink could not load your VIP and moderator lists from Twitch. Those viewers may be missing extra tickets.",
@@ -364,11 +375,15 @@ export const en = {
     "{count} times Rafflink could not load your VIP and moderator lists from Twitch. Those viewers may be missing extra tickets.",
   "roleFailures.other":
     "{count} times Rafflink could not load your VIP and moderator lists from Twitch. Those viewers may be missing extra tickets.",
+  "roleFailures.many":
+    "{count} times Rafflink could not load your VIP and moderator lists from Twitch. Those viewers may be missing extra tickets.",
   "chatFailures.one":
     "Once Rafflink lost the connection to your chat. Chat watch may have missed messages.",
   "chatFailures.few":
     "{count} times Rafflink lost the connection to your chat. Chat watch may have missed messages.",
   "chatFailures.other":
+    "{count} times Rafflink lost the connection to your chat. Chat watch may have missed messages.",
+  "chatFailures.many":
     "{count} times Rafflink lost the connection to your chat. Chat watch may have missed messages.",
 
   "who.both": "Only subscribers who follow the channel can enter.",
@@ -943,6 +958,9 @@ export const en = {
   "legal.operator.id": "business ID {id}",
   "legal.unavailable": "The details of who runs this instance could not be loaded.",
   "legal.retry": "Try again",
+  // Shown only in the translations: the source text the others translate.
+  "legal.englishPrevails":
+    "This is a translation. Where it differs from the English version, the English version prevails.",
 
   "privacy.title": "Privacy policy",
   "privacy.intro":

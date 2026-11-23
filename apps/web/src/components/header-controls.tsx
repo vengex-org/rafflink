@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { useLocation } from "react-router"
 import { useI18n } from "../i18n/i18n.tsx"
-import { languages, type Language } from "../i18n/language.ts"
+import { languageNames, languages } from "../i18n/language.ts"
 import {
   applyTheme,
   darkQuery,
@@ -12,12 +12,6 @@ import {
 } from "../theme/theme.ts"
 import { MoonIcon, SlidersIcon, SunIcon, TvIcon } from "./icons.tsx"
 import { SegmentRow } from "./segment-row.tsx"
-
-const languageNames: Readonly<Record<Language, string>> = {
-  en: "English",
-  sk: "Slovenčina",
-  cs: "Čeština",
-}
 
 /** The theme and language switches behind one icon button, in a popover, as the app bar and the live page's top bar show them. `children` come first in the popover. */
 export function SettingsMenu({ children }: { readonly children?: ReactNode | undefined }) {
@@ -98,7 +92,7 @@ export function LanguageSwitch() {
     icon: <span aria-hidden="true">{value.toUpperCase()}</span>,
   }))
   return (
-    <fieldset className="toggle">
+    <fieldset className="toggle language-switch">
       <legend>{t("language.legend")}</legend>
       <SegmentRow
         name="language"

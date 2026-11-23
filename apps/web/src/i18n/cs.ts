@@ -329,35 +329,46 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "ticket.one": "{count} los",
   "ticket.few": "{count} losy",
   "ticket.other": "{count} losů",
+  "ticket.many": "{count} losů",
   "drawBatch.one": "Vylosovat {count} vítěze",
   "drawBatch.few": "Vylosovat {count} vítěze",
   "drawBatch.other": "Vylosovat {count} vítězů",
+  "drawBatch.many": "Vylosovat {count} vítězů",
   "winners.one": "{count} vítěz",
   "winners.few": "{count} vítězové",
   "winners.other": "{count} vítězů",
+  "winners.many": "{count} vítězů",
   "minute.one": "{count} minuta",
   "minute.few": "{count} minuty",
   "minute.other": "{count} minut",
+  "minute.many": "{count} minut",
   "day.one": "{count} den",
   "day.few": "{count} dny",
   "day.other": "{count} dnů",
+  "day.many": "{count} dnů",
   "year.one": "{count} rok",
   "year.few": "{count} roky",
   "year.other": "{count} let",
+  "year.many": "{count} let",
   "recentGiveaways.one": "Výherci posledního giveawaye streamera se nemohou zapojit.",
   "recentGiveaways.few": "Výherci posledních {count} giveawayů streamera se nemohou zapojit.",
   "recentGiveaways.other": "Výherci posledních {count} giveawayů streamera se nemohou zapojit.",
+  "recentGiveaways.many": "Výherci posledních {count} giveawayů streamera se nemohou zapojit.",
   "recentDays.one": "Výherci giveawayů streamera z posledního dne se nemohou zapojit.",
   "recentDays.few": "Výherci giveawayů streamera z posledních {count} dnů se nemohou zapojit.",
   "recentDays.other": "Výherci giveawayů streamera z posledních {count} dnů se nemohou zapojit.",
+  "recentDays.many": "Výherci giveawayů streamera z posledních {count} dnů se nemohou zapojit.",
   "entered.one": "Přihlásil se {count} člověk",
   "entered.few": "Přihlásili se {count} lidé",
   "entered.other": "Přihlásilo se {count} lidí",
+  "entered.many": "Přihlásilo se {count} lidí",
   "usageLow.one":
     "Pozor: server má na dnes už jen {count} požadavek. Až dojdou, přihlašování může přestat fungovat.",
   "usageLow.few":
     "Pozor: server má na dnes už jen {count} požadavky. Až dojdou, přihlašování může přestat fungovat.",
   "usageLow.other":
+    "Pozor: server má na dnes už jen {count} požadavků. Až dojdou, přihlašování může přestat fungovat.",
+  "usageLow.many":
     "Pozor: server má na dnes už jen {count} požadavků. Až dojdou, přihlašování může přestat fungovat.",
   "roleFailures.one":
     "Jednou Rafflink nedokázal z Twitche načíst seznamy VIP a moderátorů. Těmto divákům mohou chybět losy navíc.",
@@ -365,11 +376,15 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "{count}krát Rafflink nedokázal z Twitche načíst seznamy VIP a moderátorů. Těmto divákům mohou chybět losy navíc.",
   "roleFailures.other":
     "{count}krát Rafflink nedokázal z Twitche načíst seznamy VIP a moderátorů. Těmto divákům mohou chybět losy navíc.",
+  "roleFailures.many":
+    "{count}krát Rafflink nedokázal z Twitche načíst seznamy VIP a moderátorů. Těmto divákům mohou chybět losy navíc.",
   "chatFailures.one":
     "Jednou Rafflink ztratil spojení s tvým chatem. Sledování chatu mohlo zmeškat zprávy.",
   "chatFailures.few":
     "{count}krát Rafflink ztratil spojení s tvým chatem. Sledování chatu mohlo zmeškat zprávy.",
   "chatFailures.other":
+    "{count}krát Rafflink ztratil spojení s tvým chatem. Sledování chatu mohlo zmeškat zprávy.",
+  "chatFailures.many":
     "{count}krát Rafflink ztratil spojení s tvým chatem. Sledování chatu mohlo zmeškat zprávy.",
 
   "who.both": "Zapojit se mohou jen předplatitelé, kteří kanál sledují.",
@@ -951,6 +966,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
   "legal.operator.id": "identifikační číslo {id}",
   "legal.unavailable": "Údaje o tom, kdo tuto instanci provozuje, se nepodařilo načíst.",
   "legal.retry": "Zkusit znovu",
+  "legal.englishPrevails":
+    "Toto je překlad. Pokud se liší od anglické verze, platí anglická verze.",
 
   "privacy.title": "Zásady ochrany osobních údajů",
   "privacy.intro":

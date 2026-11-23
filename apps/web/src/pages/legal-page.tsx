@@ -31,7 +31,7 @@ export function TermsPage() {
 
 // The other legal text is one click away in the footer every legal page ends with, so the page does not link it again.
 function LegalPage({ document }: { readonly document: LegalDocument }) {
-  const { t, rich, date } = useI18n()
+  const { t, rich, date, language } = useI18n()
   const { operator: load, reload } = useStreamerSession()
   const operator = load.state === "ready" ? load.value : null
   const placeholders: Readonly<Record<string, ReactNode>> = {
@@ -53,6 +53,7 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
           })}
         </p>
       ) : null}
+      {language === "en" ? null : <p className="legal-translation">{t("legal.englishPrevails")}</p>}
       <p>{rich(document.intro, placeholders)}</p>
       {document.sections.map((section) => (
         <section key={section.heading}>
@@ -85,7 +86,7 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
 }
 
 /** The day the template texts last changed, as an ISO date. Update it with every edit of the texts. */
-const templateUpdated = "2026-11-22"
+const templateUpdated = "2026-11-23"
 
 /** Paragraphs naming the operator or its contact, and what an instance without one shows in their place. */
 const operatorTexts: Readonly<Partial<Record<MessageKey, MessageKey>>> = {

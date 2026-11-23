@@ -180,7 +180,7 @@ describe("one-time parameters", () => {
       }),
     ).toBeTruthy()
     expect(window.localStorage.getItem("rafflink-language")).toBe("sk")
-    expect(document.documentElement.lang).toBe("sk")
+    await waitFor(() => expect(document.documentElement.lang).toBe("sk"))
     await waitFor(() => expect(view.address()).toBe("/"))
   })
 

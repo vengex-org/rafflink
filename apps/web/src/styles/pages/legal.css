@@ -13,7 +13,8 @@
   margin-bottom: 0.5rem;
 }
 
-.legal-updated {
+.legal-updated,
+.legal-translation {
   color: var(--ink-2);
   font-size: 0.875rem;
 }

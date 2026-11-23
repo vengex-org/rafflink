@@ -7,7 +7,13 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { dictionaries, type MessageKey } from "./dictionaries.ts"
+import {
+  loadDictionary,
+  loadedDictionary,
+  type Dictionary,
+  type MessageKey,
+} from "./dictionaries.ts"
+import { en } from "./en.ts"
 import { initialLanguage, storeLanguage, type Language } from "./language.ts"
 
 export type PluralBase =
@@ -24,7 +30,7 @@ export type PluralBase =
   | "drawBatch"
   | "winners"
 
-type PluralForm = "one" | "few" | "other"
+type PluralForm = "one" | "few" | "many" | "other"
 type Params = Readonly<Record<string, string | number>>
 
 /** Everything a component needs to speak the chosen language: texts, plurals and locale-aware numbers and times. */
@@ -45,15 +51,19 @@ export interface I18n {
 }
 
 export function I18nProvider({ children }: { readonly children: ReactNode }) {
-  const [language, setLanguageState] = useState(initialLanguage)
+  const [shown, setShown] = useState(firstShown)
   const value = useMemo(
     () =>
-      createI18n(language, (next) => {
+      createI18n(shown.language, shown.dictionary, (next) => {
         storeLanguage(next)
-        setLanguageState(next)
+        loadDictionary(next).then(
+          (dictionary) => setShown({ language: next, dictionary }),
+          (error: unknown) => console.error("dictionary failed to load", { language: next, error }),
+        )
       }),
-    [language],
+    [shown],
   )
+  const { language } = shown
   useEffect(() => {
     document.documentElement.lang = language
   }, [language])
@@ -68,8 +78,23 @@ export function useI18n(): I18n {
 
 const I18nContext = createContext<I18n | null>(null)
 
-function createI18n(language: Language, setLanguage: (language: Language) => void): I18n {
-  const dictionary = dictionaries[language]
+interface Shown {
+  readonly language: Language
+  readonly dictionary: Dictionary
+}
+
+/** The wanted language when `main.tsx` loaded its dictionary before the first render, else English, which needs no loading. */
+function firstShown(): Shown {
+  const language = initialLanguage()
+  const dictionary = loadedDictionary(language)
+  return dictionary === undefined ? { language: "en", dictionary: en } : { language, dictionary }
+}
+
+function createI18n(
+  language: Language,
+  dictionary: Dictionary,
+  setLanguage: (language: Language) => void,
+): I18n {
   const numbers = new Intl.NumberFormat(language)
   const decimals = new Intl.NumberFormat(language, {
     minimumFractionDigits: 1,
@@ -124,15 +149,18 @@ export function richParts(template: string, nodes: Readonly<Record<string, React
   })
 }
 
-function pluralForm(rule: Intl.LDMLPluralRule): PluralForm {
+/** The plural key suffix for a CLDR category of `Intl.PluralRules`. */
+export function pluralForm(rule: Intl.LDMLPluralRule): PluralForm {
   switch (rule) {
     case "one":
       return "one"
     case "few":
       return "few"
+    case "many":
+      return "many"
+    // None of the languages uses `zero` or `two`.
     case "zero":
     case "two":
-    case "many":
     case "other":
       return "other"
   }
