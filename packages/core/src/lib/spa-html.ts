@@ -37,8 +37,21 @@ export function renderSpaHtml(template: string, meta: PageMeta): string {
  * the browser never runs it. `<` is written as a JSON escape, so no text inside can close the element.
  */
 export function embedJson(html: string, id: string, path: string, json: string): string {
-  const element = `<script type="application/json" id="${escapeHtml(id)}" data-path="${escapeHtml(path)}">${json.replaceAll("<", "\\u003c")}</script>`
-  return html.replace("</head>", () => `${element}</head>`)
+  return withJsonElement(
+    html,
+    `type="application/json" id="${escapeHtml(id)}" data-path="${escapeHtml(path)}"`,
+    json,
+  )
+}
+
+/** Adds `json` to the end of the head as structured data (JSON-LD) for search engines, escaped like {@link embedJson}. */
+export function embedJsonLd(html: string, json: string): string {
+  return withJsonElement(html, `type="application/ld+json"`, json)
+}
+
+/** The app shell keeps every page but the indexable ones out of search engines; this is the page without that meta. */
+export function withoutRobotsMeta(html: string): string {
+  return html.replace(/\s*<meta name="robots"[^>]*>/, "")
 }
 
 /** The `<meta>` names that carry the browser's error reporting settings from the web build to the page. */
@@ -82,6 +95,11 @@ export async function inlineScriptHashes(html: string): Promise<string[]> {
     hashes.push(`sha256-${toBase64(new Uint8Array(digest))}`)
   }
   return hashes
+}
+
+function withJsonElement(html: string, attributes: string, json: string): string {
+  const element = `<script ${attributes}>${json.replaceAll("<", "\\u003c")}</script>`
+  return html.replace("</head>", () => `${element}</head>`)
 }
 
 function replaceTag(

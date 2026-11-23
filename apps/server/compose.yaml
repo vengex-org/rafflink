@@ -5,12 +5,18 @@ services:
     build:
       context: ../..
       dockerfile: apps/server/Dockerfile
-      # The page's error reporting is built in; the keys are read from .env like the rest.
+      # The page's error reporting and the prerendered pages are built in; the keys are read from .env like the rest.
       args:
         PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
         SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
         SENTRY_RELEASE: ${SENTRY_RELEASE:-}
         SENTRY_SAMPLE_PERCENT: ${SENTRY_SAMPLE_PERCENT:-100}
+        PUBLIC_URL: ${PUBLIC_URL:-}
+        OPERATOR_NAME: ${OPERATOR_NAME:-}
+        OPERATOR_ADDRESS: ${OPERATOR_ADDRESS:-}
+        OPERATOR_ID: ${OPERATOR_ID:-}
+        OPERATOR_EMAIL: ${OPERATOR_EMAIL:-}
+        LEGAL_UPDATED: ${LEGAL_UPDATED:-}
     env_file: .env
     # The volume path and the port Caddy proxies to; .env.example's local DATA_DIR and PORT must not win.
     environment:

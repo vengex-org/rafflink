@@ -30,6 +30,8 @@ export function removeSessionStored(key: string): void {
 }
 
 function read(area: Area, key: string): string | null {
+  // The build prerenders pages where no browser holds anything.
+  if (typeof window === "undefined") return null
   try {
     return window[area].getItem(key)
   } catch (error) {

@@ -36,7 +36,7 @@ export interface ServerAppOptions {
   readonly fakeKick: Hono | null
   /** Mounted under {@link fakeYouTubePrefixes} in dev only. */
   readonly fakeYouTube: Hono | null
-  /** The built SPA files except `index.html`, which the HTTP app of core answers as a page; null serves no files. */
+  /** The built SPA files except its HTML pages, which the HTTP app of core answers; null serves no files. */
   readonly staticDir: string | null
 }
 
@@ -124,9 +124,9 @@ export function createServerApp(options: ServerAppOptions): Hono {
   return app
 }
 
-/** The paths `serveStatic` would answer with `index.html` itself, bypassing the page of core. */
+/** The paths `serveStatic` would answer with an HTML page of the build itself, bypassing the page of core and its CSP. */
 function isPagePath(pathname: string): boolean {
-  return pathname.endsWith("/") || pathname === "/index.html"
+  return pathname.endsWith("/") || pathname.endsWith(".html")
 }
 
 // What a socket that never opened has to forget when it closes.

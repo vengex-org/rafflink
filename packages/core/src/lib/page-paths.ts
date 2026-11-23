@@ -74,6 +74,50 @@ export function prerenderFile(language: Language, page: LocalizedPage): string {
   return language === sourceLanguage ? "home.html" : `${folder}index.html`
 }
 
+/** The address a static host serves a build file at: `de/index.html` at `/de/`, `de/privacy.html` at `/de/privacy`. */
+export function servedPath(file: string): string {
+  if (file === "index.html" || file.endsWith("/index.html")) {
+    return `/${file.slice(0, -"index.html".length)}`
+  }
+  return `/${file.replace(/\.html$/, "")}`
+}
+
+/** The build file in which the web build lists the pages it prerendered, so a server answers each address with its file. */
+export const prerenderManifestFile = "prerendered.json"
+
+/** A page the web build prerendered: its address and its file relative to the build's root. */
+export interface PrerenderedPage {
+  readonly path: string
+  readonly file: string
+}
+
+/** The text of {@link prerenderManifestFile} for `pages`. */
+export function prerenderManifest(pages: readonly PrerenderedPage[]): string {
+  return JSON.stringify(Object.fromEntries(pages.map(({ path, file }) => [path, file])))
+}
+
+/**
+ * The file of each prerendered address in a {@link prerenderManifestFile} text. A text that is no manifest lists
+ * none: a build without PUBLIC_URL writes no manifest, and a host may answer the missing file with the app shell.
+ */
+export function parsePrerenderManifest(text: string): ReadonlyMap<string, string> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return new Map()
+  }
+  if (typeof parsed !== "object" || parsed === null) return new Map()
+  return new Map(
+    Object.entries(parsed).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  )
+}
+
+/** The id of the JSON element in which a prerendered legal page carries the operator it was built with. */
+export const legalDataElementId = "legal-data"
+
 /** The hreflang alternates of `page`: one per language, and `x-default` for the source language. */
 export function alternates(
   page: LocalizedPage,

@@ -11,14 +11,14 @@ import { moderatorRoutes } from "./moderator-routes.ts"
 import { presenceRoutes } from "./presence-routes.ts"
 import { sessionRoutes } from "./session-routes.ts"
 import { securityHeadersMiddleware } from "./security-headers.ts"
-import { spaRoutes, type SpaTemplateLoader } from "./spa-routes.ts"
+import { spaRoutes, type WebFileLoader } from "./spa-routes.ts"
 import { webhookRoutes } from "./webhook-routes.ts"
 
 export type { AppDeps } from "./deps.ts"
-export type { SpaTemplateLoader } from "./spa-routes.ts"
+export type { WebFileLoader } from "./spa-routes.ts"
 
-/** `spaTemplate` loads the built `index.html` the pages are answered with; null serves the API only. */
-export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null): Hono {
+/** `webFiles` loads the files of the web build the pages are answered with; null serves the API only. */
+export function createApp(deps: AppDeps, webFiles: WebFileLoader | null): Hono {
   const backlog: Backlog = { until: 0 }
   const app = new Hono()
 
@@ -32,7 +32,7 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   app.route("/", moderatorRoutes(deps))
   app.route("/", presenceRoutes(deps))
   app.route("/", webhookRoutes(deps))
-  if (spaTemplate !== null) app.route("/", spaRoutes(deps, spaTemplate))
+  if (webFiles !== null) app.route("/", spaRoutes(deps, webFiles))
 
   app.notFound((c) => c.json({ error: "not-found" }, 404))
   // The log keeps only the error class and the request id: a message or a stack can carry a token, a code or a name.

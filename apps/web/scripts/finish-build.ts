@@ -1,6 +1,6 @@
 import { cpSync } from "node:fs"
 import { join } from "node:path"
-import { resolveWebErrorReporting } from "@rafflink/core/config"
+import { resolveWebErrorReporting, resolveWebPrerender } from "@rafflink/core/config"
 import { securityHeaders } from "@rafflink/core/http/security-headers"
 import { headersFile } from "@rafflink/core/http/static-headers"
 import {
@@ -8,10 +8,12 @@ import {
   inlineScriptHashes,
   withErrorReportingMeta,
 } from "@rafflink/core/lib/spa-html"
+import { writePrerender } from "./prerender.tsx"
 import { resolveDirs } from "./resolve-dirs.ts"
 
-// Runs after `bun build`: adds the files the bundler does not know and the `_headers` of Cloudflare assets.
-// Another repo building this app passes its own output and public directories: `finish-build.ts [distDir] [publicDir]`.
+// Runs after `bun build`: adds the files the bundler does not know, the prerendered pages and the `_headers` of
+// Cloudflare assets. Another repo building this app passes its own output and public directories:
+// `finish-build.ts [distDir] [publicDir]`.
 const { dist, publicDir } = resolveDirs(Bun.argv.slice(2))
 
 // The bundler copies only the files `index.html` links; the manifest names the rest.
@@ -21,6 +23,10 @@ const errorReporting = resolveWebErrorReporting(process.env)
 const indexPath = join(dist, "index.html")
 const html = withErrorReportingMeta(await Bun.file(indexPath).text(), errorReporting)
 await Bun.write(indexPath, html)
+const prerender = resolveWebPrerender(process.env)
+if (prerender === null) console.info("web build prerenders no page", { reason: "no PUBLIC_URL" })
+const prerendered = await writePrerender(dist, html, prerender)
+// A prerendered page runs the shell's inline scripts only; its JSON blocks never run, so the shell's hashes cover it.
 const scriptHashes = await inlineScriptHashes(html)
 // Cloudflare serves https only, so HSTS is always safe here; the Worker and the Bun server decide per PUBLIC_URL.
 const headers = securityHeaders({
@@ -32,4 +38,5 @@ await Bun.write(join(dist, "_headers"), headersFile(headers))
 console.info("web build finished", {
   scriptHashes: scriptHashes.length,
   errorReporting: errorReporting.sentryDsn !== null,
+  prerenderedPages: prerendered.length,
 })

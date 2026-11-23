@@ -7,7 +7,7 @@ import {
   users,
   type Harness,
 } from "../../test/app-fixture.ts"
-import { spaTemplate } from "../../test/contract/spa-fixture.ts"
+import { robotsMeta, spaTemplate, webBuild } from "../../test/contract/spa-fixture.ts"
 import { withErrorReportingMeta } from "../lib/spa-html.ts"
 import { dayMs } from "../stats/time.ts"
 import { createApp } from "./create-app.ts"
@@ -17,7 +17,7 @@ let app: Hono
 
 beforeEach(async () => {
   harness = await createHarness()
-  app = createApp(harness.deps, async () => spaTemplate)
+  app = createApp(harness.deps, webBuild({ "index.html": spaTemplate }))
 })
 
 afterEach(async () => {
@@ -77,19 +77,23 @@ describe("page routes", () => {
     expect(await response.text()).toContain("<title>Rafflink home</title>")
   })
 
-  it("leaves the home page and the legal pages indexable and every other page not", async () => {
-    const home = await app.request("/")
-    const privacy = await app.request("/privacy")
-    const terms = await app.request("/terms")
-    const dashboard = await app.request("/dashboard")
-    const verify = await app.request("/verify")
+  it.each([
+    ["/", true],
+    ["/privacy", true],
+    ["/de/terms", true],
+    ["/dashboard", false],
+    ["/verify", false],
+  ])(
+    "answers %s from a build without prerendered pages as the shell, indexable: %p",
+    async (path, indexable) => {
+      const response = await app.request(path)
+      const html = await response.text()
 
-    expect(home.headers.get("x-robots-tag")).toBeNull()
-    expect(privacy.headers.get("x-robots-tag")).toBeNull()
-    expect(terms.headers.get("x-robots-tag")).toBeNull()
-    expect(dashboard.headers.get("x-robots-tag")).toBe("noindex, nofollow")
-    expect(verify.headers.get("x-robots-tag")).toBe("noindex, nofollow")
-  })
+      expect([path, response.headers.get("x-robots-tag"), html.includes(robotsMeta)]).toEqual(
+        indexable ? [path, null, false] : [path, "noindex, nofollow", true],
+      )
+    },
+  )
 
   it("lets a page whose build carries a Sentry DSN post to that ingest and to no other", async () => {
     const reporting = withErrorReportingMeta(spaTemplate, {
@@ -98,7 +102,7 @@ describe("page routes", () => {
       sentryRelease: null,
       sentrySamplePercent: 100,
     })
-    const reported = createApp(harness.deps, async () => reporting)
+    const reported = createApp(harness.deps, webBuild({ "index.html": reporting }))
     const created = await createGiveaway(harness, users.streamerA.id)
 
     for (const path of ["/", `/${created.code}`, "/s/twitch/nobody"]) {
@@ -161,7 +165,7 @@ describe("referral counting on the home page", () => {
     const info = spyOn(console, "info").mockImplementation(() => {})
     await harness.stop()
     harness = await createHarness({ env: { REFERRAL_VISITS_PER_DAY_MAX: "2" } })
-    app = createApp(harness.deps, async () => spaTemplate)
+    app = createApp(harness.deps, webBuild({ "index.html": spaTemplate }))
 
     const statuses = []
     for (const address of ["198.51.100.1", "198.51.100.2", "198.51.100.3"]) {
@@ -177,7 +181,7 @@ describe("referral counting on the home page", () => {
   it("stops counting an address over the entry limit, still serves the page, and keeps other addresses and entry sign-ins unaffected", async () => {
     await harness.stop()
     harness = await createHarness({ env: { ENTRY_IP_LIMIT_PER_MINUTE: "2" } })
-    app = createApp(harness.deps, async () => spaTemplate)
+    app = createApp(harness.deps, webBuild({ "index.html": spaTemplate }))
 
     const info = spyOn(console, "info").mockImplementation(() => {})
     const statuses = []

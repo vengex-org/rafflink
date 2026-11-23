@@ -19,30 +19,12 @@ describe("staticCacheControl", () => {
 })
 
 describe("headersFile", () => {
-  it("lists the headers for every file, sets noindex on each page below the home page except the legal pages and detaches no-cache from the hashed bundles and the fonts", () => {
+  it("lists the headers for every file without a robots header and detaches no-cache from the hashed bundles and the fonts", () => {
     expect(headersFile({ "X-Test": "1" })).toBe(
       [
         "/*",
         "  X-Test: 1",
         "  Cache-Control: no-cache",
-        "/:segment",
-        "  X-Robots-Tag: noindex, nofollow",
-        "/:segment/verify",
-        "  X-Robots-Tag: noindex, nofollow",
-        "/g/*",
-        "  X-Robots-Tag: noindex, nofollow",
-        "/live/*",
-        "  X-Robots-Tag: noindex, nofollow",
-        "/mod/*",
-        "  X-Robots-Tag: noindex, nofollow",
-        "/overlay/*",
-        "  X-Robots-Tag: noindex, nofollow",
-        "/dashboard/*",
-        "  X-Robots-Tag: noindex, nofollow",
-        "/privacy",
-        "  ! X-Robots-Tag",
-        "/terms",
-        "  ! X-Robots-Tag",
         "/index-*.js",
         "  ! Cache-Control",
         "  Cache-Control: public, max-age=31536000, immutable",

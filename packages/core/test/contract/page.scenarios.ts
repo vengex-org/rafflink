@@ -1,7 +1,6 @@
 import { expect } from "bun:test"
-import { indexablePaths } from "../../src/http/static-headers.ts"
 import { users } from "./fake-twitch.ts"
-import { inlineScriptSource } from "./spa-fixture.ts"
+import { inlineScriptSource, prerenderedHtml, prerenderedPages, robotsMeta } from "./spa-fixture.ts"
 import type { ContractContext, ContractTarget } from "./target.ts"
 import { scenario } from "./world.ts"
 
@@ -48,17 +47,20 @@ export function pageScenarios(context: ContractContext): void {
 
   scenario(
     context,
-    "the indexable pages link their canonical URL and preview image from PUBLIC_URL",
+    "a prerendered page answers its own file, indexable, with the hash of its inline script",
     async (world) => {
       const target = await world.start()
 
-      for (const path of indexablePaths) {
-        const html = await (await page(target, path)).text()
+      for (const { path } of prerenderedPages) {
+        const response = await page(target, path)
 
-        expect(html).toContain(`<link rel="canonical" href="http://localhost${path}" />`)
-        expect(html).toContain(`<meta property="og:url" content="http://localhost${path}" />`)
-        expect(html).toContain(`<meta property="og:image" content="http://localhost/og.png" />`)
-        expect(html).toContain(`<meta name="twitter:image" content="http://localhost/og.png" />`)
+        expect([path, response.status, await response.text()]).toEqual([
+          path,
+          200,
+          prerenderedHtml(path),
+        ])
+        expect(response.headers.get("x-robots-tag")).toBeNull()
+        expect(response.headers.get("content-security-policy")).toContain(inlineScriptSource)
       }
     },
   )
@@ -84,7 +86,10 @@ export function pageScenarios(context: ContractContext): void {
 
         expect(response.status).toBe(200)
         expect(html).toContain("<title>Rafflink home</title>")
-        expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+        expect(html).toContain(robotsMeta)
+        expect(response.headers.get("x-robots-tag")).toBe(
+          context.pages === "static" ? null : "noindex, nofollow",
+        )
       }
     },
   )
@@ -137,7 +142,7 @@ function staticPageScenarios(context: ContractContext): void {
         expect(response.status).toBe(200)
         expect(html).toContain("<title>Rafflink home</title>")
         expect(html).not.toContain(users.streamer.displayName)
-        expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+        expect(html).toContain(robotsMeta)
         expect(response.headers.get("content-security-policy")).toContain(inlineScriptSource)
       }
     },
@@ -145,6 +150,24 @@ function staticPageScenarios(context: ContractContext): void {
 }
 
 function injectedPageScenarios(context: ContractContext): void {
+  scenario(
+    context,
+    "a legal page the build did not prerender answers the shell with its canonical URL from PUBLIC_URL, indexable",
+    async (world) => {
+      const target = await world.start()
+
+      for (const path of ["/privacy", "/terms"]) {
+        const response = await page(target, path)
+        const html = await response.text()
+
+        expect(html).toContain(`<link rel="canonical" href="http://localhost${path}" />`)
+        expect(html).toContain(`<meta property="og:image" content="http://localhost/og.png" />`)
+        expect(html).not.toContain(robotsMeta)
+        expect(response.headers.get("x-robots-tag")).toBeNull()
+      }
+    },
+  )
+
   scenario(
     context,
     "a giveaway link previews its title, prize and streamer and is not indexed",

@@ -7,7 +7,7 @@ import {
   users,
   type Harness,
 } from "../../test/app-fixture.ts"
-import { inlineScriptSource, spaTemplate } from "../../test/contract/spa-fixture.ts"
+import { inlineScriptSource, robotsMeta, spaTemplate } from "../../test/contract/spa-fixture.ts"
 import type { PublicHistoryJson } from "./json.ts"
 
 let harness: Harness
@@ -383,6 +383,7 @@ describe("public history page", () => {
 
     expect(hidden.status).toBe(200)
     expect(hidden.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+    expect(html).toContain(robotsMeta)
     expect(hidden.headers.get("content-security-policy")).toContain(inlineScriptSource)
     expect(html).toContain(`<title>Giveaways of ${users.streamerA.displayName}</title>`)
     expect(html).toContain(
@@ -395,6 +396,7 @@ describe("public history page", () => {
     expect(embeddedHistory(html)).toEqual({ path: `/s/twitch/${users.streamerA.login}`, data: api })
     expect(indexed.status).toBe(200)
     expect(indexed.headers.get("x-robots-tag")).toBeNull()
+    expect(await indexed.text()).not.toContain(robotsMeta)
   })
 
   it("answers 404 with the plain page and no history for a streamer without the page", async () => {

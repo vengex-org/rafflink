@@ -12,7 +12,8 @@ import { AccountStore } from "../src/accounts/account-store.ts"
 import { resolveConfig, type ResolvedConfig } from "../src/config.ts"
 import { streamerFeatures } from "../src/domain/streamer-features.ts"
 import type { AppDeps } from "../src/http/deps.ts"
-import { createApp, type SpaTemplateLoader } from "../src/http/create-app.ts"
+import { createApp, type WebFileLoader } from "../src/http/create-app.ts"
+import { webBuild } from "./contract/spa-fixture.ts"
 import { codeAlphabet, codeLength } from "../src/lib/codes.ts"
 import { toBase64 } from "../src/lib/encoding.ts"
 import { MemoryPublicCache } from "../src/lib/memory-public-cache.ts"
@@ -507,8 +508,8 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   }
 }
 
-function spaTemplateLoader(template: string | undefined): SpaTemplateLoader | null {
-  return template === undefined ? null : async () => template
+function spaTemplateLoader(template: string | undefined): WebFileLoader | null {
+  return template === undefined ? null : webBuild({ "index.html": template })
 }
 
 function asRemote(queue: TokenQueue): TokenQueueStub {

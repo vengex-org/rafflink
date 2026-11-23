@@ -121,7 +121,14 @@ export function useI18n(): I18n {
   return value
 }
 
+/** The `date` of {@link I18n} in `language`, for a date formatted before any render, as by the prerender. */
+export function formatDate(language: Language, ms: number): string {
+  return new Intl.DateTimeFormat(language, dateOptions).format(ms)
+}
+
 const I18nContext = createContext<I18n | null>(null)
+
+const dateOptions: Intl.DateTimeFormatOptions = { dateStyle: "medium" }
 
 interface Shown {
   readonly language: Language
@@ -146,7 +153,7 @@ function createI18n(
     maximumFractionDigits: 1,
   })
   const dateTimes = new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" })
-  const dates = new Intl.DateTimeFormat(language, { dateStyle: "medium" })
+  const dates = new Intl.DateTimeFormat(language, dateOptions)
   const times = new Intl.DateTimeFormat(language, { timeStyle: "short" })
   const rules = new Intl.PluralRules(language)
 

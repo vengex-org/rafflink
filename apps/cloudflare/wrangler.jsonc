@@ -13,11 +13,12 @@
     "not_found_handling": "single-page-application",
     // Pages and files come from the assets, which cost no Worker request; their headers are the
     // dist/_headers of the web build. The API and the sign-in routes run the Worker, the paths of
-    // `apiPrefixes` in packages/core/src/http/api-paths.ts, and so do the pages search engines index,
-    // `indexablePaths` in packages/core/src/http/static-headers.ts: the Worker writes PUBLIC_URL into their
-    // canonical and Open Graph tags, which link previews need absolute. The public history pages,
-    // `historyPagePattern` there, run it as well: indexing is the streamer's choice and an old login redirects.
-    "run_worker_first": ["/api/*", "/auth/*", "/", "/privacy", "/terms", "/s/*"],
+    // `apiPrefixes` in packages/core/src/http/api-paths.ts. So does the home page, which counts `?ref=` visits
+    // and answers the English home page the web build prerendered, or the app shell with PUBLIC_URL in its
+    // canonical and Open Graph tags. The other prerendered pages are static files with absolute addresses.
+    // The public history pages, `historyPagePattern` in packages/core/src/http/static-headers.ts, run it as
+    // well: indexing is the streamer's choice and an old login redirects.
+    "run_worker_first": ["/api/*", "/auth/*", "/", "/s/*"],
   },
   // Set PUBLIC_URL, TWITCH_CLIENT_ID and ADMIN_TWITCH_IDS under "vars" and the secrets with
   // `wrangler secret put`; every key is listed in .env.example.

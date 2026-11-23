@@ -1,7 +1,7 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono"
 import type { StreamerRecord } from "../accounts/account-store.ts"
 import { canCreateGiveaways } from "../accounts/streamer-access.ts"
-import type { ResolvedConfig } from "../config.ts"
+import type { OperatorConfig } from "../config.ts"
 import type { StreamerFeature } from "../domain/streamer-features.ts"
 import {
   configuredProviders,
@@ -67,8 +67,9 @@ export async function streamerFeaturesOf(
   return grantedFeatures(providerFor(deps.platforms, session.platform), token.scopes)
 }
 
-function operatorOf(config: ResolvedConfig): OperatorJson | null {
-  // resolveConfig sets the e-mail whenever it sets the name.
+/** The operator the legal texts name, as the session answer and the prerendered legal pages carry it; null when unnamed. */
+export function operatorOf(config: OperatorConfig): OperatorJson | null {
+  // The operator rules of the config set the e-mail whenever they set the name.
   if (config.operatorName === null || config.operatorEmail === null) return null
   return {
     name: config.operatorName,

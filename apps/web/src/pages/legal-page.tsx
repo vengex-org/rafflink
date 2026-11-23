@@ -1,10 +1,13 @@
 import type { OperatorJson } from "@rafflink/core/http/json"
-import type { ReactNode } from "react"
+import { createContext, useContext, useState, type ReactNode } from "react"
+import { useLocation } from "react-router"
+import { embeddedLegalData, type BuiltLegalData } from "../api/client.ts"
 import { ExternalLink } from "../components/external-link.tsx"
 import { Page } from "../components/page.tsx"
 import { useStreamerSession } from "../components/streamer-session.tsx"
 import type { MessageKey } from "../i18n/dictionaries.ts"
-import { useI18n, type I18n } from "../i18n/i18n.tsx"
+import { formatDate, useI18n, type I18n } from "../i18n/i18n.tsx"
+import type { Language } from "../i18n/language.ts"
 import {
   googlePermissionsUrl,
   googlePrivacyUrl,
@@ -34,10 +37,22 @@ export function TermsPage() {
   return <LegalPage document={terms} />
 }
 
+/** The legal data the prerender renders a page with; in the browser the page reads what the build embedded. */
+export const PrerenderedLegal = createContext<BuiltLegalData | null>(null)
+
+/** The data the build embeds in a legal page in `language`: `operator`, and the "updated" date it implies. */
+export function builtLegalData(operator: OperatorJson | null, language: Language): BuiltLegalData {
+  return {
+    operator,
+    updated: formatDate(language, Date.parse(`${operator?.legalUpdated ?? templateUpdated}T00:00`)),
+  }
+}
+
 // The other legal text is one click away in the footer every legal page ends with, so the page does not link it again.
 function LegalPage({ document }: { readonly document: LegalDocument }) {
-  const { t, rich, date, language } = useI18n()
-  const { operator: load, reload } = useStreamerSession()
+  const { t, rich, language } = useI18n()
+  const { operator: session, reload } = useStreamerSession()
+  const { load, updated } = shownLegal(useBuiltLegalData(), session, language)
   const operator = load.state === "ready" ? load.value : null
   const placeholders: Readonly<Record<string, ReactNode>> = {
     operator: operator === null ? "" : operatorDetails(operator, t),
@@ -66,13 +81,9 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
   return (
     <Page width="text" as="article" className="legal">
       <h1>{t(document.title)}</h1>
-      {load.state === "ready" ? (
-        <p className="legal-updated">
-          {t("legal.updated", {
-            date: date(Date.parse(`${operator?.legalUpdated ?? templateUpdated}T00:00`)),
-          })}
-        </p>
-      ) : null}
+      {updated === null ? null : (
+        <p className="legal-updated">{t("legal.updated", { date: updated })}</p>
+      )}
       {language === "en" ? null : <p className="legal-translation">{t("legal.englishPrevails")}</p>}
       <p>{rich(document.intro, placeholders)}</p>
       {document.sections.map((section) => (
@@ -107,6 +118,41 @@ function LegalPage({ document }: { readonly document: LegalDocument }) {
 
 /** The day the template texts last changed, as an ISO date. Update it with every edit of the texts. */
 const templateUpdated = "2026-11-23"
+
+/** What the build embedded in the page, read once, so hydration renders what the prerender did. */
+function useBuiltLegalData(): BuiltLegalData | null {
+  const prerendered = useContext(PrerenderedLegal)
+  const { pathname } = useLocation()
+  const [built] = useState(() => prerendered ?? embeddedLegalData(pathname))
+  return built
+}
+
+/** The build's operator until the session answers with another one; without build data, the session's answer. */
+function shownLegal(
+  built: BuiltLegalData | null,
+  session: Load<OperatorJson | null>,
+  language: Language,
+): { readonly load: Load<OperatorJson | null>; readonly updated: string | null } {
+  if (
+    built !== null
+    && (session.state !== "ready" || sameOperator(session.value, built.operator))
+  ) {
+    return { load: { state: "ready", value: built.operator }, updated: built.updated }
+  }
+  if (session.state !== "ready") return { load: session, updated: null }
+  return { load: session, updated: builtLegalData(session.value, language).updated }
+}
+
+function sameOperator(a: OperatorJson | null, b: OperatorJson | null): boolean {
+  if (a === null || b === null) return a === b
+  return (
+    a.name === b.name
+    && a.address === b.address
+    && a.id === b.id
+    && a.email === b.email
+    && a.legalUpdated === b.legalUpdated
+  )
+}
 
 /** Paragraphs naming the operator or its contact, and what an instance without one shows in their place. */
 const operatorTexts: Readonly<Partial<Record<MessageKey, MessageKey>>> = {

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test"
-import { ConfigError, configSchema, resolveConfig, resolveWebErrorReporting } from "./config.ts"
+import {
+  ConfigError,
+  configSchema,
+  resolveConfig,
+  resolveWebErrorReporting,
+  resolveWebPrerender,
+} from "./config.ts"
 import { queuedEntryTwitchRequests } from "./twitch/queued-entry-requests.ts"
 
 const required = {
@@ -592,6 +598,29 @@ describe("resolveConfig", () => {
       sentrySamplePercent: 100,
     })
     expect(resolveWebErrorReporting({}).sentryDsn).toBeNull()
+  })
+
+  it.each([
+    ["unset", undefined],
+    ["blank", "  "],
+  ])("prerenders no page in the web build with PUBLIC_URL %s", (_, publicUrl) => {
+    expect(resolveWebPrerender({ PUBLIC_URL: publicUrl, OPERATOR_NAME: "Example" })).toBeNull()
+  })
+
+  it("prerenders with the public origin and the operator, under the server's operator rules", () => {
+    const operator = { OPERATOR_NAME: "Example Operator", OPERATOR_EMAIL: "legal@example.com" }
+
+    expect(resolveWebPrerender({ PUBLIC_URL: "https://rafflink.app/x", ...operator })).toEqual({
+      publicUrl: "https://rafflink.app",
+      operatorName: "Example Operator",
+      operatorAddress: null,
+      operatorId: null,
+      operatorEmail: "legal@example.com",
+      legalUpdated: null,
+    })
+    expect(() =>
+      resolveWebPrerender({ PUBLIC_URL: "https://rafflink.app", OPERATOR_NAME: "Example" }),
+    ).toThrow(new ConfigError("OPERATOR_EMAIL", "missing"))
   })
 
   it("leaves the operator settings null when unset or blank", () => {

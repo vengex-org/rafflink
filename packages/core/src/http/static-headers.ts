@@ -1,9 +1,3 @@
-/** `X-Robots-Tag` of every page and file except the {@link indexablePaths}. */
-export const noindex = "noindex, nofollow"
-
-/** The pages search engines may index: the home page and the two legal pages. */
-export const indexablePaths: readonly string[] = ["/", "/privacy", "/terms"]
-
 /**
  * The public history pages, which the Worker answers too: the streamer decides whether one is indexed, and the
  * login a renamed streamer gave up redirects. No static asset answers these paths on Cloudflare.
@@ -23,8 +17,8 @@ export function staticCacheControl(pathname: string): string {
 
 /**
  * The `_headers` file of Cloudflare static assets, which are answered without the Worker: the security
- * headers, the cache rules of {@link staticCacheControl} and {@link noindex} for every path but the
- * {@link indexablePaths}.
+ * headers and the cache rules of {@link staticCacheControl}. Pages that must not be indexed say so in the app
+ * shell's robots meta, which the prerendered pages leave out.
  */
 export function headersFile(security: Readonly<Record<string, string>>): string {
   const everything = [...Object.entries(security), ["Cache-Control", revalidate]]
@@ -33,20 +27,6 @@ export function headersFile(security: Readonly<Record<string, string>>): string 
   )
   return [
     ["/*", ...everything.map(([name, value]) => `  ${name}: ${value}`)].join("\n"),
-    // Cloudflare does not apply a `! X-Robots-Tag` detach under `/` to the home page, so noindex goes on each
-    // page below it instead: `/:segment` never matches `/`, the splats cover the deeper app routes.
-    ...[
-      "/:segment",
-      "/:segment/verify",
-      "/g/*",
-      "/live/*",
-      "/mod/*",
-      "/overlay/*",
-      "/dashboard/*",
-    ].map((pattern) => `${pattern}\n  X-Robots-Tag: ${noindex}`),
-    // `/:segment` also matches the legal pages, so they detach it. Unlike the home page this has not been
-    // checked on Cloudflare; a deployed legal page that still answers noindex points here.
-    ...indexablePaths.filter((path) => path !== "/").map((path) => `${path}\n  ! X-Robots-Tag`),
     ...hashed,
     "",
   ].join("\n")
