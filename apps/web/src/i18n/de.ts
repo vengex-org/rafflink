@@ -17,6 +17,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "theme.light": "Hell",
   "theme.dark": "Dunkel",
   "language.legend": "Sprache",
+  "language.loadFailed": "Diese Sprache konnte nicht geladen werden. Versuch es noch einmal.",
   "settings.label": "Einstellungen",
 
   "common.loading": "Lädt…",
@@ -686,6 +687,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
     "Teilnahme per Chat ist aus: Rafflink kann deinen Chat gerade nicht lesen, das Stichwort trägt also niemanden ein. Zuschauer können weiter auf der Gewinnspielseite mitmachen, wenn sie Teilnahmen über die Seite annimmt.",
   "live.channelEntryOff.text":
     "Teilnahme per Abo und Kanalpunkten ist aus: Rafflink kann diese Twitch-Ereignisse gerade nicht lesen, oft weil eine Berechtigung entfernt wurde. Der kostenlose Weg zum Mitmachen ist nicht betroffen. Verbinde Twitch vor deinem nächsten Gewinnspiel neu.",
+  "live.subEntryOff.text":
+    "Teilnahme per Abo ist aus: Rafflink kann neue Abos gerade nicht lesen, oft weil eine Berechtigung entfernt wurde, ein Abo trägt also niemanden ein. Andere Wege zum Mitmachen sind nicht betroffen. Verbinde dein Konto vor deinem nächsten Gewinnspiel neu.",
+  "live.pointsEntryOff.text":
+    "Teilnahme per Kanalpunkten ist aus: Rafflink kann Einlösungen der Belohnung gerade nicht lesen, oft weil eine Berechtigung entfernt wurde, eine Einlösung trägt also niemanden ein. Andere Wege zum Mitmachen sind nicht betroffen. Verbinde dein Konto vor deinem nächsten Gewinnspiel neu.",
+  "live.entryWayOff.title": "Teilnahme ist teilweise aus",
   "live.chatOff.text":
     "Abholung per Chat nicht verfügbar: Rafflink kann deinen Chat gerade nicht lesen, Gewinner können also nicht durch Schreiben im Chat abholen. Wenn dir ein Gewinner sagt, dass er da ist, drück neben seinem Namen auf Als abgeholt markieren.",
   "live.open.title": "Teilnahme ist offen",
@@ -1321,7 +1327,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "live.actors.closed": "Teilnahme beendet von {who}",
   "live.actors.drawn": "Gewinner {n} gezogen von {who}",
   "live.actors.rerolled": "Gewinner {n} ersetzt von {who}",
-  "live.actors.marked": "Gewinner {n} als abgeholt markiert von {who}",
+  "live.actors.marked": "Gewinner {n} von {who} als abgeholt markiert",
   "live.actors.streamer": "dem Streamer",
   "live.actors.moderator": "Moderatorenlink {id}",
   "mod.invalid.title": "Dieser Moderatorenlink funktioniert nicht",

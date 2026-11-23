@@ -85,7 +85,7 @@ export function ThemeSwitch() {
 }
 
 export function LanguageSwitch() {
-  const { t, language, setLanguage } = useI18n()
+  const { t, language, setLanguage, languageLoadFailed } = useI18n()
   const options = languages.map((value) => ({
     value,
     label: languageNames[value],
@@ -101,6 +101,11 @@ export function LanguageSwitch() {
         labels="hidden"
         onSelect={setLanguage}
       />
+      {languageLoadFailed ? (
+        <p className="field-error" role="alert">
+          {t("language.loadFailed")}
+        </p>
+      ) : null}
     </fieldset>
   )
 }

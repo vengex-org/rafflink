@@ -1,9 +1,11 @@
 import {
   createContext,
   Fragment,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -36,7 +38,10 @@ type Params = Readonly<Record<string, string | number>>
 /** Everything a component needs to speak the chosen language: texts, plurals and locale-aware numbers and times. */
 export interface I18n {
   readonly language: Language
+  /** Shows `language` once its dictionary has loaded; until then, or when loading fails, the current one stays. */
   setLanguage(language: Language): void
+  /** The dictionary of the language picked last failed to load. */
+  readonly languageLoadFailed: boolean
   t(key: MessageKey, params?: Params): string
   /** Like `t`, with React nodes (a bold word) in place of the `{name}` markers. */
   rich(key: MessageKey, nodes: Readonly<Record<string, ReactNode>>): ReactNode
@@ -52,16 +57,27 @@ export interface I18n {
 
 export function I18nProvider({ children }: { readonly children: ReactNode }) {
   const [shown, setShown] = useState(firstShown)
-  const value = useMemo(
-    () =>
-      createI18n(shown.language, shown.dictionary, (next) => {
+  const [loadFailed, setLoadFailed] = useState(false)
+  const requestedRef = useRef(shown.language)
+  const setLanguage = useCallback((next: Language) => {
+    requestedRef.current = next
+    setLoadFailed(false)
+    // A slow chunk must not override a language picked after it, so only the last request lands.
+    loadDictionary(next).then(
+      (dictionary) => {
+        if (requestedRef.current !== next) return
         storeLanguage(next)
-        loadDictionary(next).then(
-          (dictionary) => setShown({ language: next, dictionary }),
-          (error: unknown) => console.error("dictionary failed to load", { language: next, error }),
-        )
-      }),
-    [shown],
+        setShown({ language: next, dictionary })
+      },
+      (error: unknown) => {
+        console.error("dictionary failed to load", { language: next, error })
+        if (requestedRef.current === next) setLoadFailed(true)
+      },
+    )
+  }, [])
+  const value = useMemo(
+    () => ({ ...createI18n(shown.language, shown.dictionary, loadFailed), setLanguage }),
+    [shown, setLanguage, loadFailed],
   )
   const { language } = shown
   useEffect(() => {
@@ -93,8 +109,8 @@ function firstShown(): Shown {
 function createI18n(
   language: Language,
   dictionary: Dictionary,
-  setLanguage: (language: Language) => void,
-): I18n {
+  languageLoadFailed: boolean,
+): Omit<I18n, "setLanguage"> {
   const numbers = new Intl.NumberFormat(language)
   const decimals = new Intl.NumberFormat(language, {
     minimumFractionDigits: 1,
@@ -108,7 +124,7 @@ function createI18n(
   const t = (key: MessageKey, params: Params = {}) => fill(dictionary[key], params)
   return {
     language,
-    setLanguage,
+    languageLoadFailed,
     t,
     rich: (key, nodes) => richParts(dictionary[key], nodes),
     plural: (base, count, params = {}) =>

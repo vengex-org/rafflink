@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { cleanup, fireEvent, waitFor, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react"
 import { dictionaryLoaders, loadDictionary } from "../src/i18n/dictionaries.ts"
 import { en } from "../src/i18n/en.ts"
-import { pluralForm } from "../src/i18n/i18n.tsx"
+import { sk } from "../src/i18n/sk.ts"
+import { I18nProvider, pluralForm, useI18n } from "../src/i18n/i18n.tsx"
 import { detectLanguage, languageNames, languages } from "../src/i18n/language.ts"
 import { giveaway } from "./fixtures.ts"
 import { mockFetch, ok } from "./mock-fetch.ts"
@@ -169,7 +170,7 @@ describe("language", () => {
     ).toBeTruthy()
   })
 
-  it("keeps the shown language and logs when a dictionary fails to load", async () => {
+  it("keeps the shown language, says so and logs when a dictionary fails to load", async () => {
     browserLanguage("en-US")
     const failure = new Error("chunk failed")
     const logged = spyOn(console, "error").mockImplementation(() => {})
@@ -178,13 +179,54 @@ describe("language", () => {
 
     fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
 
-    await waitFor(() =>
-      expect(logged).toHaveBeenCalledWith("dictionary failed to load", {
-        language: "sk",
-        error: failure,
-      }),
+    expect(await view.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "This language could not be loaded. Try again.",
     )
+    expect(logged).toHaveBeenCalledWith("dictionary failed to load", {
+      language: "sk",
+      error: failure,
+    })
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(en["home.title"])
+    expect(view.getByRole("radio", { name: "English" })).toHaveProperty("checked", true)
+    expect(window.localStorage.getItem("rafflink-language")).toBeNull()
+  })
+
+  it("shows the language picked last when an earlier pick loads later", async () => {
+    browserLanguage("en-US")
+    const slovak = Promise.withResolvers<typeof sk>()
+    spyOn(dictionaryLoaders, "sk").mockImplementation(() => slovak.promise)
+    const view = renderApp("/")
+
+    fireEvent.click(view.getByRole("radio", { name: "Slovenčina" }))
+    fireEvent.click(view.getByRole("radio", { name: "Deutsch" }))
+    expect(
+      await view.findByRole("heading", { name: "Faire Gewinnspiele, live im Stream gezogen." }),
+    ).toBeTruthy()
+    await act(async () => slovak.resolve(sk))
+
+    expect(view.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Faire Gewinnspiele, live im Stream gezogen.",
+    )
+    expect(window.localStorage.getItem("rafflink-language")).toBe("de")
+  })
+
+  it("uses the decimal plural form of Czech and Slovak", () => {
+    const shown: string[] = []
+    function Probe() {
+      shown.push(useI18n().plural("minute", 1.5))
+      return null
+    }
+    for (const language of ["cs", "sk"]) {
+      window.localStorage.setItem("rafflink-language", language)
+      render(
+        <I18nProvider>
+          <Probe />
+        </I18nProvider>,
+      )
+      cleanup()
+    }
+    expect(shown).toEqual(["1,5 minuty", "1,5 minúty"])
   })
 
   it("counts people with the plural form of the language", async () => {

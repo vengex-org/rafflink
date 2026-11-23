@@ -16,6 +16,7 @@ export const en = {
   "theme.light": "Light",
   "theme.dark": "Dark",
   "language.legend": "Language",
+  "language.loadFailed": "This language could not be loaded. Try again.",
   "settings.label": "Settings",
 
   "common.loading": "Loading…",
@@ -323,7 +324,7 @@ export const en = {
   "issue.future": "Pick a time in the future.",
   "issue.wholeYears": "Enter a whole number of years from 1 to 99, or leave it empty.",
 
-  // Each plural base has a key per CLDR category of `Intl.PluralRules` the languages use (`few`: 2 to 4 in Czech, Slovak and Polish; `many`: 5 to 21 in Polish), so every language shares one key set. A language without a category repeats its `other` text.
+  // Each plural base has a key per CLDR category of `Intl.PluralRules` the languages use, so every language shares one key set. `few`: 2 to 4 (and 22 to 24, ...) in Czech, Slovak and Polish. `many`: 0, 5 to 21, 25 to 31, ... in Polish, and decimals such as 1.5 in Czech and Slovak. A language without a category repeats its `other` text.
   "ticket.one": "{count} ticket",
   "ticket.few": "{count} tickets",
   "ticket.other": "{count} tickets",
