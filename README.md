@@ -213,6 +213,10 @@ them, streamers and viewers can also sign in with Kick, and a Kick winner can cl
      laptop needs a tunnel for Kick chat claims; sign-in works without one.
 4. Copy the **Client ID** into `KICK_CLIENT_ID` and the **Client Secret** into `KICK_CLIENT_SECRET`.
 
+To switch Kick off for a while without removing its app, set `SIGN_IN_DISABLED_PLATFORMS=kick`. The install
+then behaves as if `KICK_CLIENT_ID` were blank: no Kick buttons and no Kick sign-in routes, for streamers and
+viewers. List both platforms as `kick,youtube`. Twitch cannot be listed.
+
 What a Kick giveaway can do:
 
 - Kick's public API tells no follows, subscriptions, VIPs, moderators or account ages, so the create form offers
@@ -260,6 +264,9 @@ verified domain, a privacy page and a demo video, and takes days to weeks.
 4. Copy the **Client ID** into `YOUTUBE_CLIENT_ID` and the **Client secret** into `YOUTUBE_CLIENT_SECRET`.
 5. Submit the app for verification under **Google Auth Platform**, **Verification center**. Google asks for a
    video that shows the sign-in, the consent screen with the scope, and what the app does with the data.
+
+`SIGN_IN_DISABLED_PLATFORMS=youtube` switches YouTube off the same way while `YOUTUBE_CLIENT_ID` and
+`YOUTUBE_CLIENT_SECRET` stay set.
 
 What a YouTube giveaway can do:
 
