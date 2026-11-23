@@ -1071,8 +1071,8 @@ export const cs: Readonly<Record<MessageKey, string>> = {
     "Výhru poskytuje streamer, ne Rafflink. Rafflink není stranou giveawaye a neslibuje výhru ani její doručení.",
   "terms.viewers.i3":
     "Výhru je třeba převzít v čase, který streamer určil. Poté může streamer losovat znovu.",
-  "terms.twitch.h": "Twitch a Kick",
-  "terms.twitch.p1":
+  "terms.platforms.h": "Twitch a Kick",
+  "terms.platforms.p1":
     "Na tvé používání Twitche přes Rafflink se vztahují Terms of Service, Community Guidelines a Developer Services Agreement společnosti Twitch. Rafflink není s Twitchem spojen ani jím podporován. Na tvé používání Kicku přes Rafflink se vztahují podmínky a pravidla Kicku a Rafflink není spojen ani s Kickem, ani jím podporován.",
   "terms.use.h": "Přípustné používání",
   "terms.use.p1": "Zavazuješ se, že nebudeš:",

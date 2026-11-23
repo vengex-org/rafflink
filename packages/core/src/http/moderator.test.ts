@@ -6,6 +6,7 @@ import {
   sqlRows,
   testAddressHeader,
   users,
+  validRules,
   type Harness,
 } from "../../test/app-fixture.ts"
 import { moderatorActor } from "../domain/actor.ts"
@@ -111,6 +112,24 @@ describe("moderator links of the streamer", () => {
       )
       expect(response.status).toBe(400)
     }
+  })
+
+  it("refuses a mods-only link where the platform does not tell who moderates the channel", async () => {
+    await harness.stop()
+    harness = await createHarness({ capabilities: { moderatorRole: false } })
+    // A moderator ticket count is refused where the platform cannot tell moderators.
+    const tickets = { ...validRules.tickets, moderator: 0 }
+    const { browser, id } = await createGiveaway(harness, undefined, {
+      rules: { ...validRules, tickets },
+    })
+    const path = `/api/dash/giveaways/${id}/moderator-links`
+
+    const modsOnly = await sameOriginPost(browser, path, { requireMod: true })
+    const anyone = await sameOriginPost(browser, path, { requireMod: false })
+
+    expect(modsOnly.status).toBe(400)
+    expect(await modsOnly.json()).toEqual({ error: "invalid-input", field: "requireMod" })
+    expect(anyone.status).toBe(201)
   })
 })
 

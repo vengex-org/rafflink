@@ -61,6 +61,16 @@ export function kickScenarios(context: ContractContext): void {
     },
   )
 
+  scenario(context, "a refused Kick sign-in names Kick for the retry", async (world) => {
+    const target = await world.start()
+
+    const response = await fetch(new URL("/auth/kick/viewer?error=access_denied", target.url), {
+      redirect: "manual",
+    })
+
+    expect(response.headers.get("location")).toBe("/?error=access_denied&platform=kick")
+  })
+
   scenario(context, "a Kick chat message from the winner claims via chat", async (world) => {
     const target = await world.start()
     const giveaway = await drawnKickGiveaway(world, target)

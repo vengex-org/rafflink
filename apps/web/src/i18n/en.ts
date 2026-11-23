@@ -1065,8 +1065,8 @@ export const en = {
     "The prize comes from the streamer, not from Rafflink. Rafflink is not a party to the giveaway and does not promise a prize or its delivery.",
   "terms.viewers.i3":
     "A win must be claimed within the time the streamer set. After that the streamer may draw again.",
-  "terms.twitch.h": "Twitch and Kick",
-  "terms.twitch.p1":
+  "terms.platforms.h": "Twitch and Kick",
+  "terms.platforms.p1":
     "Twitch's Terms of Service, Community Guidelines and Developer Services Agreement apply to your use of Twitch through Rafflink. Rafflink is not affiliated with or endorsed by Twitch. Kick's terms and policies apply to your use of Kick through Rafflink, and Rafflink is not affiliated with or endorsed by Kick either.",
   "terms.use.h": "Acceptable use",
   "terms.use.p1": "You agree not to:",

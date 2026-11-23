@@ -27,11 +27,17 @@ export function ModeratorLinks({
   busy,
   run,
   api,
-}: Doing & { readonly api: ModeratorLinksApi }) {
+  modsOffered,
+}: Doing & {
+  readonly api: ModeratorLinksApi
+  /** The giveaway's platform tells who moderates the channel, so a link can be for its moderators only. */
+  readonly modsOffered: boolean
+}) {
   const { t, time } = useI18n()
   const popoverId = useId()
   const [listed, setListed] = useState<Listed>({ state: "closed" })
-  const [requireMod, setRequireMod] = useState(true)
+  const [modsChosen, setModsChosen] = useState(true)
+  const requireMod = modsOffered && modsChosen
   const [made, setMade] = useState<string | null>(null)
   const whoOptions: readonly SegmentOption<"mods" | "anyone">[] = [
     {
@@ -88,14 +94,16 @@ export function ModeratorLinks({
       <div id={popoverId} popover="auto" className="live-overlay live-mod-links">
         <h2>{t("live.mod.link")}</h2>
         <p>{t("live.mod.text")}</p>
-        <Segmented
-          name="moderator-link-who"
-          legend={t("live.mod.who")}
-          help={null}
-          options={whoOptions}
-          value={requireMod ? "mods" : "anyone"}
-          onSelect={(choice) => setRequireMod(choice === "mods")}
-        />
+        {modsOffered ? (
+          <Segmented
+            name="moderator-link-who"
+            legend={t("live.mod.who")}
+            help={null}
+            options={whoOptions}
+            value={requireMod ? "mods" : "anyone"}
+            onSelect={(choice) => setModsChosen(choice === "mods")}
+          />
+        ) : null}
         <button
           type="button"
           className="live-btn secondary"

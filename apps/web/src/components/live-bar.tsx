@@ -104,11 +104,14 @@ export function LiveSettings({
   snapshot,
   overlayToken,
   donateUrl,
+  modsOffered,
   onHide,
 }: Doing & {
   readonly snapshot: LiveSnapshot
   readonly overlayToken: string | null
   readonly donateUrl: string | null
+  /** The platform tells who moderates the channel; true while the giveaway's facts load, the server refuses the rest. */
+  readonly modsOffered: boolean
   readonly onHide: () => void
 }) {
   const { t } = useI18n()
@@ -130,7 +133,13 @@ export function LiveSettings({
       <span className="live-settings-end">
         {overlayToken === null ? null : <OverlayLink id={id} overlayToken={overlayToken} />}
         {moderatorLinks === null ? null : (
-          <ModeratorLinks id={id} busy={busy} run={run} api={moderatorLinks} />
+          <ModeratorLinks
+            id={id}
+            busy={busy}
+            run={run}
+            api={moderatorLinks}
+            modsOffered={modsOffered}
+          />
         )}
         <button type="button" className="live-btn ghost" aria-keyshortcuts="c" onClick={onHide}>
           <EyeOffIcon />

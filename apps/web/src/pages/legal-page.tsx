@@ -234,8 +234,8 @@ const terms: LegalDocument = {
       items: ["terms.viewers.i1", "terms.viewers.i2", "terms.viewers.i3"],
     },
     {
-      heading: "terms.twitch.h",
-      paragraphs: ["terms.twitch.p1"],
+      heading: "terms.platforms.h",
+      paragraphs: ["terms.platforms.p1"],
       items: [],
     },
     {
