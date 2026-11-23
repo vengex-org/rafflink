@@ -33,6 +33,8 @@ export function Layout({
 }) {
   const { t } = useI18n()
   // Read once, so a sign-in elsewhere does not swap the bar's state under the open page.
+  // Viewers crowd these pages: the sign-in is the streamer's quiet way in and the support page is never offered.
+  const viewerPage = account === "remembered"
   const [asks] = useState(
     () => account === "always" || (account === "remembered" && rememberedSignIn()),
   )
@@ -61,7 +63,7 @@ export function Layout({
             <Link className="button text app-verify" to={verifyLookupPath}>
               {t("nav.verify")}
             </Link>
-            {asks ? <Account /> : <LoginLink />}
+            {asks ? <Account viewerPage={viewerPage} /> : <LoginLink viewerPage={viewerPage} />}
             <SettingsMenu>
               <Link className="settings-verify" to={verifyLookupPath}>
                 {t("nav.verify")}
@@ -93,15 +95,20 @@ export function Layout({
 }
 
 /** The streamer's name and a way out when signed in; the log-in link otherwise, also while the session is unknown. The way out and the dashboard link sit in one account button. */
-function Account() {
+function Account({ viewerPage }: { readonly viewerPage: boolean }) {
   const { t } = useI18n()
   const { streamer, donateUrl, busy, message, signOut } = useStreamerSession()
   return (
     <>
       {streamer === null ? (
-        <LoginLink />
+        <LoginLink viewerPage={viewerPage} />
       ) : (
-        <AccountMenu streamer={streamer} donateUrl={donateUrl} busy={busy} onSignOut={signOut} />
+        <AccountMenu
+          streamer={streamer}
+          donateUrl={viewerPage ? null : donateUrl}
+          busy={busy}
+          onSignOut={signOut}
+        />
       )}
       {message === null ? null : <Status>{t(message)}</Status>}
     </>
@@ -205,8 +212,16 @@ function AccountMenu({
   )
 }
 
-function LoginLink() {
+/** The primary sign-in button; on a viewer page a quiet text link, so it does not read as a step of entering. */
+function LoginLink({ viewerPage }: { readonly viewerPage: boolean }) {
   const { t } = useI18n()
+  if (viewerPage) {
+    return (
+      <Link className="button text app-streamer-login" to={dashboardPath}>
+        {t("nav.streamerLogin")}
+      </Link>
+    )
+  }
   return (
     <Link className="button" to={dashboardPath}>
       <LogInIcon />

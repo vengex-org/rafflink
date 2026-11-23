@@ -9,6 +9,7 @@ export const en = {
   "link.newTab": "Opens in a new tab",
   "nav.login": "Sign in",
   "nav.logout": "Sign out",
+  "nav.streamerLogin": "Streamer sign in",
   "nav.support": "Support Rafflink",
   "nav.loggedOut": "Signed out.",
   "theme.legend": "Theme",
@@ -1369,6 +1370,7 @@ type EnglishOnlyKey =
   | "nav.login"
   | "nav.logout"
   | "nav.loggedOut"
+  | "nav.streamerLogin"
   | "home.worksWith"
   | `recentGiveaways.${PluralSuffix}`
   | `recentDays.${PluralSuffix}`

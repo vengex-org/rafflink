@@ -208,18 +208,21 @@ describe("header session", () => {
       const view = renderApp(path)
       await setTimeout(50)
 
-      expect(view.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/dashboard")
+      expect(view.queryByRole("link", { name: "Sign in" })).toBeNull()
+      expect(view.getByRole("link", { name: "Streamer sign in" }).getAttribute("href")).toBe(
+        "/dashboard",
+      )
       expect(requests.map((request) => request.route)).not.toContain("GET /api/session")
       restoreSocket()
     },
   )
 
   it.each(["/ABCDE", "/ABCDE/verify"])(
-    "shows the streamer signed in on %s once this browser signed in before",
+    "shows the streamer signed in on %s once this browser signed in before, without the support page",
     async (path) => {
       const restoreSocket = installFakeSocket()
       mockFetch({
-        ...signedIn,
+        "GET /api/session": () => ok(supportedSession),
         "GET /api/g/ABCDE": () => ok(giveaway),
         "GET /api/g/ABCDE/verify": () => ({ status: 404, body: null }),
       })
@@ -229,8 +232,9 @@ describe("header session", () => {
 
       const view = renderApp(path)
 
-      await view.findByRole("button", { name: "Streamy" })
-      expect(view.queryByRole("link", { name: "Sign in" })).toBeNull()
+      fireEvent.click(await view.findByRole("button", { name: "Streamy" }))
+      expect(view.getByRole("link", { name: "My giveaways" })).toBeTruthy()
+      expect(view.queryByRole("link", { name: /Support/ })).toBeNull()
       restoreSocket()
     },
   )
