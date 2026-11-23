@@ -19,6 +19,7 @@ export const dictionaryLoaders = {
   pt: async () => (await import("./pt.ts")).pt,
   it: async () => (await import("./it.ts")).it,
   fr: async () => (await import("./fr.ts")).fr,
+  pl: async () => (await import("./pl.ts")).pl,
 } satisfies { readonly [Code in KnownLanguage]?: () => Promise<Dictionary> }
 
 export type Language = keyof typeof dictionaryLoaders
