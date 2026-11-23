@@ -396,6 +396,18 @@ export const configSchema = {
     "5",
     "How long the public part of a giveaway page response is reused, so an anonymous refresh reads neither the account store nor the room; the entrant count can be this stale, 0 turns the cache off; starting guess",
   ),
+  publicHistoryCacheSeconds: withDefault(
+    "PUBLIC_HISTORY_CACHE_SECONDS",
+    int(0),
+    "300",
+    "How long a streamer's public history page answer is reused, so a repeated view reads no D1; turning the page off, hiding or deleting a giveaway drops the copy of the data centre that saved it at once, while other data centres and a newly drawn giveaway show the change after at most this long; 0 turns the cache off; the Cloudflare Cache API stores nothing on a workers.dev address; starting guess, a history changes rarely",
+  ),
+  publicHistoryMax: withDefault(
+    "PUBLIC_HISTORY_MAX",
+    int(1),
+    "20",
+    "Most giveaways, latest close first, a streamer's public history page lists; they come from one D1 query with the counts the rooms mirrored, so the bound only keeps the page short; starting guess",
+  ),
   publicCacheMaxEntries: withDefault(
     "PUBLIC_CACHE_MAX_ENTRIES",
     int(1),
@@ -839,6 +851,8 @@ export function resolveConfig(env: Env): ResolvedConfig {
     claimSecondsMax: read(env, configSchema.claimSecondsMax),
     drawMaxWinners: read(env, configSchema.drawMaxWinners),
     publicGiveawayCacheSeconds: read(env, configSchema.publicGiveawayCacheSeconds),
+    publicHistoryCacheSeconds: read(env, configSchema.publicHistoryCacheSeconds),
+    publicHistoryMax: read(env, configSchema.publicHistoryMax),
     publicCacheMaxEntries: read(env, configSchema.publicCacheMaxEntries),
     recentWinnersGiveawaysMax: read(env, configSchema.recentWinnersGiveawaysMax),
     recentWinnersDaysMax: read(env, configSchema.recentWinnersDaysMax),

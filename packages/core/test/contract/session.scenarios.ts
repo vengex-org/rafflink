@@ -66,6 +66,7 @@ export function sessionScenarios(context: ContractContext): void {
           chatEntry: true,
         },
         chatEntryReady: false,
+        publicHistory: false,
       },
       donateUrl: null,
       operator: null,

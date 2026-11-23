@@ -47,6 +47,7 @@ export const dashboardGiveaway: DashboardGiveaway = {
   claimSeconds: 300,
   overlayToken: "tok-1",
   createdAt: 1_700_000_000_000,
+  hiddenFromHistory: false,
 }
 
 export const liveSnapshot: LiveSnapshot = {
@@ -85,7 +86,7 @@ export const claimedAtText = new Intl.DateTimeFormat("en", {
 
 export const donateUrl = "https://ko-fi.com/rafflink"
 
-/** The platform fields of a Twitch streamer's session. */
+/** The fields of a Twitch streamer's session past the name, picture and approval. */
 export const twitchPlatform = {
   platform: "twitch",
   capabilities: {
@@ -97,6 +98,7 @@ export const twitchPlatform = {
     chatEntry: true,
   },
   chatEntryReady: true,
+  publicHistory: false,
 }
 
 /** A signed-in streamer on a deployment that names a support page. */

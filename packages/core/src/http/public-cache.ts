@@ -16,6 +16,15 @@ export async function readPublicCache(
   }
 }
 
+// Best effort: a copy the delete missed still expires on its own.
+export async function deletePublicCache(deps: AppDeps, key: string): Promise<void> {
+  try {
+    await deps.publicCache.delete(key)
+  } catch (error) {
+    console.warn("public cache delete failed", { errorClass: errorClass(error) })
+  }
+}
+
 export async function writePublicCache(
   deps: AppDeps,
   key: string,

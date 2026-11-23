@@ -9,6 +9,8 @@ import {
   getBlocks,
   listGiveaways,
   removeBlock,
+  setHiddenFromHistory,
+  setPublicHistory,
   winnersCsvPath,
   type AddBlockResult,
   type RemoveBlockResult,
@@ -20,6 +22,8 @@ import {
   ActivityIcon,
   CopyIcon,
   DownloadIcon,
+  EyeIcon,
+  EyeOffIcon,
   LinkIcon,
   LockIcon,
   PlusIcon,
@@ -36,7 +40,7 @@ import type { MessageKey } from "../i18n/dictionaries.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import { readNotice } from "../lib/dashboard-notice.ts"
 import { giveawayDisplayName } from "../lib/messages.ts"
-import { dashboardNewPath, livePath } from "../lib/routes.ts"
+import { dashboardNewPath, historyPath, livePath } from "../lib/routes.ts"
 import { useAction } from "../lib/use-action.ts"
 import { useLoad } from "../lib/use-load.ts"
 import { useSearchQuery } from "../lib/use-search-query.ts"
@@ -168,7 +172,7 @@ function GiveawayList({
                 giveaway={giveaway}
                 pinned
                 canDuplicate={canCreate}
-                onDeleted={onChanged}
+                onChanged={onChanged}
               />
             ))}
           </ul>
@@ -176,8 +180,9 @@ function GiveawayList({
       )}
       {rest.length === 0 || donateUrl === null ? null : <SupportNote url={donateUrl} />}
       {rest.length === 0 ? null : (
-        <FinishedGiveaways giveaways={rest} canDuplicate={canCreate} onDeleted={onChanged} />
+        <FinishedGiveaways giveaways={rest} canDuplicate={canCreate} onChanged={onChanged} />
       )}
+      <PublicHistorySetting />
       <BlockedAccounts />
       <DeleteStreamerData onDeleted={onChanged} />
     </>
@@ -188,11 +193,11 @@ function GiveawayList({
 function FinishedGiveaways({
   giveaways,
   canDuplicate,
-  onDeleted,
+  onChanged,
 }: {
   readonly giveaways: readonly DashboardGiveaway[]
   readonly canDuplicate: boolean
-  readonly onDeleted: () => void
+  readonly onChanged: () => void
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -227,11 +232,47 @@ function FinishedGiveaways({
               giveaway={giveaway}
               pinned={false}
               canDuplicate={canDuplicate}
-              onDeleted={onDeleted}
+              onChanged={onChanged}
             />
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+/** Turns the streamer's public history page on or off, and links to it while it is on. */
+function PublicHistorySetting() {
+  const { t } = useI18n()
+  const { streamer, reload: reloadSession } = useStreamerSession()
+  const { message, busy, run } = useAction()
+  if (streamer === null) return null
+  const on = streamer.publicHistory
+  return (
+    <section className="dash-section dash-history" aria-labelledby="dash-history">
+      <h2 id="dash-history">{t("dash.history.title")}</h2>
+      <p>{t("dash.history.text")}</p>
+      {on ? (
+        <p>
+          <Link to={historyPath(streamer.platform, streamer.login)}>{t("dash.history.link")}</Link>
+        </p>
+      ) : null}
+      <button
+        type="button"
+        className="button outlined"
+        disabled={busy}
+        onClick={() =>
+          void run(
+            () => setPublicHistory(!on),
+            (outcome) => (outcome === "saved" ? "dash.history.saved" : "action.failed"),
+          ).then((outcome) => {
+            if (outcome === "saved") reloadSession()
+          })
+        }
+      >
+        {t(on ? "dash.history.turnOff" : "dash.history.turnOn")}
+      </button>
+      {message === null ? null : <Status>{t(message)}</Status>}
     </section>
   )
 }
@@ -402,13 +443,14 @@ function GiveawayItem({
   giveaway,
   pinned,
   canDuplicate,
-  onDeleted,
+  onChanged,
 }: {
   readonly giveaway: DashboardGiveaway
   readonly pinned: boolean
   /** False when the streamer may not create giveaways, which also takes away duplicating one. */
   readonly canDuplicate: boolean
-  readonly onDeleted: () => void
+  /** Runs after the giveaway was deleted, hidden from the public history or shown there again. */
+  readonly onChanged: () => void
 }) {
   const i18n = useI18n()
   const { t } = i18n
@@ -455,6 +497,28 @@ function GiveawayItem({
             {t("dash.csv")}
           </a>
         ) : null}
+        {giveaway.status === "drawn" ? (
+          <button
+            type="button"
+            className="button text"
+            disabled={busy}
+            aria-label={t(
+              giveaway.hiddenFromHistory ? "dash.history.show.label" : "dash.history.hide.label",
+              { name },
+            )}
+            onClick={() =>
+              void run(
+                () => setHiddenFromHistory(giveaway.id, !giveaway.hiddenFromHistory),
+                (outcome) => (outcome === "saved" ? "dash.history.saved" : "action.failed"),
+              ).then((outcome) => {
+                if (outcome === "saved") onChanged()
+              })
+            }
+          >
+            {giveaway.hiddenFromHistory ? <EyeIcon /> : <EyeOffIcon />}
+            {t(giveaway.hiddenFromHistory ? "dash.history.show" : "dash.history.hide")}
+          </button>
+        ) : null}
         <ConfirmAction
           icon={<TrashIcon />}
           label={
@@ -475,7 +539,7 @@ function GiveawayItem({
               () => deleteGiveaway(giveaway.id),
               (outcome) => (outcome === "deleted" ? null : "action.failed"),
             ).then((outcome) => {
-              if (outcome === "deleted") onDeleted()
+              if (outcome === "deleted") onChanged()
             })
           }
         />

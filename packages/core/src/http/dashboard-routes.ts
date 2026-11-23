@@ -59,7 +59,8 @@ import {
   subscriberBadges,
 } from "./live-actions.ts"
 import { sameOriginJson } from "./origin.ts"
-import { readPublicCache, writePublicCache } from "./public-cache.ts"
+import { historyCacheKey } from "./history-routes.ts"
+import { deletePublicCache, readPublicCache, writePublicCache } from "./public-cache.ts"
 import { endStreamerSession } from "./session.ts"
 import { requireStreamer, type StreamerEnv } from "./session-routes.ts"
 import { webSocketOrigin } from "./websocket-origin.ts"
@@ -165,8 +166,32 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     )
     if (giveaway === null) return c.json({ error: "not-found" }, 404)
     await deleteGiveaway(deps, giveaway.id)
+    await forgetHistory(c, deps)
     console.info("giveaway deleted", { giveawayId: giveaway.id })
     return c.json({ kind: "deleted" })
+  })
+
+  app.post("/api/dash/history", sameOriginJson(deps.config), async (c) => {
+    const on = objectField(await readJson(c), "on")
+    if (typeof on !== "boolean") return c.json({ error: "invalid-input", field: "on" }, 400)
+    await deps.accounts.setPublicHistory(c.get("streamer").streamerId, on)
+    await forgetHistory(c, deps)
+    return c.json({ kind: "saved", on })
+  })
+
+  app.post("/api/dash/giveaways/:id/history", sameOriginJson(deps.config), async (c) => {
+    const hidden = objectField(await readJson(c), "hidden")
+    if (typeof hidden !== "boolean") {
+      return c.json({ error: "invalid-input", field: "hidden" }, 400)
+    }
+    const set = await deps.accounts.setHiddenFromHistory(
+      c.get("streamer").streamerId,
+      c.req.param("id"),
+      hidden,
+    )
+    if (!set) return c.json({ error: "not-found" }, 404)
+    await forgetHistory(c, deps)
+    return c.json({ kind: "saved", hidden })
   })
 
   app.get("/api/dash/blocks", async (c) => {
@@ -231,6 +256,7 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
       await deps.rooms.delete(giveaway.id)
     }
     await deps.accounts.deleteStreamer(streamerId)
+    await forgetHistory(c, deps)
     endStreamerSession(c)
     console.info("streamer data deleted", { streamerId })
     return c.json({ kind: "deleted" })
@@ -466,6 +492,14 @@ async function overlayGiveaway(c: Context, deps: AppDeps): Promise<Giveaway | nu
 
 // Another streamer's giveaway looks like a missing one. The room is re-initialised first: creation
 // may have written the account row and then lost the room call.
+// After a change the history shows, so this instance answers the next view fresh.
+function forgetHistory(c: Context<Env>, deps: AppDeps): Promise<void> {
+  return deletePublicCache(
+    deps,
+    historyCacheKey(deps.config, c.get("streamer").platform, c.get("account").login),
+  )
+}
+
 async function withOwnedRoom(
   c: Context<Env>,
   deps: AppDeps,

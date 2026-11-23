@@ -219,6 +219,17 @@ describe("resolveConfig", () => {
     })
   })
 
+  it("keeps at least one giveaway on the public history page", () => {
+    expect(resolveConfig(required)).toMatchObject({
+      publicHistoryMax: 20,
+      publicHistoryCacheSeconds: 300,
+    })
+    expect(failure({ ...required, PUBLIC_HISTORY_MAX: "0" })).toMatchObject({
+      env: "PUBLIC_HISTORY_MAX",
+      reason: "out-of-range",
+    })
+  })
+
   it("rejects an empty entry in a list", () => {
     expect(failure({ ...required, TOKEN_SEAL_KEYS: "a,,b" })).toMatchObject({
       env: "TOKEN_SEAL_KEYS",

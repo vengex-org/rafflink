@@ -172,6 +172,7 @@ const privacy: LegalDocument = {
         "privacy.recipients.i2",
         "privacy.recipients.i3",
         "privacy.recipients.i4",
+        "privacy.recipients.i5",
       ],
     },
     {

@@ -300,6 +300,9 @@ class LocalRoomStub implements RoomStub {
   removeWinnerName(...args: Parameters<GiveawayRoom["removeWinnerName"]>) {
     return inRoom(() => this.room.removeWinnerName(...args))
   }
+  mirrorState() {
+    return inRoom(() => this.room.mirrorState())
+  }
   markMirrored(...args: Parameters<GiveawayRoom["markMirrored"]>) {
     return inRoom(() => this.room.markMirrored(...args))
   }

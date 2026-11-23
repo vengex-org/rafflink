@@ -5,6 +5,7 @@ import { authRoutes, type Backlog } from "./auth-routes.ts"
 import { dashboardRoutes } from "./dashboard-routes.ts"
 import type { AppDeps } from "./deps.ts"
 import { giveawayRoutes } from "./giveaway-routes.ts"
+import { historyRoutes } from "./history-routes.ts"
 import { moderatorRoutes } from "./moderator-routes.ts"
 import { sessionRoutes } from "./session-routes.ts"
 import { securityHeadersMiddleware } from "./security-headers.ts"
@@ -22,6 +23,7 @@ export function createApp(deps: AppDeps, spaTemplate: SpaTemplateLoader | null):
   app.use(securityHeadersMiddleware(deps.config))
   app.route("/", authRoutes(deps, backlog))
   app.route("/", giveawayRoutes(deps))
+  app.route("/", historyRoutes(deps))
   app.route("/", sessionRoutes(deps))
   app.route("/", dashboardRoutes(deps))
   app.route("/", moderatorRoutes(deps))

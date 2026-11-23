@@ -129,6 +129,8 @@ export interface UsageMeter {
 export interface PublicCache {
   read(key: string): Promise<string | null>
   write(key: string, text: string, ttlSeconds: number): Promise<void>
+  /** Drops the entry where this instance can reach it; another cache of the same deployment may keep its copy until it expires. */
+  delete(key: string): Promise<void>
 }
 
 /**

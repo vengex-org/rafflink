@@ -28,13 +28,7 @@ export async function closeEntries(
   const outcome = await deps.rooms.get(giveaway.id).close(by)
   switch (outcome.kind) {
     case "closed":
-      await mirrorStatus(
-        deps.rooms.get(giveaway.id),
-        deps.accounts,
-        giveaway.id,
-        "closed",
-        deps.clock.now(),
-      )
+      await mirrorStatus(deps.rooms.get(giveaway.id), deps.accounts, giveaway.id, deps.clock.now())
       return c.json({ kind: "closed" })
     case "not-open":
       return c.json({ kind: "not-open", status: outcome.status }, 409)
@@ -59,12 +53,12 @@ export async function drawWinner(
   const answer = async (outcome: DrawOutcome, retried: boolean): Promise<Response> => {
     switch (outcome.kind) {
       case "drawn":
-        await mirrorStatus(room, deps.accounts, giveaway.id, "drawn", deps.clock.now())
+        await mirrorStatus(room, deps.accounts, giveaway.id, deps.clock.now())
         return c.json({ kind: "drawn", picks: outcome.winners.map((winner) => winner.n) })
       case "not-closed": {
         const requested = await room.requestDraw(count, by)
         if (requested.kind === "requested") {
-          await mirrorStatus(room, deps.accounts, giveaway.id, "closed", deps.clock.now())
+          await mirrorStatus(room, deps.accounts, giveaway.id, deps.clock.now())
           return c.json({ kind: requested.kind }, 202)
         }
         // Entries closed between the two calls; the press still means a draw.
@@ -96,7 +90,11 @@ export async function rerollPick(
 ): Promise<Response> {
   const n = integerField(await readJson(c), "n", 0)
   if (n === null) return c.json({ error: "invalid-input", field: "n" }, 400)
-  const outcome = await deps.rooms.get(giveaway.id).reroll(n, by)
+  const room = deps.rooms.get(giveaway.id)
+  const outcome = await room.reroll(n, by)
+  if (outcome.kind === "rerolled") {
+    await mirrorStatus(room, deps.accounts, giveaway.id, deps.clock.now())
+  }
   return c.json(
     outcome.kind === "rerolled"
       ? { kind: outcome.kind, replaced: outcome.replaced, n: outcome.winner.n }

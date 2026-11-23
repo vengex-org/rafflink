@@ -153,4 +153,38 @@ export function retentionScenarios(context: ContractContext): void {
       expect(world.twitchCalls("/oauth2/token") - exchanges).toBe(1)
     },
   )
+
+  scenario(
+    context,
+    "a streamer's public history lists a drawn giveaway once the streamer turns it on, and not one they hid",
+    async (world) => {
+      const target = await world.start()
+      const shown = await world.createGiveaway(target)
+      await world.enter(target, shown.code, users.viewer.id)
+      await world.closeGiveaway(shown)
+      await world.drawWinners(shown)
+      const hidden = await world.createGiveaway(target, { streamer: shown.streamer })
+      await world.enter(target, hidden.code, users.viewer2.id)
+      await world.closeGiveaway(hidden)
+      await world.drawWinners(hidden)
+      const post = (path: string, body: unknown) =>
+        shown.streamer.request(path, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: publicOrigin },
+          body: JSON.stringify(body),
+        })
+      const historyPath = `/api/s/twitch/${users.streamer.login}`
+
+      const before = await shown.streamer.request(historyPath)
+      await post(`/api/dash/giveaways/${hidden.id}/history`, { hidden: true })
+      await post("/api/dash/history", { on: true })
+      const after = await shown.streamer.request(historyPath)
+
+      expect(before.status).toBe(404)
+      expect(await after.json()).toMatchObject({
+        streamer: { platform: "twitch", login: users.streamer.login },
+        giveaways: [{ code: shown.code, entrantCount: 1, winners: 1 }],
+      })
+    },
+  )
 }

@@ -34,6 +34,7 @@ export const en = {
   "notFound.giveaway": "Giveaway not found",
   "notFound.live": "Live page not found",
   "notFound.generic": "Not found",
+  "notFound.history": "This streamer has no public giveaway history",
 
   "signIn.title": "Sign in",
   "signIn.button": "Sign in with Twitch",
@@ -326,6 +327,9 @@ export const en = {
   "drawBatch.one": "Draw {count} winner",
   "drawBatch.few": "Draw {count} winners",
   "drawBatch.other": "Draw {count} winners",
+  "winners.one": "{count} winner",
+  "winners.few": "{count} winners",
+  "winners.other": "{count} winners",
   "minute.one": "{count} minute",
   "minute.few": "{count} minutes",
   "minute.other": "{count} minutes",
@@ -556,6 +560,24 @@ export const en = {
   "dash.blocks.platform-unavailable": "Twitch did not answer. Try again in a moment.",
   "dash.blocks.room-unavailable":
     "Saved, but a running giveaway did not get the change yet. Try the same action again.",
+  "dash.history.title": "Public history",
+  "dash.history.text":
+    "A public page can list your finished giveaways with the prize, the date, how many people entered and how many won, and a link to check each draw. It names no entrant and no winner, and search engines do not index it. The button on a finished giveaway hides it from the page.",
+  "dash.history.link": "Open your public history page",
+  "dash.history.turnOn": "Turn on public history",
+  "dash.history.turnOff": "Turn off public history",
+  "dash.history.saved": "Saved. The public page can take a few minutes to show the change.",
+  "dash.history.hide": "Hide from history",
+  "dash.history.show": "Show in history",
+  "dash.history.hide.label": "Hide {name} from your public history",
+  "dash.history.show.label": "Show {name} in your public history",
+  "history.title": "Giveaways of {name}",
+  "history.intro":
+    "Finished giveaways of this streamer, newest first. Each draw can be checked on its verify page. No entrant and no winner is named here.",
+  "history.none": "No finished giveaways yet.",
+  "history.closed": "Entries closed {date}",
+  "history.verify": "Verify the draw",
+  "history.verify.label": "Verify the draw of {name}",
 
   "share.link": "Your link",
   "share.copyLink": "Copy link",
@@ -903,6 +925,8 @@ export const en = {
     "The streamer who runs a giveaway sees its entrants and winners. The names of entrants and winners are shown on the giveaway's live page and overlay, and their profile pictures on the live page.",
   "privacy.recipients.i4":
     "The public drand randomness beacon is read for the draw. No personal data is sent to it.",
+  "privacy.recipients.i5":
+    "When a streamer turns on their public history, anyone can see the streamer's name and their finished giveaways there: title, prize, close date and the numbers of entrants and winners. The page names no entrant and no winner, and the streamer can hide single giveaways or turn the page off.",
   "privacy.cookies.h": "Cookies and local storage",
   "privacy.cookies.p1":
     "Rafflink sets only strictly necessary cookies, so no consent banner is shown. All of them are HTTP-only and are used for nothing else.",

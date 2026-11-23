@@ -3,13 +3,14 @@ import type { OverlayOptions } from "./overlay-options.ts"
 export {
   drawPath,
   giveawayPath,
+  historyPath,
   moderatorLivePath,
   moderatorOpenPath,
   moderatorSignInOutcomes,
   verifyPath,
 } from "@rafflink/core/lib/page-paths"
 
-/** The first segments of the pages that are not giveaways; their canonical spelling is lowercase. `g` is the old giveaway link. */
+/** The first segments of the pages that are not giveaways; their canonical spelling is lowercase. `g` is the old giveaway link, `s` a streamer's history. */
 export const staticSegments = [
   "dashboard",
   "admin",
@@ -21,6 +22,7 @@ export const staticSegments = [
   "mod",
   "overlay",
   "g",
+  "s",
 ]
 
 /** The fixed words after a first segment or a giveaway code; the segments between them are ids and tokens, whose case is theirs. */

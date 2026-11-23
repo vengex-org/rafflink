@@ -16,6 +16,9 @@ What it does:
 - The streamer watches a live page (also available as a read-only OBS overlay link), closes the giveaway
   and draws winners. Winners claim with a button or by writing in chat. A winner who does not claim can be
   rerolled.
+- A streamer can turn on a public history page, `/s/twitch/<login>`, that lists their finished giveaways
+  (title, prize, close date, entrant and winner counts, a link to each verify page) without naming anyone, and
+  hide single giveaways from it.
 
 Rafflink runs on Cloudflare (Workers, Durable Objects, D1) or on any server with Docker. Both targets share
 one core and pass the same contract tests.
@@ -417,6 +420,12 @@ public part of its answer is kept for `PUBLIC_GIVEAWAY_CACHE_SECONDS` (5 by defa
 refresh by an anonymous viewer reads neither D1 nor a Durable Object. The Cache API stores nothing on a
 `workers.dev` address, so the cache needs a custom domain; the entrant count a viewer sees can be that many
 seconds old.
+A streamer's public history page makes one Worker request too (`/api/s/<platform>/<login>`, no session request).
+Its answer is kept for `PUBLIC_HISTORY_CACHE_SECONDS` (300) in the Cache API; a miss reads D1 twice and no Durable
+Object, because each room copies its entrant and winner counts into D1 with its status. The page lists the latest
+`PUBLIC_HISTORY_MAX` (20) giveaways by close time. Turning the page off, hiding or deleting a giveaway drops the
+cached answer of the data centre that saved the change; elsewhere it shows once the cached answer expires. While
+`OPEN_SIGNUP` is off only an approved streamer has the page. The page stays `noindex`.
 The home page is one Worker request itself. The home, dashboard and admin pages add one `/api/session` request for the header, and the overlay adds one
 `/api/g/<code>` request when it shows winners, to read the prize; the giveaway pages make no session request. An
 overlay reads its style (`/api/overlay/<id>/<token>/theme`, one D1 read) when it loads and when its socket reconnects;

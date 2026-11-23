@@ -6,6 +6,7 @@ import {
 } from "../domain/overlay-theme.ts"
 import { parseRules, type GiveawayRules, type RulesConfig } from "../domain/rules.ts"
 import type { AsyncSql, Instant, SqlRow } from "../ports.ts"
+import type { RoomMirror } from "../room/giveaway-room.ts"
 import { RoomRowError, roomStatuses, RowReader, type RoomStatus } from "../room/rows.ts"
 import {
   cloudflarePlanSql,
@@ -37,12 +38,16 @@ import {
   ownedOverlayThemesSql,
   overlayThemesSql,
   pendingStreamersSql,
+  publicHistoryGiveawaysSql,
+  publicHistoryStreamerSql,
   recentDrawnGiveawaysSql,
   recordRetentionFailureSql,
   replaceStreamerTokenSql,
   revokeModeratorLinkSql,
   revokeStreamerSql,
   setGiveawayOverlaySql,
+  setHiddenFromHistorySql,
+  setPublicHistorySql,
   setRetentionArmedSql,
   setStatusSql,
   storeCloudflarePlanSql,
@@ -70,6 +75,8 @@ export interface StreamerRecord {
   readonly createdAt: Instant
   /** When an admin approved the account; null while it waits. Only read when OPEN_SIGNUP is false. */
   readonly approvedAt: Instant | null
+  /** The streamer turned on their public history page. */
+  readonly publicHistory: boolean
 }
 
 /** What a streamer sign-in stores: the streamer and their sealed refresh token, written together. */
@@ -118,11 +125,18 @@ export interface Giveaway {
   readonly createdAt: Instant
   /** The streamer's `block_list_version` when the row was read; the room must hold at least this list before an entry. */
   readonly blockListVersion: number
+  /** The streamer keeps the giveaway off their public history page. */
+  readonly hiddenFromHistory: boolean
 }
 
 export type NewGiveaway = Omit<
   Giveaway,
-  "platform" | "broadcasterId" | "streamerName" | "status" | "blockListVersion"
+  | "platform"
+  | "broadcasterId"
+  | "streamerName"
+  | "status"
+  | "blockListVersion"
+  | "hiddenFromHistory"
 >
 
 /** A link that lets whoever opens it act on one giveaway as its moderator; the store keeps a hash of its token, never the token. */
@@ -158,6 +172,20 @@ export interface StreamerBlock {
   readonly createdAt: Instant
 }
 
+/** A streamer's public history page as the account store holds it: the streamer and their newest drawn giveaways they did not hide. */
+export interface PublicHistory {
+  readonly streamer: Pick<StreamerRecord, "login" | "displayName">
+  readonly giveaways: readonly HistoryGiveaway[]
+}
+
+/** A drawn giveaway on a public history page, with the counts its room mirrored. */
+export type HistoryGiveaway = Pick<Giveaway, "code" | "title" | "prize"> & {
+  readonly closedAt: Instant
+  readonly entrantCount: number
+  /** The picks that were not rerolled. */
+  readonly winners: number
+}
+
 /** `full` when the streamer holds the most blocks allowed; nothing is written then, nor for `exists`. */
 export type AddBlockOutcome = "added" | "exists" | "full"
 
@@ -180,6 +208,7 @@ export class AccountStore {
           input.login,
           input.displayName,
           input.profileImageUrl,
+          input.now,
           input.now,
         ],
       },
@@ -273,6 +302,57 @@ export class AccountStore {
   async listOpenGiveawayIds(streamerId: string, limit: number): Promise<string[]> {
     const rows = await this.sql.all(openGiveawaysOfStreamerSql, [streamerId, limit])
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
+  }
+
+  /** The public history of the streamer with this login, or null when nobody with it has turned it on. Lists up to `limit` giveaways, newest first. */
+  async findPublicHistory(
+    platform: string,
+    login: string,
+    options: {
+      readonly limit: number
+      /** Only a streamer an admin approved has the page, as while OPEN_SIGNUP is off. */
+      readonly approvedOnly: boolean
+    },
+  ): Promise<PublicHistory | null> {
+    const [row] = await this.sql.all(publicHistoryStreamerSql, [platform, login])
+    if (row === undefined) return null
+    const streamer = new RowReader("streamers", row)
+    if (streamer.int("public_history") !== 1) return null
+    if (options.approvedOnly && streamer.nullableInt("approved_at") === null) return null
+    const rows = await this.sql.all(publicHistoryGiveawaysSql, [streamer.text("id"), options.limit])
+    return {
+      streamer: { login: streamer.text("login"), displayName: streamer.text("display_name") },
+      giveaways: rows.map((giveaway) => {
+        const reader = new RowReader("giveaways", giveaway)
+        return {
+          code: reader.text("code"),
+          title: reader.nullableText("title"),
+          prize: reader.nullableText("prize"),
+          closedAt: reader.int("closed_at"),
+          entrantCount: reader.int("entrant_count"),
+          winners: reader.int("winners"),
+        }
+      }),
+    }
+  }
+
+  /** Idempotent. */
+  async setPublicHistory(streamerId: string, on: boolean): Promise<void> {
+    await this.sql.run(setPublicHistorySql, [on ? 1 : 0, streamerId])
+  }
+
+  /** Idempotent. False when the giveaway is not this streamer's. */
+  async setHiddenFromHistory(
+    streamerId: string,
+    giveawayId: string,
+    hidden: boolean,
+  ): Promise<boolean> {
+    const rows = await this.sql.all(setHiddenFromHistorySql, [
+      hidden ? 1 : 0,
+      giveawayId,
+      streamerId,
+    ])
+    return rows.length === 1
   }
 
   /** Ids of up to `limit` of the streamer's drawn giveaways created at or after `since`, newest first. */
@@ -369,9 +449,15 @@ export class AccountStore {
     return rows.map((row) => new RowReader("giveaways", row).text("id"))
   }
 
-  /** Idempotent mirror of the room's status; the first status past open also stores `at` as the close time. */
-  async setStatus(giveawayId: string, status: RoomStatus, at: Instant): Promise<void> {
-    await this.sql.run(setStatusSql, [status, status === "open" ? null : at, giveawayId])
+  /** Idempotent mirror of the room's status and counts; the first status past open also stores `at` as the close time. */
+  async setStatus(giveawayId: string, mirror: RoomMirror, at: Instant): Promise<void> {
+    await this.sql.run(setStatusSql, [
+      mirror.status,
+      mirror.status === "open" ? null : at,
+      mirror.entrantCount,
+      mirror.winners,
+      giveawayId,
+    ])
   }
 
   /**
@@ -545,6 +631,7 @@ export class AccountStore {
       overlayToken: reader.text("overlay_token"),
       createdAt: reader.int("created_at"),
       blockListVersion: reader.int("block_list_version"),
+      hiddenFromHistory: reader.int("hidden_from_history") === 1,
     }
   }
 }
@@ -560,6 +647,7 @@ function parseStreamer(row: SqlRow): StreamerRecord {
     profileImageUrl: reader.nullableText("profile_image_url"),
     createdAt: reader.int("created_at"),
     approvedAt: reader.nullableInt("approved_at"),
+    publicHistory: reader.int("public_history") === 1,
   }
 }
 

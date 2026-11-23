@@ -37,6 +37,7 @@ export function headersFile(security: Readonly<Record<string, string>>): string 
       "/mod/*",
       "/overlay/*",
       "/dashboard/*",
+      "/s/*",
     ].map((pattern) => `${pattern}\n  X-Robots-Tag: ${noindex}`),
     // `/:segment` also matches the legal pages, so they detach it. Unlike the home page this has not been
     // checked on Cloudflare; a deployed legal page that still answers noindex points here.

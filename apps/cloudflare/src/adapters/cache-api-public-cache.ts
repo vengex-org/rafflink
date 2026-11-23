@@ -12,6 +12,11 @@ export class CacheApiPublicCache implements PublicCache {
     return hit === undefined ? null : hit.text()
   }
 
+  // The Cache API of one data centre: the others keep their copies until they expire.
+  async delete(key: string): Promise<void> {
+    await this.cache.delete(new Request(key))
+  }
+
   async write(key: string, text: string, ttlSeconds: number): Promise<void> {
     // `Cache-Control` sits on the stored copy only, which is what the Cache API reads its lifetime from.
     await this.cache.put(

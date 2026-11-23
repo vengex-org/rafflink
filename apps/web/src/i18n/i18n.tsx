@@ -22,6 +22,7 @@ export type PluralBase =
   | "roleFailures"
   | "chatFailures"
   | "drawBatch"
+  | "winners"
 
 type PluralForm = "one" | "few" | "other"
 type Params = Readonly<Record<string, string | number>>

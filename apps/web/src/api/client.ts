@@ -8,6 +8,7 @@ import {
   type RecentWinnersRule,
 } from "@rafflink/core/domain/rules"
 import type { CreateIssue } from "@rafflink/core/http/create-input"
+import { historyPath } from "@rafflink/core/lib/page-paths"
 import type {
   AdminAccessCountsJson,
   AdminPlanJson,
@@ -26,6 +27,7 @@ import type {
   MyLeafJson,
   OperatorJson,
   PublicGiveaway,
+  PublicHistoryJson,
   SessionJson,
   VerifyJson,
   ViewerState,
@@ -214,6 +216,7 @@ export async function getSession(): Promise<SessionJson> {
       platform: platformOf(streamer, "platform"),
       capabilities: capabilitiesOf(child(streamer, "capabilities")),
       chatEntryReady: bool(streamer, "chatEntryReady"),
+      publicHistory: bool(streamer, "publicHistory"),
     },
     donateUrl,
     operator,
@@ -802,6 +805,43 @@ export function decideStreamerAccess(
 
 export type StreamerAccessKind = (typeof streamerAccessKinds)[number]
 
+/** A streamer's public history page; null when the streamer has not turned it on or does not exist. */
+export async function getPublicHistory(
+  platform: string,
+  login: string,
+): Promise<PublicHistoryJson | null> {
+  const { status, body } = await send(`/api${historyPath(platform, login)}`)
+  if (status === 404) return null
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "history")
+  const streamer = child(source, "streamer")
+  return {
+    streamer: {
+      platform: platformOf(streamer, "platform"),
+      login: text(streamer, "login"),
+      displayName: text(streamer, "displayName"),
+    },
+    giveaways: list(source, "giveaways", (giveaway) => ({
+      code: text(giveaway, "code"),
+      title: nullableText(giveaway, "title"),
+      prize: nullableText(giveaway, "prize"),
+      closedAt: num(giveaway, "closedAt"),
+      entrantCount: num(giveaway, "entrantCount"),
+      winners: num(giveaway, "winners"),
+    })),
+  }
+}
+
+/** Turns the signed-in streamer's public history page on or off. */
+export function setPublicHistory(on: boolean): Promise<"saved" | Rejected> {
+  return act("/api/dash/history", { on }, savedKinds)
+}
+
+/** Keeps one of the streamer's giveaways off their public history page, or lists it again. */
+export function setHiddenFromHistory(id: string, hidden: boolean): Promise<"saved" | Rejected> {
+  return act(`/api/dash/giveaways/${encodeURIComponent(id)}/history`, { hidden }, savedKinds)
+}
+
 /** Deletes one of the streamer's giveaways with its room, winners and draw proof. */
 export function deleteGiveaway(id: string): Promise<DeleteKind | Rejected> {
   return act(`/api/dash/giveaways/${encodeURIComponent(id)}/delete`, {}, deleteKinds)
@@ -1090,6 +1130,7 @@ function parseDashboardGiveaway(source: Json): DashboardGiveaway {
     claimSeconds: num(source, "claimSeconds"),
     overlayToken: text(source, "overlayToken"),
     createdAt: num(source, "createdAt"),
+    hiddenFromHistory: bool(source, "hiddenFromHistory"),
   }
 }
 

@@ -130,6 +130,8 @@ export interface SessionJson {
     readonly capabilities: PlatformCapabilities
     /** The stored token holds the scopes chat entry needs; false asks the streamer to reconnect before turning it on. */
     readonly chatEntryReady: boolean
+    /** The streamer turned on their public history page. */
+    readonly publicHistory: boolean
   } | null
   readonly donateUrl: string | null
   readonly operator: OperatorJson | null
@@ -147,6 +149,31 @@ export interface DashboardGiveaway {
   readonly claimSeconds: number
   readonly overlayToken: string
   readonly createdAt: Instant
+  /** The streamer keeps it off their public history page. */
+  readonly hiddenFromHistory: boolean
+}
+
+/**
+ * A streamer's public history page: their newest drawn giveaways they did not hide, with only what each
+ * giveaway's own page and verify page already show anyone, so no entrant or winner is named.
+ */
+export interface PublicHistoryJson {
+  readonly streamer: {
+    readonly platform: Platform
+    readonly login: string
+    readonly displayName: string
+  }
+  readonly giveaways: readonly PublicHistoryGiveawayJson[]
+}
+
+export interface PublicHistoryGiveawayJson {
+  readonly code: string
+  readonly title: string | null
+  readonly prize: string | null
+  readonly closedAt: Instant
+  readonly entrantCount: number
+  /** The picks that were not rerolled. */
+  readonly winners: number
 }
 
 /** The streamer's overlay theme, or the one a giveaway's overlay shows. */
@@ -310,6 +337,7 @@ export function dashboardGiveaway(giveaway: Giveaway): DashboardGiveaway {
     claimSeconds: giveaway.claimSeconds,
     overlayToken: giveaway.overlayToken,
     createdAt: giveaway.createdAt,
+    hiddenFromHistory: giveaway.hiddenFromHistory,
   }
 }
 
