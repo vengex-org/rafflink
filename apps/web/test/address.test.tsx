@@ -195,6 +195,17 @@ describe("localized pages", () => {
     expect([en["notFound.page"], de["notFound.page"]]).not.toContain(heading)
   })
 
+  // The old giveaway link then moves on to `/<code>`; the doubled slash stays a path of this site.
+  it.each([
+    ["/en/g/ABC?x=1", "/ABC?x=1"],
+    ["/en//evil.com", "/evil.com"],
+  ])("drop the English prefix of %s and stay on the site at %s", async (typed, canonical) => {
+    mockFetch({})
+    const view = renderApp(typed)
+
+    await waitFor(() => expect(view.address()).toBe(canonical))
+  })
+
   it("answer a page a language does not have with the page 404", async () => {
     mockFetch({})
     const view = renderApp("/de/dashboard")
