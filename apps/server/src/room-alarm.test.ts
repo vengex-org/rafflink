@@ -561,3 +561,26 @@ describe("runRoomAlarm orphaned room", () => {
     expect(await runRoomAlarm(deps, giveawayId, watching)).toBe("kept")
   })
 })
+
+describe("runRoomAlarm giveaway check", () => {
+  it("keeps the room when the giveaway read fails", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const watching = keywordRoom()
+    await runRoomAlarm(deps, giveawayId, watching)
+    spyOn(accounts, "findGiveawayById").mockRejectedValue(new Error("D1 down"))
+    clock.advance(config.roomGiveawayCheckSeconds * 1000)
+
+    expect(await runRoomAlarm(deps, giveawayId, watching)).toBe("kept")
+    expect(warn).toHaveBeenCalledWith("room giveaway check failed", {
+      giveawayId,
+      errorClass: "Error",
+    })
+  })
+
+  it("does not ask for a giveaway check while the room has no chat watch open", () => {
+    room.onAlarm()
+    clock.advance(config.roomGiveawayCheckSeconds * 1000)
+
+    expect(room.onAlarm().giveawayCheck).toBe(false)
+  })
+})

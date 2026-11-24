@@ -875,7 +875,7 @@ export class GiveawayRoom {
     }
   }
 
-  // Only a room that keeps a chat watch open asks: it is the one holding an outbound connection that wakes it.
+  // Only a room that keeps a chat watch open asks: its connection (EventSub socket) or polling (YouTube) is what keeps the room awake.
   private giveawayCheckDue(now: Instant): boolean {
     if (this.chat === null || !this.chatWatchOpen(this.readState())) {
       this.giveawayCheckAt = null

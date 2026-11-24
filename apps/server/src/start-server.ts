@@ -113,7 +113,12 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     publish: (topic, message) => void server.publish(topic, message),
     subscriberCount: (topic) => server.subscriberCount(topic),
     onAlarm: async (giveawayId, room) => {
-      await runRoomAlarm(alarmDeps, giveawayId, room)
+      if ((await runRoomAlarm(alarmDeps, giveawayId, room)) === "kept") return
+      console.warn("room deleted: its giveaway no longer exists", { giveawayId })
+      // Not awaited: delete waits for the running alarm, which is this one.
+      void rooms.delete(giveawayId).catch((error: unknown) => {
+        console.warn("room delete failed", { giveawayId, errorClass: errorClass(error) })
+      })
     },
     chat: (giveawayId) => roomChat(tokenDeps, connector, giveawayId),
   })
