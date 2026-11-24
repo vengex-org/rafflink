@@ -74,12 +74,19 @@ export function segmentFile(language: Language, segment: string): string {
   return `${language === sourceLanguage ? "" : `${language}/`}${segment}.html`
 }
 
-/**
- * The localized page at `pathname`, with or without a trailing slash, and the source language's pages also under
- * its prefix (`/en/`, `/en/privacy`), which redirect to their address; null for every other address, `/DE/` included.
- */
+/** The localized page at `pathname`, with or without a trailing slash; null for every other address, `/DE/` and `/en/` included. */
 export function pageOfPath(pathname: string): LocalizedAddress | null {
   return addresses.get(withoutTrailingSlash(pathname)) ?? null
+}
+
+/**
+ * `pathname` without the source language's prefix, which no address has; the app and the server redirect there:
+ * `/en/dashboard` to `/dashboard`, `/en` and `/en/` to `/`.
+ */
+export function withoutSourcePrefix(pathname: string): string {
+  const prefix = `/${sourceLanguage}`
+  if (pathname === prefix) return "/"
+  return pathname.startsWith(`${prefix}/`) ? pathname.slice(prefix.length) : pathname
 }
 
 /** The build file that holds the rendered page, relative to the build's root; `index.html` stays the app's empty shell. */
@@ -153,16 +160,10 @@ export function alternatesOf(pathOf: (language: Language) => string): readonly A
 
 const addresses = new Map<string, LocalizedAddress>(
   languages.flatMap((language) =>
-    localizedPages.flatMap((page): [string, LocalizedAddress][] => {
-      const path = withoutTrailingSlash(localizedPath(language, page))
-      const address = { language, page }
-      return language === sourceLanguage
-        ? [
-            [path, address],
-            [`/${language}${path}`, address],
-          ]
-        : [[path, address]]
-    }),
+    localizedPages.map((page) => [
+      withoutTrailingSlash(localizedPath(language, page)),
+      { language, page },
+    ]),
   ),
 )
 

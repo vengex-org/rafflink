@@ -185,6 +185,7 @@ describe("localized pages", () => {
     ["/privacy/", "/privacy"],
     ["/en/", "/"],
     ["/en/privacy", "/privacy"],
+    ["/en/draw", "/draw"],
   ])("open %s at %s", async (typed, canonical) => {
     mockFetch({})
     const view = renderApp(typed)

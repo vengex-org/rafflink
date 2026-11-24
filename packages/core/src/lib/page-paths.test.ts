@@ -57,7 +57,8 @@ describe("localized pages", () => {
   })
 
   it.each([
-    "/en/dashboard",
+    "/en/",
+    "/en/privacy",
     "/DE/",
     "/de/Privacy",
     "/de/home",
