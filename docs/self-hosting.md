@@ -448,7 +448,7 @@ sends up to 9,000 subrequests per alarm invocation instead of 45. `WORKER_REQUES
 `DURABLE_OBJECT_REQUEST_LIMIT` and `QUEUE_SUBREQUESTS_PER_INVOCATION` override the plan's values when set,
 for example a self-imposed daily cap on Paid. The Bun server has no Cloudflare plan and shows no switch.
 
-Live statistics: the admin page polls `GET /api/admin/stats` every 10 seconds while its tab is visible and
+Live statistics: the admin page polls `GET /api/admin/stats` every 30 seconds while its tab is visible and
 stops while it is hidden. The answer is reused for `ADMIN_STATS_CACHE_SECONDS` (5), so two admins cost one set
 of reads, and it asks the rooms of at most `ADMIN_STATS_LIVE_ROOMS_MAX` (20) open giveaways for their viewers
 and entries, one Durable Object request each on Cloudflare. The page shows the open giveaways, connected
