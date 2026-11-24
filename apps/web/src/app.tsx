@@ -3,6 +3,7 @@ import { useEffect, useEffectEvent, type ReactNode } from "react"
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router"
 import { ErrorBoundary } from "./components/error-boundary.tsx"
 import { Layout } from "./components/layout.tsx"
+import { NavigationScroll } from "./components/navigation-scroll.tsx"
 import { Failed, NotFound } from "./components/notice.tsx"
 import { I18nProvider } from "./i18n/i18n.tsx"
 import { languages, parseLanguage, storedLanguage } from "./i18n/language.ts"
@@ -41,6 +42,7 @@ export function AppRoutes() {
   return (
     <I18nProvider addressLanguage={pageAddressLanguage(pathname)}>
       <LinkedLanguage />
+      <NavigationScroll />
       <ErrorBoundary fallback={<Failed />}>
         <CanonicalPath>
           <Routes>

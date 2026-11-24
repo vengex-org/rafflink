@@ -371,6 +371,13 @@ button:disabled {
   }
 }
 
+/* A link to a part of the page glides there (NavigationScroll brings the target into view); a move to another page jumps to its top. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Reduced motion removes every movement: transitions, reveals, entrances, the spinner and the page fade. */
 @media (prefers-reduced-motion: reduce) {
   *,
