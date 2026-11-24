@@ -981,6 +981,8 @@ export const pl: Translation = {
   "wizard.entry.chat": "Tylko czat",
   "wizard.entry.chat.help":
     "Widzowie zgłaszają się tylko przez wpisanie słowa kluczowego na twoim czacie. Strona pokazuje słowo kluczowe i pozwala sprawdzić, czy są w rozdaniu.",
+  "wizard.entry.chatDelay":
+    "Zgłoszenia przez czat pojawiają się z kilkusekundowym opóźnieniem, dłuższym, gdy wielu widzów pisze naraz. Zgłoszenia na stronie rozdania liczą się od razu.",
   "wizard.reconnect.followers.info":
     "Aby sprawdzić, kto cię obserwuje, Rafflink musi czytać twoich obserwujących. Połącz ponownie Twitch; twoje odpowiedzi zostaną.",
   "wizard.reconnect.subs.info":
@@ -1052,7 +1054,17 @@ export const pl: Translation = {
   "legal.englishPrevails":
     "To jest tłumaczenie. W razie rozbieżności z wersją angielską rozstrzyga wersja angielska.",
 
+  "meta.home.title": "Rafflink: uczciwe rozdania, które twój czat może sprawdzić",
+  "meta.home.description":
+    "Darmowe narzędzie do rozdań dla streamerów. Widzowie zgłaszają się z linku na czacie, ty losujesz na żywo na streamie, a każdy może sprawdzić losowanie.",
+  "meta.privacy.description":
+    "Co Rafflink przechowuje o streamerach i widzach, dlaczego, jak długo i jak poprosić o usunięcie.",
+  "meta.terms.description":
+    "Zasady dla streamerów, którzy prowadzą rozdania z Rafflink, i dla widzów, którzy w nich uczestniczą.",
+
   "privacy.title": "Polityka prywatności",
+  "privacy.intro":
+    "Rafflink losuje zwycięzców rozdań na Twitchu, Kicku i YouTube. Ta polityka wyjaśnia, jakie dane osobowe przetwarza, dlaczego, jak długo i jakie masz prawa.",
   "privacy.controller.h": "Kto odpowiada za dane",
   "privacy.controller.p1":
     "Administratorem twoich danych osobowych w tej instancji jest {operator}. Kontakt: {contact}.",
@@ -1125,8 +1137,18 @@ export const pl: Translation = {
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "Rafflink korzysta z usług API YouTube. Logując się przez YouTube, akceptujesz Warunki korzystania z YouTube ({youtubeTerms}). Do tego, co Google robi z twoimi danymi, ma zastosowanie Polityka prywatności Google ({googlePrivacy}).",
+  "privacy.youtube.p2":
+    "Wykorzystanie i przekazywanie przez Rafflink informacji uzyskanych z interfejsów API Google jest zgodne z Google API Services User Data Policy ({googleUserData}), w tym z wymogami ograniczonego wykorzystania (Limited Use).",
+  "privacy.youtube.i1":
+    "Streamer na YouTube loguje się przez Google i daje Rafflink dostęp tylko do odczytu do swojego konta YouTube (zakres youtube.readonly). Rafflink odczytuje wyłącznie ID, handle i nazwę twojego kanału, aby zalogować cię jako twój kanał, twoją aktywną transmisję na żywo, aby znaleźć jej czat, oraz wiadomości z tego czatu, aby zgłaszać widzów, którzy wpiszą słowo kluczowe, i pokazywać odpowiedzi zwycięzcy. O tobie zapisuje ID kanału, handle, nazwę i zaszyfrowany token odświeżania. To, co zapisuje o widzach, jest w kolejnych punktach. Wiadomości z czatu nigdy nie są przechowywane, a Rafflink nigdy niczego nie publikuje ani nie zmienia na YouTube.",
+  "privacy.youtube.i5":
+    "Rafflink używa tych danych z Google wyłącznie do prowadzenia twoich rozdań. Nigdy ich nie sprzedaje, nie wykorzystuje do reklam i udostępnia je tylko stronom wymienionym wyżej. Nikt ich nie czyta, chyba że poprosisz o pomoc z kontem, wymaga tego bezpieczeństwo albo prawo.",
   "privacy.youtube.i2":
     "Widzowie nigdy nie logują się przez Google. Zgłaszają się, pisząc słowo kluczowe na czacie, a Rafflink czyta ID ich kanału, nazwę widoczną na czacie, wiadomość oraz to, czy są członkami kanału lub moderatorami.",
+  "privacy.youtube.i3":
+    "Dla każdego widza, który wpisze słowo kluczowe, Rafflink zapisuje ID jego kanału, nazwę widoczną na czacie (jako nazwę wyświetlaną i login), jego grupę (widz, członek lub moderator), bilety, czas zgłoszenia i losową wartość do losowania. Nazwy i ID kanałów zwycięzców są zapisywane także przy ich losowaniu. Wszystko jest usuwane najpóźniej 30 dni po zamknięciu rozdania, albo wcześniej, jeśli operator ustawi krótszy czas. Przy losowaniu zostaje tylko ID kanału zwycięzcy.",
+  "privacy.youtube.i4":
+    "Dostęp Rafflink do twojego konta YouTube możesz w każdej chwili odebrać w uprawnieniach swojego konta Google ({googlePermissions}). Zapisany token zostanie wtedy usunięty przy najbliższym cogodzinnym sprawdzeniu. Usunięcie konta Rafflink w panelu usuwa zapisany token i twoje dane, ale dostęp nadany w koncie Google pozostaje, dopóki go tam nie odbierzesz.",
   "privacy.cookies.h": "Ciasteczka i pamięć lokalna",
   "privacy.cookies.p1":
     "Rafflink ustawia tylko niezbędne ciasteczka, więc nie pokazuje banera zgody. Wszystkie są typu HTTP-only i nie są używane do niczego innego.",

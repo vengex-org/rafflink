@@ -142,18 +142,11 @@ function siteTarget(page: (typeof prerenderPages)[number]): PrerenderTarget {
   }
 }
 
-/**
- * English has search copy of its own. The translations have none yet, so the home page takes its translated heading
- * and lead, and a legal page its translated heading; a legal page's description stays English until translated.
- */
 const pageMeta = {
-  home: (language, dictionary) =>
-    language === sourceLanguage
-      ? { title: dictionary["meta.home.title"], description: dictionary["meta.home.description"] }
-      : {
-          title: `Rafflink: ${dictionary["home.title"].replace(/\.$/, "")}`,
-          description: dictionary["home.text"],
-        },
+  home: (_, dictionary) => ({
+    title: dictionary["meta.home.title"],
+    description: dictionary["meta.home.description"],
+  }),
   privacy: (_, dictionary) => ({
     title: `${dictionary["privacy.title"]} | Rafflink`,
     description: dictionary["meta.privacy.description"],

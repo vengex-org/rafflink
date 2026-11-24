@@ -1013,6 +1013,8 @@ export const fr: Translation = {
   "wizard.entry.chat": "Chat uniquement",
   "wizard.entry.chat.help":
     "Les viewers participent uniquement en tapant un mot-clé dans ton chat. La page affiche le mot-clé et leur permet de vérifier s'ils sont inscrits.",
+  "wizard.entry.chatDelay":
+    "Les participations par le chat apparaissent avec quelques secondes de retard, davantage quand beaucoup de viewers écrivent en même temps. Les participations sur la page du giveaway comptent tout de suite.",
   "wizard.reconnect.followers.info":
     "Pour vérifier qui te suit, Rafflink doit pouvoir lire tes followers. Reconnecte Twitch ; tes réponses sont conservées.",
   "wizard.reconnect.subs.info":
@@ -1084,7 +1086,17 @@ export const fr: Translation = {
   "legal.englishPrevails":
     "Ceci est une traduction. En cas de divergence avec la version anglaise, la version anglaise prévaut.",
 
+  "meta.home.title": "Rafflink : giveaways équitables que ton chat peut vérifier",
+  "meta.home.description":
+    "Outil de giveaway gratuit pour les streamers. Les viewers participent depuis un lien dans le chat, tu tires au sort en direct et chacun peut vérifier le tirage.",
+  "meta.privacy.description":
+    "Ce que Rafflink stocke sur les streamers et les viewers, pourquoi, combien de temps, et comment le faire supprimer.",
+  "meta.terms.description":
+    "Les règles pour les streamers qui organisent des giveaways avec Rafflink et pour les viewers qui y participent.",
+
   "privacy.title": "Politique de confidentialité",
+  "privacy.intro":
+    "Rafflink tire au sort les gagnants de giveaways sur Twitch, Kick et YouTube. Cette politique explique quelles données personnelles il traite, pourquoi, combien de temps et quels sont tes droits.",
   "privacy.controller.h": "Qui est responsable",
   "privacy.controller.p1":
     "Le responsable du traitement de tes données personnelles sur cette instance est {operator}. Contact : {contact}.",
@@ -1159,8 +1171,18 @@ export const fr: Translation = {
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "Rafflink utilise les services d'API YouTube. En te connectant avec YouTube, tu acceptes les Conditions d'utilisation de YouTube ({youtubeTerms}). Les Règles de confidentialité de Google ({googlePrivacy}) s'appliquent à ce que Google fait de tes données.",
+  "privacy.youtube.p2":
+    "L'utilisation et le transfert par Rafflink des informations reçues des API Google respectent la Google API Services User Data Policy ({googleUserData}), y compris les exigences d'utilisation limitée (Limited Use).",
+  "privacy.youtube.i1":
+    "Un streamer YouTube se connecte avec Google et donne à Rafflink un accès en lecture seule à son compte YouTube (le scope youtube.readonly). Rafflink lit uniquement l'identifiant de ta chaîne, son handle et son nom pour te connecter en tant que ta chaîne, ton live en cours pour trouver son chat, et les messages de ce chat pour faire participer les viewers qui tapent le mot-clé et afficher les réponses d'un gagnant. Sur toi, il stocke l'identifiant de la chaîne, le handle, le nom et un jeton d'actualisation chiffré. Ce qu'il stocke sur les viewers figure dans les points suivants. Les messages du chat ne sont jamais stockés, et Rafflink ne publie ni ne modifie jamais rien sur YouTube.",
+  "privacy.youtube.i5":
+    "Rafflink utilise ces données Google uniquement pour faire fonctionner tes giveaways. Il ne les vend jamais, ne les utilise jamais pour de la publicité et ne les partage qu'avec les parties citées plus haut. Personne ne les lit, sauf si tu demandes de l'aide pour ton compte, si la sécurité l'exige ou si la loi l'exige.",
   "privacy.youtube.i2":
-    "Les spectateurs ne se connectent jamais avec Google. Ils participent en écrivant le mot-clé dans le chat, et Rafflink lit l'identifiant de leur chaîne, le nom affiché dans le chat, le message et s'ils sont membres de la chaîne ou modérateurs.",
+    "Les viewers ne se connectent jamais avec Google. Ils participent en écrivant le mot-clé dans le chat, et Rafflink lit l'identifiant de leur chaîne, le nom affiché dans le chat, le message et s'ils sont membres de la chaîne ou modérateurs.",
+  "privacy.youtube.i3":
+    "Pour chaque viewer qui tape le mot-clé, Rafflink stocke l'identifiant de sa chaîne, le nom affiché dans le chat (comme nom affiché et nom de connexion), son groupe (viewer, membre ou modérateur), ses tickets, l'heure de participation et une valeur aléatoire pour le tirage. Les noms et identifiants de chaîne des gagnants sont aussi stockés avec leur tirage. Tout est supprimé au plus tard 30 jours après la fermeture du giveaway, ou plus tôt si l'opérateur fixe une durée plus courte. Seul l'identifiant de chaîne d'un gagnant reste associé au tirage.",
+  "privacy.youtube.i4":
+    "Tu peux retirer à tout moment l'accès de Rafflink à ton compte YouTube dans les autorisations de ton compte Google ({googlePermissions}). Le jeton stocké est alors supprimé lors de la prochaine vérification horaire. Supprimer ton compte Rafflink dans le tableau de bord supprime le jeton stocké et tes données, mais l'accès que tu as donné dans ton compte Google reste actif jusqu'à ce que tu le retires là-bas.",
   "privacy.cookies.h": "Cookies et stockage local",
   "privacy.cookies.p1":
     "Rafflink ne dépose que des cookies strictement nécessaires, aucune bannière de consentement n'est donc affichée. Ils sont tous HTTP-only et ne servent à rien d'autre.",
