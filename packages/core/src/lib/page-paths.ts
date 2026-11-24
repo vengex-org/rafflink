@@ -74,7 +74,10 @@ export function segmentFile(language: Language, segment: string): string {
   return `${language === sourceLanguage ? "" : `${language}/`}${segment}.html`
 }
 
-/** The localized page at `pathname`, with or without a trailing slash; null for every other address, `/DE/` and `/en/` included. */
+/**
+ * The localized page at `pathname`, with or without a trailing slash, and the source language's pages also under
+ * its prefix (`/en/`, `/en/privacy`), which redirect to their address; null for every other address, `/DE/` included.
+ */
 export function pageOfPath(pathname: string): LocalizedAddress | null {
   return addresses.get(withoutTrailingSlash(pathname)) ?? null
 }
@@ -150,10 +153,16 @@ export function alternatesOf(pathOf: (language: Language) => string): readonly A
 
 const addresses = new Map<string, LocalizedAddress>(
   languages.flatMap((language) =>
-    localizedPages.map((page) => [
-      withoutTrailingSlash(localizedPath(language, page)),
-      { language, page },
-    ]),
+    localizedPages.flatMap((page): [string, LocalizedAddress][] => {
+      const path = withoutTrailingSlash(localizedPath(language, page))
+      const address = { language, page }
+      return language === sourceLanguage
+        ? [
+            [path, address],
+            [`/${language}${path}`, address],
+          ]
+        : [[path, address]]
+    }),
   ),
 )
 

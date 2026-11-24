@@ -18,8 +18,9 @@
     // canonical and Open Graph tags. The other prerendered pages are static files with absolute addresses.
     // `/home`, where the assets would serve that English home page file, runs it too and gets the noindex shell.
     // The public history pages, `historyPagePattern` in packages/core/src/http/static-headers.ts, run it as
-    // well: indexing is the streamer's choice and an old login redirects.
-    "run_worker_first": ["/api/*", "/auth/*", "/", "/home", "/s/*"],
+    // well: indexing is the streamer's choice and an old login redirects. `/en` and `/en/*`, English pages under a
+    // prefix English does not have, run it so it redirects them to their address.
+    "run_worker_first": ["/api/*", "/auth/*", "/", "/home", "/s/*", "/en", "/en/*"],
   },
   // Set PUBLIC_URL, TWITCH_CLIENT_ID and ADMIN_TWITCH_IDS under "vars" and the secrets with
   // `wrangler secret put`; every key is listed in .env.example.
