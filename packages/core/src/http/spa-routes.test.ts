@@ -66,6 +66,8 @@ describe("page routes", () => {
     ["/en/", "/"],
     ["/en/privacy", "/privacy"],
     ["/en/g/ABC?x=1", "/g/ABC?x=1"],
+    ["/en//evil.com", "/evil.com"],
+    ["/en/\\evil.com", "/evil.com"],
   ])("redirects %s to %s, the address without the English prefix", async (typed, canonical) => {
     const response = await app.request(typed)
 
