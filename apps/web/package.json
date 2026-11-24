@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "bun build ./index.html --outdir dist --production --sourcemap=external --splitting --chunk-naming \"index-[hash].[ext]\" --public-path / --asset-naming \"[name].[ext]\" --external \"/fonts/*\" && bun scripts/finish-build.ts",
-    "test": "bun test --parallel",
+    "test": "bun test --parallel=$TEST_WORKERS",
     "icons": "bun scripts/icons.ts",
     "reveal-sound": "bun scripts/reveal-sound.ts"
   },
