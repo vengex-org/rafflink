@@ -13,8 +13,22 @@ import {
 } from "../src/lib/routes.ts"
 
 describe("route paths", () => {
-  it("sends the header sign-in on a marketing page the deployment declares to the dashboard", () => {
-    expect(headerSignInPath("/demo", "?step=2", ["/demo"])).toBe("/dashboard")
+  it.each([
+    ["/de/", "", "/dashboard"],
+    ["/sk/privacy", "", "/dashboard"],
+    ["/de/compare", "", "/dashboard"],
+    ["/compare/", "", "/dashboard"],
+    ["/demo/", "?step=2", "/dashboard"],
+    ["/dashboard", "?x=1", "/dashboard?x=1"],
+    ["/dashboard", "?return=%2FABCDE%2Fverify", "/dashboard?return=%2FABCDE%2Fverify"],
+    ["/ABCDE/verify", "?x=1", "/dashboard?return=%2FABCDE%2Fverify%3Fx%3D1"],
+  ])("sends the header sign-in on %s%s to %s", (pathname, search, expected) => {
+    const site = {
+      prerenderPages: [{ segment: "compare", meta: () => ({ title: "", description: "" }) }],
+      marketingPaths: ["/demo"],
+    }
+
+    expect(headerSignInPath(pathname, search, site)).toBe(expected)
   })
 
   it("writes the public pages of a giveaway by its code", () => {

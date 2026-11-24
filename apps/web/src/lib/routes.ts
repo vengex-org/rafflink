@@ -1,7 +1,8 @@
 import type { StreamerFeature } from "@rafflink/core/domain/streamer-features"
 import { languages, sourceLanguage } from "@rafflink/core/lib/languages"
-import { pageOfPath } from "@rafflink/core/lib/page-paths"
 import type { Platform } from "@rafflink/core/platform/provider"
+import { pageAddressLanguage } from "../i18n/page-language.ts"
+import type { SitePage } from "../site/site-page.ts"
 import type { OverlayOptions } from "./overlay-options.ts"
 
 export {
@@ -71,18 +72,23 @@ export function dashboardCreatedPath(id: string): string {
 
 /**
  * The header's sign-in on the page at `pathname` and `search`: the dashboard's sign-in card, which brings the streamer
- * back to that page. A marketing page has nothing left to see, so its sign-in lands on the dashboard: the home and
- * legal pages in every language, and the deployment's `marketingPaths`.
+ * back to that page; on the dashboard itself, the page as it is, whose card already knows where to return. A marketing
+ * page has nothing left to see, so its sign-in lands on the dashboard: the home and legal pages and the deployment's
+ * `prerenderPages` in every language, and its `marketingPaths`.
  */
 export function headerSignInPath(
   pathname: string,
   search: string,
-  marketingPaths: readonly string[],
+  site: {
+    readonly prerenderPages: readonly SitePage[]
+    readonly marketingPaths: readonly string[]
+  },
 ): string {
-  const returnTo = `${pathname}${search}`
-  if (returnTo === dashboardPath || pageOfPath(pathname) !== null) return dashboardPath
-  if (marketingPaths.includes(pathname)) return dashboardPath
-  return withQuery(dashboardPath, new URLSearchParams({ return: returnTo }))
+  if (pathname === dashboardPath) return `${pathname}${search}`
+  const path = pathname.replace(/\/+$/, "")
+  if (pageAddressLanguage(pathname, site.prerenderPages) !== null) return dashboardPath
+  if (site.marketingPaths.includes(path)) return dashboardPath
+  return withQuery(dashboardPath, new URLSearchParams({ return: `${pathname}${search}` }))
 }
 
 /** Signs a streamer in on `platform` and sends them back to `returnTo`; the dashboard is where they land when the link names none. */

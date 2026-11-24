@@ -1,7 +1,5 @@
 import { useEffect, useId, useRef, useState, ViewTransition, type ReactNode } from "react"
 import { Link, Outlet, useLocation } from "react-router"
-import { languages } from "@rafflink/core/lib/languages"
-import { segmentPath } from "@rafflink/core/lib/page-paths"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import {
@@ -240,7 +238,7 @@ function AccountMenu({
 function LoginLink({ viewerPage }: { readonly viewerPage: boolean }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
-  const to = headerSignInPath(pathname, search, siteMarketingPaths())
+  const to = headerSignInPath(pathname, search, { prerenderPages, marketingPaths })
   if (viewerPage) {
     return (
       <Link className="button text app-streamer-login" to={to}>
@@ -254,14 +252,4 @@ function LoginLink({ viewerPage }: { readonly viewerPage: boolean }) {
       {t("nav.login")}
     </Link>
   )
-}
-
-// Read at render: the deployment's site module imports this one, so its exports are not set yet while this one loads.
-function siteMarketingPaths(): readonly string[] {
-  return [
-    ...prerenderPages.flatMap((page) =>
-      languages.map((language) => segmentPath(language, page.segment)),
-    ),
-    ...marketingPaths,
-  ]
 }

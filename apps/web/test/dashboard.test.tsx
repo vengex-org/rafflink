@@ -54,12 +54,9 @@ describe("dashboard", () => {
 
     const view = renderApp("/dashboard?return=%2F%2Fevil.example")
 
-    const href = (await view.findByRole("link", { name: "Sign in with Twitch" })).getAttribute(
-      "href",
-    )
-    expect(new URL(href ?? "", "https://rafflink.test").searchParams.get("return")).toBe(
-      "/dashboard?return=%2F%2Fevil.example",
-    )
+    expect(
+      (await view.findByRole("link", { name: "Sign in with Twitch" })).getAttribute("href"),
+    ).toBe("/auth/twitch/streamer/start")
   })
 
   it("offers Sign in with Kick next to Twitch when the install signs in with Kick", async () => {

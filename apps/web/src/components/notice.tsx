@@ -129,12 +129,22 @@ export function SignIn({ why }: { readonly why?: MessageKey | undefined }) {
   )
 }
 
+/** The page of this site that `?return=` names; else this page without a `return` it refused. */
+function signInReturn(pathname: string, search: string): string {
+  const query = new URLSearchParams(search)
+  const named = safeReturnPath(query.get("return") ?? undefined)
+  if (named !== null) return named
+  if (!query.has("return")) return `${pathname}${search}`
+  query.delete("return")
+  const rest = query.toString()
+  return rest === "" ? pathname : `${pathname}?${rest}`
+}
+
 function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
   const { signInPlatforms } = useStreamerSession()
-  const returnTo =
-    safeReturnPath(new URLSearchParams(search).get("return") ?? undefined) ?? `${pathname}${search}`
+  const returnTo = signInReturn(pathname, search)
   return (
     <StateColumn>
       <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
