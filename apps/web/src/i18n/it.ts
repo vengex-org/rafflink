@@ -1004,6 +1004,8 @@ export const it: Translation = {
   "wizard.entry.chat": "Solo chat",
   "wizard.entry.chat.help":
     "Gli spettatori partecipano solo scrivendo una parola chiave nella tua chat. La pagina mostra la parola chiave e permette di controllare se sono iscritti.",
+  "wizard.entry.chatDelay":
+    "Le iscrizioni tramite chat compaiono con qualche secondo di ritardo, di più quando molti spettatori scrivono insieme. Le iscrizioni sulla pagina del giveaway contano subito.",
   "wizard.reconnect.followers.info":
     "Per verificare chi ti segue, Rafflink deve leggere i tuoi follower. Ricollega Twitch; le tue risposte restano.",
   "wizard.reconnect.subs.info":
@@ -1075,7 +1077,17 @@ export const it: Translation = {
   "legal.englishPrevails":
     "Questa è una traduzione. In caso di differenze rispetto alla versione inglese, prevale la versione inglese.",
 
+  "meta.home.title": "Rafflink: giveaway equi che la tua chat può verificare",
+  "meta.home.description":
+    "Strumento gratuito per giveaway per streamer. Gli spettatori si iscrivono da un link in chat, tu estrai in diretta e chiunque può verificare l'estrazione.",
+  "meta.privacy.description":
+    "Cosa memorizza Rafflink su streamer e spettatori, perché, per quanto tempo e come farlo eliminare.",
+  "meta.terms.description":
+    "Le regole per gli streamer che organizzano giveaway con Rafflink e per gli spettatori che vi partecipano.",
+
   "privacy.title": "Informativa sulla privacy",
+  "privacy.intro":
+    "Rafflink estrae i vincitori dei giveaway su Twitch, Kick e YouTube. Questa informativa spiega quali dati personali tratta, perché, per quanto tempo e quali sono i tuoi diritti.",
   "privacy.controller.h": "Chi è il responsabile",
   "privacy.controller.p1":
     "Il titolare del trattamento dei tuoi dati personali su questa istanza è {operator}. Contatto: {contact}.",
@@ -1149,8 +1161,18 @@ export const it: Translation = {
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "Rafflink usa i Servizi API di YouTube. Accedendo con YouTube accetti i Termini di servizio di YouTube ({youtubeTerms}). Per ciò che Google fa con i tuoi dati valgono le Norme sulla privacy di Google ({googlePrivacy}).",
+  "privacy.youtube.p2":
+    "L'uso e il trasferimento da parte di Rafflink delle informazioni ricevute dalle API di Google rispettano la Google API Services User Data Policy ({googleUserData}), inclusi i requisiti di uso limitato (Limited Use).",
+  "privacy.youtube.i1":
+    "Uno streamer YouTube accede con Google e dà a Rafflink accesso in sola lettura al proprio account YouTube (lo scope youtube.readonly). Rafflink legge solo l'ID, l'handle e il nome del tuo canale per farti accedere come il tuo canale, la tua diretta attiva per trovarne la chat, e i messaggi di quella chat per iscrivere gli spettatori che scrivono la parola chiave e per mostrare le risposte di un vincitore. Su di te memorizza l'ID del canale, l'handle, il nome e un refresh token cifrato. Ciò che memorizza sugli spettatori è nei punti successivi. I messaggi della chat non vengono mai memorizzati e Rafflink non pubblica né modifica mai nulla su YouTube.",
+  "privacy.youtube.i5":
+    "Rafflink usa questi dati di Google solo per gestire i tuoi giveaway. Non li vende mai, non li usa mai per la pubblicità e li condivide solo con le parti elencate sopra. Nessuno li legge, a meno che tu non chieda aiuto con il tuo account, lo richieda la sicurezza o lo richieda la legge.",
   "privacy.youtube.i2":
     "Gli spettatori non accedono mai con Google. Si iscrivono scrivendo la parola chiave in chat, e Rafflink legge il loro ID canale, il nome mostrato in chat, il messaggio e se sono membri del canale o moderatori.",
+  "privacy.youtube.i3":
+    "Per ogni spettatore che scrive la parola chiave, Rafflink memorizza il suo ID canale, il nome mostrato in chat (come nome visualizzato e nome di login), il suo gruppo (spettatore, membro o moderatore), i biglietti, l'ora dell'iscrizione e un valore casuale per l'estrazione. Anche i nomi e gli ID canale dei vincitori vengono memorizzati con la loro estrazione. Tutto viene eliminato al massimo 30 giorni dopo la chiusura del giveaway, o prima se il gestore imposta un periodo più breve. Con l'estrazione resta solo l'ID canale del vincitore.",
+  "privacy.youtube.i4":
+    "Puoi revocare in qualsiasi momento l'accesso di Rafflink al tuo account YouTube nelle autorizzazioni del tuo account Google ({googlePermissions}). Il token memorizzato viene poi eliminato al successivo controllo orario. Eliminare il tuo account Rafflink dalla dashboard elimina il token memorizzato e i tuoi dati, ma l'accesso che hai concesso nel tuo account Google resta finché non lo revochi lì.",
   "privacy.cookies.h": "Cookie e archiviazione locale",
   "privacy.cookies.p1":
     "Rafflink imposta solo cookie strettamente necessari, quindi non viene mostrato alcun banner per il consenso. Sono tutti HTTP-only e non vengono usati per nient'altro.",

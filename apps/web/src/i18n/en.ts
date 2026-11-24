@@ -1397,18 +1397,7 @@ export const en = {
 export type MessageKey = keyof typeof en
 
 /** Keys whose English copy is not translated yet; the other languages show the English text for them. */
-type EnglishOnlyKey =
-  | "wizard.entry.chatDelay"
-  | "privacy.intro"
-  | "privacy.youtube.p2"
-  | "privacy.youtube.i1"
-  | "privacy.youtube.i3"
-  | "privacy.youtube.i4"
-  | "privacy.youtube.i5"
-  | "meta.home.title"
-  | "meta.home.description"
-  | "meta.privacy.description"
-  | "meta.terms.description"
+type EnglishOnlyKey = never
 
 /** What a language other than English provides: every key but the {@link EnglishOnlyKey}s. */
 export type Translation = Readonly<Omit<Record<MessageKey, string>, EnglishOnlyKey>>

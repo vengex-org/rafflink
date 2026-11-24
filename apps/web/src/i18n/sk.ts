@@ -970,6 +970,8 @@ export const sk: Translation = {
   "wizard.entry.chat": "Len chat",
   "wizard.entry.chat.help":
     "Diváci sa zapoja len napísaním kľúčového slova do tvojho chatu. Stránka ukáže kľúčové slovo a dovolí im overiť si, či sú v súťaži.",
+  "wizard.entry.chatDelay":
+    "Zapojenia cez chat sa objavia o pár sekúnd neskôr, dlhšie, keď píše veľa divákov naraz. Zapojenia na stránke giveawayu sa počítajú hneď.",
   "wizard.reconnect.followers.info":
     "Aby Rafflink overil, kto ťa sleduje, potrebuje čítať tvojich sledujúcich. Pripoj Twitch znova, tvoje odpovede ostanú.",
   "wizard.reconnect.subs.info":
@@ -1041,7 +1043,17 @@ export const sk: Translation = {
   "legal.englishPrevails":
     "Toto je preklad. Ak sa líši od anglickej verzie, platí anglická verzia.",
 
+  "meta.home.title": "Rafflink: férové giveawaye, ktoré tvoj chat overí",
+  "meta.home.description":
+    "Bezplatný nástroj na giveawaye pre streamerov. Diváci sa zapoja z odkazu v chate, ty žrebuješ naživo na streame a žrebovanie si môže overiť ktokoľvek.",
+  "meta.privacy.description":
+    "Čo Rafflink ukladá o streameroch a divákoch, prečo, ako dlho a ako to dať vymazať.",
+  "meta.terms.description":
+    "Pravidlá pre streamerov, ktorí s Rafflinkom robia giveawaye, a pre divákov, ktorí sa do nich zapájajú.",
+
   "privacy.title": "Zásady ochrany osobných údajov",
+  "privacy.intro":
+    "Rafflink žrebuje výhercov giveawayov na Twitchi, Kicku a YouTube. Tieto zásady hovoria, aké osobné údaje spracúva, prečo, ako dlho a aké máš práva.",
   "privacy.controller.h": "Kto je zodpovedný",
   "privacy.controller.p1":
     "Prevádzkovateľom tvojich osobných údajov na tejto inštancii je {operator}. Kontakt: {contact}.",
@@ -1115,8 +1127,18 @@ export const sk: Translation = {
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "Rafflink používa služby YouTube API. Prihlásením cez YouTube súhlasíš so Zmluvnými podmienkami YouTube ({youtubeTerms}). Na to, čo Google robí s tvojimi údajmi, sa vzťahujú Pravidlá ochrany súkromia Google ({googlePrivacy}).",
+  "privacy.youtube.p2":
+    "Používanie a prenos informácií získaných z rozhraní Google API zo strany Rafflinku je v súlade s Google API Services User Data Policy ({googleUserData}), vrátane požiadaviek na obmedzené použitie (Limited Use).",
+  "privacy.youtube.i1":
+    "Streamer na YouTube sa prihlási cez Google a dá Rafflinku prístup na čítanie k svojmu účtu YouTube (rozsah youtube.readonly). Rafflink číta iba ID tvojho kanála, handle a meno, aby ťa prihlásil ako tvoj kanál, tvoj aktívny živý prenos, aby našiel jeho chat, a správy tohto chatu, aby zapojil divákov, ktorí napíšu kľúčové slovo, a ukázal odpovede výhercu. O tebe ukladá ID kanála, handle, meno a šifrovaný refresh token. Čo ukladá o divákoch, je v ďalších bodoch. Správy z chatu sa nikdy neukladajú a Rafflink na YouTube nikdy nič nepíše ani nemení.",
+  "privacy.youtube.i5":
+    "Rafflink používa tieto údaje z Googlu iba na vedenie tvojich giveawayov. Nikdy ich nepredáva, nepoužíva na reklamu a zdieľa ich iba so stranami uvedenými vyššie. Nikto ich nečíta, okrem prípadov, keď požiadaš o pomoc s účtom, keď to vyžaduje bezpečnosť alebo zákon.",
   "privacy.youtube.i2":
     "Diváci sa cez Google nikdy neprihlasujú. Zapíšu sa napísaním kľúčového slova do chatu a Rafflink prečíta ID ich kanála, meno zobrazené v chate, správu a to, či sú členmi kanála alebo moderátormi.",
+  "privacy.youtube.i3":
+    "Pri každom divákovi, ktorý napíše kľúčové slovo, Rafflink ukladá ID jeho kanála, meno zobrazené v chate (ako zobrazované meno a prihlasovacie meno), jeho skupinu (divák, člen alebo moderátor), tikety, čas zapojenia a náhodnú hodnotu pre žrebovanie. Mená a ID kanálov výhercov sa ukladajú aj s ich žrebmi. Všetko sa maže najneskôr 30 dní po uzavretí giveawayu, alebo skôr, ak prevádzkovateľ nastaví kratšiu dobu. Pri žrebe zostáva iba ID kanála výhercu.",
+  "privacy.youtube.i4":
+    "Prístup Rafflinku k tvojmu účtu YouTube môžeš kedykoľvek odobrať v povoleniach svojho účtu Google ({googlePermissions}). Uložený token sa potom vymaže pri najbližšej hodinovej kontrole. Vymazaním účtu Rafflink na prehľade sa vymažú uložený token a tvoje údaje, ale prístup, ktorý si dal v účte Google, zostáva, kým ho tam neodoberieš.",
   "privacy.cookies.h": "Cookies a lokálne úložisko",
   "privacy.cookies.p1":
     "Rafflink nastavuje iba nevyhnutne potrebné cookies, preto sa nezobrazuje žiadny súhlasový banner. Všetky sú HTTP-only a nepoužívajú sa na nič iné.",

@@ -1005,6 +1005,8 @@ export const de: Translation = {
   "wizard.entry.chat": "Nur Chat",
   "wizard.entry.chat.help":
     "Zuschauer machen nur mit, indem sie ein Stichwort in deinen Chat schreiben. Die Seite zeigt das Stichwort und lässt sie prüfen, ob sie dabei sind.",
+  "wizard.entry.chatDelay":
+    "Teilnahmen über den Chat erscheinen ein paar Sekunden verspätet, länger, wenn viele Zuschauer gleichzeitig schreiben. Teilnahmen auf der Gewinnspielseite zählen sofort.",
   "wizard.reconnect.followers.info":
     "Um zu prüfen, wer dir folgt, muss Rafflink deine Follower lesen. Verbinde Twitch neu; deine Antworten bleiben erhalten.",
   "wizard.reconnect.subs.info":
@@ -1078,7 +1080,17 @@ export const de: Translation = {
   "legal.englishPrevails":
     "Dies ist eine Übersetzung. Wo sie von der englischen Fassung abweicht, gilt die englische Fassung.",
 
+  "meta.home.title": "Rafflink: faire Gewinnspiele, die dein Chat prüfen kann",
+  "meta.home.description":
+    "Kostenloses Gewinnspiel-Tool für Streamer. Zuschauer nehmen über einen Link im Chat teil, du ziehst live im Stream, und jeder kann die Ziehung prüfen.",
+  "meta.privacy.description":
+    "Was Rafflink über Streamer und Zuschauer speichert, warum, wie lange und wie du es löschen lassen kannst.",
+  "meta.terms.description":
+    "Die Regeln für Streamer, die mit Rafflink Gewinnspiele veranstalten, und für Zuschauer, die daran teilnehmen.",
+
   "privacy.title": "Datenschutzerklärung",
+  "privacy.intro":
+    "Rafflink zieht die Gewinner von Gewinnspielen auf Twitch, Kick und YouTube. Diese Erklärung sagt, welche personenbezogenen Daten es verarbeitet, warum, wie lange und welche Rechte du hast.",
   "privacy.controller.h": "Wer verantwortlich ist",
   "privacy.controller.p1":
     "Verantwortlicher für deine personenbezogenen Daten auf dieser Instanz ist {operator}. Kontakt: {contact}.",
@@ -1152,8 +1164,18 @@ export const de: Translation = {
   "privacy.youtube.h": "YouTube",
   "privacy.youtube.p1":
     "Rafflink nutzt die YouTube API Services. Wenn du dich mit YouTube anmeldest, stimmst du den Nutzungsbedingungen von YouTube zu ({youtubeTerms}). Für das, was Google mit deinen Daten macht, gilt die Datenschutzerklärung von Google ({googlePrivacy}).",
+  "privacy.youtube.p2":
+    "Die Nutzung und Weitergabe von Informationen, die Rafflink von Google APIs erhält, entspricht der Google API Services User Data Policy ({googleUserData}), einschließlich der Limited-Use-Anforderungen.",
+  "privacy.youtube.i1":
+    "Ein YouTube-Streamer meldet sich mit Google an und gibt Rafflink Lesezugriff auf sein YouTube-Konto (der Scope youtube.readonly). Rafflink liest nur deine Kanal-ID, deinen Handle und deinen Namen, um dich als deinen Kanal anzumelden, deinen aktiven Livestream, um seinen Chat zu finden, und die Nachrichten dieses Chats, um Zuschauer teilnehmen zu lassen, die das Stichwort schreiben, und um die Antworten eines Gewinners zu zeigen. Über dich speichert es die Kanal-ID, den Handle, den Namen und ein verschlüsseltes Refresh-Token. Was es über Zuschauer speichert, steht in den nächsten Punkten. Chatnachrichten werden nie gespeichert, und Rafflink postet oder ändert nie etwas auf YouTube.",
+  "privacy.youtube.i5":
+    "Rafflink verwendet diese Google-Daten nur, um deine Gewinnspiele durchzuführen. Es verkauft sie nie, nutzt sie nie für Werbung und gibt sie nur an die oben genannten Empfänger weiter. Niemand liest sie, es sei denn, du bittest um Hilfe bei deinem Konto, die Sicherheit verlangt es oder das Gesetz.",
   "privacy.youtube.i2":
     "Zuschauer melden sich nie mit Google an. Sie machen mit, indem sie das Stichwort in den Chat schreiben, und Rafflink liest ihre Kanal-ID, den im Chat angezeigten Namen, die Nachricht und ob sie Kanalmitglied oder Moderator sind.",
+  "privacy.youtube.i3":
+    "Für jeden Zuschauer, der das Stichwort schreibt, speichert Rafflink seine Kanal-ID, den im Chat angezeigten Namen (als Anzeigename und Login-Name), seine Gruppe (Zuschauer, Mitglied oder Moderator), Tickets, den Zeitpunkt der Teilnahme und einen Zufallswert für die Ziehung. Namen und Kanal-IDs der Gewinner werden außerdem mit ihrer Ziehung gespeichert. Alles wird spätestens 30 Tage nach dem Ende des Gewinnspiels gelöscht, oder früher, wenn der Betreiber eine kürzere Frist festlegt. Nur die Kanal-ID eines Gewinners bleibt bei der Ziehung.",
+  "privacy.youtube.i4":
+    "Du kannst den Zugriff von Rafflink auf dein YouTube-Konto jederzeit in den Berechtigungen deines Google-Kontos ({googlePermissions}) entfernen. Das gespeicherte Token wird dann bei der nächsten stündlichen Prüfung gelöscht. Wenn du dein Rafflink-Konto im Dashboard löschst, werden das gespeicherte Token und deine Daten gelöscht, aber der Zugriff, den du in deinem Google-Konto erteilt hast, bleibt bestehen, bis du ihn dort entfernst.",
   "privacy.cookies.h": "Cookies und lokaler Speicher",
   "privacy.cookies.p1":
     "Rafflink setzt nur unbedingt erforderliche Cookies, deshalb wird kein Einwilligungsbanner gezeigt. Alle sind HTTP-only und werden für nichts anderes verwendet.",

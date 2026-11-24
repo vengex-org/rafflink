@@ -222,18 +222,18 @@ describe("prerender", () => {
       ],
       [
         "/sk/",
-        "Rafflink: Férové súťaže, žrebované naživo na streame",
-        "Diváci sa zapoja jedným klikom a ty losuješ pred chatom.",
+        "Rafflink: férové giveawaye, ktoré tvoj chat overí",
+        "Bezplatný nástroj na giveawaye pre streamerov. Diváci sa zapoja z odkazu v chate, ty žrebuješ naživo na streame a žrebovanie si môže overiť ktokoľvek.",
       ],
       [
         "/sk/privacy",
         "Zásady ochrany osobných údajov | Rafflink",
-        "What Rafflink stores about streamers and viewers, why, for how long, and how to have it deleted.",
+        "Čo Rafflink ukladá o streameroch a divákoch, prečo, ako dlho a ako to dať vymazať.",
       ],
       [
         "/sk/terms",
         "Podmienky používania | Rafflink",
-        "The rules for streamers who run giveaways with Rafflink and for viewers who enter them.",
+        "Pravidlá pre streamerov, ktorí s Rafflinkom robia giveawaye, a pre divákov, ktorí sa do nich zapájajú.",
       ],
     ])
   })
