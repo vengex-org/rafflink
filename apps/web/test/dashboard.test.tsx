@@ -33,6 +33,32 @@ describe("dashboard", () => {
     ).toBe("/auth/twitch/streamer/start")
   })
 
+  it("brings a streamer who signs in from the verify page back to it", async () => {
+    mockFetch({
+      "GET /api/g/ABCDE/verify": () => ({ status: 404, body: null }),
+      "GET /api/dash/giveaways": () => ({ status: 401, body: { error: "unauthorized" } }),
+    })
+    const view = renderApp("/ABCDE/verify?from=chat")
+
+    fireEvent.click(await view.findByRole("link", { name: "Streamer sign in" }))
+
+    expect(
+      (await view.findByRole("link", { name: "Sign in with Twitch" })).getAttribute("href"),
+    ).toBe("/auth/twitch/streamer/start?return=%2FABCDE%2Fverify%3Ffrom%3Dchat")
+  })
+
+  it("ignores a return to another site", async () => {
+    mockFetch({
+      "GET /api/dash/giveaways": () => ({ status: 401, body: { error: "unauthorized" } }),
+    })
+
+    const view = renderApp("/dashboard?return=%2F%2Fevil.example")
+
+    expect(
+      (await view.findByRole("link", { name: "Sign in with Twitch" })).getAttribute("href"),
+    ).toBe("/auth/twitch/streamer/start")
+  })
+
   it("offers Sign in with Kick next to Twitch when the install signs in with Kick", async () => {
     mockFetch({
       "GET /api/session": () =>

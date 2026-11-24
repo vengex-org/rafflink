@@ -25,6 +25,9 @@ export const siteRoutes: ReactElement | null = null
 /** The deployment's own pages the web build prerenders in every language; each has its routes in {@link siteRoutes}. */
 export const prerenderPages: readonly SitePage[] = []
 
+/** The deployment's own marketing pages beside its {@link prerenderPages}, such as `/demo`; signing in there lands on the dashboard. */
+export const marketingPaths: readonly string[] = []
+
 export function HomePage() {
   const { t } = useI18n()
   const signin = useConsumedParam("signin")

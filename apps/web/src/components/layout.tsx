@@ -5,11 +5,12 @@ import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import {
   adminPath,
   dashboardPath,
+  headerSignInPath,
   pageOfPath,
   settingsPath,
   verifyLookupPath,
 } from "../lib/routes.ts"
-import { SiteNav } from "../site/site.tsx"
+import { marketingPaths, prerenderPages, SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
@@ -230,18 +231,23 @@ function AccountMenu({
   )
 }
 
-/** The primary sign-in button; on a viewer page a quiet text link, so it does not read as a step of entering. */
+/**
+ * The primary sign-in button; on a viewer page a quiet text link, so it does not read as a step of entering. Signing in
+ * brings the streamer back to the page they clicked it on, except on a marketing page, which has nothing left to see.
+ */
 function LoginLink({ viewerPage }: { readonly viewerPage: boolean }) {
   const { t } = useI18n()
+  const { pathname, search } = useLocation()
+  const to = headerSignInPath(pathname, search, { prerenderPages, marketingPaths })
   if (viewerPage) {
     return (
-      <Link className="button text app-streamer-login" to={dashboardPath}>
+      <Link className="button text app-streamer-login" to={to}>
         {t("nav.streamerLogin")}
       </Link>
     )
   }
   return (
-    <Link className="button" to={dashboardPath}>
+    <Link className="button" to={to}>
       <LogInIcon />
       {t("nav.login")}
     </Link>

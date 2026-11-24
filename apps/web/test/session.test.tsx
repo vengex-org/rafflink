@@ -210,7 +210,7 @@ describe("header session", () => {
 
       expect(view.queryByRole("link", { name: "Sign in" })).toBeNull()
       expect(view.getByRole("link", { name: "Streamer sign in" }).getAttribute("href")).toBe(
-        "/dashboard",
+        `/dashboard?return=${encodeURIComponent(path)}`,
       )
       expect(requests.map((request) => request.route)).not.toContain("GET /api/session")
       restoreSocket()

@@ -1,3 +1,4 @@
+import { safeReturnPath } from "@rafflink/core/http/return-path"
 import type { Platform } from "@rafflink/core/platform/provider"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link, useLocation } from "react-router"
@@ -114,7 +115,7 @@ const signInLabels: Readonly<Record<Platform, MessageKey>> = {
 }
 
 /**
- * Signing in brings the streamer back to the page they are on; one button per platform the install signs in with.
+ * Signing in brings the streamer back to the page they are on, or to the page of this site its `?return=` names; one button per platform the install signs in with.
  * `why` says what the sign-in is for when the page around it does not. A page outside the layout asks the session
  * here, so its buttons follow the install's platforms too.
  */
@@ -128,10 +129,22 @@ export function SignIn({ why }: { readonly why?: MessageKey | undefined }) {
   )
 }
 
+/** The page of this site that `?return=` names; else this page without a `return` it refused. */
+function signInReturn(pathname: string, search: string): string {
+  const query = new URLSearchParams(search)
+  const named = safeReturnPath(query.get("return") ?? undefined)
+  if (named !== null) return named
+  if (!query.has("return")) return `${pathname}${search}`
+  query.delete("return")
+  const rest = query.toString()
+  return rest === "" ? pathname : `${pathname}?${rest}`
+}
+
 function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
   const { signInPlatforms } = useStreamerSession()
+  const returnTo = signInReturn(pathname, search)
   return (
     <StateColumn>
       <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
@@ -140,7 +153,7 @@ function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
           <a
             key={platform}
             className="button outlined block"
-            href={streamerSignInPath(platform, `${pathname}${search}`)}
+            href={streamerSignInPath(platform, returnTo)}
           >
             <PlatformIcon platform={platform} />
             {t(signInLabels[platform])}

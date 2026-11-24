@@ -174,6 +174,7 @@ Both targets need your own Twitch app (see above) and the required settings list
 
 The home page is intentionally plain: a sign-in button and the footer links. A deployment that wants a richer page replaces the one module `apps/web/src/site/site.tsx` at build time.
 Its `prerenderPages` lists the deployment's own pages to prerender in every language (`/compare`, `/de/compare`).
+Its `marketingPaths` lists its other marketing pages (`/demo`), where the header sign-in lands on the dashboard instead of coming back.
 The prerender runs the app in `apps/web/scripts/finish-build.ts`, so run that script with the plugin that swaps the
 module preloaded: `bun --preload ./seam.ts apps/web/scripts/finish-build.ts <dist> <public>`, where `seam.ts`
 calls `Bun.plugin` with it.
