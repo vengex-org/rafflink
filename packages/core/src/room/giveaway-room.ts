@@ -1998,7 +1998,12 @@ export class GiveawayRoom {
       text: message.text,
       at: this.clock.now(),
     }
-    this.winnerChat = [...this.winnerChat, line].slice(-this.config.liveWinnerChatMax)
+    // The cap is per pick, so an older winner who keeps typing cannot push out the lines of the one on the plate.
+    const ofPick = [...this.winnerChat.filter((kept) => kept.n === line.n), line]
+    this.winnerChat = [
+      ...this.winnerChat.filter((kept) => kept.n !== line.n),
+      ...ofPick.slice(-this.config.liveWinnerChatMax),
+    ]
     return true
   }
 

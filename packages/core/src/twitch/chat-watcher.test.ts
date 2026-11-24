@@ -1374,25 +1374,29 @@ describe("winner chat", () => {
   })
 
   it.each([
-    ["the next winner", (room: GiveawayRoom) => room.draw(1, null)],
-    [
-      "a replacement after a reroll",
-      async (room: GiveawayRoom) => {
-        await room.draw(1, null)
-        await room.reroll(1, null)
-      },
-    ],
-  ])("starts %s with an empty chat while the first winner has lines", async (_name, pickNext) => {
+    ["the next winner", (room: GiveawayRoom) => room.draw(1, null), [[0, "hello"]]],
+    ["a replacement after a reroll", (room: GiveawayRoom) => room.reroll(0, null), []],
+  ])("starts %s with an empty chat", async (_name, pickNext, expected) => {
     const { room, socket, winner } = await connectedRoom({ claimKeyword: "!claim" })
     socket?.receive(chat(winner, "hello"))
 
     await pickNext(room)
-    const newest = room.picks().at(-1)?.n
 
-    expect(newest).toBeGreaterThan(0)
-    expect(room.liveSnapshot().winnerChat.map((line) => [line.n, line.text])).toEqual([
-      [0, "hello"],
-    ])
+    expect(room.liveSnapshot().winnerChat.map((line) => [line.n, line.text])).toEqual(expected)
+  })
+
+  it("an older winner's chat does not push out the current winner's lines", async () => {
+    const { room, socket, winner } = await connectedRoom({
+      claimKeyword: "!claim",
+      env: { LIVE_WINNER_CHAT_MAX: "2" },
+    })
+    await room.draw(1, null)
+    socket?.receive(chat(room.picks()[1]?.platformUserId ?? "", "mine"))
+
+    for (const text of ["one", "two", "three"]) socket?.receive(chat(winner, text))
+
+    const onPlate = room.liveSnapshot().winnerChat.filter((line) => line.n === 1)
+    expect(onPlate.map((line) => line.text)).toEqual(["mine"])
   })
 
   it("keeps the messages after the claim time ended and still claims nothing", async () => {
