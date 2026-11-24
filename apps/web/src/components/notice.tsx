@@ -1,3 +1,4 @@
+import { safeReturnPath } from "@rafflink/core/http/return-path"
 import type { Platform } from "@rafflink/core/platform/provider"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link, useLocation } from "react-router"
@@ -114,7 +115,7 @@ const signInLabels: Readonly<Record<Platform, MessageKey>> = {
 }
 
 /**
- * Signing in brings the streamer back to the page they are on; one button per platform the install signs in with.
+ * Signing in brings the streamer back to the page they are on, or to the page of this site its `?return=` names; one button per platform the install signs in with.
  * `why` says what the sign-in is for when the page around it does not. A page outside the layout asks the session
  * here, so its buttons follow the install's platforms too.
  */
@@ -132,6 +133,8 @@ function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
   const { signInPlatforms } = useStreamerSession()
+  const returnTo =
+    safeReturnPath(new URLSearchParams(search).get("return") ?? undefined) ?? `${pathname}${search}`
   return (
     <StateColumn>
       <StateCard tone="info" align="center" icon={<LockIcon />} title={t("signIn.title")} level={1}>
@@ -140,7 +143,7 @@ function SignInCard({ why }: { readonly why: MessageKey | undefined }) {
           <a
             key={platform}
             className="button outlined block"
-            href={streamerSignInPath(platform, `${pathname}${search}`)}
+            href={streamerSignInPath(platform, returnTo)}
           >
             <PlatformIcon platform={platform} />
             {t(signInLabels[platform])}

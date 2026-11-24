@@ -1,15 +1,18 @@
 import { useEffect, useId, useRef, useState, ViewTransition, type ReactNode } from "react"
 import { Link, Outlet, useLocation } from "react-router"
+import { languages } from "@rafflink/core/lib/languages"
+import { segmentPath } from "@rafflink/core/lib/page-paths"
 import { useI18n } from "../i18n/i18n.tsx"
 import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import {
   adminPath,
   dashboardPath,
+  dashboardSignInPath,
   pageOfPath,
   settingsPath,
   verifyLookupPath,
 } from "../lib/routes.ts"
-import { SiteNav } from "../site/site.tsx"
+import { prerenderPages, SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
@@ -230,20 +233,33 @@ function AccountMenu({
   )
 }
 
-/** The primary sign-in button; on a viewer page a quiet text link, so it does not read as a step of entering. */
+/**
+ * The primary sign-in button; on a viewer page a quiet text link, so it does not read as a step of entering. Signing in
+ * brings the streamer back to the page they clicked it on, except on a marketing page, which has nothing left to see.
+ */
 function LoginLink({ viewerPage }: { readonly viewerPage: boolean }) {
   const { t } = useI18n()
+  const { pathname, search } = useLocation()
+  const to = isMarketingPage(pathname) ? dashboardPath : dashboardSignInPath(`${pathname}${search}`)
   if (viewerPage) {
     return (
-      <Link className="button text app-streamer-login" to={dashboardPath}>
+      <Link className="button text app-streamer-login" to={to}>
         {t("nav.streamerLogin")}
       </Link>
     )
   }
   return (
-    <Link className="button" to={dashboardPath}>
+    <Link className="button" to={to}>
       <LogInIcon />
       {t("nav.login")}
     </Link>
+  )
+}
+
+/** The home and legal pages in every language, and the deployment's own prerendered pages such as `/compare`. */
+function isMarketingPage(pathname: string): boolean {
+  if (pageOfPath(pathname) !== null) return true
+  return prerenderPages.some((page) =>
+    languages.some((language) => segmentPath(language, page.segment) === pathname),
   )
 }

@@ -68,6 +68,12 @@ export function dashboardCreatedPath(id: string): string {
   return `/dashboard/created/${encodeURIComponent(id)}`
 }
 
+/** The dashboard's sign-in for a streamer who asked for it on `returnTo`; signing in there brings them back to it. */
+export function dashboardSignInPath(returnTo: string): string {
+  if (returnTo === dashboardPath) return dashboardPath
+  return withQuery(dashboardPath, new URLSearchParams({ return: returnTo }))
+}
+
 /** Signs a streamer in on `platform` and sends them back to `returnTo`; the dashboard is where they land when the link names none. */
 export function streamerSignInPath(platform: Platform, returnTo: string): string {
   const query = new URLSearchParams()
