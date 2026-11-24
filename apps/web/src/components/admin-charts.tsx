@@ -1,3 +1,4 @@
+import type { VisitDay } from "@rafflink/core/ports"
 import type { SeriesMinute, GrowthDay } from "@rafflink/core/stats/series"
 import { useI18n } from "../i18n/i18n.tsx"
 
@@ -123,6 +124,83 @@ export function GrowthChart({ growth }: { readonly growth: readonly GrowthDay[] 
           <li data-series="streamers">{t("admin.growth.streamers")}</li>
         </ul>
       </figcaption>
+    </figure>
+  )
+}
+
+const barShare = 0.7
+
+/** Page views per day as bars and unique visitors as a line over them, with the numbers of each day in a table for screen readers. */
+export function VisitsChart({ days }: { readonly days: readonly VisitDay[] }) {
+  const { t, number, date } = useI18n()
+  const peak = Math.max(1, ...days.map((day) => Math.max(day.pageViews, day.uniqueVisitors)))
+  const slot = width / Math.max(1, days.length)
+  const barHeight = (value: number) => (value * (height - 2 * pad)) / peak
+  const top = (value: number) => height - pad - barHeight(value)
+  const centre = (index: number) => (index + 0.5) * slot
+  const label = t("admin.visits.label", {
+    views: number(days.reduce((sum, day) => sum + day.pageViews, 0)),
+    days: number(days.length),
+    peak: number(Math.max(...days.map((day) => day.pageViews))),
+  })
+  return (
+    <figure className="chart">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={label}
+        preserveAspectRatio="none"
+      >
+        <line
+          className="chart-axis"
+          x1={pad}
+          x2={width - pad}
+          y1={height - pad}
+          y2={height - pad}
+        />
+        {days.map((day, index) => (
+          <g key={day.day}>
+            <rect
+              className="chart-bar chart-views"
+              x={index * slot + (slot * (1 - barShare)) / 2}
+              y={top(day.pageViews)}
+              width={slot * barShare}
+              height={barHeight(day.pageViews)}
+            />
+            <rect className="chart-hit" x={index * slot} y={0} width={slot} height={height}>
+              <title>{`${date(day.day)}: ${number(day.pageViews)} / ${number(day.uniqueVisitors)}`}</title>
+            </rect>
+          </g>
+        ))}
+        <polyline
+          className="chart-line chart-uniques"
+          points={days.map((day, index) => `${centre(index)},${top(day.uniqueVisitors)}`).join(" ")}
+        />
+      </svg>
+      <figcaption>
+        <ul className="chart-legend">
+          <li data-series="views">{t("admin.visits.views")}</li>
+          <li data-series="uniques">{t("admin.visits.uniques")}</li>
+        </ul>
+      </figcaption>
+      <table className="sr-only">
+        <thead>
+          <tr>
+            <th scope="col">{t("admin.visits.day")}</th>
+            <th scope="col">{t("admin.visits.views")}</th>
+            <th scope="col">{t("admin.visits.uniques")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {days.map((day) => (
+            <tr key={day.day}>
+              <th scope="row">{date(day.day)}</th>
+              <td>{number(day.pageViews)}</td>
+              <td>{number(day.uniqueVisitors)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </figure>
   )
 }

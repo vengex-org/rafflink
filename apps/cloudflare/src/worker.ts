@@ -15,6 +15,7 @@ import type { RateLimiter } from "@rafflink/core/ports"
 import type { Hono } from "hono"
 import { CacheApiPublicCache } from "./adapters/cache-api-public-cache.ts"
 import { createUsageMeter } from "./adapters/cloudflare-usage-meter.ts"
+import { createVisitsMeter } from "./adapters/cloudflare-visits-meter.ts"
 import { DurableObjectRoomDirectory } from "./adapters/durable-object-room-directory.ts"
 import {
   durableObjectPlanQueue,
@@ -75,6 +76,7 @@ async function openApp(env: WorkerEnv): Promise<Hono> {
     queue: durableObjectTokenQueue(env.QUEUE),
     planQueue: durableObjectPlanQueue(env.QUEUE),
     usage: createUsageMeter(runtime.config, runtime.clock, (input, init) => fetch(input, init)),
+    visits: createVisitsMeter(runtime.config, runtime.clock, (input, init) => fetch(input, init)),
     publicCache: new CacheApiPublicCache(caches.default),
     entryIpLimiter: new RateLimitBindingLimiter(env.ENTRY_IP_LIMITER),
     leavesIpLimiter: new RateLimitBindingLimiter(env.LEAVES_IP_LIMITER),

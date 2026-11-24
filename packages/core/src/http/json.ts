@@ -13,7 +13,7 @@ import type { CloudflarePlan, PlanLimitOverrides, PlanLimits } from "../plan/pla
 import type { Usage, UsageAlert } from "../plan/usage.ts"
 import type { PresenceCounts } from "../presence/site-presence.ts"
 import type { QueueStats } from "../queue/token-queue.ts"
-import type { Instant } from "../ports.ts"
+import type { Instant, VisitDay } from "../ports.ts"
 import type { WinnerAnswers, WinnerFieldKind } from "../domain/winner-form.ts"
 import type {
   LiveSnapshot,
@@ -357,6 +357,12 @@ export interface AdminStatsJson {
   /** Null while OPEN_SIGNUP is true: nobody waits for approval then. */
   readonly access: AdminAccessCountsJson | null
   readonly referrals: readonly ReferralCount[]
+}
+
+/** The site's daily visits for the admin page. */
+export interface AdminVisitsJson {
+  /** Oldest day first. Null: this server reports no visits. "unavailable": Cloudflare did not answer or refused the token. */
+  readonly visits: readonly VisitDay[] | null | "unavailable"
 }
 
 /** A streamer in the admin's access lists. `id` is the account id the approve and revoke calls take. */

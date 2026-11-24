@@ -9,6 +9,7 @@ import {
   type Harness,
 } from "../../test/app-fixture.ts"
 import { resolveConfig } from "../config.ts"
+import { UsageUnavailable } from "../lib/usage-unavailable.ts"
 import { BunSqliteAsyncSql } from "../sqlite-bun.ts"
 import { dayMs, minuteMs, startOfDay, startOfMinute } from "../stats/time.ts"
 import type { AdminStatsJson } from "./json.ts"
@@ -306,5 +307,40 @@ describe("GET /api/admin/stats", () => {
     running.clock.advance(5000)
 
     expect((await stats(created.browser)).returningStreamers).toBe(1)
+  })
+})
+
+describe("GET /api/admin/visits", () => {
+  it("answers 403 to a streamer who is not an admin", async () => {
+    const running = await start()
+    const other = new Browser(running)
+    await other.signInAs(users.streamerB.id, fullStreamerStart)
+
+    expect((await other.request("/api/admin/visits")).status).toBe(403)
+  })
+
+  it("answers the days of the meter, reuses them, and keeps an unavailable answer only for the retry time", async () => {
+    const running = await start()
+    const browser = await adminBrowser(running)
+    const visits = [{ day: startOfDay(running.clock.now()), pageViews: 7, uniqueVisitors: 3 }]
+    running.visits.visits = visits
+
+    const first = await (await browser.request("/api/admin/visits")).json()
+    running.visits.visits = null
+    const reused = await (await browser.request("/api/admin/visits")).json()
+    running.clock.advance(3_600_000)
+    running.visits.failure = new UsageUnavailable("Analytics answered 403")
+    const failed = await (await browser.request("/api/admin/visits")).json()
+    running.visits.failure = null
+    running.visits.visits = visits
+    const stillFailed = await (await browser.request("/api/admin/visits")).json()
+    running.clock.advance(running.config.adminVisitsRetrySeconds * 1000)
+    const recovered = await (await browser.request("/api/admin/visits")).json()
+
+    expect(first).toEqual({ visits })
+    expect(reused).toEqual({ visits })
+    expect(failed).toEqual({ visits: "unavailable" })
+    expect(stillFailed).toEqual({ visits: "unavailable" })
+    expect(recovered).toEqual({ visits })
   })
 })

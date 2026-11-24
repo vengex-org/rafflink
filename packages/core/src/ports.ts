@@ -121,6 +121,21 @@ export interface UsageMeter {
   today(): Promise<DayRequests | null>
 }
 
+/** Page views and unique visitors of one UTC day on the site; `day` is that day's start. */
+export interface VisitDay {
+  readonly day: Instant
+  readonly pageViews: number
+  readonly uniqueVisitors: number
+}
+
+/**
+ * Reads the site's daily visits. Any implementation returns null when the server reports no visits at all, throws when it cannot read them, and
+ * otherwise one entry per UTC day of the last `days` days ending today, oldest first, a day without a visit being zero.
+ */
+export interface VisitsMeter {
+  lastDays(days: number): Promise<VisitDay[] | null>
+}
+
 /**
  * Short-lived copies of public answers, keyed by the public URL of the answer. Any implementation
  * returns null for a missing or expired key, and keeps `text` for at least `ttlSeconds` unless it is

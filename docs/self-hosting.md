@@ -433,6 +433,12 @@ set `CLOUDFLARE_API_TOKEN` (a token with the Account Analytics read permission) 
 meter reports no limit. The admin page warns once a day's Worker or Durable Object requests reach
 `USAGE_ALERT_PERCENT` (70) of the daily limit.
 
+Optional visits chart: Static pages are served from the assets without a Worker request, so the usage meter cannot
+count them. To chart the last `ADMIN_VISITS_DAYS` days of page views and unique visitors on the admin page,
+add `CLOUDFLARE_ZONE_ID` (the zone of your domain, on its Overview page) as a var and give `CLOUDFLARE_API_TOKEN`
+the Zone Analytics read permission as well as the Account Analytics read permission above. Without a zone, or with a
+token that lacks the permission, the chart says it is not available. Cloudflare's counts include bots.
+
 Cloudflare plan: the app assumes Workers Free (`CLOUDFLARE_PLAN=free`) until an admin switches the plan on the
 admin page. Cloudflare cannot upgrade on its own, so moving to Paid takes two steps: pay for Workers Paid in
 the Cloudflare dashboard, then switch to Paid on the admin page. The switch is stored in D1 and reaches the
