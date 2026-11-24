@@ -1236,6 +1236,7 @@ describe("GiveawayRoom alarm", () => {
       draw: false,
       metrics: [],
       chatEntrants: null,
+      giveawayCheck: false,
     })
     room.replaceRoles([], [])
     expect(alarm.at).toBe(5000)
@@ -1251,6 +1252,7 @@ describe("GiveawayRoom alarm", () => {
       draw: false,
       metrics: [],
       chatEntrants: null,
+      giveawayCheck: false,
     })
     expect(room.enter(viewer("1"), current)).toEqual({ kind: "closed" })
   })

@@ -12,14 +12,18 @@ export interface RoomAlarmDeps extends StreamerTokenDeps {
   readonly stats: Pick<StatsStore, "addMinutes">
 }
 
-/** What the room's alarm asks of the adapter: the role lists and the chat entrants' checks need Twitch, the commit is asynchronous, the status mirror and the minute counters need the account store. */
+/**
+ * What the room's alarm asks of the adapter: the role lists and the chat entrants' checks need Twitch, the commit is asynchronous, the status mirror and the minute counters need the account store.
+ * `gone` means the giveaway no longer exists in the account store, so the adapter deletes the room.
+ */
 export async function runRoomAlarm(
   deps: RoomAlarmDeps,
   giveawayId: string,
   room: GiveawayRoom,
-): Promise<void> {
+): Promise<"kept" | "gone"> {
   const duties = room.onAlarm()
   await addMinutes(deps, giveawayId, duties.metrics)
+  if (duties.giveawayCheck && (await giveawayGone(deps, giveawayId))) return "gone"
   if (duties.refreshRoles) await refreshRoles(deps, giveawayId, room)
   if (duties.chatEntrants !== null) {
     await checkChatEntrants(deps, giveawayId, room, duties.chatEntrants)
@@ -27,6 +31,17 @@ export async function runRoomAlarm(
   if (duties.commit) await commitRoom(giveawayId, room)
   if (duties.draw) await drawRoom(deps, giveawayId, room)
   if (duties.mirrorDue) await mirrorStatus(room, deps.accounts, giveawayId, deps.clock.now())
+  return "kept"
+}
+
+// A failed read keeps the room; the next look a period later asks again.
+async function giveawayGone(deps: RoomAlarmDeps, giveawayId: string): Promise<boolean> {
+  try {
+    return (await deps.accounts.findGiveawayById(giveawayId)) === null
+  } catch (error) {
+    console.warn("room giveaway check failed", { giveawayId, errorClass: errorClass(error) })
+    return false
+  }
 }
 
 // Not retried: the room has moved past these minutes, so a lost write is a gap in the admin chart, logged here.

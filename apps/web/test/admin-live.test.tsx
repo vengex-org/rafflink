@@ -257,7 +257,7 @@ describe("admin page live numbers", () => {
 })
 
 describe("admin page polling", () => {
-  it("asks again every 10 seconds while the tab is visible", async () => {
+  it("asks again every 30 seconds while the tab is visible", async () => {
     const requests = mockAdmin()
     const view = renderApp("/admin")
     await view.findByText("open giveaways")
@@ -266,9 +266,9 @@ describe("admin page polling", () => {
     // Waiting for the first answer moved the fake clock a little, so the first checks stay well inside one period.
     await tick(4_000)
     expect(statsRequests(requests)).toBe(1)
-    await tick(10_000)
+    await tick(30_000)
     expect(statsRequests(requests)).toBe(2)
-    await tick(10_000)
+    await tick(30_000)
     expect(statsRequests(requests)).toBe(3)
   })
 
@@ -284,7 +284,7 @@ describe("admin page polling", () => {
     showAs("visible")
     await tick(0)
     expect(statsRequests(requests)).toBe(2)
-    await tick(10_000)
+    await tick(30_000)
     expect(statsRequests(requests)).toBe(3)
   })
 
@@ -318,13 +318,13 @@ describe("admin page polling", () => {
     await view.findByText("open giveaways")
 
     failing = true
-    await tick(10_000)
+    await tick(30_000)
 
     expect(view.getByText("The live numbers could not be loaded. Trying again.")).toBeTruthy()
     expect(view.getByText("open giveaways").nextSibling?.textContent).toBe("3")
 
     failing = false
-    await tick(10_000)
+    await tick(30_000)
 
     expect(view.queryByText("The live numbers could not be loaded. Trying again.")).toBeNull()
   })

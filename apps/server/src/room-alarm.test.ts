@@ -519,3 +519,68 @@ describe("runRoomAlarm chat entry", () => {
     expect(callsTo("/oauth2/token")).toBe(refreshesBefore + 1)
   })
 })
+
+function keywordRoom(): GiveawayRoom {
+  const sql = new BunSqliteSyncSql(new Database(":memory:"))
+  applyMigrations(sql, roomMigrations)
+  const watching = new GiveawayRoom({
+    sql,
+    alarm: { set: () => {}, clear: () => {} },
+    live: { broadcast: () => {}, broadcastOverlay: () => {}, broadcastViewers: () => {} },
+    clock,
+    random: systemRandom,
+    config,
+    chat: idleChat(clock, config),
+    beacon: new FakeBeacon(),
+  })
+  watching.init({
+    ...giveawayInit(giveawayId),
+    rules: { ...validRules, chatKeyword: "enter" },
+  })
+  watching.loadExclusions({ blocked: { version: 0, platformUserIds: [] }, recentWinners: [] })
+  return watching
+}
+
+describe("runRoomAlarm orphaned room", () => {
+  it("reports the room gone at the first look after the giveaway row is missing", async () => {
+    const watching = keywordRoom()
+    expect(await runRoomAlarm(deps, giveawayId, watching)).toBe("kept")
+
+    clock.advance(config.roomGiveawayCheckSeconds * 1000)
+
+    expect(await runRoomAlarm(deps, giveawayId, watching)).toBe("gone")
+  })
+
+  it("keeps a room whose giveaway row exists", async () => {
+    await seedStreamerAndGiveaway()
+    const watching = keywordRoom()
+    await runRoomAlarm(deps, giveawayId, watching)
+
+    clock.advance(config.roomGiveawayCheckSeconds * 1000)
+
+    expect(await runRoomAlarm(deps, giveawayId, watching)).toBe("kept")
+  })
+})
+
+describe("runRoomAlarm giveaway check", () => {
+  it("keeps the room when the giveaway read fails", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    const watching = keywordRoom()
+    await runRoomAlarm(deps, giveawayId, watching)
+    spyOn(accounts, "findGiveawayById").mockRejectedValue(new Error("D1 down"))
+    clock.advance(config.roomGiveawayCheckSeconds * 1000)
+
+    expect(await runRoomAlarm(deps, giveawayId, watching)).toBe("kept")
+    expect(warn).toHaveBeenCalledWith("room giveaway check failed", {
+      giveawayId,
+      errorClass: "Error",
+    })
+  })
+
+  it("does not ask for a giveaway check while the room has no chat watch open", () => {
+    room.onAlarm()
+    clock.advance(config.roomGiveawayCheckSeconds * 1000)
+
+    expect(room.onAlarm().giveawayCheck).toBe(false)
+  })
+})

@@ -48,10 +48,13 @@ const eventSubEnv = {
   EVENTSUB_SUBSCRIBE_SECONDS: "10",
   EVENTSUB_CONNECTION_MAX_SECONDS: "900",
   EVENTSUB_RECONNECT_MARGIN_SECONDS: "60",
+  EVENTSUB_KEEPALIVE_SECONDS: "60",
   EVENTSUB_KEEPALIVE_GRACE_SECONDS: "5",
   EVENTSUB_RECONNECT_DELAY_SECONDS: "2",
   EVENTSUB_RECONNECT_MAX_ATTEMPTS: "3",
 }
+
+const sessionUrl = "wss://twitch.test/ws?keepalive_timeout_seconds=60"
 
 function configWith(overrides: Readonly<Record<string, string>> = {}) {
   return resolveConfig({
@@ -253,7 +256,7 @@ describe("ChatWatcher connection", () => {
     watcher.open()
     watcher.open()
 
-    expect(connector.sockets.map((socket) => socket.url)).toEqual(["wss://twitch.test/ws"])
+    expect(connector.sockets.map((socket) => socket.url)).toEqual([sessionUrl])
   })
 
   it("subscribes the session of the welcome and hands on chat messages", async () => {
@@ -415,10 +418,7 @@ describe("ChatWatcher keepalive", () => {
 
     clock.advance(2000)
     watcher.onAlarm()
-    expect(connector.sockets.map((socket) => socket.url)).toEqual([
-      "wss://twitch.test/ws",
-      "wss://twitch.test/ws",
-    ])
+    expect(connector.sockets.map((socket) => socket.url)).toEqual([sessionUrl, sessionUrl])
   })
 
   it("counts a keepalive message as proof of life", async () => {
@@ -454,7 +454,7 @@ describe("ChatWatcher session_reconnect", () => {
 
     old?.receive(reconnect("wss://twitch.test/ws?reconnect=1"))
     expect(connector.sockets.map((socket) => socket.url)).toEqual([
-      "wss://twitch.test/ws",
+      sessionUrl,
       "wss://twitch.test/ws?reconnect=1",
     ])
     expect(old?.closed).toBe(false)

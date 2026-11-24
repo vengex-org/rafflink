@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { getAdminStats, type AdminStats } from "../api/client.ts"
 
 /** How often the admin page asks for fresh statistics while it is on screen; the server reuses an answer for a few seconds, so two admins cost one read. */
-export const adminStatsPollMs = 10_000
+export const adminStatsPollMs = 30_000
 
 export type AdminStatsLoad =
   | { readonly state: "loading" }
