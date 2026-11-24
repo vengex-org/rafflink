@@ -1,5 +1,6 @@
 import type { StreamerFeature } from "@rafflink/core/domain/streamer-features"
 import { languages, sourceLanguage } from "@rafflink/core/lib/languages"
+import { pageOfPath } from "@rafflink/core/lib/page-paths"
 import type { Platform } from "@rafflink/core/platform/provider"
 import type { OverlayOptions } from "./overlay-options.ts"
 
@@ -68,9 +69,19 @@ export function dashboardCreatedPath(id: string): string {
   return `/dashboard/created/${encodeURIComponent(id)}`
 }
 
-/** The dashboard's sign-in for a streamer who asked for it on `returnTo`; signing in there brings them back to it. */
-export function dashboardSignInPath(returnTo: string): string {
-  if (returnTo === dashboardPath) return dashboardPath
+/**
+ * The header's sign-in on the page at `pathname` and `search`: the dashboard's sign-in card, which brings the streamer
+ * back to that page. A marketing page has nothing left to see, so its sign-in lands on the dashboard: the home and
+ * legal pages in every language, and the deployment's `marketingPaths`.
+ */
+export function headerSignInPath(
+  pathname: string,
+  search: string,
+  marketingPaths: readonly string[],
+): string {
+  const returnTo = `${pathname}${search}`
+  if (returnTo === dashboardPath || pageOfPath(pathname) !== null) return dashboardPath
+  if (marketingPaths.includes(pathname)) return dashboardPath
   return withQuery(dashboardPath, new URLSearchParams({ return: returnTo }))
 }
 

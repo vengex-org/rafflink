@@ -23,6 +23,8 @@ export const prerenderPages: readonly SitePage[] = [
   },
 ]
 
+export const marketingPaths: readonly string[] = []
+
 export function HomePage() {
   return <h1>Hosted home</h1>
 }

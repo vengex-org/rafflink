@@ -4,6 +4,7 @@ import {
   dashboardCreatedPath,
   dashboardNewPath,
   giveawayPath,
+  headerSignInPath,
   livePath,
   overlayPath,
   streamerSignInPath,
@@ -12,6 +13,10 @@ import {
 } from "../src/lib/routes.ts"
 
 describe("route paths", () => {
+  it("sends the header sign-in on a marketing page the deployment declares to the dashboard", () => {
+    expect(headerSignInPath("/demo", "?step=2", ["/demo"])).toBe("/dashboard")
+  })
+
   it("writes the public pages of a giveaway by its code", () => {
     expect(giveawayPath("ABCDE")).toBe("/ABCDE")
     expect(verifyPath("ABCDE")).toBe("/ABCDE/verify")

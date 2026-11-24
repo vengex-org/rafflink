@@ -7,12 +7,12 @@ import { useLocalizedPath } from "../i18n/localized-pages.ts"
 import {
   adminPath,
   dashboardPath,
-  dashboardSignInPath,
+  headerSignInPath,
   pageOfPath,
   settingsPath,
   verifyLookupPath,
 } from "../lib/routes.ts"
-import { prerenderPages, SiteNav } from "../site/site.tsx"
+import { marketingPaths, prerenderPages, SiteNav } from "../site/site.tsx"
 import { DonateLink } from "./donate-link.tsx"
 import { Status } from "./notice.tsx"
 import { OAuthErrorCard } from "./oauth-error-card.tsx"
@@ -240,7 +240,7 @@ function AccountMenu({
 function LoginLink({ viewerPage }: { readonly viewerPage: boolean }) {
   const { t } = useI18n()
   const { pathname, search } = useLocation()
-  const to = isMarketingPage(pathname) ? dashboardPath : dashboardSignInPath(`${pathname}${search}`)
+  const to = headerSignInPath(pathname, search, siteMarketingPaths())
   if (viewerPage) {
     return (
       <Link className="button text app-streamer-login" to={to}>
@@ -256,10 +256,12 @@ function LoginLink({ viewerPage }: { readonly viewerPage: boolean }) {
   )
 }
 
-/** The home and legal pages in every language, and the deployment's own prerendered pages such as `/compare`. */
-function isMarketingPage(pathname: string): boolean {
-  if (pageOfPath(pathname) !== null) return true
-  return prerenderPages.some((page) =>
-    languages.some((language) => segmentPath(language, page.segment) === pathname),
-  )
+// Read at render: the deployment's site module imports this one, so its exports are not set yet while this one loads.
+function siteMarketingPaths(): readonly string[] {
+  return [
+    ...prerenderPages.flatMap((page) =>
+      languages.map((language) => segmentPath(language, page.segment)),
+    ),
+    ...marketingPaths,
+  ]
 }
