@@ -29,6 +29,7 @@ import {
   staticSegments,
   staticSubSegments,
   verifyPath,
+  withoutSourcePrefix,
   type LocalizedPage,
 } from "./lib/routes.ts"
 import { useConsumedParam } from "./lib/use-consumed-param.ts"
@@ -157,9 +158,12 @@ function CanonicalPath({ children }: { readonly children: ReactNode }) {
   )
 }
 
-/** A localized page has the spelling of {@link localizedPath}: the home page of a language ends in a slash, as its prerendered folder is served. */
+/**
+ * A localized page has the spelling of {@link localizedPath}: the home page of a language ends in a slash, as its
+ * prerendered folder is served. An address under the source language's prefix loses it.
+ */
 function canonicalPathOf(pathname: string): string {
-  const segments = pathname.replace(/\/+$/, "").split("/")
+  const segments = withoutSourcePrefix(pathname).replace(/\/+$/, "").split("/")
   const first = segments[1]
   if (
     first !== undefined

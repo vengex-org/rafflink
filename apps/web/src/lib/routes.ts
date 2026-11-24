@@ -14,6 +14,7 @@ export {
   moderatorSignInOutcomes,
   pageOfPath,
   verifyPath,
+  withoutSourcePrefix,
   type LocalizedPage,
 } from "@rafflink/core/lib/page-paths"
 

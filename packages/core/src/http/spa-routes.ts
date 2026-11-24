@@ -13,6 +13,7 @@ import {
   parsePrerenderManifest,
   prerenderManifestFile,
   verifyPath,
+  withoutSourcePrefix,
 } from "../lib/page-paths.ts"
 import {
   embedJson,
@@ -113,9 +114,11 @@ export function spaRoutes(deps: AppDeps, loadFile: WebFileLoader): Hono {
     const { pathname } = new URL(c.req.url)
     if (isApiPath(pathname)) return next()
     // The app redirects a localized page to its one spelling (`/de` to `/de/`, `/privacy/` to `/privacy`), and its
-    // prerendered markup is for that address; served at another one, hydration would not match.
-    const address = pageOfPath(pathname)
-    const canonical = address === null ? pathname : localizedPath(address.language, address.page)
+    // prerendered markup is for that address; served at another one, hydration would not match. Any address under
+    // the source language's prefix, which English addresses lack, loses it.
+    const unprefixed = withoutSourcePrefix(pathname)
+    const address = pageOfPath(unprefixed)
+    const canonical = address === null ? unprefixed : localizedPath(address.language, address.page)
     if (canonical !== pathname) return c.redirect(`${canonical}${new URL(c.req.url).search}`, 308)
     const page = await pageOf(loadFile, pathname)
     if (page === null) return next()

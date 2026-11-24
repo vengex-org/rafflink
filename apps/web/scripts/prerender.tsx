@@ -15,6 +15,7 @@ import {
   segmentFile,
   segmentPath,
   type Alternate,
+  type LocalizedPage,
   type PrerenderedPage,
 } from "@rafflink/core/lib/page-paths"
 import {
@@ -121,13 +122,12 @@ interface PrerenderTarget {
   readonly legal: boolean
 }
 
-function localizedTarget(page: (typeof localizedPages)[number]): PrerenderTarget {
-  const { title, description } = metaKeys[page]
+function localizedTarget(page: LocalizedPage): PrerenderTarget {
   return {
     name: page,
     path: (language) => localizedPath(language, page),
     file: (language) => prerenderFile(language, page),
-    meta: (_, dictionary) => ({ title: dictionary[title], description: dictionary[description] }),
+    meta: pageMeta[page],
     legal: page !== "home",
   }
 }
@@ -142,11 +142,27 @@ function siteTarget(page: (typeof prerenderPages)[number]): PrerenderTarget {
   }
 }
 
-const metaKeys = {
-  home: { title: "meta.home.title", description: "meta.home.description" },
-  privacy: { title: "meta.privacy.title", description: "meta.privacy.description" },
-  terms: { title: "meta.terms.title", description: "meta.terms.description" },
-} as const
+/**
+ * English has search copy of its own. The translations have none yet, so the home page takes its translated heading
+ * and lead, and a legal page its translated heading; a legal page's description stays English until translated.
+ */
+const pageMeta = {
+  home: (language, dictionary) =>
+    language === sourceLanguage
+      ? { title: dictionary["meta.home.title"], description: dictionary["meta.home.description"] }
+      : {
+          title: `Rafflink: ${dictionary["home.title"].replace(/\.$/, "")}`,
+          description: dictionary["home.text"],
+        },
+  privacy: (_, dictionary) => ({
+    title: `${dictionary["privacy.title"]} | Rafflink`,
+    description: dictionary["meta.privacy.description"],
+  }),
+  terms: (_, dictionary) => ({
+    title: `${dictionary["terms.title"]} | Rafflink`,
+    description: dictionary["meta.terms.description"],
+  }),
+} satisfies Record<LocalizedPage, PrerenderTarget["meta"]>
 
 async function removePrerendered(dist: string): Promise<void> {
   const manifest = Bun.file(join(dist, prerenderManifestFile))

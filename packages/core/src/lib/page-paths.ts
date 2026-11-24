@@ -79,6 +79,17 @@ export function pageOfPath(pathname: string): LocalizedAddress | null {
   return addresses.get(withoutTrailingSlash(pathname)) ?? null
 }
 
+/**
+ * `pathname` without the source language's prefix, which no address has; the app and the server redirect there:
+ * `/en/dashboard` to `/dashboard`, `/en` and `/en/` to `/`. The rest starts with one slash, so `/en//evil.com` stays on
+ * this site as `/evil.com` instead of becoming the protocol-relative address of another host.
+ */
+export function withoutSourcePrefix(pathname: string): string {
+  const prefix = `/${sourceLanguage}`
+  if (pathname !== prefix && !pathname.startsWith(`${prefix}/`)) return pathname
+  return `/${pathname.slice(prefix.length).replace(/^[/\\]+/, "")}`
+}
+
 /** The build file that holds the rendered page, relative to the build's root; `index.html` stays the app's empty shell. */
 export function prerenderFile(language: Language, page: LocalizedPage): string {
   if (page !== "home") return segmentFile(language, page)

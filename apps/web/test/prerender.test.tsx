@@ -51,11 +51,6 @@ const withoutOperator: WebPrerenderConfig = {
 }
 
 const pageTitles = { home: "home.title", privacy: "privacy.title", terms: "terms.title" } as const
-const metaTitles = {
-  home: "meta.home.title",
-  privacy: "meta.privacy.title",
-  terms: "meta.terms.title",
-} as const
 
 let dir: string
 let root: Root | null = null
@@ -150,7 +145,6 @@ describe("prerender", () => {
       expect([
         path,
         parsed.documentElement.lang,
-        parsed.title,
         head.querySelector('link[rel="canonical"]')?.getAttribute("href"),
         head.querySelector('meta[property="og:url"]')?.getAttribute("content"),
         head.querySelector('meta[property="og:image"]')?.getAttribute("content"),
@@ -161,7 +155,6 @@ describe("prerender", () => {
       ]).toEqual([
         path,
         language,
-        dictionary[metaTitles[page]],
         `${publicUrl}${path}`,
         `${publicUrl}${path}`,
         `${publicUrl}/og.png`,
@@ -199,6 +192,50 @@ describe("prerender", () => {
     writeFileSync(join(dir, "robots.txt"), "User-agent: *\n")
     expect(await writePrerender(dir, shell, null)).toEqual([])
     expect(filesIn(dir)).toEqual(["robots.txt"])
+  })
+
+  it("titles and describes each page in its own language", async () => {
+    const pages = await prerender(shell, withoutOperator)
+
+    const heads = pages
+      .filter(({ language }) => language === "en" || language === "sk")
+      .map(({ path, html }) => {
+        const parsed = parsePage(html)
+        const description = parsed.head.querySelector('meta[name="description"]')
+        return [path, parsed.title, description?.getAttribute("content")]
+      })
+    expect(heads).toEqual([
+      [
+        "/",
+        "Rafflink: fair giveaways your chat can check",
+        "Free giveaway tool for streamers. Viewers enter from a link in chat, you draw live on stream, and anyone can check the draw.",
+      ],
+      [
+        "/privacy",
+        "Privacy policy | Rafflink",
+        "What Rafflink stores about streamers and viewers, why, for how long, and how to have it deleted.",
+      ],
+      [
+        "/terms",
+        "Terms of use | Rafflink",
+        "The rules for streamers who run giveaways with Rafflink and for viewers who enter them.",
+      ],
+      [
+        "/sk/",
+        "Rafflink: Férové súťaže, žrebované naživo na streame",
+        "Diváci sa zapoja jedným klikom a ty losuješ pred chatom.",
+      ],
+      [
+        "/sk/privacy",
+        "Zásady ochrany osobných údajov | Rafflink",
+        "What Rafflink stores about streamers and viewers, why, for how long, and how to have it deleted.",
+      ],
+      [
+        "/sk/terms",
+        "Podmienky používania | Rafflink",
+        "The rules for streamers who run giveaways with Rafflink and for viewers who enter them.",
+      ],
+    ])
   })
 
   it("hydrates every prerendered page without a mismatch and keeps the build's operator while the session agrees", async () => {

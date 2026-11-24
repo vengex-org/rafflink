@@ -61,6 +61,19 @@ describe("page routes", () => {
     expect(html).toContain(`<title>Giveaway ${created.code}</title>`)
   })
 
+  it.each([
+    ["/en", "/"],
+    ["/en/", "/"],
+    ["/en/privacy", "/privacy"],
+    ["/en/g/ABC?x=1", "/g/ABC?x=1"],
+    ["/en//evil.com", "/evil.com"],
+    ["/en/\\evil.com", "/evil.com"],
+  ])("redirects %s to %s, the address without the English prefix", async (typed, canonical) => {
+    const response = await app.request(typed)
+
+    expect([response.status, response.headers.get("location")]).toEqual([308, canonical])
+  })
+
   it("previews the list draw under its own title and canonical link, not indexed", async () => {
     const response = await app.request("/draw")
     const html = await response.text()

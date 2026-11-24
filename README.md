@@ -1,13 +1,14 @@
 # Rafflink
 
-Giveaways for Twitch streamers. The streamer creates a giveaway and posts a link; viewers open it, sign in
-with Twitch and are entered, or type the giveaway's chat keyword when the streamer turned it on.
+Giveaways for Twitch and Kick streamers. The streamer creates a giveaway and posts a link; viewers open it, sign
+in with the same platform and are entered, or type the giveaway's chat keyword when the streamer turned it on.
+YouTube, with entry from chat, is built but stays switched off on rafflink.app until Google approves it.
 
 What it does:
 
-- The streamer signs in with Twitch, creates a giveaway (title and prize are optional, ticket counts per
+- The streamer signs in with Twitch or Kick, creates a giveaway (title and prize are optional, ticket counts per
   group, optional filters and end time) and gets a short link such as `/K7M2P`.
-- Viewers open the link, sign in with Twitch and are entered with the tickets of their best group
+- Viewers open the link, sign in with the giveaway's platform and are entered with the tickets of their best group
   (viewer, follower, subscriber tier, VIP, moderator). The streamer cannot enter their own giveaway.
 - With a chat keyword (such as `!enter`) viewers can also enter by typing it in the stream chat. The same
   rules and ticket groups apply, the giveaway can take chat entries only, and the giveaway page answers "Am I in?"

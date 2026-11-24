@@ -20,7 +20,7 @@ const required = {
 describe("wrangler.jsonc", () => {
   // A page or file that reaches the Worker first is a billed request; the home page needs it for the referral count,
   // and the address of the English home page file for the noindex shell.
-  it("runs the Worker first only for the API, sign-in, home and history paths and serves the rest from the assets with the SPA fallback", async () => {
+  it("runs the Worker first only for the API, sign-in, home, history and English-prefixed paths and serves the rest from the assets with the SPA fallback", async () => {
     const { runWorkerFirst, notFoundHandling, assetsBinding } = await readWranglerConfig()
 
     expect(runWorkerFirst).toEqual([
@@ -28,6 +28,8 @@ describe("wrangler.jsonc", () => {
       localizedPath("en", "home"),
       servedPath(prerenderFile("en", "home")),
       historyPagePattern,
+      "/en",
+      "/en/*",
     ])
     expect(notFoundHandling).toBe("single-page-application")
     expect(assetsBinding).toBe("ASSETS")
