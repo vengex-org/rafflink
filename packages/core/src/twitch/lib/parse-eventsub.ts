@@ -12,8 +12,13 @@ export type EventSubMessage =
   | { readonly kind: "welcome"; readonly sessionId: string; readonly keepaliveSeconds: number }
   | { readonly kind: "keepalive" }
   | { readonly kind: "reconnect"; readonly url: string }
-  | { readonly kind: "notification"; readonly chat: ChatMessage }
-  | { readonly kind: "channel-entry"; readonly event: ChannelEntryEvent }
+  /** `messageId` is the same when Twitch sends a message again. */
+  | { readonly kind: "notification"; readonly messageId: string; readonly chat: ChatMessage }
+  | {
+      readonly kind: "channel-entry"
+      readonly messageId: string
+      readonly event: ChannelEntryEvent
+    }
   /** Twitch removed one of the watch's subscriptions, for example after the streamer revoked the app. */
   | { readonly kind: "revoked" }
   | { readonly kind: "ignored" }
@@ -46,7 +51,8 @@ export function parseEventSubMessage(text: string): Parsed<EventSubMessage, "mal
     case "session_reconnect":
       return parseReconnect(payload)
     case "notification":
-      return parseNotification(metadata.subscription_type, payload)
+      if (typeof metadata.message_id !== "string") return malformed
+      return parseNotification(metadata.subscription_type, metadata.message_id, payload)
     case "revocation":
       return {
         ok: true,
@@ -78,23 +84,27 @@ function parseReconnect(payload: Record<string, unknown>): Parsed<EventSubMessag
 
 function parseNotification(
   type: unknown,
+  messageId: string,
   payload: Record<string, unknown>,
 ): Parsed<EventSubMessage, "malformed"> {
   switch (type) {
     case eventSubTypes.chat:
-      return parseChatNotification(payload)
+      return parseChatNotification(messageId, payload)
     // A gift sub fires `channel.subscribe` for its recipient, who is the user of the event.
     case eventSubTypes.subscribe:
     case eventSubTypes.resubscribe:
-      return parseSubscription(payload)
+      return parseSubscription(messageId, payload)
     case eventSubTypes.redemption:
-      return parseRedemption(payload)
+      return parseRedemption(messageId, payload)
     default:
       return { ok: true, value: { kind: "ignored" } }
   }
 }
 
-function parseSubscription(payload: Record<string, unknown>): Parsed<EventSubMessage, "malformed"> {
+function parseSubscription(
+  messageId: string,
+  payload: Record<string, unknown>,
+): Parsed<EventSubMessage, "malformed"> {
   const { event } = payload
   if (!isRecord(event)) return malformed
   const viewer = eventViewer(event)
@@ -102,17 +112,27 @@ function parseSubscription(payload: Record<string, unknown>): Parsed<EventSubMes
   if (viewer === null || !isTier(tier)) return malformed
   return {
     ok: true,
-    value: { kind: "channel-entry", event: { via: "sub", viewer, subTier: tierLevels[tier] } },
+    value: {
+      kind: "channel-entry",
+      messageId,
+      event: { via: "sub", viewer, subTier: tierLevels[tier] },
+    },
   }
 }
 
-function parseRedemption(payload: Record<string, unknown>): Parsed<EventSubMessage, "malformed"> {
+function parseRedemption(
+  messageId: string,
+  payload: Record<string, unknown>,
+): Parsed<EventSubMessage, "malformed"> {
   const { event } = payload
   if (!isRecord(event) || !isRecord(event.reward)) return malformed
   const viewer = eventViewer(event)
   const rewardId = event.reward.id
   if (viewer === null || typeof rewardId !== "string") return malformed
-  return { ok: true, value: { kind: "channel-entry", event: { via: "points", viewer, rewardId } } }
+  return {
+    ok: true,
+    value: { kind: "channel-entry", messageId, event: { via: "points", viewer, rewardId } },
+  }
 }
 
 function eventViewer(event: Record<string, unknown>): ChannelViewer | null {
@@ -128,6 +148,7 @@ function eventViewer(event: Record<string, unknown>): ChannelViewer | null {
 }
 
 function parseChatNotification(
+  messageId: string,
   payload: Record<string, unknown>,
 ): Parsed<EventSubMessage, "malformed"> {
   const { event } = payload
@@ -152,6 +173,7 @@ function parseChatNotification(
     ok: true,
     value: {
       kind: "notification",
+      messageId,
       chat: { platformUserId, login, displayName, text: message.text, roles },
     },
   }

@@ -61,6 +61,9 @@ export class ChatConnectionLost extends Error {
   }
 }
 
+/** How many handed-on message ids the watcher keeps to drop a message Twitch sends again. */
+const handedOnIdsKept = 1000
+
 /** A connection that has not yet subscribed; `keepaliveMs` is null until Twitch's welcome. */
 interface Handshake {
   readonly socket: TextSocket
@@ -92,6 +95,8 @@ export class ChatWatcher implements ChatSource {
   private retryAt: Instant | null = null
   /** Replacing the live connection kept failing; it serves until it drops or reaches its maximum age. */
   private replacementGivenUp = false
+  /** The ids of the last messages handed on, oldest first. */
+  private readonly handedOn = new Set<string>()
 
   constructor(private readonly deps: ChatWatcherDeps) {}
 
@@ -191,14 +196,14 @@ export class ChatWatcher implements ChatSource {
         if (live !== null) live.lastSeenAt = this.deps.clock.now()
         return
       case "notification":
-        if (live === null) return
-        live.lastSeenAt = this.deps.clock.now()
-        this.deps.onMessage(message.chat)
+        if (!this.delivers(live, handshake)) return
+        if (live !== null) live.lastSeenAt = this.deps.clock.now()
+        if (this.firstDelivery(message.messageId)) this.deps.onMessage(message.chat)
         return
       case "channel-entry":
-        if (live === null) return
-        live.lastSeenAt = this.deps.clock.now()
-        this.deps.onChannelEntry(message.event)
+        if (!this.delivers(live, handshake)) return
+        if (live !== null) live.lastSeenAt = this.deps.clock.now()
+        if (this.firstDelivery(message.messageId)) this.deps.onChannelEntry(message.event)
         return
       case "reconnect":
         if (live !== null) this.connect(message.url, true)
@@ -210,6 +215,27 @@ export class ChatWatcher implements ChatSource {
       case "ignored":
         return
     }
+  }
+
+  /**
+   * Events count from the live connection, and from a subscribing one while none is live: Twitch can send an event
+   * before its answer to the subscription arrives. During a replacement the live connection still carries them. A
+   * subscription refused later keeps them: Twitch sends nothing for a subscription it did not create.
+   */
+  private delivers(live: Live | null, handshake: Handshake | null): boolean {
+    return live !== null || (handshake !== null && this.live === null)
+  }
+
+  /** Twitch delivers at least once and sends a message again with its id; each id is handed on once. */
+  private firstDelivery(messageId: string): boolean {
+    if (this.handedOn.has(messageId)) return false
+    this.handedOn.add(messageId)
+    // A Set iterates in insertion order, so the first id is the oldest.
+    for (const oldest of this.handedOn) {
+      if (this.handedOn.size <= handedOnIdsKept) break
+      this.handedOn.delete(oldest)
+    }
+    return true
   }
 
   private onClose(socket: TextSocket, cause: unknown): void {

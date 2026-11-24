@@ -392,13 +392,16 @@ describe("live pages", () => {
 
   it("alarm fires and closes a room at its end time", async () => {
     const server = await launch()
+    const streamer = await signInStreamer(server)
+    // The end time starts after the sign-in, and the room's status comes from the create response,
+    // so a slow runner cannot pass the end time before the test sees the room open.
     const closesAt = new Date(Date.now() + 400).toISOString()
-    const { id, code } = await createGiveaway(server, { closesAt })
+    const { id, code, status: createdStatus } = await postGiveaway(streamer, { closesAt })
     const { db } = await accountsOf()
     const status = async () =>
       (await (await fetch(new URL(`/api/g/${code}`, server.url))).json()).status
 
-    expect(await status()).toBe("open")
+    expect(createdStatus).toBe("open")
     await waitFor(async () => (await status()) === "closed", 5000, "the room to close")
 
     await waitFor(
@@ -432,19 +435,27 @@ function distWithIndex(): string {
 }
 
 async function createGiveaway(server: RunningServer, extra: Record<string, unknown> = {}) {
+  return postGiveaway(await signInStreamer(server), extra)
+}
+
+async function signInStreamer(server: RunningServer): Promise<Browser> {
   const streamer = new Browser({ url: server.url, reusesConnections: true })
   await streamer.signInAs(
     users.streamer.id,
     `/auth/twitch/streamer/start?features=${streamerFeatures.join(",")}`,
     twitch.fake.control,
   )
+  return streamer
+}
+
+async function postGiveaway(streamer: Browser, extra: Record<string, unknown> = {}) {
   const response = await streamer.postJson("/api/dash/giveaways", {
     title: "Giveaway",
     prize: "Prize",
     rules: validRules,
     ...extra,
   })
-  const body: { giveaway: { id: string; code: string; overlayToken: string } } =
+  const body: { giveaway: { id: string; code: string; overlayToken: string; status: string } } =
     await response.json()
   return { streamer, ...body.giveaway }
 }

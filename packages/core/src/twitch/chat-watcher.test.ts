@@ -148,7 +148,11 @@ const subscriberT1: Badge = { set_id: "subscriber", id: "3", info: "4" }
 
 function chat(chatterUserId: string, text: string, badges: readonly Badge[] = [subscriberT1]) {
   return {
-    metadata: { message_type: "notification", subscription_type: "channel.chat.message" },
+    metadata: {
+      message_type: "notification",
+      message_id: crypto.randomUUID(),
+      subscription_type: "channel.chat.message",
+    },
     payload: {
       event: {
         chatter_user_id: chatterUserId,
@@ -265,6 +269,20 @@ describe("ChatWatcher connection", () => {
     expect(messages).toEqual([chatMessage("42", "!claim")])
   })
 
+  it("hands on events Twitch sends before its answer to the subscription arrives", async () => {
+    const { watcher, connector, messages, channelEntries } = watcherUnderTest()
+    watcher.open()
+    const [socket] = connector.sockets
+
+    socket?.receive(welcome("session-1"))
+    socket?.receive(chat("42", "!claim"))
+    socket?.receive(subscription("7", "2000"))
+    await flush()
+
+    expect(messages).toEqual([chatMessage("42", "!claim")])
+    expect(channelEntries).toEqual([{ via: "sub", viewer: channelViewer("7"), subTier: 2 }])
+  })
+
   it("hands on nothing but chat notifications", async () => {
     const { connector, messages } = await liveWatcher()
     const [socket] = connector.sockets
@@ -275,7 +293,11 @@ describe("ChatWatcher connection", () => {
       payload: {},
     })
     socket?.receive({
-      metadata: { message_type: "notification", subscription_type: "channel.follow" },
+      metadata: {
+        message_type: "notification",
+        message_id: "m-follow",
+        subscription_type: "channel.follow",
+      },
       payload: {},
     })
 
@@ -513,6 +535,21 @@ describe("ChatWatcher connection age", () => {
     expect(messages).toEqual([chatMessage("42", "!claim")])
     expect(watcher.wakeAt()).toBe(840_000 + 15_000)
   })
+
+  it("hands on a message once when Twitch sends it on both connections of a replacement and again later", async () => {
+    const { connector, messages } = await dueForReplacement()
+    const [old, replacement] = connector.sockets
+    const message = chat("42", "!claim")
+
+    replacement?.receive(welcome("session-2"))
+    old?.receive(message)
+    replacement?.receive(message)
+    await flush()
+    replacement?.receive(message)
+    replacement?.receive(chat("43", "!claim"))
+
+    expect(messages).toEqual([chatMessage("42", "!claim"), chatMessage("43", "!claim")])
+  })
 })
 
 const revocation = {
@@ -526,7 +563,11 @@ function subscription(
   type: "channel.subscribe" | "channel.subscription.message" = "channel.subscribe",
 ) {
   return {
-    metadata: { message_type: "notification", subscription_type: type },
+    metadata: {
+      message_type: "notification",
+      message_id: crypto.randomUUID(),
+      subscription_type: type,
+    },
     payload: {
       event: {
         user_id: userId,
@@ -543,6 +584,7 @@ function redemption(userId: string, rewardId: string) {
   return {
     metadata: {
       message_type: "notification",
+      message_id: crypto.randomUUID(),
       subscription_type: "channel.channel_points_custom_reward_redemption.add",
     },
     payload: {

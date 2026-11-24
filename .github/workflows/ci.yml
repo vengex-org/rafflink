@@ -48,8 +48,13 @@ jobs:
         if: steps.scope.outputs.scope != 'docs'
       - run: bun run typecheck
         if: steps.scope.outputs.scope != 'docs'
+      # The self-hosted runner shares its 16 threads with a second runner and other work. Eight test workers per suite
+      # (the core and the web suite run at once) leave room for them; a worker per thread starved the timed tests. An
+      # empty value keeps one worker per core, as on a GitHub runner.
       - run: bun run test
         if: steps.scope.outputs.scope == 'full'
+        env:
+          TEST_WORKERS: ${{ runner.environment == 'self-hosted' && '8' || '' }}
       - run: bun run build
         if: steps.scope.outputs.scope == 'full'
       # The source maps of a master build go to Sentry under the commit as the release, with debug ids injected; a deploy

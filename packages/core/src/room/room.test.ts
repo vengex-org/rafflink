@@ -805,6 +805,7 @@ describe("GiveawayRoom picks", () => {
 })
 
 describe("GiveawayRoom reroll", () => {
+  // Filling 800,000 rows alone takes over a second, more on a busy machine, so it gets more than the default 5 s.
   it("rerolls in a room that already holds 800,000 picks", async () => {
     const { room, sql } = await drawnRoom()
     sql.exec(
@@ -817,7 +818,7 @@ describe("GiveawayRoom reroll", () => {
     const outcome = await room.reroll(0, null)
 
     expect(outcome).toMatchObject({ kind: "rerolled", replaced: 0, winner: { n: 800_100 } })
-  })
+  }, 20_000)
 
   it("reroll adds the next pick and marks the old one", async () => {
     const { room, sql } = await drawnRoom()
