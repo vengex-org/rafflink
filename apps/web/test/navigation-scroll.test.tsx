@@ -47,15 +47,30 @@ describe("scroll on navigation", () => {
     expect(window.scrollY).toBe(400)
   })
 
-  it("brings the element a #link names into view", async () => {
-    const shown: Element[] = []
-    spyOn(Element.prototype, "scrollIntoView").mockImplementation(function (this: Element) {
-      shown.push(this)
+  // `instant` jumps; `css` leaves the motion to `scroll-behavior`, which glides unless motion is reduced.
+  it.each([
+    ["opening an address with #id jumps to it", "/terms#main", null, [["main", "instant"]]],
+    ["a redirect of the opening address still jumps", "/terms/#main", null, [["main", "instant"]]],
+    ["a #link on the same page glides", "/terms", "/terms#main", [["main", "css"]]],
+    ["a #link to another page glides", "/terms", "/privacy#main", [["main", "css"]]],
+    [
+      "a change of the query alone does not scroll again",
+      "/terms#main",
+      "/terms?tab=2#main",
+      [["main", "instant"]],
+    ],
+  ] as const)("%s", async (_name, opened, followed, expected) => {
+    const shown: (readonly [string, string])[] = []
+    spyOn(Element.prototype, "scrollIntoView").mockImplementation(function (
+      this: Element,
+      options?: boolean | ScrollIntoViewOptions,
+    ) {
+      shown.push([this.id, typeof options === "object" ? (options.behavior ?? "css") : "css"])
     })
-    const view = renderApp("/terms")
+    const view = renderApp(opened)
 
-    await view.go("/privacy#main")
+    if (followed !== null) await view.go(followed)
 
-    expect(shown).toEqual([view.container.ownerDocument.getElementById("main") as Element])
+    expect(shown).toEqual([...expected])
   })
 })
