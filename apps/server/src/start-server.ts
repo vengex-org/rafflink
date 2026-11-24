@@ -112,7 +112,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     beacon: new DrandBeacon(config, fetch, random),
     publish: (topic, message) => void server.publish(topic, message),
     subscriberCount: (topic) => server.subscriberCount(topic),
-    onAlarm: (giveawayId, room) => runRoomAlarm(alarmDeps, giveawayId, room),
+    onAlarm: async (giveawayId, room) => {
+      await runRoomAlarm(alarmDeps, giveawayId, room)
+    },
     chat: (giveawayId) => roomChat(tokenDeps, connector, giveawayId),
   })
 

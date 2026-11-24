@@ -100,6 +100,7 @@ export type RoomConfig = RulesConfig
     ResolvedConfig,
     | "chatBotLogins"
     | "roleRefreshSeconds"
+    | "roomGiveawayCheckSeconds"
     | "chatEntryCheckSeconds"
     | "chatEntryFollowerChecks"
     | "liveIntervalMs"
@@ -295,6 +296,8 @@ export interface AlarmDuties {
   readonly metrics: readonly MinuteCounts[]
   /** Read these chatters' profiles, and the follows and tiers they need, then call `enterFromChat`. Null when no check is due. */
   readonly chatEntrants: ChatEntrantsDuty | null
+  /** The chat watch has run a while: look for the room's giveaway in the account store; if it is gone, delete the room. */
+  readonly giveawayCheck: boolean
 }
 
 /** What an admin sees of a room that is open right now. */
@@ -547,6 +550,8 @@ export class GiveawayRoom {
   // Lost with the object; the first outcome after that is pushed again.
   private lastViewerOutcome: string | null = null
   private mirrorRetryAt: Instant | null = null
+  // Lost with the object, which then waits a full period before the next look.
+  private giveawayCheckAt: Instant | null = null
   // Lost with the object; the waiting chatters are stored, so the next alarm checks them at once.
   private chatCheckAt: Instant | null = null
   // What a chat message or channel event is matched against while entries are open to one of them, null
@@ -857,6 +862,7 @@ export class GiveawayRoom {
       this.syncChat()
       this.chat?.onAlarm()
     })
+    const giveawayCheck = this.giveawayCheckDue(now)
     this.guarded("alarm", () => this.rearm())
     return {
       refreshRoles,
@@ -865,7 +871,21 @@ export class GiveawayRoom {
       draw: drawDue,
       metrics,
       chatEntrants,
+      giveawayCheck,
     }
+  }
+
+  // Only a room that keeps a chat watch open asks: it is the one holding an outbound connection that wakes it.
+  private giveawayCheckDue(now: Instant): boolean {
+    if (this.chat === null || !this.chatWatchOpen(this.readState())) {
+      this.giveawayCheckAt = null
+      return false
+    }
+    const due = this.giveawayCheckAt !== null && now >= this.giveawayCheckAt
+    if (this.giveawayCheckAt === null || due) {
+      this.giveawayCheckAt = now + this.config.roomGiveawayCheckSeconds * 1000
+    }
+    return due
   }
 
   // While entries are open: the oldest waiting chatters, with no more follow reads than one check may send;
@@ -2165,6 +2185,7 @@ export class GiveawayRoom {
       this.retentionDeadline(state),
       this.answersDeadline(),
       this.chat?.wakeAt() ?? null,
+      this.giveawayCheckAt,
       this.metricsWake(),
     ].filter((at): at is Instant => at !== null)
     if (wakeups.length === 0) this.alarm.clear()

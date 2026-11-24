@@ -12,6 +12,7 @@ import { parseEventSubMessage } from "./lib/parse-eventsub.ts"
 export type ChatWatcherConfig = Pick<
   ResolvedConfig,
   | "eventSubUrl"
+  | "eventSubKeepaliveSeconds"
   | "eventSubSubscribeSeconds"
   | "eventSubConnectionMaxSeconds"
   | "eventSubReconnectMarginSeconds"
@@ -106,7 +107,7 @@ export class ChatWatcher implements ChatSource {
     this.running = true
     this.attempts = 0
     this.replacementGivenUp = false
-    this.connect(this.deps.config.eventSubUrl, false)
+    this.connect(this.newSessionUrl(), false)
   }
 
   /** Stops watching and closes every socket; a closed watcher is left alone. */
@@ -158,7 +159,7 @@ export class ChatWatcher implements ChatSource {
         : now >= this.retryAt
     if (!due) return
     this.retryAt = null
-    this.connect(this.deps.config.eventSubUrl, false)
+    this.connect(this.newSessionUrl(), false)
   }
 
   private connect(url: string, resumed: boolean): void {
@@ -323,6 +324,14 @@ export class ChatWatcher implements ChatSource {
   private giveUp(cause: unknown): void {
     this.close()
     this.deps.onUnavailable(cause)
+  }
+
+  /** A `session_reconnect` URL Twitch sends keeps the session's keepalive timeout, so only a new session asks for it. */
+  private newSessionUrl(): string {
+    const { eventSubUrl, eventSubKeepaliveSeconds } = this.deps.config
+    const url = new URL(eventSubUrl)
+    url.searchParams.set("keepalive_timeout_seconds", String(eventSubKeepaliveSeconds))
+    return url.toString()
   }
 
   private handshakeDeadline(): Instant {

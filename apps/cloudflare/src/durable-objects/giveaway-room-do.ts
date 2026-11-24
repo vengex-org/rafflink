@@ -213,7 +213,10 @@ export class GiveawayRoomObject extends DurableObject<WorkerEnv> {
     const { room, runtime } = await this.opened
     const giveawayId = this.giveawayId()
     try {
-      await runRoomAlarm(runtime, giveawayId, room)
+      if ((await runRoomAlarm(runtime, giveawayId, room)) === "gone") {
+        console.warn("room deleted: its giveaway no longer exists", { giveawayId })
+        await this.destroy()
+      }
     } catch (error) {
       // Rethrown so the runtime retries the alarm: without it the room's next wake-up is not armed.
       console.error("room alarm failed", { giveawayId, errorClass: errorClass(error) })

@@ -186,6 +186,12 @@ export const configSchema = {
     "300",
     "Claim time after a draw when the giveaway sets none",
   ),
+  roomGiveawayCheckSeconds: withDefault(
+    "ROOM_GIVEAWAY_CHECK_SECONDS",
+    int(1),
+    "840",
+    "Wait between two looks for the giveaway of a room that keeps a chat watch open; a room whose giveaway is gone deletes itself, which ends a watch nobody reads; the 14 minutes of EVENTSUB_CONNECTION_MAX_SECONDS less EVENTSUB_RECONNECT_MARGIN_SECONDS, so one read per connection; starting guess",
+  ),
   roleRefreshSeconds: withDefault(
     "ROLE_REFRESH_SECONDS",
     int(1),
@@ -503,6 +509,12 @@ export const configSchema = {
     int(0),
     "60",
     "Replace a connection this long before EVENTSUB_CONNECTION_MAX_SECONDS, so 14 of the 15 minutes; starting guess",
+  ),
+  eventSubKeepaliveSeconds: withDefault(
+    "EVENTSUB_KEEPALIVE_SECONDS",
+    int(10, 600),
+    "60",
+    "Silence Twitch may keep on an EventSub connection before it sends a keepalive; each message wakes the room, so a long one lets an idle room sleep; Twitch accepts 10 to 600; starting guess",
   ),
   eventSubKeepaliveGraceSeconds: withDefault(
     "EVENTSUB_KEEPALIVE_GRACE_SECONDS",
@@ -904,7 +916,7 @@ export const configSchema = {
     "ADMIN_STATS_CACHE_SECONDS",
     int(0),
     "5",
-    "How long the admin statistics answer is reused, so two admins with the page open cost one set of reads; the page polls every 10 seconds; 0 turns the cache off; starting guess",
+    "How long the admin statistics answer is reused, so two admins with the page open cost one set of reads; the page polls every 30 seconds; 0 turns the cache off; starting guess",
   ),
   adminVisitsDays: withDefault(
     "ADMIN_VISITS_DAYS",
@@ -1097,6 +1109,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     devFakeKick: read(env, configSchema.devFakeKick),
     devFakeYouTube: read(env, configSchema.devFakeYouTube),
     defaultClaimSeconds: read(env, configSchema.defaultClaimSeconds),
+    roomGiveawayCheckSeconds: read(env, configSchema.roomGiveawayCheckSeconds),
     roleRefreshSeconds: read(env, configSchema.roleRefreshSeconds),
     chatEntryCheckSeconds: read(env, configSchema.chatEntryCheckSeconds),
     chatEntryFollowerChecks: read(env, configSchema.chatEntryFollowerChecks),
@@ -1150,6 +1163,7 @@ export function resolveConfig(env: Env): ResolvedConfig {
     eventSubSubscribeSeconds: read(env, configSchema.eventSubSubscribeSeconds),
     eventSubConnectionMaxSeconds: read(env, configSchema.eventSubConnectionMaxSeconds),
     eventSubReconnectMarginSeconds: read(env, configSchema.eventSubReconnectMarginSeconds),
+    eventSubKeepaliveSeconds: read(env, configSchema.eventSubKeepaliveSeconds),
     eventSubKeepaliveGraceSeconds: read(env, configSchema.eventSubKeepaliveGraceSeconds),
     eventSubReconnectDelaySeconds: read(env, configSchema.eventSubReconnectDelaySeconds),
     eventSubReconnectMaxAttempts: read(env, configSchema.eventSubReconnectMaxAttempts),
