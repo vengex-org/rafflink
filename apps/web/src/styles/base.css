@@ -339,8 +339,11 @@ button:disabled {
   }
 }
 
-/* A move to another page cross-fades the page content (the `page-fade` class of <ViewTransition>); the app bar has its own name, so it stays put. */
+/* A move to another page cross-fades the page content (the `page-fade` class of <ViewTransition>); the app bar has its own name, so it stays put.
+   The name makes the bar a stacking context, so it needs its own z-index or the page content paints over the account menu. */
 .app-bar {
+  position: relative;
+  z-index: 10;
   view-transition-name: app-bar;
 }
 
