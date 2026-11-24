@@ -265,6 +265,20 @@ describe("ChatWatcher connection", () => {
     expect(messages).toEqual([chatMessage("42", "!claim")])
   })
 
+  it("hands on events Twitch sends before its answer to the subscription arrives", async () => {
+    const { watcher, connector, messages, channelEntries } = watcherUnderTest()
+    watcher.open()
+    const [socket] = connector.sockets
+
+    socket?.receive(welcome("session-1"))
+    socket?.receive(chat("42", "!claim"))
+    socket?.receive(subscription("7", "2000"))
+    await flush()
+
+    expect(messages).toEqual([chatMessage("42", "!claim")])
+    expect(channelEntries).toEqual([{ via: "sub", viewer: channelViewer("7"), subTier: 2 }])
+  })
+
   it("hands on nothing but chat notifications", async () => {
     const { connector, messages } = await liveWatcher()
     const [socket] = connector.sockets

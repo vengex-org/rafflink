@@ -191,13 +191,13 @@ export class ChatWatcher implements ChatSource {
         if (live !== null) live.lastSeenAt = this.deps.clock.now()
         return
       case "notification":
-        if (live === null) return
-        live.lastSeenAt = this.deps.clock.now()
+        if (!this.delivers(live, handshake)) return
+        if (live !== null) live.lastSeenAt = this.deps.clock.now()
         this.deps.onMessage(message.chat)
         return
       case "channel-entry":
-        if (live === null) return
-        live.lastSeenAt = this.deps.clock.now()
+        if (!this.delivers(live, handshake)) return
+        if (live !== null) live.lastSeenAt = this.deps.clock.now()
         this.deps.onChannelEntry(message.event)
         return
       case "reconnect":
@@ -210,6 +210,14 @@ export class ChatWatcher implements ChatSource {
       case "ignored":
         return
     }
+  }
+
+  /**
+   * Events count from the live connection, and from a subscribing one while none is live: Twitch can send an event
+   * before its answer to the subscription arrives. During a replacement the live connection still carries them.
+   */
+  private delivers(live: Live | null, handshake: Handshake | null): boolean {
+    return live !== null || (handshake !== null && this.live === null)
   }
 
   private onClose(socket: TextSocket, cause: unknown): void {
