@@ -29,6 +29,7 @@ import type {
   AdminStreamerListJson,
   AdminStreamersJson,
   AdminUsageJson,
+  AdminVisitsJson,
   BadgesJson,
   BlockListJson,
   DashboardGiveaway,
@@ -207,6 +208,8 @@ export type CreateResult =
 export type AdminUsage = AdminUsageJson
 
 export type AdminStats = AdminStatsJson
+
+export type AdminVisits = AdminVisitsJson
 
 /** What the verify page reads: the public facts, the leaf list once the room committed, and the viewer's own leaf when they entered. */
 export interface VerifyLoad {
@@ -823,6 +826,20 @@ export async function getAdminUsage(): Promise<AdminUsage | "unauthorized" | "fo
     signupOpen: bool(source, "signupOpen"),
     queue: parseQueue(child(source, "queue")),
     youtubeQuota: parseYouTubeQuota(source),
+  }
+}
+
+export async function getAdminVisits(): Promise<AdminVisits> {
+  const { status, body } = await send("/api/admin/visits")
+  if (status !== 200) throw new ApiError(status)
+  const source = record(body, "visits")
+  if (source.visits === null || source.visits === "unavailable") return { visits: source.visits }
+  return {
+    visits: list(source, "visits", (day) => ({
+      day: num(day, "day"),
+      pageViews: num(day, "pageViews"),
+      uniqueVisitors: num(day, "uniqueVisitors"),
+    })),
   }
 }
 

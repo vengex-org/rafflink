@@ -70,7 +70,7 @@ export function createUsageMeter(
   }
 }
 
-async function readBody(response: Response, secrets: readonly string[]): Promise<unknown> {
+export async function readBody(response: Response, secrets: readonly string[]): Promise<unknown> {
   if (!response.ok) throw new UsageUnavailable(`Analytics answered ${response.status}`)
   let body: unknown
   try {
@@ -127,6 +127,6 @@ function requestsOf(rows: unknown): number | null {
     : null
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }

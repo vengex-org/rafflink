@@ -279,6 +279,18 @@
   fill: var(--accent-line);
 }
 
+.chart-views {
+  fill: var(--ink);
+}
+
+.chart-uniques {
+  stroke: var(--accent-line);
+}
+
+.chart-hit {
+  fill: transparent;
+}
+
 .chart figcaption {
   display: flex;
   flex-wrap: wrap;
@@ -318,6 +330,7 @@
   background: var(--danger);
 }
 
+.chart-legend [data-series="uniques"]::before,
 .chart-legend [data-series="streamers"]::before {
   background: var(--accent-line);
 }

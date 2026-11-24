@@ -156,6 +156,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     queue: remoteQueue(queue),
     stats,
     usage: { today: async () => null },
+    visits: { lastDays: async () => null },
     planQueue: null,
     youtubeQuota: youtube.youtube?.quota ?? null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),

@@ -1,8 +1,9 @@
 import { presenceKinds } from "@rafflink/core/presence/site-presence"
-import type { AdminStats } from "../api/client.ts"
+import { getAdminVisits, type AdminStats } from "../api/client.ts"
 import { useI18n } from "../i18n/i18n.tsx"
 import type { AdminStatsLoad } from "../lib/use-admin-stats.ts"
-import { GrowthChart, MinuteChart } from "./admin-charts.tsx"
+import { useLoad } from "../lib/use-load.ts"
+import { GrowthChart, MinuteChart, VisitsChart } from "./admin-charts.tsx"
 import { ActivityIcon, AlertIcon, EyeIcon, GiftIcon, UsersIcon } from "./icons.tsx"
 import { InfoTip } from "./info-tip.tsx"
 import { Stat } from "./live-parts.tsx"
@@ -49,6 +50,7 @@ export function LiveCards({ stats }: { readonly stats: AdminStats }) {
       <OpenGiveaways stats={stats} />
       <LastHour stats={stats} />
       <Growth stats={stats} />
+      <Visits />
       <Referrals stats={stats} />
     </>
   )
@@ -203,6 +205,25 @@ function Growth({ stats }: { readonly stats: AdminStats }) {
           </>
         )}
       </dl>
+    </section>
+  )
+}
+
+// Loaded once, not polled: Cloudflare reports whole days and the server reuses its answer for an hour.
+function Visits() {
+  const { t } = useI18n()
+  const { result } = useLoad(getAdminVisits)
+  if (result.state === "loading") return null
+  const visits = result.state === "ready" ? result.value.visits : "unavailable"
+  const unavailable = visits === null ? "admin.visits.notReported" : "admin.visits.unavailable"
+  return (
+    <section className="card" aria-labelledby="visits">
+      <CardTitle id="visits" title={t("admin.visits.title")} info={t("admin.visits.hint")} />
+      {visits === null || visits === "unavailable" ? (
+        <p className="muted">{t(unavailable)}</p>
+      ) : (
+        <VisitsChart days={visits} />
+      )}
     </section>
   )
 }

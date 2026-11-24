@@ -196,6 +196,16 @@ export const en = {
   "admin.growth.pending": "streamers waiting for approval",
   "admin.growth.approved": "approved streamers",
   "admin.growth.atLeast": "{count}+",
+  "admin.visits.title": "Visits",
+  "admin.visits.hint":
+    "Page views and unique visitors per day (UTC), read from Cloudflare. The counts include bots.",
+  "admin.visits.views": "Page views",
+  "admin.visits.uniques": "Unique visitors",
+  "admin.visits.day": "Day",
+  "admin.visits.label": "{views} page views in the last {days} days, {peak} on the busiest day",
+  "admin.visits.notReported": "This server does not report visits.",
+  "admin.visits.unavailable":
+    "Not available. It needs CLOUDFLARE_ZONE_ID and an API token with Zone Analytics read permission.",
   "admin.refs.title": "Where visitors come from",
   "admin.refs.hint":
     "Visits of the home page with ?ref=label in the address over the last {days} days. No cookie, no address, nothing that identifies a visitor.",
@@ -1397,7 +1407,15 @@ export const en = {
 export type MessageKey = keyof typeof en
 
 /** Keys whose English copy is not translated yet; the other languages show the English text for them. */
-type EnglishOnlyKey = never
+type EnglishOnlyKey =
+  | "admin.visits.title"
+  | "admin.visits.hint"
+  | "admin.visits.views"
+  | "admin.visits.uniques"
+  | "admin.visits.day"
+  | "admin.visits.label"
+  | "admin.visits.unavailable"
+  | "admin.visits.notReported"
 
 /** What a language other than English provides: every key but the {@link EnglishOnlyKey}s. */
 export type Translation = Readonly<Omit<Record<MessageKey, string>, EnglishOnlyKey>>

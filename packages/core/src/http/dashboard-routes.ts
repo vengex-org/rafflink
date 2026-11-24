@@ -51,6 +51,7 @@ import {
   type AdminStreamerJson,
   type AdminStreamerListJson,
   type AdminStatsJson,
+  type AdminVisitsJson,
   type AdminStreamersJson,
   type AdminUsageJson,
   type BlockListJson,
@@ -490,6 +491,22 @@ export function dashboardRoutes(deps: AppDeps): Hono<Env> {
     return c.body(text, 200, { "Content-Type": "application/json" })
   })
 
+  // Daily numbers, so the answer is reused for ADMIN_VISITS_CACHE_SECONDS; an "unavailable" answer is reused only for ADMIN_VISITS_RETRY_SECONDS, so a fix shows up soon.
+  app.get("/api/admin/visits", async (c) => {
+    c.header("Cache-Control", "no-store")
+    const key = `${deps.config.publicUrl}/api/admin/visits`
+    const cached = await readPublicCache(deps, key, deps.config.adminVisitsCacheSeconds)
+    if (cached !== null) return c.body(cached, 200, { "Content-Type": "application/json" })
+    const body = await adminVisits(deps)
+    const text = JSON.stringify(body)
+    const ttlSeconds =
+      body.visits === "unavailable"
+        ? deps.config.adminVisitsRetrySeconds
+        : deps.config.adminVisitsCacheSeconds
+    await writePublicCache(deps, key, text, ttlSeconds)
+    return c.body(text, 200, { "Content-Type": "application/json" })
+  })
+
   // The admin pays for the plan in the Cloudflare dashboard first; this only tells the app which limits apply.
   app.post("/api/admin/plan", sameOriginJson(deps.config), async (c) => {
     const { platformUserId } = c.get("streamer")
@@ -765,6 +782,15 @@ async function adminStats(deps: AppDeps): Promise<AdminStatsJson> {
     returningWithinDays: config.adminStatsReturnDays,
     access: config.openSignup ? null : await accessCounts(deps),
     referrals,
+  }
+}
+
+async function adminVisits(deps: AppDeps): Promise<AdminVisitsJson> {
+  try {
+    return { visits: await deps.visits.lastDays(deps.config.adminVisitsDays) }
+  } catch (error) {
+    warnUsageUnavailable(error)
+    return { visits: "unavailable" }
   }
 }
 

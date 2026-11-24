@@ -33,6 +33,8 @@ import type {
   SqlRow,
   SqlValue,
   UsageMeter,
+  VisitDay,
+  VisitsMeter,
 } from "../src/ports.ts"
 import { queueMigrations } from "../src/queue/migrations.ts"
 import { TokenQueue, type TokenQueueStub } from "../src/queue/token-queue.ts"
@@ -285,6 +287,15 @@ export class StubUsageMeter implements UsageMeter {
   }
 }
 
+export class StubVisitsMeter implements VisitsMeter {
+  visits: VisitDay[] | null = null
+  failure: Error | null = null
+  async lastDays(): Promise<VisitDay[] | null> {
+    if (this.failure !== null) throw this.failure
+    return this.visits
+  }
+}
+
 /** Records every plan a switch pushed; `failure` makes the next pushes throw. */
 export class RecordingPlanQueue implements PlanQueue {
   readonly plans: CloudflarePlan[] = []
@@ -366,6 +377,7 @@ export interface Harness {
   readonly clock: TestClock
   readonly rooms: InProcessRooms
   readonly usage: StubUsageMeter
+  readonly visits: StubVisitsMeter
   readonly presence: MemorySitePresence
   /** Null for a harness like the Bun server, without a Cloudflare plan. */
   readonly planQueue: RecordingPlanQueue | null
@@ -450,6 +462,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
           }),
   }
   const usage = new StubUsageMeter()
+  const visits = new StubVisitsMeter()
   const presence = new MemorySitePresence()
   const planQueue = options.target === "bun" ? null : new RecordingPlanQueue()
   const queueDb = new Database(":memory:")
@@ -474,6 +487,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     queue: asRemote(queue),
     stats: new StatsStore(accountsSql, config),
     usage,
+    visits,
     planQueue,
     youtubeQuota: options.youtubeQuota ?? null,
     publicCache: new MemoryPublicCache(clock, config.publicCacheMaxEntries),
@@ -495,6 +509,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     clock,
     rooms,
     usage,
+    visits,
     presence,
     planQueue,
     accountsDb,

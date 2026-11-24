@@ -5,7 +5,15 @@ import type { KeyRing } from "../lib/seal.ts"
 import type { PlanQueue } from "../plan/current-plan.ts"
 import type { PlatformProviders } from "../platform/provider.ts"
 import type { SitePresence } from "../presence/site-presence.ts"
-import type { Clock, PublicCache, RateLimiter, Random, ReportError, UsageMeter } from "../ports.ts"
+import type {
+  Clock,
+  PublicCache,
+  RateLimiter,
+  Random,
+  ReportError,
+  UsageMeter,
+  VisitsMeter,
+} from "../ports.ts"
 import type { StatsStore } from "../stats/stats-store.ts"
 import type { TokenQueueStub } from "../queue/token-queue.ts"
 import type { RoomDirectory } from "../room/room-directory.ts"
@@ -21,6 +29,7 @@ export interface AppDeps {
   readonly queue: TokenQueueStub
   readonly stats: StatsStore
   readonly usage: UsageMeter
+  readonly visits: VisitsMeter
   /**
    * The token queue a Cloudflare plan switch reaches; null on a target without a Cloudflare plan (the Bun
    * server), where the admin page shows no plan and the switch answers 404.
