@@ -40,7 +40,7 @@ import {
   chatEntrantByLoginSql,
   nextClaimDeadlineSql,
   waitingPickOfChatterSql,
-  winnerChatNameSql,
+  winnerChatPickSql,
 } from "../room/queries.ts"
 
 const eventSubEnv = {
@@ -1296,7 +1296,7 @@ describe("winner chat", () => {
     socket?.receive(chat(winner, "hello chat"))
 
     expect(room.liveSnapshot().winnerChat).toEqual([
-      { id: 1, name: `Name${winner}`, text: "hello chat", at: clock.now() },
+      { id: 1, n: 0, name: `Name${winner}`, text: "hello chat", at: clock.now() },
     ])
   })
 
@@ -1371,6 +1371,28 @@ describe("winner chat", () => {
 
     expect(next).not.toBe(winner)
     expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["my turn"])
+  })
+
+  it.each([
+    ["the next winner", (room: GiveawayRoom) => room.draw(1, null)],
+    [
+      "a replacement after a reroll",
+      async (room: GiveawayRoom) => {
+        await room.draw(1, null)
+        await room.reroll(1, null)
+      },
+    ],
+  ])("starts %s with an empty chat while the first winner has lines", async (_name, pickNext) => {
+    const { room, socket, winner } = await connectedRoom({ claimKeyword: "!claim" })
+    socket?.receive(chat(winner, "hello"))
+
+    await pickNext(room)
+    const newest = room.picks().at(-1)?.n
+
+    expect(newest).toBeGreaterThan(0)
+    expect(room.liveSnapshot().winnerChat.map((line) => [line.n, line.text])).toEqual([
+      [0, "hello"],
+    ])
   })
 
   it("keeps the messages after the claim time ended and still claims nothing", async () => {
@@ -1536,7 +1558,7 @@ describe("chat claim queries", () => {
   it("finds the name of a picked chatter through the unique entrant index", async () => {
     const { db, winner } = await drawnRoom()
 
-    const details = plan(db, winnerChatNameSql, [winner])
+    const details = plan(db, winnerChatPickSql, [winner])
 
     expect(details.some((detail) => detail.includes("USING INDEX draws_by_entrant"))).toBe(true)
   })

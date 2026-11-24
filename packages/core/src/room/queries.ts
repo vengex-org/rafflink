@@ -59,8 +59,8 @@ export const waitingPickOfChatterSql = `SELECT n FROM draws
   WHERE platform = (SELECT platform FROM room_state WHERE id = 1)
     AND platform_user_id = ? AND claimed_at IS NULL AND rerolled = 0 AND claim_until >= ?`
 
-/** The entry name (`display_name`) of a chatter (parameter 1) who holds a pick that is not rerolled; no row for anyone else. */
-export const winnerChatNameSql = `SELECT e.display_name FROM draws d
+/** The pick (`n`) and entry name (`display_name`) of a chatter (parameter 1) who holds a pick that is not rerolled; no row for anyone else. */
+export const winnerChatPickSql = `SELECT d.n, e.display_name FROM draws d
   JOIN entries e ON e.platform = d.platform AND e.platform_user_id = d.platform_user_id
   WHERE d.platform = (SELECT platform FROM room_state WHERE id = 1)
     AND d.platform_user_id = ? AND d.rerolled = 0`

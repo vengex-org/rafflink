@@ -164,7 +164,7 @@ function DrawnStage({
             )}
             {showChat ? (
               <WinnerChat
-                lines={snapshot.winnerChat}
+                lines={snapshot.winnerChat.filter((line) => line.n === current.n)}
                 hint={
                   snapshot.winnerChatOpen ? (
                     <ChatHint waiting={current.claim.state === "waiting"} />

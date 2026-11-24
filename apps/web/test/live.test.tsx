@@ -1327,8 +1327,8 @@ describe("live page: the stage", () => {
 
 describe("live page: winners' chat", () => {
   const chat = [
-    { id: 1, name: "Wanda", text: "I am here!", at: 1 },
-    { id: 2, name: "Bob", text: "me too", at: 2 },
+    { id: 1, n: 0, name: "Wanda", text: "I am here!", at: 1 },
+    { id: 2, n: 0, name: "Bob", text: "me too", at: 2 },
   ]
 
   it("lists the messages with the winner's name, newest last, in a polite live region", async () => {
@@ -1344,6 +1344,17 @@ describe("live page: winners' chat", () => {
     expect(second?.querySelector("strong")?.textContent).toBe("Bob")
     expect(second?.textContent).toContain("me too")
     expect(list.getAttribute("aria-live")).toBe("polite")
+  })
+
+  it("shows only the lines of the pick on the plate", async () => {
+    const otherPick = { id: 3, n: 1, name: "Bob", text: "line of another pick", at: 3 }
+    mockLive({ "GET /api/live/gid-1": () => ok({ ...drawn, winnerChat: [...chat, otherPick] }) })
+
+    const view = renderApp("/live/gid-1")
+    const list = await view.findByRole("list", { name: "Chat" })
+
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2)
+    expect(view.queryByText("line of another pick")).toBeNull()
   })
 
   it("is not shown while there are no messages", async () => {
@@ -1396,7 +1407,12 @@ describe("live page: winners' chat", () => {
     expect(
       await view.findByText("If the winner writes in chat, you will see it here."),
     ).toBeTruthy()
-    act(() => FakeSocket.opened[0]?.push({ ...settled, winnerChat: chat }))
+    act(() =>
+      FakeSocket.opened[0]?.push({
+        ...settled,
+        winnerChat: chat.map((line) => ({ ...line, n: 1 })),
+      }),
+    )
     expect(await view.findByRole("list", { name: "Chat" })).toBeTruthy()
     expect(view.queryByText("If the winner writes in chat, you will see it here.")).toBeNull()
   })
@@ -1480,8 +1496,8 @@ describe("live page: winners' chat", () => {
       FakeSocket.opened[0]?.push({
         ...drawn,
         winnerChat: [
-          { id: 2, name: "Bob", text: "me too", at: 2 },
-          { id: 3, name: "Wanda", text: "same millisecond", at: 2 },
+          { id: 2, n: 0, name: "Bob", text: "me too", at: 2 },
+          { id: 3, n: 0, name: "Wanda", text: "same millisecond", at: 2 },
         ],
       })
     })
