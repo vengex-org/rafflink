@@ -17,6 +17,8 @@ jobs:
     # Pushes and pull requests from this repository run on the owner's self-hosted runner. Pull requests from
     # forks stay on a GitHub runner, so code from outside never runs on that machine.
     runs-on: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","gaming-pc"]') || 'ubuntu-latest' }}
+    # A run takes about a minute; a hung test stops here instead of holding the runner for six hours.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
