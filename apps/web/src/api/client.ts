@@ -1485,6 +1485,7 @@ function parseRerollState(source: Json): RerollState {
 function parseChatLine(source: Json): WinnerChatLine {
   return {
     id: num(source, "id"),
+    n: num(source, "n"),
     name: text(source, "name"),
     text: text(source, "text"),
     at: num(source, "at"),

@@ -238,7 +238,7 @@ export const configSchema = {
     "LIVE_WINNER_CHAT_MAX",
     int(1),
     "20",
-    "Newest chat messages of the winners the live page shows; starting guess: 20 messages of at most 500 characters is about 10 KB per push, throttled by LIVE_INTERVAL_MS",
+    "Newest chat messages kept per winner for the live page; starting guess: 20 messages of at most 500 characters is about 10 KB per push, throttled by LIVE_INTERVAL_MS",
   ),
   entrantsPageMax: withDefault(
     "ENTRANTS_PAGE_MAX",

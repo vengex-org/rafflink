@@ -75,7 +75,7 @@ import {
   watchedChattersSql,
   chatWatchedSql,
   entryWayUnavailableSql,
-  winnerChatNameSql,
+  winnerChatPickSql,
 } from "./queries.ts"
 import {
   parseChatRequest,
@@ -401,9 +401,10 @@ export type RerollState =
   | { readonly rerollOpen: true; readonly rerollBlocked: null }
   | { readonly rerollOpen: false; readonly rerollBlocked: "window-over" | "nobody-left" | null }
 
-/** One chat message of a winner as the live page shows it; `name` is the display name of the winner's entry, `id` counts the room's lines up from 1 so a page can tell a new line from an old one. */
+/** One chat message of a winner as the live page shows it; `n` is the pick the chatter held when it came, `name` is the display name of the winner's entry, `id` counts the room's lines up from 1 so a page can tell a new line from an old one. */
 export interface WinnerChatLine {
   readonly id: number
+  readonly n: number
   readonly name: string
   readonly text: string
   readonly at: Instant
@@ -554,7 +555,7 @@ export class GiveawayRoom {
   // Set when the alarm ended a commit or a requested draw, so its live push shows the change.
   private givenUp = false
   // Lost with the object, which is also how a hibernating Durable Object forgets chat; display only.
-  private winnerChat: readonly ChatterLine[] = []
+  private winnerChat: readonly WinnerChatLine[] = []
   private winnerChatSeq = 0
 
   constructor(deps: RoomDeps) {
@@ -1234,7 +1235,7 @@ export class GiveawayRoom {
     })
     if (outcome.kind === "rerolled") {
       this.scheduleMirrorRetry(now)
-      this.dropChatOf(draws.find((draw) => draw.n === n)?.platformUserId)
+      this.dropChatOf(n)
       this.afterOutcomeWrite()
     }
     return outcome
@@ -1446,7 +1447,7 @@ export class GiveawayRoom {
         recent === undefined ? 0 : new RowReader("entries", recent).int("c") / windowSeconds,
       lastNames,
       winners,
-      winnerChat: this.winnerChat.map((entry) => entry.line),
+      winnerChat: this.winnerChat,
       winnerChatOpen: this.winnerChatWatched(state),
       picksLeft: Math.max(0, this.config.drawMaxWinners - winners.length),
       actors: { closedBy: state.closedBy, picks: rows.map(pickActors) },
@@ -1895,8 +1896,8 @@ export class GiveawayRoom {
     return end === null || this.clock.now() > end
   }
 
-  private dropChatOf(chatterUserId: string | undefined): void {
-    this.winnerChat = this.winnerChat.filter((entry) => entry.chatterUserId !== chatterUserId)
+  private dropChatOf(n: number): void {
+    this.winnerChat = this.winnerChat.filter((line) => line.n !== n)
   }
 
   private forgetWinnerChat(): void {
@@ -1986,18 +1987,23 @@ export class GiveawayRoom {
   }
 
   private showWinnerChat(message: ChatMessage): boolean {
-    const row = this.sql.exec(winnerChatNameSql, [message.platformUserId])[0]
+    const row = this.sql.exec(winnerChatPickSql, [message.platformUserId])[0]
     if (row === undefined) return false
     this.winnerChatSeq += 1
+    const reader = new RowReader("entries", row)
     const line: WinnerChatLine = {
       id: this.winnerChatSeq,
-      name: new RowReader("entries", row).text("display_name"),
+      n: reader.int("n"),
+      name: reader.text("display_name"),
       text: message.text,
       at: this.clock.now(),
     }
-    this.winnerChat = [...this.winnerChat, { chatterUserId: message.platformUserId, line }].slice(
-      -this.config.liveWinnerChatMax,
-    )
+    // The cap is per pick, so an older winner who keeps typing cannot push out the lines of the one on the plate.
+    const ofPick = [...this.winnerChat.filter((kept) => kept.n === line.n), line]
+    this.winnerChat = [
+      ...this.winnerChat.filter((kept) => kept.n !== line.n),
+      ...ofPick.slice(-this.config.liveWinnerChatMax),
+    ]
     return true
   }
 
@@ -2244,12 +2250,6 @@ export class GiveawayRoom {
     const row = this.sql.exec("SELECT giveaway_id FROM room_state WHERE id = 1", [])[0]
     return row === undefined ? null : new RowReader("room_state", row).text("giveaway_id")
   }
-}
-
-// A winner's chat line with whom it came from, so a reroll can drop that chatter's lines.
-interface ChatterLine {
-  readonly chatterUserId: string
-  readonly line: WinnerChatLine
 }
 
 // The roles a chat badge can show beyond the stored role lists.

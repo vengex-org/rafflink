@@ -40,7 +40,7 @@ import {
   chatEntrantByLoginSql,
   nextClaimDeadlineSql,
   waitingPickOfChatterSql,
-  winnerChatNameSql,
+  winnerChatPickSql,
 } from "../room/queries.ts"
 
 const eventSubEnv = {
@@ -1296,7 +1296,7 @@ describe("winner chat", () => {
     socket?.receive(chat(winner, "hello chat"))
 
     expect(room.liveSnapshot().winnerChat).toEqual([
-      { id: 1, name: `Name${winner}`, text: "hello chat", at: clock.now() },
+      { id: 1, n: 0, name: `Name${winner}`, text: "hello chat", at: clock.now() },
     ])
   })
 
@@ -1371,6 +1371,32 @@ describe("winner chat", () => {
 
     expect(next).not.toBe(winner)
     expect(room.liveSnapshot().winnerChat.map((line) => line.text)).toEqual(["my turn"])
+  })
+
+  it.each([
+    ["the next winner", (room: GiveawayRoom) => room.draw(1, null), [[0, "hello"]]],
+    ["a replacement after a reroll", (room: GiveawayRoom) => room.reroll(0, null), []],
+  ])("starts %s with an empty chat", async (_name, pickNext, expected) => {
+    const { room, socket, winner } = await connectedRoom({ claimKeyword: "!claim" })
+    socket?.receive(chat(winner, "hello"))
+
+    await pickNext(room)
+
+    expect(room.liveSnapshot().winnerChat.map((line) => [line.n, line.text])).toEqual(expected)
+  })
+
+  it("an older winner's chat does not push out the current winner's lines", async () => {
+    const { room, socket, winner } = await connectedRoom({
+      claimKeyword: "!claim",
+      env: { LIVE_WINNER_CHAT_MAX: "2" },
+    })
+    await room.draw(1, null)
+    socket?.receive(chat(room.picks()[1]?.platformUserId ?? "", "mine"))
+
+    for (const text of ["one", "two", "three"]) socket?.receive(chat(winner, text))
+
+    const onPlate = room.liveSnapshot().winnerChat.filter((line) => line.n === 1)
+    expect(onPlate.map((line) => line.text)).toEqual(["mine"])
   })
 
   it("keeps the messages after the claim time ended and still claims nothing", async () => {
@@ -1536,7 +1562,7 @@ describe("chat claim queries", () => {
   it("finds the name of a picked chatter through the unique entrant index", async () => {
     const { db, winner } = await drawnRoom()
 
-    const details = plan(db, winnerChatNameSql, [winner])
+    const details = plan(db, winnerChatPickSql, [winner])
 
     expect(details.some((detail) => detail.includes("USING INDEX draws_by_entrant"))).toBe(true)
   })

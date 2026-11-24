@@ -43,8 +43,8 @@ describe("parseLiveSnapshot winner chat", () => {
 
   it("keeps the chat lines in order", () => {
     const winnerChat = [
-      { id: 1, name: "Ada", text: "first", at: 1 },
-      { id: 2, name: "Ada", text: "second", at: 2 },
+      { id: 1, n: 0, name: "Ada", text: "first", at: 1 },
+      { id: 2, n: 0, name: "Ada", text: "second", at: 2 },
     ]
 
     expect(parseLiveSnapshot({ ...liveSnapshot, winnerChat }).winnerChat).toEqual(winnerChat)
@@ -57,15 +57,15 @@ describe("parseLiveSnapshot winner chat", () => {
   })
 
   it("rejects a malformed chat line", () => {
-    const bad = { ...liveSnapshot, winnerChat: [{ id: 1, name: "Ada", text: 5, at: 1 }] }
+    const bad = { ...liveSnapshot, winnerChat: [{ id: 1, n: 0, name: "Ada", text: 5, at: 1 }] }
 
     expect(() => parseLiveSnapshot(bad)).toThrow(ApiShapeError)
   })
 
   it("rejects a chat line without an id or with a non-numeric one", () => {
     for (const line of [
-      { name: "Ada", text: "hi", at: 1 },
-      { id: "1", name: "Ada", text: "hi", at: 1 },
+      { n: 0, name: "Ada", text: "hi", at: 1 },
+      { id: "1", n: 0, name: "Ada", text: "hi", at: 1 },
     ]) {
       expect(() => parseLiveSnapshot({ ...liveSnapshot, winnerChat: [line] })).toThrow(
         ApiShapeError,
