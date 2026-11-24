@@ -1070,7 +1070,7 @@ export const es: Translation = {
 
   "meta.home.title": "Rafflink: sorteos justos que tu chat puede comprobar",
   "meta.home.description":
-    "Herramienta gratuita de sorteos para streamers. Los espectadores participan desde un enlace en el chat, tú sorteas en directo y cualquiera puede comprobar el sorteo.",
+    "Herramienta gratuita de sorteos para streamers. Los espectadores participan desde un enlace en el chat, tú sorteas en directo y cualquiera puede comprobarlo.",
   "meta.privacy.description":
     "Qué guarda Rafflink sobre streamers y espectadores, por qué, durante cuánto tiempo y cómo pedir que se elimine.",
   "meta.terms.description":

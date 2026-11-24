@@ -11,7 +11,9 @@ import { MemoryRouter } from "react-router"
 import { prerender, writePrerender, type RenderedPage } from "../scripts/prerender.tsx"
 import { AppRoutes } from "../src/app.tsx"
 import { loadDictionary } from "../src/i18n/dictionaries.ts"
+import { en } from "../src/i18n/en.ts"
 import { formatDate } from "../src/i18n/i18n.tsx"
+import { sk } from "../src/i18n/sk.ts"
 import { templateUpdated } from "../src/pages/legal-page.tsx"
 import { languages } from "../src/i18n/language.ts"
 import { localizedPages, localizedPath, pageOfPath } from "../src/lib/routes.ts"
@@ -205,37 +207,21 @@ describe("prerender", () => {
         return [path, parsed.title, description?.getAttribute("content")]
       })
     expect(heads).toEqual([
-      [
-        "/",
-        "Rafflink: fair giveaways your chat can check",
-        "Free giveaway tool for streamers. Viewers enter from a link in chat, you draw live on stream, and anyone can check the draw.",
-      ],
-      [
-        "/privacy",
-        "Privacy policy | Rafflink",
-        "What Rafflink stores about streamers and viewers, why, for how long, and how to have it deleted.",
-      ],
-      [
-        "/terms",
-        "Terms of use | Rafflink",
-        "The rules for streamers who run giveaways with Rafflink and for viewers who enter them.",
-      ],
-      [
-        "/sk/",
-        "Rafflink: férové giveawaye, ktoré tvoj chat overí",
-        "Bezplatný nástroj na giveawaye pre streamerov. Diváci sa zapoja z odkazu v chate, ty žrebuješ naživo na streame a žrebovanie si môže overiť ktokoľvek.",
-      ],
-      [
-        "/sk/privacy",
-        "Zásady ochrany osobných údajov | Rafflink",
-        "Čo Rafflink ukladá o streameroch a divákoch, prečo, ako dlho a ako to dať vymazať.",
-      ],
-      [
-        "/sk/terms",
-        "Podmienky používania | Rafflink",
-        "Pravidlá pre streamerov, ktorí s Rafflinkom robia giveawaye, a pre divákov, ktorí sa do nich zapájajú.",
-      ],
+      ["/", en["meta.home.title"], en["meta.home.description"]],
+      ["/privacy", `${en["privacy.title"]} | Rafflink`, en["meta.privacy.description"]],
+      ["/terms", `${en["terms.title"]} | Rafflink`, en["meta.terms.description"]],
+      ["/sk/", sk["meta.home.title"], sk["meta.home.description"]],
+      ["/sk/privacy", `${sk["privacy.title"]} | Rafflink`, sk["meta.privacy.description"]],
+      ["/sk/terms", `${sk["terms.title"]} | Rafflink`, sk["meta.terms.description"]],
     ])
+    for (const key of [
+      "meta.home.title",
+      "meta.home.description",
+      "meta.privacy.description",
+      "meta.terms.description",
+    ] as const) {
+      expect(sk[key]).not.toBe(en[key])
+    }
   })
 
   it("hydrates every prerendered page without a mismatch and keeps the build's operator while the session agrees", async () => {

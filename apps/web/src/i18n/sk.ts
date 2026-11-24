@@ -1130,7 +1130,7 @@ export const sk: Translation = {
   "privacy.youtube.p2":
     "Používanie a prenos informácií získaných z rozhraní Google API zo strany Rafflinku je v súlade s Google API Services User Data Policy ({googleUserData}), vrátane požiadaviek na obmedzené použitie (Limited Use).",
   "privacy.youtube.i1":
-    "Streamer na YouTube sa prihlási cez Google a dá Rafflinku prístup na čítanie k svojmu účtu YouTube (rozsah youtube.readonly). Rafflink číta iba ID tvojho kanála, handle a meno, aby ťa prihlásil ako tvoj kanál, tvoj aktívny živý prenos, aby našiel jeho chat, a správy tohto chatu, aby zapojil divákov, ktorí napíšu kľúčové slovo, a ukázal odpovede výhercu. O tebe ukladá ID kanála, handle, meno a šifrovaný refresh token. Čo ukladá o divákoch, je v ďalších bodoch. Správy z chatu sa nikdy neukladajú a Rafflink na YouTube nikdy nič nepíše ani nemení.",
+    "Streamer na YouTube sa prihlási cez Google a dá Rafflinku prístup iba na čítanie k svojmu účtu YouTube (rozsah youtube.readonly). Rafflink číta iba ID tvojho kanála, handle a meno, aby ťa prihlásil ako tvoj kanál, tvoj aktívny živý prenos, aby našiel jeho chat, a správy tohto chatu, aby zapojil divákov, ktorí napíšu kľúčové slovo, a ukázal odpovede výhercu. O tebe ukladá ID kanála, handle, meno a šifrovaný refresh token. Čo ukladá o divákoch, je v ďalších bodoch. Správy z chatu sa nikdy neukladajú a Rafflink na YouTube nikdy nič nepíše ani nemení.",
   "privacy.youtube.i5":
     "Rafflink používa tieto údaje z Googlu iba na vedenie tvojich giveawayov. Nikdy ich nepredáva, nepoužíva na reklamu a zdieľa ich iba so stranami uvedenými vyššie. Nikto ich nečíta, okrem prípadov, keď požiadaš o pomoc s účtom, keď to vyžaduje bezpečnosť alebo zákon.",
   "privacy.youtube.i2":

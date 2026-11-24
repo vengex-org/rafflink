@@ -1058,7 +1058,7 @@ export const pl: Translation = {
   "meta.home.description":
     "Darmowe narzędzie do rozdań dla streamerów. Widzowie zgłaszają się z linku na czacie, ty losujesz na żywo na streamie, a każdy może sprawdzić losowanie.",
   "meta.privacy.description":
-    "Co Rafflink przechowuje o streamerach i widzach, dlaczego, jak długo i jak to usunąć.",
+    "Co Rafflink przechowuje o streamerach i widzach, dlaczego, jak długo i jak poprosić o usunięcie.",
   "meta.terms.description":
     "Zasady dla streamerów, którzy prowadzą rozdania z Rafflink, i dla widzów, którzy w nich uczestniczą.",
 
